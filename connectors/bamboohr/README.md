@@ -19,8 +19,10 @@ factories:
 
 Only the happy-path branch of each operation is required; every other branch
 is optional, and an unwired optional branch fails the Flow. Every operation
-uses a 30-second Execute timeout. Reads and `updateEmployee` use the one-hour default retry budget; `addEmployee` keeps five attempts within five minutes and uses sync
-durability because BambooHR has no idempotency key; see
+uses a 30-second Execute timeout. Reads and `updateEmployee` use the one-hour
+default retry budget. `addEmployee` keeps five attempts within five minutes
+because BambooHR does not document whether a 503 means the add was not applied.
+It uses sync durability for its dispatch fence; see
 [Duplicate safety](#duplicate-safety).
 
 Install this connector release with `go get github.com/superdurable/dex-connectors-library/connectors/bamboohr@v0.22.0`.
@@ -212,9 +214,9 @@ hire date, and up to 50 other writable fields, such as `department` or
 `employmentHistoryStatus` for the first employment status record. The new ID
 comes from the response's `id`, or from a usable `Location` header. The current
 [Create Employee reference](https://documentation.bamboohr.com/reference/create-employee)
-documents 201 but does not document the response body or `Location` format;
-their live formats remain unverified. BambooHR rejects an email another
-employee already holds with 409.
+documents a 201 response body with a required string `id` and a `Location`
+header whose web-app URL includes the employee ID; their live formats remain
+unverified. BambooHR rejects an email another employee already holds with 409.
 
 ## Duplicate safety
 
@@ -388,4 +390,5 @@ the time off filter matches lowercase statuses and supports `in`; whether
 `supervisorEId` is readable through Get Employee as the field list documents;
 whether a field requested by numeric ID returns under its name; whether
 duplicate-email 409 covers `homeEmail`; whether List Employees includes a hire
-whose start date is in the future; and the `Location` header format.
+whose start date is in the future; and the live 201 body ID and `Location`
+header formats, 503 non-application, and 429 without `Retry-After`.

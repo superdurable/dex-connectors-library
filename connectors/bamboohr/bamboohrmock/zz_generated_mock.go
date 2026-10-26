@@ -142,22 +142,22 @@ func GetEmployeeFoundDefaultAnswer() connectormock.Case[bamboohr.EmployeeRecord]
 	return connectormock.Branch(bamboohr.GetEmployeeBranchFound, value, nil)
 }
 
-// GetEmployeeNotFoundFailure is the manifest mock notFoundFailure: No employee has this internal ID.
+// GetEmployeeNotFoundFailure is the manifest mock notFoundFailure: Employee ID 999 does not exist.
 func GetEmployeeNotFoundFailure() connectormock.Case[bamboohr.EmployeeRecord] {
 	var value bamboohr.EmployeeRecord
 	return connectormock.Branch(bamboohr.GetEmployeeBranchNotFound, value, &sdkgo.Failure{Kind: sdkgo.FailureNotFound, Message: "No employee has this internal ID."})
 }
 
-// GetEmployeeProviderRejectedFailure is the manifest mock providerRejectedFailure: BambooHR conclusively rejected the read, such as invalid credentials or a user who cannot view this employee.
+// GetEmployeeProviderRejectedFailure is the manifest mock providerRejectedFailure: The API user cannot view this employee (HTTP 403).
 func GetEmployeeProviderRejectedFailure() connectormock.Case[bamboohr.EmployeeRecord] {
 	var value bamboohr.EmployeeRecord
 	return connectormock.Branch(bamboohr.GetEmployeeBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthorization, Message: "The API user cannot view this employee."})
 }
 
-// GetEmployeeInvalidResponseFailure is the manifest mock invalidResponseFailure: BambooHR returned an invalid or oversized employee record.
+// GetEmployeeInvalidResponseFailure is the manifest mock invalidResponseFailure: BambooHR returned a malformed employee record.
 func GetEmployeeInvalidResponseFailure() connectormock.Case[bamboohr.EmployeeRecord] {
 	var value bamboohr.EmployeeRecord
-	return connectormock.Branch(bamboohr.GetEmployeeBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "BambooHR returned an invalid or oversized employee record."})
+	return connectormock.Branch(bamboohr.GetEmployeeBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "BambooHR returned a malformed employee record."})
 }
 
 // GetEmployeeDefault is the manifest default, foundDefaultAnswer, which New installs.
@@ -206,28 +206,28 @@ func FindEmployeeByEmailFoundDefaultAnswer() connectormock.Case[bamboohr.FindEmp
 	return connectormock.Branch(bamboohr.FindEmployeeByEmailBranchFound, value, nil)
 }
 
-// FindEmployeeByEmailNotFoundFailure is the manifest mock notFoundFailure: No employee visible to the connection has this email; BambooHR drops employees whose email the connection cannot read.
+// FindEmployeeByEmailNotFoundFailure is the manifest mock notFoundFailure: No employee visible to the connection has work email sam.park@example.com.
 func FindEmployeeByEmailNotFoundFailure() connectormock.Case[bamboohr.FindEmployeeByEmailOutput] {
 	var value bamboohr.FindEmployeeByEmailOutput
 	return connectormock.Branch(bamboohr.FindEmployeeByEmailBranchNotFound, value, &sdkgo.Failure{Kind: sdkgo.FailureNotFound, Message: "No employee visible to the connection has this email; BambooHR drops employees whose email the connection cannot read."})
 }
 
-// FindEmployeeByEmailAmbiguousFailure is the manifest mock ambiguousFailure: More than one employee has this email, or more than 100 employee emails contain it, so the connector cannot pick one.
+// FindEmployeeByEmailAmbiguousFailure is the manifest mock ambiguousFailure: A search for ava.nguyen@example.com finds more than 100 substring candidates, so the one visible exact match cannot be chosen.
 func FindEmployeeByEmailAmbiguousFailure() connectormock.Case[bamboohr.FindEmployeeByEmailOutput] {
-	value := connectormock.MustDecodeOutput[bamboohr.FindEmployeeByEmailOutput](`{"matches":[{"employeeId":"140","workEmail":"shared@example.com"},{"employeeId":"141","workEmail":"shared@example.com"}],"candidateCount":2}`)
-	return connectormock.Branch(bamboohr.FindEmployeeByEmailBranchAmbiguous, value, &sdkgo.Failure{Kind: sdkgo.FailureConflict, Message: "Two employees have the same visible email; no single employee was chosen."})
+	value := connectormock.MustDecodeOutput[bamboohr.FindEmployeeByEmailOutput](`{"matches":[{"employeeId":"140","workEmail":"ava.nguyen@example.com"}],"candidateCount":101}`)
+	return connectormock.Branch(bamboohr.FindEmployeeByEmailBranchAmbiguous, value, &sdkgo.Failure{Kind: sdkgo.FailureConflict, Message: "More than 100 employee emails contain the address; no single employee was chosen."})
 }
 
-// FindEmployeeByEmailProviderRejectedFailure is the manifest mock providerRejectedFailure: BambooHR conclusively rejected the search, such as invalid credentials or an unsupported field.
+// FindEmployeeByEmailProviderRejectedFailure is the manifest mock providerRejectedFailure: The API key is invalid (HTTP 401).
 func FindEmployeeByEmailProviderRejectedFailure() connectormock.Case[bamboohr.FindEmployeeByEmailOutput] {
 	var value bamboohr.FindEmployeeByEmailOutput
-	return connectormock.Branch(bamboohr.FindEmployeeByEmailBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthorization, Message: "The API user cannot search employees."})
+	return connectormock.Branch(bamboohr.FindEmployeeByEmailBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthentication, Message: "The API key is invalid."})
 }
 
-// FindEmployeeByEmailInvalidResponseFailure is the manifest mock invalidResponseFailure: BambooHR returned an invalid or oversized employee list.
+// FindEmployeeByEmailInvalidResponseFailure is the manifest mock invalidResponseFailure: BambooHR returned a malformed employee list.
 func FindEmployeeByEmailInvalidResponseFailure() connectormock.Case[bamboohr.FindEmployeeByEmailOutput] {
 	var value bamboohr.FindEmployeeByEmailOutput
-	return connectormock.Branch(bamboohr.FindEmployeeByEmailBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "BambooHR returned an invalid or oversized employee list."})
+	return connectormock.Branch(bamboohr.FindEmployeeByEmailBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "BambooHR returned a malformed employee list."})
 }
 
 // FindEmployeeByEmailDefault is the manifest default, foundDefaultAnswer, which New installs.
@@ -260,9 +260,9 @@ func ListEmployeeChangesRetry(failure sdkgo.Failure, after time.Duration) connec
 	return connectormock.Retry[bamboohr.ListEmployeeChangesOutput](failure, after)
 }
 
-// ListEmployeeChangesListedDefaultAnswer is the manifest mock listedDefaultAnswer: After the 2026-10-12 cursor, employees 140 and 141 changed; pass the next cursor to poll again.
+// ListEmployeeChangesListedDefaultAnswer is the manifest mock listedDefaultAnswer: After the 2026-10-12 cursor, existing employees 140 and 141 changed; pass the next cursor to poll again.
 func ListEmployeeChangesListedDefaultAnswer() connectormock.Case[bamboohr.ListEmployeeChangesOutput] {
-	value := connectormock.MustDecodeOutput[bamboohr.ListEmployeeChangesOutput](`{"changes":[{"employeeId":"140","action":"Inserted","lastChanged":"2026-10-13T10:00:00Z"},{"employeeId":"141","action":"Updated","lastChanged":"2026-10-13T11:00:00Z"}],"nextCursor":{"since":"2026-10-13T11:00:00Z","afterEmployeeId":"141"},"hasMore":false}`)
+	value := connectormock.MustDecodeOutput[bamboohr.ListEmployeeChangesOutput](`{"changes":[{"employeeId":"140","action":"Updated","lastChanged":"2026-10-13T10:00:00Z"},{"employeeId":"141","action":"Updated","lastChanged":"2026-10-13T11:00:00Z"}],"nextCursor":{"since":"2026-10-13T11:00:00Z","afterEmployeeId":"141"},"hasMore":false}`)
 	return connectormock.Branch(bamboohr.ListEmployeeChangesBranchListed, value, nil)
 }
 
@@ -272,10 +272,10 @@ func ListEmployeeChangesProviderRejectedFailure() connectormock.Case[bamboohr.Li
 	return connectormock.Branch(bamboohr.ListEmployeeChangesBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthentication, Message: "The API key is invalid."})
 }
 
-// ListEmployeeChangesInvalidResponseFailure is the manifest mock invalidResponseFailure: BambooHR returned an invalid or oversized change list.
+// ListEmployeeChangesInvalidResponseFailure is the manifest mock invalidResponseFailure: BambooHR returned a malformed change list.
 func ListEmployeeChangesInvalidResponseFailure() connectormock.Case[bamboohr.ListEmployeeChangesOutput] {
 	var value bamboohr.ListEmployeeChangesOutput
-	return connectormock.Branch(bamboohr.ListEmployeeChangesBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "BambooHR returned an invalid or oversized change list."})
+	return connectormock.Branch(bamboohr.ListEmployeeChangesBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "BambooHR returned a malformed change list."})
 }
 
 // ListEmployeeChangesDefault is the manifest default, listedDefaultAnswer, which New installs.
@@ -308,27 +308,27 @@ func ListTimeOffRequestsRetry(failure sdkgo.Failure, after time.Duration) connec
 	return connectormock.Retry[bamboohr.ListTimeOffRequestsOutput](failure, after)
 }
 
-// ListTimeOffRequestsListedDefaultAnswer is the manifest mock listedDefaultAnswer: For employee 140 with pageSize 1 and no status filter, pages 1-3 contain a denied request, its repeated boundary item, and an older approved request.
+// ListTimeOffRequestsListedDefaultAnswer is the manifest mock listedDefaultAnswer: For employee 140 with pageSize 1 and no status filter, pages 1-3 contain three distinct time off requests.
 func ListTimeOffRequestsListedDefaultAnswer() connectormock.Case[bamboohr.ListTimeOffRequestsOutput] {
 	pages := []bamboohr.ListTimeOffRequestsOutput{
-		connectormock.MustDecodeOutput[bamboohr.ListTimeOffRequestsOutput](`{"requests":[{"id":502,"employeeId":"140","categoryId":78,"startDate":"2026-10-26","endDate":"2026-10-26","amount":1,"unit":"DAYS","status":"DENIED","requestedAt":"2026-09-03T15:04:05Z"}],"page":1,"totalItems":2,"nextPage":2}`),
-		connectormock.MustDecodeOutput[bamboohr.ListTimeOffRequestsOutput](`{"requests":[{"id":502,"employeeId":"140","categoryId":78,"startDate":"2026-10-26","endDate":"2026-10-26","amount":1,"unit":"DAYS","status":"DENIED","requestedAt":"2026-09-03T15:04:05Z"}],"page":2,"totalItems":2,"nextPage":3}`),
-		connectormock.MustDecodeOutput[bamboohr.ListTimeOffRequestsOutput](`{"requests":[{"id":501,"employeeId":"140","categoryId":78,"startDate":"2026-10-20","endDate":"2026-10-21","amount":2,"unit":"DAYS","status":"APPROVED","requestedAt":"2026-09-02T15:04:05Z"}],"page":3,"totalItems":2,"nextPage":0}`),
+		connectormock.MustDecodeOutput[bamboohr.ListTimeOffRequestsOutput](`{"requests":[{"id":502,"employeeId":"140","categoryId":78,"startDate":"2026-10-26","endDate":"2026-10-26","amount":1,"unit":"DAYS","status":"DENIED","requestedAt":"2026-09-03T15:04:05Z"}],"page":1,"totalItems":3,"nextPage":2}`),
+		connectormock.MustDecodeOutput[bamboohr.ListTimeOffRequestsOutput](`{"requests":[{"id":501,"employeeId":"140","categoryId":78,"startDate":"2026-10-20","endDate":"2026-10-21","amount":2,"unit":"DAYS","status":"APPROVED","requestedAt":"2026-09-02T15:04:05Z"}],"page":2,"totalItems":3,"nextPage":3}`),
+		connectormock.MustDecodeOutput[bamboohr.ListTimeOffRequestsOutput](`{"requests":[{"id":500,"employeeId":"140","categoryId":78,"startDate":"2026-10-18","endDate":"2026-10-18","amount":1,"unit":"DAYS","status":"APPROVED","requestedAt":"2026-09-01T15:04:05Z"}],"page":3,"totalItems":3,"nextPage":0}`),
 	}
 	pageNumber := connectormock.CursorPageNumber[bamboohr.ListTimeOffRequestsInput]("page", "nextPage", pages)
 	return connectormock.Paged(bamboohr.ListTimeOffRequestsBranchListed, pageNumber, pages...)
 }
 
-// ListTimeOffRequestsProviderRejectedFailure is the manifest mock providerRejectedFailure: BambooHR conclusively rejected the request, such as invalid credentials or an invalid filter.
+// ListTimeOffRequestsProviderRejectedFailure is the manifest mock providerRejectedFailure: BambooHR rejected an invalid time off filter (HTTP 400).
 func ListTimeOffRequestsProviderRejectedFailure() connectormock.Case[bamboohr.ListTimeOffRequestsOutput] {
 	var value bamboohr.ListTimeOffRequestsOutput
 	return connectormock.Branch(bamboohr.ListTimeOffRequestsBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "BambooHR rejected the time off filter."})
 }
 
-// ListTimeOffRequestsInvalidResponseFailure is the manifest mock invalidResponseFailure: BambooHR returned an invalid or oversized time off page.
+// ListTimeOffRequestsInvalidResponseFailure is the manifest mock invalidResponseFailure: BambooHR returned a malformed time off page.
 func ListTimeOffRequestsInvalidResponseFailure() connectormock.Case[bamboohr.ListTimeOffRequestsOutput] {
 	var value bamboohr.ListTimeOffRequestsOutput
-	return connectormock.Branch(bamboohr.ListTimeOffRequestsBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "BambooHR returned an invalid or oversized time off page."})
+	return connectormock.Branch(bamboohr.ListTimeOffRequestsBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "BambooHR returned a malformed time off page."})
 }
 
 // ListTimeOffRequestsDefault is the manifest default, listedDefaultAnswer, which New installs.
@@ -372,22 +372,22 @@ func UpdateEmployeeUpdatedDefaultAnswer() connectormock.Case[bamboohr.UpdateEmpl
 	return connectormock.Branch(bamboohr.UpdateEmployeeBranchUpdated, value, nil)
 }
 
-// UpdateEmployeeNotFoundFailure is the manifest mock notFoundFailure: No employee has this internal ID.
+// UpdateEmployeeNotFoundFailure is the manifest mock notFoundFailure: Employee ID 999 does not exist.
 func UpdateEmployeeNotFoundFailure() connectormock.Case[bamboohr.UpdateEmployeeOutput] {
 	var value bamboohr.UpdateEmployeeOutput
 	return connectormock.Branch(bamboohr.UpdateEmployeeBranchNotFound, value, &sdkgo.Failure{Kind: sdkgo.FailureNotFound, Message: "No employee has this internal ID."})
 }
 
-// UpdateEmployeeProviderRejectedFailure is the manifest mock providerRejectedFailure: BambooHR conclusively rejected the change, such as a duplicate email, an invalid list value, or a field the connection cannot edit.
+// UpdateEmployeeProviderRejectedFailure is the manifest mock providerRejectedFailure: BambooHR rejected a duplicate email (HTTP 409).
 func UpdateEmployeeProviderRejectedFailure() connectormock.Case[bamboohr.UpdateEmployeeOutput] {
 	var value bamboohr.UpdateEmployeeOutput
 	return connectormock.Branch(bamboohr.UpdateEmployeeBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureConflict, Message: "BambooHR rejected the duplicate email."})
 }
 
-// UpdateEmployeeInvalidResponseFailure is the manifest mock invalidResponseFailure: BambooHR returned an invalid or oversized employee record, so the change may have been applied.
+// UpdateEmployeeInvalidResponseFailure is the manifest mock invalidResponseFailure: BambooHR returned a malformed employee record, so the change may have been applied.
 func UpdateEmployeeInvalidResponseFailure() connectormock.Case[bamboohr.UpdateEmployeeOutput] {
 	var value bamboohr.UpdateEmployeeOutput
-	return connectormock.Branch(bamboohr.UpdateEmployeeBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "BambooHR returned an invalid or oversized employee record, so the change may have been applied."})
+	return connectormock.Branch(bamboohr.UpdateEmployeeBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "BambooHR returned a malformed employee record, so the change may have been applied."})
 }
 
 // UpdateEmployeeDefault is the manifest default, updatedDefaultAnswer, which New installs.
@@ -426,7 +426,7 @@ func AddEmployeeCreatedDefaultAnswer() connectormock.Case[bamboohr.AddEmployeeOu
 	return connectormock.Branch(bamboohr.AddEmployeeBranchCreated, value, nil)
 }
 
-// AddEmployeeProviderRejectedFailure is the manifest mock providerRejectedFailure: BambooHR rejects a duplicate work email for the employee being added.
+// AddEmployeeProviderRejectedFailure is the manifest mock providerRejectedFailure: Adding an employee with ava.nguyen@example.com as work email is rejected as a duplicate (HTTP 409).
 func AddEmployeeProviderRejectedFailure() connectormock.Case[bamboohr.AddEmployeeOutput] {
 	var value bamboohr.AddEmployeeOutput
 	return connectormock.Branch(bamboohr.AddEmployeeBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureConflict, Message: "BambooHR rejected the duplicate email."})

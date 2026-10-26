@@ -66,16 +66,16 @@ spec:
           output: {employeeId: "140", fields: {firstName: Ava, lastName: Nguyen, department: Engineering}}
         - name: notFoundFailure
           branch: notFound
-          description: "No employee has this internal ID."
+          description: "Employee ID 999 does not exist."
           failure: {kind: NOT_FOUND, message: "No employee has this internal ID."}
         - name: providerRejectedFailure
           branch: providerRejected
-          description: "BambooHR conclusively rejected the read, such as invalid credentials or a user who cannot view this employee."
+          description: "The API user cannot view this employee (HTTP 403)."
           failure: {kind: AUTHORIZATION, message: "The API user cannot view this employee."}
         - name: invalidResponseFailure
           branch: invalidResponse
-          description: "BambooHR returned an invalid or oversized employee record."
-          failure: {kind: PROTOCOL, message: "BambooHR returned an invalid or oversized employee record."}
+          description: "BambooHR returned a malformed employee record."
+          failure: {kind: PROTOCOL, message: "BambooHR returned a malformed employee record."}
     - name: findEmployeeByEmail
       goName: FindEmployeeByEmail
       inputType: FindEmployeeByEmailInput
@@ -101,21 +101,21 @@ spec:
           output: {employee: {employeeId: "140", firstName: Ava, lastName: Nguyen, status: Active, workEmail: ava.nguyen@example.com}, candidateCount: 1}
         - name: notFoundFailure
           branch: notFound
-          description: "No employee visible to the connection has this email; BambooHR drops employees whose email the connection cannot read."
+          description: "No employee visible to the connection has work email sam.park@example.com."
           failure: {kind: NOT_FOUND, message: "No employee visible to the connection has this email; BambooHR drops employees whose email the connection cannot read."}
         - name: ambiguousFailure
           branch: ambiguous
-          description: "More than one employee has this email, or more than 100 employee emails contain it, so the connector cannot pick one."
-          output: {matches: [{employeeId: "140", workEmail: shared@example.com}, {employeeId: "141", workEmail: shared@example.com}], candidateCount: 2}
-          failure: {kind: CONFLICT, message: "Two employees have the same visible email; no single employee was chosen."}
+          description: "A search for ava.nguyen@example.com finds more than 100 substring candidates, so the one visible exact match cannot be chosen."
+          output: {matches: [{employeeId: "140", workEmail: ava.nguyen@example.com}], candidateCount: 101}
+          failure: {kind: CONFLICT, message: "More than 100 employee emails contain the address; no single employee was chosen."}
         - name: providerRejectedFailure
           branch: providerRejected
-          description: "BambooHR conclusively rejected the search, such as invalid credentials or an unsupported field."
-          failure: {kind: AUTHORIZATION, message: "The API user cannot search employees."}
+          description: "The API key is invalid (HTTP 401)."
+          failure: {kind: AUTHENTICATION, message: "The API key is invalid."}
         - name: invalidResponseFailure
           branch: invalidResponse
-          description: "BambooHR returned an invalid or oversized employee list."
-          failure: {kind: PROTOCOL, message: "BambooHR returned an invalid or oversized employee list."}
+          description: "BambooHR returned a malformed employee list."
+          failure: {kind: PROTOCOL, message: "BambooHR returned a malformed employee list."}
     - name: listEmployeeChanges
       goName: ListEmployeeChanges
       inputType: ListEmployeeChangesInput
@@ -134,17 +134,17 @@ spec:
       mocks:
         - name: listedDefaultAnswer
           branch: listed
-          description: "After the 2026-10-12 cursor, employees 140 and 141 changed; pass the next cursor to poll again."
+          description: "After the 2026-10-12 cursor, existing employees 140 and 141 changed; pass the next cursor to poll again."
           default: true
-          output: {changes: [{employeeId: "140", action: Inserted, lastChanged: "2026-10-13T10:00:00Z"}, {employeeId: "141", action: Updated, lastChanged: "2026-10-13T11:00:00Z"}], nextCursor: {since: "2026-10-13T11:00:00Z", afterEmployeeId: "141"}, hasMore: false}
+          output: {changes: [{employeeId: "140", action: Updated, lastChanged: "2026-10-13T10:00:00Z"}, {employeeId: "141", action: Updated, lastChanged: "2026-10-13T11:00:00Z"}], nextCursor: {since: "2026-10-13T11:00:00Z", afterEmployeeId: "141"}, hasMore: false}
         - name: providerRejectedFailure
           branch: providerRejected
           description: "BambooHR conclusively rejected the request, such as invalid credentials."
           failure: {kind: AUTHENTICATION, message: "The API key is invalid."}
         - name: invalidResponseFailure
           branch: invalidResponse
-          description: "BambooHR returned an invalid or oversized change list."
-          failure: {kind: PROTOCOL, message: "BambooHR returned an invalid or oversized change list."}
+          description: "BambooHR returned a malformed change list."
+          failure: {kind: PROTOCOL, message: "BambooHR returned a malformed change list."}
     - name: listTimeOffRequests
       goName: ListTimeOffRequests
       inputType: ListTimeOffRequestsInput
@@ -164,20 +164,20 @@ spec:
       mocks:
         - name: listedDefaultAnswer
           branch: listed
-          description: "For employee 140 with pageSize 1 and no status filter, pages 1-3 contain a denied request, its repeated boundary item, and an older approved request."
+          description: "For employee 140 with pageSize 1 and no status filter, pages 1-3 contain three distinct time off requests."
           default: true
           pages:
-            - {requests: [{id: 502, employeeId: "140", categoryId: 78, startDate: "2026-10-26", endDate: "2026-10-26", amount: 1, unit: DAYS, status: DENIED, requestedAt: "2026-09-03T15:04:05Z"}], page: 1, totalItems: 2, nextPage: 2}
-            - {requests: [{id: 502, employeeId: "140", categoryId: 78, startDate: "2026-10-26", endDate: "2026-10-26", amount: 1, unit: DAYS, status: DENIED, requestedAt: "2026-09-03T15:04:05Z"}], page: 2, totalItems: 2, nextPage: 3}
-            - {requests: [{id: 501, employeeId: "140", categoryId: 78, startDate: "2026-10-20", endDate: "2026-10-21", amount: 2, unit: DAYS, status: APPROVED, requestedAt: "2026-09-02T15:04:05Z"}], page: 3, totalItems: 2, nextPage: 0}
+            - {requests: [{id: 502, employeeId: "140", categoryId: 78, startDate: "2026-10-26", endDate: "2026-10-26", amount: 1, unit: DAYS, status: DENIED, requestedAt: "2026-09-03T15:04:05Z"}], page: 1, totalItems: 3, nextPage: 2}
+            - {requests: [{id: 501, employeeId: "140", categoryId: 78, startDate: "2026-10-20", endDate: "2026-10-21", amount: 2, unit: DAYS, status: APPROVED, requestedAt: "2026-09-02T15:04:05Z"}], page: 2, totalItems: 3, nextPage: 3}
+            - {requests: [{id: 500, employeeId: "140", categoryId: 78, startDate: "2026-10-18", endDate: "2026-10-18", amount: 1, unit: DAYS, status: APPROVED, requestedAt: "2026-09-01T15:04:05Z"}], page: 3, totalItems: 3, nextPage: 0}
         - name: providerRejectedFailure
           branch: providerRejected
-          description: "BambooHR conclusively rejected the request, such as invalid credentials or an invalid filter."
+          description: "BambooHR rejected an invalid time off filter (HTTP 400)."
           failure: {kind: VALIDATION, message: "BambooHR rejected the time off filter."}
         - name: invalidResponseFailure
           branch: invalidResponse
-          description: "BambooHR returned an invalid or oversized time off page."
-          failure: {kind: PROTOCOL, message: "BambooHR returned an invalid or oversized time off page."}
+          description: "BambooHR returned a malformed time off page."
+          failure: {kind: PROTOCOL, message: "BambooHR returned a malformed time off page."}
     - name: updateEmployee
       goName: UpdateEmployee
       inputType: UpdateEmployeeInput
@@ -202,16 +202,16 @@ spec:
           output: {employee: {employeeId: "140", fields: {department: Engineering}}, writtenFields: [department]}
         - name: notFoundFailure
           branch: notFound
-          description: "No employee has this internal ID."
+          description: "Employee ID 999 does not exist."
           failure: {kind: NOT_FOUND, message: "No employee has this internal ID."}
         - name: providerRejectedFailure
           branch: providerRejected
-          description: "BambooHR conclusively rejected the change, such as a duplicate email, an invalid list value, or a field the connection cannot edit."
+          description: "BambooHR rejected a duplicate email (HTTP 409)."
           failure: {kind: CONFLICT, message: "BambooHR rejected the duplicate email."}
         - name: invalidResponseFailure
           branch: invalidResponse
-          description: "BambooHR returned an invalid or oversized employee record, so the change may have been applied."
-          failure: {kind: PROTOCOL, message: "BambooHR returned an invalid or oversized employee record, so the change may have been applied."}
+          description: "BambooHR returned a malformed employee record, so the change may have been applied."
+          failure: {kind: PROTOCOL, message: "BambooHR returned a malformed employee record, so the change may have been applied."}
     - name: addEmployee
       goName: AddEmployee
       inputType: AddEmployeeInput
@@ -228,7 +228,7 @@ spec:
         executeMethodTimeout: 30s
         durability: sync
         dispatchFence: true
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: personWaiting, explanation: "The onboarding operator waits for the hire decision, so stop after five attempts within five minutes."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "BambooHR does not document whether a 503 means no employee was added, so a fenced resend after 503 could duplicate an employee."}}
       mocks:
         - name: createdDefaultAnswer
           branch: created
@@ -237,5 +237,5 @@ spec:
           output: {employeeId: "142"}
         - name: providerRejectedFailure
           branch: providerRejected
-          description: "BambooHR rejects a duplicate work email for the employee being added."
+          description: "Adding an employee with ava.nguyen@example.com as work email is rejected as a duplicate (HTTP 409)."
           failure: {kind: CONFLICT, message: "BambooHR rejected the duplicate email."}

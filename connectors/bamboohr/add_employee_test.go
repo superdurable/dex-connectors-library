@@ -57,6 +57,20 @@ func TestAddEmployeeReadsTheIDFromTheLocationHeaderWhenTheBodyLacksIt(t *testing
 	require.JSONEq(t, `{"firstName":"Sam","lastName":"Park"}`, provider.request(0).body)
 }
 
+func TestAddEmployeeRejectsAnInvalidSavedEmployeeIDBeforeReadBack(t *testing.T) {
+	provider := newRecordingBambooHR(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusCreated, `{"id":"140"}`)
+	})
+	ctx := newBambooHRDexContext("add-invalid-saved-id")
+	created, err := sdkgo.RunMutation(ctx, newBambooHRClient(t, provider.URL).AddEmployee(), bambooHRConnection, validAddEmployeeInput())
+	require.NoError(t, err)
+	ctx.recordedHeartbeat = json.RawMessage(`{"callId":"` + string(created.Receipt.CallID) + `","attempt":1,"state":"claimed","providerId":"../other"}`)
+	result, err := sdkgo.RunMutation(ctx.nextAttempt(), newBambooHRClient(t, provider.URL).AddEmployee(), bambooHRConnection, validAddEmployeeInput())
+	require.NoError(t, err)
+	require.Equal(t, bamboohr.AddEmployeeBranchUncertain, result.Branch)
+	require.Equal(t, 1, provider.requestCount(), "an invalid saved ID must not be used in a GET path or another POST")
+}
+
 func TestAddEmployeeNeverResendsARequestWhoseOutcomeIsUnknown(t *testing.T) {
 	for _, test := range []struct {
 		name   string
@@ -117,12 +131,20 @@ func TestAddEmployeeRetriesOnlyWhatBambooHRProvablyDidNotApply(t *testing.T) {
 	require.ErrorAs(t, err, &retry)
 	require.Equal(t, sdkgo.FailureTransport, retry.Failure.Kind)
 	require.Contains(t, string(refused.recordedHeartbeat), `"state":"canResend"`)
+	refusedNext := refused.nextAttempt()
+	refusedRetry := newRecordingBambooHR(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusCreated, `{"id":"142"}`)
+	})
+	result, err := sdkgo.RunMutation(refusedNext, newBambooHRClient(t, refusedRetry.URL).AddEmployee(), bambooHRConnection, validAddEmployeeInput())
+	require.NoError(t, err)
+	require.Equal(t, bamboohr.AddEmployeeBranchCreated, result.Branch)
+	require.Equal(t, 1, refusedRetry.requestCount(), "a proven unsent attempt permits exactly one POST on the next attempt")
 
 	next := ctx.nextAttempt()
 	created := newRecordingBambooHR(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
 		writeJSON(t, response, http.StatusCreated, `{"id":"142"}`)
 	})
-	result, err := sdkgo.RunMutation(next, newBambooHRClient(t, created.URL).AddEmployee(), bambooHRConnection, validAddEmployeeInput())
+	result, err = sdkgo.RunMutation(next, newBambooHRClient(t, created.URL).AddEmployee(), bambooHRConnection, validAddEmployeeInput())
 	require.NoError(t, err)
 	require.Equal(t, bamboohr.AddEmployeeBranchCreated, result.Branch)
 }

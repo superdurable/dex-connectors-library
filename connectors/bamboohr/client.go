@@ -4,8 +4,8 @@
 // Package bamboohr implements BambooHR employee and time off operations as Dex connector
 // Steps: getEmployee, findEmployeeByEmail, listEmployeeChanges, and listTimeOffRequests read
 // BambooHR; updateEmployee sets plain employee fields so that a repeated attempt writes nothing
-// twice; and addEmployee adds one employee, sending the request at most once per Step execution
-// because BambooHR documents no idempotency key.
+// twice; and addEmployee fences resends after documented retryable failures, without resending
+// after an accepted response or an ambiguous outcome.
 //
 // The connector authenticates with a BambooHR user's API key over HTTP Basic, the key as the user
 // name and x as the password, and sends every request to

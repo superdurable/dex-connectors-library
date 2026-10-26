@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
-	"time"
 	"unicode"
 	"unicode/utf8"
 
@@ -20,8 +19,7 @@ import (
 )
 
 const (
-	addEmployeeOperation      = "addEmployee"
-	addEmployeeExecuteTimeout = 30 * time.Second
+	addEmployeeOperation = "addEmployee"
 
 	maxNameBytes = 255
 )
@@ -92,7 +90,7 @@ func (operation AddEmployeeOperation) Invoke(call sdkgo.Call, input AddEmployeeI
 	if err := validateAddEmployeeInput(input); err != nil {
 		return sdkgo.NewMutationBranch(AddEmployeeBranchDefect, AddEmployeeOutput{}, bambooHRFailurePointer(sdkgo.FailureValidation, addEmployeeOperation, err.Error()), sdkgo.Receipt{})
 	}
-	fence, err := singledispatch.NewFence(call, addEmployeeExecuteTimeout)
+	fence, err := singledispatch.NewFence(call, AddEmployeeDefinition.StepDefaults.ExecuteMethodTimeout)
 	if err != nil {
 		return sdkgo.NewMutationBranch(AddEmployeeBranchDefect, AddEmployeeOutput{}, bambooHRFailurePointer(sdkgo.FailureLocalDefect, addEmployeeOperation, err.Error()), sdkgo.Receipt{})
 	}
@@ -152,6 +150,9 @@ func (operation AddEmployeeOperation) Invoke(call sdkgo.Call, input AddEmployeeI
 }
 
 func (operation AddEmployeeOperation) readBackAddedEmployee(call sdkgo.Call, employeeID string) sdkgo.MutationAttempt[AddEmployeeOutput] {
+	if validateEmployeeID("employeeId", employeeID) != nil {
+		return addEmployeeUncertain(operation.client.receipt(call, ""), sdkgo.FailureProtocol, "the saved employee ID is invalid; no read-back was attempted")
+	}
 	receipt := operation.client.receipt(call, employeeID)
 	credentials, failure := operation.client.resolveCredentials(call, addEmployeeOperation)
 	if failure != nil {

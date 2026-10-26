@@ -25,23 +25,23 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			return err
 		}},
 		{name: "findEmployeeByEmail/ambiguousFailure/1", decode: func() error {
-			_, err := connectormock.DecodeOutput[bamboohr.FindEmployeeByEmailOutput](`{"matches":[{"employeeId":"140","workEmail":"shared@example.com"},{"employeeId":"141","workEmail":"shared@example.com"}],"candidateCount":2}`)
+			_, err := connectormock.DecodeOutput[bamboohr.FindEmployeeByEmailOutput](`{"matches":[{"employeeId":"140","workEmail":"ava.nguyen@example.com"}],"candidateCount":101}`)
 			return err
 		}},
 		{name: "listEmployeeChanges/listedDefaultAnswer/1", decode: func() error {
-			_, err := connectormock.DecodeOutput[bamboohr.ListEmployeeChangesOutput](`{"changes":[{"employeeId":"140","action":"Inserted","lastChanged":"2026-10-13T10:00:00Z"},{"employeeId":"141","action":"Updated","lastChanged":"2026-10-13T11:00:00Z"}],"nextCursor":{"since":"2026-10-13T11:00:00Z","afterEmployeeId":"141"},"hasMore":false}`)
+			_, err := connectormock.DecodeOutput[bamboohr.ListEmployeeChangesOutput](`{"changes":[{"employeeId":"140","action":"Updated","lastChanged":"2026-10-13T10:00:00Z"},{"employeeId":"141","action":"Updated","lastChanged":"2026-10-13T11:00:00Z"}],"nextCursor":{"since":"2026-10-13T11:00:00Z","afterEmployeeId":"141"},"hasMore":false}`)
 			return err
 		}},
 		{name: "listTimeOffRequests/listedDefaultAnswer/1", decode: func() error {
-			_, err := connectormock.DecodeOutput[bamboohr.ListTimeOffRequestsOutput](`{"requests":[{"id":502,"employeeId":"140","categoryId":78,"startDate":"2026-10-26","endDate":"2026-10-26","amount":1,"unit":"DAYS","status":"DENIED","requestedAt":"2026-09-03T15:04:05Z"}],"page":1,"totalItems":2,"nextPage":2}`)
+			_, err := connectormock.DecodeOutput[bamboohr.ListTimeOffRequestsOutput](`{"requests":[{"id":502,"employeeId":"140","categoryId":78,"startDate":"2026-10-26","endDate":"2026-10-26","amount":1,"unit":"DAYS","status":"DENIED","requestedAt":"2026-09-03T15:04:05Z"}],"page":1,"totalItems":3,"nextPage":2}`)
 			return err
 		}},
 		{name: "listTimeOffRequests/listedDefaultAnswer/2", decode: func() error {
-			_, err := connectormock.DecodeOutput[bamboohr.ListTimeOffRequestsOutput](`{"requests":[{"id":502,"employeeId":"140","categoryId":78,"startDate":"2026-10-26","endDate":"2026-10-26","amount":1,"unit":"DAYS","status":"DENIED","requestedAt":"2026-09-03T15:04:05Z"}],"page":2,"totalItems":2,"nextPage":3}`)
+			_, err := connectormock.DecodeOutput[bamboohr.ListTimeOffRequestsOutput](`{"requests":[{"id":501,"employeeId":"140","categoryId":78,"startDate":"2026-10-20","endDate":"2026-10-21","amount":2,"unit":"DAYS","status":"APPROVED","requestedAt":"2026-09-02T15:04:05Z"}],"page":2,"totalItems":3,"nextPage":3}`)
 			return err
 		}},
 		{name: "listTimeOffRequests/listedDefaultAnswer/3", decode: func() error {
-			_, err := connectormock.DecodeOutput[bamboohr.ListTimeOffRequestsOutput](`{"requests":[{"id":501,"employeeId":"140","categoryId":78,"startDate":"2026-10-20","endDate":"2026-10-21","amount":2,"unit":"DAYS","status":"APPROVED","requestedAt":"2026-09-02T15:04:05Z"}],"page":3,"totalItems":2,"nextPage":0}`)
+			_, err := connectormock.DecodeOutput[bamboohr.ListTimeOffRequestsOutput](`{"requests":[{"id":500,"employeeId":"140","categoryId":78,"startDate":"2026-10-18","endDate":"2026-10-18","amount":1,"unit":"DAYS","status":"APPROVED","requestedAt":"2026-09-01T15:04:05Z"}],"page":3,"totalItems":3,"nextPage":0}`)
 			return err
 		}},
 		{name: "updateEmployee/updatedDefaultAnswer/1", decode: func() error {
