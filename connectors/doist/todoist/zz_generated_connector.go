@@ -215,7 +215,7 @@ var GetTaskDefinition = sdkgo.QueryDefinition{
 		{ID: GetTaskBranchNotFound, Description: "The active task does not exist or is not accessible.", Optional: true},
 		{ID: GetTaskBranchProviderRejected, Description: "Todoist conclusively rejected the read.", Optional: true},
 		{ID: GetTaskBranchInvalidResponse, Description: "Todoist returned malformed or oversized task data.", Optional: true},
-		{ID: GetTaskBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: GetTaskBranchDefect, Description: "Local input is invalid, or the connection credentials are invalid, missing, or need reauthorization.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
@@ -282,17 +282,15 @@ func NewGetTaskStep[IN any](config GetTaskStepConfig[IN]) sdkgo.QueryStep[IN, Ge
 const UpdateTaskBranchUpdated sdkgo.BranchID = "updated"
 const UpdateTaskBranchNotFound sdkgo.BranchID = "notFound"
 const UpdateTaskBranchProviderRejected sdkgo.BranchID = "providerRejected"
-const UpdateTaskBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
 const UpdateTaskBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
 var UpdateTaskDefinition = sdkgo.MutationDefinition{
 	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "updateTaskContent"},
 	Branches: []sdkgo.BranchDefinition{
 		{ID: UpdateTaskBranchUpdated, Description: "Todoist confirmed every specified field and returned the task."},
-		{ID: UpdateTaskBranchNotFound, Description: "Todoist reports that the task does not exist.", Optional: true},
-		{ID: UpdateTaskBranchProviderRejected, Description: "Todoist conclusively rejected the update.", Optional: true},
-		{ID: UpdateTaskBranchUncertain, Description: "The update may have been applied but its result could not be confirmed; read the task before deciding what to do next.", Optional: true},
-		{ID: UpdateTaskBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: UpdateTaskBranchNotFound, Description: "Todoist reports that the task does not exist, or the read-back after an unusable answer found no active task.", Optional: true},
+		{ID: UpdateTaskBranchProviderRejected, Description: "Todoist conclusively rejected the update, or rejected the read-back that would confirm an unusable answer.", Optional: true},
+		{ID: UpdateTaskBranchDefect, Description: "Local input is invalid, or the connection credentials are invalid, missing, or need reauthorization.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
@@ -315,7 +313,6 @@ type UpdateTaskStepConfig[IN any] struct {
 	Updated                           sdkgo.Target[UpdateTaskResult]             `connector:"branch=updated"`
 	NotFound                          sdkgo.Target[UpdateTaskResult]             `connector:"branch=notFound,optional"`
 	ProviderRejected                  sdkgo.Target[UpdateTaskResult]             `connector:"branch=providerRejected,optional"`
-	Uncertain                         sdkgo.Target[UpdateTaskResult]             `connector:"branch=uncertain,optional"`
 	Defect                            sdkgo.Target[UpdateTaskResult]             `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Task]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                           `connector:"stepOptionsOverride"`
@@ -333,7 +330,7 @@ func NewUpdateTaskStep[IN any](config UpdateTaskStepConfig[IN]) sdkgo.MutationSt
 		Operation: config.Connection.operations.UpdateTask(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[UpdateTaskResult] {
-			branches := make([]sdkgo.BranchTarget[UpdateTaskResult], 0, 5)
+			branches := make([]sdkgo.BranchTarget[UpdateTaskResult], 0, 4)
 			if config.Updated.HasStep() {
 				branches = append(branches, config.Updated.BranchTarget(UpdateTaskBranchUpdated))
 			}
@@ -342,9 +339,6 @@ func NewUpdateTaskStep[IN any](config UpdateTaskStepConfig[IN]) sdkgo.MutationSt
 			}
 			if config.ProviderRejected.HasStep() {
 				branches = append(branches, config.ProviderRejected.BranchTarget(UpdateTaskBranchProviderRejected))
-			}
-			if config.Uncertain.HasStep() {
-				branches = append(branches, config.Uncertain.BranchTarget(UpdateTaskBranchUncertain))
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(UpdateTaskBranchDefect))
@@ -367,7 +361,7 @@ var ListTasksDefinition = sdkgo.QueryDefinition{
 		{ID: ListTasksBranchListed, Description: "Todoist returned a page of active tasks, possibly empty."},
 		{ID: ListTasksBranchProviderRejected, Description: "Todoist conclusively rejected the list request.", Optional: true},
 		{ID: ListTasksBranchInvalidResponse, Description: "Todoist returned malformed or oversized page data.", Optional: true},
-		{ID: ListTasksBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: ListTasksBranchDefect, Description: "Local input is invalid, or the connection credentials are invalid, missing, or need reauthorization.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
@@ -437,8 +431,8 @@ var CreateTaskDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateTaskBranchCreated, Description: "Todoist confirmed creation and returned the task ID."},
 		{ID: CreateTaskBranchProviderRejected, Description: "Todoist conclusively rejected creation.", Optional: true},
-		{ID: CreateTaskBranchUncertain, Description: "Creation may have occurred but no valid task result was confirmed; do not create again with a new identity.", Optional: true},
-		{ID: CreateTaskBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: CreateTaskBranchUncertain, Description: "A creation that may have been sent may have applied, but Todoist returned no usable task and the request ID has no documented replay guarantee.", Optional: true},
+		{ID: CreateTaskBranchDefect, Description: "Local input is invalid, or the connection credentials are invalid, missing, or need reauthorization.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
@@ -509,7 +503,7 @@ var DeleteTaskDefinition = sdkgo.MutationDefinition{
 		{ID: DeleteTaskBranchDeleted, Description: "Todoist acknowledged the deletion."},
 		{ID: DeleteTaskBranchAlreadyAbsent, Description: "Todoist returned 404; the task is missing or inaccessible, possibly after an earlier successful attempt.", Optional: true},
 		{ID: DeleteTaskBranchProviderRejected, Description: "Todoist conclusively rejected deletion.", Optional: true},
-		{ID: DeleteTaskBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+		{ID: DeleteTaskBranchDefect, Description: "Local input is invalid, or the connection credentials are invalid, missing, or need reauthorization.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),

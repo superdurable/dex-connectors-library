@@ -38,7 +38,7 @@ type Request struct {
 
 // Outcome contains the returned list page or facts from the completed disposable lifecycle.
 type Outcome struct {
-	// Status is listed, deletedAndVerified, uncertain, notFound, or providerRejected.
+	// Status is listed, deletedAndVerified, notFound, or providerRejected.
 	Status string `json:"status"`
 	// Page contains one page in list mode.
 	Page todoist.TaskPage `json:"page"`
@@ -121,7 +121,6 @@ func (flow *TodoistTaskCRUDFlow) GetSteps() []dex.StepDef {
 			MapToOperationInput: func(input todoist.UpdateTaskInput) todoist.UpdateTaskInput { return input },
 			ResultAttribute:     &updatedAttribute,
 			Updated:             sdkgo.GoTo(ReadUpdatedTask{}),
-			Uncertain:           sdkgo.GoTo(ReadUpdatedTask{}),
 			NotFound:            sdkgo.GoTo(CompleteMutationFailure{}),
 			ProviderRejected:    sdkgo.GoTo(CompleteMutationFailure{}),
 		})),
@@ -130,7 +129,7 @@ func (flow *TodoistTaskCRUDFlow) GetSteps() []dex.StepDef {
 			StepType:            "GetUpdatedLifecycleTask",
 			ConnectionName:      ConnectionName,
 			Connection:          flow.connection,
-			Annotations:         sdkgo.StepAnnotations{GroupID: "todoist", GroupLabel: "Todoist", Explanation: "Read back confirmed and uncertain writes without resending the update."},
+			Annotations:         sdkgo.StepAnnotations{GroupID: "todoist", GroupLabel: "Todoist", Explanation: "Read back the confirmed update before deleting the task."},
 			MapToOperationInput: func(input todoist.GetTaskInput) todoist.GetTaskInput { return input },
 			ResultAttribute:     &readBackAttribute,
 			Found:               sdkgo.GoTo(CheckTaskReadBack{}),
@@ -196,7 +195,7 @@ func (*TodoistTaskCRUDFlow) GetDexSummary(ctx dex.Context, _ dex.None) (*dex.RPC
 
 // GetDexDisplay reads persisted outcomes, including created task identity after a later failure.
 // dex:field attribute-key:todoist-crud-created value-type:object editable:false description:"The task created by this Flow"
-// dex:field attribute-key:todoist-crud-updated value-type:object editable:false description:"Original mutation result, including uncertainty"
+// dex:field attribute-key:todoist-crud-updated value-type:object editable:false description:"Confirmed mutation result"
 // dex:field attribute-key:todoist-crud-read-back value-type:object editable:false description:"Observed task after the update attempt"
 // dex:field attribute-key:todoist-crud-outcome value-type:json editable:false description:"List page or lifecycle verification"
 func (*TodoistTaskCRUDFlow) GetDexDisplay(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
@@ -284,13 +283,18 @@ type UpdateCreatedTask struct {
 	dex.StepDefaultsNoWaitFor[todoist.GetTaskResult]
 }
 
-// Execute verifies original fields and defaults to a title change only when neither update field was specified.
+// Execute compares the read with the task Todoist returned on creation, which may normalize requested fields, and
+// defaults to a title change only when neither update field was specified.
 func (UpdateCreatedTask) Execute(ctx dex.Context, result todoist.GetTaskResult) (*dex.StepDecision, error) {
 	request, err := requestAttribute.Get(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if result.Value.Content != request.Content || result.Value.Description != request.Description {
+	created, err := createdAttribute.Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if result.Value.Content != created.Value.Content || result.Value.Description != created.Value.Description {
 		return dex.ForceFail("created fields did not match"), nil
 	}
 	input := todoist.UpdateTaskInput{TaskID: result.Value.ID, Content: request.UpdateContent, Description: request.UpdateDescription}
@@ -301,9 +305,9 @@ func (UpdateCreatedTask) Execute(ctx dex.Context, result todoist.GetTaskResult) 
 	return dex.GoTo(sdkgo.StepRef[todoist.UpdateTaskInput]("UpdateLifecycleTask"), input), nil
 }
 
-// ReadUpdatedTask schedules a read using creation's known identity, including after an uncertain update.
+// ReadUpdatedTask schedules a read using creation's known identity.
 // dex:group group-id:crud group-label:"Task CRUD"
-// dex:explanation text:"Read the known task ID without retrying an uncertain write."
+// dex:explanation text:"Read the known task ID after the update."
 type ReadUpdatedTask struct {
 	dex.StepDefaultsNoWaitFor[todoist.UpdateTaskResult]
 }
@@ -317,14 +321,14 @@ func (ReadUpdatedTask) Execute(ctx dex.Context, _ todoist.UpdateTaskResult) (*de
 	return dex.GoTo(sdkgo.StepRef[todoist.GetTaskInput]("GetUpdatedLifecycleTask"), todoist.GetTaskInput{TaskID: created.Value.ID}), nil
 }
 
-// CheckTaskReadBack records observations and preserves uncertainty rather than claiming confirmed success.
+// CheckTaskReadBack verifies the update against an independent read.
 // dex:group group-id:crud group-label:"Task CRUD"
-// dex:explanation text:"Keep uncertain outcomes uncertain; only confirmed matching updates continue to list and delete."
+// dex:explanation text:"Continue to list and delete only when the updated fields match."
 type CheckTaskReadBack struct {
 	dex.StepDefaultsNoWaitFor[todoist.GetTaskResult]
 }
 
-// Execute compares specified fields; uncertain runs complete with observations and leave the task for operator reconciliation.
+// Execute compares specified fields before listing and deleting the task.
 func (CheckTaskReadBack) Execute(ctx dex.Context, result todoist.GetTaskResult) (*dex.StepDecision, error) {
 	request, err := requestAttribute.Get(ctx)
 	if err != nil {
@@ -334,18 +338,7 @@ func (CheckTaskReadBack) Execute(ctx dex.Context, result todoist.GetTaskResult) 
 	if err != nil {
 		return nil, err
 	}
-	created, err := createdAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
 	matches := matchesRequestedFields(request, result.Value)
-	if mutation.Branch == todoist.UpdateTaskBranchUncertain {
-		outcome := Outcome{Status: "uncertain", Created: created.Value, After: result.Value, MutationBranch: string(mutation.Branch), MatchesRequestedFields: matches}
-		if err := outcomeAttribute.Set(ctx, outcome); err != nil {
-			return nil, err
-		}
-		return dex.GracefulComplete(outcome), nil
-	}
 	if !matches {
 		return dex.ForceFail("read-back fields did not match the confirmed update"), nil
 	}

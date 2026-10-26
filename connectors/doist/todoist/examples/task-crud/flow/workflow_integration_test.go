@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -39,9 +40,11 @@ func TestTaskCRUDWithRealDex(t *testing.T) {
 		{"clear-description", "deletedAndVerified", dex.FlowCompleted, 1, 1},
 		{"both-fields", "deletedAndVerified", dex.FlowCompleted, 1, 1},
 		{"create-rate", "deletedAndVerified", dex.FlowCompleted, 2, 1},
+		{"create-service-unavailable", "deletedAndVerified", dex.FlowCompleted, 2, 1},
 		{"delete-retry", "deletedAndVerified", dex.FlowCompleted, 1, 2},
 		{"multi-page", "deletedAndVerified", dex.FlowCompleted, 1, 1},
 		{"create-uncertain", "", dex.FlowFailed, 1, 0},
+		{"create-answer-incomplete", "deletedAndVerified", dex.FlowCompleted, 1, 1},
 		{"invalid-input", "", dex.FlowFailed, 0, 0},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
@@ -95,13 +98,19 @@ func TestTaskCRUDWithRealDex(t *testing.T) {
 			defer provider.mutex.Unlock()
 			require.Equal(t, scenario.creates, provider.creates)
 			require.Equal(t, scenario.deletes, provider.deletes)
-			if scenario.name == "create-rate" {
+			if scenario.name == "create-rate" || scenario.name == "create-service-unavailable" {
 				require.Len(t, provider.requestIDs, 2)
 				require.Equal(t, provider.requestIDs[0], provider.requestIDs[1])
 			}
+			if scenario.name == "create-service-unavailable" || scenario.name == "create-answer-incomplete" {
+				require.Equal(t, 1, provider.createdTasks)
+			}
 			if scenario.name == "create-uncertain" {
+				require.Contains(t, result.ErrorMessage, "uncertain")
+				require.Contains(t, result.ErrorMessage, "Todoist request did not return a complete response")
 				require.Zero(t, provider.reads)
 				require.Zero(t, provider.updates)
+				require.Equal(t, 1, provider.createdTasks)
 			}
 			if scenario.name == "multi-page" {
 				require.Equal(t, 2, provider.lists)
@@ -140,13 +149,16 @@ func TestTaskUpdateRecoveryWithRealDex(t *testing.T) {
 	}{
 		{"read-retry", "deletedAndVerified", dex.FlowCompleted, 4, 1, 1, true},
 		{"write-retry", "deletedAndVerified", dex.FlowCompleted, 3, 2, 1, true},
-		{"uncertain-applied", "uncertain", dex.FlowCompleted, 2, 1, 0, true},
-		{"uncertain-unapplied", "uncertain", dex.FlowCompleted, 2, 1, 0, false},
+		{"write-applied-503", "deletedAndVerified", dex.FlowCompleted, 3, 2, 1, true},
+		{"write-unapplied-503", "deletedAndVerified", dex.FlowCompleted, 3, 2, 1, true},
+		{"write-lost-response", "deletedAndVerified", dex.FlowCompleted, 3, 2, 1, true},
 		{"rejected", "providerRejected", dex.FlowCompleted, 1, 1, 0, false},
 		{"missing", "notFound", dex.FlowCompleted, 1, 0, 0, false},
 		{"invalid-response", "", dex.FlowFailed, 1, 0, 0, false},
-		{"uncertain-read-missing", "notFound", dex.FlowCompleted, 2, 1, 0, false},
-		{"uncertain-read-rejected", "providerRejected", dex.FlowCompleted, 2, 1, 0, false},
+		{"post-update-read-missing", "notFound", dex.FlowCompleted, 2, 1, 0, false},
+		{"update-answer-inactive", "notFound", dex.FlowCompleted, 2, 1, 0, false},
+		{"update-read-back-forbidden", "providerRejected", dex.FlowCompleted, 2, 1, 0, false},
+		{"post-update-read-rejected", "providerRejected", dex.FlowCompleted, 2, 1, 0, false},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
 			provider := &crudProvider{scenario: scenario.name}
@@ -164,19 +176,13 @@ func TestTaskUpdateRecoveryWithRealDex(t *testing.T) {
 				require.NoError(t, result.DecodeSingleOutput(&outcome))
 				require.Equal(t, scenario.status, outcome.Status)
 				require.Equal(t, scenario.matches, outcome.MatchesRequestedFields)
-				if scenario.status == "uncertain" || scenario.name == "uncertain-read-missing" || scenario.name == "uncertain-read-rejected" {
-					require.Equal(t, "uncertain", outcome.MutationBranch)
+				if scenario.name == "post-update-read-missing" || scenario.name == "post-update-read-rejected" {
+					require.Equal(t, "updated", outcome.MutationBranch)
 					require.Empty(t, outcome.DeleteBranch)
-					require.Empty(t, outcome.Updated.ID)
 				}
-				if scenario.status == "uncertain" {
-					require.Equal(t, "Original title", outcome.Created.Content)
-					require.Equal(t, "created-task", outcome.After.ID)
-					if scenario.matches {
-						require.Equal(t, "Original title - updated", outcome.After.Content)
-					} else {
-						require.Equal(t, "Original title", outcome.After.Content)
-					}
+				if scenario.name == "update-answer-inactive" || scenario.name == "update-read-back-forbidden" {
+					require.Equal(t, scenario.status, outcome.MutationBranch)
+					require.Empty(t, outcome.DeleteBranch)
 				}
 				var display map[string]any
 				require.NoError(t, harness.client.InvokeRPC(ctx, flowID, flow.GetDexDisplay, nil, &display))
@@ -190,8 +196,47 @@ func TestTaskUpdateRecoveryWithRealDex(t *testing.T) {
 			require.Equal(t, scenario.reads, provider.reads)
 			require.Equal(t, scenario.updates, provider.updates)
 			require.Equal(t, scenario.deletes, provider.deletes)
+			if scenario.name == "write-lost-response" {
+				require.Equal(t, 1, provider.contentApplications)
+			}
 		})
 	}
+}
+
+// flakyCredentials fails its first resolution as an unavailable credential store would, then returns the token.
+type flakyCredentials struct{ resolutions atomic.Int32 }
+
+func (source *flakyCredentials) Resolve(sdkgo.Call) (todoist.Credentials, error) {
+	if source.resolutions.Add(1) == 1 {
+		return todoist.Credentials{}, errors.New("project object read failed")
+	}
+	return todoist.Credentials{APIToken: sdkgo.NewSecretString(integrationToken)}, nil
+}
+
+func TestCredentialReadFailureRetriesWithRealDex(t *testing.T) {
+	provider := &crudProvider{}
+	server := httptest.NewServer(http.HandlerFunc(provider.serveHTTP))
+	defer server.Close()
+	credentials := &flakyCredentials{}
+	providerClient, err := todoist.New(todoist.Config{BaseURL: server.URL + "/api/v1"}, credentials)
+	require.NoError(t, err)
+	connection, err := todoist.NewConnection(providerClient, sdkgo.ConnectionRef{Provider: "todoist", Name: ConnectionName})
+	require.NoError(t, err)
+	flow, harness := newCRUDHarnessWithConnection(t, connection)
+	harness.startWorker(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	flowID := "todoist-crud-credential-read-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	result := harness.runFlow(t, ctx, flow, flowID, Request{Mode: "lifecycle", Content: "Original title"})
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var outcome Outcome
+	require.NoError(t, result.DecodeSingleOutput(&outcome))
+	require.Equal(t, "deletedAndVerified", outcome.Status)
+	provider.mutex.Lock()
+	defer provider.mutex.Unlock()
+	require.Equal(t, 1, provider.creates)
+	require.Equal(t, 1, provider.createdTasks)
+	require.Greater(t, credentials.resolutions.Load(), int32(1))
 }
 
 type crudProvider struct {
@@ -199,6 +244,7 @@ type crudProvider struct {
 	scenario, content, description          string
 	exists                                  bool
 	creates, updates, deletes, reads, lists int
+	createdTasks, contentApplications       int
 	requestIDs                              []string
 }
 
@@ -217,6 +263,10 @@ func (provider *crudProvider) serveHTTP(w http.ResponseWriter, request *http.Req
 				w.WriteHeader(429)
 				return
 			}
+			if provider.scenario == "create-service-unavailable" && provider.creates == 1 {
+				w.WriteHeader(503)
+				return
+			}
 			var input struct {
 				Content     string `json:"content"`
 				Description string `json:"description"`
@@ -227,8 +277,13 @@ func (provider *crudProvider) serveHTTP(w http.ResponseWriter, request *http.Req
 			}
 			provider.content, provider.description = input.Content, input.Description
 			provider.exists = true
+			provider.createdTasks++
 			if provider.scenario == "create-uncertain" {
-				w.WriteHeader(500)
+				dropProviderResponse(w)
+				return
+			}
+			if provider.scenario == "create-answer-incomplete" {
+				writeCRUDJSON(w, map[string]any{"id": "created-task"})
 				return
 			}
 			provider.writeTask(w)
@@ -257,11 +312,11 @@ func (provider *crudProvider) serveHTTP(w http.ResponseWriter, request *http.Req
 			w.WriteHeader(503)
 			return
 		}
-		if provider.scenario == "missing" || provider.scenario == "uncertain-read-missing" && provider.reads == 2 {
+		if provider.scenario == "missing" || (provider.scenario == "post-update-read-missing" || provider.scenario == "update-answer-inactive") && provider.reads == 2 {
 			w.WriteHeader(404)
 			return
 		}
-		if provider.scenario == "uncertain-read-rejected" && provider.reads == 2 {
+		if (provider.scenario == "post-update-read-rejected" || provider.scenario == "update-read-back-forbidden") && provider.reads == 2 {
 			w.WriteHeader(403)
 			return
 		}
@@ -285,7 +340,7 @@ func (provider *crudProvider) serveHTTP(w http.ResponseWriter, request *http.Req
 			w.WriteHeader(403)
 			return
 		}
-		if provider.scenario == "uncertain-unapplied" {
+		if provider.scenario == "write-unapplied-503" && provider.updates == 1 {
 			w.WriteHeader(503)
 			return
 		}
@@ -298,13 +353,24 @@ func (provider *crudProvider) serveHTTP(w http.ResponseWriter, request *http.Req
 			return
 		}
 		if input.Content != nil {
+			if provider.content != *input.Content {
+				provider.contentApplications++
+			}
 			provider.content = *input.Content
 		}
 		if input.Description != nil {
 			provider.description = *input.Description
 		}
-		if provider.scenario == "uncertain-applied" || provider.scenario == "uncertain-read-missing" || provider.scenario == "uncertain-read-rejected" {
+		if provider.scenario == "update-answer-inactive" || provider.scenario == "update-read-back-forbidden" {
+			writeCRUDJSON(w, map[string]any{})
+			return
+		}
+		if provider.scenario == "write-applied-503" && provider.updates == 1 {
 			w.WriteHeader(503)
+			return
+		}
+		if provider.scenario == "write-lost-response" && provider.updates == 1 {
+			dropProviderResponse(w)
 			return
 		}
 		provider.writeTask(w)
@@ -330,6 +396,16 @@ func (provider *crudProvider) task() map[string]any {
 func (provider *crudProvider) writeTask(w http.ResponseWriter) { writeCRUDJSON(w, provider.task()) }
 func writeCRUDJSON(w http.ResponseWriter, value any) {
 	if err := json.NewEncoder(w).Encode(value); err != nil {
+		panic(err)
+	}
+}
+
+func dropProviderResponse(w http.ResponseWriter) {
+	connection, _, err := w.(http.Hijacker).Hijack()
+	if err != nil {
+		panic(err)
+	}
+	if err := connection.Close(); err != nil {
 		panic(err)
 	}
 }
