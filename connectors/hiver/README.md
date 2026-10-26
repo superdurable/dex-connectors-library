@@ -1,7 +1,7 @@
 # Hiver Connector
 
-> **Verification status: Dex-integrated, not live.** Ran on a real Dex stack
-> against a local stand-in for Hiver; no live Hiver account was used. See
+> **Verification status: Dex-integrated in CI, not live.** The example runs
+> on a real Dex stack against a Hiver stand-in. See
 > [Verification](#verification) for what is and is not verified.
 
 The Hiver Connector reads and changes conversations in Hiver shared inboxes
@@ -199,32 +199,44 @@ so the operations take these positions:
   dispatch leaves the conversation as one attempt would. It keeps async
   durability, and every unconfirmed outcome, including a 5xx, a lost response,
   or a read-back that does not show the change yet, is retried.
-- **addNote** and **createSharedDraft** run with sync durability, so Dex never
-  sends a second attempt while the first is in flight. Before sending, the
-  operation records a Dex heartbeat checkpoint naming the Step's Call ID. A
-  later attempt of the same Step execution that finds the checkpoint, after a
-  lost Worker or an Execute timeout, selects `uncertain` without sending and
-  without waiting for a request slot.
-- Only an outcome that proves Hiver did not apply the request is retried: a
-  429, a connection that failed before it opened, and a cancelled wait for a
-  request slot, which happens before the checkpoint. The checkpoint is cleared
-  first.
-- A 5xx, a 408, a lost or unreadable response, and an invalid or oversized
-  2xx select `uncertain`: the note or draft may exist, and the Step does not
-  resend it. The application decides, for example by asking a person to check
-  Hiver. The example Flow fails on this unwired branch.
+- **addNote** and **createSharedDraft** use the shared
+  [single-dispatch fence](../../sdkgo/README.md#single-dispatch-fence) with sync
+  durability. The fence reads the prior checkpoint before credentials. A
+  missing, foreign, stale, or claimed marker on a later attempt forbids a
+  second send. Only a `notSent` or `canResend` marker from the immediately
+  preceding attempt permits another send. Credential failure and a pacer wait
+  that cannot fit record `notSent` before Retry; definite 429, 503, and traced
+  pre-connection failure record `canResend` before Retry.
+- The pacer wait ends by half the initial attempt budget, before the fence's
+  write deadline. With no note or draft read-back, the fence gives the write
+  at most five sixths of that budget and reserves at least one tenth as
+  minimum send time. An insufficient budget records `notSent` and retries.
+- Hiver [documents 429 and 500 errors](https://developer.hiverhq.com/hiver-api)
+  but says nothing about whether a 503 could follow an applied write. The
+  connector retries 503 under the connector retry contract; duplicate effects
+  after a 503 remain **unverified** with Hiver. A 408, other 5xx, 409, lost
+  response, or unreadable, invalid, or oversized 2xx selects `uncertain` and
+  is never resent. Hiver's published [shared draft](https://developer.hiverhq.com/hiver-api/conversations/update-conversation-in-the-inbox-copy)
+  and [conversation read](https://developer.hiverhq.com/hiver-api/conversations/get-a-conversation-in-the-inbox)
+  APIs offer no Call ID lookup for a draft or note.
+- Both writes send `X-Dex-Call-ID` as a stable correlation value across retries.
+  Hiver does not document this header as an idempotency key, so it does not
+  make a repeated write safe.
 
 Keep these two Steps sync. An application override to async durability lets
 Dex dispatch a second request after seven seconds.
 
-The checkpoint narrows the duplicate window but does not close it. Dex accepts
-the checkpoint when the Worker writes it to its stream, before the request
-leaves; a Worker that loses its Dex connection in that instant, before Dex
-stored the checkpoint, could still send a second note or draft when Dex
-retries the Step. `TestDispatchCheckpointThatDexNeverStoredIsSentAgain`
-documents that case. The other direction is safe: a crash after the
-checkpoint but before the request left, or a cleared checkpoint after a 429
-that Dex never stored, reports `uncertain` for a request Hiver never applied.
+Dex does not acknowledge heartbeat persistence when the Worker writes the
+checkpoint. A later attempt with no stored marker therefore fails closed and
+never resends, even if the first request did not leave. A lost `canResend`
+marker can likewise produce `uncertain` for a request Hiver never applied.
+Checkpoints written by v0.21.x and earlier are invalid to the shared fence:
+an in-flight `addNote` or `createSharedDraft` retrying after a 429 selects
+`uncertain` after the upgrade, even if Hiver never applied it. Reconcile those
+calls before upgrading.
+`TestSharedFenceRejectsStaleCanResendAfterLostClaim` covers the stale-marker
+case, and `TestSharedFencePacerWaitEndsBeforeStepDeadline` covers the pre-send
+checkpoint.
 
 ## Errors
 
@@ -238,13 +250,16 @@ the HTTP status, such as `Hiver rejected the request (HTTP 400)`.
 | 401, 403 | `providerRejected`, `AUTHENTICATION` or `AUTHORIZATION` | same |
 | 3xx or 4xx other than 404 and 429 on the read-back after an accepted `PATCH` | `invalidResponse`, keeping the status's kind | not applicable |
 | 404 | `notFound` where declared, otherwise `providerRejected` | `notFound` |
-| 409, other 4xx | `providerRejected` | `providerRejected` |
+| 409, other 4xx | `providerRejected` | `uncertain` for 409; `providerRejected` for other 4xx |
 | 3xx | `providerRejected`, `PROTOCOL`; redirects are never followed | same |
 | 429 | Retry after `Retry-After` when present, and hold the client's later requests | same |
-| connection refused before sending, or a cancelled wait for a slot | Retry | Retry |
-| 408, 5xx, lost or unreadable response | Retry, after `Retry-After` when present | `uncertain` |
+| traced DNS, connect, or TLS failure before a connection | Retry | Retry with `canResend` checkpoint |
+| cancelled wait for a slot | Retry | Retry with `notSent` checkpoint |
+| 503 | Retry, after `Retry-After` when present | Retry with `canResend` checkpoint |
+| 408, other 5xx, lost or unreadable response | Retry, after `Retry-After` when present | `uncertain` |
 | oversized, malformed, or credential-reflecting 2xx | `invalidResponse` | `uncertain` |
-| invalid input or connection credentials | `defect`, with no request | `defect`, with no request |
+| invalid input | `defect`, with no request | `defect`, with no request |
+| unavailable connection credentials | `defect`, with no request | `notSent` checkpoint, then Retry |
 
 Hiver documents IDs as JSON strings in some responses and numbers in others;
 the connector accepts both and reports every ID as a string. The Receipt
@@ -285,6 +300,31 @@ inbox by its address, claims its first open unassigned conversation for a
 Hiver user, applies a tag, adds one internal note, and leaves a shared reply
 draft.
 
+## Mocks
+
+`hivermock` provides one consistent claim scenario: three inbox pages and
+three conversation pages lead to an open unassigned conversation, then the
+read, claim, note, and draft succeed. Each operation has one happy-path
+default and mocks for its definite optional business outcomes. The defaults
+are meant for the sample `support@acme.example.com` inbox and conversation
+`573741352`; script other inputs explicitly. No operation takes a structured
+output schema, so there are no mock request or answer checks.
+
+The example's [real-Dex mock test](examples/claim-conversation/flow/workflow_mock_integration_test.go)
+uses the package this way:
+
+```go
+mock := hivermock.New(t, ConnectionName)
+harness := newClaimHarnessWithConnection(t, mock.Connection())
+outcome := harness.runClaim(t, "mock", integrationClaimInput())
+require.Equal(t, ClaimActionClaimed, outcome.Action)
+require.Equal(t, 3, outcome.InboxPagesRead)
+require.Equal(t, 3, outcome.ConversationPagesRead)
+```
+
+The test also asserts every operation's input, branch, and call count. It
+requires a real Dex Server and runs in CI.
+
 ## Verification
 
 ```bash
@@ -312,9 +352,10 @@ its reset, page tokens and limits, string and numeric IDs, the documented
 one-element conversation array, `close` read as `closed`, the assignee and
 tag-name lookups and the five-page tag limit, the `PATCH` body and read-back,
 a rejected read-back, multipart notes and drafts, the dispatch checkpoint and
-its clearing, a checkpoint Dex never stored, status classification without
-Hiver's message text, `Retry-After`, redirects, and oversized, malformed, and
-credential-reflecting responses.
+its safe-retry marker, a checkpoint Dex never stored, status classification without
+Hiver's message text, `Retry-After`, redirects, oversized, malformed, and
+credential-reflecting responses, 503 retry with the same correlation Call ID,
+missing heartbeat fail-closed behavior, and accepted responses without an ID.
 
 No live Hiver account was used. The following live behavior is unverified:
 the element type of `tags.to_apply` and `tags.to_remove`, which Hiver's

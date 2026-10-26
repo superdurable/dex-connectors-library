@@ -18,8 +18,8 @@ every Google Drive operation:
 9. `CompleteTextCopy` completes as `copied` with the read-back metadata.
 
 Only the happy-path Google Drive branches are wired. Missing, unsupported,
-oversized, rejected, invalid, uncertain, and defect outcomes fail the Flow,
-and an uncertain upload is never sent again.
+oversized, rejected, invalid, uncertain, and defect outcomes fail the Flow.
+The upload fence never resends an accepted write after an uncertain outcome.
 
 ## Configure
 
@@ -81,4 +81,6 @@ The integration tests run the Flow on a real Dex Server against a stateful
 fake Drive provider with the research fixture's decoys: a trashed draft and an
 archived twin with the same name, and two current files that make a name
 ambiguous. They also prove that a retried upload reuses the file an earlier
-attempt created and that an uncertain upload fails without a second upload.
+attempt created, a 500 after creation is confirmed by read-back, a 503 retries
+with the same key, and the mock-backed Flow sends the expected inputs to all
+four operations.

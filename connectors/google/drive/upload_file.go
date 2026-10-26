@@ -5,18 +5,22 @@ package drive
 
 import (
 	"bytes"
+	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"mime/multipart"
 	"net/http"
+	"net/http/httptrace"
 	"net/textproto"
-	"net/url"
-	"strconv"
 	"strings"
+	"sync/atomic"
+	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const (
@@ -61,6 +65,24 @@ type fileListResponse struct {
 	IncompleteSearch bool                `json:"incompleteSearch"`
 }
 
+type uploadSendAttempt struct {
+	client            *Client
+	credential        Credentials
+	body              []byte
+	contentType       string
+	response          uploadHTTPResponse
+	hasConnectFailure atomic.Bool
+	hasConnection     atomic.Bool
+}
+
+type uploadHTTPResponse struct {
+	status    int
+	header    http.Header
+	body      []byte
+	requestID string
+	readErr   error
+}
+
 var uploadFileLookupBranches = readBranches{
 	operationID: uploadFileOperationID, notFound: UploadFileBranchProviderRejected,
 	tooLarge: UploadFileBranchInvalidResponse, providerRejected: UploadFileBranchProviderRejected,
@@ -76,12 +98,21 @@ func (UploadFileOperation) IdempotencyKey(callID sdkgo.CallID, _ UploadFileInput
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke first looks for a file that an earlier attempt created with the same
-// idempotency key and returns it. Otherwise it sends one multipart upload that
-// records the key as a private app property. An ambiguous upload outcome
-// selects uncertain and is never sent again automatically.
+// Invoke fences one upload per attempt and reads back ambiguous outcomes by the
+// private app property. An unconfirmed possibly accepted upload remains uncertain.
 func (operation UploadFileOperation) Invoke(call sdkgo.Call, input UploadFileInput) sdkgo.MutationAttempt[UploadFileOutput] {
 	client := operation.client
+	fence, err := singledispatch.NewFence(call, UploadFileDefinition.StepDefaults.ExecuteMethodTimeout)
+	if err != nil {
+		return sdkgo.NewMutationBranch(UploadFileBranchDefect, UploadFileOutput{}, driveFailurePointer(sdkgo.FailureLocalDefect, uploadFileOperationID, "single-dispatch fence could not be created"), sdkgo.Receipt{})
+	}
+	decision := fence.Decide()
+	if decision.Kind == singledispatch.FailClosed {
+		return uploadUncertain(call, client, "upload checkpoint cannot be trusted")
+	}
+	if decision.Kind == singledispatch.ReadBackRequired && decision.Marker.CallID != "" && decision.Marker.CallID != call.ID {
+		return uploadUncertain(call, client, "upload checkpoint belongs to another call")
+	}
 	content, err := validateUploadFileInput(input, client.maxUploadBytes)
 	if err != nil {
 		return sdkgo.NewMutationBranch(UploadFileBranchDefect, UploadFileOutput{}, driveFailurePointer(sdkgo.FailureValidation, uploadFileOperationID, err.Error()), sdkgo.Receipt{})
@@ -92,67 +123,170 @@ func (operation UploadFileOperation) Invoke(call sdkgo.Call, input UploadFileInp
 	}
 	credential, failure := client.resolveCredential(call, uploadFileOperationID)
 	if failure != nil {
-		return sdkgo.NewMutationBranch(UploadFileBranchDefect, UploadFileOutput{}, failure, sdkgo.Receipt{})
+		if decision.Kind == singledispatch.SendAllowed {
+			return retryUploadBeforeSend(fence, *failure, 0)
+		}
+		return sdkgo.NewMutationRetry[UploadFileOutput](*failure, 0)
 	}
-	lookupQuery := url.Values{
-		"q": {earlierUploadQuery(idempotencyKey)}, "fields": {"incompleteSearch,files(" + fullFileFields + ")"},
-		"pageSize": {strconv.Itoa(idempotencyLookupPageSize)}, "spaces": {"drive"},
+	if decision.Kind == singledispatch.ReadBackRequired && decision.Marker.ProviderID != "" {
+		file, response, outcome := client.readBackUploadByID(call, &credential, decision.Marker.ProviderID, idempotencyKey)
+		if outcome != nil {
+			if outcome.branch == "" {
+				return sdkgo.NewMutationRetry[UploadFileOutput](outcome.failure, outcome.retryAfter)
+			}
+			return uploadUncertain(call, client, "upload ID read-back could not confirm the outcome")
+		}
+		if file == nil {
+			return uploadUncertain(call, client, "upload ID read-back found no matching file")
+		}
+		return sdkgo.NewMutationBranch(UploadFileBranchUploaded, UploadFileOutput{File: *file, IsFromEarlierAttempt: true}, nil, client.receipt(call, response.requestID, file.ID))
 	}
-	lookupResponse, outcome := client.sendRead(call, &credential, uploadFileLookupBranches, driveRequest{
-		method: http.MethodGet, target: client.filesListURL(lookupQuery), responseLimit: client.maxResponseBytes,
-	})
-	if outcome != nil {
-		return mutationAttemptFromReadOutcome[UploadFileOutput](outcome)
-	}
-	earlierFile, isIncompleteLookup, err := decodeEarlierUpload(lookupResponse.body)
-	if err != nil {
-		return sdkgo.NewMutationBranch(UploadFileBranchInvalidResponse, UploadFileOutput{}, driveFailurePointer(sdkgo.FailureProtocol, uploadFileOperationID, "provider returned an invalid duplicate-lookup response"), client.receipt(call, lookupResponse.requestID, ""))
-	}
-	if earlierFile == nil && isIncompleteLookup {
-		// An incomplete lookup cannot prove that no earlier attempt created the file.
-		return sdkgo.NewMutationRetry[UploadFileOutput](driveFailure(sdkgo.FailureAvailability, uploadFileOperationID, "provider did not complete the duplicate lookup"), 0)
+	earlierFile, lookupResponse, lookupOutcome, isIncompleteLookup := client.lookupEarlierUpload(call, &credential, idempotencyKey)
+	if lookupOutcome != nil {
+		if decision.Kind == singledispatch.SendAllowed && lookupOutcome.branch == "" {
+			return retryUploadBeforeSend(fence, lookupOutcome.failure, lookupOutcome.retryAfter)
+		}
+		if decision.Kind == singledispatch.ReadBackRequired {
+			if lookupOutcome.branch == "" {
+				return sdkgo.NewMutationRetry[UploadFileOutput](lookupOutcome.failure, lookupOutcome.retryAfter)
+			}
+			return uploadUncertain(call, client, "upload read-back could not confirm the outcome")
+		}
+		return mutationAttemptFromReadOutcome[UploadFileOutput](lookupOutcome)
 	}
 	if earlierFile != nil {
 		return sdkgo.NewMutationBranch(UploadFileBranchUploaded, UploadFileOutput{File: *earlierFile, IsFromEarlierAttempt: true}, nil, client.receipt(call, lookupResponse.requestID, earlierFile.ID))
+	}
+	if isIncompleteLookup {
+		failure := driveFailure(sdkgo.FailureAvailability, uploadFileOperationID, "provider did not complete the duplicate lookup")
+		if decision.Kind == singledispatch.SendAllowed {
+			return retryUploadBeforeSend(fence, failure, 0)
+		}
+		return sdkgo.NewMutationRetry[UploadFileOutput](failure, 0)
+	}
+	if decision.Kind == singledispatch.ReadBackRequired {
+		return uploadUncertain(call, client, "prior upload cannot be confirmed by read-back")
 	}
 	body, contentType, err := buildMultipartUploadBody(input, content, idempotencyKey)
 	if err != nil {
 		return sdkgo.NewMutationBranch(UploadFileBranchDefect, UploadFileOutput{}, driveFailurePointer(sdkgo.FailureLocalDefect, uploadFileOperationID, "upload request could not be encoded"), sdkgo.Receipt{})
 	}
-	response, err := client.sendRequest(call, &credential, driveRequest{
-		method: http.MethodPost, target: client.multipartUploadURL(), body: body, contentType: contentType,
-		responseLimit: client.maxResponseBytes,
-	})
-	receipt := client.receipt(call, response.requestID, "")
-	var requestErr *driveRequestError
-	if errors.As(err, &requestErr) && requestErr.kind == sdkgo.FailureLocalDefect {
-		return sdkgo.NewMutationBranch(UploadFileBranchDefect, UploadFileOutput{}, driveFailurePointer(requestErr.kind, uploadFileOperationID, requestErr.message), receipt)
+	attempt := &uploadSendAttempt{client: client, credential: credential, body: body, contentType: contentType}
+	dispatchErr := fence.Dispatch(attempt.send)
+	if errors.Is(dispatchErr, singledispatch.ErrCheckpoint) || errors.Is(dispatchErr, singledispatch.ErrInsufficientTime) {
+		return sdkgo.NewMutationRetry[UploadFileOutput](driveFailure(sdkgo.FailureAvailability, uploadFileOperationID, "upload was not sent before the attempt deadline"), 0)
 	}
-	if err != nil {
-		return sdkgo.NewMutationUncertain(UploadFileOutput{}, driveFailure(sdkgo.FailureTransport, uploadFileOperationID, "provider upload outcome is unknown"), receipt)
+	response := attempt.response
+	receipt := client.receipt(call, response.requestID, "")
+	if dispatchErr != nil && attempt.isProvablyUndispatched() {
+		return retryUploadAfterRejection(fence, sdkgo.FailureTransport, "upload failed before a connection was obtained", 0)
+	}
+	if response.status == http.StatusTooManyRequests || response.status == http.StatusServiceUnavailable {
+		failureKind := statusFailureKind(response.status, nil)
+		delay := providerhttp.ParseRetryAfter(response.header.Get("Retry-After"), client.now())
+		return retryUploadAfterRejection(fence, failureKind, "provider returned a retryable upload status", delay)
+	}
+	if dispatchErr != nil || response.status >= 500 || response.status == http.StatusConflict ||
+		(response.status >= 200 && response.status < 300 && response.readErr != nil) {
+		return client.reconcileUpload(call, &credential, idempotencyKey, response.requestID)
 	}
 	reasons := providerhttp.ReadErrorTokens(response.body, googleErrorTokenPointers)
-	switch {
-	case response.status >= 200 && response.status < 300:
+	if response.status == http.StatusUnauthorized {
+		if client.refreshRejectedUploadCredential(call) == nil {
+			return retryUploadAfterRejection(fence, sdkgo.FailureAuthentication, "provider rejected the upload credential", 0)
+		}
+		return sdkgo.NewMutationBranch(UploadFileBranchProviderRejected, UploadFileOutput{}, driveFailurePointer(sdkgo.FailureAuthentication, uploadFileOperationID, "provider rejected the upload credential"), receipt)
+	}
+	if isRateLimitStatus(response.status, reasons) {
+		delay := providerhttp.ParseRetryAfter(response.header.Get("Retry-After"), client.now())
+		return retryUploadAfterRejection(fence, sdkgo.FailureRateLimit, "provider returned a retryable upload status", delay)
+	}
+	if response.status >= 200 && response.status < 300 {
 		var resource driveFileResource
-		if err := json.Unmarshal(response.body, &resource); err != nil {
-			return sdkgo.NewMutationUncertain(UploadFileOutput{}, driveFailure(sdkgo.FailureProtocol, uploadFileOperationID, "provider returned an invalid upload response"), receipt)
+		if json.Unmarshal(response.body, &resource) != nil {
+			return client.reconcileUpload(call, &credential, idempotencyKey, response.requestID)
 		}
 		file, err := convertFileResource(resource)
 		if err != nil {
-			return sdkgo.NewMutationUncertain(UploadFileOutput{}, driveFailure(sdkgo.FailureProtocol, uploadFileOperationID, "provider returned an invalid upload response"), receipt)
+			return client.reconcileUpload(call, &credential, idempotencyKey, response.requestID)
 		}
+		// The accepted result is known even if its extra read-back checkpoint is lost.
+		_ = fence.RecordProviderID(file.ID)
 		receipt.ProviderObjectID = file.ID
 		return sdkgo.NewMutationBranch(UploadFileBranchUploaded, UploadFileOutput{File: file}, nil, receipt)
-	case response.status >= 500:
-		return sdkgo.NewMutationUncertain(UploadFileOutput{}, driveFailure(sdkgo.FailureAvailability, uploadFileOperationID, "provider upload outcome is unknown"), receipt)
-	case isRateLimitStatus(response.status, reasons):
-		// Google rejected the request before creating a file; the next attempt looks up again first.
-		delay := providerhttp.ParseRetryAfter(response.header.Get("Retry-After"), client.now())
-		return sdkgo.NewMutationRetry[UploadFileOutput](driveFailure(sdkgo.FailureRateLimit, uploadFileOperationID, "provider temporarily rejected the upload"), delay)
-	default:
-		return sdkgo.NewMutationBranch(UploadFileBranchProviderRejected, UploadFileOutput{}, driveFailurePointer(statusFailureKind(response.status, reasons), uploadFileOperationID, "provider rejected the upload"), receipt)
 	}
+	return sdkgo.NewMutationBranch(UploadFileBranchProviderRejected, UploadFileOutput{}, driveFailurePointer(statusFailureKind(response.status, reasons), uploadFileOperationID, "provider rejected the upload"), receipt)
+}
+
+func retryUploadBeforeSend(fence *singledispatch.Fence, failure sdkgo.Failure, delay time.Duration) sdkgo.MutationAttempt[UploadFileOutput] {
+	if err := fence.RecordNotSent(); err != nil {
+		failure = driveFailure(sdkgo.FailureAvailability, uploadFileOperationID, "upload was not sent, but its checkpoint failed")
+	}
+	return sdkgo.NewMutationRetry[UploadFileOutput](failure, delay)
+}
+
+func retryUploadAfterRejection(fence *singledispatch.Fence, kind sdkgo.FailureKind, message string, delay time.Duration) sdkgo.MutationAttempt[UploadFileOutput] {
+	if err := fence.RecordCanResend(); err != nil {
+		return sdkgo.NewMutationRetry[UploadFileOutput](driveFailure(sdkgo.FailureAvailability, uploadFileOperationID, "provider returned a retryable status, but its retry checkpoint failed"), delay)
+	}
+	return sdkgo.NewMutationRetry[UploadFileOutput](driveFailure(kind, uploadFileOperationID, message), delay)
+}
+
+func uploadUncertain(call sdkgo.Call, client *Client, message string) sdkgo.MutationAttempt[UploadFileOutput] {
+	return sdkgo.NewMutationUncertain(UploadFileOutput{}, driveFailure(sdkgo.FailureAvailability, uploadFileOperationID, message), client.receipt(call, "", ""))
+}
+
+func (attempt *uploadSendAttempt) send(requestContext context.Context) error {
+	trace := &httptrace.ClientTrace{
+		DNSDone: func(info httptrace.DNSDoneInfo) {
+			if info.Err != nil {
+				attempt.hasConnectFailure.Store(true)
+			}
+		},
+		ConnectDone: func(_, _ string, err error) {
+			if err != nil {
+				attempt.hasConnectFailure.Store(true)
+			}
+		},
+		TLSHandshakeDone: func(_ tls.ConnectionState, err error) {
+			if err != nil {
+				attempt.hasConnectFailure.Store(true)
+			}
+		},
+		GotConn: func(httptrace.GotConnInfo) { attempt.hasConnection.Store(true) },
+	}
+	requestContext = httptrace.WithClientTrace(requestContext, trace)
+	request, err := http.NewRequestWithContext(requestContext, http.MethodPost, attempt.client.multipartUploadURL(), bytes.NewReader(attempt.body))
+	if err != nil {
+		return err
+	}
+	request.Header.Set("Authorization", "Bearer "+attempt.credential.AccessToken.Reveal())
+	request.Header.Set("Content-Type", attempt.contentType)
+	if err := singledispatch.PrepareHTTPWrite(request); err != nil {
+		return err
+	}
+	httpResponse, err := attempt.client.httpClient.Do(request)
+	if err != nil {
+		return err
+	}
+	limit := max(attempt.client.maxResponseBytes, providerhttp.MaxErrorBodyBytes)
+	content, readErr := providerhttp.ReadBoundedBody(httpResponse.Body, limit)
+	closeErr := httpResponse.Body.Close()
+	attempt.response = uploadHTTPResponse{
+		status: httpResponse.StatusCode, header: httpResponse.Header, body: content,
+		requestID: googleRequestID(httpResponse.Header), readErr: errors.Join(readErr, closeErr),
+	}
+	if attempt.response.status >= 200 && attempt.response.status < 300 && int64(len(content)) > attempt.client.maxResponseBytes {
+		attempt.response.readErr = providerhttp.ErrBodyTooLarge
+	}
+	if attempt.response.readErr != nil {
+		attempt.response.body = nil
+	}
+	return nil
+}
+
+func (attempt *uploadSendAttempt) isProvablyUndispatched() bool {
+	return attempt.hasConnectFailure.Load() && !attempt.hasConnection.Load()
 }
 
 // validateUploadFileInput returns the content to upload for valid input.
