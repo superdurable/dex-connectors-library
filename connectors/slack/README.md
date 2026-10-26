@@ -251,13 +251,21 @@ unverified. A connection loss after dispatch, a 409, other 5xx, an `ok:false`
 `internal_error` or `fatal_error`, or a successful response without a usable
 message identity selects `uncertain` and requires reconciliation. The connector
 does not resend after such an outcome. A traced DNS, connect, or TLS failure
-before a connection exists, HTTP 429 or 503, and `ok:false` `ratelimited` or
-`service_unavailable` retry. Slack does not document their HTTP statuses or
-whether the retryable body errors can be partially applied; that retry safety
-and Slack's 409 behavior remain unverified. Synchronous Step durability persists
-the dispatch checkpoint that permits only proven-safe retries across attempts.
-If that checkpoint is missing or stale, the connector does not resend. Each
-request ends before the Step's attempt deadline.
+before a connection exists, HTTP 429 or 503 retry. An HTTP 2xx carrying
+`ok:false` `ratelimited` or `service_unavailable` also retries after recording
+that the request was not processed. [Slack's method error descriptions](https://docs.slack.dev/reference/methods/chat.postMessage/)
+describe rate limiting with `Retry-After` and temporary service unavailability;
+their HTTP statuses and live delivery behavior remain unverified. An
+`internal_error` or `fatal_error` with a returned timestamp is read back;
+without one it remains `uncertain`. Slack's 409 behavior remains unverified.
+The shared single-dispatch fence uses synchronous Step durability to persist
+its claim and safe-retry evidence.
+A known accepted message timestamp is checkpointed for read-back through
+`conversations.replies`; an unavailable read-back retries without a new post,
+while an inconclusive read-back remains `uncertain`. Missing, stale, or legacy
+connector checkpoints do not authorize a resend. The fence bounds each request
+inside the Step attempt. An application must not override these post Steps to
+async durability, which cannot preserve the fence's heartbeat across retries.
 
 Every operation uses `defect` for invalid local input, connection configuration,
 or Connector contract violations. A conclusive Slack API refusal uses
