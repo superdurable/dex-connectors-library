@@ -7,6 +7,10 @@
 This module sends SMS, MMS, and WhatsApp messages through Twilio Programmable
 Messaging and reads their delivery status:
 
+```bash
+go get github.com/superdurable/dex-connectors-library/connectors/twilio/messaging@v0.22.0
+```
+
 | Operation | Kind | Happy branch | Other branches |
 | --- | --- | --- | --- |
 | `sendMessage` | Mutation | `accepted` | `providerRejected`, `uncertain`, `defect` |
@@ -93,24 +97,40 @@ E.164), a `body` of at most 1600 characters, up to 10 public HTTPS
 WhatsApp recipient needs a WhatsApp sender or a Messaging Service. Invalid
 input selects `defect` without calling Twilio.
 
-Twilio's Messages API has no idempotency key: a repeated create request sends a
-second text. The connector therefore retries only when Twilio cannot have
-created a message:
+Twilio's [Messages API](https://www.twilio.com/docs/messaging/api/message-resource)
+has no documented idempotency key or lookup by connector Call ID. The shared
+single-dispatch fence permits a retry only after a saved rejection or positive
+proof that no connection opened. Its checkpoint is read before credentials or
+provider lookups, and a missing or stale checkpoint forbids another send.
 
 | Outcome | Result |
 | --- | --- |
 | 2xx with a valid message | `accepted`, with the SID and status, usually `queued` or `accepted` |
-| 400, 401, 403, 404, 409, or another 4xx except 408 and 429 | `providerRejected`, with the Twilio error code in `Value.ErrorCode` and the Receipt's `twilioErrorCode` |
-| 429 | Retry, after `Retry-After` when Twilio sends it |
+| 400, 401, 403, 404, or another 4xx except 408, 409, and 429 | `providerRejected`, with the Twilio error code in `Value.ErrorCode` and the Receipt's `twilioErrorCode`; a 401 retries only if a fresh credential differs |
+| 429 or 503 | Retry, after `Retry-After` when Twilio sends it |
 | DNS, connect, or TLS failure before any connection opened | Retry |
-| Timeout, dropped connection, 408, 3xx, or 5xx after dispatch | `uncertain` |
+| Timeout, dropped connection, 408, 409, 3xx, or 5xx other than 503 after dispatch | `uncertain` |
 | 2xx whose body is oversized, unreadable, for another account, or reflects the credential | `uncertain` |
 
-The connector bounds every request by 20 seconds, below the 30-second Execute
-timeout, so it observes a hung send and selects `uncertain` before Dex would
-retry the Step. It never sends an `Idempotency-Key` header, because Go's HTTP
-transport treats a request with that header as safe to replay. A transport
-that reports no connection trace events counts as dispatched.
+Twilio documents that [429 requests are not processed](https://www.twilio.com/docs/api/errors/20429)
+and [503 means temporarily unavailable and should be retried](https://www.twilio.com/docs/usage/twilios-response).
+Its Messages documentation does not specify a safe retry for 409, so a 409
+without a message SID requires reconciliation. The fence bounds the POST to
+7/12 of the smaller 30-second Execute timeout and remaining Step deadline,
+leaving time to classify its result. It disables Go's transparent HTTP replay.
+A transport without positive DNS, connect, or TLS failure evidence is treated
+as possibly dispatched.
+An unavailable credential service retries before the POST with a `notSent`
+checkpoint. A missing, invalid, or reauthorization-required credential selects
+`defect` without sending. On 401, the connector re-resolves the credential;
+it records a safe retry only if the credential changed.
+
+After a valid 2xx answer, the connector saves the message SID. If Dex repeats
+that Step before committing its result, the next attempt reads the saved SID
+with `getMessage` and never sends a second POST. A transient read-back failure
+retries the read. A missing SID or a result that cannot be confirmed selects
+`uncertain`. The heartbeat frame may still be lost before Dex persists it;
+the fence then fails closed and the operator reconciles the send.
 
 `uncertain` means the message may exist. On `providerRejected` and
 `uncertain`, `Value` has no SID and echoes the requested account, sender, and
@@ -127,19 +147,10 @@ policy; a malformed, oversized, or mismatched response is `invalidResponse`.
 
 ## Avoiding duplicate texts
 
-`sendMessage` uses sync Execute durability even though a send is usually fast.
-With async durability, Dex runs the Step in a local phase of about seven
-seconds and then starts a fallback attempt, so a slow request is sent a second
-time while the first is still in flight. A real Dex run with a Twilio fake that
-held the response for nine seconds recorded two create requests under async
-durability and one under sync; `TestSlowDispatchIsSentOnceWithRealDex` guards
-this. The same reason makes `generateText` sync. `getMessage` is a read and
-keeps the async default. Do not override `sendMessage` to async.
-
-The connector never retries a dispatched request, but Dex runs a Step at least
-once. If the Worker is lost after Twilio accepts a send and before Dex commits
-the Step result, Dex runs the Step again and Twilio sends a second text. No
-connector can close this window without a provider idempotency key.
+`sendMessage` uses sync Execute durability because later attempts need its
+single-dispatch heartbeat checkpoint. Async local-phase heartbeats are not
+visible to those attempts. `getMessage` is a read and keeps the async default.
+Do not override `sendMessage` to async.
 
 An application handles `uncertain` without resending automatically.
 [`examples/text-message-delivery`](examples/text-message-delivery) shows the
@@ -159,6 +170,37 @@ The Twilio Message resource has no metadata field and its list filters only by
 message itself. Automated reconciliation is planned for later releases: a
 `listMessages` Query filtered by recipient, sender, and send date, and a
 status-callback Trigger whose callback URL carries the Call ID.
+
+## Mocks
+
+The generated `messagingmock` package provides one consistent default world:
+`sendMessage` queues a text to `+14155550123` from `+14155550100`, and
+`getMessage` reads that SID as delivered. It also scripts a rejected trial
+recipient and `getMessage` not-found, provider-rejected, and invalid-response
+outcomes. Other recipients, senders, or SIDs need explicit scripted cases.
+The runnable example tests its own Flow on the defaults:
+
+```go
+mock := messagingmock.New(t, ConnectionName)
+flow, harness := newTwilioIntegrationHarnessForConnection(t, mock.Connection())
+ctx := integrationContext(t)
+input := Input{To: "+14155550123", Body: "Your table is ready."}
+flowID := startTextMessageFlow(t, ctx, harness, flow, "mock-default", input)
+delivery := waitForFlowOutput(t, ctx, harness, flowID)
+
+require.Equal(t, PhaseFinished, delivery.Phase)
+require.Equal(t, input, delivery.Request)
+require.Equal(t, 1, delivery.SendAttempts)
+require.Equal(t, 1, delivery.StatusChecks)
+require.Nil(t, delivery.UncertainSend)
+
+sends := mock.SendMessage().Calls()
+require.Len(t, sends, 1)
+require.Equal(t, messaging.SendMessageInput{To: "+14155550123", Body: "Your table is ready."}, sends[0].Input)
+reads := mock.GetMessage().Calls()
+require.Len(t, reads, 1)
+require.Equal(t, messaging.GetMessageInput{MessageSID: "SMfedcba9876543210fedcba9876543210"}, reads[0].Input)
+```
 
 The send Step wiring in the example:
 
@@ -205,14 +247,14 @@ go run ./cmd/connectorctl generate --check connectors/twilio/messaging/connector
 
 The deterministic provider fakes cover acceptance, conclusive 4xx rejections
 (invalid `To`, unverified trial recipient, unsubscribed recipient,
-authentication), 429 with `Retry-After`, 5xx, a timeout after dispatch, a
+authentication), 429 with `Retry-After`, 503 retry, 500 uncertainty, a timeout after dispatch, a
 refused connection, redirects, oversized and malformed responses, and secret
 reflection. The example's real Dex integration tests are listed in its
 [README](examples/text-message-delivery/README.md).
 
 No live Twilio credentials were used. The following live behavior is
 unverified: a real Twilio 201 response and message resource shape, delivery
-status progression and error codes from carriers and WhatsApp, 429 and 5xx
+status progression and error codes from carriers and WhatsApp, 429 and 503
 behavior under load, regional endpoints, Restricted API key permissions,
 test-credential rejection of `getMessage`, and the Console paths in the setup
 guidance.

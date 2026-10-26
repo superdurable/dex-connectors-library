@@ -42,6 +42,7 @@ const (
 	recipientRateLimited = "+14155550105"
 	recipientUnconfirmed = "+14155550106"
 	recipientSlow        = "+14155550107"
+	recipientUnavailable = "+14155550108"
 
 	integrationMaximumChecks = 3
 	shortRequestTimeout      = 500 * time.Millisecond
@@ -85,6 +86,16 @@ func TestRateLimitedTextIsRetriedAfterRetryAfterWithRealDex(t *testing.T) {
 	require.Equal(t, 2, provider.createCount(recipientRateLimited), "a 429 created nothing, so Dex retries the send")
 	attempts := provider.createTimes(recipientRateLimited)
 	require.GreaterOrEqual(t, attempts[1].Sub(attempts[0]), time.Second, "the retry waits for Retry-After")
+}
+
+func TestUnavailableTextIsRetriedOnceWithRealDex(t *testing.T) {
+	provider, flow, harness := newTwilioIntegrationHarness(t)
+	ctx := integrationContext(t)
+
+	delivery := runTextMessageFlow(t, ctx, harness, flow, "unavailable", Input{To: recipientUnavailable, Body: "Your order shipped."})
+	require.Equal(t, PhaseFinished, delivery.Phase)
+	require.Equal(t, 2, provider.createCount(recipientUnavailable))
+	require.Equal(t, 1, delivery.SendAttempts, "Dex retried the same send Step execution")
 }
 
 func TestTimeoutAfterDispatchIsReconciledWithoutResendingWithRealDex(t *testing.T) {
@@ -283,6 +294,8 @@ func (provider *fakeTwilio) createMessage(response http.ResponseWriter, request 
 	case recipient == recipientRateLimited && attempt == 1:
 		response.Header().Set("Retry-After", "1")
 		provider.writeJSON(response, http.StatusTooManyRequests, `{"code":20429,"message":"SENTINEL too many requests","status":429}`)
+	case recipient == recipientUnavailable && attempt == 1:
+		provider.writeJSON(response, http.StatusServiceUnavailable, `{"code":20503,"message":"SENTINEL unavailable","status":503}`)
 	case recipient == recipientTimeout || recipient == recipientSlow:
 		provider.storeMessage(recipient, attempt, []string{"delivered"})
 		// Twilio created the message, but the response never arrives before the connector gives up.
@@ -392,6 +405,12 @@ func newTwilioIntegrationHarnessWithRequestTimeout(t *testing.T, requestTimeout 
 	require.NoError(t, err)
 	connection, err := messaging.NewConnection(providerClient, reference)
 	require.NoError(t, err)
+	flow, harness := newTwilioIntegrationHarnessForConnection(t, connection)
+	return provider, flow, harness
+}
+
+func newTwilioIntegrationHarnessForConnection(t *testing.T, connection messaging.Connection) (*Flow, *twilioIntegrationHarness) {
+	t.Helper()
 	policy := DeliveryStatusPolicy{CheckInterval: time.Second, MaximumChecks: integrationMaximumChecks}
 	flow := NewFlow(connection, &policy)
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
@@ -419,7 +438,7 @@ func newTwilioIntegrationHarnessWithRequestTimeout(t *testing.T, requestTimeout 
 		defer cancel()
 		require.NoError(t, errors.Join(harness.worker.Stop(stopCtx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
 	})
-	return provider, flow, harness
+	return flow, harness
 }
 
 func availableIntegrationPort(t *testing.T) string {

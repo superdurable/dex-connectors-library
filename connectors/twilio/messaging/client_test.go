@@ -215,7 +215,7 @@ func TestSendMessageNeverRetriesAnOutcomeTwilioMayHaveAccepted(t *testing.T) {
 		kind    sdkgo.FailureKind
 	}{
 		{"internal server error", respondWithStatus(http.StatusInternalServerError), messaging.Config{}, sdkgo.FailureAvailability},
-		{"service unavailable", respondWithStatus(http.StatusServiceUnavailable), messaging.Config{}, sdkgo.FailureAvailability},
+		{"conflict without a message SID", respondWithStatus(http.StatusConflict), messaging.Config{}, sdkgo.FailureAvailability},
 		{"gateway request timeout", respondWithStatus(http.StatusRequestTimeout), messaging.Config{}, sdkgo.FailureAvailability},
 		{"accepted without a usable message", func(response http.ResponseWriter, _ *http.Request) {
 			response.WriteHeader(http.StatusCreated)
