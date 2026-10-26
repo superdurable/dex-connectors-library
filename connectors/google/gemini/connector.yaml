@@ -5,7 +5,7 @@ metadata:
   displayName: Gemini
   description: "Google Gemini API models.generateContent as a native Query, with Gemini's own contents, JSON Schema structured output, thinking budget, token usage, and explicit safety outcomes. Provider-neutral text generation Steps use the llm connector."
   company: Google
-  version: v0.21.2
+  version: v0.22.0
 spec:
   provider: google
   codegen:
@@ -101,3 +101,31 @@ spec:
         heartbeatTimeout: 300s
         durability: sync
         retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 3, totalDuration: 10m, reason: {kind: billedOperation, explanation: "A lost generation response can still be billed, and another request can incur a second charge without a provider deduplication key."}}
+      mockChecks:
+        requestFunction: ValidateGenerateContentMockRequest
+        answer: {branch: generated, function: ValidateGenerateContentMockAnswer}
+      mocks:
+        - name: launchSummary
+          branch: generated
+          description: "Generating a structured summary for title Launch and text The connector shipped today returns a concise JSON summary."
+          default: true
+          output:
+            responseId: resp-launch-summary
+            modelVersion: gemini-3.5-flash-lite
+            text: '{"headline":"Connector ships","summary":"It works. Teams can use typed steps.","keyPoints":["typed","durable"]}'
+            finishReason: STOP
+            usage: {promptTokens: 30, candidateTokens: 12, totalTokens: 42}
+        - name: outputLimitReached
+          branch: truncated
+          description: "Generating with maxOutputTokens 1 returns MAX_TOKENS and partial JSON text."
+          output: {responseId: resp-truncated, modelVersion: gemini-3.5-flash-lite, text: '{"headline":"Conn', finishReason: MAX_TOKENS, usage: {promptTokens: 30, candidateTokens: 1, totalTokens: 31}}
+          failure: {kind: RESPONSE_TOO_LARGE, message: "Gemini stopped at the output token limit."}
+        - name: unsafePromptBlocked
+          branch: blocked
+          description: "Generating from a prompt Gemini classifies as unsafe returns promptFeedback blockReason SAFETY."
+          output: {responseId: resp-blocked, modelVersion: gemini-3.5-flash-lite, text: "", blockReason: SAFETY, usage: {promptTokens: 30, totalTokens: 30}}
+          failure: {kind: PROVIDER_REJECTION, message: "Gemini blocked the prompt for safety."}
+        - name: modelAccessDenied
+          branch: providerRejected
+          description: "Generating with model gemini-restricted without project access receives Google's HTTP 403."
+          failure: {kind: AUTHORIZATION, message: "Gemini denied access to the requested model."}
