@@ -184,7 +184,7 @@ func (operation ListTimeOffRequestsOperation) Invoke(call sdkgo.Call, input List
 	receipt := operation.client.receipt(call, input.EmployeeID)
 	switch result.outcome {
 	case exchangeSucceeded:
-	case exchangeRateLimited, exchangeLimitExceeded, exchangeNotSent, exchangeUnavailable:
+	case exchangeRateLimited, exchangeNotSent, exchangeUnavailable:
 		return sdkgo.NewQueryRetry[ListTimeOffRequestsOutput](result.failure, result.retryAfter)
 	case exchangeInvalid:
 		return sdkgo.NewQueryBranch(ListTimeOffRequestsBranchInvalidResponse, ListTimeOffRequestsOutput{}, &result.failure, receipt)

@@ -182,6 +182,7 @@ type helpScoutThreadWire struct {
 	State     string               `json:"state"`
 	Body      string               `json:"body"`
 	Source    *helpScoutSourceWire `json:"source"`
+	Customer  *helpScoutPersonWire `json:"customer"`
 	CreatedBy *helpScoutPersonWire `json:"createdBy"`
 	CreatedAt string               `json:"createdAt"`
 }

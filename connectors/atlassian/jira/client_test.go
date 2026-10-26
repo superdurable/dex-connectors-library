@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/atlassian/jira"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -122,9 +123,13 @@ func TestUnauthorizedRequestRefreshesOnceAndResendsWithTheReplacement(t *testing
 	client, err := jira.New(jira.Config{CloudID: testCloudID, Endpoint: provider.URL}, credentials)
 	require.NoError(t, err)
 
-	result, err := sdkgo.RunMutation(newJiraDexContext("refresh-once"), client.CreateIssue(), jiraConnection, validCreateIssueInput())
+	ctx := singledispatchtest.NewContext("jira-flow", "refresh-once")
+	_, err = sdkgo.RunMutation(ctx, client.CreateIssue(), jiraConnection, validCreateIssueInput())
+	requireRetry(t, err, sdkgo.FailureAuthentication)
+	ctx.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(ctx, client.CreateIssue(), jiraConnection, validCreateIssueInput())
 	require.NoError(t, err)
-	require.Equal(t, jira.CreateIssueBranchCreated, result.Branch, "a 401 proves Jira created nothing, so one resend is safe")
+	require.Equal(t, jira.CreateIssueBranchCreated, result.Branch, "a 401 permits one fenced retry")
 	require.Equal(t, 2, provider.requestCount())
 	require.Equal(t, 1, credentials.forcedRefreshes)
 }
@@ -186,14 +191,12 @@ func TestRateLimitedReadRetriesAfterRetryAfter(t *testing.T) {
 	require.Equal(t, 7*time.Second, retryAfter.After)
 }
 
-func TestUnavailableCredentialsSelectDefectWithoutAProviderRequest(t *testing.T) {
+func TestMissingCredentialLookupRetriesWithoutAProviderRequest(t *testing.T) {
 	provider := newRecordingJira(t, func(http.ResponseWriter, *http.Request, int) { t.Fatal("no request is expected") })
 	client, err := jira.New(jira.Config{CloudID: testCloudID, Endpoint: provider.URL}, sdkgo.StaticCredentialProvider[jira.Credentials]{})
 	require.NoError(t, err)
-	result, err := sdkgo.RunMutation(newJiraDexContext("no-credentials"), client.CreateIssue(), jiraConnection, validCreateIssueInput())
-	require.NoError(t, err)
-	require.Equal(t, jira.CreateIssueBranchDefect, result.Branch)
-	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+	_, err = sdkgo.RunMutation(newJiraDexContext("no-credentials"), client.CreateIssue(), jiraConnection, validCreateIssueInput())
+	requireRetry(t, err, sdkgo.FailureAvailability)
 }
 
 func TestRedirectsAreNeverFollowed(t *testing.T) {

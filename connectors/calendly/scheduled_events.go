@@ -253,7 +253,7 @@ func (operation ListScheduledEventsOperation) Invoke(call sdkgo.Call, input List
 		userURI = currentUser.userURI
 	}
 	response, err := client.sendCalendlyRequest(call, &credentials, http.MethodGet, "/scheduled_events",
-		input.query(userURI, organizationURI), nil, nil)
+		input.query(userURI, organizationURI), nil)
 	if attempt, isTerminal := classifyQueryExchange[ScheduledEventPage](client, operationID, response, err, branches, ""); isTerminal {
 		return attempt
 	}
@@ -297,7 +297,7 @@ func (operation GetScheduledEventOperation) Invoke(call sdkgo.Call, input GetSch
 	if err != nil {
 		return credentialQueryAttempt[ScheduledEvent](operationID, GetScheduledEventBranchDefect, err)
 	}
-	response, err := client.sendCalendlyRequest(call, &credentials, http.MethodGet, "/scheduled_events/"+eventID, nil, nil, nil)
+	response, err := client.sendCalendlyRequest(call, &credentials, http.MethodGet, "/scheduled_events/"+eventID, nil, nil)
 	branches := queryFailureBranches{
 		notFound: GetScheduledEventBranchNotFound, providerRejected: GetScheduledEventBranchProviderRejected,
 		invalidResponse: GetScheduledEventBranchInvalidResponse,
@@ -348,7 +348,7 @@ func (operation CancelScheduledEventOperation) Invoke(call sdkgo.Call, input Can
 	if input.Reason != "" {
 		body["reason"] = input.Reason
 	}
-	response, err := client.sendCalendlyRequest(call, &credentials, http.MethodPost, "/scheduled_events/"+eventID+"/cancellation", nil, body, nil)
+	response, err := client.sendCalendlyRequest(call, &credentials, http.MethodPost, "/scheduled_events/"+eventID+"/cancellation", nil, body)
 	if err != nil {
 		return cancellationAttemptForExchangeError(client, operationID, output, err)
 	}
@@ -388,7 +388,7 @@ func (operation CancelScheduledEventOperation) readBackRefusedCancellation(
 ) sdkgo.MutationAttempt[ScheduledEventCancellation] {
 	operationID := CancelScheduledEventDefinition.Operation.OperationID
 	client := operation.client
-	response, err := client.sendCalendlyRequest(call, credentials, http.MethodGet, "/scheduled_events/"+eventID, nil, nil, nil)
+	response, err := client.sendCalendlyRequest(call, credentials, http.MethodGet, "/scheduled_events/"+eventID, nil, nil)
 	if err != nil {
 		return cancellationAttemptForExchangeError(client, operationID, output, err)
 	}

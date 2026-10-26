@@ -440,10 +440,10 @@ var CreatePageDefinition = sdkgo.MutationDefinition{
 		{ID: CreatePageBranchProviderRejected, Description: "Notion conclusively rejected the page, such as a missing property, a value of the wrong type, missing Insert content capability, or a workspace limit; nothing was created.", Optional: true},
 		{ID: CreatePageBranchUncertain, Description: "The request was dispatched but its outcome cannot be confirmed; Notion has no idempotency key, so the page may exist and must not be created again automatically.", Optional: true},
 		{ID: CreatePageBranchInvalidResponse, Description: "Notion returned an invalid or oversized database while the connector resolved its data source; nothing was created.", Optional: true},
-		{ID: CreatePageBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid, including a database ID whose database holds several data sources.", Optional: true},
+		{ID: CreatePageBranchDefect, Description: "Local input, credential authorization, or connector definition is invalid, including a database ID whose database holds several data sources.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
-		ExecuteMethodTimeout: time.Duration(90000000000), HeartbeatTimeout: time.Duration(90000000000),
+		ExecuteMethodTimeout: time.Duration(120000000000), HeartbeatTimeout: time.Duration(120000000000),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 6, TotalDuration: time.Duration(300000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},

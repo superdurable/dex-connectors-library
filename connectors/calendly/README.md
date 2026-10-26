@@ -93,19 +93,34 @@ nine seconds:
 | --- | --- | --- | --- |
 | `cancelScheduledEvent` | async | Calendly answers `403` for an event that is already canceled. A `403` reads the event back; a canceled event selects `canceled` with `alreadyCanceled`, whatever the message. A lost answer or a `5xx` returns Retry. | two POSTs, `canceled` |
 | `createWebhookSubscription` | async | It lists the scope's subscriptions before creating, reuses one with the same callback URL, and treats Calendly's documented `409` as "list again". | two lists, one create, one subscription |
-| `createSchedulingLink` | sync | Nothing makes a repeat safe, so it runs as a regular activity that Dex does not re-dispatch, and a `5xx`, timeout, lost connection, or unreadable `201` after the request was written selects `uncertain` instead of retrying. A `429` or a request that never left the process retries. | one POST, also under an application override to async |
+| `createSchedulingLink` | sync | The single-dispatch fence checkpoints its claim before POST. A `429`, `503`, or traced connection failure before a socket is obtained permits only the next attempt to resend. An accepted response saves its booking URL, but a later replay or lost answer selects `uncertain` because Calendly offers no link read-back. | one POST for a slow provider; two for a `503` then success |
 
-`createSchedulingLink` also keeps Dex from retrying an attempt that timed out
-after sending: its POST must finish three seconds before the attempt's
-deadline, at most the 30-second Execute timeout, it returns Retry without
-sending when less than five seconds would remain, and it does not repeat a
-`401` after a token refresh. The same rule keeps an async override single,
-because Dex's short local attempt leaves too little time to send. It can still
-repeat if the Worker dies after Calendly created the link; the extra link is
-unused and single-use. `cancelScheduledEvent` selects `providerRejected` for
+The fence requires sync durability; applications must not override this Step to
+async. Its request deadline remains inside the Execute attempt with time to
+classify the response, and a write starts only with at least a tenth of the
+attempt budget available. It never repeats a `401` after token refresh. The
+[published Calendly scopes](https://developer.calendly.com/docs/authentication/scopes)
+list `POST /scheduling_links`; they do not document a write idempotency key or
+a single-use-link lookup. Whether Calendly can identify an accepted link after
+its response is lost remains unverified against a real provider account, so
+the connector fails closed in that case. `cancelScheduledEvent` selects `providerRejected` for
 an active event Calendly refuses, with `CONFLICT` once the event has started.
 `createWebhookSubscription` selects `conflictingSubscription` when Calendly
 answers `409` for a callback URL that another scope or user owns.
+
+## Mocks
+
+`calendlymock` provides one default happy-path answer per operation. The two
+list defaults each cover three pages and repeat a record at a page boundary;
+optional business outcomes can be scripted with the generated constructors.
+The runnable invitee-recorder example uses its `getScheduledEvent` default in
+`workflow_mock_integration_test.go`:
+
+```go
+mock := calendlymock.New(t, inviteerecorder.ConnectionName)
+flow := inviteerecorder.NewFlow(mock.Connection())
+client := startWorkerAndClient(t, flow)
+```
 
 ## Trigger
 

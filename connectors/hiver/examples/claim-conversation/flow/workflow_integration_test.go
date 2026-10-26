@@ -168,10 +168,27 @@ func TestRateLimitedNoteWaitsAndAddsOneNoteWithRealDex(t *testing.T) {
 	harness := newClaimHarness(t, provider, fastRequestInterval, defaultRequestTimeout)
 
 	outcome := harness.runClaim(t, "rate-limited", integrationClaimInput())
-	require.Equal(t, ClaimActionClaimed, outcome.Action, "a 429 clears the dispatch marker, so the retry may send")
+	require.Equal(t, ClaimActionClaimed, outcome.Action, "a 429 records canResend, so the next attempt may send")
 	times := provider.requestTimes("note")
 	require.Len(t, times, 2)
 	require.GreaterOrEqual(t, times[1].Sub(times[0]), time.Second, "the retry waited for Retry-After")
+	require.Len(t, provider.conversation(target).notes, 1)
+}
+
+func TestServiceUnavailableNoteRetriesWithSameCallIDWithRealDex(t *testing.T) {
+	provider := newFakeHiver(t, fastRequestInterval)
+	provider.seedStandardInbox()
+	target := provider.seedConversation(integrationInboxID, "open", "", nil)
+	provider.serviceUnavailableFirstNote = true
+	harness := newClaimHarness(t, provider, fastRequestInterval, defaultRequestTimeout)
+
+	outcome := harness.runClaim(t, "service-unavailable-note", integrationClaimInput())
+	require.Equal(t, ClaimActionClaimed, outcome.Action)
+	require.Equal(t, 2, provider.count("note"))
+	identifiers := provider.correlationIDs("note")
+	require.Len(t, identifiers, 2)
+	require.NotEmpty(t, identifiers[0])
+	require.Equal(t, identifiers[0], identifiers[1], "both attempts use the same correlation Call ID")
 	require.Len(t, provider.conversation(target).notes, 1)
 }
 

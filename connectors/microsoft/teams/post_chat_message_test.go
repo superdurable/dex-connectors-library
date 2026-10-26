@@ -46,6 +46,7 @@ func TestUnconfirmedChatMessageIsUncertainWithoutAReadOrResend(t *testing.T) {
 	require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
 	require.Equal(t, teams.PostMessageOutput{ChatID: testChatID}, result.Value)
 
+	dexContext.advanceAttempt()
 	result, err = sdkgo.RunMutation(dexContext, client.PostChatMessage(), teamsConnection, validChatMessageInput())
 	require.NoError(t, err)
 	require.Equal(t, sdkgo.UncertainBranchID, result.Branch, "a later attempt of the same Step execution never sends")

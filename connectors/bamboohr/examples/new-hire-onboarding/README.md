@@ -82,7 +82,7 @@ mkdir -p /tmp/bamboohr-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/bamboohr/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/bamboohr \
-  --version v0.21.2 --tag connectors/bamboohr/v0.21.2 \
+  --version v0.22.0 --tag connectors/bamboohr/v0.22.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/bamboohr-release/connector-release.json \
   --digest-output /tmp/bamboohr-release/connector-release.json.sha256

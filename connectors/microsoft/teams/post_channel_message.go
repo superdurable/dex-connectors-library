@@ -36,14 +36,13 @@ func (PostChannelMessageOperation) Definition() sdkgo.MutationDefinition {
 	return PostChannelMessageDefinition
 }
 
-// IdempotencyKey uses the stable connector Call ID. Graph accepts no idempotency key, so the key only
-// correlates the Receipt; a Dex heartbeat checkpoint keeps the message to one send.
+// IdempotencyKey uses the stable connector Call ID for receipt correlation; Graph accepts no idempotency key.
 func (PostChannelMessageOperation) IdempotencyKey(callID sdkgo.CallID, _ PostChannelMessageInput) sdkgo.IdempotencyKey {
 	return sdkgo.IdempotencyKey(callID)
 }
 
 // Invoke sends POST /teams/{team-id}/channels/{channel-id}/messages at most once per Step execution. An
-// attempt that finds an earlier attempt's checkpoint reads the channel's 50 most recently active root
+// attempt that finds an earlier attempt's fence claim reads the channel's 50 most recently active root
 // messages and reports the one with the same subject and text, created by a person after the first send,
 // as sent; otherwise it selects uncertain. Reading back needs ChannelMessage.Read.All.
 func (operation PostChannelMessageOperation) Invoke(call sdkgo.Call, input PostChannelMessageInput) sdkgo.MutationAttempt[PostMessageOutput] {
@@ -59,7 +58,8 @@ func (operation PostChannelMessageOperation) Invoke(call sdkgo.Call, input PostC
 	}
 	return client.send(call, messagePost{
 		operationID: postChannelMessageOperationID, subject: "channel message",
-		path: channelMessagesPath(teamID, channelID), content: content, requested: requested,
+		executeMethodTimeout: PostChannelMessageDefinition.StepDefaults.ExecuteMethodTimeout,
+		path:                 channelMessagesPath(teamID, channelID), content: content, requested: requested,
 		branches: postBranches{
 			sent: PostChannelMessageBranchSent, providerRejected: PostChannelMessageBranchProviderRejected, defect: PostChannelMessageBranchDefect,
 		},

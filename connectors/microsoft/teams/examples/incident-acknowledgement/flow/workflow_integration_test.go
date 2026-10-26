@@ -65,6 +65,8 @@ const (
 	// rootPostLostWithoutStoring never answers and never stores the message.
 	rootPostLostWithoutStoring
 	rootPostForbidden
+	rootPostUnavailableOnce
+	rootPostConflict
 )
 
 var (
@@ -147,6 +149,24 @@ func TestUnansweredPostIsConfirmedByReadBackWithoutAResendWithRealDex(t *testing
 	require.Equal(t, 1, provider.rootPostCount(), "an unconfirmed post is never sent again")
 }
 
+func TestUnavailablePostRetriesOnceWithTheSameCallIDWithRealDex(t *testing.T) {
+	provider := newFakeTeams(t)
+	provider.setRootPostBehavior(rootPostUnavailableOnce)
+	harness := newIncidentHarness(t, provider, shortRequestTimeout, EscalationChatSelection{})
+	ctx := integrationContext(t)
+	flowID := harness.startIncident(t, ctx, "unavailable-once", incidentInput())
+	record := harness.waitForRecord(t, ctx, flowID, func(record IncidentAcknowledgement) bool { return record.Phase == PhaseAwaitingAcknowledgement })
+	provider.addReply(t, record.RootMessageID, integrationHumanID, "Ada Lovelace", "<p>ack</p>")
+	require.Equal(t, PhaseAcknowledged, harness.waitForFlowOutput(t, ctx, flowID).Phase)
+	require.Equal(t, 2, provider.rootPostCount())
+	require.Equal(t, 1, provider.storedRootCount())
+	provider.mutex.Lock()
+	defer provider.mutex.Unlock()
+	require.Len(t, provider.rootCallIDs, 2)
+	require.NotEmpty(t, provider.rootCallIDs[0])
+	require.Equal(t, provider.rootCallIDs[0], provider.rootCallIDs[1])
+}
+
 func TestLostPostWithoutAMatchIsNeverResentWithRealDex(t *testing.T) {
 	provider := newFakeTeams(t)
 	provider.setRootPostBehavior(rootPostLostWithoutStoring)
@@ -156,6 +176,18 @@ func TestLostPostWithoutAMatchIsNeverResentWithRealDex(t *testing.T) {
 	result := harness.waitForFailedFlow(t, ctx, harness.startIncident(t, ctx, "uncertain", incidentInput()))
 	require.Contains(t, result.ErrorMessage, "uncertain")
 	require.Contains(t, result.ErrorMessage, "no target")
+	require.Equal(t, 1, provider.rootPostCount())
+	require.Zero(t, provider.replyPostCount())
+}
+
+func TestConflictingPostWithoutAMatchIsNeverResentWithRealDex(t *testing.T) {
+	provider := newFakeTeams(t)
+	provider.setRootPostBehavior(rootPostConflict)
+	harness := newIncidentHarness(t, provider, shortRequestTimeout, EscalationChatSelection{})
+	ctx := integrationContext(t)
+
+	result := harness.waitForFailedFlow(t, ctx, harness.startIncident(t, ctx, "conflict", incidentInput()))
+	require.Contains(t, result.ErrorMessage, "uncertain")
 	require.Equal(t, 1, provider.rootPostCount())
 	require.Zero(t, provider.replyPostCount())
 }
@@ -277,6 +309,11 @@ func newIncidentHarnessWithWorkerAddress(
 	require.NoError(t, err)
 	policy := AcknowledgementPolicy{CheckInterval: time.Second, MaximumChecks: 3}
 	flow := NewFlow(connection, ChannelSelection{TeamID: integrationTeamID, ChannelID: integrationChannelID}, escalation, &policy)
+	return newIncidentHarnessForFlow(t, flow, workerAddress, isWorkerStarted)
+}
+
+func newIncidentHarnessForFlow(t *testing.T, flow *Flow, workerAddress string, isWorkerStarted bool) *incidentHarness {
+	t.Helper()
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
@@ -390,6 +427,7 @@ type fakeTeams struct {
 	replies          map[string][]*fakeMessage
 	chatMessages     []string
 	rootPosts        int
+	rootCallIDs      []string
 	replyPosts       int
 	chatPosts        int
 	postDelay        time.Duration
@@ -447,9 +485,13 @@ func (provider *fakeTeams) postRoot(response http.ResponseWriter, request *http.
 	body := provider.decodeBody(request)
 	provider.mutex.Lock()
 	provider.rootPosts++
+	provider.rootCallIDs = append(provider.rootCallIDs, request.Header.Get("client-request-id"))
 	behavior, delay := provider.rootBehavior, provider.postDelay
+	if behavior == rootPostUnavailableOnce && provider.rootPosts > 1 {
+		behavior = rootPostAnswered
+	}
 	var message *fakeMessage
-	if behavior != rootPostForbidden && behavior != rootPostLostWithoutStoring {
+	if behavior != rootPostForbidden && behavior != rootPostLostWithoutStoring && behavior != rootPostUnavailableOnce && behavior != rootPostConflict {
 		message = provider.storeLocked("", body)
 		provider.roots = append(provider.roots, message)
 	}
@@ -458,6 +500,11 @@ func (provider *fakeTeams) postRoot(response http.ResponseWriter, request *http.
 	switch behavior {
 	case rootPostForbidden:
 		provider.writeJSON(response, http.StatusForbidden, `{"error":{"code":"Forbidden","message":"SENTINEL not a member"}}`)
+	case rootPostUnavailableOnce:
+		response.Header().Set("Retry-After", "1")
+		provider.writeJSON(response, http.StatusServiceUnavailable, `{"error":{"code":"ServiceNotAvailable","message":"SENTINEL"}}`)
+	case rootPostConflict:
+		provider.writeJSON(response, http.StatusConflict, `{"error":{"code":"Conflict","message":"SENTINEL"}}`)
 	case rootPostStoredWithoutAnswer, rootPostLostWithoutStoring:
 		<-request.Context().Done()
 	default:
