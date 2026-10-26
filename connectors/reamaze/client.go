@@ -5,9 +5,8 @@
 // searchConversations and getConversation read conversations, findContactByEmail resolves a
 // customer, updateConversation changes status, assignee, and tags so that a repeated attempt
 // writes nothing twice, and createConversation and replyToConversation send each request once
-// per Step execution and reconcile an unconfirmed attempt by reading the record back, because
-// Re:amaze documents no idempotency key. Dex accepts the dispatch checkpoint when the Worker
-// writes it to its stream, so a Worker lost before Dex stored it can still send twice.
+// per Step attempt through a shared fail-closed fence and reconcile an unconfirmed attempt
+// by reading the record back, because Re:amaze documents no idempotency key.
 //
 // The connector authenticates as one staff user over HTTP Basic, the user's login email as the
 // user name and the user's API token as the password, and sends every request to
@@ -18,19 +17,23 @@ package reamaze
 
 import (
 	"bytes"
+	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
+	"net/http/httptrace"
 	"net/mail"
 	"net/url"
 	"regexp"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const (
@@ -89,10 +92,12 @@ type Client struct {
 }
 
 type reamazeRequest struct {
-	method  string
-	path    string
-	query   url.Values
-	payload any
+	method         string
+	path           string
+	query          url.Values
+	payload        any
+	requestContext context.Context
+	isFencedWrite  bool
 }
 
 type reamazeResponse struct {
@@ -125,6 +130,11 @@ type reamazeExchange struct {
 	response   reamazeResponse
 	failure    sdkgo.Failure
 	retryAfter time.Duration
+}
+
+type dispatchObservation struct {
+	hasFailedBeforeConnection atomic.Bool
+	hasObtainedConnection     atomic.Bool
 }
 
 // New validates configuration and constructs a Re:amaze client.
@@ -212,13 +222,37 @@ func (client *Client) resolveCredentials(call sdkgo.Call) (Credentials, error) {
 
 // exchange sends one authenticated request and classifies its response without deciding retry policy.
 func (client *Client) exchange(call sdkgo.Call, credentials Credentials, operation string, request reamazeRequest) reamazeExchange {
+	observation := &dispatchObservation{}
+	request.requestContext = httptrace.WithClientTrace(requestContext(call, request), &httptrace.ClientTrace{
+		GotConn: func(httptrace.GotConnInfo) { observation.hasObtainedConnection.Store(true) },
+		DNSDone: func(info httptrace.DNSDoneInfo) {
+			if info.Err != nil {
+				observation.hasFailedBeforeConnection.Store(true)
+			}
+		},
+		ConnectDone: func(_ string, _ string, err error) {
+			if err != nil {
+				observation.hasFailedBeforeConnection.Store(true)
+			}
+		},
+		TLSHandshakeDone: func(_ tls.ConnectionState, err error) {
+			if err != nil {
+				observation.hasFailedBeforeConnection.Store(true)
+			}
+		},
+	})
 	httpRequest, err := client.buildRequest(call, credentials, request)
 	if err != nil {
 		return reamazeExchange{outcome: exchangeDefect, failure: reamazeFailure(sdkgo.FailureLocalDefect, operation, err.Error())}
 	}
+	if request.isFencedWrite {
+		if err := singledispatch.PrepareHTTPWrite(httpRequest); err != nil {
+			return reamazeExchange{outcome: exchangeDefect, failure: reamazeFailure(sdkgo.FailureLocalDefect, operation, err.Error())}
+		}
+	}
 	httpResponse, err := client.httpClient.Do(httpRequest)
 	if err != nil {
-		if isConnectionNeverEstablished(err) {
+		if observation.hasFailedBeforeConnection.Load() && !observation.hasObtainedConnection.Load() {
 			return reamazeExchange{outcome: exchangeNotSent, failure: reamazeFailure(sdkgo.FailureTransport, operation, "Re:amaze could not be reached; no request was sent")}
 		}
 		return reamazeExchange{outcome: exchangeUnavailable, failure: reamazeFailure(sdkgo.FailureTransport, operation, "Re:amaze request failed before a response arrived")}
@@ -255,9 +289,9 @@ func (client *Client) buildRequest(call sdkgo.Call, credentials Credentials, req
 		if encodeErr != nil {
 			return nil, errReamazeRequestNotBuilt
 		}
-		httpRequest, err = http.NewRequestWithContext(call.Context, request.method, target, bytes.NewReader(encoded))
+		httpRequest, err = http.NewRequestWithContext(requestContext(call, request), request.method, target, bytes.NewReader(encoded))
 	} else {
-		httpRequest, err = http.NewRequestWithContext(call.Context, request.method, target, nil)
+		httpRequest, err = http.NewRequestWithContext(requestContext(call, request), request.method, target, nil)
 	}
 	if err != nil {
 		return nil, errReamazeRequestNotBuilt
@@ -268,6 +302,13 @@ func (client *Client) buildRequest(call sdkgo.Call, credentials Credentials, req
 		httpRequest.Header.Set("Content-Type", "application/json")
 	}
 	return httpRequest, nil
+}
+
+func requestContext(call sdkgo.Call, request reamazeRequest) context.Context {
+	if request.requestContext != nil {
+		return request.requestContext
+	}
+	return call.Context
 }
 
 // classifyFailureStatus maps a non-2xx response by status alone; Re:amaze error bodies are never read.
@@ -325,12 +366,6 @@ func (client *Client) receipt(call sdkgo.Call, response reamazeResponse, objectI
 		CallID: call.ID, IdempotencyKey: call.IdempotencyKey, Provider: providerName,
 		ProviderRequestID: response.requestID, ProviderObjectID: objectID, ObservedAt: client.now().UTC(),
 	}
-}
-
-// isConnectionNeverEstablished reports a dial failure, after which Re:amaze cannot have received the request.
-func isConnectionNeverEstablished(err error) bool {
-	var operationError *net.OpError
-	return errors.As(err, &operationError) && operationError.Op == "dial"
 }
 
 func safeRequestID(header http.Header) string {
