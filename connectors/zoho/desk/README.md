@@ -259,6 +259,29 @@ shown to the customer in the help center; a private one only to agents. Zoho
 Desk fixes visibility when the comment is added, and a response with another
 visibility selects `uncertain`. Content is at most 32,000 characters.
 
+## Mocks
+
+`deskmock.New(t, ConnectionName)` supplies one consistent world: three search
+pages for `jane@example.test` find no ticket, create returns ticket `1892000000099001`,
+and addComment returns private comment `1892000000099002`. Each operation also
+has mocks for its definite optional business branches. The runnable Flow's
+real-Dex mock test starts with this code:
+
+```go
+mock := deskmock.New(t, ConnectionName)
+harness := newTriageHarnessForConnection(t, mock.Connection())
+input := Input{
+	ContactEmail: " jane@example.test ", ContactFirstName: "Jane", ContactLastName: "Doe",
+	Subject: "Billing question", Message: "Please check my invoice.",
+	DepartmentID: "1892000000006907", Priority: desk.TicketPriorityHigh,
+}
+outcome := harness.runTriage(t, "mock-new-issue", input)
+require.Equal(t, TriageTicketOpened, outcome.Action)
+```
+
+See `examples/triage-issue/flow/workflow_mock_integration_test.go` for the
+literal call-input and count assertions. These mocks make no provider requests.
+
 ## Duplicate safety
 
 Zoho Desk documents no idempotency key, so a repeated create or comment is a

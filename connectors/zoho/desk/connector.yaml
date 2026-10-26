@@ -5,7 +5,7 @@ metadata:
   displayName: Zoho Desk
   description: Search, read, create, and update Zoho Desk tickets and add public or private comments in the connection's Zoho data center, keeping Zoho Desk's own status and priority names.
   company: Zoho
-  version: v0.22.1
+  version: v0.23.0
 spec:
   provider: zoho
   codegen:
@@ -346,6 +346,24 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      pagination: {inputField: from, nextField: nextFrom}
+      mocks:
+        - name: noExistingTicket
+          branch: searched
+          description: Three pages of broader Zoho results contain no ticket for jane@example.test in department 1892000000006907.
+          default: true
+          pages:
+            - {tickets: [], totalMatched: 51, nextFrom: 25}
+            - {tickets: [], totalMatched: 51, nextFrom: 50}
+            - {tickets: [], totalMatched: 51}
+        - name: searchScopeRejected
+          branch: providerRejected
+          description: The search has a missing Desk.tickets.READ scope and Zoho Desk returns HTTP 403.
+          failure: {kind: AUTHORIZATION, message: Zoho Desk refused the search (HTTP 403).}
+        - name: invalidSearchPage
+          branch: invalidResponse
+          description: The search response has no usable ticket page.
+          failure: {kind: PROTOCOL, message: Zoho Desk returned an invalid search page.}
     - name: getTicket
       goName: GetTicket
       inputType: GetTicketInput
@@ -363,6 +381,28 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: openedTicketDetails
+          branch: found
+          description: Ticket 1892000000099001 created for jane@example.test is read before a follow-up.
+          default: true
+          output:
+            ticket: {id: "1892000000099001", ticketNumber: "101", subject: Billing question, descriptionHtml: "<div>Please check my invoice.</div>", status: Open, statusType: Open, priority: High, channel: Web, departmentId: "1892000000006907", contactId: "1892000000042032", email: jane@example.test, createdAt: "2026-01-28T09:00:00Z", modifiedAt: "2026-01-28T09:00:00Z"}
+            contact: {id: "1892000000042032", email: jane@example.test, firstName: Jane, lastName: Doe}
+            threads: []
+            comments: []
+        - name: ticketNotFound
+          branch: notFound
+          description: The requested ticket ID does not exist and Zoho Desk returns HTTP 404.
+          failure: {kind: NOT_FOUND, message: Zoho Desk found no such ticket (HTTP 404).}
+        - name: ticketReadScopeRejected
+          branch: providerRejected
+          description: The ticket read has a missing Desk.tickets.READ scope and Zoho Desk returns HTTP 403.
+          failure: {kind: AUTHORIZATION, message: Zoho Desk refused the ticket read (HTTP 403).}
+        - name: invalidTicketDetails
+          branch: invalidResponse
+          description: The returned ticket has malformed required fields.
+          failure: {kind: PROTOCOL, message: Zoho Desk returned invalid ticket details.}
     - name: createTicket
       goName: CreateTicket
       inputType: CreateTicketInput
@@ -380,6 +420,17 @@ spec:
         executeMethodTimeout: 30s
         durability: sync
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could create another ticket because Zoho Desk has no provider key or ticket lookup by Call ID."}}
+      mocks:
+        - name: createdBillingTicket
+          branch: created
+          description: The new jane@example.test billing issue in department 1892000000006907 creates ticket 1892000000099001.
+          default: true
+          output:
+            ticket: {id: "1892000000099001", ticketNumber: "101", subject: Billing question, descriptionHtml: "<div>Please check my invoice.</div>", status: Open, statusType: Open, priority: High, channel: Web, departmentId: "1892000000006907", contactId: "1892000000042032", email: jane@example.test, createdAt: "2026-01-28T09:00:00Z", modifiedAt: "2026-01-28T09:00:00Z"}
+        - name: invalidDepartment
+          branch: providerRejected
+          description: The supplied department ID is unknown and Zoho Desk returns HTTP 422 without creating a ticket.
+          failure: {kind: VALIDATION, message: Zoho Desk rejected the ticket (HTTP 422).}
     - name: updateTicket
       goName: UpdateTicket
       inputType: UpdateTicketInput
@@ -397,6 +448,25 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: reprioritizedBillingTicket
+          branch: updated
+          description: Ticket 1892000000099001 now has the requested High priority and Open status.
+          default: true
+          output:
+            ticket: {id: "1892000000099001", ticketNumber: "101", subject: Billing question, status: Open, statusType: Open, priority: High, channel: Web, departmentId: "1892000000006907", contactId: "1892000000042032", email: jane@example.test, createdAt: "2026-01-28T09:00:00Z", modifiedAt: "2026-01-28T09:01:00Z"}
+        - name: updateTicketNotFound
+          branch: notFound
+          description: The requested update ticket ID does not exist and Zoho Desk returns HTTP 404.
+          failure: {kind: NOT_FOUND, message: Zoho Desk found no such ticket (HTTP 404).}
+        - name: invalidStatus
+          branch: providerRejected
+          description: The requested status is unknown and Zoho Desk returns HTTP 422 without applying it.
+          failure: {kind: VALIDATION, message: Zoho Desk rejected the ticket update (HTTP 422).}
+        - name: invalidUpdatedTicket
+          branch: invalidResponse
+          description: Zoho Desk accepted the update but returned an invalid ticket body.
+          failure: {kind: PROTOCOL, message: Zoho Desk returned an invalid updated ticket.}
     - name: addComment
       goName: AddComment
       inputType: AddCommentInput
@@ -415,3 +485,18 @@ spec:
         executeMethodTimeout: 30s
         durability: sync
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could add another comment because Zoho Desk has no provider key or comment lookup by Call ID."}}
+      mocks:
+        - name: privateTriageComment
+          branch: added
+          description: Ticket 1892000000099001 receives a private triage comment after creation.
+          default: true
+          output:
+            comment: {id: "1892000000099002", isPublic: false, content: "Triage started for jane@example.test.", contentType: plainText, commenterId: "1892000000056007", commentedAt: "2026-01-28T09:02:00Z"}
+        - name: commentTicketNotFound
+          branch: notFound
+          description: The target ticket ID does not exist and Zoho Desk returns HTTP 404 without adding a comment.
+          failure: {kind: NOT_FOUND, message: Zoho Desk found no such ticket (HTTP 404).}
+        - name: invalidComment
+          branch: providerRejected
+          description: Zoho Desk rejects the comment content with HTTP 422 and adds nothing.
+          failure: {kind: VALIDATION, message: Zoho Desk rejected the comment (HTTP 422).}
