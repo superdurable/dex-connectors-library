@@ -131,7 +131,7 @@ func SearchMessagesRetry(failure sdkgo.Failure, after time.Duration) connectormo
 	return connectormock.Retry[outlookmail.SearchMessagesOutput](failure, after)
 }
 
-// SearchMessagesCustomerInbox is the manifest mock customerInbox: Three newest-first pages with a lookalike sender and a repeated customer message.
+// SearchMessagesCustomerInbox is the manifest mock customerInbox: Three newest-first Inbox pages for a search from jane@acme.example.com in folder inbox, with a lookalike sender and a repeated customer message; another sender or folder needs a script.
 func SearchMessagesCustomerInbox() connectormock.Case[outlookmail.SearchMessagesOutput] {
 	pages := []outlookmail.SearchMessagesOutput{
 		connectormock.MustDecodeOutput[outlookmail.SearchMessagesOutput](`{"folder":"inbox","messages":[{"id":"AAMkAGI2MDEyMzQ1AAABC001","conversationId":"AAQkAGI2MDEyMzQ1CONV001","internetMessageId":"\u003crefund-request@mail.acme.example.com.au\u003e","folderId":"AAMkAGI2MDEyMzQ1FOLDERINB","subject":"Refund request","from":{"name":"Jane Example","address":"jane@acme.example.com.au"},"sender":{"name":"Jane Example","address":"jane@acme.example.com.au"},"to":[{"name":"Contoso Support","address":"support@contoso.example"}],"receivedAt":"2026-09-28T10:00:00Z","sentAt":"2026-09-28T09:59:58Z","flagStatus":"notFlagged","importance":"normal","preview":"Please refund my last order."}],"hasMore":true,"nextPageCursor":"https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?$top=10\u0026$skip=10"}`),
@@ -229,7 +229,7 @@ func SendMessageRetry(failure sdkgo.Failure, after time.Duration) connectormock.
 	return connectormock.Retry[outlookmail.SentMessage](failure, after)
 }
 
-// SendMessageNewMessageSent is the manifest mock newMessageSent: A new refund message accepted for sending.
+// SendMessageNewMessageSent is the manifest mock newMessageSent: A new message to jane@acme.example.com with subject 'Your refund for order 88213', accepted for sending; other recipients or subjects need a script.
 func SendMessageNewMessageSent() connectormock.Case[outlookmail.SentMessage] {
 	value := connectormock.MustDecodeOutput[outlookmail.SentMessage](`{"messageId":"AAMkAGI2MDEyMzQ1AAABC010","internetMessageId":"\u003cmock-new-88213@contoso.example\u003e","conversationId":"AAQkAGI2MDEyMzQ1CONV010","subject":"Your refund for order 88213","recipients":["jane@acme.example.com"],"idempotencyMarker":"dex-8f14e45f-ceea-5a7d-9b1c-2f6e3d4a5b60"}`)
 	return connectormock.Branch(outlookmail.SendMessageBranchSent, value, nil)
@@ -276,7 +276,7 @@ func ReplyToMessageRetry(failure sdkgo.Failure, after time.Duration) connectormo
 	return connectormock.Retry[outlookmail.SentMessage](failure, after)
 }
 
-// ReplyToMessageCustomerReplySent is the manifest mock customerReplySent: A threaded refund reply accepted for sending.
+// ReplyToMessageCustomerReplySent is the manifest mock customerReplySent: A threaded reply to message AAMkAGI2MDEyMzQ1AAABC002 from jane@acme.example.com, accepted for sending; a reply to another message needs a script.
 func ReplyToMessageCustomerReplySent() connectormock.Case[outlookmail.SentMessage] {
 	value := connectormock.MustDecodeOutput[outlookmail.SentMessage](`{"messageId":"AAMkAGI2MDEyMzQ1AAABC011","internetMessageId":"\u003cmock-reply-88213@contoso.example\u003e","conversationId":"AAQkAGI2MDEyMzQ1CONV002","subject":"RE: Refund request for order 88213","recipients":["jane@acme.example.com"],"idempotencyMarker":"dex-3c59dc04-8b2f-5e1a-a6d4-71b0c9e2f845"}`)
 	return connectormock.Branch(outlookmail.ReplyToMessageBranchSent, value, nil)

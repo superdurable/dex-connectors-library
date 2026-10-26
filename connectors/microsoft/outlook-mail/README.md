@@ -380,6 +380,14 @@ conclusive provider rejections. Send and reply defaults describe accepted
 messages. An uncertain send has no default or named case; a test scripts one
 with `ReplyToMessageUncertain` or `SendMessageUncertain`.
 
+The defaults describe the Inbox of `jane@acme.example.com`. The search fits
+`From: jane@acme.example.com` in folder `inbox`, the send default answers a
+message to Jane with subject "Your refund for order 88213", and the reply
+default answers a reply to her message `AAMkAGI2MDEyMzQ1AAABC002`. They
+answer the same way whatever the request names, so a test for another
+customer, subject, or message scripts `SearchMessages`, `SendMessage`, or
+`ReplyToMessage`.
+
 The [runnable integration test](examples/support-reply/flow/workflow_mock_integration_test.go)
 builds the example Flow on the mock:
 

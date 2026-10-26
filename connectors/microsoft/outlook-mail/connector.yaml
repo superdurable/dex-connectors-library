@@ -199,7 +199,7 @@ spec:
       mocks:
         - name: customerInbox
           branch: searched
-          description: Three newest-first pages with a lookalike sender and a repeated customer message.
+          description: "Three newest-first Inbox pages for a search from jane@acme.example.com in folder inbox, with a lookalike sender and a repeated customer message; another sender or folder needs a script."
           default: true
           pages:
             - folder: inbox
@@ -340,7 +340,7 @@ spec:
       mocks:
         - name: newMessageSent
           branch: sent
-          description: A new refund message accepted for sending.
+          description: "A new message to jane@acme.example.com with subject 'Your refund for order 88213', accepted for sending; other recipients or subjects need a script."
           default: true
           output:
             messageId: AAMkAGI2MDEyMzQ1AAABC010
@@ -371,7 +371,7 @@ spec:
       mocks:
         - name: customerReplySent
           branch: sent
-          description: A threaded refund reply accepted for sending.
+          description: "A threaded reply to message AAMkAGI2MDEyMzQ1AAABC002 from jane@acme.example.com, accepted for sending; a reply to another message needs a script."
           default: true
           output:
             messageId: AAMkAGI2MDEyMzQ1AAABC011
