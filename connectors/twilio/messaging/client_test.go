@@ -178,7 +178,11 @@ func TestSendMessageClassifiesConclusiveRejections(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, messaging.SendMessageBranchProviderRejected, result.Branch)
 			require.Equal(t, testCase.kind, result.Failure.Kind)
-			require.Equal(t, fmt.Sprintf("Twilio rejected the message with error %d", testCase.errorCode), result.Failure.Message)
+			if testCase.status == http.StatusUnauthorized {
+				require.Equal(t, "Twilio credential cannot be refreshed after rejection", result.Failure.Message)
+			} else {
+				require.Equal(t, fmt.Sprintf("Twilio rejected the message with error %d", testCase.errorCode), result.Failure.Message)
+			}
 			require.Equal(t, testCase.errorCode, result.Value.ErrorCode)
 			require.Empty(t, result.Value.SID)
 			require.Equal(t, testRecipient, result.Value.To)
@@ -215,7 +219,7 @@ func TestSendMessageNeverRetriesAnOutcomeTwilioMayHaveAccepted(t *testing.T) {
 		kind    sdkgo.FailureKind
 	}{
 		{"internal server error", respondWithStatus(http.StatusInternalServerError), messaging.Config{}, sdkgo.FailureAvailability},
-		{"service unavailable", respondWithStatus(http.StatusServiceUnavailable), messaging.Config{}, sdkgo.FailureAvailability},
+		{"conflict without a message SID", respondWithStatus(http.StatusConflict), messaging.Config{}, sdkgo.FailureAvailability},
 		{"gateway request timeout", respondWithStatus(http.StatusRequestTimeout), messaging.Config{}, sdkgo.FailureAvailability},
 		{"accepted without a usable message", func(response http.ResponseWriter, _ *http.Request) {
 			response.WriteHeader(http.StatusCreated)
@@ -323,7 +327,6 @@ func TestOperationsRequireUsableCredentialsBeforeCallingTwilio(t *testing.T) {
 		credentials sdkgo.CredentialProvider[messaging.Credentials]
 		kind        sdkgo.FailureKind
 	}{
-		{"missing connection", messaging.Config{}, sdkgo.StaticCredentialProvider[messaging.Credentials]{}, sdkgo.FailureAuthentication},
 		{"missing method", messaging.Config{}, staticCredentials(messaging.Credentials{AuthToken: sdkgo.NewSecretString(testAuthToken)}), sdkgo.FailureAuthentication},
 		{"API key without its SID", messaging.Config{}, staticCredentials(messaging.Credentials{
 			AuthMethodID: messaging.APIKeyAuthMethodID, APIKeySecret: sdkgo.NewSecretString(testAPIKeySecret),
@@ -349,6 +352,19 @@ func TestOperationsRequireUsableCredentialsBeforeCallingTwilio(t *testing.T) {
 			require.Equal(t, testCase.kind, getResult.Failure.Kind)
 		})
 	}
+	require.Empty(t, provider.recordedRequests())
+}
+
+func TestMissingConnectionRetriesBeforeProviderRequest(t *testing.T) {
+	provider := newTwilioFake(t, respondWithStatus(http.StatusCreated))
+	client := newTwilioClient(t, provider.URL, messaging.Config{DefaultSender: testSender}, sdkgo.StaticCredentialProvider[messaging.Credentials]{})
+	_, err := sdkgo.RunMutation(newTestDexContext("missing-send-connection"), client.SendMessage(), twilioConnection, validSendInput())
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+	_, err = sdkgo.RunQuery(newTestDexContext("missing-read-connection"), client.GetMessage(), twilioConnection, messaging.GetMessageInput{MessageSID: testMessageSID})
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
 	require.Empty(t, provider.recordedRequests())
 }
 

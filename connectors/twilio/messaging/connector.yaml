@@ -5,7 +5,7 @@ metadata:
   displayName: Twilio Messaging
   description: Send SMS, MMS, and WhatsApp messages through Twilio Programmable Messaging and read their delivery status.
   company: Twilio
-  version: v0.21.2
+  version: v0.22.0
 spec:
   provider: twilio
   codegen:
@@ -87,18 +87,30 @@ spec:
       inputType: SendMessageInput
       outputType: Message
       kind: mutation
-      description: Send one SMS, MMS, or WhatsApp message from a Twilio number or Messaging Service to one recipient.
+      description: Send one SMS, MMS, or WhatsApp message from a Twilio number or Messaging Service to one recipient; synchronous durability makes the single-dispatch checkpoint visible to retries because Twilio provides no message idempotency key.
       idempotency: required
       branches:
         - {id: accepted, goName: Accepted, description: "Twilio created the message and returned its SID; delivery status arrives later through getMessage."}
         - {id: providerRejected, goName: ProviderRejected, description: "Twilio conclusively rejected the message, such as an invalid To number, an unverified trial recipient, an unsubscribed recipient, or an unusable sender; nothing was sent.", optional: true}
         - {id: uncertain, goName: Uncertain, description: "The request was dispatched but its outcome cannot be confirmed; Twilio has no idempotency key, so the message may exist and must not be resent automatically.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
-      # Sync: an async fallback attempt re-sends a slow request, and Twilio has no idempotency key.
+      # Sync makes the single-dispatch heartbeat visible to later attempts; Twilio has no idempotency key.
       execution:
         executeMethodTimeout: 30s
         durability: sync
+        dispatchFence: true
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A replayed message POST could send the SMS twice because Twilio offers no idempotency key or message lookup by Call ID."}}
+      mocks:
+        - name: queuedText
+          branch: accepted
+          description: "A send to +14155550123 is queued from +14155550100 with a synthetic account ID; script another recipient or sender."
+          default: true
+          output: {sid: SMfedcba9876543210fedcba9876543210, accountSid: ACmockAccount, from: "+14155550100", to: "+14155550123", status: queued, direction: outbound-api, segmentCount: 1, createdAt: "2026-09-30T17:04:05Z"}
+        - name: trialRecipientRejected
+          branch: providerRejected
+          description: "A trial account send to an unverified recipient is rejected before message creation."
+          output: {accountSid: ACmockAccount, from: "+14155550100", to: "+14155550123", errorCode: 21608}
+          failure: {kind: PROVIDER_REJECTION, message: Twilio rejected the message with error 21608}
     - name: getMessage
       goName: GetMessage
       inputType: GetMessageInput
@@ -115,3 +127,21 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: deliveredText
+          branch: found
+          description: "The queued SMfedcba9876543210fedcba9876543210 message to +14155550123 was delivered under a synthetic account ID; script another SID."
+          default: true
+          output: {sid: SMfedcba9876543210fedcba9876543210, accountSid: ACmockAccount, from: "+14155550100", to: "+14155550123", status: delivered, direction: outbound-api, segmentCount: 1, createdAt: "2026-09-30T17:04:05Z", sentAt: "2026-09-30T17:04:06Z"}
+        - name: messageMissing
+          branch: notFound
+          description: "The requested message SID does not exist in this account."
+          failure: {kind: NOT_FOUND, message: Twilio has no message with that SID.}
+        - name: messageReadRejected
+          branch: providerRejected
+          description: "Twilio returns 403 because this account credential lacks permission to read the requested message."
+          failure: {kind: AUTHORIZATION, message: Twilio rejected the message query.}
+        - name: invalidMessageResponse
+          branch: invalidResponse
+          description: "Twilio returned a malformed response for the requested message SID."
+          failure: {kind: PROTOCOL, message: Twilio returned an invalid message.}
