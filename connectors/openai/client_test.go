@@ -20,9 +20,11 @@ var openAIConnection = sdkgo.ConnectionRef{Provider: "openai", Name: "default"}
 
 func TestCreateStructuredResponseCapturesUsageAndReceipt(t *testing.T) {
 	var requestBody map[string]any
+	var clientRequestID string
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		require.Equal(t, "Bearer test-key", request.Header.Get("Authorization"))
-		require.NotEmpty(t, request.Header.Get("Idempotency-Key"))
+		require.Empty(t, request.Header.Values("Idempotency-Key"), "net/http replays a POST that carries Idempotency-Key")
+		clientRequestID = request.Header.Get("X-Client-Request-Id")
 		require.NoError(t, json.NewDecoder(request.Body).Decode(&requestBody))
 		response.Header().Set("X-Request-Id", "req_123")
 		response.Header().Set("X-RateLimit-Remaining-Tokens", "900")
@@ -48,6 +50,7 @@ func TestCreateStructuredResponseCapturesUsageAndReceipt(t *testing.T) {
 	require.Equal(t, 2, result.Value.Usage.ReasoningOutputTokens)
 	require.Equal(t, "req_123", result.Receipt.ProviderRequestID)
 	require.NotEmpty(t, result.Receipt.IdempotencyKey)
+	require.Equal(t, string(result.Receipt.CallID), clientRequestID, "the Call ID is sent as X-Client-Request-Id")
 	require.Equal(t, "900", result.Receipt.Metadata["x-ratelimit-remaining-tokens"])
 	text, ok := requestBody["text"].(map[string]any)
 	require.True(t, ok)
@@ -128,6 +131,69 @@ func TestMalformedSuccessResponseLeavesMutationUnknown(t *testing.T) {
 	require.Equal(t, openai.CreateResponseBranchUncertain, result.Branch)
 	require.Equal(t, sdkgo.FailureProtocol, result.Failure.Kind)
 	require.NotEmpty(t, result.Receipt.CallID)
+}
+
+func TestCreateResponseRetriesProvenUnsentRequest(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		t.Fatal("request must not reach the provider")
+	}))
+	endpoint := server.URL
+	server.Close()
+	client, err := openai.New(openai.Config{Endpoint: endpoint}, sdkgo.StaticCredentialProvider[openai.Credentials]{
+		openAIConnection: {APIKey: sdkgo.NewSecretString("test-key")},
+	})
+	require.NoError(t, err)
+	_, err = sdkgo.RunMutation(testsupport.NewDexContext("flow-1", "unsent"), client.CreateResponse(), openAIConnection, openai.CreateRequest{Input: "profile"})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "request was not sent")
+}
+
+func TestCreateResponseRetriesRateLimitAndUnavailable(t *testing.T) {
+	for _, status := range []int{http.StatusTooManyRequests, http.StatusServiceUnavailable} {
+		t.Run(fmt.Sprint(status), func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+				response.WriteHeader(status)
+			}))
+			defer server.Close()
+			client := newClient(t, server.URL)
+			_, err := sdkgo.RunMutation(testsupport.NewDexContext("flow-1", fmt.Sprint(status)), client.CreateResponse(), openAIConnection, openai.CreateRequest{Input: "profile"})
+			require.Error(t, err)
+			require.Contains(t, err.Error(), fmt.Sprint(status))
+		})
+	}
+}
+
+func TestCreateResponseKeepsUnconfirmedServerFailureUncertain(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		response.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+	client := newClient(t, server.URL)
+	result, err := sdkgo.RunMutation(testsupport.NewDexContext("flow-1", "server-failure"), client.CreateResponse(), openAIConnection, openai.CreateRequest{Input: "profile"})
+	require.NoError(t, err)
+	require.Equal(t, openai.CreateResponseBranchUncertain, result.Branch)
+}
+
+func TestCreateResponseKeepsDispatchedLostResponseUncertain(t *testing.T) {
+	var requestCount int
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		requestCount++
+		require.Equal(t, http.MethodPost, request.Method)
+		connection, _, err := response.(http.Hijacker).Hijack()
+		require.NoError(t, err)
+		require.NoError(t, connection.Close())
+	}))
+	defer server.Close()
+	client := newClient(t, server.URL)
+	ctx := testsupport.NewDexContext("flow-1", "lost-response")
+	result, err := sdkgo.RunMutation(ctx, client.CreateResponse(), openAIConnection, openai.CreateRequest{Input: "profile"})
+	require.NoError(t, err)
+	require.Equal(t, openai.CreateResponseBranchUncertain, result.Branch)
+	ctx.AttemptNo = 2
+	result, err = sdkgo.RunMutation(ctx, client.CreateResponse(), openAIConnection, openai.CreateRequest{Input: "profile"})
+	require.NoError(t, err)
+	require.Equal(t, openai.CreateResponseBranchUncertain, result.Branch)
+	require.Equal(t, 1, requestCount)
 }
 
 func TestConfirmedRejectionUsesProviderRejectedBranch(t *testing.T) {

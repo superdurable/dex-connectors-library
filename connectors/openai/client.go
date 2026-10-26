@@ -16,16 +16,20 @@ package openai
 import (
 	"bytes"
 	"cmp"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptrace"
 	"net/url"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
 )
 
 // rateLimitHeaderNames are the OpenAI rate-limit headers every operation copies into Receipt metadata.
@@ -48,12 +52,13 @@ func WithHTTPClient(client *http.Client) Option {
 
 // Client executes authenticated OpenAI requests for connector operations.
 type Client struct {
-	endpoint         *url.URL
-	model            string
-	httpClient       *http.Client
-	credentials      sdkgo.CredentialProvider[Credentials]
-	maxResponseBytes int64
-	maxSSEEventBytes int
+	endpoint                    *url.URL
+	model                       string
+	httpClient                  *http.Client
+	credentials                 sdkgo.CredentialProvider[Credentials]
+	maxResponseBytes            int64
+	maxSSEEventBytes            int
+	checkpointHeartbeatInterval time.Duration
 }
 
 // StructuredOutput configures a JSON Schema response format for CreateRequest.
@@ -170,6 +175,7 @@ func New(config Config, credentials sdkgo.CredentialProvider[Credentials], optio
 	return &Client{
 		endpoint: endpoint, model: config.Model, httpClient: httpClient, credentials: credentials,
 		maxResponseBytes: config.MaxResponseBytes, maxSSEEventBytes: int(config.MaxSSEEventBytes),
+		checkpointHeartbeatInterval: checkpointHeartbeatInterval,
 	}, nil
 }
 
@@ -188,13 +194,21 @@ func (CreateResponseOperation) Definition() sdkgo.MutationDefinition {
 	return CreateResponseDefinition
 }
 
-// IdempotencyKey derives the provider key from the stable connector call ID.
+// IdempotencyKey returns the stable connector Call ID. createResponse sends
+// it as the X-Client-Request-Id header, which OpenAI logs for support but does
+// not deduplicate on.
 func (CreateResponseOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateRequest) sdkgo.IdempotencyKey {
 	return sdkgo.IdempotencyKey(callID)
 }
 
 // Invoke executes one provider call and classifies its attempt. A request
 // without a model sends the connection's model.
+//
+// Invoke fences retries with a Dex heartbeat checkpoint, so it must run in a
+// Step with sync Execute durability that records no heartbeats of its own.
+// Attempt 1 sends the request. A later attempt reads back a response whose ID
+// an earlier attempt recorded, sends again only when the previous attempt
+// proved that no response exists, and otherwise selects uncertain.
 func (operation CreateResponseOperation) Invoke(call sdkgo.Call, input CreateRequest) sdkgo.MutationAttempt[Response] {
 	model := cmp.Or(strings.TrimSpace(input.Model), operation.client.model)
 	if failure := checkCreateInput(input.Input, model); failure != nil {
@@ -215,28 +229,234 @@ func (operation CreateResponseOperation) Invoke(call sdkgo.Call, input CreateReq
 	if streaming {
 		payload["stream"] = true
 	}
-	request, failure := operation.client.newRequest(call, http.MethodPost, "/responses", call.IdempotencyKey, payload)
+	var previous createResponseCheckpoint
+	hasPrevious, err := call.Context.GetLastHeartbeatValue(&previous)
+	if err != nil || hasPrevious && previous.CallID != call.ID {
+		failure := openAIFailure(sdkgo.FailureLocalDefect, "createResponse", "the Step's heartbeat value is not this call's checkpoint; createResponse must be the Step's only heartbeat writer")
+		return sdkgo.NewMutationBranch(CreateResponseBranchDefect, Response{}, &failure, sdkgo.Receipt{})
+	}
+	heartbeat := newCreateResponseHeartbeat(call, operation.client.checkpointHeartbeatInterval)
+	defer heartbeat.stop()
+	attempt := call.Context.Attempt()
+	switch {
+	case hasPrevious && previous.ResponseID != "":
+		if !isSafeResponseID(previous.ResponseID) {
+			failure := openAIFailure(sdkgo.FailureLocalDefect, "createResponse", "saved response ID is invalid")
+			return sdkgo.NewMutationBranch(CreateResponseBranchDefect, Response{}, &failure, sdkgo.Receipt{})
+		}
+		// The earlier checkpoint already holds the ID, so a failed record changes nothing.
+		_ = heartbeat.begin(createResponseCheckpoint{CallID: call.ID, Attempt: attempt, ResponseID: previous.ResponseID})
+		return operation.readBackResponse(call, heartbeat, previous.ResponseID, nil, "")
+	case !hasPrevious && attempt == 1, hasPrevious && previous.CanResend && previous.Attempt == attempt-1:
+		return operation.sendCreateRequest(call, heartbeat, payload, streaming)
+	case !hasPrevious:
+		return sdkgo.NewMutationUncertain(Response{}, openAIFailure(sdkgo.FailureTransport, "createResponse",
+			"an earlier attempt left no checkpoint and may have created a response; createResponse requires sync Execute durability"),
+			responseReceipt(call, "", nil, ""))
+	default:
+		return sdkgo.NewMutationUncertain(Response{}, openAIFailure(sdkgo.FailureTransport, "createResponse",
+			"an earlier attempt may have created a response without recording its ID"), responseReceipt(call, "", nil, ""))
+	}
+}
+
+// sendCreateRequest records the dispatch marker as the attempt's first
+// heartbeat and then sends one create request.
+func (operation CreateResponseOperation) sendCreateRequest(call sdkgo.Call, heartbeat *createResponseHeartbeat, payload map[string]any, streaming bool) sdkgo.MutationAttempt[Response] {
+	request, failure := operation.client.newRequest(call, http.MethodPost, "/responses", string(call.ID), payload)
 	if failure != nil {
 		return sdkgo.NewMutationBranch(CreateResponseBranchDefect, Response{}, &failure.failure, sdkgo.Receipt{})
 	}
+	if err := heartbeat.begin(createResponseCheckpoint{CallID: call.ID, Attempt: call.Context.Attempt()}); err != nil {
+		return retryCreateResponse(heartbeat, openAIFailure(sdkgo.FailureAvailability, "createResponse", "dispatch checkpoint could not be recorded"), 0)
+	}
+	var isDispatched atomic.Bool
+	var hasTransportTrace atomic.Bool
+	request = request.WithContext(httptrace.WithClientTrace(request.Context(), &httptrace.ClientTrace{
+		GetConn:      func(string) { hasTransportTrace.Store(true) },
+		WroteHeaders: func() { isDispatched.Store(true) },
+		WroteRequest: func(info httptrace.WroteRequestInfo) {
+			if info.Err == nil {
+				isDispatched.Store(true)
+			}
+		},
+	}))
 	response, err := operation.client.httpClient.Do(request)
 	if err != nil {
+		if hasTransportTrace.Load() && !isDispatched.Load() {
+			return retryCreateResponse(heartbeat, openAIFailure(sdkgo.FailureTransport, "createResponse", "request was not sent"), 0)
+		}
 		return sdkgo.NewMutationUncertain(Response{}, openAIFailure(sdkgo.FailureTransport, "createResponse", "provider outcome is unknown"), responseReceipt(call, "", http.Header{}, ""))
 	}
 	defer response.Body.Close()
 	requestID := response.Header.Get("X-Request-Id")
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return createStatusAttempt(call, response.StatusCode, response.Header, requestID)
+		return createStatusAttempt(call, heartbeat, response.StatusCode, response.Header, requestID)
 	}
 	if streaming {
-		return operation.readStream(call, response.Body, response.Header, requestID)
+		return operation.readStream(call, heartbeat, response.Body, response.Header, requestID)
 	}
 	wire, readFailure := operation.client.readResponse(response.Body, "createResponse")
 	if readFailure != nil {
 		return sdkgo.NewMutationUncertain(Response{}, *readFailure, responseReceipt(call, requestID, response.Header, ""))
 	}
 	result := convertResponse(wire)
-	return sdkgo.NewMutationBranch(CreateResponseBranchCompleted, result, nil, responseReceipt(call, requestID, response.Header, result.ID))
+	if result.ID == "" {
+		return sdkgo.NewMutationUncertain(Response{}, openAIFailure(sdkgo.FailureProtocol, "createResponse", "provider response has no ID"), responseReceipt(call, requestID, response.Header, ""))
+	}
+	if !isSafeResponseID(result.ID) {
+		return sdkgo.NewMutationUncertain(Response{}, openAIFailure(sdkgo.FailureProtocol, "createResponse", "provider response ID is invalid"), responseReceipt(call, requestID, response.Header, ""))
+	}
+	// A lost checkpoint makes a later attempt select uncertain, never send again.
+	_ = heartbeat.recordResponseID(result.ID)
+	return operation.resolveKnownResponse(call, heartbeat, result, response.Header, requestID)
+}
+
+// retryCreateResponse lets the next attempt send again. Call it only when this
+// attempt proved that no response exists.
+func retryCreateResponse(heartbeat *createResponseHeartbeat, failure sdkgo.Failure, retryAfter time.Duration) sdkgo.MutationAttempt[Response] {
+	// A lost checkpoint makes the next attempt select uncertain instead of sending.
+	_ = heartbeat.recordCanResend()
+	return sdkgo.NewMutationRetry[Response](failure, retryAfter)
+}
+
+func (operation CreateResponseOperation) resolveKnownResponse(call sdkgo.Call, heartbeat *createResponseHeartbeat, result Response, header http.Header, requestID string) sdkgo.MutationAttempt[Response] {
+	receipt := responseReceipt(call, requestID, header, result.ID)
+	switch result.Status {
+	case "completed":
+		return sdkgo.NewMutationBranch(CreateResponseBranchCompleted, result, nil, receipt)
+	case "failed", "incomplete":
+		failure := openAIFailure(sdkgo.FailureProviderRejection, "createResponse", "provider returned a "+result.Status+" response")
+		return sdkgo.NewMutationBranch(CreateResponseBranchFailed, result, &failure, receipt)
+	case "cancelled":
+		// The connector never cancels; OpenAI cancels a synchronous response when its connection closes.
+		return retryCreateResponse(heartbeat, openAIFailure(sdkgo.FailureAvailability, "createResponse", "response "+result.ID+" was cancelled before it completed"), 0)
+	case "queued", "in_progress":
+		return operation.readBackResponse(call, heartbeat, result.ID, header, requestID)
+	default:
+		failure := openAIFailure(sdkgo.FailureProtocol, "createResponse", "response "+result.ID+" has no recognized status")
+		return sdkgo.NewMutationUncertain(result, failure, receipt)
+	}
+}
+
+const (
+	readBackInitialInterval = time.Second
+	readBackMaxInterval     = 5 * time.Second
+	readBackRequestTimeout  = 10 * time.Second
+	// readBackDeadlineMargin leaves time to return Retry before Dex abandons the attempt.
+	readBackDeadlineMargin        = 5 * time.Second
+	readBackBudgetWithoutDeadline = 2 * time.Minute
+)
+
+// readBackResponse polls a queued or in-progress response until shortly before the attempt deadline, then returns Retry.
+func (operation CreateResponseOperation) readBackResponse(call sdkgo.Call, heartbeat *createResponseHeartbeat, responseID string, createHeader http.Header, createRequestID string) sdkgo.MutationAttempt[Response] {
+	pollDeadline := readBackDeadline(call.Context)
+	interval := readBackInitialInterval
+	for {
+		if call.Context.Err() != nil {
+			return sdkgo.NewMutationRetry[Response](openAIFailure(sdkgo.FailureAvailability, "createResponse", "response "+responseID+" read-back was interrupted"), 0)
+		}
+		read := operation.client.readStoredResponse(call, responseID, pollDeadline)
+		switch {
+		case read.retryFailure != nil:
+			return sdkgo.NewMutationRetry[Response](*read.retryFailure, 0)
+		case read.unconfirmedFailure != nil:
+			return sdkgo.NewMutationUncertain(Response{ID: responseID}, *read.unconfirmedFailure, responseReceipt(call, createRequestID, createHeader, responseID))
+		case read.isFound && read.response.Status != "queued" && read.response.Status != "in_progress":
+			return operation.resolveKnownResponse(call, heartbeat, read.response, createHeader, createRequestID)
+		}
+		wait := max(interval, read.retryAfter)
+		if time.Now().Add(wait).After(pollDeadline) {
+			return sdkgo.NewMutationRetry[Response](openAIFailure(sdkgo.FailureAvailability, "createResponse", "response "+responseID+" is not confirmed yet"), read.retryAfter)
+		}
+		timer := time.NewTimer(wait)
+		select {
+		case <-timer.C:
+		case <-call.Context.Done():
+			timer.Stop()
+		}
+		interval = min(2*interval, readBackMaxInterval)
+	}
+}
+
+func readBackDeadline(ctx context.Context) time.Time {
+	deadline, hasDeadline := ctx.Deadline()
+	if !hasDeadline {
+		deadline = time.Now().Add(readBackBudgetWithoutDeadline)
+	}
+	return deadline.Add(-readBackDeadlineMargin)
+}
+
+// storedResponseRead is one read-back GET. An empty value means keep polling.
+type storedResponseRead struct {
+	response   Response
+	isFound    bool
+	retryAfter time.Duration
+	// retryFailure ends the attempt with Retry; unconfirmedFailure selects uncertain.
+	retryFailure       *sdkgo.Failure
+	unconfirmedFailure *sdkgo.Failure
+}
+
+func (client *Client) readStoredResponse(call sdkgo.Call, responseID string, pollDeadline time.Time) storedResponseRead {
+	request, failure := client.newRequest(call, http.MethodGet, "/responses/"+url.PathEscape(responseID), "", nil)
+	if failure != nil {
+		retryFailure := openAIFailure(failure.failure.Kind, "createResponse", "response "+responseID+" read-back request could not be built")
+		return storedResponseRead{retryFailure: &retryFailure}
+	}
+	requestDeadline := time.Now().Add(readBackRequestTimeout)
+	if pollDeadline.Before(requestDeadline) {
+		requestDeadline = pollDeadline
+	}
+	requestContext, cancel := context.WithDeadline(request.Context(), requestDeadline)
+	defer cancel()
+	response, err := client.httpClient.Do(request.WithContext(requestContext))
+	if err != nil {
+		return storedResponseRead{}
+	}
+	defer response.Body.Close()
+	unconfirmed := func(kind sdkgo.FailureKind, message string) storedResponseRead {
+		failure := openAIFailure(kind, "createResponse", "response "+responseID+" "+message)
+		return storedResponseRead{unconfirmedFailure: &failure}
+	}
+	switch status := response.StatusCode; {
+	case status >= 200 && status < 300:
+		wire, readFailure := client.readResponse(response.Body, "createResponse")
+		switch {
+		case readFailure != nil && readFailure.Kind == sdkgo.FailureTransport:
+			return storedResponseRead{}
+		case readFailure != nil:
+			return unconfirmed(readFailure.Kind, "read-back is unreadable: "+readFailure.Message)
+		case wire.ID != responseID:
+			return unconfirmed(sdkgo.FailureProtocol, "read-back returned another response ID")
+		}
+		return storedResponseRead{response: convertResponse(wire), isFound: true}
+	case status == http.StatusNotFound:
+		return unconfirmed(sdkgo.FailureNotFound, "was not found on read-back, so its outcome cannot be confirmed")
+	case status == http.StatusUnauthorized:
+		return unconfirmed(sdkgo.FailureAuthentication, "read-back returned HTTP 401; the API key must be valid and allowed to read responses with GET /v1/responses/{id}")
+	case status == http.StatusForbidden:
+		return unconfirmed(sdkgo.FailureAuthorization, "read-back returned HTTP 403; the API key needs read permission for responses (GET /v1/responses/{id})")
+	case status == http.StatusTooManyRequests:
+		return storedResponseRead{retryAfter: retryAfterHeader(response.Header)}
+	case status >= 500:
+		return storedResponseRead{}
+	default:
+		return unconfirmed(sdkgo.FailureProviderRejection, "read-back returned HTTP "+strconv.Itoa(status))
+	}
+}
+
+func isSafeResponseID(responseID string) bool {
+	if len(responseID) < 1 || len(responseID) > 128 {
+		return false
+	}
+	for index := 0; index < len(responseID); index++ {
+		character := responseID[index]
+		isDigit := character >= '0' && character <= '9'
+		isLetter := character >= 'A' && character <= 'Z' || character >= 'a' && character <= 'z'
+		if !isDigit && !isLetter && character != '_' && character != '-' {
+			return false
+		}
+	}
+	return true
 }
 
 // Definition returns the immutable connector operation definition.
@@ -282,7 +502,7 @@ func (operation RetrieveResponseOperation) Invoke(call sdkgo.Call, input Retriev
 	return sdkgo.NewQueryBranch(RetrieveResponseBranchFound, result, nil, responseReceipt(call, requestID, response.Header, result.ID))
 }
 
-func (client *Client) newRequest(call sdkgo.Call, method, path string, key sdkgo.IdempotencyKey, payload any) (*http.Request, *requestFailure) {
+func (client *Client) newRequest(call sdkgo.Call, method, path string, clientRequestID string, payload any) (*http.Request, *requestFailure) {
 	credential, err := client.credentials.Resolve(call)
 	if err != nil {
 		return nil, &requestFailure{failure: openAIFailure(sdkgo.FailureAuthentication, call.Operation.OperationID, "connection credentials are unavailable")}
@@ -304,10 +524,14 @@ func (client *Client) newRequest(call sdkgo.Call, method, path string, key sdkgo
 	if err != nil {
 		return nil, &requestFailure{failure: openAIFailure(sdkgo.FailureLocalDefect, call.Operation.OperationID, "request could not be built")}
 	}
+	if body != nil {
+		// Without GetBody, net/http never replays a create that may have reached OpenAI.
+		request.GetBody = nil
+	}
 	request.Header.Set("Authorization", "Bearer "+apiKey)
 	request.Header.Set("Content-Type", "application/json")
-	if key != "" {
-		request.Header.Set("Idempotency-Key", string(key))
+	if clientRequestID != "" {
+		request.Header.Set("X-Client-Request-Id", clientRequestID)
 	}
 	return request, nil
 }
@@ -330,14 +554,23 @@ func (client *Client) readResponse(body io.Reader, operation string) (wireRespon
 	return wire, nil
 }
 
-func createStatusAttempt(call sdkgo.Call, status int, header http.Header, requestID string) sdkgo.MutationAttempt[Response] {
+func createStatusAttempt(call sdkgo.Call, heartbeat *createResponseHeartbeat, status int, header http.Header, requestID string) sdkgo.MutationAttempt[Response] {
 	failure, retryAfter, isRetryable := classifyOpenAIStatus("createResponse", status, header)
 	if isRetryable {
-		return sdkgo.NewMutationRetry[Response](failure, retryAfter)
+		return retryCreateResponse(heartbeat, failure, retryAfter)
 	}
 	receipt := responseReceipt(call, requestID, header, "")
-	if status >= 500 {
+	switch {
+	case status >= 500:
 		return sdkgo.NewMutationUncertain(Response{}, failure, receipt)
+	case status == http.StatusRequestTimeout:
+		// A timeout reply does not prove that no response was stored.
+		return sdkgo.NewMutationUncertain(Response{}, openAIFailure(sdkgo.FailureTransport, "createResponse",
+			"provider returned HTTP 408 without a response ID, so a response may exist"), receipt)
+	case status == http.StatusConflict:
+		// OpenAI offers no key or read-back that could resolve a conflicting create.
+		return sdkgo.NewMutationUncertain(Response{}, openAIFailure(sdkgo.FailureConflict, "createResponse",
+			"provider returned HTTP 409 without a response ID, so a response may exist"), receipt)
 	}
 	return sdkgo.NewMutationBranch(CreateResponseBranchProviderRejected, Response{}, &failure, receipt)
 }
@@ -357,6 +590,9 @@ func classifyOpenAIStatus(operation string, status int, header http.Header) (sdk
 	case http.StatusTooManyRequests:
 		kind = sdkgo.FailureRateLimit
 		isRetryable = true
+	case http.StatusServiceUnavailable:
+		kind = sdkgo.FailureAvailability
+		isRetryable = true
 	default:
 		if status >= 500 {
 			kind = sdkgo.FailureAvailability
@@ -365,11 +601,14 @@ func classifyOpenAIStatus(operation string, status int, header http.Header) (sdk
 	}
 	var retryAfter time.Duration
 	if kind == sdkgo.FailureRateLimit {
-		if seconds, err := strconv.Atoi(header.Get("Retry-After")); err == nil && seconds > 0 {
-			retryAfter = time.Duration(seconds) * time.Second
-		}
+		retryAfter = retryAfterHeader(header)
 	}
 	return openAIFailure(kind, operation, "provider returned HTTP "+strconv.Itoa(status)), retryAfter, isRetryable
+}
+
+// retryAfterHeader returns Retry-After in delay-seconds or HTTP-date form, capped at one hour, or zero.
+func retryAfterHeader(header http.Header) time.Duration {
+	return providerhttp.ParseRetryAfter(header.Get("Retry-After"), time.Now())
 }
 
 func openAIFailure(kind sdkgo.FailureKind, operation, message string) sdkgo.Failure {

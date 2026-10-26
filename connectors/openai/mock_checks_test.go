@@ -16,6 +16,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/connectors/openai/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/connectors/openai/openaimock"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 
 const completedResponseBody = `{"id":"resp_real","model":"gpt-6-sol","status":"completed","output":[],"usage":{}}`
@@ -222,28 +223,39 @@ func TestOpenAIMockChecksOnlyJSONSyntaxWithoutStrict(t *testing.T) {
 }
 
 // TestOpenAIMockDeliversWhatTheRealConnectorCompletesForStructuredOutput keeps the answer check from rejecting answers
-// that the real createResponse returns on the completed branch: a refusal without text and an incomplete Response.
+// that the real createResponse returns: a refusal without text on the completed branch, and an incomplete Response,
+// which selects failed with its partial text.
 func TestOpenAIMockDeliversWhatTheRealConnectorCompletesForStructuredOutput(t *testing.T) {
-	bodies := map[string]string{
-		"refusal":    `{"id":"resp_refusal","model":"gpt-6-sol","status":"completed","output":[{"content":[{"type":"refusal","refusal":"I cannot help."}]}],"usage":{}}`,
-		"incomplete": `{"id":"resp_cut","model":"gpt-6-sol","status":"incomplete","output":[{"content":[{"type":"output_text","text":"{\"status\":\"shi"}]}],"usage":{}}`,
-	}
-	for name, body := range bodies {
-		t.Run(name, func(t *testing.T) {
+	for _, test := range []struct {
+		name       string
+		body       string
+		wantBranch sdkgo.BranchID
+		mockCase   func(openai.Response, *sdkgo.Failure) connectormock.Case[openai.Response]
+	}{
+		{
+			name: "refusal", body: `{"id":"resp_refusal","model":"gpt-6-sol","status":"completed","output":[{"content":[{"type":"refusal","refusal":"I cannot help."}]}],"usage":{}}`,
+			wantBranch: openai.CreateResponseBranchCompleted, mockCase: openaimock.CreateResponseCompleted,
+		},
+		{
+			name: "incomplete", body: `{"id":"resp_cut","model":"gpt-6-sol","status":"incomplete","output":[{"content":[{"type":"output_text","text":"{\"status\":\"shi"}]}],"usage":{}}`,
+			wantBranch: openai.CreateResponseBranchFailed, mockCase: openaimock.CreateResponseFailed,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
-				_, _ = response.Write([]byte(body))
+				_, _ = response.Write([]byte(test.body))
 			}))
 			defer server.Close()
-			realResult, err := sdkgo.RunMutation(testsupport.NewDexContext("flow-real", "real-"+name), newClient(t, server.URL).CreateResponse(), openAIConnection, structuredStatusRequest())
+			realResult, err := sdkgo.RunMutation(testsupport.NewDexContext("flow-real", "real-"+test.name), newClient(t, server.URL).CreateResponse(), openAIConnection, structuredStatusRequest())
 			require.NoError(t, err)
-			require.Equal(t, openai.CreateResponseBranchCompleted, realResult.Branch, "the real connector completes this Response")
+			require.Equal(t, test.wantBranch, realResult.Branch)
 
 			recorder := &recordingMockTB{TB: t}
 			mock := openaimock.New(recorder, openAIConnection.Name)
-			mock.CreateResponse().Respond(openaimock.CreateResponseCompleted(realResult.Value, nil))
-			mockResult, err := sdkgo.RunMutation(testsupport.NewDexContext("flow-mock", "mock-"+name), mock.CreateResponse(), openAIConnection, structuredStatusRequest())
+			mock.CreateResponse().Respond(test.mockCase(realResult.Value, realResult.Failure))
+			mockResult, err := sdkgo.RunMutation(testsupport.NewDexContext("flow-mock", "mock-"+test.name), mock.CreateResponse(), openAIConnection, structuredStatusRequest())
 			require.NoError(t, err)
-			require.Equal(t, openai.CreateResponseBranchCompleted, mockResult.Branch)
+			require.Equal(t, test.wantBranch, mockResult.Branch)
 			require.Equal(t, realResult.Value, mockResult.Value)
 			require.Empty(t, recorder.failures())
 		})

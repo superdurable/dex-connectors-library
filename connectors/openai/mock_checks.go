@@ -59,10 +59,10 @@ func ValidateCreateResponseRequest(request CreateRequest) *sdkgo.Failure {
 
 // ValidateCreateResponseAnswer checks a completed answer against the request.
 // A plain request accepts any answer. The real operation also delivers a
-// refusal with empty outputText and, today, an incomplete Response with
-// truncated text on the completed branch, so the structured output check runs
-// only for a Response whose Status is completed (or unset in a scripted
-// answer) and whose outputText is not empty. That answer needs outputText that
+// refusal with empty outputText on the completed branch, and an incomplete
+// Response with truncated text on the failed branch, so the structured output
+// check runs only for a Response whose Status is completed (or unset in a
+// scripted answer) and whose outputText is not empty. That answer needs outputText that
 // is exactly one JSON value, as OpenAI returns it: no Markdown fence and no
 // text around it. OpenAI guarantees schema adherence only with Strict, so
 // only then, and when the schema is in the portable JSON Schema subset of
