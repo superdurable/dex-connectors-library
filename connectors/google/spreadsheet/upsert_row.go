@@ -55,15 +55,18 @@ func (operation UpsertRowOperation) Invoke(call sdkgo.Call, input UpsertRowInput
 	if decision.Kind == singledispatch.FailClosed {
 		return uncertainUpsert(call, operation.client, requestResult{}, "prior dispatch checkpoint cannot be trusted")
 	}
-	credential, credentialFailure, needsReauthorization := operation.client.resolveCredential(call, "upsertRow")
+	credentialContext, cancelCredential := boundedUpsertContext(call.Context)
+	credential, credentialFailure, needsReauthorization := operation.client.resolveCredential(credentialContext, call, "upsertRow")
+	cancelCredential()
 	if credentialFailure != nil {
 		if needsReauthorization {
 			if decision.Kind == singledispatch.SendAllowed {
 				if err := fence.RecordNotSent(); err != nil {
 					return sdkgo.NewMutationRetry[UpsertRowOutput](sheetFailure(sdkgo.FailureAvailability, "upsertRow", "credential checkpoint failed"), 0)
 				}
+				return sdkgo.NewMutationBranch(UpsertRowBranchDefect, UpsertRowOutput{}, credentialFailure, sdkgo.Receipt{})
 			}
-			return sdkgo.NewMutationBranch(UpsertRowBranchDefect, UpsertRowOutput{}, credentialFailure, sdkgo.Receipt{})
+			return sdkgo.NewMutationUncertain(UpsertRowOutput{}, sheetFailure(sdkgo.FailureAuthentication, "upsertRow", "prior append cannot be checked; reconnect the connection"), operation.client.receipt(call, requestResult{}, decision.Marker.ProviderID))
 		}
 		return retryBeforeUpsertWrite(fence, decision.Kind, *credentialFailure, 0)
 	}
@@ -126,7 +129,7 @@ func (operation UpsertRowOperation) Invoke(call sdkgo.Call, input UpsertRowInput
 	}
 	if branch == FindRowBranchFound && isRowMatchingInput(match, input) {
 		action := "updated"
-		if decision.Kind == singledispatch.ReadBackRequired || decision.Marker.State == singledispatch.StateCanResend {
+		if decision.Marker.State == singledispatch.StateClaimed || decision.Marker.State == singledispatch.StateCanResend {
 			action = "inserted"
 		}
 		return sdkgo.NewMutationBranch(UpsertRowBranchUpserted, upsertOutput(action, match.RowNumber, input.SheetName, len(row)), nil, lookupReceipt)
@@ -138,12 +141,12 @@ func (operation UpsertRowOperation) Invoke(call sdkgo.Call, input UpsertRowInput
 		// No marker can follow a safe PUT; replacing the still-present row is repeatable.
 	}
 	if branch == FindRowBranchFound {
-		return operation.replaceRow(call, credential, input, row, match.RowNumber)
+		return operation.replaceRow(call, credential, input, row, match.RowNumber, fence, decision.Kind)
 	}
 	return operation.appendRow(call, credential, input, row, fence)
 }
 
-func (operation UpsertRowOperation) replaceRow(call sdkgo.Call, credential Credentials, input UpsertRowInput, row []string, rowNumber int64) sdkgo.MutationAttempt[UpsertRowOutput] {
+func (operation UpsertRowOperation) replaceRow(call sdkgo.Call, credential Credentials, input UpsertRowInput, row []string, rowNumber int64, fence *singledispatch.Fence, decision singledispatch.DecisionKind) sdkgo.MutationAttempt[UpsertRowOutput] {
 	targetRange := fmt.Sprintf("%s!A%d", quoteSheet(input.SheetName), rowNumber)
 	payload := map[string]any{"range": targetRange, "majorDimension": "ROWS", "values": [][]string{row}}
 	executeTimeout := UpsertRowDefinition.StepDefaults.ExecuteMethodTimeout
@@ -155,19 +158,21 @@ func (operation UpsertRowOperation) replaceRow(call sdkgo.Call, credential Crede
 		}
 	}
 	if time.Until(requestDeadline) < executeTimeout/10 {
-		return sdkgo.NewMutationRetry[UpsertRowOutput](sheetFailure(sdkgo.FailureAvailability, "upsertRow", "insufficient attempt time for row replacement"), 0)
+		return retryBeforeUpsertWrite(fence, decision, sheetFailure(sdkgo.FailureAvailability, "upsertRow", "insufficient attempt time for row replacement"), 0)
 	}
 	requestContext, cancel := context.WithDeadline(call.Context, requestDeadline)
 	defer cancel()
 	var result requestResult
 	var err error
+	needsReauthorization := true
 	for writeAttempt := 0; writeAttempt < 2; writeAttempt++ {
 		result, err = operation.client.writeRequest(requestContext, call, credential, http.MethodPut, input.SpreadsheetID, "/values/"+url.PathEscape(targetRange), url.Values{"valueInputOption": {"RAW"}}, payload)
 		if result.status != http.StatusUnauthorized || writeAttempt != 0 {
 			break
 		}
-		refreshedCredential, refreshed := operation.client.refreshRejectedWriteCredential(requestContext, call, credential)
+		refreshedCredential, refreshed, terminalFailure := operation.client.refreshRejectedWriteCredential(requestContext, call, credential)
 		if !refreshed {
+			needsReauthorization = terminalFailure
 			break
 		}
 		credential = refreshedCredential
@@ -177,16 +182,19 @@ func (operation UpsertRowOperation) replaceRow(call sdkgo.Call, credential Crede
 		return sdkgo.NewMutationBranch(UpsertRowBranchDefect, UpsertRowOutput{}, failurePointer(requestFailure.kind, "upsertRow", requestFailure.message), sdkgo.Receipt{})
 	}
 	if result.status == 0 {
-		return sdkgo.NewMutationRetry[UpsertRowOutput](sheetFailure(sdkgo.FailureTransport, "upsertRow", "row replacement response is unavailable"), 0)
+		return retryBeforeUpsertWrite(fence, decision, sheetFailure(sdkgo.FailureTransport, "upsertRow", "row replacement response is unavailable"), 0)
 	}
 	if result.status == http.StatusTooManyRequests || result.status == http.StatusConflict || result.status >= 500 {
 		delay, retryAfterErr := retryAfterDelay(result.header)
 		if retryAfterErr != nil {
-			return sdkgo.NewMutationRetry[UpsertRowOutput](sheetFailure(sdkgo.FailureProtocol, "upsertRow", "provider returned an invalid Retry-After header"), 0)
+			return retryBeforeUpsertWrite(fence, decision, sheetFailure(sdkgo.FailureProtocol, "upsertRow", "provider returned an invalid Retry-After header"), 0)
 		}
-		return sdkgo.NewMutationRetry[UpsertRowOutput](sheetFailure(statusFailureKind(result.status), "upsertRow", "row replacement is temporarily unavailable"), delay)
+		return retryBeforeUpsertWrite(fence, decision, sheetFailure(statusFailureKind(result.status), "upsertRow", "row replacement is temporarily unavailable"), delay)
 	}
 	receipt := operation.client.receipt(call, result, fmt.Sprintf("%s#%s!%d", input.SpreadsheetID, input.SheetName, rowNumber))
+	if result.status == http.StatusUnauthorized {
+		return sdkgo.NewMutationBranch(UpsertRowBranchProviderRejected, UpsertRowOutput{}, failurePointer(sdkgo.FailureAuthentication, "upsertRow", rejectedWriteCredentialMessage(needsReauthorization)), receipt)
+	}
 	if result.status < 200 || result.status >= 300 {
 		return sdkgo.NewMutationBranch(UpsertRowBranchProviderRejected, UpsertRowOutput{}, failurePointer(statusFailureKind(result.status), "upsertRow", "provider rejected the row replacement"), receipt)
 	}
@@ -223,11 +231,12 @@ func (operation UpsertRowOperation) appendRow(call sdkgo.Call, credential Creden
 	}
 	if result.status == http.StatusUnauthorized {
 		refreshContext, cancelRefresh := boundedUpsertContext(call.Context)
-		_, refreshed := operation.client.refreshRejectedWriteCredential(refreshContext, call, credential)
+		_, refreshed, needsReauthorization := operation.client.refreshRejectedWriteCredential(refreshContext, call, credential)
 		cancelRefresh()
 		if refreshed {
 			return retryAfterRejectedAppend(fence, result)
 		}
+		return sdkgo.NewMutationBranch(UpsertRowBranchProviderRejected, UpsertRowOutput{}, failurePointer(sdkgo.FailureAuthentication, "upsertRow", rejectedWriteCredentialMessage(needsReauthorization)), operation.client.receipt(call, result, ""))
 	}
 	if result.status == http.StatusTooManyRequests || result.status == http.StatusServiceUnavailable || result.status == http.StatusConflict {
 		return retryAfterRejectedAppend(fence, result)
@@ -318,6 +327,13 @@ func retryAfterRejectedAppend(fence *singledispatch.Fence, result requestResult)
 		kind = statusFailureKind(result.status)
 	}
 	return sdkgo.NewMutationRetry[UpsertRowOutput](sheetFailure(kind, "upsertRow", "append was not processed"), delay)
+}
+
+func rejectedWriteCredentialMessage(needsReauthorization bool) string {
+	if needsReauthorization {
+		return "provider rejected the write credential; reconnect the connection"
+	}
+	return "provider rejected the write credential; credential refresh is temporarily unavailable"
 }
 
 func uncertainUpsert(call sdkgo.Call, client *Client, result requestResult, message string) sdkgo.MutationAttempt[UpsertRowOutput] {

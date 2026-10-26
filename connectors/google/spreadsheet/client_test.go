@@ -182,7 +182,7 @@ func TestGetValuesMissingConnectionUsesDefectBranch(t *testing.T) {
 	result, err := sdkgo.RunQuery(newDexContext("missing-connection"), client.GetValues(), sheetsConnection, spreadsheet.GetValuesInput{SpreadsheetID: "sheet", Range: "Customers!A:B"})
 	require.NoError(t, err)
 	require.Equal(t, spreadsheet.GetValuesBranchDefect, result.Branch)
-	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+	require.Equal(t, sdkgo.FailureAvailability, result.Failure.Kind)
 }
 
 func TestGetValuesRejectsOversizedResponseWithoutRetry(t *testing.T) {

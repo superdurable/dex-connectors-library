@@ -187,6 +187,43 @@ func TestUpsertAppendUnauthorizedWithoutNewCredentialIsRejected(t *testing.T) {
 	require.Equal(t, 1, writes)
 }
 
+func TestUpsertUnauthorizedRefreshFailureExplainsCredentialRecovery(t *testing.T) {
+	for _, test := range []struct {
+		name         string
+		rows         [][]string
+		refreshError error
+		wantMessage  string
+	}{
+		{name: "append terminal", rows: [][]string{{"accountId", "name"}}, refreshError: sdkgo.NewReauthorizationRequiredError(errors.New("consent revoked")), wantMessage: "reconnect"},
+		{name: "append transient", rows: [][]string{{"accountId", "name"}}, refreshError: errors.New("token endpoint unavailable"), wantMessage: "temporarily unavailable"},
+		{name: "replacement terminal", rows: [][]string{{"accountId", "name"}, {"a-1", "Old"}}, refreshError: sdkgo.NewReauthorizationRequiredError(errors.New("consent revoked")), wantMessage: "reconnect"},
+		{name: "replacement transient", rows: [][]string{{"accountId", "name"}, {"a-1", "Old"}}, refreshError: errors.New("token endpoint unavailable"), wantMessage: "temporarily unavailable"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			writes := 0
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+				if request.Method == http.MethodGet {
+					require.NoError(t, json.NewEncoder(response).Encode(map[string]any{"values": test.rows}))
+					return
+				}
+				writes++
+				response.WriteHeader(http.StatusUnauthorized)
+			}))
+			t.Cleanup(server.Close)
+			credentials := &rejectionRefreshingCredentialProvider{refreshError: test.refreshError}
+			client, err := spreadsheet.New(spreadsheet.Config{Endpoint: server.URL}, credentials)
+			require.NoError(t, err)
+			result, err := sdkgo.RunMutation(singledispatchtest.NewContext("sheet-flow", "401-"+test.name), client.UpsertRow(), sheetsConnection, upsertInput)
+			require.NoError(t, err)
+			require.Equal(t, spreadsheet.UpsertRowBranchProviderRejected, result.Branch)
+			require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+			require.Contains(t, result.Failure.Message, test.wantMessage)
+			require.Equal(t, 1, credentials.forcedRefreshes)
+			require.Equal(t, 1, writes)
+		})
+	}
+}
+
 func TestUpsertAcceptedAppendReadBackNeverResends(t *testing.T) {
 	for _, test := range []struct {
 		name      string
@@ -411,6 +448,111 @@ func TestUpsertTerminalCredentialFailureRecordsNotSentThenDefect(t *testing.T) {
 	require.Equal(t, singledispatch.StateNotSent, marker.State)
 }
 
+type laterCredentialFailureSource struct {
+	attempts int
+	failure  error
+}
+
+func (source *laterCredentialFailureSource) Resolve(sdkgo.Call) (spreadsheet.Credentials, error) {
+	source.attempts++
+	if source.attempts > 1 {
+		return spreadsheet.Credentials{}, source.failure
+	}
+	return spreadsheet.Credentials{AccessToken: sdkgo.NewSecretString("sheets-token")}, nil
+}
+
+func (source *laterCredentialFailureSource) ResolveWithRefresh(_ context.Context, call sdkgo.Call, _ sdkgo.CredentialRefreshDriver[spreadsheet.Credentials]) (spreadsheet.Credentials, error) {
+	return source.Resolve(call)
+}
+
+func TestUpsertClaimedAppendCredentialFailureNeverReportsDefectOrResends(t *testing.T) {
+	for _, test := range []struct {
+		name      string
+		failure   error
+		uncertain bool
+	}{
+		{name: "terminal", failure: sdkgo.NewReauthorizationRequiredError(errors.New("reauthorization required")), uncertain: true},
+		{name: "transient", failure: errors.New("credential refresh unavailable")},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			rows := [][]string{{"accountId", "name"}}
+			writes := 0
+			server := sheetServer(t, &rows, func(response http.ResponseWriter, _ *http.Request) bool {
+				writes++
+				rows = append(rows, []string{"a-1", "Ada"})
+				_, _ = response.Write([]byte(`{"updates":`))
+				return true
+			})
+			originalHandler := server.Config.Handler
+			server.Config.Handler = http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+				if request.Method == http.MethodGet && writes > 0 {
+					response.WriteHeader(http.StatusServiceUnavailable)
+					return
+				}
+				originalHandler.ServeHTTP(response, request)
+			})
+			t.Cleanup(server.Close)
+			credentials := &laterCredentialFailureSource{failure: test.failure}
+			client, err := spreadsheet.New(spreadsheet.Config{Endpoint: server.URL}, credentials)
+			require.NoError(t, err)
+			ctx := singledispatchtest.NewContext("sheet-flow", "claimed-credential-"+test.name)
+			_, err = sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, upsertInput)
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+			require.Equal(t, 1, writes)
+			ctx.AdvanceAttempt()
+			result, err := sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, upsertInput)
+			if test.uncertain {
+				require.NoError(t, err)
+				require.Equal(t, spreadsheet.UpsertRowBranchUncertain, result.Branch)
+				require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+				require.Contains(t, result.Failure.Message, "reconnect")
+			} else {
+				require.ErrorAs(t, err, &retry)
+				require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+			}
+			require.Equal(t, 1, writes)
+		})
+	}
+}
+
+func TestUpsertTerminalCredentialFailureRetainsSavedProviderRange(t *testing.T) {
+	rows := [][]string{{"accountId", "name"}}
+	writes := 0
+	server := sheetServer(t, &rows, func(response http.ResponseWriter, _ *http.Request) bool {
+		writes++
+		_, _ = response.Write([]byte(`{"updates":{"updatedRange":"'Customers'!A2:B2"}}`))
+		return true
+	})
+	t.Cleanup(server.Close)
+	credentials := &laterCredentialFailureSource{failure: sdkgo.NewReauthorizationRequiredError(errors.New("reauthorization required"))}
+	client, err := spreadsheet.New(spreadsheet.Config{Endpoint: server.URL}, credentials)
+	require.NoError(t, err)
+	ctx := singledispatchtest.NewContext("sheet-flow", "saved-provider-range")
+	first, err := sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, upsertInput)
+	require.NoError(t, err)
+	require.Equal(t, spreadsheet.UpsertRowBranchUpserted, first.Branch)
+	ctx.AdvanceAttempt()
+	second, err := sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, upsertInput)
+	require.NoError(t, err)
+	require.Equal(t, spreadsheet.UpsertRowBranchUncertain, second.Branch)
+	require.Equal(t, sdkgo.FailureAuthentication, second.Failure.Kind)
+	require.Equal(t, "'Customers'!A2:B2", second.Receipt.ProviderObjectID)
+	require.Equal(t, 1, writes)
+}
+
+func TestUpsertMissingMarkerTerminalCredentialFailureIsUncertain(t *testing.T) {
+	client, err := spreadsheet.New(spreadsheet.Config{}, terminalCredentialSource{})
+	require.NoError(t, err)
+	ctx := singledispatchtest.NewContext("sheet-flow", "missing-marker-credential")
+	ctx.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, upsertInput)
+	require.NoError(t, err)
+	require.Equal(t, spreadsheet.UpsertRowBranchUncertain, result.Branch)
+	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+	require.Empty(t, ctx.Heartbeats())
+}
+
 func TestUpsertLookupFailureRecordsNotSentBeforeNextAttempt(t *testing.T) {
 	rows := [][]string{{"accountId", "name"}}
 	lookups := 0
@@ -481,7 +623,7 @@ func TestUpsertRetrySeesRowInsertedBeforeSecondAttempt(t *testing.T) {
 	require.Equal(t, 1, writes)
 }
 
-func TestUpsertReadBackWithoutMarkerReportsFoundRowAsInserted(t *testing.T) {
+func TestUpsertReadBackWithoutMarkerReportsFoundRowAsUpdated(t *testing.T) {
 	rows := [][]string{{"accountId", "name"}, {"a-1", "Ada"}}
 	writes := 0
 	server := sheetServer(t, &rows, func(response http.ResponseWriter, _ *http.Request) bool {
@@ -494,7 +636,7 @@ func TestUpsertReadBackWithoutMarkerReportsFoundRowAsInserted(t *testing.T) {
 	result, err := sdkgo.RunMutation(ctx, newSheetsClient(t, server.URL).UpsertRow(), sheetsConnection, upsertInput)
 	require.NoError(t, err)
 	require.Equal(t, spreadsheet.UpsertRowBranchUpserted, result.Branch)
-	require.Equal(t, "inserted", result.Value.Action)
+	require.Equal(t, "updated", result.Value.Action)
 	require.Equal(t, 0, writes)
 }
 
@@ -694,6 +836,35 @@ func TestUpsertBoundsLookupAndReadBackBeforeStepDeadline(t *testing.T) {
 	require.Equal(t, 1, writes)
 }
 
+type blockingCredentialSource struct{}
+
+func (blockingCredentialSource) Resolve(sdkgo.Call) (spreadsheet.Credentials, error) {
+	return spreadsheet.Credentials{}, errors.New("credential resolution unavailable")
+}
+
+func (blockingCredentialSource) ResolveWithRefresh(ctx context.Context, _ sdkgo.Call, _ sdkgo.CredentialRefreshDriver[spreadsheet.Credentials]) (spreadsheet.Credentials, error) {
+	<-ctx.Done()
+	return spreadsheet.Credentials{}, ctx.Err()
+}
+
+func TestUpsertBoundsCredentialResolutionBeforeStepDeadline(t *testing.T) {
+	client, err := spreadsheet.New(spreadsheet.Config{}, blockingCredentialSource{})
+	require.NoError(t, err)
+	ctx := singledispatchtest.NewContext("sheet-flow", "bounded-credential")
+	stepDeadline := time.Now().Add(time.Second)
+	cancel := ctx.SetDeadline(stepDeadline)
+	defer cancel()
+	_, err = sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, upsertInput)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Greater(t, time.Until(stepDeadline), 50*time.Millisecond)
+	frames := ctx.Heartbeats()
+	require.Len(t, frames, 1)
+	var marker singledispatch.Marker
+	require.NoError(t, json.Unmarshal(frames[0], &marker))
+	require.Equal(t, singledispatch.StateNotSent, marker.State)
+}
+
 func TestUpsertInvalidReadBackFailsUncertainWithoutResend(t *testing.T) {
 	writes := 0
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
@@ -743,6 +914,68 @@ func TestUpsertReplacement503RetriesAndAcceptedInvalidBodySucceeds(t *testing.T)
 	require.Equal(t, spreadsheet.UpsertRowBranchUpserted, result.Branch)
 	require.Equal(t, "updated", result.Value.Action)
 	require.Equal(t, 2, writes)
+}
+
+func TestUpsertAppliedReplacement500RetryReportsUpdated(t *testing.T) {
+	rows := [][]string{{"accountId", "name"}, {"a-1", "Old"}}
+	writes := 0
+	server := sheetServer(t, &rows, func(response http.ResponseWriter, request *http.Request) bool {
+		require.Equal(t, http.MethodPut, request.Method)
+		writes++
+		rows[1] = []string{"a-1", "Ada"}
+		response.WriteHeader(http.StatusInternalServerError)
+		return true
+	})
+	t.Cleanup(server.Close)
+	ctx := singledispatchtest.NewContext("sheet-flow", "applied-replacement-retry")
+	client := newSheetsClient(t, server.URL)
+	_, err := sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, upsertInput)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	frames := ctx.Heartbeats()
+	require.Len(t, frames, 1)
+	var marker singledispatch.Marker
+	require.NoError(t, json.Unmarshal(frames[0], &marker))
+	require.Equal(t, singledispatch.StateNotSent, marker.State)
+	ctx.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, upsertInput)
+	require.NoError(t, err)
+	require.Equal(t, spreadsheet.UpsertRowBranchUpserted, result.Branch)
+	require.Equal(t, "updated", result.Value.Action)
+	require.Equal(t, 1, writes)
+}
+
+func TestUpsertReplacementRetryCanAppendAfterRowDeletion(t *testing.T) {
+	rows := [][]string{{"accountId", "name"}, {"a-1", "Old"}}
+	puts := 0
+	posts := 0
+	server := sheetServer(t, &rows, func(response http.ResponseWriter, request *http.Request) bool {
+		switch request.Method {
+		case http.MethodPut:
+			puts++
+			rows = rows[:1]
+			response.WriteHeader(http.StatusServiceUnavailable)
+		case http.MethodPost:
+			posts++
+			_, _ = response.Write([]byte(`{"updates":{"updatedRange":"'Customers'!A2:B2"}}`))
+		default:
+			t.Errorf("unexpected write method %s", request.Method)
+		}
+		return true
+	})
+	t.Cleanup(server.Close)
+	ctx := singledispatchtest.NewContext("sheet-flow", "replacement-row-deleted")
+	client := newSheetsClient(t, server.URL)
+	_, err := sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, upsertInput)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	ctx.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(ctx, client.UpsertRow(), sheetsConnection, upsertInput)
+	require.NoError(t, err)
+	require.Equal(t, spreadsheet.UpsertRowBranchUpserted, result.Branch)
+	require.Equal(t, "inserted", result.Value.Action)
+	require.Equal(t, 1, puts)
+	require.Equal(t, 1, posts)
 }
 
 var _ context.Context = (*singledispatchtest.Context)(nil)

@@ -40,11 +40,14 @@ connector's `X-Idempotency-Key` is a stable correlation header; Google does not
 document deduplication for it. A delayed row becoming visible after a retry's
 lookup could still lead to duplicate rows.
 
-Every operation uses `defect` for invalid local input, terminal credential
-reauthorization failures such as `invalid_grant`, connection configuration, or
-Connector contract violations. Transient credential failures before an upsert
-write retry after recording a not-sent checkpoint. A conclusive Google API
-refusal uses
+Every operation uses `defect` for invalid local input, connection configuration,
+or Connector contract violations. `GetValues` and `FindRow` also select `defect`
+for any credential resolution failure, including transient refresh failures.
+Before an upsert write, terminal reauthorization failures such as `invalid_grant`
+select `defect` only after a not-sent checkpoint; transient credential failures
+retry after that checkpoint. If an earlier append may have been accepted, a
+terminal credential failure selects `uncertain`, while a transient failure
+retries without sending again. A conclusive Google API refusal uses
 `providerRejected`; malformed or oversized reads before a write use
 `invalidResponse`. Safe query transport, rate-limit, and availability failures
 retry instead of producing a branch.
