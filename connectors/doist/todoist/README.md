@@ -86,6 +86,8 @@ caller-supplied `http.Client.Timeout`. A request with less than a tenth of the
 attempt time left is not sent: the attempt retries, except that a skipped
 create read-back selects `uncertain`. A create POST cut off by its limit
 therefore selects `uncertain`, and an update cut off by its limit retries.
+Credentials are resolved once per attempt, before its first request, and a
+read-back reuses them.
 
 The existing get/update pair has the following contract:
 

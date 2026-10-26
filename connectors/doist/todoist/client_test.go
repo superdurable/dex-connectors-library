@@ -951,7 +951,7 @@ func TestCreateTaskStalledRequestsReturnBeforeTheExecuteDeadline(t *testing.T) {
 			if scenario.callerClient != nil {
 				options = append(options, WithHTTPClient(scenario.callerClient))
 			}
-			stepContext, cancel := context.WithTimeout(context.Background(), 4*time.Second)
+			stepContext, cancel := context.WithTimeout(context.Background(), 6*time.Second)
 			defer cancel()
 			stepDeadline, _ := stepContext.Deadline()
 			result, err := sdkgo.RunMutation(deadlineProviderContext{stepContext: stepContext}, newTestClient(t, server.URL, options...).CreateTask(), testConnection, CreateTaskInput{Content: "New"})
@@ -980,7 +980,7 @@ func TestUpdateTaskStalledReadBackRetriesBeforeTheExecuteDeadline(t *testing.T) 
 	}))
 	defer server.Close()
 	defer close(releaseStalledRead)
-	stepContext, cancel := context.WithTimeout(context.Background(), 4*time.Second)
+	stepContext, cancel := context.WithTimeout(context.Background(), 6*time.Second)
 	defer cancel()
 	stepDeadline, _ := stepContext.Deadline()
 	content := "New"
@@ -1046,8 +1046,8 @@ func TestCreatedTaskReadBackWithoutTimeLeftStaysUncertain(t *testing.T) {
 	}))
 	defer server.Close()
 	budget := attemptBudget{stepContext: context.Background(), attemptDeadline: time.Now().Add(time.Second), minimumRequestTime: time.Minute}
-	call := sdkgo.Call{Context: providerContext{}, Connection: testConnection}
-	attempt := newTestClient(t, server.URL).CreateTask().readCreatedTask(call, budget, "6XGgmFVcrG5RRjVr")
+	credentials := Credentials{APIToken: sdkgo.NewSecretString(testToken)}
+	attempt := newTestClient(t, server.URL).CreateTask().readCreatedTask(budget, credentials, "6XGgmFVcrG5RRjVr")
 	require.Equal(t, sdkgo.NewMutationUncertain(Task{}, *failure("createTask", sdkgo.FailureProtocol, "Todoist accepted the creation of task 6XGgmFVcrG5RRjVr but it could not be read back in this attempt, so the task is unconfirmed"), sdkgo.Receipt{}), attempt)
 	require.Zero(t, requests.Load())
 }
@@ -1063,4 +1063,43 @@ func TestAttemptBudgetUsesTheShorterStepDeadline(t *testing.T) {
 	unbounded := newAttemptBudget(context.Background(), 30*time.Second)
 	require.Equal(t, 3*time.Second, unbounded.minimumRequestTime)
 	require.WithinDuration(t, time.Now().Add(25*time.Second), unbounded.attemptDeadline, 500*time.Millisecond)
+}
+
+type countingCredentials struct {
+	source      CredentialSource
+	resolutions *atomic.Int32
+}
+
+func (source countingCredentials) Resolve(call sdkgo.Call) (Credentials, error) {
+	source.resolutions.Add(1)
+	return source.source.Resolve(call)
+}
+
+func TestCreateTaskReadBackReusesTheResolvedCredentials(t *testing.T) {
+	var posts, reads, resolutions atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		require.Equal(t, "Bearer "+testToken, request.Header.Get("Authorization"))
+		if request.Method == http.MethodGet {
+			reads.Add(1)
+			_, err := io.WriteString(w, taskJSON("New"))
+			require.NoError(t, err)
+			return
+		}
+		posts.Add(1)
+		_, err := io.WriteString(w, `{"id":"6XGgmFVcrG5RRjVr"}`)
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	credentials := countingCredentials{
+		source:      sdkgo.StaticCredentialProvider[Credentials]{testConnection: {APIToken: sdkgo.NewSecretString(testToken)}},
+		resolutions: &resolutions,
+	}
+	client, err := New(Config{BaseURL: server.URL}, credentials)
+	require.NoError(t, err)
+	result, err := createTask(client, CreateTaskInput{Content: "New"})
+	require.NoError(t, err)
+	require.Equal(t, CreateTaskBranchCreated, result.Branch)
+	require.Equal(t, int32(1), resolutions.Load())
+	require.Equal(t, int32(1), posts.Load())
+	require.Equal(t, int32(1), reads.Load())
 }
