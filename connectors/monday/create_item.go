@@ -116,7 +116,7 @@ func buildCreateItemRequest(input CreateItemInput) (graphQLRequest, CreateItemOu
 		}
 		variables["columnValues"] = columnValues
 	}
-	return graphQLRequest{document: createItemDocument, variables: variables, isMutation: true}, requested, nil
+	return graphQLRequest{document: createItemDocument, variables: variables, isMutation: true, requiresDispatchCheckpoint: true}, requested, nil
 }
 
 // validateItemName checks a one-line item name within monday.com's 255-character limit.

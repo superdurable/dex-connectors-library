@@ -136,8 +136,8 @@ spec:
           failure: {kind: VALIDATION, message: monday.com rejected the list filter column.}
         - name: invalidResponseFailure
           branch: invalidResponse
-          description: "monday.com returned an invalid or oversized page of items."
-          failure: {kind: PROTOCOL, message: "monday.com returned an invalid or oversized page of items."}
+          description: "monday.com returned a malformed page of items."
+          failure: {kind: PROTOCOL, message: "monday.com returned a malformed page of items."}
     - name: getItem
       goName: GetItem
       inputType: GetItemInput
@@ -171,8 +171,8 @@ spec:
           failure: {kind: AUTHORIZATION, message: monday.com denied item read permission.}
         - name: invalidResponseFailure
           branch: invalidResponse
-          description: "monday.com returned an invalid or oversized item."
-          failure: {kind: PROTOCOL, message: "monday.com returned an invalid or oversized item."}
+          description: "monday.com returned a malformed item."
+          failure: {kind: PROTOCOL, message: "monday.com returned a malformed item."}
     - name: createItem
       goName: CreateItem
       inputType: CreateItemInput
@@ -192,7 +192,8 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        heartbeatTimeout: 10s
+        # Credential refresh can take 12s before the first dispatch heartbeat; 20s avoids a false Worker timeout.
+        heartbeatTimeout: 20s
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 10, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "The monday.com key expires after 30 minutes; stop createItem retries within five minutes despite documented cache exceptions."}}
       mocks:
         - name: februaryWorkItem
@@ -241,8 +242,8 @@ spec:
           failure: {kind: VALIDATION, message: monday.com rejected the status label.}
         - name: invalidResponseFailure
           branch: invalidResponse
-          description: "monday.com returned an invalid or oversized item, so the values may have been set; repeating the Step is safe."
-          failure: {kind: PROTOCOL, message: "monday.com returned an invalid or oversized item, so the values may have been set; repeating the Step is safe."}
+          description: "monday.com returned a malformed item, so the values may have been set; repeating the Step is safe."
+          failure: {kind: PROTOCOL, message: "monday.com returned a malformed item, so the values may have been set; repeating the Step is safe."}
     - name: addUpdate
       goName: AddUpdate
       inputType: AddUpdateInput
@@ -259,8 +260,10 @@ spec:
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
+        # Sync exposes dispatch heartbeats to the next attempt; missing or stale checkpoints fail closed.
         durability: sync
-        heartbeatTimeout: 10s
+        # Credential refresh can take 12s before the first dispatch heartbeat; 20s avoids a false Worker timeout.
+        heartbeatTimeout: 20s
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 10, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "The monday.com key expires after 30 minutes; stop addUpdate retries within five minutes despite documented cache exceptions."}}
       mocks:
         - name: workRequestUpdate

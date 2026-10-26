@@ -204,6 +204,18 @@ func TestRateLimitedCreateWaitsForMondaysDelayWithRealDex(t *testing.T) {
 	require.Len(t, provider.distinctIdempotencyKeys("create"), 1, "both attempts use the same key")
 }
 
+func TestTemporarilyBlockedCreateRetriesWithRealDex(t *testing.T) {
+	provider := newFakeMonday(t)
+	provider.temporarilyBlocksFirstCreate = true
+	harness := newWorkHarness(t, provider, defaultRequestTimeout)
+
+	outcome := harness.runWorkRequest(t, "temporarily-blocked", integrationInput())
+	require.Equal(t, WorkItemCreated, outcome.Action)
+	require.Equal(t, 2, provider.count("create"))
+	require.Equal(t, 1, provider.itemCount())
+	require.Len(t, provider.distinctIdempotencyKeys("create"), 1)
+}
+
 func TestUnusableCreateAnswerFailsWithoutResendingWithRealDex(t *testing.T) {
 	provider := newFakeMonday(t)
 	provider.answersCreateUnusably = true
@@ -262,14 +274,15 @@ type fakeMonday struct {
 	counts       map[string]int
 	requests     map[string][]fakeRecordedRequest
 
-	delaysFirstCreate        bool
-	delaysFirstSchedule      bool
-	delaysFirstUpdate        bool
-	losesFirstCreateResponse bool
-	rateLimitsFirstCreate    bool
-	rejectsCreate            bool
-	answersCreateUnusably    bool
-	holdsFirstCreate         chan struct{}
+	delaysFirstCreate            bool
+	delaysFirstSchedule          bool
+	delaysFirstUpdate            bool
+	losesFirstCreateResponse     bool
+	rateLimitsFirstCreate        bool
+	temporarilyBlocksFirstCreate bool
+	rejectsCreate                bool
+	answersCreateUnusably        bool
+	holdsFirstCreate             chan struct{}
 }
 
 type fakeItem struct {
@@ -494,6 +507,9 @@ func (provider *fakeMonday) createItem(variables map[string]any, attempt int) fa
 	}
 	if provider.rateLimitsFirstCreate && attempt == 1 {
 		return fakeResponse{status: http.StatusTooManyRequests, body: `{"errors":[{"message":"Complexity budget exhausted","extensions":{"code":"COMPLEXITY_BUDGET_EXHAUSTED","retry_in_seconds":1,"status_code":429}}]}`}
+	}
+	if provider.temporarilyBlocksFirstCreate && attempt == 1 {
+		return fakeResponse{status: http.StatusOK, body: `{"errors":[{"extensions":{"code":"API_TEMPORARILY_BLOCKED"}}]}`}
 	}
 	if attempt == 1 && (provider.delaysFirstCreate || provider.holdsFirstCreate != nil) {
 		provider.delayedRequests.Add(1)

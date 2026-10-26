@@ -11,6 +11,8 @@ import (
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
+const mutationHeartbeatInterval = 5 * time.Second
+
 // mutationCheckpoint permits a resend only after the immediately preceding attempt proved it safe.
 type mutationCheckpoint struct {
 	CallID    sdkgo.CallID `json:"callId"`
@@ -53,7 +55,7 @@ func (heartbeat *mutationHeartbeat) record(checkpoint mutationCheckpoint) error 
 
 func (heartbeat *mutationHeartbeat) recordUntilStopped() {
 	defer close(heartbeat.stopped)
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(mutationHeartbeatInterval)
 	defer ticker.Stop()
 	for {
 		select {

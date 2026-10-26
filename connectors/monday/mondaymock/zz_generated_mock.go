@@ -148,10 +148,10 @@ func ListItemsProviderRejectedFailure() connectormock.Case[monday.ListItemsOutpu
 	return connectormock.Branch(monday.ListItemsBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "monday.com rejected the list filter column."})
 }
 
-// ListItemsInvalidResponseFailure is the manifest mock invalidResponseFailure: monday.com returned an invalid or oversized page of items.
+// ListItemsInvalidResponseFailure is the manifest mock invalidResponseFailure: monday.com returned a malformed page of items.
 func ListItemsInvalidResponseFailure() connectormock.Case[monday.ListItemsOutput] {
 	var value monday.ListItemsOutput
-	return connectormock.Branch(monday.ListItemsBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "monday.com returned an invalid or oversized page of items."})
+	return connectormock.Branch(monday.ListItemsBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "monday.com returned a malformed page of items."})
 }
 
 // ListItemsDefault is the manifest default, completedWorkRequestPages, which New installs.
@@ -207,10 +207,10 @@ func GetItemProviderRejectedFailure() connectormock.Case[monday.Item] {
 	return connectormock.Branch(monday.GetItemBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureAuthorization, Message: "monday.com denied item read permission."})
 }
 
-// GetItemInvalidResponseFailure is the manifest mock invalidResponseFailure: monday.com returned an invalid or oversized item.
+// GetItemInvalidResponseFailure is the manifest mock invalidResponseFailure: monday.com returned a malformed item.
 func GetItemInvalidResponseFailure() connectormock.Case[monday.Item] {
 	var value monday.Item
-	return connectormock.Branch(monday.GetItemBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "monday.com returned an invalid or oversized item."})
+	return connectormock.Branch(monday.GetItemBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "monday.com returned a malformed item."})
 }
 
 // GetItemDefault is the manifest default, createdWorkItem, which New installs.
@@ -317,10 +317,10 @@ func UpdateItemColumnValuesProviderRejectedFailure() connectormock.Case[monday.U
 	return connectormock.Branch(monday.UpdateItemColumnValuesBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "monday.com rejected the status label."})
 }
 
-// UpdateItemColumnValuesInvalidResponseFailure is the manifest mock invalidResponseFailure: monday.com returned an invalid or oversized item, so the values may have been set; repeating the Step is safe.
+// UpdateItemColumnValuesInvalidResponseFailure is the manifest mock invalidResponseFailure: monday.com returned a malformed item, so the values may have been set; repeating the Step is safe.
 func UpdateItemColumnValuesInvalidResponseFailure() connectormock.Case[monday.UpdateItemColumnValuesOutput] {
 	var value monday.UpdateItemColumnValuesOutput
-	return connectormock.Branch(monday.UpdateItemColumnValuesBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "monday.com returned an invalid or oversized item, so the values may have been set; repeating the Step is safe."})
+	return connectormock.Branch(monday.UpdateItemColumnValuesBranchInvalidResponse, value, &sdkgo.Failure{Kind: sdkgo.FailureProtocol, Message: "monday.com returned a malformed item, so the values may have been set; repeating the Step is safe."})
 }
 
 // UpdateItemColumnValuesDefault is the manifest default, scheduledWorkItem, which New installs.

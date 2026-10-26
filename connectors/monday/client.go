@@ -49,7 +49,9 @@ const (
 	defaultAPIURL = "https://api.monday.com/v2"
 
 	// defaultRequestTimeout leaves room inside the 30-second Execute timeout for a token refresh and one resend.
-	defaultRequestTimeout = 12 * time.Second
+	defaultRequestTimeout        = 12 * time.Second
+	requestDeadlineMargin        = 3 * time.Second
+	minimumMutationRequestWindow = 3 * time.Second
 	// minimumIdempotencyConflictDelay spaces attempts that find the first one still running, so they do not exhaust the retry policy.
 	minimumIdempotencyConflictDelay = 2 * time.Second
 
@@ -109,9 +111,10 @@ type Client struct {
 
 // graphQLRequest is one GraphQL document with its variables; mutations carry the Step's idempotency key.
 type graphQLRequest struct {
-	document   string
-	variables  map[string]any
-	isMutation bool
+	document                   string
+	variables                  map[string]any
+	isMutation                 bool
+	requiresDispatchCheckpoint bool
 }
 
 type graphQLRequestBody struct {
@@ -143,10 +146,11 @@ const (
 
 // mondayExchange is one classified request; failure is set for every outcome except exchangeSucceeded.
 type mondayExchange struct {
-	outcome    exchangeOutcome
-	response   mondayResponse
-	failure    sdkgo.Failure
-	retryAfter time.Duration
+	outcome                 exchangeOutcome
+	response                mondayResponse
+	failure                 sdkgo.Failure
+	retryAfter              time.Duration
+	isConfirmedNotProcessed bool
 }
 
 // graphQLErrorSummary holds only machine-readable tokens from monday.com's errors array.
@@ -216,14 +220,20 @@ func (client *Client) UpdateItemColumnValues() UpdateItemColumnValuesOperation {
 // AddUpdate returns the addUpdate Mutation bound to this client.
 func (client *Client) AddUpdate() AddUpdateOperation { return AddUpdateOperation{client: client} }
 
-// exchange resends once after a rejected OAuth token; a 401 means monday.com ran nothing.
+// exchange classifies one request and fences non-idempotent writes with attempt-numbered checkpoints.
 func (client *Client) exchange(call sdkgo.Call, operation string, request graphQLRequest) mondayExchange {
 	var heartbeat *mutationHeartbeat
-	if request.isMutation && (operation == createItemOperationID || operation == addUpdateOperationID) {
+	if request.requiresDispatchCheckpoint {
 		var previous mutationCheckpoint
 		hasPrevious, err := call.Context.GetLastHeartbeatValue(&previous)
 		if err != nil || hasPrevious && previous.CallID != call.ID {
-			return mondayExchange{outcome: exchangeDefect, failure: mondayFailure(sdkgo.FailureLocalDefect, operation, "mutation checkpoint is invalid")}
+			outcome := exchangeDefect
+			failureKind := sdkgo.FailureLocalDefect
+			if call.Context.Attempt() > 1 {
+				outcome = exchangeUncertain
+				failureKind = sdkgo.FailureTransport
+			}
+			return mondayExchange{outcome: outcome, failure: mondayFailure(failureKind, operation, "mutation checkpoint is invalid")}
 		}
 		attempt := call.Context.Attempt()
 		if !(!hasPrevious && attempt == 1 || hasPrevious && previous.CanResend && previous.Attempt == attempt-1) {
@@ -240,7 +250,7 @@ func (client *Client) exchange(call sdkgo.Call, operation string, request graphQ
 		return *failedResolution
 	}
 	if heartbeat != nil {
-		if !hasRequestBudget(call.Context, 3*time.Second) {
+		if !hasRequestBudget(call.Context, requestDeadlineMargin+minimumMutationRequestWindow) {
 			_ = heartbeat.recordCanResend()
 			return mondayExchange{outcome: exchangeRetry, failure: mondayFailure(sdkgo.FailureAvailability, operation, "not enough time remains to send the mutation")}
 		}
@@ -253,14 +263,18 @@ func (client *Client) exchange(call sdkgo.Call, operation string, request graphQ
 	if result.response.statusCode == http.StatusUnauthorized && client.canRefreshAfterRejection(credentials) {
 		replacement, err := sdkgo.ResolveCredentialAfterRejection(call.Context, client.credentials, call, client.refreshDriver)
 		if err == nil && validateResolvedCredentials(replacement) == nil {
-			result = client.send(call, replacement, operation, request)
+			if heartbeat != nil && !hasRequestBudget(call.Context, requestDeadlineMargin+minimumMutationRequestWindow) {
+				result = mondayExchange{outcome: exchangeRetry, failure: mondayFailure(sdkgo.FailureAvailability, operation, "not enough time remains to resend the mutation")}
+			} else {
+				result = client.send(call, replacement, operation, request)
+			}
 		}
 	}
 	if heartbeat != nil {
 		switch {
-		case result.outcome == exchangeRetry && result.response.statusCode >= 200 && result.response.statusCode < 300 && result.failure.Kind != sdkgo.FailureRateLimit && result.failure.Kind != sdkgo.FailureConflict:
+		case result.outcome == exchangeRetry && result.response.statusCode >= 200 && result.response.statusCode < 300 && (!result.isConfirmedNotProcessed || result.response.data != nil):
 			result.outcome = exchangeUncertain
-		case result.outcome == exchangeRetry:
+		case result.outcome == exchangeRetry && result.response.data == nil:
 			_ = heartbeat.recordCanResend()
 		}
 	}
@@ -301,8 +315,11 @@ func (client *Client) send(call sdkgo.Call, credentials Credentials, operation s
 	requestContext := context.Context(call.Context)
 	if deadline, hasDeadline := call.Context.Deadline(); hasDeadline {
 		var cancel context.CancelFunc
-		requestContext, cancel = context.WithDeadline(call.Context, deadline.Add(-3*time.Second))
+		requestContext, cancel = context.WithDeadline(call.Context, deadline.Add(-requestDeadlineMargin))
 		defer cancel()
+	}
+	if requestContext.Err() != nil {
+		return mondayExchange{outcome: exchangeRetry, failure: mondayFailure(sdkgo.FailureTransport, operation, "monday.com request context expired before dispatch")}
 	}
 	var hasConnectionAttempt, hasConnection atomic.Bool
 	requestContext = httptrace.WithClientTrace(requestContext, &httptrace.ClientTrace{
@@ -311,7 +328,7 @@ func (client *Client) send(call sdkgo.Call, credentials Credentials, operation s
 	})
 	httpResponse, err := client.httpClient.Do(httpRequest.WithContext(requestContext))
 	if err != nil {
-		if hasConnectionAttempt.Load() && !hasConnection.Load() {
+		if !hasConnection.Load() && (hasConnectionAttempt.Load() || requestContext.Err() != nil) {
 			return mondayExchange{outcome: exchangeRetry, failure: mondayFailure(sdkgo.FailureTransport, operation, "monday.com could not be reached; no request was sent")}
 		}
 		outcome := exchangeRetry
@@ -435,7 +452,7 @@ type mutationBranches struct {
 	invalidResponse sdkgo.BranchID
 }
 
-// mutationAttemptForExchange retries an ambiguous outcome, because the retry replays under the same key.
+// mutationAttemptForExchange maps a classified mutation failure to its branch or retry.
 func mutationAttemptForExchange[OUT any](result mondayExchange, requested OUT, receipt sdkgo.Receipt, branches mutationBranches) (sdkgo.MutationAttempt[OUT], bool) {
 	switch result.outcome {
 	case exchangeSucceeded:
@@ -480,13 +497,20 @@ func classifyFailedResponse(operation string, response mondayResponse, summary g
 	if summary.retryInSeconds > 0 {
 		retryAfter = max(retryAfter, min(time.Duration(summary.retryInSeconds)*time.Second, time.Hour))
 	}
+	code := summary.code
+	isConfirmedNotProcessed := rateLimitErrorCodes[code] || code == "IDEMPOTENCY_CONFLICT" || temporarilyUnavailableErrorCodes[code] ||
+		status == http.StatusTooManyRequests || status == http.StatusConflict || status == http.StatusLocked || status == http.StatusServiceUnavailable
+	// A readable refusal without mutation data permits a resend even when the envelope arrived with HTTP 200.
+	if response.data != nil {
+		isConfirmedNotProcessed = false
+	}
 	describe := func(verb string) string {
 		return withErrorSummary(fmt.Sprintf("monday.com %s (HTTP %d)", verb, response.statusCode), summary)
 	}
 	outcome := func(outcome exchangeOutcome, kind sdkgo.FailureKind, message string) mondayExchange {
-		return mondayExchange{outcome: outcome, response: response, retryAfter: retryAfter, failure: mondayFailure(kind, operation, message)}
+		return mondayExchange{outcome: outcome, response: response, retryAfter: retryAfter, failure: mondayFailure(kind, operation, message),
+			isConfirmedNotProcessed: isConfirmedNotProcessed}
 	}
-	code := summary.code
 	switch {
 	case code == "DAILY_LIMIT_EXCEEDED":
 		return outcome(exchangeRejected, sdkgo.FailureQuotaExhausted, describe("daily call limit is exhausted until midnight UTC"))

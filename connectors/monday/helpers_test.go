@@ -149,6 +149,7 @@ type mondayDexContext struct {
 	heartbeat json.RawMessage
 	attemptNo int32
 	recordErr error
+	readErr   error
 }
 
 func newMondayDexContext(step string) *mondayDexContext {
@@ -187,6 +188,9 @@ func (context *mondayDexContext) RecordHeartbeat(value any) error {
 func (context *mondayDexContext) GetLastHeartbeatValue(target any) (bool, error) {
 	context.mutex.Lock()
 	defer context.mutex.Unlock()
+	if context.readErr != nil {
+		return false, context.readErr
+	}
 	if len(context.heartbeat) == 0 {
 		return false, nil
 	}

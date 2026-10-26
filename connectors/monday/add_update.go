@@ -80,7 +80,7 @@ func (operation AddUpdateOperation) Invoke(call sdkgo.Call, input AddUpdateInput
 		return sdkgo.NewMutationBranch(AddUpdateBranchDefect, requested, mondayFailurePointer(sdkgo.FailureValidation, addUpdateOperationID, err.Error()), sdkgo.Receipt{})
 	}
 	result := client.exchange(call, addUpdateOperationID, graphQLRequest{
-		document: addUpdateDocument, variables: map[string]any{"itemId": itemID, "body": body}, isMutation: true,
+		document: addUpdateDocument, variables: map[string]any{"itemId": itemID, "body": body}, isMutation: true, requiresDispatchCheckpoint: true,
 	})
 	receipt := client.receipt(call, result.response, "")
 	if update, isAdded := decodeCreatedUpdate(result.response.data, itemID); isAdded {

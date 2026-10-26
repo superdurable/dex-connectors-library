@@ -450,7 +450,7 @@ var CreateItemDefinition = sdkgo.MutationDefinition{
 		{ID: CreateItemBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
-		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(10000000000),
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(20000000000),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 10, TotalDuration: time.Duration(300000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
@@ -604,7 +604,7 @@ var AddUpdateDefinition = sdkgo.MutationDefinition{
 		{ID: AddUpdateBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
-		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(10000000000),
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(20000000000),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(60000000000), MaximumAttempts: 10, TotalDuration: time.Duration(300000000000)},
 		ExecuteDurability: dex.StepDurabilitySync,
 	},
