@@ -72,7 +72,7 @@ go run ./cmd/connectorctl ui-artifact --manifest connectors/clickup/connector.ya
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/clickup/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/clickup \
-  --version v0.21.2 --tag connectors/clickup/v0.21.2 \
+  --version v0.22.0 --tag connectors/clickup/v0.22.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/clickup-release/connector-ui.tgz --ui-digest /tmp/clickup-release/connector-ui.tgz.sha256 \
   --output /tmp/clickup-release/connector-release.json \

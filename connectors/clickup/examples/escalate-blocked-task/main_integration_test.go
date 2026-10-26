@@ -237,7 +237,7 @@ func TestRejectedCreateFailsTheFlowWithoutClickUpTextWithRealDex(t *testing.T) {
 
 	result := harness.waitForFlow(t, flowID)
 	require.Equal(t, dex.FlowFailed, result.Status, "an unwired optional providerRejected branch fails the Flow")
-	require.Contains(t, result.ErrorMessage, `"providerRejected"`)
+	require.Contains(t, result.ErrorMessage, "providerRejected")
 	require.NotContains(t, result.ErrorMessage, providerSentinel)
 	require.NotContains(t, result.ErrorMessage, fakeAPIToken)
 	require.Equal(t, 1, provider.count("create"), "a conclusive rejection is not retried")
@@ -357,7 +357,13 @@ func newEscalationHarness(t *testing.T, provider *fakeClickUp, requestTimeout ti
 	require.NoError(t, err)
 	connection, err := clickup.NewConnection(providerClient, reference)
 	require.NoError(t, err)
+	return newEscalationHarnessWithConnection(t, connection, settings)
+}
+
+func newEscalationHarnessWithConnection(t *testing.T, connection clickup.Connection, settings escalateblocked.EscalationSettings) *escalationHarness {
+	t.Helper()
 	harness := &escalationHarness{flow: escalateblocked.NewFlow(connection, settings), serverAddress: dexAddress()}
+	var err error
 	harness.registry, err = dex.NewRegistry([]dex.Flow{harness.flow})
 	require.NoError(t, err)
 	harness.cache, err = blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
