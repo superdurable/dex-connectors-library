@@ -14,21 +14,6 @@ import (
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
-type schedulingLinkSendAttempt struct {
-	client      *Client
-	accessToken string
-	body        []byte
-	observation schedulingLinkDispatchObservation
-	response    calendlyResponse
-}
-
-func (attempt *schedulingLinkSendAttempt) send(ctx context.Context) error {
-	var err error
-	attempt.response, err = attempt.client.sendCalendlyRequestOnce(ctx, attempt.accessToken,
-		http.MethodPost, calendlyAPIBaseURL+"/scheduling_links", attempt.body, &attempt.observation)
-	return err
-}
-
 // CreateSchedulingLinkInput names the event type a single-use scheduling link books.
 type CreateSchedulingLinkInput struct {
 	// EventTypeURI is the event type's Calendly URI, such as the eventTypePicker unit's eventTypeUri.
@@ -58,7 +43,10 @@ func (CreateSchedulingLinkOperation) IdempotencyKey(callID sdkgo.CallID, _ Creat
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke creates one single-use link. The fence permits another POST only after a proven unprocessed request.
+// Invoke posts one single-use link. A usable 2xx selects created; an unusable 2xx selects uncertain.
+// A definite 4xx except 429 selects providerRejected; 401 is not retried after token refresh.
+// A 429, 503, or provably unsent request retries only after a safe resend checkpoint.
+// An ambiguous write, server error, or prior accepted request without read-back selects uncertain.
 func (operation CreateSchedulingLinkOperation) Invoke(call sdkgo.Call, input CreateSchedulingLinkInput) sdkgo.MutationAttempt[SchedulingLink] {
 	operationID := CreateSchedulingLinkDefinition.Operation.OperationID
 	client := operation.client
@@ -77,7 +65,7 @@ func (operation CreateSchedulingLinkOperation) Invoke(call sdkgo.Call, input Cre
 	case singledispatch.ReadBackRequired:
 		if decision.Marker.CallID != call.ID {
 			return uncertainSchedulingLink(client, operationID, output, sdkgo.FailureProtocol,
-				"the scheduling link checkpoint belongs to another call")
+				"no confirmable prior scheduling link checkpoint exists")
 		}
 		return uncertainSchedulingLink(client, operationID, output, sdkgo.FailureTransport,
 			"a prior scheduling link request may have been accepted, and Calendly offers no link read-back")
@@ -92,8 +80,7 @@ func (operation CreateSchedulingLinkOperation) Invoke(call sdkgo.Call, input Cre
 			return sdkgo.NewMutationRetry[SchedulingLink](calendlyFailure(operationID, sdkgo.FailureAvailability,
 				"Calendly credentials and a safe retry checkpoint are unavailable"), 0)
 		}
-		return sdkgo.NewMutationRetry[SchedulingLink](calendlyFailure(operationID, sdkgo.FailureAvailability,
-			"Calendly credentials are unavailable before the scheduling link was sent"), 0)
+		return credentialMutationAttempt(operationID, CreateSchedulingLinkBranchDefect, output, err)
 	}
 	body, err := json.Marshal(map[string]any{"max_event_count": 1, "owner": input.EventTypeURI, "owner_type": "EventType"})
 	if err != nil {
@@ -108,7 +95,7 @@ func (operation CreateSchedulingLinkOperation) Invoke(call sdkgo.Call, input Cre
 		case errors.Is(err, singledispatch.ErrCheckpoint), errors.Is(err, singledispatch.ErrInsufficientTime):
 			return sdkgo.NewMutationRetry[SchedulingLink](calendlyFailure(operationID, sdkgo.FailureAvailability,
 				"the scheduling link request was not sent before its safe deadline"), 0)
-		case response.statusCode == http.StatusCreated || response.statusCode == http.StatusOK:
+		case isAcceptedCalendlyResponse(response.statusCode):
 			return uncertainSchedulingLink(client, operationID, output, responseFailureKind(err),
 				"Calendly accepted a scheduling link but its answer cannot be read")
 		case errors.Is(err, errCalendlyRequestInvalid):
@@ -129,13 +116,13 @@ func (operation CreateSchedulingLinkOperation) Invoke(call sdkgo.Call, input Cre
 				"Calendly's scheduling link answer was lost after the request may have been sent")
 		}
 	}
-	if response.statusCode == http.StatusCreated || response.statusCode == http.StatusOK {
+	if isAcceptedCalendlyResponse(response.statusCode) {
 		link, err := decodeSchedulingLink(response.body, input.EventTypeURI)
 		if err != nil {
 			return uncertainSchedulingLink(client, operationID, output, sdkgo.FailureProtocol,
 				"Calendly created a scheduling link but its answer is malformed")
 		}
-		_ = fence.RecordProviderID(link.BookingURL)
+		_ = fence.RecordProviderID(link.BookingURL) // The accepted result is returned even if its advisory checkpoint fails.
 		return sdkgo.NewMutationBranch(CreateSchedulingLinkBranchCreated, link, nil, client.calendlyReceipt(link.BookingURL))
 	}
 	outcome := client.classifyCalendlyFailure(operationID, response)
@@ -156,6 +143,23 @@ func (operation CreateSchedulingLinkOperation) Invoke(call sdkgo.Call, input Cre
 		return sdkgo.NewMutationBranch(CreateSchedulingLinkBranchProviderRejected, output, &outcome.failure, client.calendlyReceipt(""))
 	}
 }
+
+type schedulingLinkSendAttempt struct {
+	client      *Client
+	accessToken string
+	body        []byte
+	observation schedulingLinkDispatchObservation
+	response    calendlyResponse
+}
+
+func (attempt *schedulingLinkSendAttempt) send(ctx context.Context) error {
+	var err error
+	attempt.response, err = attempt.client.sendCalendlyRequestOnce(ctx, attempt.accessToken,
+		http.MethodPost, calendlyAPIBaseURL+"/scheduling_links", attempt.body, &attempt.observation)
+	return err
+}
+
+func isAcceptedCalendlyResponse(statusCode int) bool { return statusCode >= 200 && statusCode < 300 }
 
 func uncertainSchedulingLink(client *Client, operationID string, output SchedulingLink, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[SchedulingLink] {
 	return sdkgo.NewMutationUncertain(output, calendlyFailure(operationID, kind, message), client.calendlyReceipt(""))

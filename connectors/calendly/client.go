@@ -254,7 +254,7 @@ func (provider webhookCredentialProvider) ResolveContext(ctx context.Context, ca
 
 // sendCalendlyRequest repeats a request once after an OAuth 401 and a forced refresh; Calendly ignored it.
 func (client *Client) sendCalendlyRequest(
-	call sdkgo.Call, credentials *Credentials, method string, path string, query url.Values, body any, observation *schedulingLinkDispatchObservation,
+	call sdkgo.Call, credentials *Credentials, method string, path string, query url.Values, body any,
 ) (calendlyResponse, error) {
 	var encodedBody []byte
 	if body != nil {
@@ -269,7 +269,7 @@ func (client *Client) sendCalendlyRequest(
 		target += "?" + query.Encode()
 	}
 	for attempt := 0; attempt < 2; attempt++ {
-		response, err := client.sendCalendlyRequestOnce(call.Context, credentials.AccessToken.Reveal(), method, target, encodedBody, observation)
+		response, err := client.sendCalendlyRequestOnce(call.Context, credentials.AccessToken.Reveal(), method, target, encodedBody, nil)
 		if err != nil || response.statusCode != http.StatusUnauthorized || attempt > 0 || !client.canRefreshAfterRejection(*credentials) {
 			return response, err
 		}
@@ -341,7 +341,7 @@ func (client *Client) canRefreshAfterRejection(credentials Credentials) bool {
 
 // resolveCurrentUser reads GET /users/me for a request whose input names no user or organization.
 func (client *Client) resolveCurrentUser(call sdkgo.Call, credentials *Credentials) (calendlyCurrentUser, calendlyResponse, error) {
-	response, err := client.sendCalendlyRequest(call, credentials, http.MethodGet, "/users/me", nil, nil, nil)
+	response, err := client.sendCalendlyRequest(call, credentials, http.MethodGet, "/users/me", nil, nil)
 	if err != nil || response.statusCode != http.StatusOK {
 		return calendlyCurrentUser{}, response, err
 	}

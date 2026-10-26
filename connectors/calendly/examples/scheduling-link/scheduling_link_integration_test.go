@@ -7,18 +7,23 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/calendly"
-	"github.com/superdurable/dex-connectors-library/connectors/calendly/examples/invitee-recorder/linkflow"
+	schedulinglink "github.com/superdurable/dex-connectors-library/connectors/calendly/examples/scheduling-link/flow"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -56,9 +61,9 @@ func TestSchedulingLinkExampleRetries503WithRealDex(t *testing.T) {
 		redirected.URL.Scheme, redirected.URL.Host, redirected.Host = target.Scheme, target.Host, target.Host
 		return base.RoundTrip(redirected)
 	})}))
-	flow := linkflow.NewSchedulingLinkFlow(connection)
+	flow := schedulinglink.NewFlow(connection)
 	client := startWorkerAndClient(t, flow)
-	input := calendly.CreateSchedulingLinkInput{EventTypeURI: bookedEventTypeURI}
+	input := calendly.CreateSchedulingLinkInput{EventTypeURI: "https://api.calendly.com/event_types/TYPE0001"}
 	flowID := fmt.Sprintf("calendly-link-retry-%d", time.Now().UnixNano())
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
@@ -76,3 +81,48 @@ func TestSchedulingLinkExampleRetries503WithRealDex(t *testing.T) {
 	require.Len(t, requestBodies, 2)
 	require.Equal(t, requestBodies[0], requestBodies[1], "the same logical call is sent after the rejected attempt")
 }
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (roundTrip roundTripFunc) RoundTrip(request *http.Request) (*http.Response, error) {
+	return roundTrip(request)
+}
+
+func newExampleConnection(t *testing.T, options ...calendly.Option) calendly.Connection {
+	t.Helper()
+	reference := sdkgo.ConnectionRef{Provider: "calendly", Name: schedulinglink.ConnectionName}
+	client, err := calendly.New(calendly.Config{}, sdkgo.StaticCredentialProvider[calendly.Credentials]{reference: {
+		AuthMethodID: calendly.PersonalAccessTokenAuthMethodID, AccessToken: sdkgo.NewSecretString("SENTINEL-CALENDLY-ACCESS-TOKEN"),
+	}}, options...)
+	require.NoError(t, err)
+	connection, err := calendly.NewConnection(client, reference)
+	require.NoError(t, err)
+	return connection
+}
+
+func startWorkerAndClient(t *testing.T, flow dex.Flow) *dex.Client {
+	t.Helper()
+	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	require.NoError(t, err)
+	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
+	require.NoError(t, err)
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	workerAddress := listener.Addr().String()
+	require.NoError(t, listener.Close())
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{
+		BindAddress: workerAddress, FlowServiceAddress: dexAddress(), WorkerTarget: dex.WorkerTarget{Address: workerAddress},
+	})
+	require.NoError(t, err)
+	client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: dexAddress(), WorkerTarget: worker.WorkerTarget()})
+	require.NoError(t, err)
+	workerResult := make(chan error, 1)
+	go func() { workerResult <- worker.Start() }()
+	t.Cleanup(func() {
+		require.NoError(t, errors.Join(stopWorker(worker), client.Close(), cache.Close()))
+		<-workerResult
+	})
+	return client
+}
+
+func dexAddress() string { return environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801") }

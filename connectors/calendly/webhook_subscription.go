@@ -153,7 +153,7 @@ func (operation CreateWebhookSubscriptionOperation) Invoke(call sdkgo.Call, inpu
 	if isSigningKeyRegistered {
 		body["signing_key"] = credentials.WebhookSigningKey.Reveal()
 	}
-	response, err := client.sendCalendlyRequest(call, &credentials, http.MethodPost, "/webhook_subscriptions", nil, body, nil)
+	response, err := client.sendCalendlyRequest(call, &credentials, http.MethodPost, "/webhook_subscriptions", nil, body)
 	if err == nil && response.statusCode == http.StatusConflict {
 		if attempt, isFound := operation.reuseListedSubscription(call, &credentials, request); isFound {
 			return attempt
@@ -197,7 +197,7 @@ func (operation CreateWebhookSubscriptionOperation) reuseListedSubscription(
 		query.Set("user", request.userURI)
 	}
 	for page := 0; page < maximumWebhookSubscriptionPages; page++ {
-		response, err := client.sendCalendlyRequest(call, credentials, http.MethodGet, "/webhook_subscriptions", query, nil, nil)
+		response, err := client.sendCalendlyRequest(call, credentials, http.MethodGet, "/webhook_subscriptions", query, nil)
 		if attempt, isTerminal := operation.attemptForFailedExchange(response, err); isTerminal {
 			return attempt, true
 		}

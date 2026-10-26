@@ -41,10 +41,10 @@ func TestInviteeRecorderRunsOnCalendlyMockWithRealDex(t *testing.T) {
 	var recorded inviteerecorder.RecordedScheduledEvent
 	require.NoError(t, result.DecodeSingleOutput(&recorded))
 	require.Equal(t, calendly.GetScheduledEventBranchFound, recorded.Branch)
-	require.Equal(t, booking.ScheduledEventURI, recorded.ScheduledEvent.URI)
+	require.Equal(t, "https://api.calendly.com/scheduled_events/EVT00001", recorded.ScheduledEvent.URI)
 	calls := mock.GetScheduledEvent().Calls()
 	require.Len(t, calls, 1)
 	require.Equal(t, flowID, calls[0].FlowID)
-	require.Equal(t, calendly.GetScheduledEventInput{ScheduledEventURI: booking.ScheduledEventURI}, calls[0].Input)
+	require.Equal(t, calendly.GetScheduledEventInput{ScheduledEventURI: "https://api.calendly.com/scheduled_events/EVT00001"}, calls[0].Input)
 	require.Equal(t, calendly.GetScheduledEventBranchFound, calls[0].Branch)
 }

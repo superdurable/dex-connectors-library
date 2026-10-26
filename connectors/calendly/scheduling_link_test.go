@@ -59,6 +59,8 @@ func TestCreateSchedulingLinkMapsResponsesWithoutRepeatingAPossiblyCreatedLink(t
 		{http.StatusInternalServerError, providerError("Internal Server Error", "boom"), calendly.CreateSchedulingLinkBranchUncertain, sdkgo.FailureAvailability},
 		{http.StatusConflict, providerError("Conflict", "existing"), calendly.CreateSchedulingLinkBranchUncertain, sdkgo.FailureConflict},
 		{http.StatusCreated, `{"resource":{"booking_url":"javascript:alert(1)"}}`, calendly.CreateSchedulingLinkBranchUncertain, sdkgo.FailureProtocol},
+		{http.StatusAccepted, `{}`, calendly.CreateSchedulingLinkBranchUncertain, sdkgo.FailureProtocol},
+		{http.StatusNoContent, `{}`, calendly.CreateSchedulingLinkBranchUncertain, sdkgo.FailureProtocol},
 	} {
 		t.Run(strconv.Itoa(test.status), func(t *testing.T) {
 			fake := newFakeCalendly(t, map[string]http.HandlerFunc{"POST /scheduling_links": respondJSON(test.status, test.body)})
@@ -70,6 +72,14 @@ func TestCreateSchedulingLinkMapsResponsesWithoutRepeatingAPossiblyCreatedLink(t
 			requireSecretFree(t, result)
 		})
 	}
+}
+
+func TestCreateSchedulingLinkAcceptsDecodable202(t *testing.T) {
+	fake := newFakeCalendly(t, map[string]http.HandlerFunc{"POST /scheduling_links": respondJSON(http.StatusAccepted, createdLinkBody)})
+	result, err := createSchedulingLink(t, newTestClient(t, fake.redirectingClient(), personalAccessTokenCredentials(""), calendly.Config{}), testEventTypeURI)
+	require.NoError(t, err)
+	require.Equal(t, calendly.CreateSchedulingLinkBranchCreated, result.Branch)
+	require.Len(t, fake.requestsTo(http.MethodPost, "/scheduling_links"), 1)
 }
 
 func TestCreateSchedulingLinkRetriesOnlyRequestsCalendlyDidNotProcess(t *testing.T) {
@@ -250,6 +260,71 @@ func TestCreateSchedulingLinkFenceRecordsCredentialFailureBeforeSending(t *testi
 	result, err := sdkgo.RunMutation(ctx, client.CreateSchedulingLink(), testConnection, input)
 	require.NoError(t, err)
 	require.Equal(t, calendly.CreateSchedulingLinkBranchCreated, result.Branch)
+	require.Len(t, fake.requestsTo(http.MethodPost, "/scheduling_links"), 1)
+}
+
+func TestCreateSchedulingLinkReauthorizationSelectsDefectBeforeSending(t *testing.T) {
+	fake := newFakeCalendly(t, map[string]http.HandlerFunc{
+		"POST /oauth/token":      respondJSON(http.StatusBadRequest, `{"error":"invalid_grant"}`),
+		"POST /scheduling_links": respondJSON(http.StatusCreated, createdLinkBody),
+	})
+	result, err := createSchedulingLink(t, newRefreshingClient(t, expiredOAuthCredentials(), fake.redirectingClient()), testEventTypeURI)
+	require.NoError(t, err)
+	require.Equal(t, calendly.CreateSchedulingLinkBranchDefect, result.Branch)
+	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+	require.Contains(t, result.Failure.Message, "reauthorization")
+	require.Empty(t, fake.requestsTo(http.MethodPost, "/scheduling_links"))
+}
+
+func TestCreateSchedulingLinkRetriesWithoutSendingWhenClaimCheckpointFails(t *testing.T) {
+	fake := newFakeCalendly(t, map[string]http.HandlerFunc{"POST /scheduling_links": respondJSON(http.StatusCreated, createdLinkBody)})
+	client := newTestClient(t, fake.redirectingClient(), personalAccessTokenCredentials(""), calendly.Config{})
+	ctx := singledispatchtest.NewContext("claim-failure-flow", "create-link")
+	ctx.SetWriteError(errors.New("checkpoint unavailable"))
+	_, err := sdkgo.RunMutation(ctx, client.CreateSchedulingLink(), testConnection,
+		calendly.CreateSchedulingLinkInput{EventTypeURI: testEventTypeURI})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Empty(t, fake.requestsTo(http.MethodPost, "/scheduling_links"))
+}
+
+func TestCreateSchedulingLinkFailsClosedWhenCheckpointReadFails(t *testing.T) {
+	fake := newFakeCalendly(t, map[string]http.HandlerFunc{"POST /scheduling_links": respondJSON(http.StatusCreated, createdLinkBody)})
+	client := newTestClient(t, fake.redirectingClient(), personalAccessTokenCredentials(""), calendly.Config{})
+	ctx := singledispatchtest.NewContext("read-failure-flow", "create-link")
+	ctx.SetReadError(errors.New("checkpoint unavailable"))
+	result, err := sdkgo.RunMutation(ctx, client.CreateSchedulingLink(), testConnection,
+		calendly.CreateSchedulingLinkInput{EventTypeURI: testEventTypeURI})
+	require.NoError(t, err)
+	require.Equal(t, calendly.CreateSchedulingLinkBranchUncertain, result.Branch)
+	require.Empty(t, fake.requestsTo(http.MethodPost, "/scheduling_links"))
+}
+
+func TestCreateSchedulingLinkResendsOnceAfterProvenUndispatchedAttempt(t *testing.T) {
+	var attempts atomic.Int32
+	fake := newFakeCalendly(t, map[string]http.HandlerFunc{"POST /scheduling_links": respondJSON(http.StatusCreated, createdLinkBody)})
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	closedAddress := listener.Addr().String()
+	require.NoError(t, listener.Close())
+	client := newTestClient(t, &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		if attempts.Add(1) == 1 {
+			redirected := request.Clone(request.Context())
+			redirected.URL.Host, redirected.Host = closedAddress, closedAddress
+			return http.DefaultTransport.RoundTrip(redirected)
+		}
+		return fake.redirectingClient().Transport.RoundTrip(request)
+	})}, personalAccessTokenCredentials(""), calendly.Config{})
+	ctx := singledispatchtest.NewContext("undispatched-flow", "create-link")
+	input := calendly.CreateSchedulingLinkInput{EventTypeURI: testEventTypeURI}
+	_, err = sdkgo.RunMutation(ctx, client.CreateSchedulingLink(), testConnection, input)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	ctx.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(ctx, client.CreateSchedulingLink(), testConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, calendly.CreateSchedulingLinkBranchCreated, result.Branch)
+	require.Equal(t, int32(2), attempts.Load())
 	require.Len(t, fake.requestsTo(http.MethodPost, "/scheduling_links"), 1)
 }
 

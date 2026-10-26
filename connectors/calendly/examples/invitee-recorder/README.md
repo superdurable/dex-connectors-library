@@ -19,13 +19,7 @@ This example receives signed Calendly webhooks and starts one
    `calendly-scheduled-event` Attribute and completes the Flow. Unwired optional
    branches fail the Flow with the connector's safe failure reason.
 
-The same Worker also registers `CalendlyCreateSchedulingLink`. Its start input
-is `CreateSchedulingLinkInput` with an event type URI; it completes with the
-single-use `SchedulingLink`. The `scheduling_link_integration_test.go` example
-starts this Flow against a provider stand-in that answers `503` once, then
-`201`, and checks that exactly two identical POST bodies were sent. The
-`workflow_mock_integration_test.go` example starts the invitee Flow with the
-generated mock connection and checks the Flow's recorded event and call input.
+A separate [scheduling-link example](../scheduling-link/README.md) exercises the fenced single-use link Mutation. The `workflow_mock_integration_test.go` test starts this invitee Flow with the generated mock connection and checks its recorded event and call input.
 
 ## 1. Generate the Flow Definition
 
@@ -40,17 +34,9 @@ dexcli visualize ./examples/invitee-recorder/flow/workflow.go \
   --schema-version 2.0 \
   --json \
   --out ./build/invitee-recorder
-dexcli visualize ./examples/invitee-recorder/linkflow/workflow.go \
-  --schema-version 2.0 \
-  --json \
-  --out ./build/scheduling-link
 ```
 
-Both commands must report `valid: true`. The first has three Steps, only the `found`
-`getScheduledEvent` branch routed, and the `invitee-created` binding with its
-`eventTypePicker` unit. The second routes only the `created` branch. Inside this repository each also warns
-`connector_release_required` and `connector_trigger_release_required`, because
-a local module is not a published release.
+The command must report `valid: true`. The Flow has three Steps, routes only the `found` `getScheduledEvent` branch, and declares the `invitee-created` binding with its `eventTypePicker` unit. Inside this repository it may warn `connector_release_required` and `connector_trigger_release_required`, because the local module is not a published release.
 
 ## 2. Start Dex with this connector's release metadata
 
