@@ -21,7 +21,7 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			return err
 		}},
 		{name: "searchTickets/customerIssueTickets/2", decode: func() error {
-			_, err := connectormock.DecodeOutput[support.SearchTicketsOutput](`{"tickets":[{"id":35438,"agentUrl":"https://acme.zendesk.com/agent/tickets/35438","subject":"Other customer billing question","status":"solved","requesterId":7702,"tags":["billing"],"createdAt":"2026-10-22T09:00:00Z","updatedAt":"2026-10-23T09:00:00Z"}],"nextCursor":"cursor-2"}`)
+			_, err := connectormock.DecodeOutput[support.SearchTicketsOutput](`{"tickets":[{"id":35438,"agentUrl":"https://acme.zendesk.com/agent/tickets/35438","subject":"Double charge on order 88213","status":"solved","requesterId":7701,"tags":["billing-double-charge"],"createdAt":"2026-10-22T09:00:00Z","updatedAt":"2026-10-23T09:00:00Z"}],"nextCursor":"cursor-2"}`)
 			return err
 		}},
 		{name: "searchTickets/customerIssueTickets/3", decode: func() error {

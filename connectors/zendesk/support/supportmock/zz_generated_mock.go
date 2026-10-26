@@ -109,11 +109,11 @@ func SearchTicketsRetry(failure sdkgo.Failure, after time.Duration) connectormoc
 	return connectormock.Retry[support.SearchTicketsOutput](failure, after)
 }
 
-// SearchTicketsCustomerIssueTickets is the manifest mock customerIssueTickets: Searching Jane's billing-double-charge tickets returns two unsolved matches ordered by creation.
+// SearchTicketsCustomerIssueTickets is the manifest mock customerIssueTickets: Searching Jane's billing-double-charge tickets returns two unsolved matches and a newer solved one, ordered by creation.
 func SearchTicketsCustomerIssueTickets() connectormock.Case[support.SearchTicketsOutput] {
 	pages := []support.SearchTicketsOutput{
 		connectormock.MustDecodeOutput[support.SearchTicketsOutput](`{"tickets":[{"id":35435,"agentUrl":"https://acme.zendesk.com/agent/tickets/35435","subject":"Double charge on order 88213","status":"pending","requesterId":7701,"tags":["billing-double-charge"],"createdAt":"2026-10-20T08:00:00Z","updatedAt":"2026-10-21T08:00:00Z"},{"id":35436,"agentUrl":"https://acme.zendesk.com/agent/tickets/35436","subject":"Double charge on order 88213","status":"pending","requesterId":7701,"tags":["billing-double-charge"],"createdAt":"2026-10-21T08:00:00Z","updatedAt":"2026-10-22T08:00:00Z"}],"nextCursor":"cursor-1"}`),
-		connectormock.MustDecodeOutput[support.SearchTicketsOutput](`{"tickets":[{"id":35438,"agentUrl":"https://acme.zendesk.com/agent/tickets/35438","subject":"Other customer billing question","status":"solved","requesterId":7702,"tags":["billing"],"createdAt":"2026-10-22T09:00:00Z","updatedAt":"2026-10-23T09:00:00Z"}],"nextCursor":"cursor-2"}`),
+		connectormock.MustDecodeOutput[support.SearchTicketsOutput](`{"tickets":[{"id":35438,"agentUrl":"https://acme.zendesk.com/agent/tickets/35438","subject":"Double charge on order 88213","status":"solved","requesterId":7701,"tags":["billing-double-charge"],"createdAt":"2026-10-22T09:00:00Z","updatedAt":"2026-10-23T09:00:00Z"}],"nextCursor":"cursor-2"}`),
 		connectormock.MustDecodeOutput[support.SearchTicketsOutput](`{"tickets":[],"nextCursor":""}`),
 	}
 	pageNumber := connectormock.CursorPageNumber[support.SearchTicketsInput]("cursor", "nextCursor", pages)

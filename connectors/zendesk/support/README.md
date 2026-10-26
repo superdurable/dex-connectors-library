@@ -258,8 +258,8 @@ a ticket when there is none.
 ## Mocks
 
 The generated `supportmock` defaults describe Jane's existing double-charge
-ticket: search returns two unsolved matches, getTicket reads the newer one,
-and updateTicket adds an internal follow-up. A scripted empty search can use
+ticket: search returns two unsolved matches and a newer solved one, getTicket
+reads the newer unsolved one, and updateTicket adds an internal follow-up. A scripted empty search can use
 createTicket's default, which opens ticket 35437. Named cases cover missing
 tickets, stale updates, and permission refusals. The example uses the mock
 connection with its real Flow:

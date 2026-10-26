@@ -66,11 +66,11 @@ spec:
       mocks:
         - name: customerIssueTickets
           branch: searched
-          description: "Searching Jane's billing-double-charge tickets returns two unsolved matches ordered by creation."
+          description: "Searching Jane's billing-double-charge tickets returns two unsolved matches and a newer solved one, ordered by creation."
           default: true
           pages:
             - {tickets: [{id: 35435, agentUrl: "https://acme.zendesk.com/agent/tickets/35435", subject: Double charge on order 88213, status: pending, requesterId: 7701, tags: [billing-double-charge], createdAt: "2026-10-20T08:00:00Z", updatedAt: "2026-10-21T08:00:00Z"}, {id: 35436, agentUrl: "https://acme.zendesk.com/agent/tickets/35436", subject: Double charge on order 88213, status: pending, requesterId: 7701, tags: [billing-double-charge], createdAt: "2026-10-21T08:00:00Z", updatedAt: "2026-10-22T08:00:00Z"}], nextCursor: cursor-1}
-            - {tickets: [{id: 35438, agentUrl: "https://acme.zendesk.com/agent/tickets/35438", subject: Other customer billing question, status: solved, requesterId: 7702, tags: [billing], createdAt: "2026-10-22T09:00:00Z", updatedAt: "2026-10-23T09:00:00Z"}], nextCursor: cursor-2}
+            - {tickets: [{id: 35438, agentUrl: "https://acme.zendesk.com/agent/tickets/35438", subject: Double charge on order 88213, status: solved, requesterId: 7701, tags: [billing-double-charge], createdAt: "2026-10-22T09:00:00Z", updatedAt: "2026-10-23T09:00:00Z"}], nextCursor: cursor-2}
             - {tickets: [], nextCursor: ""}
         - name: accessDenied
           branch: providerRejected
