@@ -44,7 +44,8 @@ func (CreateSchedulingLinkOperation) IdempotencyKey(callID sdkgo.CallID, _ Creat
 }
 
 // Invoke posts one single-use link. A usable 2xx selects created; an unusable 2xx selects uncertain.
-// A definite 4xx except 429 selects providerRejected; 401 is not retried after token refresh.
+// A definite 4xx except 409 and 429 selects providerRejected; 401 is not retried after token refresh.
+// A 409 selects uncertain because no read-back can identify the existing link.
 // A 429, 503, or provably unsent request retries only after a safe resend checkpoint.
 // An ambiguous write, server error, or prior accepted request without read-back selects uncertain.
 func (operation CreateSchedulingLinkOperation) Invoke(call sdkgo.Call, input CreateSchedulingLinkInput) sdkgo.MutationAttempt[SchedulingLink] {
