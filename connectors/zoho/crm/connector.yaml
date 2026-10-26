@@ -5,7 +5,7 @@ metadata:
   displayName: Zoho CRM
   description: Find, read, upsert, and update Zoho CRM records such as contacts, accounts, and deals in the connection's Zoho data center, list records changed since a watermark, and read a module's fields and picklist values, keeping Zoho CRM's own field names and stages.
   company: Zoho
-  version: v0.22.1
+  version: v0.23.0
 spec:
   provider: zoho
   codegen:
@@ -253,6 +253,24 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: acmeAccount
+          branch: found
+          description: "Finding Accounts with Account_Name Acme Corp returns its existing account."
+          default: true
+          output: {module: Accounts, records: [{module: Accounts, id: "4150868000000376008", fields: {Account_Name: Acme Corp}}]}
+        - name: openDeal
+          branch: found
+          description: "Finding Deals for contact 4150868000000376011 returns its newest open renewal deal."
+          output: {module: Deals, records: [{module: Deals, id: "4150868000000376022", fields: {Deal_Name: Renewal, Stage: Qualification, Modified_Time: "2026-10-25T12:00:00Z", Owner: {id: "4150868000000376001"}}}]}
+        - name: noMatchingRecords
+          branch: notFound
+          description: "Finding Accounts with Account_Name Missing Corp returns no records."
+          output: {module: Accounts, records: []}
+        - name: accessDenied
+          branch: providerRejected
+          description: "findRecords with a token missing the module scope returns HTTP 403."
+          failure: {kind: AUTHORIZATION, message: Zoho CRM denied the module operation.}
     - name: getRecord
       goName: GetRecord
       inputType: GetRecordInput
@@ -270,6 +288,20 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: advancedDeal
+          branch: found
+          description: "Reading deal 4150868000000376022 after its update returns Negotiation/Review and owner 4150868000000376001."
+          default: true
+          output: {module: Deals, id: "4150868000000376022", fields: {Deal_Name: Renewal, Stage: Negotiation/Review, Owner: {id: "4150868000000376001"}, Contact_Name: {id: "4150868000000376011"}, Modified_Time: "2026-10-26T12:00:00Z"}}
+        - name: recordMissing
+          branch: notFound
+          description: "Reading missing Deal 4150868000000999999 returns HTTP 204."
+          failure: {kind: NOT_FOUND, message: Zoho CRM found no record with the ID.}
+        - name: accessDenied
+          branch: providerRejected
+          description: "getRecord with a token missing the module scope returns HTTP 403."
+          failure: {kind: AUTHORIZATION, message: Zoho CRM denied the module operation.}
     - name: listModifiedRecords
       goName: ListModifiedRecords
       inputType: ListModifiedRecordsInput
@@ -286,6 +318,16 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: changedDeals
+          branch: listed
+          description: "Listing Deals changed since 2026-10-25 returns the updated renewal deal."
+          default: true
+          output: {module: Deals, records: [{module: Deals, id: "4150868000000376022", fields: {Deal_Name: Renewal, Stage: Negotiation/Review, Modified_Time: "2026-10-26T12:00:00Z"}}], hasMore: false, cursor: "2026-10-26T12:00:00Z/4150868000000376022"}
+        - name: accessDenied
+          branch: providerRejected
+          description: "listModifiedRecords with a token missing the module scope returns HTTP 403."
+          failure: {kind: AUTHORIZATION, message: Zoho CRM denied the module operation.}
     - name: upsertRecord
       goName: UpsertRecord
       inputType: UpsertRecordInput
@@ -304,6 +346,31 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: acmeContact
+          branch: upserted
+          description: "Upserting Contacts by Email ada@acme.example.com creates Ada under Acme Corp."
+          default: true
+          output: {module: Contacts, id: "4150868000000376011", isCreated: true, createdAt: "2026-10-26T11:00:00Z", modifiedAt: "2026-10-26T11:00:00Z"}
+        - name: accountUpserted
+          branch: upserted
+          description: "Upserting Accounts by Account_Name Acme Corp finds the existing account."
+          output: {module: Accounts, id: "4150868000000376008", isCreated: false, duplicateField: Account_Name, modifiedAt: "2026-10-26T11:00:00Z"}
+        - name: duplicateUniqueField
+          branch: conflict
+          description: "Upserting a contact with an Email already held by another record returns DUPLICATE_DATA."
+          output: {module: Contacts, providerErrors: [{code: DUPLICATE_DATA, field: Email, duplicateRecordId: "4150868000000376099"}]}
+          failure: {kind: CONFLICT, message: Zoho CRM found another record with a value of a unique field.}
+        - name: invalidContactFields
+          branch: recordRejected
+          description: "Upserting a contact without its mandatory Last_Name returns MANDATORY_NOT_FOUND."
+          output: {module: Contacts, providerErrors: [{code: MANDATORY_NOT_FOUND, field: Last_Name}]}
+          failure: {kind: VALIDATION, message: Zoho CRM rejected the contact fields.}
+        - name: accessDenied
+          branch: providerRejected
+          description: "upsertRecord with a token missing the module scope returns HTTP 403."
+          output: {module: Contacts, providerErrors: [{code: OAUTH_SCOPE_MISMATCH}]}
+          failure: {kind: AUTHORIZATION, message: Zoho CRM denied the module operation.}
     - name: updateRecord
       goName: UpdateRecord
       inputType: UpdateRecordInput
@@ -323,6 +390,32 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: advancedRenewalDeal
+          branch: updated
+          description: "Updating deal 4150868000000376022 sets its stage to Negotiation/Review."
+          default: true
+          output: {module: Deals, id: "4150868000000376022", modifiedAt: "2026-10-26T12:00:00Z"}
+        - name: missingRecord
+          branch: notFound
+          description: "Updating missing Deal 4150868000000999999 returns INVALID_DATA for its ID."
+          output: {module: Deals, providerErrors: [{code: INVALID_DATA, field: id}]}
+          failure: {kind: NOT_FOUND, message: Zoho CRM found no record with the ID.}
+        - name: duplicateField
+          branch: conflict
+          description: "Updating a deal with a unique value held by another record returns DUPLICATE_DATA."
+          output: {module: Deals, providerErrors: [{code: DUPLICATE_DATA, field: External_Deal_ID, duplicateRecordId: "4150868000000376099"}]}
+          failure: {kind: CONFLICT, message: Zoho CRM found another record with a value of a unique field.}
+        - name: invalidFields
+          branch: recordRejected
+          description: "Updating a deal to a blocked stage returns INVALID_DATA."
+          output: {module: Deals, providerErrors: [{code: INVALID_DATA, field: Stage}]}
+          failure: {kind: VALIDATION, message: Zoho CRM rejected the deal fields.}
+        - name: accessDenied
+          branch: providerRejected
+          description: "updateRecord with a token missing the module scope returns HTTP 403."
+          output: {module: Deals, providerErrors: [{code: OAUTH_SCOPE_MISMATCH}]}
+          failure: {kind: AUTHORIZATION, message: Zoho CRM denied the module operation.}
     - name: listModuleFields
       goName: ListModuleFields
       inputType: ListModuleFieldsInput
@@ -339,3 +432,13 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: dealFields
+          branch: listed
+          description: "Listing Deals fields returns Stage with Negotiation/Review enabled."
+          default: true
+          output: {module: Deals, fields: [{apiName: Stage, displayLabel: Stage, dataType: picklist, picklistValues: [{actualValue: Qualification, displayValue: Qualification}, {actualValue: Negotiation/Review, displayValue: Negotiation/Review}, {actualValue: Closed Won, displayValue: Closed Won}]}, {apiName: Deal_Name, displayLabel: Deal Name, dataType: text}]}
+        - name: accessDenied
+          branch: providerRejected
+          description: "listModuleFields with a token missing the module scope returns HTTP 403."
+          failure: {kind: AUTHORIZATION, message: Zoho CRM denied the module operation.}

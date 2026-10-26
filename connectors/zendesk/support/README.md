@@ -255,6 +255,23 @@ customer's unsolved tickets about an issue, reads the newest one to confirm it
 still belongs to the customer, then adds one internal follow-up note, or opens
 a ticket when there is none.
 
+## Mocks
+
+The generated `supportmock` defaults describe Jane's existing double-charge
+ticket: search returns two unsolved matches and a newer solved one, getTicket
+reads the newer unsolved one, and updateTicket adds an internal follow-up. A scripted empty search can use
+createTicket's default, which opens ticket 35437. Named cases cover missing
+tickets, stale updates, and permission refusals. The example uses the mock
+connection with its real Flow:
+
+```go
+mock := supportmock.New(t, ConnectionName)
+flow := NewFlow(mock.Connection())
+```
+
+This snippet comes from
+[`workflow_mock_integration_test.go`](examples/customer-issue/flow/workflow_mock_integration_test.go).
+
 ## Verification
 
 ```bash

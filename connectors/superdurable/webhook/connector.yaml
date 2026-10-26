@@ -5,7 +5,7 @@ metadata:
   displayName: Webhook
   description: "Receive verified webhook requests from any sender, such as a form service, and start or resume Flows with a stable event ID. Send signed Standard Webhooks events to a configured HTTPS receiver."
   company: Super Durable
-  version: v0.22.1
+  version: v0.23.0
 spec:
   provider: webhook
   codegen:
@@ -114,3 +114,14 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Receivers retain each webhook-id for the documented two-minute window; a later retry could apply the same event again after that record expires."}}
+      mocks:
+        - name: submissionDelivered
+          branch: delivered
+          description: "The receiver accepts the form.submitted event for submission evt_mock_1 with HTTP 202."
+          default: true
+          output: {webhookId: msg_00000000000000000000000000000001, statusCode: 202}
+        - name: submissionRejected
+          branch: rejected
+          description: "The receiver refuses the form.submitted event for submission evt_rejected_1 with HTTP 422."
+          output: {webhookId: msg_00000000000000000000000000000002, statusCode: 422}
+          failure: {kind: PROVIDER_REJECTION, message: The receiver answered HTTP 422.}

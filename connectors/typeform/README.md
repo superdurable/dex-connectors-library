@@ -19,6 +19,21 @@ Every other branch is optional: `notFound` (except `listForms`),
 `providerRejected`, `invalidResponse`, and `defect`. Every time in a Result is
 UTC.
 
+## Mocks
+
+The generated `typeformmock` package defaults to one customer signup form
+(`f_signup_1`), Ada's response to it, and its enabled HTTPS webhook. Named
+cases cover missing forms and permission refusals. The example Flow uses the
+same typed connection to pair submitted answers with the form's questions:
+
+```go
+mock := typeformmock.New(t, ConnectionName)
+flow := NewFlow(mock.Connection())
+```
+
+This snippet comes from
+[`workflow_mock_integration_test.go`](examples/response-recorder/flow/workflow_mock_integration_test.go).
+
 ## Authorization
 
 A connection uses a Typeform **personal access token**, created at

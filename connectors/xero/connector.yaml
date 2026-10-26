@@ -5,7 +5,7 @@ metadata:
   displayName: Xero
   description: "Find Xero contacts by email, list and read invoices, raise invoices with exact decimal amounts in any enabled currency, and record payments against them, with every write sent under a Xero Idempotency-Key derived from the Step."
   company: Xero
-  version: v0.22.1
+  version: v0.23.0
 spec:
   provider: xero
   codegen:
@@ -135,6 +135,20 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: cityAgencyContacts
+          branch: listed
+          description: "Listing active contacts finds City Agency and its billing email."
+          default: true
+          output: {contacts: [{contactId: 025867f1-d741-4d6b-b1af-9ac774b59ba7, name: City Agency, emailAddress: accounts@cityagency.example.com, status: ACTIVE, isCustomer: true, defaultCurrency: USD}], page: 1, pageSize: 100, pageCount: 1, itemCount: 1, hasMorePages: false}
+        - name: accessDenied
+          branch: providerRejected
+          description: "listContacts with a token missing its Xero scope returns HTTP 403."
+          failure: {kind: AUTHORIZATION, message: Xero denied access to the organisation or scope.}
+        - name: dailyLimit
+          branch: dailyLimitReached
+          description: "listContacts after the organisation exhausts its daily API quota returns HTTP 429."
+          failure: {kind: QUOTA_EXHAUSTED, message: Xero daily API limit is exhausted.}
     - name: findContactByEmail
       goName: FindContactByEmail
       inputType: FindContactByEmailInput
@@ -154,6 +168,32 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: cityAgencyContact
+          branch: found
+          description: "Finding accounts@cityagency.example.com resolves the one active City Agency contact."
+          default: true
+          output: {emailAddress: accounts@cityagency.example.com, contact: {contactId: 025867f1-d741-4d6b-b1af-9ac774b59ba7, name: City Agency, emailAddress: accounts@cityagency.example.com, status: ACTIVE, isCustomer: true, defaultCurrency: USD}}
+        - name: emailNotFound
+          branch: notFound
+          description: "Finding nobody@cityagency.example.com returns no active contact."
+          output: {emailAddress: nobody@cityagency.example.com}
+          failure: {kind: NOT_FOUND, message: No Xero contact has the email address.}
+        - name: emailAmbiguous
+          branch: ambiguous
+          description: "Finding shared@cityagency.example.com returns two active contacts."
+          output: {emailAddress: shared@cityagency.example.com, matches: [{contactId: 0817b764-0b4c-47e8-9cad-4ed00baf43d2, name: City Agency Shared, emailAddress: shared@cityagency.example.com, status: ACTIVE, isCustomer: true, defaultCurrency: USD}, {contactId: 06638157-fdfa-47f4-91d0-875b5f5c18c6, name: City Agency Branch, emailAddress: shared@cityagency.example.com, status: ACTIVE}]}
+          failure: {kind: CONFLICT, message: Several Xero contacts have the email address.}
+        - name: accessDenied
+          branch: providerRejected
+          description: "findContactByEmail with a token missing its Xero scope returns HTTP 403."
+          output: {emailAddress: accounts@cityagency.example.com}
+          failure: {kind: AUTHORIZATION, message: Xero denied access to the organisation or scope.}
+        - name: dailyLimit
+          branch: dailyLimitReached
+          description: "findContactByEmail after the organisation exhausts its daily API quota returns HTTP 429."
+          output: {emailAddress: accounts@cityagency.example.com}
+          failure: {kind: QUOTA_EXHAUSTED, message: Xero daily API limit is exhausted.}
     - name: getInvoice
       goName: GetInvoice
       inputType: GetInvoiceInput
@@ -172,6 +212,24 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: paidOrderInvoice
+          branch: found
+          description: "Reading invoice INV-1042 after payment returns the paid ORDER-1042 invoice."
+          default: true
+          output: {invoiceId: 7b3db23e-1c22-43a1-b11e-dac2e5637d70, invoiceNumber: INV-1042, type: ACCREC, status: PAID, contact: {contactId: 025867f1-d741-4d6b-b1af-9ac774b59ba7, name: City Agency}, date: "2026-10-01", dueDate: "2026-10-15", reference: ORDER-1042, currencyCode: USD, lineItems: [{description: Spring bouquet, quantity: "1", unitAmount: "49.95", accountCode: "200", taxType: NONE, lineAmount: "49.95"}], subTotal: "49.95", total: "49.95", amountDue: "0.00", amountPaid: "49.95", fullyPaidOnDate: "2026-10-01"}
+        - name: invoiceNotFound
+          branch: notFound
+          description: "Reading nonexistent invoice INV-MISSING returns HTTP 404."
+          failure: {kind: NOT_FOUND, message: Xero found no such resource.}
+        - name: accessDenied
+          branch: providerRejected
+          description: "getInvoice with a token missing its Xero scope returns HTTP 403."
+          failure: {kind: AUTHORIZATION, message: Xero denied access to the organisation or scope.}
+        - name: dailyLimit
+          branch: dailyLimitReached
+          description: "getInvoice after the organisation exhausts its daily API quota returns HTTP 429."
+          failure: {kind: QUOTA_EXHAUSTED, message: Xero daily API limit is exhausted.}
     - name: listInvoices
       goName: ListInvoices
       inputType: ListInvoicesInput
@@ -189,6 +247,24 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: paidOrderInvoices
+          branch: listed
+          description: "Listing invoices finds the paid ORDER-1042 invoice."
+          default: true
+          output: {invoices: [{invoiceId: 7b3db23e-1c22-43a1-b11e-dac2e5637d70, invoiceNumber: INV-1042, type: ACCREC, status: PAID, contact: {contactId: 025867f1-d741-4d6b-b1af-9ac774b59ba7, name: City Agency}, date: "2026-10-01", dueDate: "2026-10-15", reference: ORDER-1042, currencyCode: USD, lineItems: [{description: Spring bouquet, quantity: "1", unitAmount: "49.95", accountCode: "200", taxType: NONE, lineAmount: "49.95"}], subTotal: "49.95", total: "49.95", amountDue: "0.00", amountPaid: "49.95", fullyPaidOnDate: "2026-10-01"}], page: 1, pageSize: 10, pageCount: 1, itemCount: 1, hasMorePages: false}
+        - name: orderWithoutInvoice
+          branch: listed
+          description: "Listing invoices for ORDER-1042 before creation finds no invoice."
+          output: {invoices: [], page: 1, pageSize: 10, pageCount: 0, itemCount: 0, hasMorePages: false}
+        - name: accessDenied
+          branch: providerRejected
+          description: "listInvoices with a token missing its Xero scope returns HTTP 403."
+          failure: {kind: AUTHORIZATION, message: Xero denied access to the organisation or scope.}
+        - name: dailyLimit
+          branch: dailyLimitReached
+          description: "listInvoices after the organisation exhausts its daily API quota returns HTTP 429."
+          failure: {kind: QUOTA_EXHAUSTED, message: Xero daily API limit is exhausted.}
     - name: createInvoice
       goName: CreateInvoice
       inputType: CreateInvoiceInput
@@ -208,6 +284,22 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 4m, reason: {kind: duplicateWriteRisk, explanation: "Xero retains the invoice Idempotency-Key for six minutes, so stop createInvoice retries within four minutes before replay can make another invoice."}}
+      mocks:
+        - name: approvedOrderInvoice
+          branch: created
+          description: "Creating the authorised invoice for ORDER-1042 records one USD invoice for City Agency."
+          default: true
+          output: {invoice: {invoiceId: 7b3db23e-1c22-43a1-b11e-dac2e5637d70, invoiceNumber: INV-1042, type: ACCREC, status: AUTHORISED, contact: {contactId: 025867f1-d741-4d6b-b1af-9ac774b59ba7, name: City Agency}, date: "2026-10-01", dueDate: "2026-10-15", reference: ORDER-1042, currencyCode: USD, lineItems: [{description: Spring bouquet, quantity: "1", unitAmount: "49.95", accountCode: "200", taxType: NONE, lineAmount: "49.95"}], subTotal: "49.95", total: "49.95", amountDue: "49.95", amountPaid: "0.00"}, reference: ORDER-1042}
+        - name: accessDenied
+          branch: providerRejected
+          description: "createInvoice with a token missing its Xero scope returns HTTP 403."
+          output: {reference: ORDER-1042}
+          failure: {kind: AUTHORIZATION, message: Xero denied access to the organisation or scope.}
+        - name: dailyLimit
+          branch: dailyLimitReached
+          description: "createInvoice after the organisation exhausts its daily API quota returns HTTP 429."
+          output: {reference: ORDER-1042}
+          failure: {kind: QUOTA_EXHAUSTED, message: Xero daily API limit is exhausted.}
     - name: recordPayment
       goName: RecordPayment
       inputType: RecordPaymentInput
@@ -226,3 +318,19 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 4m, reason: {kind: duplicateWriteRisk, explanation: "Xero retains the payment Idempotency-Key for six minutes, so stop recordPayment retries within four minutes before replay can record another payment."}}
+      mocks:
+        - name: orderPayment
+          branch: recorded
+          description: "Recording the 49.95 USD payment for INV-1042 leaves that invoice paid."
+          default: true
+          output: {payment: {paymentId: 24eb9d81-f60c-493a-b54b-19095f5d4f50, date: "2026-10-01", amount: "49.95", status: AUTHORISED, paymentType: ACCRECPAYMENT, invoice: {invoiceId: 7b3db23e-1c22-43a1-b11e-dac2e5637d70, invoiceNumber: INV-1042, type: ACCREC, status: PAID, amountDue: "0.00", amountPaid: "49.95", currencyCode: USD}, account: {code: "090"}}, invoiceId: 7b3db23e-1c22-43a1-b11e-dac2e5637d70}
+        - name: accessDenied
+          branch: providerRejected
+          description: "recordPayment with a token missing its Xero scope returns HTTP 403."
+          output: {invoiceId: 7b3db23e-1c22-43a1-b11e-dac2e5637d70}
+          failure: {kind: AUTHORIZATION, message: Xero denied access to the organisation or scope.}
+        - name: dailyLimit
+          branch: dailyLimitReached
+          description: "recordPayment after the organisation exhausts its daily API quota returns HTTP 429."
+          output: {invoiceId: 7b3db23e-1c22-43a1-b11e-dac2e5637d70}
+          failure: {kind: QUOTA_EXHAUSTED, message: Xero daily API limit is exhausted.}
