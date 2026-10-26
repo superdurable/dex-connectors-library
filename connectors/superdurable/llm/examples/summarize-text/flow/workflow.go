@@ -29,7 +29,6 @@ const (
 var (
 	summaryRequestAttribute = dex.DefineAttribute[SummaryRequest]("llm-summary-request")
 	summaryOutcomeAttribute = dex.DefineAttribute[SummaryOutcome]("llm-summary-outcome")
-	summaryFailureAttribute = dex.DefineAttribute[SummaryFailure]("llm-summary-failure")
 	summaryTextStream       = dex.DefineStream[string]("llm-summary-text", 1<<20)
 )
 
@@ -41,9 +40,9 @@ type SummaryRequest struct {
 
 // SummaryOutcome is the Flow completion output.
 type SummaryOutcome struct {
-	// Branch is the generateText branch that completed the Flow: generated, truncated, or blocked.
+	// Branch is the generated branch that completed the Flow.
 	Branch sdkgo.BranchID `json:"branch"`
-	// Summary is the model's text; it is partial when truncated and empty when blocked.
+	// Summary is the generated model text.
 	Summary string `json:"summary"`
 	// Provider is the connection's provider that served the summary, such as anthropic.
 	Provider string `json:"provider"`
@@ -55,18 +54,6 @@ type SummaryOutcome struct {
 	FinishReason textgen.FinishReason `json:"finishReason,omitempty"`
 	// Usage is the token usage the provider reported.
 	Usage textgen.Usage `json:"usage"`
-}
-
-// SummaryFailure records a providerRejected, invalidResponse, or defect outcome before the Flow fails.
-type SummaryFailure struct {
-	// Branch is the generateText branch that the connector selected.
-	Branch sdkgo.BranchID `json:"branch"`
-	// Provider is the connection's provider, such as openai.
-	Provider string `json:"provider"`
-	// Kind is the safe failure category, such as AUTHENTICATION.
-	Kind sdkgo.FailureKind `json:"kind,omitempty"`
-	// Message is the safe failure message, which never holds keys or provider text.
-	Message string `json:"message,omitempty"`
 }
 
 // SummaryModelConfiguration is the SummarizeText Step's model pick from Dex Web.
@@ -121,14 +108,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			MapToOperationInput: flow.MapToGenerateTextRequest,
 			TextStream:          &summaryTextStream,
 			Generated:           sdkgo.GoTo(recordSummaryOutcome{}),
-			Truncated:           sdkgo.GoTo(recordSummaryOutcome{}),
-			Blocked:             sdkgo.GoTo(recordSummaryOutcome{}),
-			ProviderRejected:    sdkgo.GoTo(recordSummaryFailure{}),
-			InvalidResponse:     sdkgo.GoTo(recordSummaryFailure{}),
-			Defect:              sdkgo.GoTo(recordSummaryFailure{}),
 		})),
 		dex.DefineStep(recordSummaryOutcome{}),
-		dex.DefineStep(recordSummaryFailure{}),
 	}
 }
 
@@ -140,58 +121,52 @@ func (flow *Flow) GetRPCs() []dex.RPCDef {
 	}
 }
 
-// GetPersistenceSchema registers the request, outcome, and failure Attributes and the summary text Stream.
+// GetPersistenceSchema registers the request and outcome Attributes and the summary text Stream.
 func (*Flow) GetPersistenceSchema() dex.PersistenceSchema {
 	return dex.PersistenceSchema{
-		Attributes: []dex.AttributeDef{summaryRequestAttribute, summaryOutcomeAttribute, summaryFailureAttribute},
+		Attributes: []dex.AttributeDef{summaryRequestAttribute, summaryOutcomeAttribute},
 		Streams:    []dex.StreamDef{summaryTextStream},
 	}
 }
 
-// GetDexSummary returns the submitted request and the outcome or failure for the Dex Web run list.
+// GetDexSummary returns the submitted request and outcome for the Dex Web run list.
 //
 // dex:field attribute-key:llm-summary-request value-type:json editable:false description:"Submitted summary request"
 // dex:field attribute-key:llm-summary-outcome value-type:json editable:false description:"Summary outcome, provider, and model"
-// dex:field attribute-key:llm-summary-failure value-type:json editable:false description:"Summary failure"
 func (*Flow) GetDexSummary(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
-	request, outcome, failure, err := summaryInspection(ctx)
+	request, outcome, err := summaryInspection(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return &dex.RPCResult[map[string]any]{Output: map[string]any{
-		"llm-summary-request": request, "llm-summary-outcome": outcome, "llm-summary-failure": failure,
+		"llm-summary-request": request, "llm-summary-outcome": outcome,
 	}}, nil
 }
 
-// GetDexDisplay returns the submitted request and the outcome or failure for the Dex Web run detail.
+// GetDexDisplay returns the submitted request and outcome for the Dex Web run detail.
 //
 // dex:field attribute-key:llm-summary-request value-type:json editable:false description:"Submitted text"
 // dex:field attribute-key:llm-summary-outcome value-type:json editable:false description:"Summary, provider, model, finish reason, and token usage"
-// dex:field attribute-key:llm-summary-failure value-type:json editable:false description:"Failure branch, provider, and safe message"
 func (*Flow) GetDexDisplay(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
-	request, outcome, failure, err := summaryInspection(ctx)
+	request, outcome, err := summaryInspection(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return &dex.RPCResult[map[string]any]{Output: map[string]any{
-		"llm-summary-request": request, "llm-summary-outcome": outcome, "llm-summary-failure": failure,
+		"llm-summary-request": request, "llm-summary-outcome": outcome,
 	}}, nil
 }
 
-func summaryInspection(ctx dex.Context) (SummaryRequest, SummaryOutcome, SummaryFailure, error) {
+func summaryInspection(ctx dex.Context) (SummaryRequest, SummaryOutcome, error) {
 	request, err := optionalAttribute(ctx, summaryRequestAttribute)
 	if err != nil {
-		return SummaryRequest{}, SummaryOutcome{}, SummaryFailure{}, err
+		return SummaryRequest{}, SummaryOutcome{}, err
 	}
 	outcome, err := optionalAttribute(ctx, summaryOutcomeAttribute)
 	if err != nil {
-		return SummaryRequest{}, SummaryOutcome{}, SummaryFailure{}, err
+		return SummaryRequest{}, SummaryOutcome{}, err
 	}
-	failure, err := optionalAttribute(ctx, summaryFailureAttribute)
-	if err != nil {
-		return SummaryRequest{}, SummaryOutcome{}, SummaryFailure{}, err
-	}
-	return request, outcome, failure, nil
+	return request, outcome, nil
 }
 
 func optionalAttribute[T any](ctx dex.Context, attribute dex.Attribute[T]) (T, error) {
@@ -240,7 +215,7 @@ func (recordSummaryRequest) Execute(ctx dex.Context, request SummaryRequest) (*d
 }
 
 // dex:group group-id:summary group-label:"Summary"
-// dex:explanation text:"Persist the generated, truncated, or blocked summary with its provider and model and complete the Flow."
+// dex:explanation text:"Persist the generated summary with its provider and model and complete the Flow."
 type recordSummaryOutcome struct {
 	dex.StepDefaultsNoWaitFor[llm.GenerateTextResult]
 }
@@ -256,27 +231,6 @@ func (recordSummaryOutcome) Execute(ctx dex.Context, result llm.GenerateTextResu
 		return nil, err
 	}
 	return dex.GracefulComplete(outcome), nil
-}
-
-// dex:group group-id:summary group-label:"Summary"
-// dex:explanation text:"Persist the rejected, invalid, or defect outcome with its safe message and fail the Flow."
-type recordSummaryFailure struct {
-	dex.StepDefaultsNoWaitFor[llm.GenerateTextResult]
-}
-
-func (recordSummaryFailure) GetStepType() string { return "RecordSummaryFailure" }
-
-func (recordSummaryFailure) Execute(ctx dex.Context, result llm.GenerateTextResult) (*dex.StepDecision, error) {
-	failure := SummaryFailure{Branch: result.Branch, Provider: result.Receipt.Provider}
-	message := "summary generation selected " + string(result.Branch)
-	if result.Failure != nil {
-		failure.Provider, failure.Kind, failure.Message = result.Failure.Provider, result.Failure.Kind, result.Failure.Message
-		message += ": " + result.Failure.Message
-	}
-	if err := summaryFailureAttribute.Set(ctx, failure); err != nil {
-		return nil, err
-	}
-	return dex.ForceFail(message), nil
 }
 
 var _ dex.Flow = (*Flow)(nil)

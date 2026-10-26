@@ -37,24 +37,25 @@ func TestSummarizeTextExampleRunsOnTheLLMMockWithRealDex(t *testing.T) {
 		}, outcome)
 	})
 
-	t.Run("a scripted quota failure records the failure and fails the Flow", func(t *testing.T) {
+	t.Run("a scripted quota failure selects an unwired branch", func(t *testing.T) {
 		flowID := fmt.Sprintf("llm-summary-mock-quota-%d", runID)
 		mock.GenerateText().ForFlow(flowID).Respond(llmmock.GenerateTextQuotaExhausted())
 
 		result := runSummaryFlow(t, client, flow, flowID)
 
 		require.Equal(t, dex.FlowFailed, result.Status)
-		require.Contains(t, result.ErrorMessage, "summary generation selected providerRejected: The provider account has exhausted its quota.")
+		require.Contains(t, result.ErrorMessage,
+			"llm generateText (connection llm) selected branch providerRejected with no target: QUOTA_EXHAUSTED: The provider account has exhausted its quota.")
 	})
 
 	t.Run("a rate limit is retried and the next case answers", func(t *testing.T) {
 		flowID := fmt.Sprintf("llm-summary-mock-retry-%d", runID)
-		mock.GenerateText().ForFlow(flowID).Respond(llmmock.GenerateTextRateLimited(), llmmock.GenerateTextOutputTokenLimit())
+		mock.GenerateText().ForFlow(flowID).Respond(llmmock.GenerateTextRateLimited(), llmmock.GenerateTextShortSummary())
 
 		outcome := runSummaryFlowToCompletion(t, client, flow, flowID)
 
-		require.Equal(t, llm.GenerateTextBranchTruncated, outcome.Branch)
-		require.Equal(t, "The connector shipped on", outcome.Summary)
+		require.Equal(t, llm.GenerateTextBranchGenerated, outcome.Branch)
+		require.Equal(t, "The connector shipped on time.", outcome.Summary)
 	})
 
 	requests := make(map[string]llm.GenerateTextRequest)
@@ -64,7 +65,7 @@ func TestSummarizeTextExampleRunsOnTheLLMMockWithRealDex(t *testing.T) {
 		branches[call.FlowID] = append(branches[call.FlowID], string(call.Branch))
 	}
 	require.Equal(t, "mock-model", requests[fmt.Sprintf("llm-summary-mock-default-%d", runID)].Model, "the Step pick reaches the request")
-	require.Equal(t, []string{"", string(llm.GenerateTextBranchTruncated)}, branches[fmt.Sprintf("llm-summary-mock-retry-%d", runID)])
+	require.Equal(t, []string{"", string(llm.GenerateTextBranchGenerated)}, branches[fmt.Sprintf("llm-summary-mock-retry-%d", runID)])
 }
 
 // TestStructuredOutputFlowRunsOnTheLLMMockWithRealDex scripts the JSON answer for a Flow whose request sets a

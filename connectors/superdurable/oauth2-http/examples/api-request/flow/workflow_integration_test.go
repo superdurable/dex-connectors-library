@@ -67,8 +67,8 @@ func TestAPIRequestExampleRefreshesTheTokenAndReadsTheAPIWithRealDex(t *testing.
 	}
 }
 
-// TestAPIRequestExampleRecordsARejectionWithoutFailingTheFlowWithRealDex wires the optional rejected branch.
-func TestAPIRequestExampleRecordsARejectionWithoutFailingTheFlowWithRealDex(t *testing.T) {
+// TestAPIRequestExampleFailsAnUnwiredRejectionWithRealDex verifies the API refusal is terminal without retry.
+func TestAPIRequestExampleFailsAnUnwiredRejectionWithRealDex(t *testing.T) {
 	server := newAuthorizationServer(t)
 	flow, harness := newAPIRequestHarness(t, server)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
@@ -79,12 +79,9 @@ func TestAPIRequestExampleRecordsARejectionWithoutFailingTheFlowWithRealDex(t *t
 	require.NoError(t, err)
 
 	result := waitForTerminalFlow(t, ctx, harness.client, flowID)
-	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
-	var report Report
-	require.NoError(t, result.DecodeSingleOutput(&report))
-	require.Equal(t, StatusRejected, report.Status)
-	require.Equal(t, http.StatusNotFound, report.StatusCode)
-	require.Contains(t, report.FailureMessage, "404")
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "rejected")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.Len(t, server.bearerTokens("/missing"), 1, "a rejection is not retried")
 }
 

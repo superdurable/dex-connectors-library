@@ -14,15 +14,16 @@ attendance, using every Zoom operation:
 5. A reschedule runs `MoveBookedMeeting` (`updateMeeting`), reads the meeting
    back with `ReadBackRescheduledMeeting` (`getMeeting`), confirms the stored
    slot in `RecordRescheduledMeeting`, and waits again. A meeting deleted in
-   Zoom completes as `cancelled`.
+   Zoom fails the Flow on the unwired `notFound` branch.
 6. At the attendance time, `ListMeetingParticipants`
    (`listPastMeetingParticipants`) and `RecordMeetingAttendance` complete as
    `attended` when anyone other than the host joined, `noShow` when nobody did
-   or Zoom has no ended instance, or `attendanceUnknown` when Zoom refuses the
-   listing, such as on a free account.
+   or Zoom has no ended instance, or `attendanceUnknown` when the first
+   participant page lists only the host and more pages remain. A rejected
+   listing, such as on a free account, fails the Flow.
 
-On `providerRejected`, the Flow completes as `rejected` with Zoom's error code;
-nothing was created. On `uncertain`, `RecordUncertainMeeting` records the
+On `providerRejected`, the unwired branch fails the Flow; nothing was
+created. On `uncertain`, `RecordUncertainMeeting` records the
 connector Call ID, and `FindUncertainMeeting` (`listMeetings`) reads one page
 of upcoming meetings. `EvaluateUncertainMeeting` adopts the one meeting with
 the same topic, start instant, and length that Zoom created after the booking

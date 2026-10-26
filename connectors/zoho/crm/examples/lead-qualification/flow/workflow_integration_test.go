@@ -7,7 +7,6 @@ package leadqualification
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net"
 	"net/http"
@@ -200,18 +199,17 @@ func TestRateLimitedQueryWaitsForRetryAfterWithRealDex(t *testing.T) {
 	require.GreaterOrEqual(t, queries[1].At.Sub(queries[0].At), time.Second, "the retry waited for Retry-After")
 }
 
-func TestRejectedContactCompletesWithZohoCodesOnlyWithRealDex(t *testing.T) {
+func TestRejectedContactFailsWithoutRetryWithRealDex(t *testing.T) {
 	provider := fakecrm.New(t, integrationAccessToken)
 	provider.RejectsUpsertField = "Email"
 	provider.SeedRecord("Accounts", map[string]any{"Account_Name": "Acme Corp"}, seededAt)
 	harness := newQualificationHarness(t, provider, defaultRequestTimeout)
 
-	outcome := harness.runQualification(t, "rejected-contact", integrationInput())
-	require.Equal(t, PhaseContactRejected, outcome.Phase)
-	require.Equal(t, []crm.ProviderError{{Code: "INVALID_DATA", Field: "Email"}}, outcome.ProviderErrors)
-	encoded, err := json.Marshal(outcome)
-	require.NoError(t, err)
-	require.NotContains(t, string(encoded), "SENTINEL")
+	result := harness.waitForFlow(t, harness.startQualification(t, "rejected-contact", integrationInput()))
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "recordRejected")
+	require.Contains(t, result.ErrorMessage, "no target")
+	require.NotContains(t, result.ErrorMessage, "SENTINEL")
 	require.Equal(t, 1, provider.Count("upsert"), "a record rejection is not retried")
 }
 

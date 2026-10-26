@@ -26,11 +26,10 @@ nothing matches.
 8. `CompleteRecordSync` checks that the read-back carries the external ID and
    completes with the record.
 
-`ReportLinkRejected` and `ReportCreateRejected` complete as `rejected` with
-Salesforce's error codes and field names when it refuses the values, such as
-`REQUIRED_FIELD_MISSING` on `LastName`. Every other non-happy branch is
-optional and fails the Flow. A matched record that disappears before the link
-selects `notFound` and fails the Flow.
+The `recordRejected` branches are unwired and fail the Flow when Salesforce
+refuses field values, such as a missing `LastName`. The query's `notFound`
+branch continues to create by external ID; other optional branches fail the
+Flow, including a matched record that disappears before the link.
 
 ## Configure
 

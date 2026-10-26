@@ -225,8 +225,8 @@ twice across Flows needs its own guard, such as a `MERGE` keyed by a business ID
 ## Runnable example
 
 [`examples/account-usage-summary`](examples/account-usage-summary/README.md) submits a long
-aggregate over a usage table, waits on a durable Timer between status reads, records a failed
-statement's code and SQLSTATE, and cancels the statement when its wait budget runs out.
+aggregate over a usage table, waits on a durable Timer between status reads, and cancels the
+statement when its wait budget runs out. A rejected statement fails the Flow.
 
 ## Verification
 

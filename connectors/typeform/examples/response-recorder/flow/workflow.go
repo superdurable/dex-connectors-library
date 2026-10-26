@@ -54,16 +54,12 @@ type Submission struct {
 
 // RecordedQuestions is the getForm outcome the Flow stores and completes with on the found branch.
 type RecordedQuestions struct {
-	// Branch is the getForm branch: found, notFound, providerRejected, invalidResponse, or defect.
+	// Branch is the found getForm branch.
 	Branch sdkgo.BranchID `json:"branch"`
 	// Questions pairs every question of the form, in form order, with its answer.
 	Questions []RecordedQuestion `json:"questions,omitempty"`
 	// UnmatchedAnswers answer fields the form no longer has, because it changed after the submission.
 	UnmatchedAnswers []typeform.FormAnswer `json:"unmatchedAnswers,omitempty"`
-	// FailureKind is the safe failure category of a branch other than found.
-	FailureKind sdkgo.FailureKind `json:"failureKind,omitempty"`
-	// FailureMessage is the safe failure message, which never holds tokens or Typeform response text.
-	FailureMessage string `json:"failureMessage,omitempty"`
 }
 
 // RecordedQuestion is one question of the form and the submission's answer to it.
@@ -101,13 +97,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Connection:          flow.connection,
 			MapToOperationInput: MapToGetFormInput,
 			Found:               sdkgo.GoTo(recordQuestions{}),
-			NotFound:            sdkgo.GoTo(recordReadFailure{}),
-			ProviderRejected:    sdkgo.GoTo(recordReadFailure{}),
-			InvalidResponse:     sdkgo.GoTo(recordReadFailure{}),
-			Defect:              sdkgo.GoTo(recordReadFailure{}),
 		})),
 		dex.DefineStep(recordQuestions{}),
-		dex.DefineStep(recordReadFailure{}),
 	}
 }
 
@@ -270,27 +261,6 @@ func (recordQuestions) Execute(ctx dex.Context, result typeform.GetFormResult) (
 		return nil, err
 	}
 	return dex.GracefulComplete(recorded), nil
-}
-
-// dex:group group-id:typeform group-label:"Typeform"
-// dex:explanation text:"Persist the notFound, providerRejected, invalidResponse, or defect outcome with its safe message and fail the Flow."
-type recordReadFailure struct {
-	dex.StepDefaultsNoWaitFor[typeform.GetFormResult]
-}
-
-func (recordReadFailure) GetStepType() string { return "RecordReadFailure" }
-
-func (recordReadFailure) Execute(ctx dex.Context, result typeform.GetFormResult) (*dex.StepDecision, error) {
-	recorded := RecordedQuestions{Branch: result.Branch}
-	message := "reading the form selected " + string(result.Branch)
-	if result.Failure != nil {
-		recorded.FailureKind, recorded.FailureMessage = result.Failure.Kind, result.Failure.Message
-		message += ": " + result.Failure.Message
-	}
-	if err := questionsAttribute.Set(ctx, recorded); err != nil {
-		return nil, err
-	}
-	return dex.ForceFail(message), nil
 }
 
 var _ dex.Flow = (*Flow)(nil)

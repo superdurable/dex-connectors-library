@@ -71,8 +71,6 @@ func TestStepIdentitiesMatchTheFlowDefinition(t *testing.T) {
 	require.Equal(t, reviewMatchesStepType, dex.GetFinalStepType[salesforce.QueryRecordsResult](reviewMatchingRecords{}))
 	require.Equal(t, prepareLinkedReadBackStepType, dex.GetFinalStepType[salesforce.UpdateRecordResult](prepareLinkedReadBack{}))
 	require.Equal(t, prepareCreatedReadBackStepType, dex.GetFinalStepType[salesforce.UpsertRecordByExternalIDResult](prepareCreatedReadBack{}))
-	require.Equal(t, reportLinkRejectedStepType, dex.GetFinalStepType[salesforce.UpdateRecordResult](reportLinkRejected{}))
-	require.Equal(t, reportCreateRejectedStepType, dex.GetFinalStepType[salesforce.UpsertRecordByExternalIDResult](reportCreateRejected{}))
 	require.Equal(t, completeStepType, dex.GetFinalStepType[salesforce.GetRecordResult](completeRecordSync{}))
 	wait, err := recordSyncRequest{}.WaitFor(nil, Input{})
 	require.NoError(t, err)

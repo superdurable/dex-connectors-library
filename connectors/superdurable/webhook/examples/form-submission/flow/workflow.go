@@ -65,16 +65,12 @@ type ForwardedEvent struct {
 
 // ForwardingOutcome records the sendEvent branch; it completes the Flow when delivered.
 type ForwardingOutcome struct {
-	// Branch is the sendEvent branch: delivered, rejected, or defect.
+	// Branch is the delivered sendEvent branch.
 	Branch sdkgo.BranchID `json:"branch"`
 	// WebhookID is the webhook-id the receiver saw, for deduplicating retries.
 	WebhookID string `json:"webhookId"`
 	// StatusCode is the receiver's HTTP status, or zero when none arrived.
 	StatusCode int `json:"statusCode,omitempty"`
-	// FailureKind is the safe failure category of a branch other than delivered.
-	FailureKind sdkgo.FailureKind `json:"failureKind,omitempty"`
-	// FailureMessage is the safe failure message, which never holds secrets or response bodies.
-	FailureMessage string `json:"failureMessage,omitempty"`
 }
 
 // Flow records and forwards one form submission.
@@ -104,11 +100,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Connection:          flow.connection,
 			MapToOperationInput: MapToForwardedEvent,
 			Delivered:           sdkgo.GoTo(recordForwarded{}),
-			Rejected:            sdkgo.GoTo(recordForwardingFailure{}),
-			Defect:              sdkgo.GoTo(recordForwardingFailure{}),
 		})),
 		dex.DefineStep(recordForwarded{}),
-		dex.DefineStep(recordForwardingFailure{}),
 	}
 }
 
@@ -250,27 +243,6 @@ func (recordForwarded) Execute(ctx dex.Context, result webhook.SendEventResult) 
 		return nil, err
 	}
 	return dex.GracefulComplete(outcome), nil
-}
-
-// dex:group group-id:forwarding group-label:"Forwarding"
-// dex:explanation text:"Persist the rejected or defect outcome with its safe message and fail the Flow."
-type recordForwardingFailure struct {
-	dex.StepDefaultsNoWaitFor[webhook.SendEventResult]
-}
-
-func (recordForwardingFailure) GetStepType() string { return "RecordForwardingFailure" }
-
-func (recordForwardingFailure) Execute(ctx dex.Context, result webhook.SendEventResult) (*dex.StepDecision, error) {
-	outcome := ForwardingOutcome{Branch: result.Branch, WebhookID: result.Value.WebhookID, StatusCode: result.Value.StatusCode}
-	message := "forwarding selected " + string(result.Branch)
-	if result.Failure != nil {
-		outcome.FailureKind, outcome.FailureMessage = result.Failure.Kind, result.Failure.Message
-		message += ": " + result.Failure.Message
-	}
-	if err := forwardingAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
-	}
-	return dex.ForceFail(message), nil
 }
 
 var _ dex.Flow = (*Flow)(nil)

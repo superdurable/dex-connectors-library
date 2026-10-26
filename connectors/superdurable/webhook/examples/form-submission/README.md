@@ -18,9 +18,8 @@ This example receives signed form submissions and starts one
 5. `ForwardSubmission` calls `sendEvent`, which POSTs a signed
    `form.submitted` event to the connection's `deliveryUrl`;
 6. `RecordForwarded` stores the `delivered` outcome in the
-   `webhook-form-forwarding` Attribute and completes the Flow, and
-   `RecordForwardingFailure` stores a `rejected` or `defect`
-   outcome with its safe message and fails the Flow.
+   `webhook-form-forwarding` Attribute and completes the Flow. An unwired
+   `rejected` or `defect` branch fails the Flow with its safe reason.
 
 The connection is configured for Typeform-style signatures: HMAC-SHA256 of the
 body, base64-encoded after `sha256=` in `Typeform-Signature`, with the event ID
@@ -42,8 +41,8 @@ dexcli visualize ./examples/form-submission/flow/workflow.go \
   --out ./build/form-submission
 ```
 
-The command must report `valid: true` with the four Steps, all four
-`sendEvent` branches routed, and the `form-submission-received` binding.
+The command must report `valid: true` with the three Steps, only the `delivered`
+`sendEvent` branch routed, and the `form-submission-received` binding.
 Inside this repository it also warns `connector_release_required` and
 `connector_trigger_release_required`, because a local module is not a
 published release, and `v2_start_input`, because the Trigger, not Dex Web

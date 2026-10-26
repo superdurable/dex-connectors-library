@@ -37,7 +37,6 @@ const (
 	completeCustomerReplyStepType       = "CompleteCustomerReply"
 	sendNewCustomerMessageStepType      = "SendNewCustomerMessage"
 	recordNewMessageSentStepType        = "RecordNewMessageSent"
-	recordUncertainDeliveryStepType     = "RecordUncertainDelivery"
 
 	// customerSearchPageSize bounds each search page; the Flow reads later pages only when a page has no exact match.
 	customerSearchPageSize = 10
@@ -111,8 +110,6 @@ const (
 	ReplyActionReplied ReplyAction = "replied"
 	// ReplyActionSentNewMessage means the customer had no message in INBOX, so a new message was sent.
 	ReplyActionSentNewMessage ReplyAction = "sentNewMessage"
-	// ReplyActionDeliveryUncertain means the message was submitted but the server's answer was lost.
-	ReplyActionDeliveryUncertain ReplyAction = "deliveryUncertain"
 )
 
 // ReplyOutcome is the Flow result and the value of its outcome Attribute.
@@ -123,17 +120,12 @@ type ReplyOutcome struct {
 	CustomerMessage *email.MessageReference `json:"customerMessage,omitempty"`
 	// CustomerMessageID is that message's Message-ID.
 	CustomerMessageID string `json:"customerMessageId,omitempty"`
-	// Sent is the reply or new message the SMTP server accepted, or the one that may have been sent.
+	// Sent is the reply or new message the SMTP server accepted.
 	Sent email.SentMessage `json:"sent"`
 	// Flags are the customer's message flags after the reply.
 	Flags *email.MessageFlags `json:"flags,omitempty"`
 	// ArchivedTo identifies the message in the archive mailbox after the move.
 	ArchivedTo *email.MessageReference `json:"archivedTo,omitempty"`
-	// NeedsReview reports a submission with an unknown outcome; a person must check the Sent mailbox for
-	// Sent.MessageID before anything is sent again.
-	NeedsReview bool `json:"needsReview,omitempty"`
-	// ReviewDetail is the connector's credential-free explanation of why the outcome is unknown.
-	ReviewDetail string `json:"reviewDetail,omitempty"`
 }
 
 // Flow answers one customer by email.
@@ -181,8 +173,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Send one threaded reply over SMTP, submitting it at most once.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToReplyToMessageInput,
-			Sent:      sdkgo.GoTo(recordReplySent{}),
-			Uncertain: sdkgo.GoTo(recordUncertainDelivery{}),
+			Sent: sdkgo.GoTo(recordReplySent{}),
 		})),
 		dex.DefineStep(recordReplySent{}),
 		dex.DefineStep(email.NewSetFlagsStep(email.SetFlagsStepConfig[email.MessageReference]{
@@ -212,11 +203,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Send one new message to a customer without a message in INBOX, submitting it at most once.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToSendMessageInput,
-			Sent:      sdkgo.GoTo(recordNewMessageSent{}),
-			Uncertain: sdkgo.GoTo(recordUncertainDelivery{}),
+			Sent: sdkgo.GoTo(recordNewMessageSent{}),
 		})),
 		dex.DefineStep(recordNewMessageSent{}),
-		dex.DefineStep(recordUncertainDelivery{}),
 	}
 }
 
@@ -377,13 +366,6 @@ func isAttributeNotFound(err error) bool {
 	return errors.As(err, &missingAttribute)
 }
 
-func failureMessage(failure *sdkgo.Failure) string {
-	if failure == nil {
-		return ""
-	}
-	return failure.Message
-}
-
 // dex:group group-id:request group-label:"Reply request"
 // dex:explanation text:"Validate the customer and reply text and record them before contacting the mail servers."
 type recordReplyRequest struct {
@@ -535,31 +517,6 @@ func (recordNewMessageSent) GetStepType() string { return recordNewMessageSentSt
 
 func (recordNewMessageSent) Execute(ctx dex.Context, result email.SendMessageResult) (*dex.StepDecision, error) {
 	outcome := ReplyOutcome{Action: ReplyActionSentNewMessage, Sent: result.Value}
-	if err := replyOutcomeAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(outcome), nil
-}
-
-// dex:group group-id:review group-label:"Needs review"
-// dex:explanation text:"The message was submitted with an unknown outcome; complete for a person to look for its Message-ID instead of sending it again."
-type recordUncertainDelivery struct {
-	dex.StepDefaultsNoWaitFor[email.SendMessageResult]
-}
-
-func (recordUncertainDelivery) GetStepType() string { return recordUncertainDeliveryStepType }
-
-func (recordUncertainDelivery) Execute(ctx dex.Context, result email.SendMessageResult) (*dex.StepDecision, error) {
-	outcome := ReplyOutcome{Action: ReplyActionDeliveryUncertain, Sent: result.Value, NeedsReview: true, ReviewDetail: failureMessage(result.Failure)}
-	// chooseLatestCustomerMessage records a message only before a reply; a new message has none.
-	message, err := customerMessageAttribute.Get(ctx)
-	if err != nil && !isAttributeNotFound(err) {
-		return nil, err
-	}
-	if err == nil {
-		reference := message.Reference
-		outcome.CustomerMessage, outcome.CustomerMessageID = &reference, message.MessageID
-	}
 	if err := replyOutcomeAttribute.Set(ctx, outcome); err != nil {
 		return nil, err
 	}

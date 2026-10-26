@@ -56,13 +56,6 @@ func TestDecodeAccountUsageAcceptsExactDecimalsAndSmallNumbers(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestRecordFailureKeepsOnlyCodesAndTheFailureKind(t *testing.T) {
-	record := UsageSummaryRecord{}
-	recordFailure(&record, sdkgo.Receipt{Metadata: map[string]string{"code": "000904", "sqlState": "42000"}},
-		&sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "Snowflake returned HTTP 422"})
-	require.Equal(t, UsageSummaryRecord{SnowflakeCode: "000904", SQLState: "42000", FailureKind: sdkgo.FailureValidation}, record)
-}
-
 func TestFlowIdentitiesAndPolicyGuards(t *testing.T) {
 	policy := DefaultStatusPolicy()
 	require.Equal(t, 15*time.Second, policy.CheckInterval)

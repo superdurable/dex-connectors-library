@@ -17,10 +17,9 @@ const (
 	FlowType       = "OAuth2HTTPRequest"
 	ConnectionName = "oauth2-http-api"
 	// Application Step types match the Flow Definition Graph so Dex Web starts and displays the same Steps.
-	sendRequestStepType     = "SendRequest"
-	startRequestStepType    = "startRequest"
-	recordResponseStepType  = "recordResponse"
-	recordRejectionStepType = "recordRejection"
+	sendRequestStepType    = "SendRequest"
+	startRequestStepType   = "startRequest"
+	recordResponseStepType = "recordResponse"
 )
 
 var reportAttribute = dex.DefineAttribute[Report]("oauth2-http-request-report")
@@ -30,7 +29,6 @@ type Status string
 const (
 	StatusRequesting Status = "requesting"
 	StatusCompleted  Status = "completed"
-	StatusRejected   Status = "rejected"
 )
 
 // Input names the path to read, relative to the connection's apiBaseUrl, such as /users/42 or the
@@ -47,8 +45,6 @@ type Report struct {
 	ContentType     string `json:"contentType,omitempty"`
 	Body            string `json:"body,omitempty"`
 	IsBodyTruncated bool   `json:"bodyTruncated,omitempty"`
-	// FailureMessage is the safe reason the API refused the request, when Status is rejected.
-	FailureMessage string `json:"failureMessage,omitempty"`
 }
 
 type Flow struct {
@@ -77,10 +73,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				return oauth2http.SendRequestInput{Method: "GET", Path: input.Path}
 			},
 			Completed: sdkgo.GoTo(recordResponse{}),
-			Rejected:  sdkgo.GoTo(recordRejection{}),
 		})),
 		dex.DefineStep(recordResponse{}),
-		dex.DefineStep(recordRejection{}),
 	}
 }
 
@@ -153,23 +147,7 @@ type recordResponse struct {
 func (recordResponse) GetStepType() string { return recordResponseStepType }
 
 func (recordResponse) Execute(ctx dex.Context, result oauth2http.SendRequestResult) (*dex.StepDecision, error) {
-	report, err := recordAnswer(ctx, result, StatusCompleted)
-	if err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(report), nil
-}
-
-// dex:group group-id:report group-label:"Report"
-// dex:explanation text:"Record that the API refused the request, such as a 404, and complete the report."
-type recordRejection struct {
-	dex.StepDefaultsNoWaitFor[oauth2http.SendRequestResult]
-}
-
-func (recordRejection) GetStepType() string { return recordRejectionStepType }
-
-func (recordRejection) Execute(ctx dex.Context, result oauth2http.SendRequestResult) (*dex.StepDecision, error) {
-	report, err := recordAnswer(ctx, result, StatusRejected)
+	report, err := recordAnswer(ctx, result)
 	if err != nil {
 		return nil, err
 	}
@@ -177,19 +155,16 @@ func (recordRejection) Execute(ctx dex.Context, result oauth2http.SendRequestRes
 }
 
 // recordAnswer stores the connector Result in the report Attribute and returns the report.
-func recordAnswer(ctx dex.Context, result oauth2http.SendRequestResult, status Status) (Report, error) {
+func recordAnswer(ctx dex.Context, result oauth2http.SendRequestResult) (Report, error) {
 	report, err := reportAttribute.Get(ctx)
 	if err != nil {
 		return Report{}, err
 	}
-	report.Status = status
+	report.Status = StatusCompleted
 	report.StatusCode = result.Value.StatusCode
 	report.ContentType = result.Value.ContentType
 	report.Body = result.Value.Body
 	report.IsBodyTruncated = result.Value.IsBodyTruncated
-	if result.Failure != nil {
-		report.FailureMessage = result.Failure.Message
-	}
 	return report, reportAttribute.Set(ctx, report)
 }
 

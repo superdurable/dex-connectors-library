@@ -23,7 +23,6 @@ func TestStartFlowIdentitiesMatchTheFlowDefinition(t *testing.T) {
 	require.Equal(t, recordMessageMarkedStepType, dex.GetFinalStepType[email.SetFlagsResult](recordMessageMarked{}))
 	require.Equal(t, completeCustomerReplyStepType, dex.GetFinalStepType[email.MoveMessageResult](completeCustomerReply{}))
 	require.Equal(t, recordNewMessageSentStepType, dex.GetFinalStepType[email.SendMessageResult](recordNewMessageSent{}))
-	require.Equal(t, recordUncertainDeliveryStepType, dex.GetFinalStepType[email.SendMessageResult](recordUncertainDelivery{}))
 	wait, err := recordReplyRequest{}.WaitFor(nil, Input{})
 	require.NoError(t, err)
 	require.Equal(t, dex.SkipWaitImmediately(), wait)

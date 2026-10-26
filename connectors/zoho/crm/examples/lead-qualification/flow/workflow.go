@@ -35,7 +35,6 @@ const (
 	recordZohoAccountStepType         = "RecordZohoAccount"
 	upsertZohoLeadContactStepType     = "UpsertZohoLeadContact"
 	recordZohoContactStepType         = "RecordZohoContact"
-	reportZohoContactRejectedStepType = "ReportZohoContactRejected"
 	findZohoOpenDealStepType          = "FindZohoOpenDeal"
 	chooseZohoOpenDealStepType        = "ChooseZohoOpenDeal"
 	advanceZohoOpenDealStepType       = "AdvanceZohoOpenDeal"
@@ -81,8 +80,6 @@ const (
 	PhaseUnknownStage LeadQualificationPhase = "unknownStage"
 	// PhaseAmbiguousAccount means several accounts carry AccountName; nothing was written.
 	PhaseAmbiguousAccount LeadQualificationPhase = "ambiguousAccount"
-	// PhaseContactRejected means Zoho CRM rejected the contact's values.
-	PhaseContactRejected LeadQualificationPhase = "contactRejected"
 	// PhaseNoOpenDeal means the contact has no open deal to advance.
 	PhaseNoOpenDeal LeadQualificationPhase = "noOpenDeal"
 	// PhaseDealAdvanced means the deal was read back at the requested stage.
@@ -111,8 +108,6 @@ type LeadQualification struct {
 	DealStage string `json:"dealStage,omitempty"`
 	// DealOwnerID is the owner the read-back returned.
 	DealOwnerID string `json:"dealOwnerId,omitempty"`
-	// ProviderErrors are Zoho CRM's codes and fields when it rejected the contact.
-	ProviderErrors []crm.ProviderError `json:"providerErrors,omitempty"`
 }
 
 // ModuleReference names the module whose fields a Step reads.
@@ -186,7 +181,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Find accounts whose name equals the lead's company.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToFindAccountInput,
-			Found: sdkgo.GoTo(chooseZohoAccount{}), NotFound: sdkgo.GoTo(chooseZohoAccount{}),
+			Found: sdkgo.GoTo(chooseZohoAccount{}),
+			// A missing account continues to the account upsert.
+			NotFound: sdkgo.GoTo(chooseZohoAccount{}),
 		})),
 		dex.DefineStep(chooseZohoAccount{}),
 		dex.DefineStep(crm.NewUpsertRecordStep(crm.UpsertRecordStepConfig[AccountLookup]{
@@ -206,10 +203,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Create or update the contact by email and link it to the account.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToUpsertContactInput,
-			Upserted: sdkgo.GoTo(recordZohoContact{}), RecordRejected: sdkgo.GoTo(reportZohoContactRejected{}),
+			Upserted: sdkgo.GoTo(recordZohoContact{}),
 		})),
 		dex.DefineStep(recordZohoContact{}),
-		dex.DefineStep(reportZohoContactRejected{}),
 		dex.DefineStep(crm.NewFindRecordsStep(crm.FindRecordsStepConfig[OpenDealLookup]{
 			StepType: findZohoOpenDealStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
@@ -217,7 +213,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Find the contact's most recently modified deal that is not in a closed stage.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToFindOpenDealInput,
-			Found: sdkgo.GoTo(chooseZohoOpenDeal{}), NotFound: sdkgo.GoTo(chooseZohoOpenDeal{}),
+			Found: sdkgo.GoTo(chooseZohoOpenDeal{}),
+			// No open deal is routine for a lead; there is nothing to advance.
+			NotFound: sdkgo.GoTo(chooseZohoOpenDeal{}),
 		})),
 		dex.DefineStep(chooseZohoOpenDeal{}),
 		dex.DefineStep(crm.NewUpdateRecordStep(crm.UpdateRecordStepConfig[DealStageChange]{
@@ -493,26 +491,6 @@ func (recordZohoContact) Execute(ctx dex.Context, result crm.UpsertRecordResult)
 		return nil, err
 	}
 	return dex.GoTo(sdkgo.StepRef[OpenDealLookup](findZohoOpenDealStepType), OpenDealLookup{ContactID: qualification.ContactID}), nil
-}
-
-// dex:group group-id:review group-label:"Rejected"
-// dex:explanation text:"Zoho CRM rejected the contact's values; complete with its error codes and field names."
-type reportZohoContactRejected struct {
-	dex.StepDefaultsNoWaitFor[crm.UpsertRecordResult]
-}
-
-func (reportZohoContactRejected) GetStepType() string { return reportZohoContactRejectedStepType }
-
-func (reportZohoContactRejected) Execute(ctx dex.Context, result crm.UpsertRecordResult) (*dex.StepDecision, error) {
-	qualification, err := leadQualificationAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	qualification.ProviderErrors, qualification.Phase = result.Value.ProviderErrors, PhaseContactRejected
-	if err := leadQualificationAttribute.Set(ctx, qualification); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(qualification), nil
 }
 
 // dex:group group-id:lead group-label:"Lead"

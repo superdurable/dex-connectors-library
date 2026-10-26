@@ -6,8 +6,8 @@ approved order the customer has already paid, it books the sale in Xero once:
 1. `RecordApprovedOrder` validates the order ID, customer email, currency,
    dates, lines, and payment account, and records the order;
 2. `FindCustomerContact` calls `xero.NewFindContactByEmailStep`. When no
-   active contact has the email, `CompleteWithoutContact` completes as
-   `contactMissing` without writing;
+   active contact has the email, the unwired `notFound` branch fails the Flow
+   without writing;
 3. `PrepareOrderInvoiceLookup` records the contact, and `FindOrderInvoice`
    calls `xero.NewListInvoicesStep` for the customer's `AUTHORISED` or `PAID`
    sales invoices whose reference is the order ID;
@@ -23,7 +23,7 @@ approved order the customer has already paid, it books the sale in Xero once:
    `CompleteInvoicedOrder` completes as `invoicedAndPaid` or
    `existingInvoicePaid`, with `isFullyPaid` from the invoice as read back.
 
-Only the happy-path branches and `notFound` are wired. An ambiguous contact, a
+Only happy-path branches are wired. A missing or ambiguous contact, a
 rejected write, the daily limit, an `uncertain` write, an invalid response,
 and a local defect fail the Flow. Both writes send Xero an Idempotency-Key
 derived from the Step, so a retried or re-dispatched Step receives the first
@@ -143,7 +143,8 @@ request, and replays it:
 - a paid invoice for the order is left alone, an approved one is paid without
   raising another, and another customer's invoice with the same reference is
   ignored;
-- a missing contact completes without writing;
+- a missing contact fails the Flow on the unwired `notFound` branch without
+  writing;
 - a minute limit waits for `Retry-After`;
 - the daily limit, a validation rejection, and a cached 500 each fail the
   Flow through an unwired optional branch after one request, without Xero's

@@ -188,8 +188,8 @@ of one Step execution, so an API that deduplicates by key can make a retry
 safe: name the header with `idempotencyKeyHeader`.
 
 An unwired optional branch fails the Flow when it is selected. This step from
-[`examples/api-request`](examples/api-request/flow/workflow.go) wires
-`rejected` so that a 404 is data instead of a failure:
+[`examples/api-request`](examples/api-request/flow/workflow.go) wires only
+`completed`; a 404 fails the Flow on the unwired `rejected` branch:
 
 ```go
 		dex.DefineStep(oauth2http.NewSendRequestStep(oauth2http.SendRequestStepConfig[Input]{
@@ -200,7 +200,6 @@ An unwired optional branch fails the Flow when it is selected. This step from
 				return oauth2http.SendRequestInput{Method: "GET", Path: input.Path}
 			},
 			Completed: sdkgo.GoTo(recordResponse{}),
-			Rejected:  sdkgo.GoTo(recordRejection{}),
 		})),
 ```
 

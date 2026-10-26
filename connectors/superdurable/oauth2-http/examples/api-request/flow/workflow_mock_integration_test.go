@@ -41,10 +41,9 @@ func TestAPIRequestExampleRunsOnTheOAuth2HTTPMockWithRealDex(t *testing.T) {
 	_, err = harness.client.StartFlow(ctx, flow, rejectedFlowID, Input{Path: "/missing"}, dex.StartFlowOptions{})
 	require.NoError(t, err)
 	rejected := waitForTerminalFlow(t, ctx, harness.client, rejectedFlowID)
-	require.Equal(t, dex.FlowCompleted, rejected.Status, rejected.ErrorMessage)
-	require.NoError(t, rejected.DecodeSingleOutput(&report))
-	require.Equal(t, StatusRejected, report.Status)
-	require.Equal(t, 404, report.StatusCode)
+	require.Equal(t, dex.FlowFailed, rejected.Status)
+	require.Contains(t, rejected.ErrorMessage, "rejected")
+	require.Contains(t, rejected.ErrorMessage, "no target")
 
 	defectFlowID := "oauth2-http-api-request-mock-defect-" + testRunID
 	mock.SendRequest().ForFlow(defectFlowID).Respond(oauth2httpmock.SendRequestInvalidPath())

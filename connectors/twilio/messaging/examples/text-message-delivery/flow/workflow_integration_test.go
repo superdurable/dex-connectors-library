@@ -63,14 +63,16 @@ func TestAcceptedTextIsSentOnceAndFollowedToDeliveryWithRealDex(t *testing.T) {
 	require.Equal(t, 2, provider.readCount(delivery.Message.SID))
 }
 
-func TestRejectedTextCompletesWithTheTwilioErrorCodeWithRealDex(t *testing.T) {
+func TestRejectedTextFailsWithoutRetryWithRealDex(t *testing.T) {
 	provider, flow, harness := newTwilioIntegrationHarness(t)
 	ctx := integrationContext(t)
 
-	delivery := runTextMessageFlow(t, ctx, harness, flow, "rejected", Input{To: recipientRejected, Body: "Trial accounts need verified numbers."})
-	require.Equal(t, PhaseRejected, delivery.Phase)
-	require.Equal(t, 21608, delivery.Message.ErrorCode)
-	require.Empty(t, delivery.Message.SID)
+	flowID := startTextMessageFlow(t, ctx, harness, flow, "rejected", Input{To: recipientRejected, Body: "Trial accounts need verified numbers."})
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "providerRejected")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.Equal(t, 1, provider.createCount(recipientRejected))
 }
 
