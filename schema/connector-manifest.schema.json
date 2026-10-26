@@ -666,6 +666,7 @@
         "executeMethodTimeout": { "type": "string", "minLength": 1 },
         "heartbeatTimeout": { "type": "string", "minLength": 1 },
         "durability": { "enum": ["sync", "async"] },
+        "dispatchFence": { "type": "boolean", "description": "Requires sync Execute durability; the operation uses a heartbeat dispatch fence." },
         "retry": {
           "type": ["object", "null"],
           "additionalProperties": false,
@@ -687,7 +688,9 @@
             }
           }
         }
-      }
+      },
+      "if": { "properties": { "dispatchFence": { "const": true } }, "required": ["dispatchFence"] },
+      "then": { "properties": { "durability": { "const": "sync" } } }
     },
     "mockFailure": {
       "type": "object",

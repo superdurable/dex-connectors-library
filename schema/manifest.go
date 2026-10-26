@@ -282,7 +282,9 @@ type Execution struct {
 	ExecuteMethodTimeout string `yaml:"executeMethodTimeout" json:"executeMethodTimeout"`
 	HeartbeatTimeout     string `yaml:"heartbeatTimeout,omitempty" json:"heartbeatTimeout,omitempty"`
 	Durability           string `yaml:"durability" json:"durability"`
-	Retry                *Retry `yaml:"retry,omitempty" json:"retry,omitempty"`
+	// DispatchFence requires sync Execute durability for heartbeat checkpoint visibility.
+	DispatchFence bool   `yaml:"dispatchFence,omitempty" json:"dispatchFence,omitempty"`
+	Retry         *Retry `yaml:"retry,omitempty" json:"retry,omitempty"`
 }
 
 // Retry declares a Connector Step Execute retry policy.
@@ -672,6 +674,9 @@ func (manifest Manifest) Validate() error {
 		}
 		if operation.Execution.Durability != "sync" && operation.Execution.Durability != "async" {
 			problems = append(problems, operation.Name+": execution durability must be sync or async")
+		}
+		if operation.Execution.DispatchFence && operation.Execution.Durability != "sync" {
+			problems = append(problems, operation.Name+": dispatchFence requires sync execution durability")
 		}
 		if retry := operation.Execution.Retry; retry != nil {
 			if initialInterval, err := time.ParseDuration(retry.InitialInterval); err != nil || initialInterval <= 0 {
