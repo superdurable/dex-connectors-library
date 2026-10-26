@@ -9,7 +9,7 @@ every Google Drive operation:
 3. `SelectSourceFile` continues only when exactly one file matches and Drive
    searched completely; otherwise the Flow completes as `sourceAmbiguous` with
    the candidates;
-4. `ReportSourceNotFound` completes as `sourceNotFound` when nothing matches;
+4. a missing source fails the Flow on the unwired `notFound` branch;
 5. `ReadSourceText` calls `drive.NewReadFileTextStep`;
 6. `PrepareTextCopy` records the text size and builds the upload;
 7. `UploadTextCopy` calls `drive.NewUploadFileStep` into the saved destination
@@ -17,9 +17,9 @@ every Google Drive operation:
 8. `ReadBackTextCopy` calls `drive.NewGetFileStep` on the new file;
 9. `CompleteTextCopy` completes as `copied` with the read-back metadata.
 
-Only the happy-path Google Drive branches and `searchFiles`'s `notFound` are
-wired. Unsupported, oversized, rejected, invalid, uncertain, and defect
-outcomes fail the Flow, and an uncertain upload is never sent again.
+Only the happy-path Google Drive branches are wired. Missing, unsupported,
+oversized, rejected, invalid, uncertain, and defect outcomes fail the Flow,
+and an uncertain upload is never sent again.
 
 ## Configure
 

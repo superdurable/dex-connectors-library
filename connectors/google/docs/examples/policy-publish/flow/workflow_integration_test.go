@@ -108,14 +108,16 @@ func TestPolicyPublishRetriedCreateReusesTheDocumentAnEarlierAttemptCreatedWithR
 	requirePublishedDocument(t, provider, outcome)
 }
 
-func TestPolicyPublishLostCreateResponseCompletesUncertainWithoutResendingWithRealDex(t *testing.T) {
+func TestPolicyPublishLostCreateResponseFailsWithoutResendingWithRealDex(t *testing.T) {
 	provider := newPolicyProvider(t)
 	provider.QueueCreateResponses(fakegoogledocs.CreateResponseCreatedThenServerError)
 	harness := newPublishHarness(t, provider)
 
-	outcome := harness.runPublish(t, "lost-create", publishInput())
-	require.Equal(t, StatusCreationUncertain, outcome.Status)
-	require.Equal(t, "provider create outcome is unknown", outcome.ReviewDetail)
+	flowID := harness.startPublish(t, "lost-create", publishInput())
+	result := harness.waitForFlow(t, flowID)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "uncertain")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.Equal(t, 1, provider.Count(fakegoogledocs.CountCreatesReceived))
 	require.Zero(t, provider.Count(fakegoogledocs.CountBatchUpdatesReceived))
 }
@@ -134,12 +136,9 @@ func TestPolicyPublishLostWorkerDuringCreateIsNeverResentWithRealDex(t *testing.
 
 	result := harness.waitForFlow(t, flowID)
 	close(hold)
-	require.Equal(t, dex.FlowCompleted, result.Status, "Flow %s: %s", flowID, result.ErrorMessage)
-	var outcome Outcome
-	require.NoError(t, result.DecodeSingleOutput(&outcome))
-	require.Equal(t, StatusCreationUncertain, outcome.Status)
-	require.Equal(t, "an earlier attempt of this Step may have created the document, and the duplicate lookup does not show it yet", outcome.ReviewDetail,
-		"the new Worker's attempt found the heartbeat checkpoint the lost attempt recorded")
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "uncertain")
+	require.Contains(t, result.ErrorMessage, "no target")
 	provider.WaitForDelayedRequests(t, 2*slowProviderDelay)
 	require.Equal(t, 1, provider.Count(fakegoogledocs.CountCreatesReceived), "the attempt on the new Worker did not resend the create")
 }
@@ -193,10 +192,11 @@ func TestPolicyPublishMissingPlaceholderWritesNothingWithRealDex(t *testing.T) {
 	input := publishInput()
 	input.Placeholders = append(input.Placeholders, docs.PlaceholderReplacement{Placeholder: "{{reviewCycle}}", Text: "annual"})
 
-	outcome := harness.runPublish(t, "missing-placeholder", input)
-	require.Equal(t, StatusPlaceholderMissing, outcome.Status)
-	require.Equal(t, []string{"{{reviewCycle}}"}, outcome.MissingPlaceholders)
-	require.NotNil(t, outcome.Document)
+	flowID := harness.startPublish(t, "missing-placeholder", input)
+	result := harness.waitForFlow(t, flowID)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "placeholderNotFound")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.Zero(t, provider.Count(fakegoogledocs.CountBatchUpdatesReceived), "no placeholder was filled")
 }
 

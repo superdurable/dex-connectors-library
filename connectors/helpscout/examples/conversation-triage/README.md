@@ -27,9 +27,9 @@ This example receives signed Help Scout webhooks and starts one
 9. `TagTriagedConversation` calls `updateConversation` to add `dex-triaged`,
    and `dex-repeat-contact` when another active conversation exists;
 10. `CompleteTriage` stores the tags in the `helpscout-triage` Attribute and
-    completes the Flow. Every other branch of every Help Scout Step goes to a
-    `Record…Failure` Step that stores the branch and its safe message and fails
-    the Flow; an `uncertain` note is never sent again.
+    completes the Flow. Only happy-path branches and the missing customer
+    profile path are wired. Other optional branches fail the Flow with the
+    connector's safe reason; an `uncertain` note is never sent again.
 
 ## 1. Generate the Flow Definition
 
@@ -46,9 +46,9 @@ dexcli visualize ./examples/conversation-triage/flow/workflow.go \
   --out ./build/conversation-triage
 ```
 
-The command must report `valid: true` with the 16 Steps, every branch of the
-five Help Scout Steps routed, and the `new-conversations` binding with its
-`mailboxPicker` unit. Inside this repository it also warns
+The command must report `valid: true` with the 11 remaining Steps, only the
+business-reaction `notFound` branch additionally routed, and the
+`new-conversations` binding with its `mailboxPicker` unit. Inside this repository it also warns
 `connector_release_required` and `connector_trigger_release_required`, because
 a local module is not a published release.
 

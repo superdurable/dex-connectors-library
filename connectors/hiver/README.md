@@ -213,7 +213,7 @@ so the operations take these positions:
 - A 5xx, a 408, a lost or unreadable response, and an invalid or oversized
   2xx select `uncertain`: the note or draft may exist, and the Step does not
   resend it. The application decides, for example by asking a person to check
-  Hiver, as the example does.
+  Hiver. The example Flow fails on this unwired branch.
 
 Keep these two Steps sync. An application override to async durability lets
 Dex dispatch a second request after seven seconds.

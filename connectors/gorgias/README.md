@@ -256,8 +256,9 @@ these positions:
     Step's fourth attempt that still cannot confirm the write, or a lookup
     Gorgias conclusively rejects, selects `uncertain`. Gorgias may still apply
     a request it was processing, so the connector never resends it, and the
-    application decides, for example by asking a person to check Gorgias, as
-    the example does. A possibly sent write never selects `defect`.
+    application decides, for example by asking a person to check Gorgias.
+    The example Flow fails on this unwired branch. A possibly sent write never
+    selects `defect`.
 
 Keep these two Steps sync. An application override to async durability lets
 Dex dispatch a second request after seven seconds, before the first is

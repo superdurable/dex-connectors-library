@@ -71,8 +71,9 @@ func TestTextCopyExampleRoutesEveryBusinessOutcomeWithRealDex(t *testing.T) {
 	require.ElementsMatch(t, []string{"file_ah", "file_ah_copy"}, candidateIDs(ambiguous.outcome.SourceCandidates))
 
 	missing := runTextCopy(t, ctx, harness.client, flow, "missing-"+runID, Input{SourceName: "Ops Polcy", CopyName: "never-" + runID + ".txt"})
-	require.Equal(t, dex.FlowCompleted, missing.status)
-	require.Equal(t, StatusSourceNotFound, missing.outcome.Status)
+	require.Equal(t, dex.FlowFailed, missing.status)
+	require.Contains(t, missing.failureReason, "notFound")
+	require.Contains(t, missing.failureReason, "no target")
 	require.Equal(t, 0, provider.uploadsNamed("never-"+runID+".txt"))
 
 	rejected := runTextCopy(t, ctx, harness.client, flow, "rejected-"+runID, Input{SourceName: " ", CopyName: "never-" + runID + ".txt"})
@@ -110,8 +111,9 @@ func TestTextCopyUncertainUploadFailsTheFlowWithoutResendingWithRealDex(t *testi
 }
 
 type textCopyRun struct {
-	status  dex.FlowStatus
-	outcome Outcome
+	status        dex.FlowStatus
+	outcome       Outcome
+	failureReason string
 }
 
 func runTextCopy(t *testing.T, ctx context.Context, client *dex.Client, flow *Flow, flowID string, input Input) textCopyRun {
@@ -120,7 +122,7 @@ func runTextCopy(t *testing.T, ctx context.Context, client *dex.Client, flow *Fl
 	require.NoError(t, err)
 	result, err := client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
 	require.NoError(t, err)
-	run := textCopyRun{status: result.Status}
+	run := textCopyRun{status: result.Status, failureReason: result.ErrorMessage}
 	if result.Status == dex.FlowCompleted {
 		require.NoError(t, result.DecodeSingleOutput(&run.outcome))
 	}

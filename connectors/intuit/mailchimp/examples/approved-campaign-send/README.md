@@ -24,9 +24,9 @@ campaign only after a person approves it, and at most once:
    is sent until a person runs **Approve campaign send**;
 7. `SendLaunchCampaign` calls `mailchimp.NewSendCampaignStep` with sync
    durability and `expectedListId` set to the launch audience. `sent` and
-   `alreadySent` complete as `sent` or `alreadySent`; `notSendable`,
-   `notFound`, and `providerRejected` complete as `notSent` with the reason;
-   `uncertain` parks the Flow as `needsReview`.
+   `alreadySent` complete the Flow as `sent`. Other outcomes fail the Flow,
+   naming the branch that has no target, and an uncertain send is never
+   resent.
 
 Unwired optional branches, such as an invalid response or a local defect, fail
 the Flow.
@@ -42,12 +42,6 @@ name of the person acting and an optional note:
   `awaitingApproval` phase schedules a send and both RPCs lock the phase.
 - **Decline campaign send** is available in `awaitingApproval` and completes
   as `declined` without reading or sending the campaign.
-- **Recheck campaign and send if still a draft** is available in
-  `needsReview`, after a send whose outcome is unknown. Check the campaign on
-  Mailchimp's **Campaigns** page first. The recheck runs `sendCampaign` as a
-  new Step execution: its read completes as `alreadySent` while Mailchimp
-  shows the campaign sending or sent, and it sends only a campaign that is
-  still a draft for this audience.
 
 ## Configure
 
@@ -157,13 +151,13 @@ Mailchimp, has no idempotency key:
   phase, are dispatched again, and both attempts leave one contact, one
   confirmation email, and one tag;
 - a send held for nine seconds is sent exactly once, because the Step is sync;
-- a lost send response parks the Flow as `needsReview` without a resend, and
-  the recheck Action completes as `alreadySent` with still one send;
+- a lost send response fails on the unwired `uncertain` branch without a resend;
 - a Worker lost while Mailchimp holds the send is replaced, and the new
-  attempt finds the dispatch checkpoint, reads the campaign as sending, and
-  sends nothing;
+  attempt finds the dispatch checkpoint, reads the campaign as sending,
+  completes through `alreadySent` without sending again;
 - a rate-limited send waits for `Retry-After` and sends once;
-- an already sent, scheduled, or other-audience campaign is never sent;
+- an already sent campaign completes without sending; a scheduled or
+  other-audience campaign fails without sending;
 - a contact Mailchimp rejects is recorded with only the problem title, and the
   launch continues;
 - an invalid launch fails the Flow before any Mailchimp request.

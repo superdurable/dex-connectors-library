@@ -73,13 +73,12 @@ func TestPlaylistCuratorAddsOnceWithRealDex(t *testing.T) {
 		require.NotContains(t, string(encoded), integrationManageToken)
 	})
 
-	t.Run("an unknown handle completes without changes", func(t *testing.T) {
+	t.Run("an unknown handle fails without changes", func(t *testing.T) {
 		playlistID := "PLmissing" + runID
 		result := harness.runFlow(t, ctx, flow, "youtube-curator-missing-"+runID, CurationRequest{Channel: "@missing", Query: "release", PlaylistID: playlistID})
-		require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
-		var outcome CurationOutcome
-		require.NoError(t, result.DecodeSingleOutput(&outcome))
-		require.Equal(t, StatusChannelNotFound, outcome.Status)
+		require.Equal(t, dex.FlowFailed, result.Status)
+		require.Contains(t, result.ErrorMessage, "notFound")
+		require.Contains(t, result.ErrorMessage, "no target")
 		require.Zero(t, provider.insertsFor(playlistID))
 	})
 

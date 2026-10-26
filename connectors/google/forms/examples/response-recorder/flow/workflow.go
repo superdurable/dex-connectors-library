@@ -37,7 +37,6 @@ const (
 	recordPageStepType     = "RecordResponsePage"
 	readResponseStepType   = "ReadNamedResponse"
 	recordResponseStepType = "RecordNamedResponse"
-	reportNotFoundStepType = "ReportResponseNotFound"
 )
 
 var (
@@ -104,8 +103,6 @@ const (
 	// StatusTruncated means more than MaxResponsePages pages matched; NextCursor stays at the input
 	// cursor, because Google documents no listing order.
 	StatusTruncated Status = "truncated"
-	// StatusResponseNotFound means the requested response ID does not exist on the form.
-	StatusResponseNotFound Status = "responseNotFound"
 )
 
 // Outcome is the durable result of the Flow and its completion output.
@@ -226,11 +223,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Read the one requested response by its ID.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToGetResponseInput,
-			Found:    sdkgo.GoTo(recordNamedResponse{}),
-			NotFound: sdkgo.GoTo(reportResponseNotFound{}),
+			Found: sdkgo.GoTo(recordNamedResponse{}),
 		})),
 		dex.DefineStep(recordNamedResponse{}),
-		dex.DefineStep(reportResponseNotFound{}),
 	}
 }
 
@@ -526,26 +521,6 @@ func (recordNamedResponse) Execute(ctx dex.Context, result forms.GetResponseResu
 	}
 	outcome.Status = StatusRecorded
 	outcome.Responses = []RecordedResponse{RecordFormResponse(form, result.Value)}
-	if err := outcomeAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(outcome), nil
-}
-
-// dex:group group-id:response-recorder group-label:"Response recorder"
-// dex:explanation text:"Complete with responseNotFound when the form has no response with the requested ID."
-type reportResponseNotFound struct {
-	dex.StepDefaultsNoWaitFor[forms.GetResponseResult]
-}
-
-func (reportResponseNotFound) GetStepType() string { return reportNotFoundStepType }
-
-func (reportResponseNotFound) Execute(ctx dex.Context, _ forms.GetResponseResult) (*dex.StepDecision, error) {
-	outcome, err := outcomeAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	outcome.Status = StatusResponseNotFound
 	if err := outcomeAttribute.Set(ctx, outcome); err != nil {
 		return nil, err
 	}

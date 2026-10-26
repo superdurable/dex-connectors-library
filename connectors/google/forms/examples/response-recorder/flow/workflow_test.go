@@ -108,7 +108,6 @@ func TestStepIdentitiesMatchTheFlowDefinition(t *testing.T) {
 	require.Equal(t, indexQuestionsStepType, dex.GetFinalStepType[forms.GetFormResult](indexFormQuestions{}))
 	require.Equal(t, recordPageStepType, dex.GetFinalStepType[forms.ListResponsesResult](recordResponsePage{}))
 	require.Equal(t, recordResponseStepType, dex.GetFinalStepType[forms.GetResponseResult](recordNamedResponse{}))
-	require.Equal(t, reportNotFoundStepType, dex.GetFinalStepType[forms.GetResponseResult](reportResponseNotFound{}))
 	wait, err := recordRecorderRequest{}.WaitFor(nil, Input{})
 	require.NoError(t, err)
 	require.Equal(t, dex.SkipWaitImmediately(), wait)

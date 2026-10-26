@@ -62,8 +62,6 @@ func TestStepIdentitiesMatchTheFlowDefinition(t *testing.T) {
 	require.Equal(t, prepareFillStepType, dex.GetFinalStepType[docs.GetDocumentTextResult](preparePlaceholderFill{}))
 	require.Equal(t, prepareStampStepType, dex.GetFinalStepType[docs.ReplaceDocumentTextResult](preparePublicationStamp{}))
 	require.Equal(t, completeStepType, dex.GetFinalStepType[docs.GetDocumentTextResult](completePublication{}))
-	require.Equal(t, reportUncertainStepType, dex.GetFinalStepType[docs.CreateDocumentResult](reportCreationUncertain{}))
-	require.Equal(t, reportMissingStepType, dex.GetFinalStepType[docs.ReplaceDocumentTextResult](reportPlaceholderMissing{}))
 	wait, err := recordPublishRequest{}.WaitFor(nil, Input{})
 	require.NoError(t, err)
 	require.Equal(t, dex.SkipWaitImmediately(), wait)

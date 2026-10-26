@@ -51,7 +51,6 @@ func TestStepIdentitiesMatchTheFlowDefinition(t *testing.T) {
 	require.Equal(t, FlowType, dex.GetFinalFlowType(newTestFlow("", "")))
 	require.Equal(t, recordRequestStepType, dex.GetFinalStepType[Input](recordCopyRequest{}))
 	require.Equal(t, selectSourceStepType, dex.GetFinalStepType[drive.SearchFilesResult](selectSourceFile{}))
-	require.Equal(t, reportNotFoundStepType, dex.GetFinalStepType[drive.SearchFilesResult](reportSourceNotFound{}))
 	require.Equal(t, prepareCopyStepType, dex.GetFinalStepType[drive.ReadFileTextResult](prepareTextCopy{}))
 	require.Equal(t, completeCopyStepType, dex.GetFinalStepType[drive.GetFileResult](completeTextCopy{}))
 	wait, err := recordCopyRequest{}.WaitFor(nil, Input{})

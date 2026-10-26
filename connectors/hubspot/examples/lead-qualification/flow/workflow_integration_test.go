@@ -134,20 +134,20 @@ func TestSlowWritesDispatchedTwiceConvergeOnOneRecordWithRealDex(t *testing.T) {
 	require.Equal(t, integrationStageID, qualification.DealStageID)
 }
 
-func TestRejectedUpsertCompletesWithASecretSafeFailureWithRealDex(t *testing.T) {
+func TestRejectedUpsertFailsWithASecretSafeReasonWithRealDex(t *testing.T) {
 	provider, harness := newLeadQualificationHarness(t)
 	ctx := integrationContext(t, time.Minute)
 	flowID := startQualification(t, ctx, harness, "rejected", Input{Email: rejectedLeadEmail})
 
-	qualification := waitForCompletedQualification(t, ctx, harness, flowID)
-	require.Equal(t, PhaseRejected, qualification.Phase)
-	require.NotNil(t, qualification.Rejection)
-	require.Equal(t, sdkgo.FailureValidation, qualification.Rejection.Kind)
-	require.Contains(t, qualification.Rejection.Message, "INVALID_EMAIL")
-	encoded, err := json.Marshal(qualification)
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
 	require.NoError(t, err)
-	require.NotContains(t, string(encoded), sentinelMessage)
-	require.NotContains(t, string(encoded), integrationAccessToken)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "providerRejected")
+	require.Contains(t, result.ErrorMessage, "no target")
+	require.Contains(t, result.ErrorMessage, "VALIDATION")
+	require.Contains(t, result.ErrorMessage, "INVALID_EMAIL")
+	require.NotContains(t, result.ErrorMessage, sentinelMessage)
+	require.NotContains(t, result.ErrorMessage, integrationAccessToken)
 	require.Equal(t, 1, provider.count("upsert "+rejectedLeadEmail), "a validation rejection is not retried")
 	require.Zero(t, provider.contactCount(rejectedLeadEmail))
 }

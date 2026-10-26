@@ -214,7 +214,7 @@ other branch is optional and fails the Flow when unwired.
 [`examples/account-lifecycle`](examples/account-lifecycle) is a runnable Dex
 Web **Start Flow** example. Onboarding creates the account, adds it to a team
 group, reads it back, and records the hand-off; an address that belongs to
-someone else is handed to IT without creating anything; reinstating restores a
+someone else fails the example Flow without creating anything; reinstating restores a
 returning person's account instead of creating a second one; and offboarding
 suspends the account and removes the membership.
 

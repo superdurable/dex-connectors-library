@@ -102,6 +102,23 @@ func TestConversationWithoutAnEarlierOneIsLeftOpenWithRealDex(t *testing.T) {
 	require.Equal(t, "open", provider.conversation(inboundID).state)
 }
 
+func TestConversationWithContactNotYetSearchableIsLeftOpenWithRealDex(t *testing.T) {
+	provider := newFakeIntercom(t)
+	userID := provider.seedContact(integrationCustomerEmail, "user")
+	inboundID := provider.seedConversation(userID, "open", time.Minute, "Hello, I have a question.")
+	provider.contacts = nil
+	harness := newDuplicateHarness(t, provider, defaultRequestTimeout, fakeAdminID)
+
+	outcome := harness.runDuplicate(t, "contact-not-searchable", inboundID)
+	require.Equal(t, answerduplicate.OutcomeLeftOpen, outcome.Action)
+	require.Equal(t, "noContact", outcome.Reason)
+	require.Equal(t, 1, provider.count("contactSearch"))
+	require.Zero(t, provider.count("conversationSearch"))
+	require.Zero(t, provider.count("reply"))
+	require.Zero(t, provider.count("manage"))
+	require.Equal(t, "open", provider.conversation(inboundID).state)
+}
+
 func TestAnsweredConversationIsSkippedBeforeAnyLookupWithRealDex(t *testing.T) {
 	provider := newFakeIntercom(t)
 	scenario := seedDuplicateScenario(provider)
@@ -147,17 +164,17 @@ func TestLostReplyResponseIsFoundInTheConversationWithoutResendingWithRealDex(t 
 	require.Equal(t, 1, provider.count("reply"), "the reply was never resent")
 }
 
-func TestUnconfirmedReplyWithoutAMatchingPartNeedsReviewWithRealDex(t *testing.T) {
+func TestUnconfirmedReplyWithoutAMatchingPartFailsWithRealDex(t *testing.T) {
 	provider := newFakeIntercom(t)
 	scenario := seedDuplicateScenario(provider)
 	provider.failsFirstReplyBeforeApplying = true
 	harness := newDuplicateHarness(t, provider, defaultRequestTimeout, fakeAdminID)
 
-	outcome := harness.runDuplicate(t, "unconfirmed-reply", scenario.inboundID)
-	require.Equal(t, answerduplicate.OutcomeNeedsReview, outcome.Action)
-	require.Equal(t, "replyUncertain", outcome.Reason)
-	require.Equal(t, "an earlier attempt of this Step sent the reply without a confirmed outcome, and the conversation shows no matching part, so it is not sent again",
-		outcome.ReviewDetail)
+	flowID := harness.startDuplicate(t, "unconfirmed-reply", scenario.inboundID)
+	result := harness.waitForFlow(t, flowID)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "uncertain")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.Equal(t, 1, provider.count("reply"), "an unconfirmed reply is never resent")
 	require.Zero(t, provider.count("manage"), "an unanswered duplicate is not closed")
 	require.Equal(t, "open", provider.conversation(scenario.inboundID).state)
@@ -177,10 +194,9 @@ func TestLostWorkerDuringReplyReconcilesWithoutResendingWithRealDex(t *testing.T
 
 	result := harness.waitForFlow(t, flowID)
 	close(provider.holdsFirstReply)
-	require.Equal(t, dex.FlowCompleted, result.Status, "Flow %s: %s", flowID, result.ErrorMessage)
-	var outcome answerduplicate.DuplicateConversationOutcome
-	require.NoError(t, result.DecodeSingleOutput(&outcome))
-	require.Equal(t, answerduplicate.OutcomeNeedsReview, outcome.Action, "Intercom had not applied the held reply when the new attempt read the conversation")
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "uncertain")
+	require.Contains(t, result.ErrorMessage, "no target")
 	provider.waitForDelayedRequests(t)
 	require.Equal(t, 1, provider.count("reply"), "the attempt on the new Worker did not resend the reply")
 	require.GreaterOrEqual(t, provider.count("read"), 2, "the new attempt read the conversation back")

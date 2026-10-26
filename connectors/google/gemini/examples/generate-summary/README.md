@@ -7,15 +7,13 @@ This example runs one operation-only Flow from Dex Web **Start Flow**:
 2. `GenerateSummary` calls `gemini.NewGenerateContentStep` with a JSON Schema,
    so Gemini returns a structured headline, summary, and key points;
 3. `SummaryGenerated` decodes that JSON and completes the Flow, while
-   `SummaryNotGenerated` completes without a summary when Gemini truncated or
-   blocked the candidate.
+   a truncated or blocked candidate fails the Flow on its unwired branch.
 
-Both completion Steps write the `gemini-summary-outcome` Attribute. The
+The completion Step writes the `gemini-summary-outcome` Attribute. The
 summary and display RPCs show the request and the outcome in Dex Web.
 
-The example wires `generated`, `truncated`, and `blocked`. It leaves
-`providerRejected`, `invalidResponse`, and `defect` unwired, so those outcomes
-fail the Flow. For example, a Gemini project without prepay credits returns
+The example wires only `generated`. Truncated, blocked, `providerRejected`,
+`invalidResponse`, and `defect` outcomes fail the Flow. For example, a Gemini project without prepay credits returns
 HTTP 402, which selects `providerRejected` and fails the run without a retry.
 
 The Flow and every application Step declare stable types with `GetFlowType`
@@ -139,6 +137,9 @@ the same value under `gemini-summary-outcome`:
 }
 ```
 
+`blockReason` remains in the persisted outcome type for older runs. Generated
+summaries leave it empty; blocked responses now fail the Flow.
+
 Text over 64 KiB, an empty text, or a title over 200 characters fails the
 Flow before Gemini is called.
 
@@ -151,8 +152,8 @@ GOWORK=off go test -race ./examples/generate-summary/...
 ```
 
 The real Dex suite starts Flows through the Dex Client against a local fake
-Gemini API. It covers the generated, blocked, and truncated routes, an unwired
-`providerRejected` outcome that fails without a retry, and invalid input:
+Gemini API. It covers generated output, unwired blocked and truncated branches,
+a `providerRejected` outcome that fails without a retry, and invalid input:
 
 ```bash
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./examples/generate-summary/... -count=1

@@ -33,8 +33,6 @@ const (
 	appendStampStepType        = "AppendPublicationStamp"
 	readBackStepType           = "ReadBackPolicy"
 	completeStepType           = "CompletePublication"
-	reportUncertainStepType    = "ReportCreationUncertain"
-	reportMissingStepType      = "ReportPlaceholderMissing"
 	publicationStampDateLayout = "2006-01-02"
 )
 
@@ -76,10 +74,6 @@ type Status string
 const (
 	// StatusPublished means the document was created, filled, stamped, and read back.
 	StatusPublished Status = "published"
-	// StatusCreationUncertain means Google may have created the document; a person must check Drive.
-	StatusCreationUncertain Status = "creationUncertain"
-	// StatusPlaceholderMissing means the template lacks a requested placeholder, so nothing was filled.
-	StatusPlaceholderMissing Status = "placeholderMissing"
 )
 
 // Outcome is the durable result of the Flow and its completion output.
@@ -98,16 +92,12 @@ type Outcome struct {
 	WasFillAlreadyApplied bool `json:"wasFillAlreadyApplied,omitempty"`
 	// WasStampAlreadyApplied reports that a repeated append found the stamp an earlier attempt added.
 	WasStampAlreadyApplied bool `json:"wasStampAlreadyApplied,omitempty"`
-	// MissingPlaceholders lists the requested placeholders the template lacks.
-	MissingPlaceholders []string `json:"missingPlaceholders,omitempty"`
 	// PublishedRevisionID is the revision of the text read back.
 	PublishedRevisionID string `json:"publishedRevisionId,omitempty"`
 	// PublishedText is the Markdown read back from the published document.
 	PublishedText string `json:"publishedText,omitempty"`
 	// RemainingPlaceholders lists requested placeholders still present in the read-back text.
 	RemainingPlaceholders []string `json:"remainingPlaceholders,omitempty"`
-	// ReviewDetail is the connector's safe failure message for a person to act on.
-	ReviewDetail string `json:"reviewDetail,omitempty"`
 }
 
 // DraftRequest is the application input of the create Step.
@@ -213,7 +203,6 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			}}},
 			Connection: flow.connection, MapToOperationInput: flow.MapToCreateDocumentInput,
 			Created:         sdkgo.GoTo(sdkgo.StepRef[docs.CreateDocumentResult](readDraftStepType)),
-			Uncertain:       sdkgo.GoTo(reportCreationUncertain{}),
 			ResultAttribute: &createResultAttribute,
 		})),
 		dex.DefineStep(docs.NewGetDocumentTextStep(docs.GetDocumentTextStepConfig[docs.CreateDocumentResult]{
@@ -233,8 +222,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Replace every placeholder in one batch that Google applies only at the revision read.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToFillPlaceholdersInput,
-			Replaced:            sdkgo.GoTo(preparePublicationStamp{}),
-			PlaceholderNotFound: sdkgo.GoTo(reportPlaceholderMissing{}),
+			Replaced: sdkgo.GoTo(preparePublicationStamp{}),
 		})),
 		dex.DefineStep(preparePublicationStamp{}),
 		dex.DefineStep(docs.NewAppendTextStep(docs.AppendTextStepConfig[StampRequest]{
@@ -257,8 +245,6 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Read: sdkgo.GoTo(completePublication{}),
 		})),
 		dex.DefineStep(completePublication{}),
-		dex.DefineStep(reportCreationUncertain{}),
-		dex.DefineStep(reportPlaceholderMissing{}),
 	}
 }
 
@@ -506,56 +492,6 @@ func RemainingPlaceholders(text string, placeholders []docs.PlaceholderReplaceme
 		}
 	}
 	return remaining
-}
-
-// dex:group group-id:policy-publish group-label:"Policy publication"
-// dex:explanation text:"Complete with creationUncertain so a person checks Drive instead of creating a second document."
-type reportCreationUncertain struct {
-	dex.StepDefaultsNoWaitFor[docs.CreateDocumentResult]
-}
-
-func (reportCreationUncertain) GetStepType() string { return reportUncertainStepType }
-
-func (reportCreationUncertain) Execute(ctx dex.Context, result docs.CreateDocumentResult) (*dex.StepDecision, error) {
-	outcome, err := outcomeAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	outcome.Status = StatusCreationUncertain
-	if result.Failure != nil {
-		outcome.ReviewDetail = result.Failure.Message
-	}
-	if err := outcomeAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(outcome), nil
-}
-
-// dex:group group-id:policy-publish group-label:"Policy publication"
-// dex:explanation text:"Complete with placeholderMissing when the template lacks a requested placeholder."
-type reportPlaceholderMissing struct {
-	dex.StepDefaultsNoWaitFor[docs.ReplaceDocumentTextResult]
-}
-
-func (reportPlaceholderMissing) GetStepType() string { return reportMissingStepType }
-
-func (reportPlaceholderMissing) Execute(ctx dex.Context, result docs.ReplaceDocumentTextResult) (*dex.StepDecision, error) {
-	outcome, err := outcomeAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	createResult, err := createResultAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	document := createResult.Value.Document
-	outcome.Status = StatusPlaceholderMissing
-	outcome.Document = &document
-	outcome.MissingPlaceholders = result.Value.MissingPlaceholders
-	if err := outcomeAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(outcome), nil
 }
 
 var _ dex.Flow = (*Flow)(nil)

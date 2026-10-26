@@ -221,7 +221,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Find the active customer with the order's email address.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToFindCustomerInput,
-			Found:    sdkgo.GoTo(recordFoundCustomer{}),
+			Found: sdkgo.GoTo(recordFoundCustomer{}),
+			// Create the customer before invoicing when QuickBooks has no matching email.
 			NotFound: sdkgo.GoTo(prepareCustomerCreation{}),
 		})),
 		dex.DefineStep(prepareCustomerCreation{}),

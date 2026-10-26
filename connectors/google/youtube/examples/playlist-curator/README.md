@@ -18,7 +18,7 @@ This example runs one Flow from Dex Web **Start Flow**:
 Every read Step uses the `youtube-readonly` connection (method
 `google-oauth-readonly`, scope `youtube.readonly`); only `AddToPlaylist` uses
 the `youtube` connection (method `google-oauth-manage`, scope `youtube`). An
-unknown channel completes through `ChannelNotFound`. The summary and display
+unknown channel fails through the unwired `notFound` branch. The summary and display
 RPCs show the request and the `youtube-curation-outcome` Attribute. Other
 branches, such as `quotaExhausted`, are unwired, so they fail the Flow.
 

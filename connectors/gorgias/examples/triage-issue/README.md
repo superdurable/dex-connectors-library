@@ -25,12 +25,10 @@ every Gorgias operation to triage a new customer issue:
    acknowledgement, `AcknowledgeCustomer` calls `gorgias.NewAddNoteStep` with
    `isPublicReply` to email it to the customer and `CompleteTriage` completes.
 
-The `uncertain` branches of the create, the note, and the reply are wired: a
-request that was sent and that Gorgias does not show completes the Flow with
-`needsReview: true`, the `reviewReason`, and the connector's `reviewDetail`,
-so a person checks Gorgias instead of the Flow sending a possible duplicate.
-Every other optional branch is unwired and fails the Flow, such as a rejected
-ticket, a missing ticket, an invalid response, or a local defect.
+The `notFound` requester branch opens a ticket for a customer Gorgias does not
+know. Every other optional branch is unwired and fails the Flow with the
+connector's safe reason, including an unconfirmed create, note, or reply.
+Those writes are never resent after an uncertain outcome.
 
 ## Generate the Flow Definition
 
@@ -112,8 +110,8 @@ choose the Worker at `127.0.0.1:8833`, enter a unique Flow ID, and submit.
 Omit `acknowledgement` to send no email. The Flow sends it only when it
 follows up on an existing ticket whose customer wrote by email; Gorgias emails
 the reply asynchronously. The Flow result and the `gorgias-triage-outcome`
-Attribute hold the action (`opened`, `followedUp`, or `creationUncertain`),
-the ticket, the note and acknowledgement IDs, and the review state.
+Attribute hold the action (`opened` or `followedUp`), the ticket, and the note
+and acknowledgement IDs.
 
 ## Test
 
@@ -139,7 +137,7 @@ has no idempotency key and lists tickets filtered only by customer:
 - a lost create response, and a lost reply response, are found by their
   `external_id` on the retry and never resent;
 - a create that fails with a 502 and that Gorgias still does not show after
-  repeated lookups completes as `needsReview` and is never resent;
+  repeated lookups fails on the unwired `uncertain` branch and is never resent;
 - a rate-limited create waits for `Retry-After`, looks for the ticket by its
   `external_id`, and creates one ticket;
 - a Worker lost while Gorgias holds a create it already stored is replaced,

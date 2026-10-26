@@ -1,8 +1,8 @@
 # Google Workspace account-lifecycle example
 
 This example runs one operation-only Flow from Dex Web **Start Flow**. The
-`action` input selects one of three paths, and every path ends with an
-`AccountHandOff` that tells the next owner what this Flow did not do.
+`action` input selects one of three paths, and each successful path ends with
+an `AccountHandOff` that tells the next owner what this Flow did not do.
 
 Onboarding:
 
@@ -18,8 +18,7 @@ Onboarding:
    recorded one and active, then completes as `onboarded` with the sign-in
    hand-off;
 5. when the address already belongs to another account, alias, or group,
-   `RecordAddressTakenHandOff` completes as `addressTaken` without creating or
-   joining anything.
+   the unwired `alreadyExists` branch fails the Flow without creating or joining anything.
 
 Reinstating a returning person calls `workspaceadmin.NewUnsuspendUserStep`
 instead of creating an account, then joins the same group, read-back, and
@@ -29,7 +28,7 @@ Offboarding calls `workspaceadmin.NewSuspendUserStep`, removes the account from
 the group by its unique ID with `workspaceadmin.NewRemoveUserFromGroupStep`, and
 completes as `offboarded`.
 
-Only the happy-path branches and `alreadyExists` are wired. An unknown account
+Only happy-path branches are wired. An unknown account
 to reinstate or offboard, a missing group, provider rejections, invalid
 responses, and local defects fail the Flow.
 
@@ -89,7 +88,7 @@ Reinstating or offboarding needs only the address and the group:
 
 `groupRole` may be `MEMBER`, `MANAGER`, or `OWNER`; blank joins as `MEMBER`.
 Set `provisioningKey` to an HR hire ID so that a second onboarding run for the
-same hire converges on the first account instead of reporting `addressTaken`.
+same hire converges on the first account instead of failing on `alreadyExists`.
 
 The Flow result and the `google-workspace-account-hand-off` Attribute hold the
 status, the account ID, the group outcome, and the next step. Creating an

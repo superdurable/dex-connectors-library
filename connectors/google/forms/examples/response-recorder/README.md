@@ -15,10 +15,10 @@ every Google Forms operation to record each new response's answers:
    answers in form order, and reads the next page, up to eight pages;
 6. `ReadNamedResponse` calls `forms.NewGetResponseStep` when the input names a
    `responseId`; `RecordNamedResponse` records it, and
-   `ReportResponseNotFound` completes as `responseNotFound` when it does not
+   the unwired `notFound` branch fails the Flow when it does not
    exist.
 
-Only the happy-path branches and `getResponse`'s `notFound` are wired. A form
+Only the happy-path branches are wired. A missing response ID, a form
 that is gone or unreadable, a rejected or invalid read, and a defect fail the
 Flow.
 
