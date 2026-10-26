@@ -5,7 +5,7 @@ metadata:
   displayName: Discord
   description: Read Discord channels and bounded pages of channel messages, send nonce-deduplicated bot messages, and add reactions.
   company: Discord
-  version: v0.1.1
+  version: v0.2.0
 spec:
   provider: discord
   codegen:
@@ -60,6 +60,20 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: announcementChannel
+          branch: found
+          description: "Reading channel 100000000000000001 finds the announcements channel."
+          default: true
+          output: {id: "100000000000000001", type: 0, guildId: "200000000000000001", name: announcements, topic: Release news}
+        - name: unknownChannel
+          branch: notFound
+          description: "Reading unknown channel 100000000000000404 receives Discord's Unknown Channel 404."
+          failure: {kind: NOT_FOUND, message: "Discord found no such channel."}
+        - name: inaccessibleChannel
+          branch: providerRejected
+          description: "Reading channel 100000000000000403 without View Channels permission receives HTTP 403."
+          failure: {kind: AUTHORIZATION, message: "Discord denied access to the channel."}
     - name: listChannelMessages
       goName: ListChannelMessages
       inputType: ListChannelMessagesInput
@@ -77,6 +91,25 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: announcementReadBack
+          branch: listed
+          description: "Listing channel 100000000000000001 finds the posted announcement behind another user's newer message."
+          default: true
+          output:
+            messages:
+              - {id: "300000000000000002", channelId: "100000000000000001", author: {id: "400000000000000002", username: teammate, isBot: false}, content: "Thanks for the announcement!", timestamp: "2026-10-26T12:01:00Z", type: 0}
+              - {id: "300000000000000001", channelId: "100000000000000001", author: {id: "400000000000000001", username: releasebot, isBot: true}, content: "Release today @everyone", timestamp: "2026-10-26T12:00:00Z", type: 0}
+            oldestMessageId: "300000000000000001"
+            isFull: false
+        - name: unknownChannel
+          branch: notFound
+          description: "Listing messages in unknown channel 100000000000000404 receives Discord's Unknown Channel 404."
+          failure: {kind: NOT_FOUND, message: "Discord found no such channel."}
+        - name: missingReadPermission
+          branch: providerRejected
+          description: "Listing channel 100000000000000403 without Read Message History receives HTTP 403."
+          failure: {kind: AUTHORIZATION, message: "Discord denied message history access."}
     - name: createMessage
       goName: CreateMessage
       inputType: CreateMessageInput
@@ -96,6 +129,20 @@ spec:
         durability: async
         # Discord enforces a nonce for only a few minutes, so every retry must fit that window.
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Discord enforces the message nonce for only a few minutes, so stop createMessage retries within two minutes before that deduplication expires."}}
+      mocks:
+        - name: releaseAnnouncement
+          branch: created
+          description: "Posting Release today @everyone to channel 100000000000000001 creates one mention-safe message."
+          default: true
+          output: {id: "300000000000000001", channelId: "100000000000000001", author: {id: "400000000000000001", username: releasebot, isBot: true}, content: "Release today @everyone", timestamp: "2026-10-26T12:00:00Z", type: 0}
+        - name: unknownChannel
+          branch: notFound
+          description: "Posting to unknown channel 100000000000000404 receives Discord's Unknown Channel 404."
+          failure: {kind: NOT_FOUND, message: "Discord found no such channel."}
+        - name: missingSendPermission
+          branch: providerRejected
+          description: "Posting to channel 100000000000000403 without Send Messages receives HTTP 403."
+          failure: {kind: AUTHORIZATION, message: "Discord denied message creation."}
     - name: addReaction
       goName: AddReaction
       inputType: AddReactionInput
@@ -112,3 +159,17 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: announcementReaction
+          branch: added
+          description: "Adding 📣 to message 300000000000000001 in channel 100000000000000001 succeeds."
+          default: true
+          output: {channelId: "100000000000000001", messageId: "300000000000000001", emoji: "📣"}
+        - name: unknownMessage
+          branch: notFound
+          description: "Reacting to unknown message 300000000000000404 receives Discord's Unknown Message 404."
+          failure: {kind: NOT_FOUND, message: "Discord found no such message."}
+        - name: missingReactionPermission
+          branch: providerRejected
+          description: "Reacting to message 300000000000000403 without Add Reactions receives HTTP 403."
+          failure: {kind: AUTHORIZATION, message: "Discord denied the reaction."}

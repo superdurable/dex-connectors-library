@@ -200,6 +200,11 @@ func newSummaryIntegrationHarness(t *testing.T, providerURL string) (*Flow, *sum
 	require.NoError(t, err)
 	connection, err := gemini.NewConnection(providerClient, reference)
 	require.NoError(t, err)
+	return newSummaryIntegrationHarnessWithConnection(t, connection)
+}
+
+func newSummaryIntegrationHarnessWithConnection(t *testing.T, connection gemini.Connection) (*Flow, *summaryIntegrationHarness) {
+	t.Helper()
 	flow := NewFlow(connection, SummaryModelConfiguration{})
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
 	require.NoError(t, err)

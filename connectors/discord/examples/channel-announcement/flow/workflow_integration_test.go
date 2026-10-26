@@ -244,6 +244,11 @@ func newAnnouncementIntegrationHarness(t *testing.T, providerURL string) (*Flow,
 	require.NoError(t, err)
 	connection, err := discord.NewConnection(providerClient, reference)
 	require.NoError(t, err)
+	return newAnnouncementIntegrationHarnessWithConnection(t, connection)
+}
+
+func newAnnouncementIntegrationHarnessWithConnection(t *testing.T, connection discord.Connection) (*Flow, *announcementIntegrationHarness) {
+	t.Helper()
 	flow := NewFlow(connection)
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
 	require.NoError(t, err)

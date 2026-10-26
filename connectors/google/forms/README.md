@@ -261,6 +261,26 @@ Web **Start Flow** example that uses all three operations. It reads the picked
 form's questions, then records each new response's answers by question title,
 either every response since an earlier run's cursor or one response by ID.
 
+## Mocks
+
+`formsmock` supplies one Vendor intake form, an Acme response, and a
+three-page response listing with no guaranteed order and a duplicate across
+pages. The defaults let the example exercise question labeling, duplicate
+removal, and cursor construction. Script cases when testing another form or
+response. Optional cases cover missing forms or responses and permission
+denials. See [connector mocks](../../../sdkgo/README.md#connector-mocks).
+
+The [runnable real-Dex test](examples/response-recorder/flow/workflow_mock_integration_test.go)
+uses those defaults:
+
+```go
+	mock := formsmock.New(t, ConnectionName)
+	flow, harness := newFormsIntegrationHarnessWithConnection(t, mock.Connection(), FormConfiguration{FormID: "1FAIpQLintake"})
+	harness.startWorker(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+```
+
 ## Verification
 
 ```bash

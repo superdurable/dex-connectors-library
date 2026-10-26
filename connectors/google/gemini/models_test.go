@@ -43,6 +43,7 @@ func TestREADMEGoSnippetsComeFromTheRunnableExample(t *testing.T) {
 	for _, path := range []string{
 		filepath.Join("examples", "generate-summary", "main.go"),
 		filepath.Join("examples", "generate-summary", "flow", "workflow.go"),
+		filepath.Join("examples", "generate-summary", "flow", "workflow_mock_integration_test.go"),
 	} {
 		source, err := os.ReadFile(path)
 		require.NoError(t, err)

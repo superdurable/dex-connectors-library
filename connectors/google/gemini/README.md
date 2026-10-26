@@ -15,7 +15,7 @@ by changing only the connection.
 Install a published component release:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/google/gemini@v0.21.2
+go get github.com/superdurable/dex-connectors-library/connectors/google/gemini@v0.22.0
 ```
 
 ## Connection
@@ -255,6 +255,28 @@ with `provider: gemini`, the same API key, and the same `model`, and replace
 `gemini.NewGenerateTextStep` with `llm.NewGenerateTextStep`; the request and
 response types are the same `textgen` types. `generateContent`, its branches,
 and its defaults are unchanged.
+
+## Mocks
+
+`geminimock` supplies a structured JSON summary for the example's Launch
+request. It also has conclusive `truncated`, `blocked`, and
+`providerRejected` cases. The generated mock checks locally invalid requests
+with the real request encoder. On `generated`, it requires nonempty text and
+accepts STOP or an omitted finish reason. It does not validate JSON syntax or
+schema adherence because the real generated branch does not; the example Flow
+validates the summary it consumes. Script another answer to test malformed or
+schema-mismatched content. See [connector mocks](../../../sdkgo/README.md#connector-mocks).
+
+The [runnable real-Dex test](examples/generate-summary/flow/workflow_mock_integration_test.go)
+uses the default structured answer:
+
+```go
+	mock := geminimock.New(t, ConnectionName)
+	flow, harness := newSummaryIntegrationHarnessWithConnection(t, mock.Connection())
+	harness.startWorker(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+```
 
 ## Example
 
