@@ -175,6 +175,8 @@ func classifyFailedStatus(operation string, response quickbooksResponse, summary
 		return classification.classifiedExchange(exchangeNotFound, sdkgo.FailureNotFound, "QuickBooks found no such resource")
 	case status == http.StatusBadRequest:
 		return classifyFault(classification)
+	case status == http.StatusConflict:
+		return classification.classifiedExchange(exchangeRetry, sdkgo.FailureConflict, "QuickBooks has an in-progress request with this requestid")
 	case status >= 300 && status < 400:
 		return classification.classifiedExchange(exchangeRejected, sdkgo.FailureProtocol, "QuickBooks redirected the request")
 	default:

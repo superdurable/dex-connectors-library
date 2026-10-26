@@ -5,7 +5,7 @@ metadata:
   displayName: QuickBooks Online
   description: "Find or create QuickBooks Online customers, raise invoices with exact decimal amounts, list and read them page by page, email them, and record payments against them, with every write sent under a QuickBooks requestid derived from the Step."
   company: Intuit
-  version: v0.22.1
+  version: v0.23.0
 spec:
   provider: quickbooks
   codegen:
@@ -109,6 +109,28 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: existingCityAgency
+          branch: found
+          description: "An email lookup for accounts@cityagency.example.com finds the active City Agency customer."
+          default: true
+          output: {emailAddress: accounts@cityagency.example.com, customer: {customerId: "58", displayName: City Agency, emailAddress: accounts@cityagency.example.com, isActive: true}}
+        - name: notFoundFailure
+          branch: notFound
+          description: "An email lookup for newbuyer@example.com finds no active customer."
+          failure: {kind: NOT_FOUND, message: "No customer matches; inactive customers count only when the input includes them."}
+        - name: sharedEmail
+          branch: ambiguous
+          description: "An email lookup for shared@example.com returns two active customers for application selection."
+          output: {emailAddress: shared@example.com, matches: [{customerId: "61", displayName: City Agency East, emailAddress: shared@example.com, isActive: true}, {customerId: "62", displayName: City Agency West, emailAddress: shared@example.com, isActive: true}]}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "Looking up accounts@cityagency.example.com with a revoked connection is rejected."
+          failure: {kind: PROVIDER_REJECTION, message: "QuickBooks conclusively rejected the query, such as a revoked connection or a company the app can no longer reach."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "Looking up accounts@cityagency.example.com receives an unusable customer list."
+          failure: {kind: PROTOCOL, message: "QuickBooks returned an invalid or oversized customer list."}
     - name: createCustomer
       goName: CreateCustomer
       inputType: CreateCustomerInput
@@ -126,6 +148,20 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: newBuyerCustomer
+          branch: created
+          description: "Creating New Buyer for newbuyer@example.com returns customer 59."
+          default: true
+          output: {displayName: New Buyer, customer: {customerId: "59", displayName: New Buyer, emailAddress: newbuyer@example.com, isActive: true}}
+        - name: nameConflictFailure
+          branch: nameConflict
+          description: "Creating a customer named Existing Vendor conflicts with an existing name-list entry."
+          failure: {kind: CONFLICT, message: "QuickBooks already uses this display name."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "Creating City Agency with a revoked connection is rejected before creation."
+          failure: {kind: PROVIDER_REJECTION, message: "QuickBooks conclusively rejected the customer, such as an invalid field or a revoked connection; nothing was created."}
     - name: createInvoice
       goName: CreateInvoice
       inputType: CreateInvoiceInput
@@ -143,6 +179,16 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "QuickBooks does not document requestid retention, so a replay after its key expires could create another invoice."}}
+      mocks:
+        - name: newBuyerOrderInvoice
+          branch: created
+          description: "Creating order ORDER-2048 for customer 59 returns invoice 131 for 75.00."
+          default: true
+          output: {docNumber: ORDER-2048, invoice: {invoiceId: "131", docNumber: ORDER-2048, customerId: "59", lines: [{detailType: SalesItemLineDetail, itemId: "1", quantity: "1", unitPrice: "75.00", amount: "75.00"}], totalAmount: "75.00", balance: "75.00", emailStatus: NotSet, billEmail: newbuyer@example.com}}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "Creating ORDER-1042 with an unknown item ID is rejected before creation."
+          failure: {kind: PROVIDER_REJECTION, message: "QuickBooks conclusively rejected the invoice, such as an unknown or inactive customer or item, a duplicate document number, a closed period, or a revoked connection; nothing was created."}
     - name: getInvoice
       goName: GetInvoice
       inputType: GetInvoiceInput
@@ -160,6 +206,24 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: paidCityAgencyInvoice
+          branch: found
+          description: "Reading invoice 130 after payment and delivery returns a zero balance and EmailSent."
+          default: true
+          output: {invoiceId: "130", docNumber: ORDER-1042, customerId: "58", lines: [{detailType: SalesItemLineDetail, itemId: "1", quantity: "2", unitPrice: "49.95", amount: "99.90"}, {detailType: SalesItemLineDetail, itemId: "2", quantity: "1", unitPrice: "12.5", amount: "12.50"}], totalAmount: "112.40", balance: "0", emailStatus: EmailSent, billEmail: accounts@cityagency.example.com, linkedPaymentIds: ["186"]}
+        - name: notFoundFailure
+          branch: notFound
+          description: "Reading deleted invoice ID 999 finds no invoice."
+          failure: {kind: NOT_FOUND, message: "The invoice does not exist in the company or was deleted."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "Reading invoice ID 130 with a revoked connection is rejected."
+          failure: {kind: PROVIDER_REJECTION, message: "QuickBooks conclusively rejected the read, such as a revoked connection."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "Reading invoice ID 130 receives an unusable invoice body."
+          failure: {kind: PROTOCOL, message: "QuickBooks returned an invalid or oversized invoice."}
     - name: listInvoices
       goName: ListInvoices
       inputType: ListInvoicesInput
@@ -176,6 +240,20 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: cityAgencyOpenInvoice
+          branch: listed
+          description: "Listing customer 58 and document ORDER-1042 finds its unpaid invoice on the first page."
+          default: true
+          output: {invoices: [{invoiceId: "130", docNumber: ORDER-1042, customerId: "58", lines: [{detailType: SalesItemLineDetail, itemId: "1", quantity: "2", unitPrice: "49.95", amount: "99.90"}, {detailType: SalesItemLineDetail, itemId: "2", quantity: "1", unitPrice: "12.5", amount: "12.50"}], totalAmount: "112.40", balance: "112.40", emailStatus: NotSet, billEmail: accounts@cityagency.example.com}], startPosition: 1, maxResults: 10, hasMorePages: false}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "Listing customer 58's invoices with a revoked connection is rejected."
+          failure: {kind: PROVIDER_REJECTION, message: "QuickBooks conclusively rejected the query, such as a revoked connection."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "Listing customer 58's invoices receives an unusable page."
+          failure: {kind: PROTOCOL, message: "QuickBooks returned an invalid or oversized page of invoices."}
     - name: sendInvoice
       goName: SendInvoice
       inputType: SendInvoiceInput
@@ -193,6 +271,16 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "QuickBooks does not confirm that /send honors requestid or how long it does, so a retry could email the invoice twice."}}
+      mocks:
+        - name: cityAgencyInvoiceDelivery
+          branch: sent
+          description: "Sending invoice 130 to accounts@cityagency.example.com returns EmailSent."
+          default: true
+          output: {invoiceId: "130", docNumber: ORDER-1042, customerId: "58", lines: [{detailType: SalesItemLineDetail, itemId: "1", quantity: "2", unitPrice: "49.95", amount: "99.90"}, {detailType: SalesItemLineDetail, itemId: "2", quantity: "1", unitPrice: "12.5", amount: "12.50"}], totalAmount: "112.40", balance: "0", emailStatus: EmailSent, billEmail: accounts@cityagency.example.com}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "Sending invoice 130 without a billing or sendTo address is rejected before delivery."
+          failure: {kind: PROVIDER_REJECTION, message: "QuickBooks conclusively rejected the delivery, such as an invoice without an address, a deleted invoice, or a revoked connection; nothing was sent."}
     - name: recordPayment
       goName: RecordPayment
       inputType: RecordPaymentInput
@@ -210,3 +298,13 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "QuickBooks does not document requestid retention, so a replay after its key expires could record a second payment."}}
+      mocks:
+        - name: cityAgencyOrderPayment
+          branch: recorded
+          description: "Recording 112.40 for customer 58 applies payment 186 fully to invoice 130."
+          default: true
+          output: {paymentId: "186", customerId: "58", totalAmount: "112.40", appliedInvoices: [{invoiceId: "130", amount: "112.40"}]}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "Recording 112.40 against another customer's invoice is rejected before payment."
+          failure: {kind: PROVIDER_REJECTION, message: "QuickBooks conclusively rejected the payment, such as an invoice of another customer, an amount above the balance, an invalid deposit account, a closed period, or a revoked connection; nothing was recorded."}

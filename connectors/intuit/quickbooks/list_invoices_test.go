@@ -91,7 +91,7 @@ func TestListInvoicesRejectsAQueryResponseWithoutItsEnvelope(t *testing.T) {
 func TestSendInvoicePostsAnEmptyOctetStreamAndRequiresEmailSent(t *testing.T) {
 	provider := newRecordingQuickBooks(t, func(response http.ResponseWriter, _ recordedRequest, index int) {
 		invoice := invoiceJSON()
-		if index == 1 {
+		if index >= 1 {
 			invoice["EmailStatus"] = "NeedToSend"
 		}
 		writeValue(t, response, http.StatusOK, map[string]any{"Invoice": invoice})
@@ -120,7 +120,8 @@ func TestSendInvoicePostsAnEmptyOctetStreamAndRequiresEmailSent(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, quickbooks.SendInvoiceBranchDefect, result.Branch, name)
 	}
-	require.Equal(t, 2, provider.requestCount())
+	require.Equal(t, 3, provider.requestCount(), "the accepted send is read by ID without another POST")
+	require.Equal(t, http.MethodGet, provider.request(2).method)
 }
 
 func TestSendInvoiceOfAMissingInvoiceIsRejectedAsNotFound(t *testing.T) {

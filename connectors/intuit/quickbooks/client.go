@@ -10,8 +10,8 @@
 // and every value keeps QuickBooks's own vocabulary, such as EmailStatus NeedToSend.
 //
 // Every mutation sends the requestid query parameter derived from the Dex Call ID, so a retried
-// or re-dispatched attempt of one Step execution receives QuickBooks's original response
-// instead of creating a second customer, invoice, or payment, or sending a second email.
+// or re-dispatched attempt of one Step execution requests QuickBooks's original response.
+// Key retention and replay on the invoice-send endpoint remain unverified.
 //
 // A connection authorizes one QuickBooks company through Intuit's OAuth 2.0 consent. The
 // connector reads the company's realm ID from the realmid claim of the ID token Intuit returns
@@ -22,6 +22,7 @@ package quickbooks
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -59,6 +60,7 @@ const (
 	defaultRequestTimeout = 20 * time.Second
 	// maximumRequestIDBytes is the longest requestid QuickBooks accepts.
 	maximumRequestIDBytes = 50
+	requestDeadlineMargin = 500 * time.Millisecond
 
 	intuitTransactionIDHeader = "intuit_tid"
 )
@@ -250,6 +252,15 @@ func (client *Client) send(call sdkgo.Call, credentials Credentials, realmID str
 	httpRequest, err := client.buildRequest(call, credentials, realmID, request)
 	if err != nil {
 		return quickbooksExchange{outcome: exchangeDefect, failure: quickbooksFailure(sdkgo.FailureLocalDefect, operation, err.Error())}
+	}
+	if deadline, hasDeadline := call.Context.Deadline(); hasDeadline {
+		requestDeadline := deadline.Add(-requestDeadlineMargin)
+		if time.Until(requestDeadline) <= 0 {
+			return quickbooksExchange{outcome: exchangeRetry, failure: quickbooksFailure(sdkgo.FailureTransport, operation, "QuickBooks attempt has no time left for a request")}
+		}
+		requestContext, cancel := context.WithDeadline(httpRequest.Context(), requestDeadline)
+		defer cancel()
+		httpRequest = httpRequest.WithContext(requestContext)
 	}
 	httpResponse, err := client.httpClient.Do(httpRequest)
 	if err != nil {

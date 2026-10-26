@@ -93,12 +93,35 @@ func (operation CreateCustomerOperation) Invoke(call sdkgo.Call, input CreateCus
 	if err == nil {
 		customer, err = decodeCustomer(wire)
 	}
+	if err == nil && !isCreatedCustomerMatch(customer, payload) {
+		err = errors.New("QuickBooks returned another customer")
+	}
 	if err != nil {
+		if customerID := acceptedEntityID(result.response.body, "Customer"); customerID != "" {
+			if body, isFound := readAcceptedEntity(client, call, createCustomerOperationID, "customer", customerID); isFound {
+				if readWire, readErr := decodeEntity[customerWire](body, "Customer"); readErr == nil {
+					if readCustomer, decodeErr := decodeCustomer(readWire); decodeErr == nil && readCustomer.CustomerID == customerID && isCreatedCustomerMatch(readCustomer, payload) {
+						receipt.ProviderObjectID = customerID
+						return sdkgo.NewMutationBranch(CreateCustomerBranchCreated, CreateCustomerOutput{Customer: readCustomer, DisplayName: requested.DisplayName}, nil, receipt)
+					}
+				}
+			}
+		}
 		return sdkgo.NewMutationUncertain(requested, quickbooksFailure(sdkgo.FailureProtocol, createCustomerOperationID,
 			"QuickBooks accepted the customer but returned an unusable customer: "+err.Error()), receipt)
 	}
 	receipt.ProviderObjectID = customer.CustomerID
 	return sdkgo.NewMutationBranch(CreateCustomerBranchCreated, CreateCustomerOutput{Customer: customer, DisplayName: requested.DisplayName}, nil, receipt)
+}
+
+func isCreatedCustomerMatch(customer Customer, request createCustomerRequestWire) bool {
+	if customer.DisplayName != request.DisplayName ||
+		(request.GivenName != "" && customer.GivenName != request.GivenName) ||
+		(request.FamilyName != "" && customer.FamilyName != request.FamilyName) ||
+		(request.CompanyName != "" && customer.CompanyName != request.CompanyName) {
+		return false
+	}
+	return request.PrimaryEmailAddr == nil || strings.EqualFold(customer.EmailAddress, request.PrimaryEmailAddr.Address)
 }
 
 // buildCreateCustomerRequest validates every field before any request.

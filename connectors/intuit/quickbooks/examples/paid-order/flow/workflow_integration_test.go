@@ -287,6 +287,19 @@ func TestRejectedInvoiceFailsTheFlowAfterOneRequestWithRealDex(t *testing.T) {
 	t.Logf("rejected create failure: %s", result.ErrorMessage)
 }
 
+func TestAcceptedSendWithUnusableAnswerIsReadBackWithoutResendWithRealDex(t *testing.T) {
+	provider := newFakeQuickBooks(t)
+	provider.garblesFirstSendInvoiceResponse = true
+	harness := newOrderHarness(t, provider, unexpiredAccessToken, defaultRequestTimeout)
+
+	outcome := harness.runOrder(t, "accepted-send-readback", integrationOrder())
+	require.Equal(t, OrderInvoicedAndPaid, outcome.Action)
+	require.Equal(t, quickbooks.EmailStatusEmailSent, outcome.EmailStatus)
+	require.Equal(t, 1, provider.count("sendInvoice"), "an accepted delivery is never resent")
+	require.Equal(t, 1, provider.count("appliedSendInvoice"))
+	require.Equal(t, 2, provider.count("getInvoice"), "the connector confirms delivery before the Flow's own read-back")
+}
+
 func TestRevokedRefreshTokenFailsTheFlowWithoutRetryingWithRealDex(t *testing.T) {
 	provider := newFakeQuickBooks(t)
 	provider.revokesRefreshToken = true
@@ -336,24 +349,29 @@ type orderHarness struct {
 
 func newOrderHarness(t *testing.T, provider *fakeQuickBooks, tokenState accessTokenState, requestTimeout time.Duration) *orderHarness {
 	t.Helper()
-	harness := &orderHarness{serverAddress: environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801")}
 	expiresAt := time.Now().Add(-time.Minute)
 	if tokenState == unexpiredAccessToken {
 		expiresAt = time.Now().Add(time.Hour)
 	}
-	harness.credentials = testsupport.NewRefreshingCredentialSource(quickbooks.Credentials{
+	credentials := testsupport.NewRefreshingCredentialSource(quickbooks.Credentials{
 		ClientID: integrationClientID, ClientSecret: sdkgo.NewSecretString(integrationClientSecret),
 		AccessToken: sdkgo.NewSecretString(provider.consentAccessToken()), RefreshToken: sdkgo.NewSecretString("intuit-refresh-token-0"),
 		IDToken: sdkgo.NewSecretString(integrationIDToken(t)),
 	}, &expiresAt)
-	client, err := quickbooks.New(quickbooks.Config{Environment: quickbooks.EnvironmentSandbox}, harness.credentials,
+	client, err := quickbooks.New(quickbooks.Config{Environment: quickbooks.EnvironmentSandbox}, credentials,
 		quickbooks.WithLocalProviderURL(provider.URL), quickbooks.WithHTTPClient(&http.Client{Timeout: requestTimeout}))
 	require.NoError(t, err)
 	connection, err := quickbooks.NewConnection(client, sdkgo.ConnectionRef{Provider: "quickbooks", Name: ConnectionName})
 	require.NoError(t, err)
-	harness.flow = NewFlow(connection)
-	harness.registry, err = dex.NewRegistry([]dex.Flow{harness.flow})
+	return newOrderHarnessForFlow(t, NewFlow(connection), credentials)
+}
+
+func newOrderHarnessForFlow(t *testing.T, flow *Flow, credentials *testsupport.RefreshingCredentialSource[quickbooks.Credentials]) *orderHarness {
+	t.Helper()
+	harness := &orderHarness{serverAddress: environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801"), flow: flow, credentials: credentials}
+	registry, err := dex.NewRegistry([]dex.Flow{harness.flow})
 	require.NoError(t, err)
+	harness.registry = registry
 	harness.cache, err = blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
 	harness.workerAddress = net.JoinHostPort("127.0.0.1", availableIntegrationPort(t))

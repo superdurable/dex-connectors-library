@@ -63,6 +63,7 @@ type fakeQuickBooks struct {
 	delaysFirstCreateInvoice        bool
 	delaysFirstPayment              bool
 	losesFirstCreateInvoiceResponse bool
+	garblesFirstSendInvoiceResponse bool
 	holdsFirstPayment               chan struct{}
 	throttlesFirstCustomerLookup    bool
 	rejectsCreateInvoice            bool
@@ -335,6 +336,10 @@ func (provider *fakeQuickBooks) runIdempotent(response http.ResponseWriter, requ
 	provider.mutex.Unlock()
 	if name == "createInvoice" && provider.losesFirstCreateInvoiceResponse && attempt == 1 {
 		provider.dropConnection(response)
+		return
+	}
+	if name == "sendInvoice" && provider.garblesFirstSendInvoiceResponse && attempt == 1 {
+		provider.writeJSON(response, http.StatusOK, `{"Invoice":{}}`)
 		return
 	}
 	provider.writeJSON(response, status, answer)

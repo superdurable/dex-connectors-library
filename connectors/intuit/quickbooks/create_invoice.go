@@ -157,6 +157,16 @@ func (operation CreateInvoiceOperation) Invoke(call sdkgo.Call, input CreateInvo
 		err = errors.New("invoice belongs to another customer")
 	}
 	if err != nil {
+		if invoiceID := acceptedEntityID(result.response.body, "Invoice"); invoiceID != "" {
+			if body, isFound := readAcceptedEntity(client, call, createInvoiceOperationID, "invoice", invoiceID); isFound {
+				if readWire, readErr := decodeEntity[invoiceWire](body, "Invoice"); readErr == nil {
+					if readInvoice, decodeErr := decodeInvoice(readWire); decodeErr == nil && readInvoice.InvoiceID == invoiceID && readInvoice.CustomerID == payload.CustomerRef.Value && (payload.DocNumber == "" || readInvoice.DocNumber == payload.DocNumber) {
+						receipt.ProviderObjectID = invoiceID
+						return sdkgo.NewMutationBranch(CreateInvoiceBranchCreated, CreateInvoiceOutput{Invoice: readInvoice, DocNumber: requested.DocNumber}, nil, receipt)
+					}
+				}
+			}
+		}
 		return sdkgo.NewMutationUncertain(requested, quickbooksFailure(sdkgo.FailureProtocol, createInvoiceOperationID,
 			"QuickBooks accepted the invoice but returned an unusable invoice: "+err.Error()), receipt)
 	}

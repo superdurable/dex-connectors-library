@@ -51,7 +51,7 @@ type mutationBranches struct {
 	defect           sdkgo.BranchID
 }
 
-// mutationAttemptForExchange retries what the requestid replays and reports an unusable accepted answer as uncertain.
+// mutationAttemptForExchange leaves accepted but unusable answers to operation-specific read-back.
 func mutationAttemptForExchange[OUT any](result quickbooksExchange, requested OUT, receipt sdkgo.Receipt, branches mutationBranches) (sdkgo.MutationAttempt[OUT], bool) {
 	switch result.outcome {
 	case exchangeSucceeded:
@@ -59,7 +59,7 @@ func mutationAttemptForExchange[OUT any](result quickbooksExchange, requested OU
 	case exchangeRetry:
 		return sdkgo.NewMutationRetry[OUT](result.failure, result.retryAfter), true
 	case exchangeInvalid:
-		return sdkgo.NewMutationUncertain(requested, result.failure, receipt), true
+		return sdkgo.MutationAttempt[OUT]{}, false
 	case exchangeNameConflict:
 		if branches.nameConflict != "" {
 			return sdkgo.NewMutationBranch(branches.nameConflict, requested, &result.failure, receipt), true
