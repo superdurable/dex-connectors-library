@@ -155,8 +155,8 @@ spec:
           output: {envelopeId: 93be49ab-0000-0000-0000-000000000001, status: sent, statusChangedAt: "2026-10-26T12:00:00Z"}
         - name: unknownTemplate
           branch: providerRejected
-          description: "Creating from unknown template 8c9f5a8b-1111-2222-3333-4f5e6d7c8b9b receives a conclusive template rejection."
-          failure: {kind: NOT_FOUND, message: "DocuSign found no template with that ID."}
+          description: "Creating from unknown template 8c9f5a8b-1111-2222-3333-4f5e6d7c8b9b receives HTTP 400 TEMPLATE_ID_INVALID."
+          failure: {kind: PROVIDER_REJECTION, message: "DocuSign rejected the unknown template ID."}
     - name: getEnvelope
       goName: GetEnvelope
       inputType: GetEnvelopeInput

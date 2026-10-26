@@ -126,10 +126,10 @@ func CreateEnvelopeFromTemplateMeridianAgreementSent() connectormock.Case[docusi
 	return connectormock.Branch(docusign.CreateEnvelopeFromTemplateBranchCreated, value, nil)
 }
 
-// CreateEnvelopeFromTemplateUnknownTemplate is the manifest mock unknownTemplate: Creating from unknown template 8c9f5a8b-1111-2222-3333-4f5e6d7c8b9b receives a conclusive template rejection.
+// CreateEnvelopeFromTemplateUnknownTemplate is the manifest mock unknownTemplate: Creating from unknown template 8c9f5a8b-1111-2222-3333-4f5e6d7c8b9b receives HTTP 400 TEMPLATE_ID_INVALID.
 func CreateEnvelopeFromTemplateUnknownTemplate() connectormock.Case[docusign.CreatedEnvelope] {
 	var value docusign.CreatedEnvelope
-	return connectormock.Branch(docusign.CreateEnvelopeFromTemplateBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureNotFound, Message: "DocuSign found no template with that ID."})
+	return connectormock.Branch(docusign.CreateEnvelopeFromTemplateBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "DocuSign rejected the unknown template ID."})
 }
 
 // CreateEnvelopeFromTemplateDefault is the manifest default, meridianAgreementSent, which New installs.
