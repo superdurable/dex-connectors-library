@@ -87,7 +87,7 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/google/forms/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/google/forms \
-  --version v0.22.1 --tag connectors/google/forms/v0.22.1 \
+  --version v0.23.0 --tag connectors/google/forms/v0.23.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/google-forms-release/connector-ui.tgz \
   --ui-digest /tmp/google-forms-release/connector-ui.tgz.sha256 \

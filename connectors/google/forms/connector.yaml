@@ -5,7 +5,7 @@ metadata:
   displayName: Google Forms
   description: Read a Google Form's questions and its responses, listed one bounded page at a time after a submission time or read one by ID.
   company: Google
-  version: v0.22.1
+  version: v0.23.0
 spec:
   provider: google
   codegen:
@@ -173,6 +173,26 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: vendorIntakeForm
+          branch: found
+          description: "Reading form 1FAIpQLintake finds the Vendor intake questions and their IDs."
+          default: true
+          output:
+            formId: 1FAIpQLintake
+            title: Vendor intake
+            documentTitle: Vendor intake (responses)
+            items:
+              - {itemId: it_name, kind: question, title: Company name, questions: [{questionId: q_name, itemId: it_name, title: Company name, type: shortText, isRequired: true}]}
+              - {itemId: it_regions, kind: question, title: Regions, questions: [{questionId: q_regions, itemId: it_regions, title: Regions, type: checkbox, isRequired: false, choices: [{value: EU}, {value: US}]}]}
+        - name: unknownForm
+          branch: notFound
+          description: "Reading form 1FAIpQLmissing receives Google's HTTP 404."
+          failure: {kind: NOT_FOUND, message: "Google found no visible form with that ID."}
+        - name: formAccessDenied
+          branch: providerRejected
+          description: "Reading form 1FAIpQLdenied without Forms permission receives Google's HTTP 403."
+          failure: {kind: AUTHORIZATION, message: "Google denied access to the form."}
     - name: listResponses
       goName: ListResponses
       inputType: ListResponsesInput
@@ -189,6 +209,34 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      pagination: {inputField: pageToken, nextField: nextPageToken}
+      mocks:
+        - name: vendorIntakeResponses
+          branch: listed
+          description: "Listing form 1FAIpQLintake from a blank page token finds unordered submissions across three pages, including a duplicate."
+          default: true
+          pages:
+            - formId: 1FAIpQLintake
+              responses:
+                - {responseId: r_shared_b, formId: 1FAIpQLintake, createdAt: "2026-09-30T09:15:00.123456Z", lastSubmittedAt: "2026-09-30T09:15:00.123456Z", answers: [{questionId: q_name, values: [Beta]}]}
+                - {responseId: r_acme, formId: 1FAIpQLintake, createdAt: "2026-09-30T08:00:00Z", lastSubmittedAt: "2026-09-30T08:00:00Z", respondentEmail: "buyer@acme.example", answers: [{questionId: q_name, values: [Acme GmbH]}, {questionId: q_regions, values: [EU, US]}]}
+              nextPageToken: responses-page-2
+            - formId: 1FAIpQLintake
+              responses:
+                - {responseId: r_acme, formId: 1FAIpQLintake, createdAt: "2026-09-30T08:00:00Z", lastSubmittedAt: "2026-09-30T08:00:00Z", respondentEmail: "buyer@acme.example", answers: [{questionId: q_name, values: [Acme GmbH]}, {questionId: q_regions, values: [EU, US]}]}
+                - {responseId: r_early, formId: 1FAIpQLintake, createdAt: "2026-09-30T09:00:00Z", lastSubmittedAt: "2026-09-30T09:00:00Z", answers: [{questionId: q_name, values: [Early]}]}
+              nextPageToken: responses-page-3
+            - formId: 1FAIpQLintake
+              responses:
+                - {responseId: r_shared_a, formId: 1FAIpQLintake, createdAt: "2026-09-30T09:15:00.123456Z", lastSubmittedAt: "2026-09-30T09:15:00.123456Z", answers: [{questionId: q_name, values: [Alpha]}]}
+        - name: unknownForm
+          branch: notFound
+          description: "Listing responses of form 1FAIpQLmissing receives Google's HTTP 404."
+          failure: {kind: NOT_FOUND, message: "Google found no visible form with that ID."}
+        - name: responseListDenied
+          branch: providerRejected
+          description: "Listing responses of form 1FAIpQLdenied without responses permission receives Google's HTTP 403."
+          failure: {kind: AUTHORIZATION, message: "Google denied access to the form's responses."}
     - name: getResponse
       goName: GetResponse
       inputType: GetResponseInput
@@ -205,3 +253,17 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: acmeSubmission
+          branch: found
+          description: "Reading response r_acme in form 1FAIpQLintake finds Acme's company and regions answers."
+          default: true
+          output: {responseId: r_acme, formId: 1FAIpQLintake, createdAt: "2026-09-30T08:00:00Z", lastSubmittedAt: "2026-09-30T08:00:00Z", respondentEmail: "buyer@acme.example", answers: [{questionId: q_name, values: [Acme GmbH]}, {questionId: q_regions, values: [EU, US]}]}
+        - name: unknownResponse
+          branch: notFound
+          description: "Reading response r_missing in form 1FAIpQLintake receives Google's HTTP 404."
+          failure: {kind: NOT_FOUND, message: "Google found no visible response with that ID."}
+        - name: responseReadDenied
+          branch: providerRejected
+          description: "Reading response r_denied in form 1FAIpQLintake without responses permission receives Google's HTTP 403."
+          failure: {kind: AUTHORIZATION, message: "Google denied access to the response."}

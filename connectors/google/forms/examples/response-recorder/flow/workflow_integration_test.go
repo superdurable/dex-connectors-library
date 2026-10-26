@@ -503,6 +503,11 @@ func newFormsIntegrationHarness(t *testing.T, endpoint string, form FormConfigur
 	require.NoError(t, err)
 	connection, err := forms.NewConnection(providerClient, reference)
 	require.NoError(t, err)
+	return newFormsIntegrationHarnessWithConnection(t, connection, form)
+}
+
+func newFormsIntegrationHarnessWithConnection(t *testing.T, connection forms.Connection, form FormConfiguration) (*Flow, *formsIntegrationHarness) {
+	t.Helper()
 	flow := NewFlow(connection, sdkgo.ConnectorLoadedConfiguration[FormConfiguration]{Reference: FormConfigurationRef(), Value: form})
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
 	require.NoError(t, err)
