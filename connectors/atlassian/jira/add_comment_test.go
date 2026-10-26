@@ -31,7 +31,7 @@ func TestAddCommentSendsADFAndReturnsTheCommentID(t *testing.T) {
 	request := provider.request(0)
 	require.Equal(t, testSitePrefix+"/issue/OPS-43/comment", request.path)
 	require.JSONEq(t, `{"body":{"type":"doc","version":1,"content":[{"type":"paragraph","content":[
-		{"type":"text","text":"Triage started."},{"type":"hardBreak"},{"type":"text","text":"*not bold*"}]}]}}`, request.body)
+		{"type":"text","text":"Triage started."},{"type":"hardBreak"},{"type":"text","text":"*not bold*"}]}]}}`, provider.requestBodyWithoutWriteMarker(0))
 }
 
 func TestAddCommentOutcomes(t *testing.T) {
@@ -58,10 +58,21 @@ func TestAddCommentOutcomes(t *testing.T) {
 			require.Equal(t, test.kind, result.Failure.Kind)
 			require.Equal(t, "OPS-43", result.Value.IssueIDOrKey)
 			require.Empty(t, result.Value.CommentID)
-			require.Equal(t, 1, provider.requestCount())
+			require.Equal(t, 1, provider.requestCountFor(http.MethodPost, testSitePrefix+"/issue/OPS-43/comment"))
 			requireNoSentinel(t, result)
 		})
 	}
+}
+
+func TestAddCommentRetriesServiceUnavailable(t *testing.T) {
+	provider := newRecordingJira(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
+		writeJSON(t, response, http.StatusServiceUnavailable, `{}`)
+	})
+	client := newJiraClient(t, provider.URL)
+	_, err := sdkgo.RunMutation(newJiraDexContext("comment-service-unavailable"), client.AddComment(), jiraConnection,
+		jira.AddCommentInput{IssueIDOrKey: "OPS-43", Body: "Triage started."})
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	require.Equal(t, 1, provider.requestCountFor(http.MethodPost, testSitePrefix+"/issue/OPS-43/comment"))
 }
 
 func TestAddCommentRejectsInvalidInputWithoutARequest(t *testing.T) {

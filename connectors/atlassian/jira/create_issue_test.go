@@ -42,7 +42,7 @@ func TestCreateIssueSendsFieldsWithADFDescriptionAndReturnsTheKey(t *testing.T) 
 		"description":{"type":"doc","version":1,"content":[
 			{"type":"paragraph","content":[{"type":"text","text":"Panel B trips at 02:00."},{"type":"hardBreak"},{"type":"text","text":"Breaker is warm."}]},
 			{"type":"paragraph","content":[{"type":"text","text":"Check the fire log."}]}]},
-		"labels":["incident","facilities"],"assignee":{"accountId":"5b10ac8d82e05b22cc7d4ef5"}}}`, request.body)
+		"labels":["incident","facilities"],"assignee":{"accountId":"5b10ac8d82e05b22cc7d4ef5"}}}`, provider.requestBodyWithoutWriteMarker(0))
 }
 
 func TestCreateIssueByIDsOmitsBlankOptionalFields(t *testing.T) {
@@ -54,7 +54,7 @@ func TestCreateIssueByIDsOmitsBlankOptionalFields(t *testing.T) {
 	result, err := sdkgo.RunMutation(newJiraDexContext("create-ids"), client.CreateIssue(), jiraConnection, input)
 	require.NoError(t, err)
 	require.Equal(t, jira.CreateIssueBranchCreated, result.Branch)
-	require.JSONEq(t, `{"fields":{"project":{"id":"10000"},"issuetype":{"id":"10001"},"summary":"Rotate badges"}}`, provider.request(0).body)
+	require.JSONEq(t, `{"fields":{"project":{"id":"10000"},"issuetype":{"id":"10001"},"summary":"Rotate badges"}}`, provider.requestBodyWithoutWriteMarker(0))
 }
 
 func TestCreateIssueNeverResendsARequestJiraMayHaveReceived(t *testing.T) {
@@ -72,6 +72,7 @@ func TestCreateIssueNeverResendsARequestJiraMayHaveReceived(t *testing.T) {
 		{name: "permission", status: http.StatusForbidden, body: `{"errorMessages":["SENTINEL"]}`, branch: jira.CreateIssueBranchProviderRejected, kind: sdkgo.FailureAuthorization},
 		{name: "configuration", status: http.StatusUnprocessableEntity, body: `{"errorMessages":["SENTINEL"]}`, branch: jira.CreateIssueBranchProviderRejected, kind: sdkgo.FailureProviderRejection},
 		{name: "rate limit", status: http.StatusTooManyRequests, body: `{}`, isRetry: true, kind: sdkgo.FailureRateLimit},
+		{name: "service unavailable", status: http.StatusServiceUnavailable, body: `{}`, isRetry: true, kind: sdkgo.FailureAvailability},
 		{name: "server error", status: http.StatusInternalServerError, body: `{"errorMessages":["SENTINEL"]}`, branch: jira.CreateIssueBranchUncertain, kind: sdkgo.FailureAvailability},
 		{name: "gateway timeout", status: http.StatusGatewayTimeout, body: `{}`, branch: jira.CreateIssueBranchUncertain, kind: sdkgo.FailureAvailability},
 		{name: "redirect", status: http.StatusFound, body: `{}`, branch: jira.CreateIssueBranchUncertain, kind: sdkgo.FailureAvailability},
@@ -83,7 +84,7 @@ func TestCreateIssueNeverResendsARequestJiraMayHaveReceived(t *testing.T) {
 			})
 			client := newJiraClient(t, provider.URL)
 			result, err := sdkgo.RunMutation(newJiraDexContext("create-"+test.name), client.CreateIssue(), jiraConnection, validCreateIssueInput())
-			require.Equal(t, 1, provider.requestCount())
+			require.Equal(t, 1, provider.requestCountFor(http.MethodPost, testSitePrefix+"/issue"))
 			if test.isRetry {
 				requireRetry(t, err, test.kind)
 				return
@@ -109,7 +110,7 @@ func TestCreateIssueTimeoutAfterDispatchIsUncertain(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, jira.CreateIssueBranchUncertain, result.Branch)
 	require.Equal(t, sdkgo.FailureTransport, result.Failure.Kind)
-	require.Equal(t, 1, provider.requestCount())
+	require.Equal(t, 1, provider.requestCountFor(http.MethodPost, testSitePrefix+"/issue"))
 }
 
 func TestCreateIssueRefusedConnectionRetriesBecauseNothingWasSent(t *testing.T) {

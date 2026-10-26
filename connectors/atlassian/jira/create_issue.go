@@ -61,7 +61,8 @@ type CreateIssueOutput struct {
 type CreateIssueOperation struct{ client *Client }
 
 type createIssueRequestBody struct {
-	Fields createIssueFields `json:"fields"`
+	Fields     createIssueFields     `json:"fields"`
+	Properties []writeMarkerProperty `json:"properties"`
 }
 
 type createIssueFields struct {
@@ -112,16 +113,36 @@ func (operation CreateIssueOperation) Invoke(call sdkgo.Call, input CreateIssueI
 		return sdkgo.NewMutationBranch(CreateIssueBranchDefect, requested, sessionErr.pointer(), sdkgo.Receipt{})
 	}
 	defer cancel()
-	result := client.exchange(session, jiraRequest{method: http.MethodPost, path: "/issue", payload: body})
+	marker := writeMarker(call)
+	if claim := claimSingleDispatch(call); claim != singleDispatchGranted {
+		if claim == singleDispatchAlreadySent {
+			if created, isFound := client.findCreatedIssue(session, requested, marker); isFound {
+				return createdIssueBranch(requested, created, client.receipt(session, jiraResponse{}, created.Key))
+			}
+		}
+		attempt, _ := singleDispatchAttemptBeforeSend[CreateIssueOutput](claim, createIssueOperationID, requested, client.receipt(session, jiraResponse{}, ""))
+		return attempt
+	}
+	body.Properties = []writeMarkerProperty{marker}
+	result := client.exchangeWrite(session, jiraRequest{method: http.MethodPost, path: "/issue", payload: body})
 	classification := client.classifyUnkeyedWrite(createIssueOperationID, createIssueFailureSubject, result)
 	receipt := client.receipt(session, result.response, "")
 	switch classification.outcome {
 	case writeAccepted:
 	case writeRetry:
+		if result.response.statusCode == http.StatusServiceUnavailable {
+			if created, isFound := client.findCreatedIssue(session, requested, marker); isFound {
+				return createdIssueBranch(requested, created, receipt)
+			}
+		}
+		releaseSingleDispatch(call)
 		return sdkgo.NewMutationRetry[CreateIssueOutput](classification.failure, classification.retryAfter)
 	case writeDefect:
 		return sdkgo.NewMutationBranch(CreateIssueBranchDefect, requested, &classification.failure, receipt)
 	case writeUncertain:
+		if created, isFound := client.findCreatedIssue(session, requested, marker); isFound {
+			return createdIssueBranch(requested, created, receipt)
+		}
 		return sdkgo.NewMutationUncertain(requested, classification.failure, receipt)
 	default:
 		requested.RejectedFieldIDs = classification.rejectedFieldIDs
@@ -129,8 +150,15 @@ func (operation CreateIssueOperation) Invoke(call sdkgo.Call, input CreateIssueI
 	}
 	var created createdIssueResource
 	if err := json.Unmarshal(result.response.body, &created); err != nil || !numericIDPattern.MatchString(created.ID) || !issueKeyPattern.MatchString(created.Key) {
+		if confirmed, isFound := client.findCreatedIssue(session, requested, marker); isFound {
+			return createdIssueBranch(requested, confirmed, receipt)
+		}
 		return sdkgo.NewMutationUncertain(requested, newFailure(createIssueOperationID, sdkgo.FailureProtocol, "Jira accepted the issue but returned an unusable issue reference"), receipt)
 	}
+	return createdIssueBranch(requested, created, receipt)
+}
+
+func createdIssueBranch(requested CreateIssueOutput, created createdIssueResource, receipt sdkgo.Receipt) sdkgo.MutationAttempt[CreateIssueOutput] {
 	output := requested
 	output.IssueID, output.IssueKey = created.ID, created.Key
 	receipt.ProviderObjectID = created.Key

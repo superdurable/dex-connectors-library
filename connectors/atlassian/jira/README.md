@@ -241,13 +241,46 @@ transition response recorded one transition request: the fallback attempt read
 the issue, found it in the destination status, and sent nothing;
 `TestSlowTransitionBackupAttemptMovesTheIssueOnceWithRealDex` guards this.
 
-The connector never retries a dispatched create or comment, but Dex runs a Step
-at least once. If the Worker is lost after Jira accepts a create and before Dex
-commits the Step result, Dex runs the Step again and Jira creates a second
-issue. No connector can close this window without a provider idempotency key.
-An application handles `uncertain` without creating again automatically; the
+Each create and comment includes a non-secret hash of the stable Call ID in a
+Jira entity property. Before a POST, the Worker records a Dex heartbeat
+dispatch marker. On an ambiguous response or a later Step attempt, it searches
+Jira for that property and returns the found issue or comment without another
+POST. A missing, stale, or unreadable heartbeat marker on a later attempt does
+not authorize a resend. The marker is not an Atlassian idempotency key, and
+Dex does not acknowledge persistence of a heartbeat before the request leaves.
+This leaves a crash window; the connector fails closed with `uncertain` when
+read-back cannot confirm the result. Jira search is eventually consistent and
+read-back scans a bounded page, so absence does not prove the write failed.
+
+A traced DNS, connect, or TLS failure before any connection is obtained, HTTP
+429, and HTTP 503 select Retry. For 503, the connector checks for the marker
+first and returns success when found; a miss remains eligible for retry under
+the provider's transient failure rule. Every HTTP request ends before the Dex
+Step deadline with a margin reserved for read-back and result recording.
+An application handles unresolved `uncertain` without creating again; the
 [`triage-issue`](examples/triage-issue) example parks the create for an
 operator, who confirms the issue found in the project or approves a new create.
+
+Atlassian documents issue and comment entity properties and their read APIs:
+[Create issue](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issues/),
+[Get issue property](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-properties/),
+[Add and list comments](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-comments/),
+and [Get comment property](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-comment-properties/).
+Live behavior of the marker on Jira Cloud remains unverified.
+
+## Mocks
+
+`jiramock` supplies a consistent OPS triage world: an empty initial search,
+creation and read-back of OPS-4, comment 10501, and a move to In Progress.
+Each operation also has mocks for its definite business-outcome branches.
+The runnable example's real-Dex mock test starts with:
+
+```go
+mock := jiramock.New(t, ConnectionName)
+flow := NewFlow(mock.Connection(), ProjectSelection{})
+```
+
+The test asserts literal call inputs and counts for all five operations.
 
 ## Not in this release
 
@@ -295,4 +328,5 @@ search `nextPageToken` paging and consistency delay; the `summary ~` phrase
 search and status category ID clauses; workflow and transition-screen rejections;
 429 and 5xx behavior under load; the `accessible-resources` and
 `project/search` commands through Dex Web; and the developer-console paths in
-the setup guidance.
+the setup guidance. Entity-property writes during issue/comment creation,
+property read-back, and 503 responses under load are also unverified live.

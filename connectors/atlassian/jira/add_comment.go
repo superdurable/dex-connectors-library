@@ -44,7 +44,8 @@ type AddCommentOutput struct {
 type AddCommentOperation struct{ client *Client }
 
 type addCommentRequestBody struct {
-	Body documentNode `json:"body"`
+	Body       documentNode          `json:"body"`
+	Properties []writeMarkerProperty `json:"properties"`
 }
 
 type commentResource struct {
@@ -82,19 +83,38 @@ func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInp
 		return sdkgo.NewMutationBranch(AddCommentBranchDefect, requested, sessionErr.pointer(), sdkgo.Receipt{})
 	}
 	defer cancel()
-	result := client.exchange(session, jiraRequest{
+	marker := writeMarker(call)
+	if claim := claimSingleDispatch(call); claim != singleDispatchGranted {
+		if claim == singleDispatchAlreadySent {
+			if comment, isFound := client.findAddedComment(session, issueIDOrKey, marker); isFound {
+				return addedCommentBranch(requested, comment, client.receipt(session, jiraResponse{}, comment.ID))
+			}
+		}
+		attempt, _ := singleDispatchAttemptBeforeSend[AddCommentOutput](claim, addCommentOperationID, requested, client.receipt(session, jiraResponse{}, ""))
+		return attempt
+	}
+	result := client.exchangeWrite(session, jiraRequest{
 		method: http.MethodPost, path: issuePath(issueIDOrKey) + "/comment",
-		payload: addCommentRequestBody{Body: convertPlainTextToDocument(input.Body)},
+		payload: addCommentRequestBody{Body: convertPlainTextToDocument(input.Body), Properties: []writeMarkerProperty{marker}},
 	})
 	classification := client.classifyUnkeyedWrite(addCommentOperationID, addCommentFailureSubject, result)
 	receipt := client.receipt(session, result.response, "")
 	switch classification.outcome {
 	case writeAccepted:
 	case writeRetry:
+		if result.response.statusCode == http.StatusServiceUnavailable {
+			if comment, isFound := client.findAddedComment(session, issueIDOrKey, marker); isFound {
+				return addedCommentBranch(requested, comment, receipt)
+			}
+		}
+		releaseSingleDispatch(call)
 		return sdkgo.NewMutationRetry[AddCommentOutput](classification.failure, classification.retryAfter)
 	case writeDefect:
 		return sdkgo.NewMutationBranch(AddCommentBranchDefect, requested, &classification.failure, receipt)
 	case writeUncertain:
+		if comment, isFound := client.findAddedComment(session, issueIDOrKey, marker); isFound {
+			return addedCommentBranch(requested, comment, receipt)
+		}
 		return sdkgo.NewMutationUncertain(requested, classification.failure, receipt)
 	case writeNotFound:
 		return sdkgo.NewMutationBranch(AddCommentBranchNotFound, requested, &classification.failure, receipt)
@@ -104,8 +124,15 @@ func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInp
 	}
 	var comment commentResource
 	if err := json.Unmarshal(result.response.body, &comment); err != nil || !numericIDPattern.MatchString(comment.ID) {
+		if confirmed, isFound := client.findAddedComment(session, issueIDOrKey, marker); isFound {
+			return addedCommentBranch(requested, confirmed, receipt)
+		}
 		return sdkgo.NewMutationUncertain(requested, newFailure(addCommentOperationID, sdkgo.FailureProtocol, "Jira accepted the comment but returned an unusable comment reference"), receipt)
 	}
+	return addedCommentBranch(requested, comment, receipt)
+}
+
+func addedCommentBranch(requested AddCommentOutput, comment commentResource, receipt sdkgo.Receipt) sdkgo.MutationAttempt[AddCommentOutput] {
 	output := requested
 	output.CommentID = comment.ID
 	if author := comment.Author.view(); author != nil {

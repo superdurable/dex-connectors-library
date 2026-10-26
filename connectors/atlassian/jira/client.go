@@ -5,10 +5,9 @@
 // Cloud issues as Dex connector Steps, through Atlassian's OAuth 2.0 (3LO)
 // gateway at https://api.atlassian.com/ex/jira/{cloudId}/rest/api/3.
 //
-// Jira accepts no idempotency key, so CreateIssue and AddComment never resend
-// a request Jira may have received: an ambiguous outcome selects the uncertain
-// branch. TransitionIssue reads the issue before it writes and after an
-// ambiguous write, and Jira refuses a transition that is not available from the
+// Jira accepts no idempotency key, so CreateIssue and AddComment mark each
+// request and read it back before resolving an ambiguous outcome.
+// TransitionIssue reads the issue before and after a write, and Jira refuses a transition that is not available from the
 // current status, so a repeated transition cannot move an issue twice.
 package jira
 
@@ -237,8 +236,19 @@ func (client *Client) AddComment() AddCommentOperation { return AddCommentOperat
 
 // startSession resolves the credential and the Jira site; the caller must call the returned cancel.
 func (client *Client) startSession(call sdkgo.Call, operationID string) (*operationSession, context.CancelFunc, *sessionFailure) {
-	operationContext, cancel := context.WithTimeout(call.Context, operationDeadline)
-	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
+	available := operationDeadline
+	if deadline, hasDeadline := call.Context.Deadline(); hasDeadline {
+		available = min(available, time.Until(deadline)-time.Second)
+	}
+	if available <= 0 {
+		return nil, nil, &sessionFailure{failure: newFailure(operationID, sdkgo.FailureAvailability, "Jira Execute deadline is too near for a request"), isRetryable: true}
+	}
+	operationContext, cancel := context.WithTimeout(call.Context, available)
+	credentials, err := sdkgo.ResolveCredential(operationContext, client.credentials, call, client.refreshDriver)
+	if operationContext.Err() != nil {
+		cancel()
+		return nil, nil, &sessionFailure{failure: newFailure(operationID, sdkgo.FailureAvailability, "Jira credential lookup did not finish within the Execute budget"), isRetryable: true}
+	}
 	if err != nil || validateResolvedCredentials(credentials) != nil {
 		cancel()
 		return nil, nil, &sessionFailure{failure: newFailure(operationID, sdkgo.FailureAuthentication, "Jira connection credentials are unavailable; reconnect the connection")}
@@ -334,7 +344,7 @@ func (client *Client) exchange(session *operationSession, request jiraRequest) e
 		if _, supportsRejection := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); !supportsRejection {
 			return result
 		}
-		replacement, err := sdkgo.ResolveCredentialAfterRejection(session.call.Context, client.credentials, session.call, client.refreshDriver)
+		replacement, err := sdkgo.ResolveCredentialAfterRejection(session.context, client.credentials, session.call, client.refreshDriver)
 		if err != nil || validateResolvedCredentials(replacement) != nil {
 			return result
 		}
@@ -429,7 +439,7 @@ func (client *Client) classifyRead(operationID string, subject string, result ex
 	}
 }
 
-// classifyUnkeyedWrite retries only a 429 or an undispatched request, when Jira cannot have written.
+// classifyUnkeyedWrite keeps ambiguous writes for read-back before their outcome is selected.
 func (client *Client) classifyUnkeyedWrite(operationID string, subject string, result exchangeResult) writeClassification {
 	switch {
 	case errors.Is(result.err, errRequestNotBuilt):
@@ -451,6 +461,8 @@ func (client *Client) classifyUnkeyedWrite(operationID string, subject string, r
 		return writeClassification{outcome: writeAccepted}
 	case response.statusCode == http.StatusTooManyRequests:
 		return writeClassification{outcome: writeRetry, retryAfter: client.retryAfter(response), failure: newFailure(operationID, sdkgo.FailureRateLimit, "Jira rate limited the "+subject+" before writing it")}
+	case response.statusCode == http.StatusServiceUnavailable:
+		return writeClassification{outcome: writeRetry, retryAfter: client.retryAfter(response), failure: newFailure(operationID, sdkgo.FailureAvailability, "Jira "+subject+" is temporarily unavailable")}
 	case response.statusCode == http.StatusNotFound:
 		return writeClassification{outcome: writeNotFound, failure: rejectionFailure(operationID, subject, response.statusCode, nil)}
 	case isConclusiveRejectionStatus(response.statusCode):

@@ -5,7 +5,7 @@ metadata:
   displayName: Jira
   description: Search and read Jira Cloud issues with bounded JQL, create issues and comments without silent duplicates, and move issues through their workflow.
   company: Atlassian
-  version: v0.22.1
+  version: v0.23.0
 spec:
   provider: atlassian
   codegen:
@@ -28,7 +28,7 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: "Maximum complete Jira API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it. An oversized read selects invalidResponse, and an oversized response to an accepted createIssue or addComment selects uncertain."
+        description: "Maximum complete Jira API response in bytes. Leave blank to keep the displayed safety limit; enter a positive integer only to change it. An oversized read selects invalidResponse. An oversized response to an accepted createIssue or addComment is checked against Jira's write marker before selecting success or uncertain."
         required: false
         default: 4194304
   auth:
@@ -137,6 +137,20 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: searchedDefaultAnswer
+          branch: searched
+          description: "Matches a bounded OPS search before the new triage issue is indexed; returns no issues."
+          default: true
+          output: {jql: 'project in ("OPS") AND statusCategory in (2, 4) AND summary ~ "\"Loading dock light out\"" ORDER BY created DESC', issues: []}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "Matches an invalid JQL search rejected before any issues are returned."
+          failure: {kind: PROVIDER_REJECTION, message: "Jira rejected the search query."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "Matches a search whose response cannot be decoded safely."
+          failure: {kind: PROTOCOL, message: "Jira returned an invalid search page."}
     - name: getIssue
       goName: GetIssue
       inputType: GetIssueInput
@@ -154,6 +168,24 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: foundDefaultAnswer
+          branch: found
+          description: "Matches a read of OPS-4, the triage issue created in this mock world."
+          default: true
+          output: {id: "10004", key: OPS-4, summary: "Loading dock light out", status: {id: "1", name: To Do, categoryKey: new}, issueType: {id: "10001", name: Task}, project: {id: "10000", key: OPS, name: Operations}, labels: [facilities], createdAt: "2026-09-30T09:15:00Z", updatedAt: "2026-09-30T09:15:00Z"}
+        - name: notFoundFailure
+          branch: notFound
+          description: "Matches a read of an issue key absent from the connected Jira site."
+          failure: {kind: NOT_FOUND, message: "Jira issue was not found."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "Matches an issue read denied by Jira project permissions."
+          failure: {kind: PROVIDER_REJECTION, message: "Jira rejected the issue read."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "Matches an issue read with an invalid provider response."
+          failure: {kind: PROTOCOL, message: "Jira returned an invalid issue."}
     - name: createIssue
       goName: CreateIssue
       inputType: CreateIssueInput
@@ -165,13 +197,23 @@ spec:
       branches:
         - {id: created, goName: Created, description: Jira created the issue and returned its key and ID.}
         - {id: providerRejected, goName: ProviderRejected, description: "Jira conclusively rejected the issue, such as a missing required field, an unknown project or issue type, or missing permission; nothing was created.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The request was dispatched but its outcome cannot be confirmed; Jira has no idempotency key, so the issue may exist and must not be created again automatically.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The request may have reached Jira, but bounded issue-property read-back did not confirm it; the issue may exist and must not be created again automatically.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       # Sync: an async fallback attempt re-sends a slow create, and Jira has no idempotency key.
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A replayed issue POST could create another issue because Jira has no provider key or issue lookup by Call ID."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Jira has no idempotency key, and bounded issue-property read-back can miss a write until search indexes it."}}
+      mocks:
+        - name: createdDefaultAnswer
+          branch: created
+          description: "Matches creation of the OPS triage task Loading dock light out."
+          default: true
+          output: {issueId: "10004", issueKey: OPS-4, projectKey: OPS, summary: "Loading dock light out"}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "Matches creation with an issue type unavailable in OPS."
+          failure: {kind: PROVIDER_REJECTION, message: "Jira rejected the issue type."}
     - name: transitionIssue
       goName: TransitionIssue
       inputType: TransitionIssueInput
@@ -190,6 +232,28 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: transitionedDefaultAnswer
+          branch: transitioned
+          description: "Matches moving OPS-4 from To Do to In Progress during triage."
+          default: true
+          output: {issueId: "10004", issueKey: OPS-4, previousStatus: {id: "1", name: To Do, categoryKey: new}, status: {id: "3", name: In Progress, categoryKey: indeterminate}, transition: {id: "11", name: Start Progress, destinationStatus: {id: "3", name: In Progress, categoryKey: indeterminate}}}
+        - name: notFoundFailure
+          branch: notFound
+          description: "Matches a transition request for an issue absent from Jira."
+          failure: {kind: NOT_FOUND, message: "Jira issue was not found."}
+        - name: transitionUnavailableFailure
+          branch: transitionUnavailable
+          description: "Matches a transition request with no route to the requested status."
+          failure: {kind: PROVIDER_REJECTION, message: "Jira transition is unavailable."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "Matches a transition Jira rejects for a required screen field."
+          failure: {kind: PROVIDER_REJECTION, message: "Jira rejected the transition."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "Matches a transition read with an invalid provider response."
+          failure: {kind: PROTOCOL, message: "Jira returned an invalid transition list."}
     - name: addComment
       goName: AddComment
       inputType: AddCommentInput
@@ -202,9 +266,23 @@ spec:
         - {id: added, goName: Added, description: Jira added the comment and returned its ID.}
         - {id: notFound, goName: NotFound, description: The issue does not exist or the connection cannot browse it; nothing was added., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: "Jira conclusively rejected the comment, such as missing Add comments permission or the per-issue comment limit; nothing was added.", optional: true}
-        - {id: uncertain, goName: Uncertain, description: "The request was dispatched but its outcome cannot be confirmed; Jira has no idempotency key, so the comment may exist and must not be added again automatically.", optional: true}
+        - {id: uncertain, goName: Uncertain, description: "The request may have reached Jira, but bounded comment-property read-back did not confirm it; the comment may exist and must not be added again automatically.", optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A replayed comment POST could add another comment because Jira has no provider key or comment lookup by Call ID."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Jira has no idempotency key, and bounded comment-property read-back can miss an accepted comment."}}
+      mocks:
+        - name: addedDefaultAnswer
+          branch: added
+          description: "Matches adding the triage comment to OPS-4."
+          default: true
+          output: {issueIdOrKey: OPS-4, commentId: "10501", authorAccountId: "5b10ac8d82e05b22cc7d4ef5", createdAt: "2026-09-30T10:05:00Z"}
+        - name: notFoundFailure
+          branch: notFound
+          description: "Matches a comment for an issue absent from Jira."
+          failure: {kind: NOT_FOUND, message: "Jira issue was not found."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "Matches a comment denied by Jira Add comments permission."
+          failure: {kind: PROVIDER_REJECTION, message: "Jira rejected the comment."}

@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -70,6 +71,35 @@ func (provider *recordingJira) requestCount() int {
 	provider.mutex.Lock()
 	defer provider.mutex.Unlock()
 	return len(provider.requests)
+}
+
+func (provider *recordingJira) requestCountFor(method string, path string) int {
+	provider.mutex.Lock()
+	defer provider.mutex.Unlock()
+	count := 0
+	for _, request := range provider.requests {
+		if request.method == method && request.path == path {
+			count++
+		}
+	}
+	return count
+}
+
+func (provider *recordingJira) requestBodyWithoutWriteMarker(index int) string {
+	body := provider.requestBody(index)
+	properties, isArray := body["properties"].([]any)
+	require.True(provider.t, isArray)
+	require.Len(provider.t, properties, 1)
+	property, isObject := properties[0].(map[string]any)
+	require.True(provider.t, isObject)
+	require.Equal(provider.t, "dex.connector.call", property["key"])
+	marker, isString := property["value"].(string)
+	require.True(provider.t, isString)
+	require.True(provider.t, regexp.MustCompile(`^[0-9a-f]{64}$`).MatchString(marker))
+	delete(body, "properties")
+	encoded, err := json.Marshal(body)
+	require.NoError(provider.t, err)
+	return string(encoded)
 }
 
 func (provider *recordingJira) request(index int) recordedRequest {
