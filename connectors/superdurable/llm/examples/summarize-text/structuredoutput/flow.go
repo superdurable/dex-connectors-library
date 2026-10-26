@@ -58,6 +58,8 @@ func releaseStatusRequest(request SummaryRequest) llm.GenerateTextRequest {
 	}
 }
 
+// dex:group group-id:status group-label:"Status"
+// dex:explanation text:"Complete the Flow with the JSON release status the model generated."
 type completeReleaseStatus struct {
 	dex.StepDefaultsNoWaitFor[llm.GenerateTextResult]
 }

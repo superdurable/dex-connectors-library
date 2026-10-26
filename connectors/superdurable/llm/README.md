@@ -220,6 +220,26 @@ func (flow *Flow) MapToGenerateTextRequest(request SummaryRequest) llm.GenerateT
 defines `Message`, `StructuredOutput`, `ReasoningEffort`, `FinishReason`, and
 `Usage`.
 
+### Structured output
+
+`StructuredOutput` asks for JSON that matches a schema. Every provider accepts
+the same portable JSON Schema subset, and a schema outside it selects `defect`
+with `VALIDATION` and no request:
+
+- the root is an object;
+- every object sets `"additionalProperties": false` and lists every property
+  in `required`;
+- the only keywords are `type`, `properties`, `required`,
+  `additionalProperties`, `items`, `enum`, `const`, `description`, `title`,
+  `minimum`, `maximum`, `minLength`, `maxLength`, `minItems`, `maxItems`, and
+  `format` (`date-time`, `date`, `time`, or `uuid`);
+- the schema is at most ten levels deep.
+
+The Result's text is the JSON alone, validated against the original schema; a
+mismatch selects `invalidResponse`. The
+[generateText operation contract](../../../docs/connector-contract.md#the-generatetext-operation)
+defines the subset.
+
 ### A Step that names a model
 
 When the user names a model, such as "use Claude Opus", keep the picker and
@@ -654,13 +674,15 @@ and scripts the JSON answer for that schema:
 The mock checks the request and the answer before the Flow sees them, and a
 failed check selects `defect`:
 
-- A request that is not portable selects `defect` with the failure kind and
-  message that real `generateText` returns for the same request when its model
-  ID passes the real connector's model validation; a Flow that does not wire
-  `defect` fails. Real `generateText` checks the model ID first, so a bad model
-  ID gets a different message there. The model, feature, and wire-format rules
-  of [Portable requests](#portable-requests) are not checked, and the Failure's
-  provider is `llm`, not the connection's.
+- A request that fails the provider-independent checks (messages,
+  `maxOutputTokens`, and the structured output name and
+  [schema subset](#structured-output)) selects `defect` with the failure kind
+  and message that real `generateText` returns for the same request when its
+  model ID passes the real connector's model validation; a Flow that does not
+  wire `defect` fails. Real `generateText` checks the model ID first, so a bad
+  model ID gets a different message there. The per-model, feature, and
+  wire-format rules, such as those in [Portable requests](#portable-requests),
+  are not checked, and the Failure's provider is `llm`, not the connection's.
 - A `generated` answer must have text. An answer to a structured request must
   be exactly the JSON that matches the request's schema, with no Markdown fence
   or surrounding whitespace, because that is the text real `generateText`
@@ -687,7 +709,7 @@ shows a mismatch that the real connector would also hit:
 
 | Before | In v0.24.0 | Migration |
 | --- | --- | --- |
-| A structured output schema that is not portable, such as an object without `"additionalProperties": false` or with a property missing from `required` | The request selects `defect` with the real message | Make the schema portable, as [Portable requests](#portable-requests) and the real connector require |
+| A structured output schema outside the portable subset, such as an object without `"additionalProperties": false` or with a property missing from `required` | The request selects `defect` with the real message | Keep the schema inside the [structured output schema subset](#structured-output) that the real connector requires |
 | A structured request answered by the default `shortSummary` | The test fails: the text is not JSON for the schema | Script a JSON answer for the schema with `Respond(llmmock.GenerateTextGenerated(...))` |
 | `GenerateTextStructuredAnswer()` for a schema other than the example's string `status` and numeric `confidence` | The test fails: the answer does not match the schema | Script a JSON answer for your schema |
 | A scripted answer with the JSON inside a Markdown fence or with surrounding whitespace | The test fails | Script the JSON text alone, as the real connector returns it |
