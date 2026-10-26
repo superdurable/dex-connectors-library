@@ -141,7 +141,7 @@ func requireNoFlow(t *testing.T, ctx context.Context, client *dex.Client, trigge
 }
 
 // startWorkerAndClient runs a Worker for flow against the Dex Server until the test ends and returns its Client.
-func startWorkerAndClient(t *testing.T, flow *inviteerecorder.Flow) *dex.Client {
+func startWorkerAndClient(t *testing.T, flow dex.Flow) *dex.Client {
 	t.Helper()
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
 	require.NoError(t, err)

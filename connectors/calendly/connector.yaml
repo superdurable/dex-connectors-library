@@ -5,7 +5,7 @@ metadata:
   displayName: Calendly
   description: "Read Calendly scheduled events and invitees, cancel events, create single-use scheduling links, register webhook subscriptions, and receive signed invitee.created and invitee.canceled webhooks."
   company: Calendly
-  version: v0.22.1
+  version: v0.23.0
 spec:
   provider: calendly
   codegen:
@@ -164,6 +164,24 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      pagination: {inputField: pageToken, nextField: nextPageToken}
+      mocks:
+        - name: threeScheduledEventPages
+          branch: listed
+          description: "Three pages in the November window for user USER0001, with EVT00001 repeated across pages."
+          default: true
+          pages:
+            - {events: [{uri: "https://api.calendly.com/scheduled_events/EVT00001", name: "Discovery Call", status: active, startTime: "2026-11-02T17:00:00Z", endTime: "2026-11-02T17:30:00Z", eventTypeUri: "https://api.calendly.com/event_types/TYPE0001", inviteesCounter: {total: 1, active: 1, limit: 1}}], nextPageToken: page-two, userUri: "https://api.calendly.com/users/USER0001", minStartTime: "2026-11-01T00:00:00Z", maxStartTime: "2026-12-01T00:00:00Z"}
+            - {events: [{uri: "https://api.calendly.com/scheduled_events/EVT00002", name: "Planning Call", status: active, startTime: "2026-11-03T17:00:00Z", endTime: "2026-11-03T17:30:00Z", eventTypeUri: "https://api.calendly.com/event_types/TYPE0001", inviteesCounter: {total: 1, active: 1, limit: 1}}, {uri: "https://api.calendly.com/scheduled_events/EVT00001", name: "Discovery Call", status: active, startTime: "2026-11-02T17:00:00Z", endTime: "2026-11-02T17:30:00Z", eventTypeUri: "https://api.calendly.com/event_types/TYPE0001", inviteesCounter: {total: 1, active: 1, limit: 1}}], nextPageToken: page-three, userUri: "https://api.calendly.com/users/USER0001", minStartTime: "2026-11-01T00:00:00Z", maxStartTime: "2026-12-01T00:00:00Z"}
+            - {events: [], userUri: "https://api.calendly.com/users/USER0001", minStartTime: "2026-11-01T00:00:00Z", maxStartTime: "2026-12-01T00:00:00Z"}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "A 401 means Calendly rejected the access token before listing events."
+          failure: {kind: AUTHENTICATION, message: "Calendly rejected the access token."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "Calendly returned malformed JSON in a successful response."
+          failure: {kind: PROTOCOL, message: "Calendly returned a malformed response."}
     - name: getScheduledEvent
       goName: GetScheduledEvent
       inputType: GetScheduledEventInput
@@ -180,6 +198,24 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: discoveryCall
+          branch: found
+          description: "The requested EVT00001 event is Ada's active November discovery call."
+          default: true
+          output: {uri: "https://api.calendly.com/scheduled_events/EVT00001", name: "Discovery Call", status: active, startTime: "2026-11-02T17:00:00Z", endTime: "2026-11-02T17:30:00Z", eventTypeUri: "https://api.calendly.com/event_types/TYPE0001", inviteesCounter: {total: 1, active: 1, limit: 1}}
+        - name: notFoundFailure
+          branch: notFound
+          description: "The scheduled event does not exist or is not visible to the token."
+          failure: {kind: NOT_FOUND, message: "The scheduled event does not exist or is not visible to the token."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "A 401 means Calendly rejected the access token before reading the event."
+          failure: {kind: AUTHENTICATION, message: "Calendly rejected the access token."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "Calendly returned malformed JSON in a successful response."
+          failure: {kind: PROTOCOL, message: "Calendly returned a malformed response."}
     - name: listEventInvitees
       goName: ListEventInvitees
       inputType: ListEventInviteesInput
@@ -196,6 +232,28 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      pagination: {inputField: pageToken, nextField: nextPageToken}
+      mocks:
+        - name: threeInviteePages
+          branch: listed
+          description: "Three pages of EVT00001 invitees, with Ada repeated across a page boundary."
+          default: true
+          pages:
+            - {scheduledEventUri: "https://api.calendly.com/scheduled_events/EVT00001", invitees: [{uri: "https://api.calendly.com/scheduled_events/EVT00001/invitees/INV00001", scheduledEventUri: "https://api.calendly.com/scheduled_events/EVT00001", email: "ada@example.com", name: "Ada Lovelace", status: active}], nextPageToken: page-two}
+            - {scheduledEventUri: "https://api.calendly.com/scheduled_events/EVT00001", invitees: [{uri: "https://api.calendly.com/scheduled_events/EVT00001/invitees/INV00001", scheduledEventUri: "https://api.calendly.com/scheduled_events/EVT00001", email: "ada@example.com", name: "Ada Lovelace", status: active}], nextPageToken: page-three}
+            - {scheduledEventUri: "https://api.calendly.com/scheduled_events/EVT00001", invitees: []}
+        - name: notFoundFailure
+          branch: notFound
+          description: "The scheduled event does not exist or is not visible to the token."
+          failure: {kind: NOT_FOUND, message: "The scheduled event does not exist or is not visible to the token."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "A 401 means Calendly rejected the access token before listing invitees."
+          failure: {kind: AUTHENTICATION, message: "Calendly rejected the access token."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "Calendly returned malformed JSON in a successful response."
+          failure: {kind: PROTOCOL, message: "Calendly returned a malformed response."}
     - name: cancelScheduledEvent
       goName: CancelScheduledEvent
       inputType: CancelScheduledEventInput
@@ -212,12 +270,30 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: canceledDiscoveryCall
+          branch: canceled
+          description: "Cancel EVT00001 after Ada booked it; this first cancellation succeeds."
+          default: true
+          output: {scheduledEventUri: "https://api.calendly.com/scheduled_events/EVT00001", alreadyCanceled: false, cancellation: {canceledBy: "Hana Host", reason: "Schedule changed", cancelerType: host, createdAt: "2026-10-27T10:00:00Z"}}
+        - name: notFoundFailure
+          branch: notFound
+          description: "The scheduled event does not exist or is not visible to the token."
+          failure: {kind: NOT_FOUND, message: "The scheduled event does not exist or is not visible to the token."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "Calendly refused cancellation because the event already started."
+          failure: {kind: CONFLICT, message: "Calendly cannot cancel an event that has already started."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "Calendly returned malformed JSON in a successful response."
+          failure: {kind: PROTOCOL, message: "Calendly returned a malformed response."}
     - name: createSchedulingLink
       goName: CreateSchedulingLink
       inputType: CreateSchedulingLinkInput
       outputType: SchedulingLink
       kind: mutation
-      description: "Create one single-use scheduling link for an event type. Calendly has no idempotency key, so the call runs with sync durability and an unknown outcome selects uncertain."
+      description: "Create one single-use scheduling link for an event type. Calendly has no idempotency key or link lookup. A single-dispatch fence requires sync durability so retry attempts see its heartbeat checkpoints; an unconfirmed accepted write selects uncertain."
       idempotency: required
       branches:
         - {id: created, goName: Created, description: "Calendly created the single-use scheduling link."}
@@ -227,7 +303,18 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
+        dispatchFence: true
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A repeated scheduling-link POST could create another link because Calendly has no idempotency key or lookup for the new link."}}
+      mocks:
+        - name: singleUseDiscoveryLink
+          branch: created
+          description: "Create a single-use link for event type TYPE0001, the Discovery Call."
+          default: true
+          output: {bookingUrl: "https://calendly.com/d/abcd-1234/discovery-call", eventTypeUri: "https://api.calendly.com/event_types/TYPE0001"}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "A 403 means this token cannot create a link for the selected event type."
+          failure: {kind: AUTHORIZATION, message: "Calendly denied permission for the selected event type."}
     - name: createWebhookSubscription
       goName: CreateWebhookSubscription
       inputType: CreateWebhookSubscriptionInput
@@ -245,3 +332,21 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Calendly has no webhook-create key, so a stale subscription list can allow a second POST under the same Step."}}
+      mocks:
+        - name: activeInviteeWebhook
+          branch: subscribed
+          description: "Subscribe the example callback for user USER0001's invitee events in organization ORG00001."
+          default: true
+          output: {uri: "https://api.calendly.com/webhook_subscriptions/WH00001", callbackUrl: "https://example.com/webhooks/calendly", state: active, events: [invitee.created, invitee.canceled], scope: user, organizationUri: "https://api.calendly.com/organizations/ORG00001", userUri: "https://api.calendly.com/users/USER0001", createdAt: "2026-10-27T09:00:00Z", wasCreated: true}
+        - name: conflictingSubscriptionFailure
+          branch: conflictingSubscription
+          description: "A subscription with this callback URL already exists but is disabled, lacks a requested event, or belongs to another scope or user; delete it in Calendly and run again."
+          failure: {kind: CONFLICT, message: "A subscription with this callback URL already exists under another scope or user."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: "A 403 means this token cannot administer the requested webhook scope."
+          failure: {kind: AUTHORIZATION, message: "Calendly denied permission for the webhook scope."}
+        - name: invalidResponseFailure
+          branch: invalidResponse
+          description: "Calendly returned malformed JSON in a successful response."
+          failure: {kind: PROTOCOL, message: "Calendly returned a malformed response."}
