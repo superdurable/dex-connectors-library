@@ -109,7 +109,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats create ticket after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 5m."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A repeated ticket POST could create another ticket if the external-ID lookup is incomplete; Gorgias does not enforce that ID as a key."}}
     - name: updateTicket
       goName: UpdateTicket
       inputType: UpdateTicketInput
@@ -142,4 +142,4 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats add note after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 5m."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A repeated message POST could add another note if the external-ID lookup is incomplete; Gorgias does not enforce that ID as a key."}}

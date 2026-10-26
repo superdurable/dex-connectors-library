@@ -139,7 +139,7 @@ spec:
         executeMethodTimeout: 150s
         heartbeatTimeout: 150s
         durability: sync
-        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 10m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats send message after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 10m."}}
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 10m, reason: {kind: duplicateWriteRisk, explanation: "A repeated SMTP submission could send the email twice because Message-ID is not a server deduplication key and no sent-mail read-back exists."}}
     - name: replyToMessage
       goName: ReplyToMessage
       inputType: ReplyToMessageInput
@@ -158,7 +158,7 @@ spec:
         executeMethodTimeout: 150s
         heartbeatTimeout: 150s
         durability: sync
-        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 10m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats reply to message after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 10m."}}
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 10m, reason: {kind: duplicateWriteRisk, explanation: "A repeated SMTP submission could send the reply twice because Message-ID is not a server deduplication key and no sent-mail read-back exists."}}
     - name: moveMessage
       goName: MoveMessage
       inputType: MoveMessageInput

@@ -227,4 +227,4 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats append table rows after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 5m."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A repeated append POST could add the rows again if key-column read-back misses the first append; Excel enforces no append key."}}

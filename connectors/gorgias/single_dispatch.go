@@ -14,9 +14,9 @@ const (
 	reconcileDelay = 2 * time.Second
 	// reconcileLookupRetryDelay spaces repeated lookups, so a short outage or a slowly visible write is still found.
 	reconcileLookupRetryDelay = 15 * time.Second
-	// maximumReconcileDelay caps a Retry-After on createTicket and addNote lookups.
+	// maximumReconcileDelay caps a Retry-After on a lookup inside the five-minute retry window.
 	maximumReconcileDelay = 60 * time.Second
-	// lastReconcileAttempt stays below createTicket and addNote's five-attempt budgets.
+	// lastReconcileAttempt stays below the manifest's five attempts, so a lookup ends in uncertain, not a Step failure.
 	lastReconcileAttempt = 4
 )
 

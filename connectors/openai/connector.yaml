@@ -92,7 +92,7 @@ spec:
       execution:
         executeMethodTimeout: 150s
         durability: sync
-        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 5m, reason: {kind: billedOperation, explanation: "Each call to createResponse can incur generation charges, so cap the Step at three attempts."}}
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 5m, reason: {kind: billedOperation, explanation: "An unconfirmed response creation may already incur charges, and a retry can create another billed response without a provider deduplication key."}}
       mockChecks:
         requestFunction: ValidateCreateResponseRequest
         answer: {branch: completed, function: ValidateCreateResponseAnswer}

@@ -100,4 +100,4 @@ spec:
         executeMethodTimeout: 300s
         heartbeatTimeout: 300s
         durability: sync
-        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 3, totalDuration: 10m, reason: {kind: billedOperation, explanation: "Each call to generateContent can incur generation charges, so cap the Step at three attempts."}}
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 3, totalDuration: 10m, reason: {kind: billedOperation, explanation: "A lost generation response can still be billed, and another request can incur a second charge without a provider deduplication key."}}

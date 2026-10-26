@@ -122,7 +122,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats add note after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 5m."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could post the note twice because Hiver has no provider key or note read-back by Call ID."}}
     - name: createSharedDraft
       goName: CreateSharedDraft
       inputType: CreateSharedDraftInput
@@ -139,4 +139,4 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats create shared draft after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 5m."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could create another shared draft because Hiver has no provider key or draft read-back by Call ID."}}

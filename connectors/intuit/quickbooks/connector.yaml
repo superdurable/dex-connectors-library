@@ -131,7 +131,7 @@ spec:
       inputType: CreateInvoiceInput
       outputType: CreateInvoiceOutput
       kind: mutation
-      description: "Create one invoice for a customer with exact decimal item lines, dates, an optional document number, and a billing email; every attempt of the Step sends the same QuickBooks requestid, so a repeated dispatch returns the first invoice instead of creating another."
+      description: "Create one invoice for a customer with exact decimal item lines, dates, an optional document number, and a billing email; every attempt sends the same QuickBooks requestid to request replay of an earlier result."
       idempotency: required
       authorization: required
       branches:
@@ -142,6 +142,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "QuickBooks does not document requestid retention, so a replay after its key expires could create another invoice."}}
     - name: getInvoice
       goName: GetInvoice
       inputType: GetInvoiceInput
@@ -180,7 +181,7 @@ spec:
       inputType: SendInvoiceInput
       outputType: Invoice
       kind: mutation
-      description: "Email one invoice to its billing address or a given address; every attempt of the Step sends the same QuickBooks requestid, so a repeated dispatch returns the first delivery instead of emailing again."
+      description: "Email one invoice to its billing address or a given address; every attempt sends the same QuickBooks requestid, though replay support on /send is unverified."
       idempotency: required
       authorization: required
       branches:
@@ -191,12 +192,13 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "QuickBooks does not confirm that /send honors requestid or how long it does, so a retry could email the invoice twice."}}
     - name: recordPayment
       goName: RecordPayment
       inputType: RecordPaymentInput
       outputType: Payment
       kind: mutation
-      description: "Record one received payment of an exact decimal amount and apply it to an invoice; every attempt of the Step sends the same QuickBooks requestid, so a repeated dispatch returns the first payment instead of paying twice."
+      description: "Record one received payment of an exact decimal amount and apply it to an invoice; every attempt sends the same QuickBooks requestid to request replay of an earlier result."
       idempotency: required
       authorization: required
       branches:
@@ -207,3 +209,4 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "QuickBooks does not document requestid retention, so a replay after its key expires could record a second payment."}}

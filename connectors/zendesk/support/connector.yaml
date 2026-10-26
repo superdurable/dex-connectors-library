@@ -110,3 +110,4 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "Comment reconciliation scans only the latest audit page, so a later retry could miss its own audit and post the comment again."}}

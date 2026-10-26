@@ -19,8 +19,8 @@ exposes these operation-specific Dex Step factories:
 Only the happy-path branch of each operation is required; every other branch
 is optional, and an unwired optional branch fails the Flow. The four audience
 operations use a 30-second Execute timeout and the one-hour default retry budget.
-`sendCampaign` uses sync durability, a 60-second Execute timeout, and a
-five-attempt, five-minute window; see [Duplicate safety](#duplicate-safety).
+`sendCampaign` uses sync durability, a 60-second Execute timeout, and the
+one-hour default retry budget; see [Duplicate safety](#duplicate-safety).
 
 This release has API-key authorization only, no Triggers, and no Studio
 pickers; see [Not in this release](#not-in-this-release).

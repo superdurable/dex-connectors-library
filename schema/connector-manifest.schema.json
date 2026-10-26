@@ -667,7 +667,7 @@
         "heartbeatTimeout": { "type": "string", "minLength": 1 },
         "durability": { "enum": ["sync", "async"] },
         "retry": {
-          "type": "object",
+          "type": ["object", "null"],
           "additionalProperties": false,
           "required": ["initialInterval", "backoffCoefficient", "maximumInterval", "totalDuration"],
           "properties": {
@@ -682,7 +682,7 @@
               "required": ["kind", "explanation"],
               "properties": {
                 "kind": { "enum": ["billedOperation", "personWaiting", "duplicateWriteRisk"] },
-                "explanation": { "type": "string", "pattern": "\\S.*[.!?]$" }
+                "explanation": { "type": "string", "minLength": 1 }
               }
             }
           }

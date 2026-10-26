@@ -146,7 +146,7 @@ spec:
       execution:
         executeMethodTimeout: 60s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 65m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats create envelope from template after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 6 attempts within 65m."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 65m, reason: {kind: duplicateWriteRisk, explanation: "A repeated envelope POST could create another envelope when custom-field lookup is inconclusive; DocuSign does not enforce the field as a key."}}
     - name: getEnvelope
       goName: GetEnvelope
       inputType: GetEnvelopeInput

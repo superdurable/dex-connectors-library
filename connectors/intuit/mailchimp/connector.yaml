@@ -125,4 +125,3 @@ spec:
       execution:
         executeMethodTimeout: 60s
         durability: sync
-        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats send campaign after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 5m."}}

@@ -156,10 +156,10 @@ offer and does not rely on any undocumented behavior:
 
 Microsoft does not document what a repeated `transactionId` returns: whether
 the existing event, a 201, a 409, or another error, or for how long it is
-remembered. The lookup therefore covers every sequential retry on its own, and
-only two attempts that POST concurrently before either commits depend on
-`transactionId`. If both were ever created, a later lookup lists the extra IDs
-in `duplicateEventIds`. The operation has no `uncertain` branch.
+remembered. Extended-property indexing can lag, so a sequential retry may
+miss the first event and send another POST. `createEvent` therefore uses five
+attempts within two minutes. If both were ever created, a later lookup lists
+the extra IDs in `duplicateEventIds`. The operation has no `uncertain` branch.
 
 `updateEvent` reads the event, returns it with `wasAlreadyApplied: true` when it
 already holds every requested value, and otherwise PATCHes only the requested

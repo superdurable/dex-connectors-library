@@ -193,7 +193,7 @@ spec:
       inputType: CreateEventInput
       outputType: CreateEventOutput
       kind: mutation
-      description: Create one timed or all-day event under the Step's idempotency key, sent as Graph's transactionId and stamped as an extended property, so a retried or re-dispatched Step returns the existing event instead of a duplicate.
+      description: Create one timed or all-day event under the Step's idempotency key, sent as Graph's transactionId and stamped as an extended property for retry lookup.
       idempotency: required
       branches:
         - {id: created, goName: Created, description: The event that carries the Step's idempotency key exists.}
@@ -203,6 +203,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Graph does not document transactionId replay or retention, and a lagging extended-property lookup can permit another event POST."}}
     - name: updateEvent
       goName: UpdateEvent
       inputType: UpdateEventInput

@@ -218,15 +218,16 @@ applications may replace it per Step with `StepOptionsOverride.ExecuteRetry`.
 The override replaces the entire policy, with zero fields taking Dex server
 defaults; start from `DefaultConnectorStepExecuteRetryPolicy()` and change the
 needed fields. Total duration also bounds the first attempt through
-ScheduleToClose, so an Execute timeout over one hour needs an explicit policy.
+ScheduleToClose, so `executeMethodTimeout` must be shorter than the retry total
+duration, including the omitted policy's one-hour default.
 When retries exhaust the duration, the Flow fails unless `ExecuteFailure`
 routes to a recovery Step. An explicit policy requires positive intervals and
 total duration, a coefficient of at least 1, and non-negative attempts (zero
 means unlimited). A policy with limited attempts or a total duration below one
 hour requires a sentence explaining `billedOperation`, `personWaiting`, or
-`duplicateWriteRisk`. A longer policy has no reason.
+`duplicateWriteRisk`. A policy equal to or longer than the default needs no reason.
 
-Manifest-declared policies take precedence over the generated one-hour default.
+A manifest-declared policy replaces the one-hour default.
 Most HTTP operations use a 30-second Execute timeout and unlimited attempts
 within one hour. OpenAI response creation defaults are 150 seconds and a
 three-attempt/five-minute window; within an

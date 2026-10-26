@@ -440,8 +440,8 @@ one-hour total duration. A Retry keeps trying transient failures within that
 budget; when it runs out, the Flow fails unless the Step routes exhausted
 retries to an `ExecuteFailure` recovery Step. The total duration can also cap
 the first attempt (it does on the Temporal-backed Dex Server), so an Execute
-timeout over one hour needs an explicit retry policy to run for its full
-duration.
+timeout must be shorter than the policy's total duration to run for its full
+duration; the omitted policy permits a timeout below one hour.
 
 An explicit definition policy takes precedence. An application can replace
 either policy for one Step with `StepOptionsOverride.ExecuteRetry`. This
@@ -450,10 +450,10 @@ replaces the entire policy; zero fields use Dex server defaults. Start with
 the override.
 
 Omitting manifest `execution.retry` generates this default as a literal, so
-connectors remain compatible with their pinned SDK releases. A shorter
-manifest policy requires a validated sentence under `reason.kind`:
-`billedOperation`, `personWaiting`, or `duplicateWriteRisk`. Applications can
-replace either policy for one Step with `StepOptionsOverride.ExecuteRetry`.
+connectors remain compatible with their pinned SDK releases. A manifest policy
+with limited attempts or less than one hour requires `reason.kind` to be
+`billedOperation`, `personWaiting`, or `duplicateWriteRisk`, and a specific
+sentence in `reason.explanation`.
 
 ## Text generation connectors
 

@@ -123,7 +123,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats create meeting after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 2m."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could create another meeting because Zoom has no provider key or meeting lookup by Call ID."}}
     - name: updateMeeting
       goName: UpdateMeeting
       inputType: UpdateMeetingInput

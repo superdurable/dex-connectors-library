@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/internal/codegen"
 	"github.com/superdurable/dex-connectors-library/schema"
+	"gopkg.in/yaml.v3"
 )
 
 func TestOmittedRetryEmitsLiteralMatchingSDKDefault(t *testing.T) {
@@ -53,6 +54,31 @@ func main() { if err := json.NewEncoder(os.Stdout).Encode(sdkgo.DefaultConnector
 	literal := fmt.Sprintf("&dex.RetryPolicy{InitialInterval: time.Duration(%d), BackoffCoefficient: %g, MaximumInterval: time.Duration(%d), MaximumAttempts: %d, TotalDuration: time.Duration(%d)}", policy.InitialInterval, policy.BackoffCoefficient, policy.MaximumInterval, policy.MaximumAttempts, policy.TotalDuration)
 	require.Contains(t, string(generated), literal)
 	require.NotContains(t, string(generated), "sdkgo.DefaultConnectorStepExecuteRetryPolicy()")
+}
+
+func TestExplicitUnlimitedRetryEmitsZeroAttempts(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		policy string
+	}{
+		{name: "explicit zero", policy: "{initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 5m, maximumAttempts: 0, totalDuration: 65m}"},
+		{name: "omitted attempts", policy: "{initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 5m, totalDuration: 65m}"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			file, err := os.Open(apiKeyMethodsManifestPath)
+			require.NoError(t, err)
+			t.Cleanup(func() { require.NoError(t, file.Close()) })
+			manifest, err := schema.Decode(file)
+			require.NoError(t, err)
+			var policy schema.Retry
+			require.NoError(t, yaml.Unmarshal([]byte(test.policy), &policy))
+			manifest.Spec.Operations[0].Execution.Retry = &policy
+			require.NoError(t, manifest.Validate())
+			generated, err := codegen.Generate(manifest)
+			require.NoError(t, err)
+			require.Contains(t, string(generated), "MaximumAttempts: 0, TotalDuration: time.Duration(3900000000000)")
+		})
+	}
 }
 
 var shouldUpdateGoldenFiles = flag.Bool("update-golden", false, "rewrite code generation golden files")

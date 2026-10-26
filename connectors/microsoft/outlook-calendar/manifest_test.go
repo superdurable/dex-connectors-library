@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	outlookcalendar "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-calendar"
@@ -231,6 +232,10 @@ func TestEveryOperationKeepsOneRequiredBranchNoUncertaintyAndAsyncDurability(t *
 		}
 		require.Equal(t, 1, required, operation)
 		require.Equal(t, dex.StepDurabilityAsync, shape.defaults.ExecuteDurability, "%s is duplicate-safe, so Dex's async dispatch is kept", operation)
+		if operation == "createEvent" {
+			require.Equal(t, int32(5), shape.defaults.ExecuteRetry.MaximumAttempts)
+			require.Equal(t, 2*time.Minute, shape.defaults.ExecuteRetry.TotalDuration)
+		}
 	}
 }
 

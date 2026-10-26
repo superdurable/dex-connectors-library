@@ -250,7 +250,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats upsert object after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 2m."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "An earlier create can be repeated when identity search misses it; Pipedrive does not enforce that search identity as a create key."}}
     - name: createObject
       goName: CreateObject
       inputType: CreateObjectInput
@@ -267,7 +267,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats create object after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 2m."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could create another object because Pipedrive has no provider key or generic lookup by Call ID."}}
     - name: updateObject
       goName: UpdateObject
       inputType: UpdateObjectInput

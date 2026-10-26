@@ -118,7 +118,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats create task after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 5m."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A repeated task POST could create another task when name-and-time list read-back is inconclusive; ClickUp has no provider key."}}
     - name: updateTask
       goName: UpdateTask
       inputType: UpdateTaskInput
@@ -170,7 +170,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats add comment after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 5m."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A repeated comment POST could add another comment when content-and-time read-back is inconclusive; ClickUp has no provider key."}}
     - name: findMemberByEmail
       goName: FindMemberByEmail
       inputType: FindMemberByEmailInput

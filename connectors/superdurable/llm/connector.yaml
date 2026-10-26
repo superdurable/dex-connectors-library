@@ -223,7 +223,7 @@ spec:
         executeMethodTimeout: 1200s
         heartbeatTimeout: 60s
         durability: sync
-        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 3, totalDuration: 1h, reason: {kind: billedOperation, explanation: "Each call to generateText can incur generation charges, so cap the Step at three attempts."}}
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 3, totalDuration: 1h, reason: {kind: billedOperation, explanation: "A provider may bill an unconfirmed text generation, and a retry can incur another charge without a shared deduplication key."}}
       mockChecks:
         requestFunction: ValidateGenerateTextRequest
         answer: {branch: generated, function: ValidateGenerateTextAnswer}

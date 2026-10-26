@@ -160,8 +160,9 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
   Retry; exhausted retries never become uncertainty.
 - Omitted manifest `execution.retry` uses one-second initial delay, coefficient
   2, five-minute maximum interval, unlimited attempts, and one-hour total
-  duration. A shorter policy requires a sentence explaining `billedOperation`,
-  `personWaiting`, or `duplicateWriteRisk`; applications override per Step with
+  duration. A policy with limited attempts or under one hour requires a sentence
+  explaining `billedOperation`, `personWaiting`, or `duplicateWriteRisk`;
+  applications override per Step with
   `StepOptionsOverride.ExecuteRetry`.
 - Execute durability defaults to async. Use sync only when the operation is very
   likely to exceed seven seconds. An LLM generation call may use sync. Do not

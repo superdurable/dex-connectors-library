@@ -147,7 +147,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats create task after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 2m."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A replayed task POST could create another task because Asana has no provider idempotency key or task lookup by Call ID."}}
     - name: updateTask
       goName: UpdateTask
       inputType: UpdateTaskInput
@@ -182,4 +182,4 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats add comment after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 2m."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A replayed comment POST could add another comment because Asana has no provider idempotency key or comment lookup by Call ID."}}

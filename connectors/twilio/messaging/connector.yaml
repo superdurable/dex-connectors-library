@@ -98,7 +98,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats send message after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 2m."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A replayed message POST could send the SMS twice because Twilio offers no idempotency key or message lookup by Call ID."}}
     - name: getMessage
       goName: GetMessage
       inputType: GetMessageInput

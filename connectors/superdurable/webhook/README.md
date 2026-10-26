@@ -221,7 +221,7 @@ being processed. To apply each event once, the receiver:
   is still in flight with a retryable status such as `409` or `503`;
 - answers `2xx` for an id it has already applied, without applying it again;
 - keeps each id for at least the Step's effective retry window, measured from
-  the first attempt. Under the generated default that is one hour. A
+  the first attempt. This connector defaults to two minutes. A
   `StepOptionsOverride` whose `ExecuteRetry` is set replaces that policy: its
   `TotalDuration` is then the window, and a zero `TotalDuration` uses the Dex
   server default of four hours, so keep ids for at least four hours in that
@@ -230,7 +230,7 @@ being processed. To apply each event once, the receiver:
 Standard Webhooks [recommends using this header as the idempotency key](https://github.com/standard-webhooks/standard-webhooks/blob/main/spec/standard-webhooks.md#verifying-signatures),
 keeps the ID the same across retries, and [counts only a `2xx` answer as a
 successful delivery](https://github.com/standard-webhooks/standard-webhooks/blob/main/spec/standard-webhooks.md#delivery-success-and-failure).
-Retries stop at the Step's retry policy, unlimited attempts within one hour, and
+Retries stop at the Step's retry policy, five attempts within two minutes, and
 then fail the Flow.
 
 A `409` never selects `rejected`. The connector cannot read back whether an

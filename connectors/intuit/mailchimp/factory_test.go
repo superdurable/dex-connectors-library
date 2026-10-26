@@ -107,7 +107,8 @@ func TestDefinitionsDeclareOptionalBranchesAndDurability(t *testing.T) {
 	send := mailchimp.SendCampaignDefinition.StepDefaults
 	require.Equal(t, dex.StepDurabilitySync, send.ExecuteDurability, "async would dispatch a second send after seven seconds")
 	require.Equal(t, 60*time.Second, send.ExecuteMethodTimeout, "the read and the send, 25 seconds each, fit inside it")
-	require.GreaterOrEqual(t, send.ExecuteRetry.TotalDuration, 2*time.Minute)
+	require.Equal(t, int32(0), send.ExecuteRetry.MaximumAttempts)
+	require.Equal(t, time.Hour, send.ExecuteRetry.TotalDuration)
 }
 
 func TestConnectionAndCredentialsNeverRevealSecrets(t *testing.T) {

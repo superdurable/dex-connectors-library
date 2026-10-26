@@ -170,7 +170,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats post channel message after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 2m."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A repeated channel POST could publish another message when recent-message read-back misses it; Teams does not enforce a deduplication key."}}
     - name: postThreadReply
       goName: PostThreadReply
       inputType: PostThreadReplyInput
@@ -183,7 +183,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats post thread reply after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 2m."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A repeated reply POST could publish another message when recent-reply read-back misses it; Teams does not enforce a deduplication key."}}
     - name: postChatMessage
       goName: PostChatMessage
       inputType: PostChatMessageInput
@@ -200,4 +200,4 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats post chat message after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 5 attempts within 2m."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could publish another chat message because Teams has no chat read-back or provider deduplication key."}}

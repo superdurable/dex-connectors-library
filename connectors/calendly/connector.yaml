@@ -227,7 +227,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "If Dex repeats create scheduling link after an unconfirmed dispatch, the provider cannot durably deduplicate the write; cap retries at 6 attempts within 5m."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A repeated scheduling-link POST could create another link because Calendly has no idempotency key or lookup for the new link."}}
     - name: createWebhookSubscription
       goName: CreateWebhookSubscription
       inputType: CreateWebhookSubscriptionInput

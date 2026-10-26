@@ -114,6 +114,13 @@ func TestDefinitionsDeclareOptionalBranchesAndKeyedAsyncDurability(t *testing.T)
 		require.Equal(t, dex.StepDurabilityAsync, defaults.ExecuteDurability, "%s: a duplicate dispatch replays under the requestid", name)
 		require.Equal(t, 30*time.Second, defaults.ExecuteMethodTimeout, name)
 		require.GreaterOrEqual(t, defaults.ExecuteRetry.TotalDuration, 2*time.Minute, "%s: the documented one-minute throttle wait fits", name)
+		if name == "createInvoice" || name == "sendInvoice" || name == "recordPayment" {
+			require.Equal(t, int32(6), defaults.ExecuteRetry.MaximumAttempts, name)
+			require.Equal(t, 5*time.Minute, defaults.ExecuteRetry.TotalDuration, name)
+		} else {
+			require.Equal(t, int32(0), defaults.ExecuteRetry.MaximumAttempts, name)
+			require.Equal(t, time.Hour, defaults.ExecuteRetry.TotalDuration, name)
+		}
 	}
 }
 

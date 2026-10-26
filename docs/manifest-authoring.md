@@ -31,6 +31,8 @@ must include `reason.kind` (`billedOperation`, `personWaiting`, or
 `duplicateWriteRisk`) and a sentence in `reason.explanation`. A policy that is
 not shorter must omit the reason. Applications can replace the entire policy
 per Step with `StepOptionsOverride.ExecuteRetry`.
+`executeMethodTimeout` must be shorter than the policy's `totalDuration`,
+including the one-hour duration used when `execution.retry` is omitted.
 
 Declare a branch for each definite business outcome the application may need
 to handle, such as `notFound` or `providerRejected`. Return Retry for transient
