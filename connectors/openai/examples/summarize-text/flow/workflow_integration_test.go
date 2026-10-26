@@ -132,6 +132,11 @@ func startSummaryWorker(t *testing.T, provider *textgentest.FakeProvider, summar
 	}}, nil)
 	connection, err := openai.NewProjectConnection(project, ConnectionName)
 	require.NoError(t, err)
+	return startSummaryWorkerWithConnection(t, connection, summaryModel)
+}
+
+func startSummaryWorkerWithConnection(t *testing.T, connection openai.Connection, summaryModel SummaryModelConfiguration) (*Flow, *dex.Client) {
+	t.Helper()
 	flow := NewFlow(connection, summaryModel)
 	serverAddress := cmp.Or(os.Getenv(textgentest.DexFlowServiceAddressEnvironmentVariable), textgentest.DefaultDexFlowServiceAddress)
 	registry, err := dex.NewRegistry([]dex.Flow{flow})

@@ -19,7 +19,7 @@ connection.
 Install a published component release:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/openai@v0.21.1
+go get github.com/superdurable/dex-connectors-library/connectors/openai@v0.22.0
 ```
 
 ## Connection
@@ -205,6 +205,56 @@ generation Step to the [llm connector](../superdurable/llm/README.md): save an
 `textgen` types. The `model` field now names the model `createResponse` sends
 when its request names none, where an empty request model selected `defect`
 before.
+
+## Test with openaimock
+
+The generated `openaimock` package answers both operations' happy paths by
+default. Pass its typed connection to the example Flow to test without an
+OpenAI API key or response scripts:
+
+```go
+mock := openaimock.New(t, ConnectionName)
+flow, client := startSummaryWorkerWithConnection(t, mock.Connection(), SummaryModelConfiguration{})
+```
+
+To give one Flow another answer, script it by Flow ID before the Flow runs:
+
+```go
+mock.CreateResponse().ForFlow(flowID).Respond(openaimock.CreateResponseCompleted(openai.Response{
+	ID: "resp_scripted", Model: "gpt-6-luna", Status: "completed", OutputText: "Shipped on time.",
+}, nil))
+```
+
+These snippets come from
+[`workflow_mock_integration_test.go`](examples/summarize-text/flow/workflow_mock_integration_test.go).
+Named cases cover incomplete stored Responses, missing IDs, and conclusive
+provider refusals.
+
+The mock runs two connector-owned checks on `createResponse`:
+
+- A request that the real operation rejects locally selects `defect` with the
+  real operation's failure kind and message, without failing the test or
+  consuming a scripted answer: a missing `Input`, a `Model` that is not
+  printable ASCII without spaces, and an `Input` or `StructuredOutput` that is
+  not JSON serializable. A blank `Model` uses the connection's model. OpenAI
+  judges the schema's content, so the mock does not.
+- A `completed` answer to a request with `StructuredOutput` must have
+  `OutputText` that is exactly one JSON value: no Markdown fence and no text
+  around it. The check skips a Response whose `Status` is set and is not
+  `completed`, and a Response without `OutputText`, because an incomplete
+  Response carries truncated text and a refusal carries none. OpenAI guarantees schema adherence only with
+  `Strict: true`, so only then, and when the schema is in the portable subset
+  that the llm connector also enforces (every property in `required`,
+  `additionalProperties: false`, one type per node), must the value also match
+  the schema. Without `Strict`, or with another schema, the mock checks the
+  JSON syntax only. A mismatch fails the test and selects `defect`.
+
+The default answers are plain text, so a Flow whose `createResponse` request
+sets `StructuredOutput` needs a JSON answer. Script one with `Respond` for a
+single call, or with `Default` for every call, using the same
+`CreateResponseCompleted` case with `Status: "completed"` and JSON in
+`OutputText`, such as `{"status":"shipped"}`. Answers on the `failed` branch,
+such as the incomplete summary, carry partial text and are not checked.
 
 ## Example
 

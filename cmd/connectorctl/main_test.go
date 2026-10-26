@@ -448,6 +448,7 @@ func TestGenerateCheckDetectsDrift(t *testing.T) {
 	directory := t.TempDir()
 	manifest := filepath.Join(directory, "connector.yaml")
 	require.NoError(t, os.WriteFile(manifest, content, 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(directory, "go.mod"), []byte("module example.com/openai\n\ngo 1.24\n"), 0o600))
 	require.NoError(t, generate([]string{manifest}))
 	require.NoError(t, generate([]string{"--check", manifest}))
 	require.NoError(t, os.WriteFile(filepath.Join(directory, "zz_generated_connector.go"), []byte("stale"), 0o600))

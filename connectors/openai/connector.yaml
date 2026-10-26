@@ -5,7 +5,7 @@ metadata:
   displayName: OpenAI
   description: "OpenAI Responses API stored responses: create a model response with JSON Schema structured output, streamed text and progress, token usage, and explicit uncertainty, and retrieve it by ID for recovery. Text generation Steps use the llm connector."
   company: OpenAI
-  version: v0.21.1
+  version: v0.22.0
 spec:
   provider: openai
   codegen:
@@ -93,6 +93,34 @@ spec:
         executeMethodTimeout: 150s
         durability: sync
         retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 5m}
+      mockChecks:
+        requestFunction: ValidateCreateResponseRequest
+        answer: {branch: completed, function: ValidateCreateResponseAnswer}
+      mocks:
+        - name: storedSummary
+          branch: completed
+          description: A stored response summarizes the submitted text and reports token usage.
+          default: true
+          output:
+            id: resp_mocksummary001
+            model: gpt-6-sol
+            status: completed
+            outputText: The connector shipped today.
+            usage: {inputTokens: 30, outputTokens: 7, totalTokens: 37}
+        - name: incompleteSummary
+          branch: failed
+          description: The stored response ended incomplete with partial text.
+          output:
+            id: resp_mocksummary002
+            model: gpt-6-sol
+            status: incomplete
+            outputText: The connector
+            usage: {inputTokens: 30, outputTokens: 3, totalTokens: 33}
+          failure: {kind: PROVIDER_REJECTION, message: OpenAI did not complete the response.}
+        - name: createRejected
+          branch: providerRejected
+          description: OpenAI rejects the response request because the project lacks model access.
+          failure: {kind: AUTHORIZATION, message: OpenAI rejected the response request.}
     - name: retrieveResponse
       goName: RetrieveResponse
       inputType: RetrieveRequest
@@ -110,3 +138,22 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m}
+      mocks:
+        - name: storedResponse
+          branch: found
+          description: The stored completed summary is available by response ID.
+          default: true
+          output:
+            id: resp_mocksummary001
+            model: gpt-6-sol
+            status: completed
+            outputText: The connector shipped today.
+            usage: {inputTokens: 30, outputTokens: 7, totalTokens: 37}
+        - name: responseNotFound
+          branch: notFound
+          description: No stored response has the requested ID.
+          failure: {kind: NOT_FOUND, message: The stored response was not found.}
+        - name: retrieveRejected
+          branch: providerRejected
+          description: OpenAI rejects the stored response lookup.
+          failure: {kind: AUTHORIZATION, message: OpenAI rejected the response lookup.}
