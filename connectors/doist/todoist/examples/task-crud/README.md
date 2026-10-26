@@ -117,7 +117,8 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./e
 It verifies read-only listing makes no writes, the complete lifecycle, a
 rate-limited or unavailable create that retries with the same provider request identity,
 multi-page verification, deletion that applies before a 503 and then returns
-404 on retry, a lost create response that remains uncertain, invalid input,
+404 on retry, a lost create response that remains uncertain, a create answer
+with only a task ID that the connector confirms by reading it, invalid input,
 description-only updates, clearing a description, updating both fields,
 read/update retry, a credential read that fails once and then retries,
 applied/unapplied update 503 responses, an unusable update answer whose

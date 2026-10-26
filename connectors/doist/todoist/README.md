@@ -67,7 +67,8 @@ the operation ID and other branch IDs remain stable.
 ## Execution and recovery
 
 Each attempt makes one HTTP request, except an unusable update response, or one
-that mismatches the requested fields, also reads GET `/tasks/{task_id}`. Other calls use GET/POST
+that mismatches the requested fields, also reads GET `/tasks/{task_id}`, as does
+a create response with a task ID but unusable fields. Other calls use GET/POST
 `/tasks` for list/create, or GET/POST/DELETE `/tasks/{task_id}` for
 read/update/delete. Steps use
 async durability, a 30-second Execute timeout, and at most five attempts within
@@ -127,7 +128,11 @@ previously processed POST but does not provide those guarantees for API v1.
 Any HTTP 2xx with a valid task selects `created` with the task as Todoist
 returned it. The API v1 reference documents no rule that the answer echoes the
 request, so the returned content, description, and project ID are the stored
-values and are not compared with the input. A 2xx without a usable task selects
+values and are not compared with the input. A 2xx with a valid task ID but
+other missing or malformed fields is confirmed by GET `/tasks/{task_id}`, never
+by resending the creation: a valid task selects `created`, and any other read
+answer, including 404, 429, 5xx, or a transport failure, selects `uncertain`,
+because a retry would create again. A 2xx without a valid task ID selects
 `uncertain`, because the task may exist and its ID is unknown. Invalid input and
 the credential failures above select `defect` before dispatch; any other
 credential resolution failure retries. A transport failure with trace
@@ -135,7 +140,7 @@ evidence that the request never left the process (a DNS, connect, or TLS
 failure before any connection was obtained), HTTP 429, and HTTP 503 retry with
 the same identity. Any other transport failure, including a lost response or a
 custom transport that reports no connection trace, HTTP 408/500 or another
-ambiguous server error, unusable success data, and HTTP 409 select `uncertain`
+ambiguous server error, unconfirmed success data, and HTTP 409 select `uncertain`
 because the task ID cannot be confirmed without changing user-visible task
 fields. Todoist does not document whether 409 means a request ID was already
 processed; its failure kind is `CONFLICT`. Other definite rejections select
@@ -192,8 +197,9 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./.
 Provider tests cover request encoding, credentials and credential resolution
 failures, rejected and retryable responses, non-200 success statuses, refused
 connections, ambiguous writes, malformed/oversized responses, update read-back
-outcomes, validation, and redirect protection. Real Dex tests cover Attributes,
-result routing, retry, a credential read that fails once, update replacement
+outcomes, create confirmation by task ID, validation, and redirect protection.
+Real Dex tests cover Attributes, result routing, retry, a create answer
+confirmed by task ID, a credential read that fails once, update replacement
 after applied/unapplied 503 responses, an unusable update answer whose read-back
 finds no active task or is forbidden, retained Display RPCs,
 rejection, unwired failure branches, pagination, create request identity across

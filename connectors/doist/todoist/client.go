@@ -256,9 +256,7 @@ func (operation UpdateTaskOperation) Invoke(call sdkgo.Call, input UpdateTaskInp
 	}
 }
 
-// confirmUpdate reads the task by ID after an unusable or mismatched HTTP 2xx. The replacement is absolute, so a retry
-// resends it safely. GET returns only active tasks: a 404 means the task was completed or deleted, which no retry changes.
-// Another definite rejection of the read, such as 401 or 403, is classified as the update's own would be.
+// confirmUpdate reads back an unconfirmed 2xx. GET returns only active tasks, so 404 means completed or deleted.
 func (operation UpdateTaskOperation) confirmUpdate(call sdkgo.Call, input UpdateTaskInput, answer exchangeResult) sdkgo.MutationAttempt[Task] {
 	readBack := operation.client.exchangeTask(call, "updateTaskContent", http.MethodGet, input.TaskID, nil)
 	switch {
@@ -354,7 +352,8 @@ func (operation ListTasksOperation) Invoke(call sdkgo.Call, input ListTasksInput
 	return sdkgo.NewQueryBranch(ListTasksBranchListed, page, nil, sdkgo.Receipt{})
 }
 
-// Invoke creates one task. A possibly dispatched write with no usable task in its answer remains uncertain.
+// Invoke creates one task. A 2xx with a task ID but unusable fields is confirmed by reading that task, never by
+// resending the creation. A possibly dispatched write that no read confirms remains uncertain.
 func (operation CreateTaskOperation) Invoke(call sdkgo.Call, input CreateTaskInput) sdkgo.MutationAttempt[Task] {
 	if !utf8.ValidString(input.Content) || strings.TrimSpace(input.Content) == "" || !utf8.ValidString(input.Description) || input.ProjectID != "" && !taskIDPattern.MatchString(input.ProjectID) || !requestIDPattern.MatchString(string(call.IdempotencyKey)) {
 		return sdkgo.NewMutationBranch(CreateTaskBranchDefect, Task{}, failure("createTask", sdkgo.FailureValidation, "valid content, description, projectId, and stable request identity are required"), sdkgo.Receipt{})
@@ -381,12 +380,34 @@ func (operation CreateTaskOperation) Invoke(call sdkgo.Call, input CreateTaskInp
 			return sdkgo.NewMutationBranch(CreateTaskBranchProviderRejected, Task{}, result.failure, sdkgo.Receipt{})
 		}
 	}
-	// A valid task in HTTP 2xx is the created task as Todoist stored it; its fields may differ from the request.
-	task, err := decodeTask(result.body)
-	if err != nil {
+	// A valid task is the created task as Todoist stored it; fields may differ from the request.
+	if task, err := decodeTask(result.body); err == nil {
+		return sdkgo.NewMutationBranch(CreateTaskBranchCreated, task, nil, sdkgo.Receipt{})
+	}
+	taskID, hasTaskID := decodeCreatedTaskID(result.body)
+	if !hasTaskID {
 		return sdkgo.NewMutationUncertain(Task{}, *failure("createTask", sdkgo.FailureProtocol, "Todoist answered the creation without a usable task"), sdkgo.Receipt{})
 	}
-	return sdkgo.NewMutationBranch(CreateTaskBranchCreated, task, nil, sdkgo.Receipt{})
+	return operation.readCreatedTask(call, taskID)
+}
+
+// readCreatedTask confirms an accepted creation. Any unusable read stays uncertain because a retry would create again.
+func (operation CreateTaskOperation) readCreatedTask(call sdkgo.Call, taskID string) sdkgo.MutationAttempt[Task] {
+	readBack := operation.client.exchangeTask(call, "createTask", http.MethodGet, taskID, nil)
+	if readBack.failure == nil {
+		return sdkgo.NewMutationBranch(CreateTaskBranchCreated, readBack.task, nil, sdkgo.Receipt{})
+	}
+	return sdkgo.NewMutationUncertain(Task{}, *failure("createTask", sdkgo.FailureProtocol, "Todoist accepted the creation of task "+taskID+" but did not return it on read-back, so the task is unconfirmed"), sdkgo.Receipt{})
+}
+
+func decodeCreatedTaskID(body []byte) (string, bool) {
+	var answer struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(body, &answer); err != nil || !taskIDPattern.MatchString(answer.ID) {
+		return "", false
+	}
+	return answer.ID, true
 }
 
 // Invoke deletes by task ID. Transport and transient server failures can safely retry to confirmed absence.
@@ -479,8 +500,7 @@ func (client *Client) exchange(call sdkgo.Call, operation, method, endpoint stri
 	return exchangeResult{status: response.StatusCode, body: body}
 }
 
-// isTerminalCredentialError reports a resolution failure that no retry fixes: the connection was never saved, needs
-// reauthorization, or is not available to this scope. Any other failure, such as a failed store read, may pass.
+// isTerminalCredentialError reports a credential resolution failure that no retry fixes; others, such as store reads, may pass.
 func isTerminalCredentialError(err error) bool {
 	return errors.Is(err, projectconfig.ErrObjectNotFound) || errors.Is(err, sdkgo.ErrReauthorizationRequired) ||
 		errors.Is(err, projectconfig.ErrConnectionNotSelected) || errors.Is(err, projectconfig.ErrCredentialBrokerRejected)
@@ -533,8 +553,7 @@ func (observation *dispatchObservation) clientTrace() *httptrace.ClientTrace {
 	}
 }
 
-// isProvablyUndispatched requires a traced DNS, connect, or TLS failure and no obtained connection.
-// A transport that reports no trace events, or one that obtained a connection, may have sent the request.
+// isProvablyUndispatched requires a traced DNS, connect, or TLS failure before any connection was obtained.
 func (observation *dispatchObservation) isProvablyUndispatched() bool {
 	observation.mutex.Lock()
 	defer observation.mutex.Unlock()

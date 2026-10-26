@@ -44,6 +44,7 @@ func TestTaskCRUDWithRealDex(t *testing.T) {
 		{"delete-retry", "deletedAndVerified", dex.FlowCompleted, 1, 2},
 		{"multi-page", "deletedAndVerified", dex.FlowCompleted, 1, 1},
 		{"create-uncertain", "", dex.FlowFailed, 1, 0},
+		{"create-answer-incomplete", "deletedAndVerified", dex.FlowCompleted, 1, 1},
 		{"invalid-input", "", dex.FlowFailed, 0, 0},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
@@ -101,7 +102,7 @@ func TestTaskCRUDWithRealDex(t *testing.T) {
 				require.Len(t, provider.requestIDs, 2)
 				require.Equal(t, provider.requestIDs[0], provider.requestIDs[1])
 			}
-			if scenario.name == "create-service-unavailable" {
+			if scenario.name == "create-service-unavailable" || scenario.name == "create-answer-incomplete" {
 				require.Equal(t, 1, provider.createdTasks)
 			}
 			if scenario.name == "create-uncertain" {
@@ -279,6 +280,10 @@ func (provider *crudProvider) serveHTTP(w http.ResponseWriter, request *http.Req
 			provider.createdTasks++
 			if provider.scenario == "create-uncertain" {
 				dropProviderResponse(w)
+				return
+			}
+			if provider.scenario == "create-answer-incomplete" {
+				writeCRUDJSON(w, map[string]any{"id": "created-task"})
 				return
 			}
 			provider.writeTask(w)

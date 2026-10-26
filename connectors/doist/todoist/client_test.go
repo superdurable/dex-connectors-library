@@ -645,12 +645,18 @@ func TestCreateTaskReturnsStoredTaskWhenFieldsDiffer(t *testing.T) {
 func TestCreateTaskUnusableAnswerRemainsUncertain(t *testing.T) {
 	for name, body := range map[string]string{
 		"malformed":       "{",
-		"missing content": `{"id":"6XGgmFVcrG5RRjVr","project_id":"6XGgm6PHrGgMpCFX","description":"","checked":false}`,
+		"missing task ID": `{"project_id":"6XGgm6PHrGgMpCFX","content":"New","description":"","checked":false}`,
 		"invalid task ID": strings.Replace(taskJSON("New"), "6XGgmFVcrG5RRjVr", "bad/id", 1),
 		"reflected token": taskJSON(testToken),
 	} {
 		t.Run(name, func(t *testing.T) {
+			var posts, reads atomic.Int32
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+				if request.Method == http.MethodGet {
+					reads.Add(1)
+				} else {
+					posts.Add(1)
+				}
 				_, err := io.WriteString(w, body)
 				require.NoError(t, err)
 			}))
@@ -660,6 +666,100 @@ func TestCreateTaskUnusableAnswerRemainsUncertain(t *testing.T) {
 			require.Equal(t, CreateTaskBranchUncertain, result.Branch)
 			require.Equal(t, sdkgo.FailureProtocol, result.Failure.Kind)
 			require.Equal(t, Task{}, result.Value)
+			require.Equal(t, int32(1), posts.Load())
+			require.Zero(t, reads.Load())
+		})
+	}
+}
+
+func TestCreateTaskAnswerWithTaskIDIsConfirmedByRead(t *testing.T) {
+	for name, postBody := range map[string]string{
+		"ID only":         `{"id":"6XGgmFVcrG5RRjVr"}`,
+		"missing content": `{"id":"6XGgmFVcrG5RRjVr","project_id":"6XGgm6PHrGgMpCFX","description":"","checked":false}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			var posts, reads atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+				if request.Method == http.MethodGet {
+					reads.Add(1)
+					require.Equal(t, "/tasks/6XGgmFVcrG5RRjVr", request.URL.Path)
+					require.Empty(t, request.Header.Get("X-Request-ID"))
+					_, err := io.WriteString(w, taskJSON("Stored title"))
+					require.NoError(t, err)
+					return
+				}
+				posts.Add(1)
+				require.Equal(t, http.MethodPost, request.Method)
+				w.WriteHeader(http.StatusCreated)
+				_, err := io.WriteString(w, postBody)
+				require.NoError(t, err)
+			}))
+			defer server.Close()
+			result, err := createTask(newTestClient(t, server.URL), CreateTaskInput{Content: "New"})
+			require.NoError(t, err)
+			require.Equal(t, CreateTaskBranchCreated, result.Branch)
+			require.Nil(t, result.Failure)
+			require.Equal(t, Task{ID: "6XGgmFVcrG5RRjVr", ProjectID: "6XGgm6PHrGgMpCFX", Content: "Stored title", Description: "Details"}, result.Value)
+			require.Equal(t, int32(1), posts.Load())
+			require.Equal(t, int32(1), reads.Load())
+		})
+	}
+}
+
+type dropReadResponseTransport struct{}
+
+func (dropReadResponseTransport) RoundTrip(request *http.Request) (*http.Response, error) {
+	if request.Method != http.MethodGet {
+		return http.DefaultTransport.RoundTrip(request)
+	}
+	return dropResponseTransport{}.RoundTrip(request)
+}
+
+func TestCreateTaskUnconfirmedReadRemainsUncertain(t *testing.T) {
+	for _, scenario := range []struct {
+		name      string
+		status    int
+		body      string
+		transport http.RoundTripper
+	}{
+		{"not found", http.StatusNotFound, "", nil},
+		{"forbidden", http.StatusForbidden, "", nil},
+		{"rate limited", http.StatusTooManyRequests, "", nil},
+		{"server error", http.StatusInternalServerError, "", nil},
+		{"unavailable", http.StatusServiceUnavailable, "", nil},
+		{"malformed", http.StatusOK, "{", nil},
+		{"incomplete", http.StatusOK, `{"id":"6XGgmFVcrG5RRjVr"}`, nil},
+		{"mismatched ID", http.StatusOK, strings.Replace(taskJSON("New"), "6XGgmFVcrG5RRjVr", "otherTask", 1), nil},
+		{"lost response", http.StatusOK, taskJSON("New"), dropReadResponseTransport{}},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			var posts, reads atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+				if request.Method == http.MethodGet {
+					reads.Add(1)
+					w.Header().Set("Retry-After", "1")
+					w.WriteHeader(scenario.status)
+					_, err := io.WriteString(w, scenario.body)
+					require.NoError(t, err)
+					return
+				}
+				posts.Add(1)
+				_, err := io.WriteString(w, `{"id":"6XGgmFVcrG5RRjVr"}`)
+				require.NoError(t, err)
+			}))
+			defer server.Close()
+			var options []Option
+			if scenario.transport != nil {
+				options = append(options, WithHTTPClient(&http.Client{Transport: scenario.transport}))
+			}
+			result, err := createTask(newTestClient(t, server.URL, options...), CreateTaskInput{Content: "New"})
+			require.NoError(t, err)
+			require.Equal(t, CreateTaskBranchUncertain, result.Branch)
+			require.Equal(t, sdkgo.FailureProtocol, result.Failure.Kind)
+			require.Contains(t, result.Failure.Message, "6XGgmFVcrG5RRjVr")
+			require.Equal(t, Task{}, result.Value)
+			require.Equal(t, int32(1), posts.Load())
+			require.Equal(t, int32(1), reads.Load())
 		})
 	}
 }
