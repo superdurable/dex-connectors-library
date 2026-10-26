@@ -298,20 +298,17 @@ type replyHarness struct {
 func newReplyHarness(t *testing.T) *replyHarness {
 	t.Helper()
 	certificates := mailtest.NewCertificates(t)
-	harness := &replyHarness{
-		imap: mailtest.StartIMAPServer(t, mailtest.IMAPServerConfig{
-			Certificates: certificates, Security: mailtest.ImplicitTLS, Username: integrationMailbox, Password: integrationPassword,
-			Mailboxes: []string{"Archive"},
-		}),
-		smtp: mailtest.StartSMTPServer(t, mailtest.SMTPServerConfig{
-			Certificates: certificates, Security: mailtest.StartTLS, Username: integrationMailbox, Password: integrationPassword,
-		}),
-		serverAddress: environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801"),
-	}
+	imapServer := mailtest.StartIMAPServer(t, mailtest.IMAPServerConfig{
+		Certificates: certificates, Security: mailtest.ImplicitTLS, Username: integrationMailbox, Password: integrationPassword,
+		Mailboxes: []string{"Archive"},
+	})
+	smtpServer := mailtest.StartSMTPServer(t, mailtest.SMTPServerConfig{
+		Certificates: certificates, Security: mailtest.StartTLS, Username: integrationMailbox, Password: integrationPassword,
+	})
 	reference := sdkgo.ConnectionRef{Provider: "email", Name: ConnectionName}
 	providerClient, err := email.New(email.Config{
-		IMAPHost: harness.imap.Host, IMAPPort: int64(harness.imap.Port), IMAPSecurity: email.IMAPSecurityImplicitTLS,
-		SMTPHost: harness.smtp.Host, SMTPPort: int64(harness.smtp.Port), SMTPSecurity: email.SMTPSecurityStartTLS,
+		IMAPHost: imapServer.Host, IMAPPort: int64(imapServer.Port), IMAPSecurity: email.IMAPSecurityImplicitTLS,
+		SMTPHost: smtpServer.Host, SMTPPort: int64(smtpServer.Port), SMTPSecurity: email.SMTPSecurityStartTLS,
 		FromName: "Acme Support",
 	}, sdkgo.StaticCredentialProvider[email.Credentials]{
 		reference: {Username: integrationMailbox, Password: sdkgo.NewSecretString(integrationPassword)},
@@ -319,7 +316,16 @@ func newReplyHarness(t *testing.T) *replyHarness {
 	require.NoError(t, err)
 	connection, err := email.NewConnection(providerClient, reference)
 	require.NoError(t, err)
+	harness := newReplyHarnessForConnection(t, connection)
+	harness.imap, harness.smtp = imapServer, smtpServer
+	return harness
+}
+
+func newReplyHarnessForConnection(t *testing.T, connection email.Connection) *replyHarness {
+	t.Helper()
+	harness := &replyHarness{serverAddress: environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801")}
 	harness.flow = NewFlow(connection)
+	var err error
 	harness.registry, err = dex.NewRegistry([]dex.Flow{harness.flow})
 	require.NoError(t, err)
 	harness.cache, err = blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
