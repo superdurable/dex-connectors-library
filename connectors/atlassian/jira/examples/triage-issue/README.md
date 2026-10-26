@@ -12,19 +12,18 @@ every Jira operation:
    reused. Search is eventually consistent, so this is a business duplicate
    check, never the retry-safety mechanism;
 3. `CreateTriageIssue` calls `jira.NewCreateIssueStep` with sync durability.
-   `created` records the key, `providerRejected` completes as `rejected` with
-   the field IDs, and `uncertain` parks the Flow for an operator;
+   `created` records the key, and `uncertain` parks the Flow for operator
+   reconciliation before any second create;
 4. `ReadBackTriageIssue` calls `jira.NewGetIssueStep`, and `VerifyTriageIssue`
    adopts the issue;
-5. `AddTriageComment` calls `jira.NewAddCommentStep`. Both `added` and
-   `uncertain` continue; an uncertain comment is recorded and never re-sent;
+5. `AddTriageComment` calls `jira.NewAddCommentStep`. Only `added` continues;
 6. `MoveTriageIssue` calls `jira.NewTransitionIssueStep` by destination status,
    so a retried or backup attempt recognizes a move Jira already made.
-   `transitionUnavailable` completes with the transitions Jira offered.
 
 A blank `triageComment` skips the comment and a blank `destinationStatusName`
 skips the transition. Unwired optional branches, such as a rejected search, a
-missing issue after a create, or a rejected transition, fail the Flow.
+missing issue after a create, an uncertain comment, or an unavailable
+transition, fail the Flow with the safe failure reason.
 
 ## Reconciling an uncertain create
 
@@ -97,13 +96,13 @@ GOWORK=off go test -race ./examples/triage-issue/...
 With the latest Dex development server running, the integration test drives
 the Flow on a real Worker against a stateful fake Jira: a new issue created
 once beside a near-duplicate and read back, commented, and moved; an open
-issue with the same summary reused; a rejected create; a rate-limited create
+issue with the same summary reused; a rate-limited create
 retried after `Retry-After`; a create timeout reconciled by confirming a
 missing, a mismatched, and then the real issue key without a second create; a
 5xx create created again only after operator approval; a nine-second create
 sent once under sync durability; a nine-second transition whose backup attempt
 finds the issue already moved and sends nothing; a destination the workflow does
-not offer; a comment timeout recorded without a resend; and a blank `cloudId`
+not offer; a comment timeout that fails without a resend; and a blank `cloudId`
 resolved to the only granted site.
 
 ```bash

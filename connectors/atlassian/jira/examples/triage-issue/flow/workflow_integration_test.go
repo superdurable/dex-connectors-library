@@ -84,16 +84,18 @@ func TestOpenIssueWithTheSameSummaryIsReusedWithRealDex(t *testing.T) {
 	require.Equal(t, integrationDestination, triage.Status.Name)
 }
 
-func TestRejectedCreateCompletesWithTheFieldIDsWithRealDex(t *testing.T) {
+func TestRejectedCreateFailsWithoutResendingWithRealDex(t *testing.T) {
 	provider, flow, harness := newJiraIntegrationHarness(t, integrationCloudID, shortRequestTimeout)
 	ctx := integrationContext(t)
 
 	summary := markerReject + " Fire panel wiring"
-	triage := runTriageFlow(t, ctx, harness, flow, "rejected", triageInput(summary))
-	require.Equal(t, PhaseRejected, triage.Phase)
-	require.Equal(t, []string{"summary"}, triage.RejectedFieldIDs)
-	require.Nil(t, triage.Issue)
-	require.Equal(t, 1, provider.createCount(summary))
+	flowID := startTriageFlow(t, ctx, harness, flow, "rejected", triageInput(summary))
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "providerRejected")
+	require.Contains(t, result.ErrorMessage, "no target")
+	require.Equal(t, 1, provider.createCount(summary), "a conclusive rejection is not resent")
 }
 
 func TestRateLimitedCreateIsRetriedAfterRetryAfterWithRealDex(t *testing.T) {
@@ -180,31 +182,35 @@ func TestSlowTransitionBackupAttemptMovesTheIssueOnceWithRealDex(t *testing.T) {
 	t.Logf("slow transition: transition reads=%d posts=%d", provider.transitionReadCount(issueKey), provider.transitionPostCount(issueKey))
 }
 
-func TestUnavailableTransitionCompletesWithTheOfferedTransitionsWithRealDex(t *testing.T) {
+func TestUnavailableTransitionFailsWithoutMovingIssueWithRealDex(t *testing.T) {
 	provider, flow, harness := newJiraIntegrationHarness(t, integrationCloudID, shortRequestTimeout)
 	ctx := integrationContext(t)
 
 	input := triageInput("Exit sign dark")
 	input.DestinationStatusName = "Blocked"
-	triage := runTriageFlow(t, ctx, harness, flow, "unavailable", input)
-	require.Equal(t, PhaseTransitionUnavailable, triage.Phase)
-	require.Equal(t, "To Do", triage.Status.Name)
-	require.Equal(t, []string{"Start Progress -> In Progress", "Done -> Done"}, triage.AvailableTransitionNames)
-	require.Zero(t, provider.transitionPostCount(triage.Issue.Key))
+	flowID := startTriageFlow(t, ctx, harness, flow, "unavailable", input)
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "transitionUnavailable")
+	require.Contains(t, result.ErrorMessage, "no target")
+	require.Zero(t, provider.transitionPostCount(provider.issueKeyForSummary(input.Summary)))
 }
 
-func TestCommentTimeoutIsRecordedAndNeverResentWithRealDex(t *testing.T) {
+func TestCommentTimeoutFailsWithoutResendingWithRealDex(t *testing.T) {
 	provider, flow, harness := newJiraIntegrationHarness(t, integrationCloudID, shortRequestTimeout)
 	ctx := integrationContext(t)
 
 	summary := markerCommentTimeout + " Freight door stuck"
-	triage := runTriageFlow(t, ctx, harness, flow, "comment-timeout", triageInput(summary))
-	require.Equal(t, PhaseTriaged, triage.Phase)
-	require.True(t, triage.IsCommentOutcomeUnknown)
-	require.Empty(t, triage.CommentID)
+	flowID := startTriageFlow(t, ctx, harness, flow, "comment-timeout", triageInput(summary))
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "uncertain")
+	require.Contains(t, result.ErrorMessage, "no target")
 	issueKey := provider.issueKeyForSummary(summary)
 	require.Equal(t, 1, provider.commentCount(issueKey), "an uncertain comment is never re-sent")
-	require.Equal(t, integrationDestination, triage.Status.Name)
+	require.Zero(t, provider.transitionPostCount(issueKey), "a failed comment does not move the issue")
 }
 
 func TestBlankCloudIDUsesTheOnlyGrantedJiraSiteWithRealDex(t *testing.T) {

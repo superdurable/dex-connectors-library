@@ -27,21 +27,19 @@ const (
 	// DefaultIssueTypeName is used when the Start Flow input names no issue type.
 	DefaultIssueTypeName = "Task"
 
-	recordTriageRequestStepType         = "RecordTriageRequest"
-	findOpenDuplicateIssuesStepType     = "FindOpenDuplicateIssues"
-	evaluateDuplicateIssuesStepType     = "EvaluateDuplicateIssues"
-	createTriageIssueStepType           = "CreateTriageIssue"
-	recordCreatedIssueStepType          = "RecordCreatedIssue"
-	recordRejectedIssueStepType         = "RecordRejectedIssue"
-	recordUncertainIssueStepType        = "RecordUncertainIssue"
-	readBackTriageIssueStepType         = "ReadBackTriageIssue"
-	verifyTriageIssueStepType           = "VerifyTriageIssue"
-	recordMissingTriageIssueStepType    = "RecordMissingTriageIssue"
-	addTriageCommentStepType            = "AddTriageComment"
-	recordTriageCommentStepType         = "RecordTriageComment"
-	moveTriageIssueStepType             = "MoveTriageIssue"
-	recordUnavailableTransitionStepType = "RecordUnavailableTransition"
-	completeIssueTriageStepType         = "CompleteIssueTriage"
+	recordTriageRequestStepType      = "RecordTriageRequest"
+	findOpenDuplicateIssuesStepType  = "FindOpenDuplicateIssues"
+	evaluateDuplicateIssuesStepType  = "EvaluateDuplicateIssues"
+	createTriageIssueStepType        = "CreateTriageIssue"
+	recordCreatedIssueStepType       = "RecordCreatedIssue"
+	recordUncertainIssueStepType     = "RecordUncertainIssue"
+	readBackTriageIssueStepType      = "ReadBackTriageIssue"
+	verifyTriageIssueStepType        = "VerifyTriageIssue"
+	recordMissingTriageIssueStepType = "RecordMissingTriageIssue"
+	addTriageCommentStepType         = "AddTriageComment"
+	recordTriageCommentStepType      = "RecordTriageComment"
+	moveTriageIssueStepType          = "MoveTriageIssue"
+	completeIssueTriageStepType      = "CompleteIssueTriage"
 
 	maximumDuplicateCandidates = 20
 )
@@ -64,10 +62,6 @@ const (
 	PhaseTransitioning = "transitioning"
 	// PhaseTriaged means the issue exists, carries the comment, and is in the destination status.
 	PhaseTriaged = "triaged"
-	// PhaseTransitionUnavailable means the issue's workflow offers no transition to the destination status.
-	PhaseTransitionUnavailable = "transitionUnavailable"
-	// PhaseRejected means Jira conclusively rejected the create and nothing was created.
-	PhaseRejected = "rejected"
 )
 
 // Reconciliation notes explain why a reported issue key was not adopted.
@@ -181,14 +175,8 @@ type IssueTriage struct {
 	Issue *jira.Issue `json:"issue,omitempty"`
 	// CommentID is the triage comment's ID once Jira confirmed it.
 	CommentID string `json:"commentId,omitempty"`
-	// IsCommentOutcomeUnknown reports a comment Jira may or may not have stored; it is never re-sent.
-	IsCommentOutcomeUnknown bool `json:"isCommentOutcomeUnknown,omitempty"`
 	// Status is the issue's status after the transition Step.
 	Status *jira.IssueStatus `json:"status,omitempty"`
-	// AvailableTransitionNames lists the transitions Jira offered when none reached the destination.
-	AvailableTransitionNames []string `json:"availableTransitionNames,omitempty"`
-	// RejectedFieldIDs lists the fields Jira named when it rejected the create.
-	RejectedFieldIDs []string `json:"rejectedFieldIds,omitempty"`
 	// UncertainCreate describes the latest uncertain create while reconciliation is pending.
 	UncertainCreate *UncertainCreate `json:"uncertainCreate,omitempty"`
 	// ReconciliationNote explains why a reported issue key was not adopted.
@@ -256,12 +244,11 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				},
 			}}},
 			Connection: flow.connection, MapToOperationInput: MapToCreateIssueInput,
-			Created:          sdkgo.GoTo(recordCreatedIssue{}),
-			ProviderRejected: sdkgo.GoTo(recordRejectedIssue{}),
-			Uncertain:        sdkgo.GoTo(recordUncertainIssue{}),
+			Created: sdkgo.GoTo(recordCreatedIssue{}),
+			// An ambiguous create requires operator reconciliation before another issue can be created.
+			Uncertain: sdkgo.GoTo(recordUncertainIssue{}),
 		})),
 		dex.DefineStep(recordCreatedIssue{}),
-		dex.DefineStep(recordRejectedIssue{}),
 		dex.DefineStep(recordUncertainIssue{}),
 		dex.DefineStep(jira.NewGetIssueStep(jira.GetIssueStepConfig[IssueReference]{
 			StepType: readBackTriageIssueStepType, ConnectionName: ConnectionName,
@@ -270,7 +257,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Read the issue back from Jira to confirm its project, summary, and status.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToGetIssueInput,
-			Found:    sdkgo.GoTo(verifyTriageIssue{}),
+			Found: sdkgo.GoTo(verifyTriageIssue{}),
+			// A missing reported ID lets the operator try another ID.
 			NotFound: sdkgo.GoTo(recordMissingTriageIssue{}),
 		})),
 		dex.DefineStep(verifyTriageIssue{}),
@@ -279,11 +267,10 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			StepType: addTriageCommentStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
 				GroupID: "jira", GroupLabel: "Jira",
-				Explanation: "Add the triage comment once; an unknown outcome is recorded, never re-sent.",
+				Explanation: "Add the triage comment once; an unknown outcome fails the Flow without resending.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToAddCommentInput,
-			Added:     sdkgo.GoTo(recordTriageComment{}),
-			Uncertain: sdkgo.GoTo(recordTriageComment{}),
+			Added: sdkgo.GoTo(recordTriageComment{}),
 		})),
 		dex.DefineStep(recordTriageComment{}),
 		dex.DefineStep(jira.NewTransitionIssueStep(jira.TransitionIssueStepConfig[StatusChangeRequest]{
@@ -293,10 +280,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Move the issue to the destination status, skipping a move Jira already made.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToTransitionIssueInput,
-			Transitioned:          sdkgo.GoTo(completeIssueTriage{}),
-			TransitionUnavailable: sdkgo.GoTo(recordUnavailableTransition{}),
+			Transitioned: sdkgo.GoTo(completeIssueTriage{}),
 		})),
-		dex.DefineStep(recordUnavailableTransition{}),
 		dex.DefineStep(completeIssueTriage{}),
 	}
 }
@@ -604,34 +589,6 @@ func (recordCreatedIssue) Execute(ctx dex.Context, result jira.CreateIssueResult
 	return dex.GoTo(sdkgo.StepRef[IssueReference](readBackTriageIssueStepType), IssueReference{IssueKey: result.Value.IssueKey}), nil
 }
 
-// dex:group group-id:triage group-label:"Triage"
-// dex:explanation text:"Complete with the rejected field IDs after Jira conclusively refused the create."
-type recordRejectedIssue struct {
-	dex.StepDefaultsNoWaitFor[jira.CreateIssueResult]
-}
-
-func (recordRejectedIssue) GetStepType() string { return recordRejectedIssueStepType }
-
-func (recordRejectedIssue) GetStepOptions() *dex.StepOptions {
-	return &dex.StepOptions{ExecuteLockAttributes: []dex.AttributeLock{dex.LockAttribute(triagePhaseAttribute), dex.LockAttribute(triageAttribute)}}
-}
-
-func (recordRejectedIssue) Execute(ctx dex.Context, result jira.CreateIssueResult) (*dex.StepDecision, error) {
-	triage, err := triageAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	triage.Phase = PhaseRejected
-	triage.RejectedFieldIDs = result.Value.RejectedFieldIDs
-	if err := triagePhaseAttribute.Set(ctx, triage.Phase); err != nil {
-		return nil, err
-	}
-	if err := triageAttribute.Set(ctx, triage); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(triage), nil
-}
-
 // dex:group group-id:reconciliation group-label:"Reconciliation"
 // dex:explanation text:"Park an unknown create for an operator instead of creating the issue again."
 type recordUncertainIssue struct {
@@ -758,7 +715,7 @@ func (recordMissingTriageIssue) Execute(ctx dex.Context, _ jira.GetIssueResult) 
 }
 
 // dex:group group-id:triage group-label:"Triage"
-// dex:explanation text:"Record the comment ID, or that its outcome is unknown, then continue without re-sending."
+// dex:explanation text:"Record the comment ID and continue triage."
 type recordTriageComment struct {
 	dex.StepDefaultsNoWaitFor[jira.AddCommentResult]
 }
@@ -775,7 +732,6 @@ func (recordTriageComment) Execute(ctx dex.Context, result jira.AddCommentResult
 		return nil, err
 	}
 	triage.CommentID = result.Value.CommentID
-	triage.IsCommentOutcomeUnknown = result.Branch == jira.AddCommentBranchUncertain
 	if triage.Request.DestinationStatusName != "" {
 		triage.Phase = PhaseTransitioning
 		if err := triagePhaseAttribute.Set(ctx, triage.Phase); err != nil {
@@ -787,39 +743,6 @@ func (recordTriageComment) Execute(ctx dex.Context, result jira.AddCommentResult
 		return dex.GoTo(sdkgo.StepRef[StatusChangeRequest](moveTriageIssueStepType), newStatusChangeRequest(triage)), nil
 	}
 	triage.Phase, triage.Status = PhaseTriaged, &triage.Issue.Status
-	if err := triagePhaseAttribute.Set(ctx, triage.Phase); err != nil {
-		return nil, err
-	}
-	if err := triageAttribute.Set(ctx, triage); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(triage), nil
-}
-
-// dex:group group-id:triage group-label:"Triage"
-// dex:explanation text:"Complete with the offered transitions when none reaches the destination status."
-type recordUnavailableTransition struct {
-	dex.StepDefaultsNoWaitFor[jira.TransitionIssueResult]
-}
-
-func (recordUnavailableTransition) GetStepType() string { return recordUnavailableTransitionStepType }
-
-func (recordUnavailableTransition) GetStepOptions() *dex.StepOptions {
-	return &dex.StepOptions{ExecuteLockAttributes: []dex.AttributeLock{dex.LockAttribute(triagePhaseAttribute), dex.LockAttribute(triageAttribute)}}
-}
-
-func (recordUnavailableTransition) Execute(ctx dex.Context, result jira.TransitionIssueResult) (*dex.StepDecision, error) {
-	triage, err := triageAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	triage.Phase = PhaseTransitionUnavailable
-	status := result.Value.Status
-	triage.Status = &status
-	triage.AvailableTransitionNames = nil
-	for _, transition := range result.Value.AvailableTransitions {
-		triage.AvailableTransitionNames = append(triage.AvailableTransitionNames, transition.Name+" -> "+transition.DestinationStatus.Name)
-	}
 	if err := triagePhaseAttribute.Set(ctx, triage.Phase); err != nil {
 		return nil, err
 	}

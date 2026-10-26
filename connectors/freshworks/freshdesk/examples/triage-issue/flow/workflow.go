@@ -36,15 +36,10 @@ const (
 	recordPrioritizedTicketStepType   = "RecordPrioritizedTicket"
 	openIssueTicketStepType           = "OpenIssueTicket"
 	recordOpenedTicketStepType        = "RecordOpenedTicket"
-	recordUncertainTicketStepType     = "RecordUncertainTicket"
 	addTriageNoteStepType             = "AddTriageNote"
 	completeTriageStepType            = "CompleteTriage"
-	recordUncertainNoteStepType       = "RecordUncertainNote"
 
 	candidateConversationLimit = 5
-
-	openIssueTicketReviewReason = "createTicket"
-	addTriageNoteReviewReason   = "addNote"
 )
 
 var (
@@ -139,8 +134,6 @@ const (
 	TriageTicketOpened TriageAction = "opened"
 	// TriageTicketFollowedUp means the customer's unresolved ticket was reopened and reprioritized.
 	TriageTicketFollowedUp TriageAction = "followedUp"
-	// TriageTicketCreationUncertain means the create request was sent but its outcome is unknown.
-	TriageTicketCreationUncertain TriageAction = "creationUncertain"
 )
 
 // TriageOutcome is the Flow result and the value of its outcome Attribute.
@@ -156,13 +149,6 @@ type TriageOutcome struct {
 	SkippedTicketID int64 `json:"skippedTicketId,omitempty"`
 	// NoteID is the private triage note Freshdesk added.
 	NoteID int64 `json:"noteId,omitempty"`
-	// NeedsReview reports that a write was sent with an unknown outcome, so a person must check
-	// Freshdesk; the Flow never resends it.
-	NeedsReview bool `json:"needsReview,omitempty"`
-	// ReviewReason names the uncertain write: createTicket or addNote.
-	ReviewReason string `json:"reviewReason,omitempty"`
-	// ReviewDetail is the connector's credential-free explanation of why the outcome is unknown.
-	ReviewDetail string `json:"reviewDetail,omitempty"`
 }
 
 // Flow triages one customer issue in Freshdesk.
@@ -220,11 +206,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Open a ticket with the customer's message and priority, sending the request at most once.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToCreateTicketInput,
-			Created:   sdkgo.GoTo(recordOpenedTicket{}),
-			Uncertain: sdkgo.GoTo(recordUncertainTicket{}),
+			Created: sdkgo.GoTo(recordOpenedTicket{}),
 		})),
 		dex.DefineStep(recordOpenedTicket{}),
-		dex.DefineStep(recordUncertainTicket{}),
 		dex.DefineStep(freshdesk.NewAddNoteStep(freshdesk.AddNoteStepConfig[TriageNote]{
 			StepType: addTriageNoteStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
@@ -232,11 +216,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Add one private triage note, sending the request at most once.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToAddNoteInput,
-			Added:     sdkgo.GoTo(completeTriage{}),
-			Uncertain: sdkgo.GoTo(recordUncertainNote{}),
+			Added: sdkgo.GoTo(completeTriage{}),
 		})),
 		dex.DefineStep(completeTriage{}),
-		dex.DefineStep(recordUncertainNote{}),
 	}
 }
 
@@ -389,13 +371,6 @@ func optionalAttribute[T any](ctx dex.Context, attribute dex.Attribute[T]) (T, e
 	return value, err
 }
 
-func failureMessage(failure *sdkgo.Failure) string {
-	if failure == nil {
-		return ""
-	}
-	return failure.Message
-}
-
 func isAttributeNotFound(err error) bool {
 	var missingAttribute *dex.AttributeNotFoundError
 	return errors.As(err, &missingAttribute)
@@ -543,29 +518,6 @@ func (recordOpenedTicket) Execute(ctx dex.Context, result freshdesk.CreateTicket
 	return dex.GoTo(sdkgo.StepRef[TriageNote](addTriageNoteStepType), TriageNote{TicketID: outcome.Ticket.ID, Body: BuildOpenedTicketNote(issue)}), nil
 }
 
-// dex:group group-id:review group-label:"Needs review"
-// dex:explanation text:"The create request was sent with an unknown outcome; complete for a person to check Freshdesk instead of resending it."
-type recordUncertainTicket struct {
-	dex.StepDefaultsNoWaitFor[freshdesk.CreateTicketResult]
-}
-
-func (recordUncertainTicket) GetStepType() string { return recordUncertainTicketStepType }
-
-func (recordUncertainTicket) Execute(ctx dex.Context, result freshdesk.CreateTicketResult) (*dex.StepDecision, error) {
-	previous, err := triageOutcomeAttribute.Get(ctx)
-	if err != nil && !isAttributeNotFound(err) {
-		return nil, err
-	}
-	outcome := TriageOutcome{
-		Action: TriageTicketCreationUncertain, SkippedTicketID: previous.SkippedTicketID, NeedsReview: true,
-		ReviewReason: openIssueTicketReviewReason, ReviewDetail: failureMessage(result.Failure),
-	}
-	if err := triageOutcomeAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(outcome), nil
-}
-
 // dex:group group-id:issue group-label:"Customer issue"
 // dex:explanation text:"Record the private triage note and complete the Flow."
 type completeTriage struct {
@@ -580,26 +532,6 @@ func (completeTriage) Execute(ctx dex.Context, result freshdesk.AddNoteResult) (
 		return nil, err
 	}
 	outcome.NoteID = result.Value.Conversation.ID
-	if err := triageOutcomeAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(outcome), nil
-}
-
-// dex:group group-id:review group-label:"Needs review"
-// dex:explanation text:"The note request was sent with an unknown outcome; complete for a person to check Freshdesk instead of resending it."
-type recordUncertainNote struct {
-	dex.StepDefaultsNoWaitFor[freshdesk.AddNoteResult]
-}
-
-func (recordUncertainNote) GetStepType() string { return recordUncertainNoteStepType }
-
-func (recordUncertainNote) Execute(ctx dex.Context, result freshdesk.AddNoteResult) (*dex.StepDecision, error) {
-	outcome, err := triageOutcomeAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	outcome.NeedsReview, outcome.ReviewReason, outcome.ReviewDetail = true, addTriageNoteReviewReason, failureMessage(result.Failure)
 	if err := triageOutcomeAttribute.Set(ctx, outcome); err != nil {
 		return nil, err
 	}

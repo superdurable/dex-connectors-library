@@ -74,7 +74,6 @@ func TestNewRequestIsCreatedAssignedAndCommentedOnceWithRealDex(t *testing.T) {
 	require.Equal(t, 2, record.OpenTaskPagesRead, "the duplicate check followed Asana's offset to the second page")
 	require.Equal(t, 1, record.CreateAttempts)
 	require.NotEmpty(t, record.CommentID)
-	require.False(t, record.IsCommentOutcomeUnknown)
 	require.Equal(t, &asana.UserReference{ID: adaUserID, Name: "Ada Lovelace"}, record.Task.Assignee)
 	require.Equal(t, approvedSectionID, record.Task.SectionID(integrationProjectID))
 	require.Equal(t, "2026-10-15", record.Task.DueOn)
@@ -107,14 +106,18 @@ func TestOpenTaskWithTheRequestIDIsReusedWithRealDex(t *testing.T) {
 	require.Equal(t, 1, len(provider.commentTexts(existingTaskID)))
 }
 
-func TestRejectedCreateCompletesAsRejectedWithRealDex(t *testing.T) {
+func TestRejectedCreateFailsWithoutResendingWithRealDex(t *testing.T) {
 	provider, flow, harness := newAsanaIntegrationHarness(t, shortRequestTimeout)
 	ctx := integrationContext(t)
 
-	record := runRequestFlow(t, ctx, harness, flow, "rejected", requestInput("REQ-3001", markerReject+" Paint the lobby"))
-	require.Equal(t, PhaseRejected, record.Phase)
-	require.Empty(t, record.TaskID)
-	require.Equal(t, 1, provider.createCount("[REQ-3001] "+markerReject+" Paint the lobby"))
+	taskName := "[REQ-3001] " + markerReject + " Paint the lobby"
+	flowID := startRequestFlow(t, ctx, harness, flow, "rejected", requestInput("REQ-3001", markerReject+" Paint the lobby"))
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "providerRejected")
+	require.Contains(t, result.ErrorMessage, "no target")
+	require.Equal(t, 1, provider.createCount(taskName), "a conclusive rejection is not resent")
 }
 
 func TestRateLimitedCreateIsRetriedAfterRetryAfterWithRealDex(t *testing.T) {
@@ -220,28 +223,33 @@ func TestSlowCommentIsSentOnceUnderSyncDurabilityWithRealDex(t *testing.T) {
 	require.Equal(t, 1, len(provider.commentTexts(provider.taskIDForName(taskName))), "one Step execution dispatches one comment request")
 }
 
-func TestCommentTimeoutIsRecordedAndNeverResentWithRealDex(t *testing.T) {
+func TestCommentTimeoutFailsWithoutResendingWithRealDex(t *testing.T) {
 	provider, flow, harness := newAsanaIntegrationHarness(t, shortRequestTimeout)
 	ctx := integrationContext(t)
 
 	taskName := "[REQ-3008] " + markerCommentTimeout + " Freight door stuck"
-	record := runRequestFlow(t, ctx, harness, flow, "comment-timeout", requestInput("REQ-3008", markerCommentTimeout+" Freight door stuck"))
-	require.Equal(t, PhaseReady, record.Phase)
-	require.True(t, record.IsCommentOutcomeUnknown)
-	require.Empty(t, record.CommentID)
+	flowID := startRequestFlow(t, ctx, harness, flow, "comment-timeout", requestInput("REQ-3008", markerCommentTimeout+" Freight door stuck"))
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "uncertain")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.Equal(t, 1, len(provider.commentTexts(provider.taskIDForName(taskName))), "an uncertain comment is never re-sent")
 }
 
-func TestRejectedAssigneeCompletesWithTheCreatedTaskWithRealDex(t *testing.T) {
+func TestRejectedAssigneeFailsBeforeCommentWithRealDex(t *testing.T) {
 	provider, flow, harness := newAsanaIntegrationHarness(t, shortRequestTimeout)
 	ctx := integrationContext(t)
 
 	input := requestInput("REQ-3009", "Loading dock light out")
 	input.AssigneeID = unknownAssigneeEmail
-	record := runRequestFlow(t, ctx, harness, flow, "rejected-assignee", input)
-	require.Equal(t, PhaseAssignmentRejected, record.Phase)
+	flowID := startRequestFlow(t, ctx, harness, flow, "rejected-assignee", input)
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "providerRejected")
+	require.Contains(t, result.ErrorMessage, "no target")
 	taskID := provider.taskIDForName("[REQ-3009] Loading dock light out")
-	require.Equal(t, taskID, record.TaskID)
 	require.Empty(t, provider.commentTexts(taskID), "no approval comment on a task that could not be assigned")
 }
 

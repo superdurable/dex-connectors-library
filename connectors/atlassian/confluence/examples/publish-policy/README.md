@@ -11,8 +11,7 @@ every Confluence operation to publish an in-force policy:
    decides whether to create or update;
 3. `PublishPolicyPage` calls `confluence.NewCreatePageStep`. `created` reads the
    new page back. `titleConflict` means a page with that title already exists,
-   so `RecordExistingPage` updates it instead. `notFound` and
-   `providerRejected` complete as `rejected`;
+   so `RecordExistingPage` updates it instead;
 4. `UpdatePolicyPage` calls `confluence.NewUpdatePageStep` with the existing
    page's version plus one. `versionConflict` means another editor saved a
    newer version first; the Flow parks for an operator instead of overwriting
@@ -20,11 +19,12 @@ every Confluence operation to publish an in-force policy:
 5. `ReadBackPolicyPage` calls `confluence.NewGetPageStep`, and
    `VerifyPublishedPolicy` checks the title and version and records the start
    of the page as Markdown;
-6. `AddPublicationComment` calls `confluence.NewAddCommentStep`. Both `added`
-   and `uncertain` complete; an uncertain comment is recorded and never re-sent.
+6. `AddPublicationComment` calls `confluence.NewAddCommentStep`. Only `added`
+   completes.
 
 A blank `publicationComment` skips the comment. Unwired optional branches, such
-as a rejected search or a page that cannot be read back, fail the Flow.
+as a rejected create, an uncertain comment, or a page that cannot be read back,
+fail the Flow with the safe failure reason.
 
 ## Reviewing an edit conflict
 
@@ -98,7 +98,7 @@ read back, and commented once; an existing title updated to its next version;
 a nine-second create sent once under sync durability; a nine-second update
 whose async backup attempt is refused and finds its own version; a create
 timeout confirmed by title without a second page; a rate-limited create retried
-after `Retry-After`; a rejected create; a concurrent edit parked and published
+after `Retry-After`; a concurrent edit parked and published
 over only after the Action; a nine-second comment sent once; a comment timeout
 confirmed by reading the comments back without a resend; and a blank `cloudId`
 resolved to the only granted site.

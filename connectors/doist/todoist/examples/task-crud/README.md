@@ -23,10 +23,9 @@ The read compares only requested replacement fields. Matching updates continue
 to list and delete. Safe update failures retry the same absolute replacement;
 exhausted retries fail the Flow.
 
-Conclusive missing/rejected reads or updates complete with their status and
-retain creation and mutation facts. Unwired invalid-response, defect, or
-uncertain-creation branches fail the Flow and retain available
-results; a failed lifecycle may leave its created task. Display exposes created,
+Conclusive missing/rejected reads or updates and uncertain creation fail the
+Flow through unwired optional branches. A failed lifecycle may leave its created
+task. Display exposes created,
 update, read-back, and completion Attributes without calling Todoist. A 404
 delete result is wired as `alreadyAbsent`, followed by the final lookup.
 

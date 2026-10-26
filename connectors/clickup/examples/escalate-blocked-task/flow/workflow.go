@@ -41,18 +41,15 @@ const (
 	chooseEscalationStepType           = "ChooseEscalation"
 	findEscalationManagerStepType      = "FindEscalationManager"
 	recordEscalationManagerStepType    = "RecordEscalationManager"
-	completeWithoutManagerStepType     = "CompleteWithoutManager"
 	searchExistingEscalationStepType   = "SearchExistingEscalation"
 	chooseExistingEscalationStepType   = "ChooseExistingEscalation"
 	createEscalationTaskStepType       = "CreateEscalationTask"
 	recordEscalationTaskStepType       = "RecordEscalationTask"
-	recordCreateNeedsReviewStepType    = "RecordCreateNeedsReview"
 	tagBlockedTaskStepType             = "TagBlockedTask"
 	chooseManagerAssignmentStepType    = "ChooseManagerAssignment"
 	assignManagerToBlockedTaskStepType = "AssignManagerToBlockedTask"
 	prepareEscalationCommentStepType   = "PrepareEscalationComment"
 	commentOnBlockedTaskStepType       = "CommentOnBlockedTask"
-	recordCommentNeedsReviewStepType   = "RecordCommentNeedsReview"
 	completeEscalatedStepType          = "CompleteEscalated"
 
 	escalationStateAttributeKey   = "clickup-escalation-state"
@@ -180,17 +177,15 @@ type OutcomeAction string
 const (
 	// OutcomeEscalated means the escalation task exists and the blocked task was tagged, assigned, and commented.
 	OutcomeEscalated OutcomeAction = "escalated"
-	// OutcomeSkipped means the task was not blocked or no manager was found, so nothing was written.
+	// OutcomeSkipped means the task was not blocked, so nothing was written.
 	OutcomeSkipped OutcomeAction = "skipped"
-	// OutcomeNeedsReview means a create or comment could not be confirmed; a person checks ClickUp.
-	OutcomeNeedsReview OutcomeAction = "needsReview"
 )
 
 // EscalationOutcome is the Flow result and the value of its outcome Attribute.
 type EscalationOutcome struct {
 	// Action is what the Flow did.
 	Action OutcomeAction `json:"action"`
-	// Reason explains skipped and needsReview, such as notBlocked, managerNotFound, or createUncertain.
+	// Reason explains why a task was skipped.
 	Reason string `json:"reason,omitempty"`
 	// TaskID is the blocked task.
 	TaskID string `json:"taskId"`
@@ -210,8 +205,6 @@ type EscalationOutcome struct {
 	WasCommentAlreadyApplied bool `json:"wasCommentAlreadyApplied,omitempty"`
 	// Tags are the blocked task's tags after tagging.
 	Tags []string `json:"tags,omitempty"`
-	// ReviewDetail is the connector's safe failure message for needsReview.
-	ReviewDetail string `json:"reviewDetail,omitempty"`
 }
 
 // Flow escalates one blocked ClickUp task.
@@ -245,11 +238,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			StepType: findEscalationManagerStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{GroupID: "clickup", GroupLabel: "ClickUp", Explanation: "Find the escalation manager among the Workspace's members by email."},
 			Connection:  flow.connection, MapToOperationInput: flow.mapToFindMemberByEmailInput,
-			Found:    sdkgo.GoTo(recordEscalationManager{}),
-			NotFound: sdkgo.GoTo(completeWithoutManager{}),
+			Found: sdkgo.GoTo(recordEscalationManager{}),
 		})),
 		dex.DefineStep(recordEscalationManager{}),
-		dex.DefineStep(completeWithoutManager{}),
 		dex.DefineStep(clickup.NewSearchTasksStep(clickup.SearchTasksStepConfig[EscalationSearchPage]{
 			StepType: searchExistingEscalationStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{GroupID: "clickup", GroupLabel: "ClickUp", Explanation: "Search one page of the escalation List's tagged tasks, open or closed."},
@@ -261,11 +252,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			StepType: createEscalationTaskStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{GroupID: "clickup", GroupLabel: "ClickUp", Explanation: "Create the escalation task after a checkpoint, so a retry reads the List back instead of resending."},
 			Connection:  flow.connection, MapToOperationInput: flow.mapToCreateTaskInput,
-			Created:   sdkgo.GoTo(recordEscalationTask{}),
-			Uncertain: sdkgo.GoTo(recordCreateNeedsReview{}),
+			Created: sdkgo.GoTo(recordEscalationTask{}),
 		})),
 		dex.DefineStep(recordEscalationTask{}),
-		dex.DefineStep(recordCreateNeedsReview{}),
 		dex.DefineStep(clickup.NewUpdateTaskTagsStep(clickup.UpdateTaskTagsStepConfig[TaskReference]{
 			StepType: tagBlockedTaskStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{GroupID: "clickup", GroupLabel: "ClickUp", Explanation: "Tag the blocked task as escalated; a repeated tag changes nothing."},
@@ -284,10 +273,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			StepType: commentOnBlockedTaskStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{GroupID: "clickup", GroupLabel: "ClickUp", Explanation: "Comment on the blocked task with the escalation task's link after a checkpoint, so a retry reads the comments back instead of resending."},
 			Connection:  flow.connection, MapToOperationInput: MapToAddCommentInput,
-			Added:     sdkgo.GoTo(completeEscalated{}),
-			Uncertain: sdkgo.GoTo(recordCommentNeedsReview{}),
+			Added: sdkgo.GoTo(completeEscalated{}),
 		})),
-		dex.DefineStep(recordCommentNeedsReview{}),
 		dex.DefineStep(completeEscalated{}),
 	}
 }
@@ -552,26 +539,6 @@ func (recordEscalationManager) Execute(ctx dex.Context, result clickup.FindMembe
 	return dex.GoTo(sdkgo.StepRef[EscalationSearchPage](searchExistingEscalationStepType), EscalationSearchPage{Page: 0}), nil
 }
 
-// dex:group group-id:outcome group-label:"Outcome"
-// dex:explanation text:"Complete without writing when no Workspace member has the manager's email."
-type completeWithoutManager struct {
-	dex.StepDefaultsNoWaitFor[clickup.FindMemberByEmailResult]
-}
-
-func (completeWithoutManager) GetStepType() string { return completeWithoutManagerStepType }
-
-func (completeWithoutManager) Execute(ctx dex.Context, _ clickup.FindMemberByEmailResult) (*dex.StepDecision, error) {
-	state, err := escalationStateAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	outcome := EscalationOutcome{Action: OutcomeSkipped, Reason: "managerNotFound", TaskID: state.Input.TaskID}
-	if err := escalationOutcomeAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(outcome), nil
-}
-
 // dex:group group-id:escalation group-label:"Escalation task"
 // dex:explanation text:"Reuse an escalation task already filed for this task, search the next page, or create one."
 type chooseExistingEscalation struct {
@@ -621,29 +588,6 @@ func (recordEscalationTask) Execute(ctx dex.Context, result clickup.CreateTaskRe
 	return dex.GoTo(sdkgo.StepRef[TaskReference](tagBlockedTaskStepType), TaskReference{TaskID: state.Input.TaskID}), nil
 }
 
-// dex:group group-id:outcome group-label:"Outcome"
-// dex:explanation text:"Record an unconfirmed create for a person to check and complete without touching the blocked task."
-type recordCreateNeedsReview struct {
-	dex.StepDefaultsNoWaitFor[clickup.CreateTaskResult]
-}
-
-func (recordCreateNeedsReview) GetStepType() string { return recordCreateNeedsReviewStepType }
-
-func (recordCreateNeedsReview) Execute(ctx dex.Context, result clickup.CreateTaskResult) (*dex.StepDecision, error) {
-	state, err := escalationStateAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	outcome := EscalationOutcome{Action: OutcomeNeedsReview, Reason: "createUncertain", TaskID: state.Input.TaskID, ManagerID: state.ManagerID}
-	if result.Failure != nil {
-		outcome.ReviewDetail = result.Failure.Message
-	}
-	if err := escalationOutcomeAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(outcome), nil
-}
-
 // dex:group group-id:blocked group-label:"Blocked task"
 // dex:explanation text:"Record the blocked task's tags and assign the manager to it."
 type chooseManagerAssignment struct {
@@ -682,32 +626,6 @@ func (prepareEscalationComment) Execute(ctx dex.Context, _ clickup.UpdateTaskRes
 	return dex.GoTo(sdkgo.StepRef[EscalationComment](commentOnBlockedTaskStepType), EscalationComment{
 		TaskID: state.Input.TaskID, Text: EscalationCommentText(state.ManagerName, state.EscalationTaskURL),
 	}), nil
-}
-
-// dex:group group-id:outcome group-label:"Outcome"
-// dex:explanation text:"Record an unconfirmed comment for a person to check and complete."
-type recordCommentNeedsReview struct {
-	dex.StepDefaultsNoWaitFor[clickup.AddCommentResult]
-}
-
-func (recordCommentNeedsReview) GetStepType() string { return recordCommentNeedsReviewStepType }
-
-func (recordCommentNeedsReview) Execute(ctx dex.Context, result clickup.AddCommentResult) (*dex.StepDecision, error) {
-	state, err := escalationStateAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	outcome := EscalationOutcome{
-		Action: OutcomeNeedsReview, Reason: "commentUncertain", TaskID: state.Input.TaskID, EscalationTaskID: state.EscalationTaskID,
-		EscalationTaskURL: state.EscalationTaskURL, ManagerID: state.ManagerID, Tags: state.BlockedTaskTags,
-	}
-	if result.Failure != nil {
-		outcome.ReviewDetail = result.Failure.Message
-	}
-	if err := escalationOutcomeAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(outcome), nil
 }
 
 // dex:group group-id:outcome group-label:"Outcome"

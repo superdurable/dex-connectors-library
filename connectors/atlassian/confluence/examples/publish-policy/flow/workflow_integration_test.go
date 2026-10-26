@@ -147,15 +147,18 @@ func TestRateLimitedCreateIsRetriedAfterRetryAfterWithRealDex(t *testing.T) {
 	require.Equal(t, 1, provider.pageCount(title))
 }
 
-func TestRejectedCreateCompletesAsRejectedWithRealDex(t *testing.T) {
+func TestRejectedCreateFailsWithoutResendingWithRealDex(t *testing.T) {
 	provider, flow, harness := newConfluenceIntegrationHarness(t, integrationCloudID, shortRequestTimeout)
 	ctx := integrationContext(t)
 
 	title := markerReject + " Badge policy"
-	publication := runPublicationFlow(t, ctx, harness, flow, "rejected", publicationInput(title))
-	require.Equal(t, PhaseRejected, publication.Phase)
-	require.Equal(t, sdkgo.FailureValidation, publication.RejectionKind)
-	require.Empty(t, publication.PageID)
+	flowID := startPublicationFlow(t, ctx, harness, flow, "rejected", publicationInput(title))
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "providerRejected")
+	require.Contains(t, result.ErrorMessage, "no target")
+	require.Equal(t, 1, provider.createCount(title), "a conclusive rejection is not resent")
 	require.Zero(t, provider.pageCount(title))
 }
 
@@ -199,7 +202,6 @@ func TestCommentTimeoutIsConfirmedByReadBackWithoutAResendWithRealDex(t *testing
 	input.PublicationComment = markerCommentTimeout + " Published for review."
 	publication := runPublicationFlow(t, ctx, harness, flow, "comment-timeout", input)
 	require.Equal(t, PhasePublished, publication.Phase)
-	require.False(t, publication.IsCommentOutcomeUnknown)
 	require.NotEmpty(t, publication.CommentID, "the next attempt found the stored comment")
 	require.Equal(t, 1, provider.commentCount(publication.PageID), "an unconfirmed comment is never re-sent")
 }

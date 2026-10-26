@@ -7,9 +7,9 @@ signature request:
 1. `RecordSigningRequest` validates the request and stores it in the
    `docusign-signing-state` Attribute.
 2. `SendEnvelope` runs `createEnvelopeFromTemplate`, tagging the envelope with
-   the custom field `dexSigningRequestId`. `providerRejected`, `uncertain`,
-   and `defect` go to `RecordSendFailure`, which fails the Flow; an uncertain
-   create is never repeated automatically.
+   the custom field `dexSigningRequestId`. Unwired `providerRejected`,
+   `uncertain`, and `defect` branches fail the Flow; an uncertain create is
+   never repeated automatically.
 3. `RecordEnvelopeSent` stores the envelope ID and the signing deadline.
 4. `AwaitEnvelopeOutcome` waits for the first of a Connect event on the
    `docusign-envelope-events` Channel or the next status poll time. The
@@ -28,10 +28,13 @@ signature request:
    `RecordVoidRefusal` downloads an envelope that completed just as the
    deadline passed and closes one that was declined.
 
+A failed status poll ends the Flow, and Dex Web shows the connector's safe
+failure reason. Document-download failure branches also fail the Flow.
+
 Every Step that changes the state locks the Attribute, so a Connect event
 cannot interleave with a transition; an event that meets the held lock is
-retried by the Trigger delivery until the Step commits. The Flow output and `GetSigningState`
-return the same record.
+retried by the Trigger delivery until the Step commits. The Flow output and
+`GetSigningState` return the same record.
 
 ## 1. Generate the Flow Definition
 
@@ -48,10 +51,11 @@ dexcli visualize ./examples/envelope-signing/flow/workflow.go \
   --out ./build/envelope-signing
 ```
 
-The command must report `valid: true` with 14 Steps, the wait on the
-`docusign-envelope-events` Channel and its Timer, every connector branch
-routed, and the `envelope-outcomes` binding. Inside this repository it also
-warns `connector_release_required` and `connector_trigger_release_required`,
+The command must report `valid: true` with 12 Steps, the wait on the
+`docusign-envelope-events` Channel and its Timer, happy-path connector branches
+and the deadline race reaction routed, and the `envelope-outcomes` binding.
+Inside this repository it also warns `connector_release_required` and
+`connector_trigger_release_required`,
 because a local module is not a published release.
 
 ## 2. Start Dex with this connector's release metadata

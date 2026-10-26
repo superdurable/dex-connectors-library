@@ -30,14 +30,12 @@ const (
 	evaluateOpenRequestCardsStepType  = "EvaluateOpenRequestCards"
 	createRequestCardStepType         = "CreateRequestCard"
 	recordCreatedCardStepType         = "RecordCreatedCard"
-	recordRejectedCardStepType        = "RecordRejectedCard"
 	recordUncertainCardStepType       = "RecordUncertainCard"
 	readReportedCardStepType          = "ReadReportedCard"
 	verifyReportedCardStepType        = "VerifyReportedCard"
 	recordMissingReportedCardStepType = "RecordMissingReportedCard"
 	moveRequestCardStepType           = "MoveRequestCard"
 	recordMovedCardStepType           = "RecordMovedCard"
-	recordRejectedMoveStepType        = "RecordRejectedMove"
 	commentOnRequestCardStepType      = "CommentOnRequestCard"
 	recordApprovalCommentStepType     = "RecordApprovalComment"
 
@@ -60,10 +58,6 @@ const (
 	PhaseCommenting = "commenting"
 	// PhaseReady means the card is in the approved list and carries the approval comment.
 	PhaseReady = "ready"
-	// PhaseRejected means Trello conclusively rejected the create and nothing was created.
-	PhaseRejected = "rejected"
-	// PhaseMoveRejected means the card exists but Trello rejected the move, due date, or labels.
-	PhaseMoveRejected = "moveRejected"
 	// PhaseNeedsReconciliation means the create outcome is unknown and an operator must confirm or retry.
 	PhaseNeedsReconciliation = "needsReconciliation"
 	// PhaseVerifyingReportedCard means the Flow is reading the card an operator reported.
@@ -210,8 +204,6 @@ type RequestCard struct {
 	Card *trello.Card `json:"card,omitempty"`
 	// CommentID is the approval comment's action ID once Trello confirmed it.
 	CommentID string `json:"commentId,omitempty"`
-	// IsCommentOutcomeUnknown reports a comment Trello may or may not have stored; it is never re-sent.
-	IsCommentOutcomeUnknown bool `json:"isCommentOutcomeUnknown,omitempty"`
 	// UncertainCreate describes the latest uncertain create while reconciliation is pending.
 	UncertainCreate *UncertainCreate `json:"uncertainCreate,omitempty"`
 	// ReconciliationNote explains why a reported card ID was not adopted.
@@ -267,12 +259,11 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Create the card in the approved list once; an unknown outcome is reconciled, never created again automatically.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToCreateCardInput,
-			Created:          sdkgo.GoTo(recordCreatedCard{}),
-			ProviderRejected: sdkgo.GoTo(recordRejectedCard{}),
-			Uncertain:        sdkgo.GoTo(recordUncertainCard{}),
+			Created: sdkgo.GoTo(recordCreatedCard{}),
+			// An ambiguous create requires operator reconciliation before another card can be created.
+			Uncertain: sdkgo.GoTo(recordUncertainCard{}),
 		})),
 		dex.DefineStep(recordCreatedCard{}),
-		dex.DefineStep(recordRejectedCard{}),
 		dex.DefineStep(recordUncertainCard{}),
 		dex.DefineStep(trello.NewGetCardStep(trello.GetCardStepConfig[CardReference]{
 			StepType: readReportedCardStepType, ConnectionName: ConnectionName,
@@ -281,7 +272,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Read the card an operator reported to confirm its board and request ID.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToGetCardInput,
-			Found:    sdkgo.GoTo(verifyReportedCard{}),
+			Found: sdkgo.GoTo(verifyReportedCard{}),
+			// A missing reported ID lets the operator try another ID.
 			NotFound: sdkgo.GoTo(recordMissingReportedCard{}),
 		})),
 		dex.DefineStep(verifyReportedCard{}),
@@ -293,20 +285,17 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Reopen the card, move it to the approved list, set its due date, and add the request labels; a repeated update leaves the same card.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToUpdateCardInput,
-			Updated:          sdkgo.GoTo(recordMovedCard{}),
-			ProviderRejected: sdkgo.GoTo(recordRejectedMove{}),
+			Updated: sdkgo.GoTo(recordMovedCard{}),
 		})),
 		dex.DefineStep(recordMovedCard{}),
-		dex.DefineStep(recordRejectedMove{}),
 		dex.DefineStep(trello.NewAddCommentStep(trello.AddCommentStepConfig[CommentRequest]{
 			StepType: commentOnRequestCardStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
 				GroupID: "trello", GroupLabel: "Trello",
-				Explanation: "Add the approval comment once; an unknown outcome is recorded, never re-sent.",
+				Explanation: "Add the approval comment once; an unknown outcome fails the Flow without resending.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToAddCommentInput,
-			Added:     sdkgo.GoTo(recordApprovalComment{}),
-			Uncertain: sdkgo.GoTo(recordApprovalComment{}),
+			Added: sdkgo.GoTo(recordApprovalComment{}),
 		})),
 		dex.DefineStep(recordApprovalComment{}),
 	}
@@ -645,33 +634,6 @@ func (recordCreatedCard) Execute(ctx dex.Context, result trello.CreateCardResult
 	return dex.GoTo(sdkgo.StepRef[CommentRequest](commentOnRequestCardStepType), CommentRequest{CardID: record.CardID, Text: record.Request.Comment}), nil
 }
 
-// dex:group group-id:request group-label:"Request"
-// dex:explanation text:"Complete as rejected after Trello conclusively refused the create."
-type recordRejectedCard struct {
-	dex.StepDefaultsNoWaitFor[trello.CreateCardResult]
-}
-
-func (recordRejectedCard) GetStepType() string { return recordRejectedCardStepType }
-
-func (recordRejectedCard) GetStepOptions() *dex.StepOptions {
-	return &dex.StepOptions{ExecuteLockAttributes: []dex.AttributeLock{dex.LockAttribute(requestCardPhaseAttribute), dex.LockAttribute(requestCardAttribute)}}
-}
-
-func (recordRejectedCard) Execute(ctx dex.Context, _ trello.CreateCardResult) (*dex.StepDecision, error) {
-	record, err := requestCardAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	record.Phase = PhaseRejected
-	if err := requestCardPhaseAttribute.Set(ctx, record.Phase); err != nil {
-		return nil, err
-	}
-	if err := requestCardAttribute.Set(ctx, record); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(record), nil
-}
-
 // dex:group group-id:reconciliation group-label:"Reconciliation"
 // dex:explanation text:"Park an unknown create for an operator instead of creating the card again."
 type recordUncertainCard struct {
@@ -796,34 +758,7 @@ func (recordMovedCard) Execute(ctx dex.Context, result trello.UpdateCardResult) 
 }
 
 // dex:group group-id:request group-label:"Request"
-// dex:explanation text:"Complete with the existing card when Trello rejected its move, due date, or labels."
-type recordRejectedMove struct {
-	dex.StepDefaultsNoWaitFor[trello.UpdateCardResult]
-}
-
-func (recordRejectedMove) GetStepType() string { return recordRejectedMoveStepType }
-
-func (recordRejectedMove) GetStepOptions() *dex.StepOptions {
-	return &dex.StepOptions{ExecuteLockAttributes: []dex.AttributeLock{dex.LockAttribute(requestCardPhaseAttribute), dex.LockAttribute(requestCardAttribute)}}
-}
-
-func (recordRejectedMove) Execute(ctx dex.Context, _ trello.UpdateCardResult) (*dex.StepDecision, error) {
-	record, err := requestCardAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	record.Phase = PhaseMoveRejected
-	if err := requestCardPhaseAttribute.Set(ctx, record.Phase); err != nil {
-		return nil, err
-	}
-	if err := requestCardAttribute.Set(ctx, record); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(record), nil
-}
-
-// dex:group group-id:request group-label:"Request"
-// dex:explanation text:"Record the approval comment ID, or that its outcome is unknown, and complete without re-sending."
+// dex:explanation text:"Record the approval comment ID and complete the request."
 type recordApprovalComment struct {
 	dex.StepDefaultsNoWaitFor[trello.AddCommentResult]
 }
@@ -841,7 +776,6 @@ func (recordApprovalComment) Execute(ctx dex.Context, result trello.AddCommentRe
 	}
 	record.Phase = PhaseReady
 	record.CommentID = result.Value.CommentID
-	record.IsCommentOutcomeUnknown = result.Branch == trello.AddCommentBranchUncertain
 	if err := requestCardPhaseAttribute.Set(ctx, record.Phase); err != nil {
 		return nil, err
 	}

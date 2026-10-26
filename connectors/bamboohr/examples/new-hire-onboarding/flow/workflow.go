@@ -31,14 +31,12 @@ const (
 	recordNewHireStepType             = "RecordNewHire"
 	findNewHireStepType               = "FindNewHire"
 	adoptExistingEmployeeStepType     = "AdoptExistingEmployee"
-	recordAmbiguousHireStepType       = "RecordAmbiguousHire"
 	prepareNewHireRecordStepType      = "PrepareNewHireRecord"
 	addNewHireStepType                = "AddNewHire"
 	adoptAddedEmployeeStepType        = "AdoptAddedEmployee"
 	recordUncertainHireStepType       = "RecordUncertainHire"
 	reconcileUncertainHireStepType    = "ReconcileUncertainHire"
 	adoptReconciledEmployeeStepType   = "AdoptReconciledEmployee"
-	recordUnreconciledHireStepType    = "RecordUnreconciledHire"
 	readNewHireRecordStepType         = "ReadNewHireRecord"
 	checkOnboardingReadinessStepType  = "CheckOnboardingReadiness"
 	listStartWindowTimeOffStepType    = "ListStartWindowTimeOff"
@@ -52,7 +50,6 @@ const (
 	maxListedTimeOff = 5
 	timeOffPageSize  = 50
 
-	reviewReasonAmbiguousHire      = "ambiguousHire"
 	reviewReasonAdditionUncertain  = "additionUncertain"
 	reviewReasonHandoffUnavailable = "handoffFieldUnavailable"
 	reviewReasonHandoffUnconfirmed = "handoffUnconfirmed"
@@ -174,11 +171,11 @@ type OnboardingOutcome struct {
 	HandoffValue string `json:"handoffValue,omitempty"`
 	// WasAlreadyApplied reports that a repeated update found the hand-off already stored.
 	WasAlreadyApplied bool `json:"wasAlreadyApplied,omitempty"`
-	// NeedsReview reports that a person must check BambooHR; the Flow never adds the hire twice.
+	// NeedsReview reports that a hand-off field needs a person to check BambooHR.
 	NeedsReview bool `json:"needsReview,omitempty"`
-	// ReviewReason is ambiguousHire, additionUncertain, handoffFieldUnavailable, or handoffUnconfirmed.
+	// ReviewReason names the hand-off review reason after completion.
 	ReviewReason string `json:"reviewReason,omitempty"`
-	// ReviewDetail is the connector's credential-free explanation or the candidate employee IDs;
+	// ReviewDetail is the connector's credential-free explanation;
 	// after a reconciled add it keeps why the add's outcome was unknown.
 	ReviewDetail string `json:"reviewDetail,omitempty"`
 }
@@ -208,12 +205,11 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Find the hire by personal email before adding anyone, so a re-run never adds a second record.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToFindEmployeeByEmailInput,
-			Found:     sdkgo.GoTo(adoptExistingEmployee{}),
-			NotFound:  sdkgo.GoTo(prepareNewHireRecord{}),
-			Ambiguous: sdkgo.GoTo(recordAmbiguousHire{}),
+			Found: sdkgo.GoTo(adoptExistingEmployee{}),
+			// No existing hire permits creation.
+			NotFound: sdkgo.GoTo(prepareNewHireRecord{}),
 		})),
 		dex.DefineStep(adoptExistingEmployee{}),
-		dex.DefineStep(recordAmbiguousHire{}),
 		dex.DefineStep(prepareNewHireRecord{}),
 		dex.DefineStep(bamboohr.NewAddEmployeeStep(bamboohr.AddEmployeeStepConfig[NewHire]{
 			StepType: addNewHireStepType, ConnectionName: ConnectionName,
@@ -222,7 +218,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Add the hire with name, personal email, and hire date, sending the request at most once.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToAddEmployeeInput,
-			Created:   sdkgo.GoTo(adoptAddedEmployee{}),
+			Created: sdkgo.GoTo(adoptAddedEmployee{}),
+			// An ambiguous add requires read-back before another hire can be created.
 			Uncertain: sdkgo.GoTo(recordUncertainHire{}),
 		})),
 		dex.DefineStep(adoptAddedEmployee{}),
@@ -234,12 +231,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Look for the hire an unconfirmed add may have created instead of adding again.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToFindEmployeeByEmailInput,
-			Found:     sdkgo.GoTo(adoptReconciledEmployee{}),
-			NotFound:  sdkgo.GoTo(recordUnreconciledHire{}),
-			Ambiguous: sdkgo.GoTo(recordUnreconciledHire{}),
+			Found: sdkgo.GoTo(adoptReconciledEmployee{}),
 		})),
 		dex.DefineStep(adoptReconciledEmployee{}),
-		dex.DefineStep(recordUnreconciledHire{}),
 		dex.DefineStep(bamboohr.NewGetEmployeeStep(bamboohr.GetEmployeeStepConfig[EmployeeRecordRequest]{
 			StepType: readNewHireRecordStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
@@ -453,14 +447,6 @@ func failureMessage(failure *sdkgo.Failure) string {
 	return failure.Message
 }
 
-func matchedEmployeeIDs(result bamboohr.FindEmployeeByEmailResult) string {
-	var employeeIDs []string
-	for _, match := range result.Value.Matches {
-		employeeIDs = append(employeeIDs, match.EmployeeID)
-	}
-	return fmt.Sprintf("%d employees contain this personal email; exact matches: [%s]", result.Value.CandidateCount, strings.Join(employeeIDs, ", "))
-}
-
 // dex:group group-id:hire group-label:"New hire"
 // dex:explanation text:"Validate the new hire and record it before calling BambooHR."
 type recordNewHire struct {
@@ -504,24 +490,6 @@ func (adoptExistingEmployee) Execute(ctx dex.Context, result bamboohr.FindEmploy
 	}
 	return dex.GoTo(sdkgo.StepRef[EmployeeRecordRequest](readNewHireRecordStepType),
 		EmployeeRecordRequest{EmployeeID: employeeID, HandoffFieldName: hire.HandoffFieldName}), nil
-}
-
-// dex:group group-id:review group-label:"Needs review"
-// dex:explanation text:"Several employees share this personal email; complete for a person to pick one instead of guessing."
-type recordAmbiguousHire struct {
-	dex.StepDefaultsNoWaitFor[bamboohr.FindEmployeeByEmailResult]
-}
-
-func (recordAmbiguousHire) GetStepType() string { return recordAmbiguousHireStepType }
-
-func (recordAmbiguousHire) Execute(ctx dex.Context, result bamboohr.FindEmployeeByEmailResult) (*dex.StepDecision, error) {
-	outcome := OnboardingOutcome{
-		Action: OnboardingNeedsReview, NeedsReview: true, ReviewReason: reviewReasonAmbiguousHire, ReviewDetail: matchedEmployeeIDs(result),
-	}
-	if err := onboardingOutcomeAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(outcome), nil
 }
 
 // dex:group group-id:hire group-label:"New hire"
@@ -606,26 +574,6 @@ func (adoptReconciledEmployee) Execute(ctx dex.Context, result bamboohr.FindEmpl
 	}
 	return dex.GoTo(sdkgo.StepRef[EmployeeRecordRequest](readNewHireRecordStepType),
 		EmployeeRecordRequest{EmployeeID: employeeID, HandoffFieldName: hire.HandoffFieldName}), nil
-}
-
-// dex:group group-id:review group-label:"Needs review"
-// dex:explanation text:"The unconfirmed add cannot be matched to one employee; complete for a person to check BambooHR instead of adding again."
-type recordUnreconciledHire struct {
-	dex.StepDefaultsNoWaitFor[bamboohr.FindEmployeeByEmailResult]
-}
-
-func (recordUnreconciledHire) GetStepType() string { return recordUnreconciledHireStepType }
-
-func (recordUnreconciledHire) Execute(ctx dex.Context, _ bamboohr.FindEmployeeByEmailResult) (*dex.StepDecision, error) {
-	outcome, err := onboardingOutcomeAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	outcome.Action, outcome.NeedsReview = OnboardingNeedsReview, true
-	if err := onboardingOutcomeAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(outcome), nil
 }
 
 // dex:group group-id:readiness group-label:"Provisioning readiness"

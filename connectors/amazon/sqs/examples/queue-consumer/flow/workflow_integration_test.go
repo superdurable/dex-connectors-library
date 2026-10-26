@@ -79,6 +79,37 @@ func TestQueueConsumerCompletesWithNoMessageWhenTheQueueIsEmptyWithRealDex(t *te
 	require.Nil(t, result.outcome.Message)
 }
 
+func TestQueueConsumerInvalidReceiptCompletesWithoutConfirmationWithRealDex(t *testing.T) {
+	for _, scenario := range []struct {
+		name           string
+		body           string
+		action         string
+		expectedStatus Status
+	}{
+		{name: "delete", body: `{"orderId":"1042","event":"paid"}`, action: "DeleteMessage", expectedStatus: StatusProcessed},
+		{name: "release", body: "not an order event", action: "ChangeMessageVisibility", expectedStatus: StatusRejected},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			queues := newIntegrationQueues(t)
+			queues.Intercept(func(request sqsfake.Request) *sqsfake.Response {
+				if request.Action == scenario.action {
+					return &sqsfake.Response{StatusCode: http.StatusBadRequest, Code: "MessageNotInflight"}
+				}
+				return nil
+			})
+			queues.Send(integrationQueue, sqsfake.SentMessage{Body: scenario.body})
+			flow, harness := newQueueConsumerHarness(t, newFakeQueueClient(t, queues, 1))
+
+			result := runQueueConsumer(t, integrationContext(t), harness.client, flow, "invalid-"+scenario.name+"-"+uniqueSuffix(), Input{})
+
+			require.Equal(t, dex.FlowCompleted, result.status)
+			require.Equal(t, scenario.expectedStatus, result.outcome.Status)
+			require.False(t, result.outcome.IsAcknowledgementConfirmed)
+			require.Equal(t, 1, queues.RequestCount(scenario.action))
+		})
+	}
+}
+
 // TestQueueConsumerLongPollPastTheAsyncPhaseReceivesOnceWithRealDex: sync durability keeps one receive in flight.
 func TestQueueConsumerLongPollPastTheAsyncPhaseReceivesOnceWithRealDex(t *testing.T) {
 	queues := newIntegrationQueues(t)

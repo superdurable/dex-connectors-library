@@ -30,11 +30,9 @@ const (
 	publishPolicyPageStepType        = "PublishPolicyPage"
 	recordPublishedPageStepType      = "RecordPublishedPage"
 	recordExistingPageStepType       = "RecordExistingPage"
-	recordRejectedCreateStepType     = "RecordRejectedCreate"
 	updatePolicyPageStepType         = "UpdatePolicyPage"
 	recordUpdatedPageStepType        = "RecordUpdatedPage"
 	recordEditConflictStepType       = "RecordEditConflict"
-	recordRejectedUpdateStepType     = "RecordRejectedUpdate"
 	readBackPolicyPageStepType       = "ReadBackPolicyPage"
 	verifyPublishedPolicyStepType    = "VerifyPublishedPolicy"
 	addPublicationCommentStepType    = "AddPublicationComment"
@@ -60,8 +58,6 @@ const (
 	PhaseCommenting = "commenting"
 	// PhasePublished means the page is published at the recorded version.
 	PhasePublished = "published"
-	// PhaseRejected means Confluence conclusively refused the publication and nothing was changed.
-	PhaseRejected = "rejected"
 )
 
 var (
@@ -177,10 +173,6 @@ type PolicyPublication struct {
 	IsPublishedTextTruncated bool `json:"isPublishedTextTruncated,omitempty"`
 	// CommentID is the publication comment's ID once Confluence confirmed it.
 	CommentID string `json:"commentId,omitempty"`
-	// IsCommentOutcomeUnknown reports a comment Confluence may or may not have stored; it is never re-sent.
-	IsCommentOutcomeUnknown bool `json:"isCommentOutcomeUnknown,omitempty"`
-	// RejectionKind is the safe failure category when Confluence refused the publication.
-	RejectionKind sdkgo.FailureKind `json:"rejectionKind,omitempty"`
 }
 
 // Flow publishes one Confluence policy page.
@@ -238,14 +230,12 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				},
 			}}},
 			Connection: flow.connection, MapToOperationInput: MapToCreatePageInput,
-			Created:          sdkgo.GoTo(recordPublishedPage{}),
-			TitleConflict:    sdkgo.GoTo(recordExistingPage{}),
-			NotFound:         sdkgo.GoTo(recordRejectedCreate{}),
-			ProviderRejected: sdkgo.GoTo(recordRejectedCreate{}),
+			Created: sdkgo.GoTo(recordPublishedPage{}),
+			// An existing page must be updated instead of creating a duplicate policy.
+			TitleConflict: sdkgo.GoTo(recordExistingPage{}),
 		})),
 		dex.DefineStep(recordPublishedPage{}),
 		dex.DefineStep(recordExistingPage{}),
-		dex.DefineStep(recordRejectedCreate{}),
 		dex.DefineStep(confluence.NewUpdatePageStep(confluence.UpdatePageStepConfig[PageUpdateRequest]{
 			StepType: updatePolicyPageStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
@@ -253,14 +243,12 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Replace the page body as its next version; another editor's newer version is never overwritten.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToUpdatePageInput,
-			Updated:          sdkgo.GoTo(recordUpdatedPage{}),
-			VersionConflict:  sdkgo.GoTo(recordEditConflict{}),
-			NotFound:         sdkgo.GoTo(recordRejectedUpdate{}),
-			ProviderRejected: sdkgo.GoTo(recordRejectedUpdate{}),
+			Updated: sdkgo.GoTo(recordUpdatedPage{}),
+			// A concurrent edit requires operator review before overwriting its version.
+			VersionConflict: sdkgo.GoTo(recordEditConflict{}),
 		})),
 		dex.DefineStep(recordUpdatedPage{}),
 		dex.DefineStep(recordEditConflict{}),
-		dex.DefineStep(recordRejectedUpdate{}),
 		dex.DefineStep(confluence.NewGetPageStep(confluence.GetPageStepConfig[PageReference]{
 			StepType: readBackPolicyPageStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
@@ -275,11 +263,10 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			StepType: addPublicationCommentStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
 				GroupID: "confluence", GroupLabel: "Confluence",
-				Explanation: "Add the publication comment once; an unknown outcome is recorded, never re-sent.",
+				Explanation: "Add the publication comment once; an unknown outcome fails the Flow without resending.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToAddCommentInput,
-			Added:     sdkgo.GoTo(completePublication{}),
-			Uncertain: sdkgo.GoTo(completePublication{}),
+			Added: sdkgo.GoTo(completePublication{}),
 		})),
 		dex.DefineStep(completePublication{}),
 	}
@@ -569,36 +556,6 @@ func (recordExistingPage) Execute(ctx dex.Context, result confluence.CreatePageR
 }
 
 // dex:group group-id:publication group-label:"Publication"
-// dex:explanation text:"Complete as rejected when Confluence refused the page or cannot find the space."
-type recordRejectedCreate struct {
-	dex.StepDefaultsNoWaitFor[confluence.CreatePageResult]
-}
-
-func (recordRejectedCreate) GetStepType() string { return recordRejectedCreateStepType }
-
-func (recordRejectedCreate) GetStepOptions() *dex.StepOptions {
-	return &dex.StepOptions{ExecuteLockAttributes: []dex.AttributeLock{dex.LockAttribute(publicationPhaseAttribute), dex.LockAttribute(publicationAttribute)}}
-}
-
-func (recordRejectedCreate) Execute(ctx dex.Context, result confluence.CreatePageResult) (*dex.StepDecision, error) {
-	publication, err := publicationAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	publication.Phase = PhaseRejected
-	if result.Failure != nil {
-		publication.RejectionKind = result.Failure.Kind
-	}
-	if err := publicationPhaseAttribute.Set(ctx, publication.Phase); err != nil {
-		return nil, err
-	}
-	if err := publicationAttribute.Set(ctx, publication); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(publication), nil
-}
-
-// dex:group group-id:publication group-label:"Publication"
 // dex:explanation text:"Record the updated version and read the page back."
 type recordUpdatedPage struct {
 	dex.StepDefaultsNoWaitFor[confluence.UpdatePageResult]
@@ -657,36 +614,6 @@ func (recordEditConflict) Execute(ctx dex.Context, result confluence.UpdatePageR
 }
 
 // dex:group group-id:publication group-label:"Publication"
-// dex:explanation text:"Complete as rejected when Confluence refused the update or the page is gone."
-type recordRejectedUpdate struct {
-	dex.StepDefaultsNoWaitFor[confluence.UpdatePageResult]
-}
-
-func (recordRejectedUpdate) GetStepType() string { return recordRejectedUpdateStepType }
-
-func (recordRejectedUpdate) GetStepOptions() *dex.StepOptions {
-	return &dex.StepOptions{ExecuteLockAttributes: []dex.AttributeLock{dex.LockAttribute(publicationPhaseAttribute), dex.LockAttribute(publicationAttribute)}}
-}
-
-func (recordRejectedUpdate) Execute(ctx dex.Context, result confluence.UpdatePageResult) (*dex.StepDecision, error) {
-	publication, err := publicationAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	publication.Phase = PhaseRejected
-	if result.Failure != nil {
-		publication.RejectionKind = result.Failure.Kind
-	}
-	if err := publicationPhaseAttribute.Set(ctx, publication.Phase); err != nil {
-		return nil, err
-	}
-	if err := publicationAttribute.Set(ctx, publication); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(publication), nil
-}
-
-// dex:group group-id:publication group-label:"Publication"
 // dex:explanation text:"Check the read-back version and title, then add the comment or complete."
 type verifyPublishedPolicy struct {
 	dex.StepDefaultsNoWaitFor[confluence.GetPageResult]
@@ -730,7 +657,7 @@ func (verifyPublishedPolicy) Execute(ctx dex.Context, result confluence.GetPageR
 }
 
 // dex:group group-id:publication group-label:"Publication"
-// dex:explanation text:"Record the comment ID, or that its outcome is unknown, and complete without re-sending."
+// dex:explanation text:"Record the comment ID and complete the publication."
 type completePublication struct {
 	dex.StepDefaultsNoWaitFor[confluence.AddCommentResult]
 }
@@ -747,7 +674,6 @@ func (completePublication) Execute(ctx dex.Context, result confluence.AddComment
 		return nil, err
 	}
 	publication.CommentID = result.Value.CommentID
-	publication.IsCommentOutcomeUnknown = result.Branch == confluence.AddCommentBranchUncertain
 	publication.Phase = PhasePublished
 	if err := publicationPhaseAttribute.Set(ctx, publication.Phase); err != nil {
 		return nil, err

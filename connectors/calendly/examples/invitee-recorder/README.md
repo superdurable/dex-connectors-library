@@ -16,10 +16,8 @@ This example receives signed Calendly webhooks and starts one
 5. `ReadScheduledEvent` calls `getScheduledEvent` with the invitee's scheduled
    event URI;
 6. `RecordScheduledEvent` stores the `found` event in the
-   `calendly-scheduled-event` Attribute and completes the Flow, and
-   `RecordReadFailure` stores a `notFound`, `providerRejected`,
-   `invalidResponse`, or `defect` outcome with its safe message and fails the
-   Flow.
+   `calendly-scheduled-event` Attribute and completes the Flow. Unwired optional
+   branches fail the Flow with the connector's safe failure reason.
 
 ## 1. Generate the Flow Definition
 
@@ -36,8 +34,8 @@ dexcli visualize ./examples/invitee-recorder/flow/workflow.go \
   --out ./build/invitee-recorder
 ```
 
-The command must report `valid: true` with the four Steps, all five
-`getScheduledEvent` branches routed, and the `invitee-created` binding with its
+The command must report `valid: true` with the three Steps, only the `found`
+`getScheduledEvent` branch routed, and the `invitee-created` binding with its
 `eventTypePicker` unit. Inside this repository it also warns
 `connector_release_required` and `connector_trigger_release_required`, because
 a local module is not a published release.

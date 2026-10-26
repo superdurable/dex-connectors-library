@@ -105,8 +105,8 @@ type Outcome struct {
 	OrderEvent *OrderEvent `json:"orderEvent,omitempty"`
 	// RejectionReason explains why the message was not a valid order event.
 	RejectionReason string `json:"rejectionReason,omitempty"`
-	// IsAcknowledgementConfirmed reports that SQS accepted the deletion or release. False means the receipt
-	// handle had expired, so SQS may deliver the message again and processing must tolerate the repeat.
+	// IsAcknowledgementConfirmed reports that SQS accepted the deletion or release. On a processed or
+	// rejected outcome, false means the handle was invalid and the message may be delivered again.
 	IsAcknowledgementConfirmed bool `json:"isAcknowledgementConfirmed"`
 }
 
@@ -136,7 +136,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			},
 			Connection: flow.connection, MapToOperationInput: MapToReceiveMessagesInput,
 			Received: sdkgo.GoTo(inspectOrderEvent{}),
-			Empty:    sdkgo.GoTo(inspectOrderEvent{}),
+			// An empty queue is routine; this poll completes without processing a message.
+			Empty: sdkgo.GoTo(inspectOrderEvent{}),
 		})),
 		dex.DefineStep(inspectOrderEvent{}),
 		dex.DefineStep(sqs.NewDeleteMessageStep(sqs.DeleteMessageStepConfig[MessageReceipt]{
@@ -146,7 +147,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Acknowledge the processed order event by deleting it, so SQS never delivers it again.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToDeleteMessageInput,
-			Deleted:              sdkgo.GoTo(recordAcknowledgedOrderEvent{}),
+			Deleted: sdkgo.GoTo(recordAcknowledgedOrderEvent{}),
+			// A repeat may find the message already deleted; keep processing idempotent.
 			ReceiptHandleInvalid: sdkgo.GoTo(recordAcknowledgedOrderEvent{}),
 		})),
 		dex.DefineStep(recordAcknowledgedOrderEvent{}),
@@ -157,7 +159,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Release the invalid message to the queue at once, so its redrive policy can move it to a dead-letter queue.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToReleaseMessageInput,
-			Changed:              sdkgo.GoTo(recordReleasedOrderEvent{}),
+			Changed: sdkgo.GoTo(recordReleasedOrderEvent{}),
+			// A repeat may find the message already released; keep processing idempotent.
 			ReceiptHandleInvalid: sdkgo.GoTo(recordReleasedOrderEvent{}),
 		})),
 		dex.DefineStep(recordReleasedOrderEvent{}),

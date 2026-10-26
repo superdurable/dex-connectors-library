@@ -63,7 +63,6 @@ func TestNewIssueOpensOneTicketAndAddsOnePrivateNoteWithRealDex(t *testing.T) {
 
 	outcome := harness.runTriage(t, "new-issue", integrationIssueInput())
 	require.Equal(t, TriageTicketOpened, outcome.Action)
-	require.False(t, outcome.NeedsReview)
 	require.Equal(t, freshdesk.TicketPriorityHigh, outcome.Ticket.Priority)
 	require.Equal(t, freshdesk.TicketStatusOpen, outcome.Ticket.Status)
 	require.Equal(t, 1, provider.ticketCount())
@@ -203,16 +202,16 @@ func TestLostUpdateResponseIsRetriedAndWritesNothingTwiceWithRealDex(t *testing.
 	require.Len(t, provider.ticket(existing).conversations, 1)
 }
 
-func TestLostCreateResponseSelectsUncertainAndIsNeverResentWithRealDex(t *testing.T) {
+func TestLostCreateResponseFailsWithoutResendingWithRealDex(t *testing.T) {
 	provider := newFakeFreshdesk(t)
 	provider.losesFirstCreateResponse = true
 	harness := newTriageHarness(t, provider, defaultRequestTimeout)
 
-	outcome := harness.runTriage(t, "lost-create", integrationIssueInput())
-	require.Equal(t, TriageTicketCreationUncertain, outcome.Action)
-	require.True(t, outcome.NeedsReview)
-	require.Equal(t, "createTicket", outcome.ReviewReason)
-	require.Equal(t, "Freshdesk request failed before a response arrived", outcome.ReviewDetail)
+	flowID := harness.startTriage(t, "lost-create", integrationIssueInput())
+	result := harness.waitForFlow(t, flowID)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "uncertain")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.Equal(t, 1, provider.count("create"), "an unconfirmed create is never resent")
 	require.Equal(t, 1, provider.ticketCount(), "Freshdesk did create the ticket, which a person must now find")
 	require.Zero(t, provider.count("note"))
@@ -225,7 +224,6 @@ func TestRateLimitedCreateWaitsAndCreatesOneTicketWithRealDex(t *testing.T) {
 
 	outcome := harness.runTriage(t, "rate-limited", integrationIssueInput())
 	require.Equal(t, TriageTicketOpened, outcome.Action, "a 429 clears the dispatch marker, so the retry may send")
-	require.False(t, outcome.NeedsReview)
 	times := provider.requestTimes("create")
 	require.Len(t, times, 2)
 	require.GreaterOrEqual(t, times[1].Sub(times[0]), time.Second, "the retry waited for Retry-After")
@@ -245,29 +243,25 @@ func TestLostWorkerDuringCreateSelectsUncertainWithoutResendingWithRealDex(t *te
 
 	result := harness.waitForFlow(t, flowID)
 	close(provider.holdsFirstCreate)
-	require.Equal(t, dex.FlowCompleted, result.Status, "Flow %s: %s", flowID, result.ErrorMessage)
-	var outcome TriageOutcome
-	require.NoError(t, result.DecodeSingleOutput(&outcome))
-	require.Equal(t, TriageTicketCreationUncertain, outcome.Action)
-	require.True(t, outcome.NeedsReview)
-	require.Equal(t, "an earlier attempt of this Step may have sent the request, so it is not sent again", outcome.ReviewDetail,
-		"the new Worker's attempt found the dispatch marker the lost attempt recorded")
+	require.Equal(t, dex.FlowFailed, result.Status, "Flow %s: %s", flowID, result.ErrorMessage)
+	require.Contains(t, result.ErrorMessage, "uncertain")
+	require.Contains(t, result.ErrorMessage, "no target")
 	provider.waitForDelayedRequests(t)
 	require.Equal(t, 1, provider.count("create"), "the attempt on the new Worker did not resend the create")
 }
 
-func TestLostNoteResponseSelectsUncertainAndIsNeverResentWithRealDex(t *testing.T) {
+func TestLostNoteResponseFailsWithoutResendingWithRealDex(t *testing.T) {
 	provider := newFakeFreshdesk(t)
 	provider.losesFirstNoteResponse = true
 	harness := newTriageHarness(t, provider, defaultRequestTimeout)
 
-	outcome := harness.runTriage(t, "lost-note", integrationIssueInput())
-	require.Equal(t, TriageTicketOpened, outcome.Action)
-	require.True(t, outcome.NeedsReview)
-	require.Equal(t, "addNote", outcome.ReviewReason)
-	require.Zero(t, outcome.NoteID)
+	flowID := harness.startTriage(t, "lost-note", integrationIssueInput())
+	result := harness.waitForFlow(t, flowID)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "uncertain")
+	require.Contains(t, result.ErrorMessage, "no target")
 	require.Equal(t, 1, provider.count("note"), "an unconfirmed note is never resent")
-	require.Len(t, provider.ticket(outcome.Ticket.ID).conversations, 1)
+	require.Equal(t, 1, provider.totalConversationCount(), "the note reached Freshdesk once")
 }
 
 func TestRejectedTicketFailsTheFlowWithoutFreshdeskTextWithRealDex(t *testing.T) {
@@ -798,6 +792,16 @@ func (provider *fakeFreshdesk) ticketCount() int {
 	provider.mutex.Lock()
 	defer provider.mutex.Unlock()
 	return len(provider.tickets)
+}
+
+func (provider *fakeFreshdesk) totalConversationCount() int {
+	provider.mutex.Lock()
+	defer provider.mutex.Unlock()
+	total := 0
+	for _, ticket := range provider.tickets {
+		total += len(ticket.conversations)
+	}
+	return total
 }
 
 func (provider *fakeFreshdesk) ticket(ticketID int64) fakeTicket {

@@ -109,8 +109,8 @@ func TestSlowTriageCommentIsSentOnceWithRealDex(t *testing.T) {
 	require.Len(t, provider.conversation(scenario.triagedID).comments, 1)
 }
 
-// TestLostWorkerDuringCommentNeedsReviewWithoutResendingWithRealDex replaces the Worker after Front received the comment.
-func TestLostWorkerDuringCommentNeedsReviewWithoutResendingWithRealDex(t *testing.T) {
+// TestLostWorkerDuringCommentFailsWithoutResendingWithRealDex replaces the Worker after Front received the comment.
+func TestLostWorkerDuringCommentFailsWithoutResendingWithRealDex(t *testing.T) {
 	provider := newFakeFront(t)
 	scenario := seedTriageScenario(provider)
 	provider.holdsFirstComment = make(chan struct{})
@@ -122,14 +122,12 @@ func TestLostWorkerDuringCommentNeedsReviewWithoutResendingWithRealDex(t *testin
 
 	result := harness.waitForFlow(t, flowID)
 	close(provider.holdsFirstComment)
-	require.Equal(t, dex.FlowCompleted, result.Status, "Flow %s: %s", flowID, result.ErrorMessage)
-	var triage conversationtriage.Triage
-	require.NoError(t, result.DecodeSingleOutput(&triage))
-	require.Equal(t, "needsReview", triage.Stage)
-	require.Equal(t, sdkgo.UncertainBranchID, triage.FailedBranch)
+	require.Equal(t, dex.FlowFailed, result.Status, "Flow %s: %s", flowID, result.ErrorMessage)
+	require.Contains(t, result.ErrorMessage, "uncertain")
+	require.Contains(t, result.ErrorMessage, "no target")
 	provider.waitForDelayedRequests(t)
 	require.Equal(t, 1, provider.count("comment"), "the attempt on the new Worker did not send the comment again")
-	require.Len(t, provider.conversation(scenario.triagedID).comments, 1, "the held comment exists, which is why the outcome needs review")
+	require.Len(t, provider.conversation(scenario.triagedID).comments, 1, "the held comment exists once")
 	require.Zero(t, provider.count("tagAdd"), "an unconfirmed comment is not followed by routing")
 }
 

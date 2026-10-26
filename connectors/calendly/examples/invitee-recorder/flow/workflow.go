@@ -50,16 +50,12 @@ type Booking struct {
 	BookedAt time.Time `json:"bookedAt"`
 }
 
-// RecordedScheduledEvent is the getScheduledEvent outcome the Flow stores; it completes the Flow when found.
+// RecordedScheduledEvent is the found getScheduledEvent outcome the Flow stores.
 type RecordedScheduledEvent struct {
-	// Branch is the getScheduledEvent branch: found, notFound, providerRejected, invalidResponse, or defect.
+	// Branch is the found getScheduledEvent branch.
 	Branch sdkgo.BranchID `json:"branch"`
 	// ScheduledEvent is the event Calendly returned on the found branch.
 	ScheduledEvent *calendly.ScheduledEvent `json:"scheduledEvent,omitempty"`
-	// FailureKind is the safe failure category of a branch other than found.
-	FailureKind sdkgo.FailureKind `json:"failureKind,omitempty"`
-	// FailureMessage is the safe failure message, which never holds tokens or Calendly response text.
-	FailureMessage string `json:"failureMessage,omitempty"`
 }
 
 // Flow records one booked invitee and its scheduled event.
@@ -89,13 +85,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Connection:          flow.connection,
 			MapToOperationInput: MapToGetScheduledEventInput,
 			Found:               sdkgo.GoTo(recordScheduledEvent{}),
-			NotFound:            sdkgo.GoTo(recordReadFailure{}),
-			ProviderRejected:    sdkgo.GoTo(recordReadFailure{}),
-			InvalidResponse:     sdkgo.GoTo(recordReadFailure{}),
-			Defect:              sdkgo.GoTo(recordReadFailure{}),
 		})),
 		dex.DefineStep(recordScheduledEvent{}),
-		dex.DefineStep(recordReadFailure{}),
 	}
 }
 
@@ -229,27 +220,6 @@ func (recordScheduledEvent) Execute(ctx dex.Context, result calendly.GetSchedule
 		return nil, err
 	}
 	return dex.GracefulComplete(recorded), nil
-}
-
-// dex:group group-id:calendly group-label:"Calendly"
-// dex:explanation text:"Persist the notFound, providerRejected, invalidResponse, or defect outcome with its safe message and fail the Flow."
-type recordReadFailure struct {
-	dex.StepDefaultsNoWaitFor[calendly.GetScheduledEventResult]
-}
-
-func (recordReadFailure) GetStepType() string { return "RecordReadFailure" }
-
-func (recordReadFailure) Execute(ctx dex.Context, result calendly.GetScheduledEventResult) (*dex.StepDecision, error) {
-	recorded := RecordedScheduledEvent{Branch: result.Branch}
-	message := "reading the scheduled event selected " + string(result.Branch)
-	if result.Failure != nil {
-		recorded.FailureKind, recorded.FailureMessage = result.Failure.Kind, result.Failure.Message
-		message += ": " + result.Failure.Message
-	}
-	if err := scheduledEventAttribute.Set(ctx, recorded); err != nil {
-		return nil, err
-	}
-	return dex.ForceFail(message), nil
 }
 
 var _ dex.Flow = (*Flow)(nil)

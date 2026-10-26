@@ -7,8 +7,8 @@ every Jira Service Management operation:
    service desk and request type;
 2. `FindRequester` calls `jiraservicemanagement.NewFindCustomerByEmailStep`, and
    `EvaluateRequester` uses the first active customer whose email address equals
-   the requester's. `notFound`, or only inactive matches, completes as
-   `requesterNotFound` without raising anything;
+   the requester's. Missing or inactive matches complete as `requesterNotFound`
+   without raising anything;
 3. `FindOpenDuplicateTickets` calls `jiraservicemanagement.NewSearchTicketsStep`
    for that customer's open requests in the desk whose summary contains the
    requested summary, and `EvaluateDuplicateTickets` reuses one whose summary is
@@ -18,8 +18,8 @@ every Jira Service Management operation:
    retry-safety mechanism;
 4. `CreateSupportTicket` calls `jiraservicemanagement.NewCreateTicketStep` with
    sync durability and `RaiseOnBehalfOfAccountID` set to the customer.
-   `created` records the key, `providerRejected` completes as `rejected` with
-   the field IDs and error key, and `uncertain` parks the Flow for an operator;
+   `created` records the key, and `uncertain` parks the Flow for operator
+   reconciliation before any second create;
 5. `ReadBackSupportTicket` calls `jiraservicemanagement.NewGetTicketStep`, and
    `VerifySupportTicket` adopts the request with its SLA names;
 6. `PlanNextSupportAction` chooses the next unfinished action:
@@ -27,13 +27,12 @@ every Jira Service Management operation:
    `AddInternalNote` (`addComment` with `IsPublic: false`), `SendPublicReply`
    (`addComment` with `IsPublic: true`), and `MoveSupportTicket`
    (`transitionTicket` by destination status). Each record Step returns to it.
-   An uncertain note or reply is recorded and never re-sent, and
-   `transitionUnavailable` completes with the transitions Jira offered.
+   An unavailable transition fails the Flow with the connector's safe reason.
 
 Blank `labels` and `priorityName`, `internalNote`, `publicReply`, or
 `destinationStatusName` skip that action. Unwired optional branches, such as a
-rejected search, a missing request after a create, or a rejected label change,
-fail the Flow.
+rejected create, a missing request after a create, an uncertain note or reply,
+or a rejected label change, fail the Flow with the safe failure reason.
 
 ## Reconciling an uncertain create
 
@@ -119,20 +118,20 @@ GOWORK=off go test -race ./examples/support-request/...
 ```
 
 With the latest Dex development server running, the integration test drives
-the Flow on a real Worker against a stateful fake Jira Service Management: a new
-request raised once for the customer beside a near-duplicate, another
+the Flow on a real Worker against a stateful fake Jira Service Management: a
+new request raised once for the customer beside a near-duplicate, another
 customer's same-summary request, and a resolved duplicate, then read back with
 its SLAs, labeled, noted internally, replied to publicly, and moved; the
-customer's open request reused; an unknown requester completed without a
-create; a rejected create; a rate-limited create retried after `Retry-After`; a
-create timeout reconciled by confirming a missing, a mismatched, and then the
-real request key without a second create; a 5xx create raised again only after
-operator approval; a nine-second create and a nine-second public reply each
-sent once under sync durability; a nine-second label update and a nine-second
-transition whose backup attempts find the change already made and write
-nothing; a destination the workflow does not offer; an internal note timeout
-recorded without a resend; and a blank `cloudId` resolved to the only granted
-site.
+customer's open request reused; an unknown requester completes without a
+create; a rejected create sent once; a rate-limited create retried after
+`Retry-After`; a create timeout reconciled by confirming a missing, a
+mismatched, and then the real request key without a second create; a 5xx
+create raised again only after operator approval; a nine-second create and a
+nine-second public reply each sent once under sync durability; a nine-second
+label update and a nine-second transition whose backup attempts find the
+change already made and write nothing; a destination the workflow does not
+offer; an internal note timeout that fails without a resend; and a blank
+`cloudId` resolved to the only granted site.
 
 ```bash
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./examples/support-request/... -count=1 -v

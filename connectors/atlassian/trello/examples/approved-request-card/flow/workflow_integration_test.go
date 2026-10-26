@@ -79,7 +79,6 @@ func TestNewRequestIsCreatedOnceAfterPagingTheBoardAndCommentedWithRealDex(t *te
 	require.Equal(t, 2, record.OpenCardPagesRead, "the duplicate check followed nextBefore to the second page")
 	require.Equal(t, 1, record.CreateAttempts)
 	require.NotEmpty(t, record.CommentID)
-	require.False(t, record.IsCommentOutcomeUnknown)
 
 	cardName := "[REQ-1042] Replace badge reader"
 	cardID := provider.cardIDForName(cardName)
@@ -127,14 +126,14 @@ func TestFullDuplicateCheckStopsAsIncompleteWithoutCreatingWithRealDex(t *testin
 	require.Zero(t, provider.totalCreateCount(), "an incomplete duplicate check never creates")
 }
 
-func TestRejectedCreateCompletesAsRejectedWithRealDex(t *testing.T) {
+func TestRejectedCreateFailsWithoutResendingWithRealDex(t *testing.T) {
 	provider := newFakeTrello(t)
 	harness := newTrelloHarness(t, provider, shortRequestTimeout, DuplicateCheck{PageSize: fakePageSize})
 
-	record := harness.runRequestFlow(t, "rejected", requestInput("REQ-3001", markerReject+" Paint the lobby"))
-	require.Equal(t, PhaseRejected, record.Phase)
-	require.Empty(t, record.CardID)
-	require.Equal(t, 1, provider.createCount("[REQ-3001] "+markerReject+" Paint the lobby"))
+	cardName := "[REQ-3001] " + markerReject + " Paint the lobby"
+	flowID := harness.startRequestFlow(t, "rejected", requestInput("REQ-3001", markerReject+" Paint the lobby"))
+	harness.waitForFailedBranch(t, flowID, "providerRejected")
+	require.Equal(t, 1, provider.createCount(cardName), "a conclusive rejection is not resent")
 }
 
 func TestRateLimitedCreateIsRetriedAfterRetryAfterWithRealDex(t *testing.T) {
@@ -247,15 +246,13 @@ func TestSlowCommentIsSentOnceUnderSyncDurabilityWithRealDex(t *testing.T) {
 	require.Len(t, provider.commentTexts(provider.cardIDForName(cardName)), 1, "one Step execution dispatches one comment request")
 }
 
-func TestCommentTimeoutIsRecordedAndNeverResentWithRealDex(t *testing.T) {
+func TestCommentTimeoutFailsWithoutResendingWithRealDex(t *testing.T) {
 	provider := newFakeTrello(t)
 	harness := newTrelloHarness(t, provider, shortRequestTimeout, DuplicateCheck{PageSize: fakePageSize})
 
 	cardName := "[REQ-3008] " + markerCommentTimeout + " Freight door stuck"
-	record := harness.runRequestFlow(t, "comment-timeout", requestInput("REQ-3008", markerCommentTimeout+" Freight door stuck"))
-	require.Equal(t, PhaseReady, record.Phase)
-	require.True(t, record.IsCommentOutcomeUnknown)
-	require.Empty(t, record.CommentID)
+	flowID := harness.startRequestFlow(t, "comment-timeout", requestInput("REQ-3008", markerCommentTimeout+" Freight door stuck"))
+	harness.waitForFailedBranch(t, flowID, "uncertain")
 	require.Len(t, provider.commentTexts(provider.cardIDForName(cardName)), 1, "an uncertain comment is never re-sent")
 }
 
@@ -285,15 +282,14 @@ func TestLostWorkerDuringCreateSelectsUncertainWithoutResendingWithRealDex(t *te
 	require.Equal(t, 1, provider.createCount(cardName))
 }
 
-func TestRejectedMoveCompletesWithTheExistingCardWithRealDex(t *testing.T) {
+func TestRejectedMoveFailsBeforeCommentWithRealDex(t *testing.T) {
 	provider := newFakeTrello(t)
 	harness := newTrelloHarness(t, provider, shortRequestTimeout, DuplicateCheck{PageSize: fakePageSize})
 
 	input := requestInput(existingRequestID, "Badge reader offline")
 	input.LabelIDs = []string{unknownLabelID}
-	record := harness.runRequestFlow(t, "rejected-move", input)
-	require.Equal(t, PhaseMoveRejected, record.Phase)
-	require.Equal(t, fakeCardID(4), record.CardID)
+	flowID := harness.startRequestFlow(t, "rejected-move", input)
+	harness.waitForFailedBranch(t, flowID, "providerRejected")
 	require.Equal(t, intakeListID, provider.snapshot(fakeCardID(4)).listID, "Trello applied nothing")
 	require.Empty(t, provider.commentTexts(fakeCardID(4)), "no approval comment on a card that could not be moved")
 }
@@ -788,6 +784,24 @@ func (harness *trelloHarness) waitForFlowOutput(t *testing.T, flowID string) Req
 		var record RequestCard
 		require.NoError(t, result.DecodeSingleOutput(&record))
 		return record
+	}
+}
+
+func (harness *trelloHarness) waitForFailedBranch(t *testing.T, flowID string, branch string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	defer cancel()
+	for {
+		result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+		var longPollTimeout *dex.LongPollTimeoutError
+		if errors.As(err, &longPollTimeout) {
+			continue
+		}
+		require.NoError(t, err)
+		require.Equal(t, dex.FlowFailed, result.Status)
+		require.Contains(t, result.ErrorMessage, branch)
+		require.Contains(t, result.ErrorMessage, "no target")
+		return
 	}
 }
 

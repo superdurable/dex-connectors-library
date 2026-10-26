@@ -95,7 +95,7 @@ type TriageComment struct {
 
 // Triage is the Flow's durable record, updated by every Step and returned when the Flow completes.
 type Triage struct {
-	// Stage is read, requester, search, comment, route, completed, skipped, needsReview, or failed.
+	// Stage is read, requester, search, comment, route, completed, skipped, or failed.
 	Stage string `json:"stage"`
 	// Subject is the conversation subject.
 	Subject string `json:"subject,omitempty"`
@@ -116,14 +116,9 @@ type Triage struct {
 	AssigneeID string `json:"assigneeId,omitempty"`
 	// TagIDs are the conversation's tag IDs after routing.
 	TagIDs []string `json:"tagIds,omitempty"`
-	// FailedStep names the Step that stopped triage, by failing the Flow or by completing it as needsReview.
+	// FailedStep names the Step where the Flow's own check stopped triage.
 	FailedStep string `json:"failedStep,omitempty"`
-	// FailedBranch is the Front branch that stopped triage, such as uncertain for needsReview; empty when
-	// the Flow's own check stopped it.
-	FailedBranch sdkgo.BranchID `json:"failedBranch,omitempty"`
-	// FailureKind is the safe failure category of FailedBranch.
-	FailureKind sdkgo.FailureKind `json:"failureKind,omitempty"`
-	// FailureMessage is the connector's safe message, which never holds tokens or Front's text.
+	// FailureMessage is the safe reason for an application check that stopped triage.
 	FailureMessage string `json:"failureMessage,omitempty"`
 }
 
@@ -168,7 +163,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			},
 			MapToOperationInput: MapToFindContactByEmailInput,
 			Found:               sdkgo.GoTo(recordRequester{}),
-			NotFound:            sdkgo.GoTo(recordRequester{}),
+			// Triage continues without a matching requester contact.
+			NotFound: sdkgo.GoTo(recordRequester{}),
 		})),
 		dex.DefineStep(recordRequester{}),
 		dex.DefineStep(front.NewSearchConversationsStep(front.SearchConversationsStepConfig[TriageContext]{
@@ -194,10 +190,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			},
 			MapToOperationInput: MapToReplyToConversationInput,
 			Replied:             sdkgo.GoTo(recordTriageComment{}),
-			Uncertain:           sdkgo.GoTo(recordCommentNeedsReview{}),
 		})),
 		dex.DefineStep(recordTriageComment{}),
-		dex.DefineStep(recordCommentNeedsReview{}),
 		dex.DefineStep(front.NewUpdateConversationStep(front.UpdateConversationStepConfig[TriageRequest]{
 			StepType: assignAndTagStepType, ConnectionName: ConnectionName, Connection: flow.connection,
 			Annotations: sdkgo.StepAnnotations{
@@ -515,29 +509,6 @@ func (recordTriageComment) Execute(ctx dex.Context, result front.ReplyToConversa
 		return nil, err
 	}
 	return dex.GoTo(sdkgo.StepRef[TriageRequest](assignAndTagStepType), request), nil
-}
-
-// dex:group group-id:triage group-label:"Triage"
-// dex:explanation text:"Complete with needsReview when the comment's outcome is unknown, without sending it again or routing the conversation."
-type recordCommentNeedsReview struct {
-	dex.StepDefaultsNoWaitFor[front.ReplyToConversationResult]
-}
-
-func (recordCommentNeedsReview) GetStepType() string { return "RecordCommentNeedsReview" }
-
-func (recordCommentNeedsReview) Execute(ctx dex.Context, result front.ReplyToConversationResult) (*dex.StepDecision, error) {
-	triage, err := triageAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	triage.Stage, triage.FailedStep, triage.FailedBranch = "needsReview", addTriageCommentStepType, result.Branch
-	if result.Failure != nil {
-		triage.FailureKind, triage.FailureMessage = result.Failure.Kind, result.Failure.Message
-	}
-	if err := triageAttribute.Set(ctx, triage); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(triage), nil
 }
 
 // dex:group group-id:triage group-label:"Triage"
