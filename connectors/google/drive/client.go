@@ -12,6 +12,8 @@ package drive
 
 import (
 	"bytes"
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -33,6 +35,7 @@ const (
 	driveUploadAPIPath    = "/upload/drive/v3"
 	driveRootFolderAlias  = "root"
 	defaultRequestTimeout = 25 * time.Second
+	readDeadlineMargin    = time.Second
 	// maxSearchPageSize bounds every searchFiles page, so one Result stays small.
 	maxSearchPageSize = 100
 	// googleMultipartUploadLimitBytes is Google's documented 5 MB multipart upload limit.
@@ -153,6 +156,7 @@ type ShortcutTarget struct {
 
 type driveFileResource struct {
 	ID                string             `json:"id"`
+	AppProperties     map[string]string  `json:"appProperties"`
 	Name              string             `json:"name"`
 	MimeType          string             `json:"mimeType"`
 	Description       string             `json:"description"`
@@ -289,6 +293,73 @@ func (client *Client) resolveCredential(call sdkgo.Call, operationID string) (Cr
 	return credential, nil
 }
 
+func (client *Client) refreshRejectedUploadCredential(call sdkgo.Call) error {
+	if _, ok := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); !ok {
+		return errors.New("credential provider does not support refresh after rejection")
+	}
+	refreshed, err := sdkgo.ResolveCredentialAfterRejection(call.Context, client.credentials, call, client.refreshDriver)
+	if err != nil {
+		return err
+	}
+	return validateResolvedCredentials(refreshed)
+}
+
+func (client *Client) readBackUploadByID(call sdkgo.Call, credential *Credentials, fileID, idempotencyKey string) (*File, driveResponse, *readOutcome) {
+	response, outcome := client.sendRead(call, credential, uploadFileLookupBranches, driveRequest{
+		method: http.MethodGet, target: client.fileMetadataURL(fileID, fullFileFields+",appProperties"), responseLimit: client.maxResponseBytes,
+	})
+	if outcome != nil {
+		return nil, response, outcome
+	}
+	var resource driveFileResource
+	if err := json.Unmarshal(response.body, &resource); err != nil {
+		return nil, response, &readOutcome{branch: UploadFileBranchInvalidResponse, failure: driveFailure(sdkgo.FailureProtocol, uploadFileOperationID, "provider returned an invalid upload ID read-back response")}
+	}
+	if resource.ID != fileID || resource.AppProperties[idempotencyAppPropertyKey] != idempotencyKey {
+		return nil, response, nil
+	}
+	file, err := convertFileResource(resource)
+	if err != nil {
+		return nil, response, &readOutcome{branch: UploadFileBranchInvalidResponse, failure: driveFailure(sdkgo.FailureProtocol, uploadFileOperationID, "provider returned an invalid upload ID read-back response")}
+	}
+	return &file, response, nil
+}
+
+func (client *Client) lookupEarlierUpload(call sdkgo.Call, credential *Credentials, idempotencyKey string) (*File, driveResponse, *readOutcome, bool) {
+	lookupQuery := url.Values{
+		"q": {earlierUploadQuery(idempotencyKey)}, "fields": {"incompleteSearch,files(" + fullFileFields + ")"},
+		"pageSize": {strconv.Itoa(idempotencyLookupPageSize)}, "spaces": {"drive"},
+	}
+	lookupResponse, outcome := client.sendRead(call, credential, uploadFileLookupBranches, driveRequest{
+		method: http.MethodGet, target: client.filesListURL(lookupQuery), responseLimit: client.maxResponseBytes,
+	})
+	if outcome != nil {
+		return nil, lookupResponse, outcome, false
+	}
+	earlierFile, isIncompleteLookup, err := decodeEarlierUpload(lookupResponse.body)
+	if err != nil {
+		return nil, lookupResponse, &readOutcome{branch: UploadFileBranchInvalidResponse, failure: driveFailure(sdkgo.FailureProtocol, uploadFileOperationID, "provider returned an invalid duplicate-lookup response"), receipt: client.receipt(call, lookupResponse.requestID, "")}, false
+	}
+	return earlierFile, lookupResponse, nil, isIncompleteLookup
+}
+
+func (client *Client) reconcileUpload(call sdkgo.Call, credential *Credentials, idempotencyKey, requestID string) sdkgo.MutationAttempt[UploadFileOutput] {
+	file, response, outcome, isIncomplete := client.lookupEarlierUpload(call, credential, idempotencyKey)
+	if outcome != nil {
+		if outcome.branch == "" {
+			return sdkgo.NewMutationRetry[UploadFileOutput](outcome.failure, outcome.retryAfter)
+		}
+		return uploadUncertain(call, client, "upload read-back could not confirm the outcome")
+	}
+	if file != nil {
+		return sdkgo.NewMutationBranch(UploadFileBranchUploaded, UploadFileOutput{File: *file}, nil, client.receipt(call, response.requestID, file.ID))
+	}
+	if isIncomplete {
+		return sdkgo.NewMutationRetry[UploadFileOutput](driveFailure(sdkgo.FailureAvailability, uploadFileOperationID, "provider did not complete upload read-back"), 0)
+	}
+	return sdkgo.NewMutationUncertain(UploadFileOutput{}, driveFailure(sdkgo.FailureAvailability, uploadFileOperationID, "upload was sent but read-back found no matching file"), client.receipt(call, requestID, ""))
+}
+
 // sendRead performs one idempotent Drive read and classifies every non-2xx or unreadable response.
 func (client *Client) sendRead(
 	call sdkgo.Call,
@@ -330,12 +401,19 @@ func (client *Client) sendRead(
 // sendRequest sends request with the resolved credential. After one 401 it
 // forces a single coordinated refresh, updates credential, and sends once more.
 func (client *Client) sendRequest(call sdkgo.Call, credential *Credentials, request driveRequest) (driveResponse, error) {
+	var requestContext context.Context = call.Context
+	if stepDeadline, hasDeadline := call.Context.Deadline(); hasDeadline {
+		var cancel context.CancelFunc
+		margin := min(readDeadlineMargin, max(0, time.Until(stepDeadline)/6))
+		requestContext, cancel = context.WithDeadline(call.Context, stepDeadline.Add(-margin))
+		defer cancel()
+	}
 	for attempt := 0; attempt < 2; attempt++ {
 		var body io.Reader
 		if request.body != nil {
 			body = bytes.NewReader(request.body)
 		}
-		httpRequest, err := http.NewRequestWithContext(call.Context, request.method, request.target, body)
+		httpRequest, err := http.NewRequestWithContext(requestContext, request.method, request.target, body)
 		if err != nil {
 			return driveResponse{}, &driveRequestError{kind: sdkgo.FailureLocalDefect, message: "provider request could not be built"}
 		}
@@ -371,7 +449,7 @@ func (client *Client) sendRequest(call sdkgo.Call, credential *Credentials, requ
 		if _, ok := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); !ok {
 			return response, nil
 		}
-		refreshed, err := sdkgo.ResolveCredentialAfterRejection(call.Context, client.credentials, call, client.refreshDriver)
+		refreshed, err := sdkgo.ResolveCredentialAfterRejection(requestContext, client.credentials, call, client.refreshDriver)
 		if err != nil || validateResolvedCredentials(refreshed) != nil {
 			return response, nil
 		}

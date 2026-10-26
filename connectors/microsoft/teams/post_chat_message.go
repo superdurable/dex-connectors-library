@@ -34,7 +34,7 @@ func (PostChatMessageOperation) Definition() sdkgo.MutationDefinition {
 }
 
 // IdempotencyKey uses the stable connector Call ID. Graph accepts no idempotency key, so the key only
-// correlates the Receipt; a Dex heartbeat checkpoint keeps the message to one send.
+// correlates the Receipt; the shared fence prevents an unapproved repeat.
 func (PostChatMessageOperation) IdempotencyKey(callID sdkgo.CallID, _ PostChatMessageInput) sdkgo.IdempotencyKey {
 	return sdkgo.IdempotencyKey(callID)
 }
@@ -56,7 +56,8 @@ func (operation PostChatMessageOperation) Invoke(call sdkgo.Call, input PostChat
 	}
 	return client.send(call, messagePost{
 		operationID: postChatMessageOperationID, subject: "chat message",
-		path: "/chats/" + chatID + "/messages", content: content, requested: requested,
+		executeMethodTimeout: PostChatMessageDefinition.StepDefaults.ExecuteMethodTimeout,
+		path:                 "/chats/" + chatID + "/messages", content: content, requested: requested,
 		branches: postBranches{
 			sent: PostChatMessageBranchSent, providerRejected: PostChatMessageBranchProviderRejected, defect: PostChatMessageBranchDefect,
 		},

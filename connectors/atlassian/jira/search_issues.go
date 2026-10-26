@@ -53,6 +53,7 @@ type SearchIssuesOperation struct{ client *Client }
 type searchRequestBody struct {
 	JQL           string   `json:"jql"`
 	Fields        []string `json:"fields"`
+	Properties    []string `json:"properties,omitempty"`
 	MaxResults    int      `json:"maxResults"`
 	NextPageToken string   `json:"nextPageToken,omitempty"`
 }

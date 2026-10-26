@@ -177,17 +177,29 @@ and an optional `AssigneeAccountID`. The description is converted to a minimal
 Atlassian Document Format document: blank lines separate paragraphs, other line
 breaks become `hardBreak` nodes, and the text is never read as markup.
 
-Jira has no idempotency key, so the connector retries only when Jira cannot have
-created anything:
+Jira has no idempotency key. The shared single-dispatch fence checkpoints each
+POST and permits a later send only after the preceding attempt recorded
+`notSent` or `canResend`:
 
 | Outcome | Result |
 | --- | --- |
 | 201 with an issue ID and key | `created` |
-| 400, 401, 403, 404, 409, 413, 422, or another 4xx except 408 and 429 | `providerRejected`, with `RejectedFieldIDs` |
-| 429 | Retry, after `Retry-After` |
-| DNS, connect, or TLS failure before any connection opened | Retry |
-| Timeout, dropped connection, 408, 3xx, or 5xx after dispatch | `uncertain` |
-| 2xx whose body is oversized, unreadable, unusable, or reflects the token | `uncertain` |
+| 400, 403, 404, 413, 422, or another definite 4xx except 401, 409, and 429 | `providerRejected`, with `RejectedFieldIDs` |
+| 401 with a refreshable credential | Refresh the credential, checkpoint `canResend`, then Retry |
+| 401 without a usable refresh | `providerRejected` with authentication failure |
+| 409 | Read back by the Call ID property; confirmed creation selects `created`, otherwise `uncertain` |
+| 429 | Checkpoint `canResend`, then Retry after `Retry-After` |
+| DNS, connect, or TLS failure before any connection opened | Checkpoint `canResend`, then Retry |
+| 503 | Checkpoint `canResend`, then Retry after `Retry-After` |
+| Timeout, dropped connection, 408, 3xx, or another 5xx after dispatch | Read back; confirmed creation selects `created`, otherwise `uncertain` |
+| 2xx whose body is oversized, unreadable, unusable, or reflects the token | Read back; confirmed creation selects `created`, otherwise `uncertain` |
+
+During read-back, a transient 429, 5xx, transport error, interrupted response,
+or temporarily unavailable credential returns Retry without another POST. A
+transient credential lookup failure before a write also retries after recording
+`notSent`. Reauthorization-required or invalid credentials select `defect`
+before dispatch and `uncertain` when an earlier write requires read-back. If
+the retry budget is exhausted, the Flow fails.
 
 On `providerRejected` and `uncertain`, the Value echoes the requested project
 and summary without an issue key.
@@ -241,13 +253,48 @@ transition response recorded one transition request: the fallback attempt read
 the issue, found it in the destination status, and sent nothing;
 `TestSlowTransitionBackupAttemptMovesTheIssueOnceWithRealDex` guards this.
 
-The connector never retries a dispatched create or comment, but Dex runs a Step
-at least once. If the Worker is lost after Jira accepts a create and before Dex
-commits the Step result, Dex runs the Step again and Jira creates a second
-issue. No connector can close this window without a provider idempotency key.
-An application handles `uncertain` without creating again automatically; the
+Each create and comment includes a non-secret hash of the stable Call ID in a
+Jira entity property. The released `sdkgo/singledispatch` fence owns the Dex
+heartbeat claim and send window. A missing, foreign, stale, or unreadable
+checkpoint never permits another POST. When a response supplies a resource ID,
+the fence saves it for direct read-back; otherwise the connector searches a
+bounded page for the property. A transient lookup retries without sending.
+The property is not an Atlassian idempotency key. Dex does not acknowledge
+heartbeat persistence before the POST, so a crash may still leave a write that
+the bounded read-back cannot confirm. That outcome selects `uncertain`.
+
+A traced DNS, connect, or TLS failure before any connection is obtained, HTTP
+429, and HTTP 503 select Retry after the fence records permission for the next
+attempt. The fence reserves part of the Execute budget for read-back and
+classification. A 409 reads back before choosing a result.
+An application handles unresolved `uncertain` without creating again; the
 [`triage-issue`](examples/triage-issue) example parks the create for an
 operator, who confirms the issue found in the project or approves a new create.
+
+Atlassian documents issue and comment entity properties and their read APIs:
+[Create issue](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issues/),
+[Enhanced issue search](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-search/),
+[Get issue property](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-properties/),
+[Add and list comments](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-comments/),
+and [Get comment property](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-comment-properties/).
+Live behavior of the marker on Jira Cloud remains unverified.
+The comment-list and single-comment GET `expand=properties` parameters are
+undocumented; the connector falls back to the documented comment-property GET
+when expansion omits the property.
+
+## Mocks
+
+`jiramock` supplies a consistent OPS triage world: an empty initial search,
+creation and read-back of OPS-4, comment 10501, and a move to In Progress.
+Each operation also has mocks for its definite business-outcome branches.
+The runnable example's real-Dex mock test starts with:
+
+```go
+mock := jiramock.New(t, ConnectionName)
+flow := NewFlow(mock.Connection(), ProjectSelection{})
+```
+
+The test asserts literal call inputs and counts for all five operations.
 
 ## Not in this release
 
@@ -295,4 +342,6 @@ search `nextPageToken` paging and consistency delay; the `summary ~` phrase
 search and status category ID clauses; workflow and transition-screen rejections;
 429 and 5xx behavior under load; the `accessible-resources` and
 `project/search` commands through Dex Web; and the developer-console paths in
-the setup guidance.
+the setup guidance. Entity-property writes during issue/comment creation,
+property read-back, the undocumented comment-list and single-comment property
+expansions, and 503 responses under load are also unverified live.

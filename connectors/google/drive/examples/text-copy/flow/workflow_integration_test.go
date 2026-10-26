@@ -41,6 +41,7 @@ const (
 	appliedThenRateLimitedCopyName = "applied-then-rate-limited.txt"
 	// uncertainCopyName makes the fake apply an upload and then answer 500.
 	uncertainCopyName = "uncertain.txt"
+	retry503CopyName  = "retry-503.txt"
 )
 
 func TestTextCopyExampleRoutesEveryBusinessOutcomeWithRealDex(t *testing.T) {
@@ -97,7 +98,7 @@ func TestTextCopyRetryReusesTheFileAnEarlierAttemptCreatedWithRealDex(t *testing
 	require.GreaterOrEqual(t, provider.idempotencyLookups(), 2)
 }
 
-func TestTextCopyUncertainUploadFailsTheFlowWithoutResendingWithRealDex(t *testing.T) {
+func TestTextCopyReadBackConfirmsAnAppliedUploadAfter500WithRealDex(t *testing.T) {
 	provider := newDriveProvider(t)
 	flow, harness := newDriveIntegrationHarness(t, provider.URL)
 	harness.startWorker(t)
@@ -106,8 +107,27 @@ func TestTextCopyUncertainUploadFailsTheFlowWithoutResendingWithRealDex(t *testi
 	flowID := "uncertain-upload-" + strconv.FormatInt(time.Now().UnixNano(), 10)
 
 	result := runTextCopy(t, ctx, harness.client, flow, flowID, Input{SourceName: "Ops Policy", CopyName: uncertainCopyName})
-	require.Equal(t, dex.FlowFailed, result.status)
+	require.Equal(t, dex.FlowCompleted, result.status)
+	require.False(t, result.outcome.IsCopyFromEarlierAttempt)
 	require.Equal(t, 1, provider.uploadsNamed(uncertainCopyName))
+}
+
+func TestTextCopyRetries503WithTheSameKeyOnRealDex(t *testing.T) {
+	provider := newDriveProvider(t)
+	flow, harness := newDriveIntegrationHarness(t, provider.URL)
+	harness.startWorker(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	flowID := "retry-503-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+
+	result := runTextCopy(t, ctx, harness.client, flow, flowID, Input{SourceName: "Ops Policy", CopyName: retry503CopyName})
+	require.Equal(t, dex.FlowCompleted, result.status, result.failureReason)
+	require.Equal(t, StatusCopied, result.outcome.Status)
+	require.Equal(t, 2, provider.uploadsNamed(retry503CopyName))
+	keys := provider.uploadKeysNamed(retry503CopyName)
+	require.Len(t, keys, 2)
+	require.NotEmpty(t, keys[0])
+	require.Equal(t, keys[0], keys[1])
 }
 
 type textCopyRun struct {
@@ -155,6 +175,7 @@ type driveProvider struct {
 	mutex                  sync.Mutex
 	files                  []*driveFile
 	uploadCountsByName     map[string]int
+	uploadKeysByName       map[string][]string
 	idempotencyLookupCount int
 }
 
@@ -167,7 +188,7 @@ var (
 
 func newDriveProvider(t *testing.T) *driveProvider {
 	t.Helper()
-	provider := &driveProvider{t: t, uploadCountsByName: map[string]int{}, files: []*driveFile{
+	provider := &driveProvider{t: t, uploadCountsByName: map[string]int{}, uploadKeysByName: map[string][]string{}, files: []*driveFile{
 		{id: "file_policy", name: "Ops Policy", mimeType: "application/vnd.google-apps.document", parent: sourceFolderID, modifiedTime: "2026-01-20T09:00:00Z", content: []byte("\xef\xbb\xbfOps Policy\nRefunds above 500 need approval.")},
 		{id: "file_policy_trashed", name: "Ops Policy", mimeType: "application/vnd.google-apps.document", parent: sourceFolderID, isTrashed: true, modifiedTime: "2026-01-25T09:00:00Z", content: []byte("DRAFT")},
 		{id: "file_policy_archive", name: "Ops Policy", mimeType: "application/vnd.google-apps.document", parent: "fld_archive", modifiedTime: "2025-12-31T23:00:00Z", content: []byte("2025 policy")},
@@ -279,6 +300,11 @@ func (provider *driveProvider) createFile(response http.ResponseWriter, request 
 	content, err := io.ReadAll(mediaPart)
 	require.NoError(provider.t, err)
 	provider.uploadCountsByName[metadata.Name]++
+	provider.uploadKeysByName[metadata.Name] = append(provider.uploadKeysByName[metadata.Name], metadata.AppProperties["dexIdempotencyKey"])
+	if metadata.Name == retry503CopyName && provider.uploadCountsByName[metadata.Name] == 1 {
+		provider.writeJSON(response, http.StatusServiceUnavailable, map[string]any{"error": map[string]any{"code": 503}})
+		return
+	}
 	file := &driveFile{
 		id: fmt.Sprintf("created_%d", len(provider.files)+1), name: metadata.Name, mimeType: metadata.MimeType,
 		modifiedTime: "2026-09-30T12:00:00Z", content: content, idempotencyKey: metadata.AppProperties["dexIdempotencyKey"],
@@ -325,6 +351,12 @@ func (provider *driveProvider) uploadsNamed(name string) int {
 	provider.mutex.Lock()
 	defer provider.mutex.Unlock()
 	return provider.uploadCountsByName[name]
+}
+
+func (provider *driveProvider) uploadKeysNamed(name string) []string {
+	provider.mutex.Lock()
+	defer provider.mutex.Unlock()
+	return append([]string(nil), provider.uploadKeysByName[name]...)
 }
 
 func (provider *driveProvider) idempotencyLookups() int {
@@ -379,6 +411,11 @@ func newDriveIntegrationHarness(t *testing.T, endpoint string) (*Flow, *driveInt
 	require.NoError(t, err)
 	connection, err := drive.NewConnection(providerClient, reference)
 	require.NoError(t, err)
+	return newDriveIntegrationHarnessForConnection(t, connection)
+}
+
+func newDriveIntegrationHarnessForConnection(t *testing.T, connection drive.Connection) (*Flow, *driveIntegrationHarness) {
+	t.Helper()
 	flow := NewFlow(connection,
 		sdkgo.ConnectorLoadedConfiguration[FolderConfiguration]{Reference: SourceFolderConfigurationRef(), Value: FolderConfiguration{FolderID: sourceFolderID, FolderName: "Sales"}},
 		sdkgo.ConnectorLoadedConfiguration[FolderConfiguration]{Reference: DestinationFolderConfigurationRef(), Value: FolderConfiguration{FolderID: destinationFolderID, FolderName: "Finance"}},

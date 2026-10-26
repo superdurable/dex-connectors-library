@@ -61,7 +61,7 @@ mkdir -p /tmp/hiver-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/hiver/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/hiver \
-  --version v0.21.2 --tag connectors/hiver/v0.21.2 \
+  --version v0.22.0 --tag connectors/hiver/v0.22.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/hiver-release/connector-release.json \
   --digest-output /tmp/hiver-release/connector-release.json.sha256
@@ -139,10 +139,14 @@ close together:
   once, because the Step is sync;
 - a lost note response fails on the unwired `uncertain` branch and is never resent;
 - a rate-limited note waits for `Retry-After` and adds one note;
+- a 503 once then success completes with exactly two note requests carrying
+  the same correlation Call ID;
 - a Worker lost while Hiver holds the draft is replaced, and the new attempt
   finds the dispatch checkpoint, fails the Flow, and sends nothing; a Worker lost before Dex
-  stored the checkpoint could still send twice, as
+  stored the checkpoint also fails closed without resending, as
   [Duplicate safety](../../README.md#duplicate-safety) explains;
+- a mock-backed run pages through three inbox and conversation pages, then
+  checks all six connector operation calls and the Flow's claim outcome;
 - an assignee who is not an inbox user fails the Flow through the unwired
   `providerRejected` branch before any change;
 - an unknown inbox address fails the Flow after the last inbox page;

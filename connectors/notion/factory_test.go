@@ -84,8 +84,15 @@ func TestOnlyTheUnkeyedCreateIsUncertainAndSync(t *testing.T) {
 // TestWritesWaitForNotionsSlowestDocumentedResponse keeps the Step longer than Notion's roughly
 // 55-second write deadline, and the heartbeat timeout no shorter, so a silent request is not abandoned.
 func TestWritesWaitForNotionsSlowestDocumentedResponse(t *testing.T) {
-	for _, defaults := range []sdkgo.StepDefaults{notion.CreatePageDefinition.StepDefaults, notion.UpdatePagePropertiesDefinition.StepDefaults} {
-		require.Equal(t, 90*time.Second, defaults.ExecuteMethodTimeout)
+	for _, test := range []struct {
+		defaults sdkgo.StepDefaults
+		timeout  time.Duration
+	}{
+		{defaults: notion.CreatePageDefinition.StepDefaults, timeout: 120 * time.Second},
+		{defaults: notion.UpdatePagePropertiesDefinition.StepDefaults, timeout: 90 * time.Second},
+	} {
+		defaults := test.defaults
+		require.Equal(t, test.timeout, defaults.ExecuteMethodTimeout)
 		require.GreaterOrEqual(t, defaults.HeartbeatTimeout, defaults.ExecuteMethodTimeout)
 	}
 }

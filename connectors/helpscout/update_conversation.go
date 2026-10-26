@@ -96,8 +96,8 @@ func (operation UpdateConversationOperation) Invoke(call sdkgo.Call, input Updat
 	}
 	currentOutput := UpdateConversationOutput{Conversation: current}
 	for _, write := range writes {
-		response, err := client.send(call.Context, call, &credentials, write, nil)
-		if attempt, isTerminal := classifyIdempotentMutationExchange(client, call, operationID, credentials, response, err, branches, input.ConversationID, currentOutput); isTerminal {
+		response, err := client.send(call.Context, call, &credentials, write)
+		if attempt, isTerminal, _ := classifyIdempotentMutationExchange(client, call, operationID, credentials, response, err, branches, input.ConversationID, currentOutput); isTerminal {
 			return attempt
 		}
 	}
@@ -114,7 +114,7 @@ func (client *Client) readConversationForUpdate(
 	call sdkgo.Call, credentials *Credentials, conversationID int64, value UpdateConversationOutput,
 ) (Conversation, sdkgo.MutationAttempt[UpdateConversationOutput], bool) {
 	operationID := UpdateConversationDefinition.Operation.OperationID
-	response, err := client.send(call.Context, call, credentials, helpScoutRequest{method: http.MethodGet, path: conversationPath(conversationID)}, nil)
+	response, err := client.send(call.Context, call, credentials, helpScoutRequest{method: http.MethodGet, path: conversationPath(conversationID)})
 	if err == nil && response.statusCode == http.StatusMovedPermanently {
 		message := "the conversation was merged into another; update that conversation"
 		if mergedIntoID, locationErr := parseConversationLocation(response.header.Get("Location")); locationErr == nil {
@@ -127,7 +127,7 @@ func (client *Client) readConversationForUpdate(
 		notFound: UpdateConversationBranchNotFound, providerRejected: UpdateConversationBranchProviderRejected,
 		invalidResponse: UpdateConversationBranchInvalidResponse,
 	}
-	if attempt, isTerminal := classifyIdempotentMutationExchange(client, call, operationID, *credentials, response, err, branches, conversationID, value); isTerminal {
+	if attempt, isTerminal, _ := classifyIdempotentMutationExchange(client, call, operationID, *credentials, response, err, branches, conversationID, value); isTerminal {
 		return Conversation{}, attempt, true
 	}
 	conversation, err := decodeConversationBody(response.body, conversationID)

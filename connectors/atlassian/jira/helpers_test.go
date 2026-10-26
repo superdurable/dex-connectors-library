@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -70,6 +71,35 @@ func (provider *recordingJira) requestCount() int {
 	provider.mutex.Lock()
 	defer provider.mutex.Unlock()
 	return len(provider.requests)
+}
+
+func (provider *recordingJira) requestCountFor(method string, path string) int {
+	provider.mutex.Lock()
+	defer provider.mutex.Unlock()
+	count := 0
+	for _, request := range provider.requests {
+		if request.method == method && request.path == path {
+			count++
+		}
+	}
+	return count
+}
+
+func (provider *recordingJira) requestBodyWithoutWriteMarker(index int) string {
+	body := provider.requestBody(index)
+	properties, isArray := body["properties"].([]any)
+	require.True(provider.t, isArray)
+	require.Len(provider.t, properties, 1)
+	property, isObject := properties[0].(map[string]any)
+	require.True(provider.t, isObject)
+	require.Equal(provider.t, "dex.connector.call", property["key"])
+	marker, isString := property["value"].(string)
+	require.True(provider.t, isString)
+	require.True(provider.t, regexp.MustCompile(`^[0-9a-f]{64}$`).MatchString(marker))
+	delete(body, "properties")
+	encoded, err := json.Marshal(body)
+	require.NoError(provider.t, err)
+	return string(encoded)
 }
 
 func (provider *recordingJira) request(index int) recordedRequest {
@@ -144,9 +174,13 @@ func requireRetry(t *testing.T, err error, kind sdkgo.FailureKind) *sdkgo.RetryE
 // rejectionRefreshingCredentialProvider hands out a replacement token after a provider rejection.
 type rejectionRefreshingCredentialProvider struct {
 	forcedRefreshes int
+	isRefreshed     bool
 }
 
-func (*rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (jira.Credentials, error) {
+func (provider *rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (jira.Credentials, error) {
+	if provider.isRefreshed {
+		return jira.Credentials{AccessToken: sdkgo.NewSecretString("replacement-token")}, nil
+	}
 	return jira.Credentials{AccessToken: sdkgo.NewSecretString("rejected-token")}, nil
 }
 
@@ -165,6 +199,7 @@ func (provider *rejectionRefreshingCredentialProvider) ResolveAfterRejection(
 	sdkgo.CredentialRefreshDriver[jira.Credentials],
 ) (jira.Credentials, error) {
 	provider.forcedRefreshes++
+	provider.isRefreshed = true
 	return jira.Credentials{AccessToken: sdkgo.NewSecretString("replacement-token")}, nil
 }
 

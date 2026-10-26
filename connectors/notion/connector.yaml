@@ -5,7 +5,7 @@ metadata:
   displayName: Notion
   description: Search Notion pages and data sources by title, query database rows with typed filters, read a page's properties and plain-text content, and create or update database rows without silent duplicates.
   company: Notion
-  version: v0.22.1
+  version: v0.23.0
 spec:
   provider: notion
   codegen:
@@ -207,7 +207,7 @@ spec:
       inputType: CreatePageInput
       outputType: CreatePageOutput
       kind: mutation
-      description: Create one database row with typed property values and optional plain-text body paragraphs.
+      description: Create one database row with typed property values and optional plain-text body paragraphs. Sync durability persists the single-dispatch fence before sending so retries cannot duplicate an unconfirmed page.
       idempotency: required
       authorization: required
       branches:
@@ -216,13 +216,13 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: "Notion conclusively rejected the page, such as a missing property, a value of the wrong type, missing Insert content capability, or a workspace limit; nothing was created.", optional: true}
         - {id: uncertain, goName: Uncertain, description: "The request was dispatched but its outcome cannot be confirmed; Notion has no idempotency key, so the page may exist and must not be created again automatically.", optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: "Notion returned an invalid or oversized database while the connector resolved its data source; nothing was created.", optional: true}
-        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid, including a database ID whose database holds several data sources.", optional: true}
-      # Sync: an async fallback attempt re-sends a slow create, and Notion has no idempotency key.
-      # Notion can take about 55 seconds before a 503 that names the saved page, so the request may wait 60 seconds.
+        - {id: defect, goName: Defect, description: "Local input, credential authorization, or connector definition is invalid, including a database ID whose database holds several data sources.", optional: true}
+      # Sync checkpoints fence each create; the 120-second attempt permits Notion's 60-second write and read-back.
       execution:
-        executeMethodTimeout: 90s
-        heartbeatTimeout: 90s
+        executeMethodTimeout: 120s
+        heartbeatTimeout: 120s
         durability: sync
+        dispatchFence: true
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 6, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A repeated create POST could add another page because Notion has no provider key and a lost response contains no page ID to read."}}
       mocks:
         - name: createdSubmission

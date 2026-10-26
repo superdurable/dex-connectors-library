@@ -36,13 +36,13 @@ func (PostThreadReplyOperation) Definition() sdkgo.MutationDefinition {
 }
 
 // IdempotencyKey uses the stable connector Call ID. Graph accepts no idempotency key, so the key only
-// correlates the Receipt; a Dex heartbeat checkpoint keeps the reply to one send.
+// correlates the Receipt; the shared fence prevents an unapproved repeat.
 func (PostThreadReplyOperation) IdempotencyKey(callID sdkgo.CallID, _ PostThreadReplyInput) sdkgo.IdempotencyKey {
 	return sdkgo.IdempotencyKey(callID)
 }
 
 // Invoke sends POST /teams/{team-id}/channels/{channel-id}/messages/{message-id}/replies at most once per
-// Step execution. An attempt that finds an earlier attempt's checkpoint reads the thread's 50 newest replies
+// Step execution. An attempt that finds an earlier attempt's fence claim reads the thread's 50 newest replies
 // and reports the one with the same text, created by a person after the first send, as sent; otherwise it
 // selects uncertain. Reading back needs ChannelMessage.Read.All.
 func (operation PostThreadReplyOperation) Invoke(call sdkgo.Call, input PostThreadReplyInput) sdkgo.MutationAttempt[PostMessageOutput] {
@@ -62,7 +62,8 @@ func (operation PostThreadReplyOperation) Invoke(call sdkgo.Call, input PostThre
 	repliesPath := threadRepliesPath(teamID, channelID, messageID)
 	return client.send(call, messagePost{
 		operationID: postThreadReplyOperationID, subject: "thread reply",
-		path: repliesPath, content: content, requested: requested,
+		executeMethodTimeout: PostThreadReplyDefinition.StepDefaults.ExecuteMethodTimeout,
+		path:                 repliesPath, content: content, requested: requested,
 		branches: postBranches{
 			sent: PostThreadReplyBranchSent, providerRejected: PostThreadReplyBranchProviderRejected, defect: PostThreadReplyBranchDefect,
 		},

@@ -18,6 +18,23 @@ func validListThreadRepliesInput() teams.ListThreadRepliesInput {
 	return teams.ListThreadRepliesInput{TeamID: testTeamID, ChannelID: testChannelID, MessageID: testRootID}
 }
 
+func TestListThreadRepliesClassifiesCredentialFailures(t *testing.T) {
+	provider := newRecordingGraph(t, func(http.ResponseWriter, *http.Request, int) {
+		t.Error("credential failure must prevent the read")
+	})
+	transientClient, err := teams.New(teams.Config{Endpoint: provider.endpoint()}, &intermittentTeamsCredentials{})
+	require.NoError(t, err)
+	_, err = sdkgo.RunQuery(newTestDexContext("temporary-credentials"), transientClient.ListThreadReplies(), teamsConnection, validListThreadRepliesInput())
+	requireRetry(t, err, sdkgo.FailureAuthentication)
+	terminalClient, err := teams.New(teams.Config{Endpoint: provider.endpoint()}, reauthorizationRequiredTeamsCredentials{})
+	require.NoError(t, err)
+	result, err := sdkgo.RunQuery(newTestDexContext("reauthorize"), terminalClient.ListThreadReplies(), teamsConnection, validListThreadRepliesInput())
+	require.NoError(t, err)
+	require.Equal(t, teams.ListThreadRepliesBranchDefect, result.Branch)
+	require.Contains(t, result.Failure.Message, "reconnect the connection")
+	require.Zero(t, provider.requestCount())
+}
+
 func TestListThreadRepliesReadsOnePageAsText(t *testing.T) {
 	var provider *recordingGraph
 	provider = newRecordingGraph(t, func(response http.ResponseWriter, request *http.Request, index int) {

@@ -5,9 +5,9 @@
 // Cloud issues as Dex connector Steps, through Atlassian's OAuth 2.0 (3LO)
 // gateway at https://api.atlassian.com/ex/jira/{cloudId}/rest/api/3.
 //
-// Jira accepts no idempotency key, so CreateIssue and AddComment never resend
-// a request Jira may have received: an ambiguous outcome selects the uncertain
-// branch. TransitionIssue reads the issue before it writes and after an
+// Jira accepts no idempotency key, so CreateIssue and AddComment mark each
+// request and read it back before resolving an ambiguous outcome.
+// TransitionIssue reads the issue before it writes and after an
 // ambiguous write, and Jira refuses a transition that is not available from the
 // current status, so a repeated transition cannot move an issue twice.
 package jira
@@ -31,6 +31,7 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 )
 
 const (
@@ -110,6 +111,18 @@ type exchangeResult struct {
 	response     jiraResponse
 	isDispatched bool
 	err          error
+}
+
+type jiraWriteAttempt struct {
+	client  *Client
+	session *operationSession
+	request jiraRequest
+	result  exchangeResult
+}
+
+func (attempt *jiraWriteAttempt) send(requestContext context.Context) error {
+	attempt.result = attempt.client.exchangeFencedWrite(attempt.session, requestContext, attempt.request)
+	return nil
 }
 
 // operationSession carries the resolved credential and Jira site for one Invoke.
@@ -237,9 +250,27 @@ func (client *Client) AddComment() AddCommentOperation { return AddCommentOperat
 
 // startSession resolves the credential and the Jira site; the caller must call the returned cancel.
 func (client *Client) startSession(call sdkgo.Call, operationID string) (*operationSession, context.CancelFunc, *sessionFailure) {
-	operationContext, cancel := context.WithTimeout(call.Context, operationDeadline)
-	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
-	if err != nil || validateResolvedCredentials(credentials) != nil {
+	available := operationDeadline
+	if deadline, hasDeadline := call.Context.Deadline(); hasDeadline {
+		available = min(available, time.Until(deadline)-time.Second)
+	}
+	if available <= 0 {
+		return nil, nil, &sessionFailure{failure: newFailure(operationID, sdkgo.FailureAvailability, "Jira Execute deadline is too near for a request"), isRetryable: true}
+	}
+	operationContext, cancel := context.WithTimeout(call.Context, available)
+	credentials, err := sdkgo.ResolveCredential(operationContext, client.credentials, call, client.refreshDriver)
+	if operationContext.Err() != nil {
+		cancel()
+		return nil, nil, &sessionFailure{failure: newFailure(operationID, sdkgo.FailureAvailability, "Jira credential lookup did not finish within the Execute budget"), isRetryable: true}
+	}
+	if err != nil {
+		cancel()
+		if errors.Is(err, sdkgo.ErrReauthorizationRequired) {
+			return nil, nil, &sessionFailure{failure: newFailure(operationID, sdkgo.FailureAuthentication, "Jira connection credentials are unavailable; reconnect the connection")}
+		}
+		return nil, nil, &sessionFailure{failure: newFailure(operationID, sdkgo.FailureAvailability, "Jira credential lookup is temporarily unavailable"), isRetryable: true}
+	}
+	if validateResolvedCredentials(credentials) != nil {
 		cancel()
 		return nil, nil, &sessionFailure{failure: newFailure(operationID, sdkgo.FailureAuthentication, "Jira connection credentials are unavailable; reconnect the connection")}
 	}
@@ -327,19 +358,37 @@ func (client *Client) exchange(session *operationSession, request jiraRequest) e
 	}
 	target := client.requestURL(session, request)
 	for attempt := 0; ; attempt++ {
-		result := client.exchangeOnce(session, request.method, target, encodedPayload)
+		result := client.exchangeOnce(session, request.method, target, encodedPayload, false)
 		if result.err != nil || result.response.statusCode != http.StatusUnauthorized || attempt > 0 {
 			return result
 		}
 		if _, supportsRejection := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); !supportsRejection {
 			return result
 		}
-		replacement, err := sdkgo.ResolveCredentialAfterRejection(session.call.Context, client.credentials, session.call, client.refreshDriver)
+		replacement, err := sdkgo.ResolveCredentialAfterRejection(session.context, client.credentials, session.call, client.refreshDriver)
 		if err != nil || validateResolvedCredentials(replacement) != nil {
 			return result
 		}
 		session.credentials = replacement
 	}
+}
+
+func (client *Client) exchangeFencedWrite(session *operationSession, requestContext context.Context, request jiraRequest) exchangeResult {
+	encodedPayload, err := json.Marshal(request.payload)
+	if err != nil {
+		return exchangeResult{err: errRequestNotBuilt}
+	}
+	writeSession := *session
+	writeSession.context = requestContext
+	return client.exchangeOnce(&writeSession, request.method, client.requestURL(session, request), encodedPayload, true)
+}
+
+func (client *Client) refreshRejectedCredential(session *operationSession) bool {
+	if _, supportsRefresh := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); !supportsRefresh {
+		return false
+	}
+	replacement, err := sdkgo.ResolveCredentialAfterRejection(session.context, client.credentials, session.call, client.refreshDriver)
+	return err == nil && validateResolvedCredentials(replacement) == nil
 }
 
 func (client *Client) requestURL(session *operationSession, request jiraRequest) string {
@@ -354,7 +403,7 @@ func (client *Client) requestURL(session *operationSession, request jiraRequest)
 	return target
 }
 
-func (client *Client) exchangeOnce(session *operationSession, method string, target string, payload []byte) exchangeResult {
+func (client *Client) exchangeOnce(session *operationSession, method string, target string, payload []byte, isFencedWrite bool) exchangeResult {
 	requestContext, cancel := context.WithTimeout(session.context, requestTimeout)
 	defer cancel()
 	observation := &dispatchObservation{}
@@ -372,6 +421,11 @@ func (client *Client) exchangeOnce(session *operationSession, method string, tar
 	request.Header.Set("Accept", "application/json")
 	if payload != nil {
 		request.Header.Set("Content-Type", "application/json")
+	}
+	if isFencedWrite {
+		if err := singledispatch.PrepareHTTPWrite(request); err != nil {
+			return exchangeResult{err: errRequestNotBuilt}
+		}
 	}
 	httpResponse, err := client.httpClient.Do(request)
 	if err != nil {
@@ -429,7 +483,7 @@ func (client *Client) classifyRead(operationID string, subject string, result ex
 	}
 }
 
-// classifyUnkeyedWrite retries only a 429 or an undispatched request, when Jira cannot have written.
+// classifyUnkeyedWrite keeps ambiguous writes for read-back before their outcome is selected.
 func (client *Client) classifyUnkeyedWrite(operationID string, subject string, result exchangeResult) writeClassification {
 	switch {
 	case errors.Is(result.err, errRequestNotBuilt):
@@ -451,6 +505,8 @@ func (client *Client) classifyUnkeyedWrite(operationID string, subject string, r
 		return writeClassification{outcome: writeAccepted}
 	case response.statusCode == http.StatusTooManyRequests:
 		return writeClassification{outcome: writeRetry, retryAfter: client.retryAfter(response), failure: newFailure(operationID, sdkgo.FailureRateLimit, "Jira rate limited the "+subject+" before writing it")}
+	case response.statusCode == http.StatusServiceUnavailable:
+		return writeClassification{outcome: writeRetry, retryAfter: client.retryAfter(response), failure: newFailure(operationID, sdkgo.FailureAvailability, "Jira "+subject+" is temporarily unavailable")}
 	case response.statusCode == http.StatusNotFound:
 		return writeClassification{outcome: writeNotFound, failure: rejectionFailure(operationID, subject, response.statusCode, nil)}
 	case isConclusiveRejectionStatus(response.statusCode):
@@ -458,6 +514,153 @@ func (client *Client) classifyUnkeyedWrite(operationID string, subject string, r
 		return writeClassification{outcome: writeRejected, rejectedFieldIDs: rejectedFieldIDs, failure: rejectionFailure(operationID, subject, response.statusCode, rejectedFieldIDs)}
 	default:
 		return writeClassification{outcome: writeUncertain, failure: newFailure(operationID, sdkgo.FailureAvailability, fmt.Sprintf("Jira %s outcome is unknown after HTTP %d", subject, response.statusCode))}
+	}
+}
+
+func (client *Client) findCreatedIssue(session *operationSession, requested CreateIssueOutput, marker jiraCallProperty, providerID string) (createdIssueResource, writeReadbackStatus) {
+	if providerID != "" {
+		result := client.exchange(session, jiraRequest{method: http.MethodGet, path: issuePath(providerID), query: url.Values{"fields": {"summary"}, "properties": {jiraCallPropertyKey}}})
+		if status := readbackExchangeStatus(result); status != writeReadbackFound {
+			return createdIssueResource{}, status
+		}
+		var candidate issueReadbackCandidate
+		if json.Unmarshal(result.response.body, &candidate) != nil || candidate.ID != providerID || candidate.Fields.Summary != requested.Summary || !issueKeyPattern.MatchString(candidate.Key) {
+			return createdIssueResource{}, writeReadbackMissing
+		}
+		return client.confirmCreatedIssueCandidate(session, candidate, marker)
+	}
+	projectClause := requested.ProjectID
+	if projectClause == "" {
+		quotedProject, err := QuoteJQLString(requested.ProjectKey)
+		if err != nil {
+			return createdIssueResource{}, writeReadbackMissing
+		}
+		projectClause = quotedProject
+	}
+	summaryClause, err := buildSummaryPhraseClause(requested.Summary)
+	if err != nil {
+		return createdIssueResource{}, writeReadbackMissing
+	}
+	search := searchRequestBody{
+		JQL:    "project = " + projectClause + " AND " + summaryClause + " ORDER BY created DESC",
+		Fields: []string{"summary"}, Properties: []string{jiraCallPropertyKey}, MaxResults: 50,
+	}
+	result := client.exchange(session, jiraRequest{method: http.MethodPost, path: enhancedSearchPath, payload: search})
+	if status := readbackExchangeStatus(result); status != writeReadbackFound {
+		return createdIssueResource{}, status
+	}
+	var page issueReadbackPage
+	if json.Unmarshal(result.response.body, &page) != nil {
+		return createdIssueResource{}, writeReadbackMissing
+	}
+	for _, candidate := range page.Issues {
+		if candidate.Fields.Summary != requested.Summary || !numericIDPattern.MatchString(candidate.ID) || !issueKeyPattern.MatchString(candidate.Key) {
+			continue
+		}
+		created, status := client.confirmCreatedIssueCandidate(session, candidate, marker)
+		if status != writeReadbackMissing {
+			return created, status
+		}
+	}
+	return createdIssueResource{}, writeReadbackMissing
+}
+
+func (client *Client) confirmCreatedIssueCandidate(session *operationSession, candidate issueReadbackCandidate, marker jiraCallProperty) (createdIssueResource, writeReadbackStatus) {
+	if property, exists := candidate.Properties[jiraCallPropertyKey]; exists {
+		if matchesJiraCallProperty(property, marker.Value) {
+			return createdIssueResource{ID: candidate.ID, Key: candidate.Key}, writeReadbackFound
+		}
+		return createdIssueResource{}, writeReadbackMissing
+	}
+	propertyPath := issuePath(candidate.ID) + "/properties/" + jiraCallPropertyKey
+	if status := client.hasMatchingJiraCallProperty(session, propertyPath, marker.Value); status != writeReadbackFound {
+		return createdIssueResource{}, status
+	}
+	return createdIssueResource{ID: candidate.ID, Key: candidate.Key}, writeReadbackFound
+}
+
+func (client *Client) findAddedComment(session *operationSession, issueIDOrKey string, marker jiraCallProperty, providerID string) (commentResource, writeReadbackStatus) {
+	if providerID != "" {
+		result := client.exchange(session, jiraRequest{method: http.MethodGet, path: issuePath(issueIDOrKey) + "/comment/" + url.PathEscape(providerID), query: url.Values{"expand": {"properties"}}})
+		if status := readbackExchangeStatus(result); status != writeReadbackFound {
+			return commentResource{}, status
+		}
+		var candidate commentResource
+		if json.Unmarshal(result.response.body, &candidate) != nil || candidate.ID != providerID {
+			return commentResource{}, writeReadbackMissing
+		}
+		return client.confirmAddedCommentCandidate(session, candidate, marker)
+	}
+	query := url.Values{"maxResults": {"50"}, "orderBy": {"-created"}, "expand": {"properties"}}
+	result := client.exchange(session, jiraRequest{method: http.MethodGet, path: issuePath(issueIDOrKey) + "/comment", query: query})
+	if status := readbackExchangeStatus(result); status != writeReadbackFound {
+		return commentResource{}, status
+	}
+	var page commentReadbackPage
+	if json.Unmarshal(result.response.body, &page) != nil {
+		return commentResource{}, writeReadbackMissing
+	}
+	for _, candidate := range page.Comments {
+		if !numericIDPattern.MatchString(candidate.ID) {
+			continue
+		}
+		comment, status := client.confirmAddedCommentCandidate(session, candidate, marker)
+		if status != writeReadbackMissing {
+			return comment, status
+		}
+	}
+	return commentResource{}, writeReadbackMissing
+}
+
+func (client *Client) confirmAddedCommentCandidate(session *operationSession, candidate commentResource, marker jiraCallProperty) (commentResource, writeReadbackStatus) {
+	for _, property := range candidate.Properties {
+		if property.Key == marker.Key && strings.EqualFold(property.Value, marker.Value) {
+			return candidate, writeReadbackFound
+		}
+	}
+	if len(candidate.Properties) > 0 {
+		return commentResource{}, writeReadbackMissing
+	}
+	propertyPath := "/comment/" + url.PathEscape(candidate.ID) + "/properties/" + jiraCallPropertyKey
+	if status := client.hasMatchingJiraCallProperty(session, propertyPath, marker.Value); status != writeReadbackFound {
+		return commentResource{}, status
+	}
+	return candidate, writeReadbackFound
+}
+
+func (client *Client) hasMatchingJiraCallProperty(session *operationSession, path string, expected string) writeReadbackStatus {
+	result := client.exchange(session, jiraRequest{method: http.MethodGet, path: path})
+	if status := readbackExchangeStatus(result); status != writeReadbackFound {
+		return status
+	}
+	var property jiraCallPropertyResponse
+	if json.Unmarshal(result.response.body, &property) == nil && strings.EqualFold(property.Value, expected) {
+		return writeReadbackFound
+	}
+	return writeReadbackMissing
+}
+
+func (client *Client) reconcileCreatedIssue(session *operationSession, requested CreateIssueOutput, marker jiraCallProperty, providerID string, failure sdkgo.Failure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[CreateIssueOutput] {
+	created, status := client.findCreatedIssue(session, requested, marker, providerID)
+	switch status {
+	case writeReadbackFound:
+		return createdIssueBranch(requested, created, receipt)
+	case writeReadbackRetry:
+		return sdkgo.NewMutationRetry[CreateIssueOutput](newFailure(createIssueOperationID, sdkgo.FailureAvailability, "Jira issue read-back is temporarily unavailable"), 0)
+	default:
+		return sdkgo.NewMutationUncertain(requested, failure, receipt)
+	}
+}
+
+func (client *Client) reconcileAddedComment(session *operationSession, requested AddCommentOutput, issueIDOrKey string, marker jiraCallProperty, providerID string, failure sdkgo.Failure, receipt sdkgo.Receipt) sdkgo.MutationAttempt[AddCommentOutput] {
+	comment, status := client.findAddedComment(session, issueIDOrKey, marker, providerID)
+	switch status {
+	case writeReadbackFound:
+		return addedCommentBranch(requested, comment, receipt)
+	case writeReadbackRetry:
+		return sdkgo.NewMutationRetry[AddCommentOutput](newFailure(addCommentOperationID, sdkgo.FailureAvailability, "Jira comment read-back is temporarily unavailable"), 0)
+	default:
+		return sdkgo.NewMutationUncertain(requested, failure, receipt)
 	}
 }
 

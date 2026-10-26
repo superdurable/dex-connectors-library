@@ -25,8 +25,8 @@ database and reads it back. It uses every Notion operation:
    completes with the stored properties and body text.
 
 The Submission ID is the business key. Notion has no idempotency key, so
-`createPage` selects `uncertain` instead of resending a request Notion may
-have received. The Flow then queries for the Submission ID again: it adopts a
+`createPage` uses a single-dispatch fence and selects `uncertain` instead of
+resending a request Notion may have received. The Flow then queries for the Submission ID again: it adopts a
 row the uncertain create saved, or completes as `createUncertain`. Re-run the
 Flow with the same Submission ID after checking Notion. The re-run updates a
 row that appeared in the meantime and creates one otherwise.
@@ -43,7 +43,7 @@ because Dex Web Start Flow invokes `WaitFor` on the start Step.
 
 ## Release baseline
 
-- Notion Connector `v0.22.1`
+- Notion Connector `v0.23.0`
 - dexcli `v1.1.0` or a later stable release
 
 ## 1. Prepare the Notion database
@@ -75,12 +75,12 @@ cd notion-submission-intake-e2e
 mkdir -p flow build
 
 curl -fsSL \
-  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/notion/v0.22.1/connectors/notion/examples/submission-intake/flow/workflow.go \
+  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/notion/v0.23.0/connectors/notion/examples/submission-intake/flow/workflow.go \
   -o flow/workflow.go
 
 go mod init example.com/notion-submission-intake-e2e
 go mod edit -go=1.24.0
-go get github.com/superdurable/dex-connectors-library/connectors/notion@v0.22.1
+go get github.com/superdurable/dex-connectors-library/connectors/notion@v0.23.0
 go mod tidy
 ```
 
@@ -131,7 +131,7 @@ describes:
 export DEX_FLOW_SERVICE_ADDRESS="127.0.0.1:8801"
 
 GOWORK=off go run \
-  github.com/superdurable/dex-connectors-library/connectors/notion/examples/submission-intake@v0.22.1
+  github.com/superdurable/dex-connectors-library/connectors/notion/examples/submission-intake@v0.23.0
 ```
 
 The Worker listens on `127.0.0.1:8851` by default. Set
@@ -185,6 +185,7 @@ They verify:
 - a missing or ambiguous title;
 - a rejected create;
 - a rate-limited create retried after `Retry-After`;
+- a 409 conflict retried after Notion rejects the first transaction;
 - an uncertain create reconciled by query, and one that stays uncertain;
 - a create Notion saved before a 503;
 - a create held for nine seconds that Notion receives once under sync
@@ -194,8 +195,8 @@ They verify:
 - an unwired optional branch;
 - invalid Start Flow input.
 
-Before `v0.22.1` is published, build a local release artifact with
+Before `v0.23.0` is published, build a local release artifact with
 `go run ./cmd/connectorctl release-artifact` from the repository root and pass
 its directory to `dexcli dev --connector-release-override notion=DIRECTORY`.
-The test project must still resolve `connectors/notion@v0.22.1` without a
+The test project must still resolve `connectors/notion@v0.23.0` without a
 `replace`, as the compatibility gate does with a local module proxy.

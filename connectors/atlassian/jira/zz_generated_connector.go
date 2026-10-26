@@ -432,7 +432,7 @@ var CreateIssueDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: CreateIssueBranchCreated, Description: "Jira created the issue and returned its key and ID."},
 		{ID: CreateIssueBranchProviderRejected, Description: "Jira conclusively rejected the issue, such as a missing required field, an unknown project or issue type, or missing permission; nothing was created.", Optional: true},
-		{ID: CreateIssueBranchUncertain, Description: "The request was dispatched but its outcome cannot be confirmed; Jira has no idempotency key, so the issue may exist and must not be created again automatically.", Optional: true},
+		{ID: CreateIssueBranchUncertain, Description: "The request may have reached Jira but could not be confirmed; the issue may exist and must not be created again automatically.", Optional: true},
 		{ID: CreateIssueBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -592,7 +592,7 @@ var AddCommentDefinition = sdkgo.MutationDefinition{
 		{ID: AddCommentBranchAdded, Description: "Jira added the comment and returned its ID."},
 		{ID: AddCommentBranchNotFound, Description: "The issue does not exist or the connection cannot browse it; nothing was added.", Optional: true},
 		{ID: AddCommentBranchProviderRejected, Description: "Jira conclusively rejected the comment, such as missing Add comments permission or the per-issue comment limit; nothing was added.", Optional: true},
-		{ID: AddCommentBranchUncertain, Description: "The request was dispatched but its outcome cannot be confirmed; Jira has no idempotency key, so the comment may exist and must not be added again automatically.", Optional: true},
+		{ID: AddCommentBranchUncertain, Description: "The request may have reached Jira but could not be confirmed; the comment may exist and must not be added again automatically.", Optional: true},
 		{ID: AddCommentBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
