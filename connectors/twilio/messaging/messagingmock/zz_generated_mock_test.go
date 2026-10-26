@@ -20,6 +20,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[messaging.Message](`{"sid":"SMfedcba9876543210fedcba9876543210","accountSid":"ACmockAccount","from":"+14155550100","to":"+14155550123","status":"queued","direction":"outbound-api","segmentCount":1,"createdAt":"2026-09-30T17:04:05Z"}`)
 			return err
 		}},
+		{name: "sendMessage/trialRecipientRejected/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[messaging.Message](`{"accountSid":"ACmockAccount","from":"+14155550100","to":"+14155550123","errorCode":21608}`)
+			return err
+		}},
 		{name: "getMessage/deliveredText/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[messaging.Message](`{"sid":"SMfedcba9876543210fedcba9876543210","accountSid":"ACmockAccount","from":"+14155550100","to":"+14155550123","status":"delivered","direction":"outbound-api","segmentCount":1,"createdAt":"2026-09-30T17:04:05Z","sentAt":"2026-09-30T17:04:06Z"}`)
 			return err

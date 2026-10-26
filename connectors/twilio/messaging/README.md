@@ -121,15 +121,18 @@ leaving time to classify its result. It disables Go's transparent HTTP replay.
 A transport without positive DNS, connect, or TLS failure evidence is treated
 as possibly dispatched.
 An unavailable credential service retries before the POST with a `notSent`
-checkpoint. A missing, invalid, or reauthorization-required credential selects
-`defect` without sending. On 401, the connector re-resolves the credential;
-it records a safe retry only if the credential changed.
+checkpoint. An invalid or reauthorization-required credential selects `defect`
+without sending. On 401, the connector requests a forced credential refresh;
+it records a safe retry only if that returns a different valid credential.
+Static Twilio credentials cannot refresh automatically, so a 401 selects
+`providerRejected` until the connection is updated.
 
 After a valid 2xx answer, the connector saves the message SID. If Dex repeats
 that Step before committing its result, the next attempt reads the saved SID
 with `getMessage` and never sends a second POST. A transient read-back failure
-retries the read. A missing SID or a result that cannot be confirmed selects
-`uncertain`. The heartbeat frame may still be lost before Dex persists it;
+retries the read. Reauthorization-required credentials, a missing SID, and
+unconfirmable results select `uncertain`, with the saved SID in the receipt
+when available. The heartbeat frame may still be lost before Dex persists it;
 the fence then fails closed and the operator reconciles the send.
 
 `uncertain` means the message may exist. On `providerRejected` and
@@ -146,6 +149,11 @@ receipt; `undelivered` and `failed` carry the error code. A missing message is
 policy; a malformed, oversized, or mismatched response is `invalidResponse`.
 
 ## Avoiding duplicate texts
+
+Before upgrading from v0.21.x, reconcile in-flight `sendMessage` calls that are
+retrying after 429 or a failed connection. Those attempts have no dispatch
+checkpoint. A later attempt under v0.22.0 fails closed as `uncertain` even when
+the earlier request never reached Twilio.
 
 `sendMessage` uses sync Execute durability because later attempts need its
 single-dispatch heartbeat checkpoint. Async local-phase heartbeats are not

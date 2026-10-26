@@ -80,10 +80,10 @@ func TestSendMessageDeclaresUncertaintyAndSyncDurability(t *testing.T) {
 		messaging.SendMessageBranchUncertain: true, messaging.SendMessageBranchDefect: true,
 	}, branches)
 	require.Equal(t, dex.StepDurabilitySync, messaging.SendMessageDefinition.StepDefaults.ExecuteDurability,
-		"an async fallback attempt would re-send a request that outlasts the local phase")
+		"sync durability makes the dispatch heartbeat visible to later attempts")
 	require.Equal(t, dex.StepDurabilityAsync, messaging.GetMessageDefinition.StepDefaults.ExecuteDurability)
 	require.Greater(t, messaging.SendMessageDefinition.StepDefaults.ExecuteMethodTimeout, 20*time.Second,
-		"the connector's 20-second request bound must expire before the Execute timeout")
+		"the attempt must leave time after the fenced write window for classification")
 }
 
 func TestConnectionAndCredentialsNeverRevealSecrets(t *testing.T) {

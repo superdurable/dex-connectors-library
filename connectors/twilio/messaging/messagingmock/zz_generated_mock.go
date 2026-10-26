@@ -95,8 +95,8 @@ func SendMessageQueuedText() connectormock.Case[messaging.Message] {
 
 // SendMessageTrialRecipientRejected is the manifest mock trialRecipientRejected: A trial account send to an unverified recipient is rejected before message creation.
 func SendMessageTrialRecipientRejected() connectormock.Case[messaging.Message] {
-	var value messaging.Message
-	return connectormock.Branch(messaging.SendMessageBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Twilio rejected the message with error 21608."})
+	value := connectormock.MustDecodeOutput[messaging.Message](`{"accountSid":"ACmockAccount","from":"+14155550100","to":"+14155550123","errorCode":21608}`)
+	return connectormock.Branch(messaging.SendMessageBranchProviderRejected, value, &sdkgo.Failure{Kind: sdkgo.FailureProviderRejection, Message: "Twilio rejected the message with error 21608"})
 }
 
 // SendMessageDefault is the manifest default, queuedText, which New installs.

@@ -17,7 +17,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/http/httptrace"
 	"net/url"
@@ -217,6 +216,14 @@ type providerResponse struct {
 	hasBodyReadFailed bool
 }
 
+type sendMessageAttempt struct {
+	client        *Client
+	authorization basicAuthorization
+	request       sendRequest
+	response      providerResponse
+	isDispatched  bool
+}
+
 // dispatchObservation records whether a request could have reached Twilio.
 type dispatchObservation struct {
 	mutex                 sync.Mutex
@@ -309,34 +316,30 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 		return sdkgo.NewMutationBranch(SendMessageBranchDefect, Message{}, failurePointer("sendMessage", sdkgo.FailureLocalDefect, "Twilio dispatch fence could not be initialized"), sdkgo.Receipt{})
 	}
 	decision := fence.Decide()
-	request, err := client.buildSendRequest(input)
-	if err != nil {
-		return sdkgo.NewMutationBranch(SendMessageBranchDefect, Message{}, failurePointer("sendMessage", sdkgo.FailureValidation, err.Error()), sdkgo.Receipt{})
-	}
-	requested := client.requestedMessage(request)
+	requested := Message{AccountSID: client.accountSID, To: strings.TrimSpace(input.To)}
 	if decision.Kind == singledispatch.FailClosed {
 		return client.uncertainSend(call, requested, providerResponse{}, sdkgo.FailureTransport, "Twilio send checkpoint cannot confirm its outcome")
 	}
 	if decision.Kind == singledispatch.ReadBackRequired {
 		return client.readBackSentMessage(call, decision.Marker, requested)
 	}
+	request, err := client.buildSendRequest(input)
+	if err != nil {
+		return sdkgo.NewMutationBranch(SendMessageBranchDefect, Message{}, failurePointer("sendMessage", sdkgo.FailureValidation, err.Error()), sdkgo.Receipt{})
+	}
+	requested = client.requestedMessage(request)
 	authorization, failure, isTransient := client.resolveAuthorization(call, "sendMessage")
 	if failure != nil {
+		if checkpointErr := fence.RecordNotSent(); checkpointErr != nil {
+			return sdkgo.NewMutationRetry[Message](*failure, 0)
+		}
 		if !isTransient {
 			return sdkgo.NewMutationBranch(SendMessageBranchDefect, Message{}, failure, sdkgo.Receipt{})
 		}
-		if checkpointErr := fence.RecordNotSent(); checkpointErr != nil {
-			return sdkgo.NewMutationRetry[Message](newFailure("sendMessage", sdkgo.FailureTransport, "Twilio credentials and dispatch checkpoint are unavailable"), 0)
-		}
 		return sdkgo.NewMutationRetry[Message](*failure, 0)
 	}
-	var response providerResponse
-	var isDispatched bool
-	err = fence.Dispatch(func(requestContext context.Context) error {
-		var exchangeErr error
-		response, isDispatched, exchangeErr = client.exchangeWithContext(requestContext, authorization, http.MethodPost, client.messagesURL+".json", request.form, true)
-		return exchangeErr
-	})
+	attempt := &sendMessageAttempt{client: client, authorization: authorization, request: request}
+	err = fence.Dispatch(attempt.send)
 	if err != nil {
 		if errors.Is(err, singledispatch.ErrCheckpoint) || errors.Is(err, singledispatch.ErrInsufficientTime) {
 			return sdkgo.NewMutationRetry[Message](newFailure("sendMessage", sdkgo.FailureTransport, "Twilio dispatch checkpoint or attempt time is unavailable"), 0)
@@ -344,7 +347,7 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 		if errors.Is(err, errRequestNotBuilt) {
 			return sdkgo.NewMutationBranch(SendMessageBranchDefect, Message{}, failurePointer("sendMessage", sdkgo.FailureLocalDefect, err.Error()), sdkgo.Receipt{})
 		}
-		if !isDispatched {
+		if !attempt.isDispatched {
 			if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
 				return sdkgo.NewMutationRetry[Message](newFailure("sendMessage", sdkgo.FailureTransport, "Twilio could not be reached and its dispatch checkpoint is unavailable"), 0)
 			}
@@ -352,6 +355,7 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 		}
 		return client.uncertainSend(call, requested, providerResponse{}, sdkgo.FailureTransport, "Twilio message outcome is unknown")
 	}
+	response := attempt.response
 	switch {
 	case response.statusCode >= 200 && response.statusCode < 300:
 		if response.isBodyTooLarge {
@@ -368,24 +372,32 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 		_ = fence.RecordProviderID(message.SID)
 		return sdkgo.NewMutationBranch(SendMessageBranchAccepted, message, nil, client.receipt(call, response, message.SID, 0))
 	case response.statusCode == http.StatusTooManyRequests || response.statusCode == http.StatusServiceUnavailable:
-		if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
-			return sdkgo.NewMutationRetry[Message](newFailure("sendMessage", sdkgo.FailureTransport, "Twilio retry checkpoint is unavailable"), 0)
-		}
+		checkpointErr := fence.RecordCanResend()
 		if response.statusCode == http.StatusTooManyRequests {
+			if checkpointErr != nil {
+				return sdkgo.NewMutationRetry[Message](newFailure("sendMessage", sdkgo.FailureRateLimit, "Twilio rate limited the message before creating it; retry checkpoint is unavailable"), providerhttp.ParseRetryAfter(response.header.Get("Retry-After"), client.now()))
+			}
 			return sdkgo.NewMutationRetry[Message](newFailure("sendMessage", sdkgo.FailureRateLimit, "Twilio rate limited the message before creating it"), providerhttp.ParseRetryAfter(response.header.Get("Retry-After"), client.now()))
+		}
+		if checkpointErr != nil {
+			return sdkgo.NewMutationRetry[Message](newFailure("sendMessage", sdkgo.FailureAvailability, "Twilio service and retry checkpoint are temporarily unavailable"), providerhttp.ParseRetryAfter(response.header.Get("Retry-After"), client.now()))
 		}
 		return sdkgo.NewMutationRetry[Message](newFailure("sendMessage", sdkgo.FailureAvailability, "Twilio service is temporarily unavailable"), providerhttp.ParseRetryAfter(response.header.Get("Retry-After"), client.now()))
 	case response.statusCode == http.StatusUnauthorized:
-		replacement, refreshFailure, _ := client.resolveAuthorization(call, "sendMessage")
+		replacement, refreshFailure, _ := client.resolveAuthorizationAfterRejection(call)
 		if refreshFailure == nil && replacement != authorization {
 			if checkpointErr := fence.RecordCanResend(); checkpointErr != nil {
-				return sdkgo.NewMutationRetry[Message](newFailure("sendMessage", sdkgo.FailureTransport, "Twilio credential retry checkpoint is unavailable"), 0)
+				return sdkgo.NewMutationRetry[Message](newFailure("sendMessage", sdkgo.FailureAuthentication, "Twilio credential changed but retry checkpoint is unavailable"), 0)
 			}
 			return sdkgo.NewMutationRetry[Message](newFailure("sendMessage", sdkgo.FailureAuthentication, "Twilio credential changed after its rejection"), 0)
 		}
 		errorCode := readErrorCode(response.body)
 		requested.ErrorCode = errorCode
-		return sdkgo.NewMutationBranch(SendMessageBranchProviderRejected, requested, rejectionFailure("sendMessage", "message", response.statusCode, errorCode), client.receipt(call, response, "", errorCode))
+		message := "Twilio rejected the message credentials"
+		if refreshFailure != nil {
+			message = refreshFailure.Message
+		}
+		return sdkgo.NewMutationBranch(SendMessageBranchProviderRejected, requested, failurePointer("sendMessage", sdkgo.FailureAuthentication, message), client.receipt(call, response, "", errorCode))
 	case response.statusCode >= 400 && response.statusCode < 500 && response.statusCode != http.StatusRequestTimeout && response.statusCode != http.StatusConflict:
 		errorCode := readErrorCode(response.body)
 		requested.ErrorCode = errorCode
@@ -393,6 +405,12 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 	default:
 		return client.uncertainSend(call, requested, response, sdkgo.FailureAvailability, "Twilio message outcome is unknown")
 	}
+}
+
+func (attempt *sendMessageAttempt) send(requestContext context.Context) error {
+	var err error
+	attempt.response, attempt.isDispatched, err = attempt.client.exchangeWithContext(requestContext, attempt.authorization, http.MethodPost, attempt.client.messagesURL+".json", attempt.request.form, true)
+	return err
 }
 
 func (client *Client) uncertainSend(call sdkgo.Call, requested Message, response providerResponse, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[Message] {
@@ -408,20 +426,24 @@ func (client *Client) readBackSentMessage(call sdkgo.Call, marker singledispatch
 		if isTransient {
 			return sdkgo.NewMutationRetry[Message](*failure, 0)
 		}
-		return client.uncertainSend(call, requested, providerResponse{}, sdkgo.FailureAuthentication, "Twilio accepted message cannot be read with the current credential")
+		return client.uncertainReadBack(call, marker.ProviderID, requested, providerResponse{}, sdkgo.FailureAuthentication, "Twilio accepted message cannot be read; reconnect the connection")
 	}
 	response, _, err := client.exchange(call, authorization, http.MethodGet, client.messagesURL+"/"+marker.ProviderID+".json", nil)
-	if err != nil || response.hasBodyReadFailed || response.statusCode == http.StatusTooManyRequests || response.statusCode >= 500 {
+	if err != nil || response.hasBodyReadFailed || response.statusCode == http.StatusRequestTimeout || response.statusCode == http.StatusTooManyRequests || response.statusCode >= 500 {
 		return sdkgo.NewMutationRetry[Message](newFailure("sendMessage", sdkgo.FailureAvailability, "Twilio accepted message read-back is temporarily unavailable"), 0)
 	}
 	if response.statusCode != http.StatusOK || response.isBodyTooLarge {
-		return client.uncertainSend(call, requested, response, sdkgo.FailureProtocol, "Twilio accepted message could not be confirmed")
+		return client.uncertainReadBack(call, marker.ProviderID, requested, response, sdkgo.FailureProtocol, "Twilio accepted message could not be confirmed")
 	}
 	message, err := client.decodeMessage(response.body, authorization)
 	if err != nil || message.SID != marker.ProviderID || message.To != requested.To {
-		return client.uncertainSend(call, requested, response, sdkgo.FailureProtocol, "Twilio accepted message could not be confirmed")
+		return client.uncertainReadBack(call, marker.ProviderID, requested, response, sdkgo.FailureProtocol, "Twilio accepted message could not be confirmed")
 	}
 	return sdkgo.NewMutationBranch(SendMessageBranchAccepted, message, nil, client.receipt(call, response, message.SID, 0))
+}
+
+func (client *Client) uncertainReadBack(call sdkgo.Call, providerID string, requested Message, response providerResponse, kind sdkgo.FailureKind, message string) sdkgo.MutationAttempt[Message] {
+	return sdkgo.NewMutationUncertain(requested, newFailure("sendMessage", kind, message), client.receipt(call, response, providerID, 0))
 }
 
 // Definition returns the immutable connector operation definition.
@@ -527,11 +549,45 @@ func (client *Client) buildSendRequest(input SendMessageInput) (sendRequest, err
 func (client *Client) resolveAuthorization(call sdkgo.Call, operationID string) (basicAuthorization, *sdkgo.Failure, bool) {
 	credentials, err := client.credentials.Resolve(call)
 	if err != nil {
-		if isTransientCredentialFailure(err) {
-			return basicAuthorization{}, failurePointer(operationID, sdkgo.FailureAuthentication, "Twilio connection credentials are temporarily unavailable"), true
+		if errors.Is(err, sdkgo.ErrReauthorizationRequired) {
+			return basicAuthorization{}, failurePointer(operationID, sdkgo.FailureAuthentication, "Twilio connection credentials require reauthorization; reconnect the connection"), false
 		}
-		return basicAuthorization{}, failurePointer(operationID, sdkgo.FailureAuthentication, "Twilio connection credentials are unavailable"), false
+		return basicAuthorization{}, failurePointer(operationID, sdkgo.FailureAvailability, "Twilio credential lookup is temporarily unavailable"), true
 	}
+	return client.validateAuthorization(credentials, operationID)
+}
+
+func (client *Client) resolveAuthorizationAfterRejection(call sdkgo.Call) (basicAuthorization, *sdkgo.Failure, bool) {
+	refreshDeadline := time.Now().Add(requestTimeout)
+	if stepDeadline, hasDeadline := call.Context.Deadline(); hasDeadline && stepDeadline.Add(-readDeadlineMargin).Before(refreshDeadline) {
+		refreshDeadline = stepDeadline.Add(-readDeadlineMargin)
+	}
+	refreshContext, cancel := context.WithDeadline(call.Context, refreshDeadline)
+	defer cancel()
+	credentials, err := sdkgo.ResolveCredentialAfterRejection(refreshContext, client.credentials, call, twilioCredentialRefreshDriver{})
+	if err != nil {
+		if _, supportsRefresh := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); !supportsRefresh {
+			return basicAuthorization{}, failurePointer("sendMessage", sdkgo.FailureAuthentication, "Twilio credential cannot be refreshed after rejection"), false
+		}
+		if errors.Is(err, sdkgo.ErrReauthorizationRequired) {
+			return basicAuthorization{}, failurePointer("sendMessage", sdkgo.FailureAuthentication, "Twilio connection credentials require reauthorization; reconnect the connection"), false
+		}
+		return basicAuthorization{}, failurePointer("sendMessage", sdkgo.FailureAvailability, "Twilio credential refresh is temporarily unavailable"), true
+	}
+	return client.validateAuthorization(credentials, "sendMessage")
+}
+
+type twilioCredentialRefreshDriver struct{}
+
+func (twilioCredentialRefreshDriver) RefreshRequired(sdkgo.CredentialRefreshState[Credentials]) bool {
+	return false
+}
+
+func (twilioCredentialRefreshDriver) Refresh(context.Context, sdkgo.CredentialRefreshState[Credentials]) (sdkgo.CredentialRefreshResult[Credentials], error) {
+	return sdkgo.CredentialRefreshResult[Credentials]{}, errors.New("Twilio credentials require manual rotation")
+}
+
+func (client *Client) validateAuthorization(credentials Credentials, operationID string) (basicAuthorization, *sdkgo.Failure, bool) {
 	if err := credentials.Validate(); err != nil {
 		return basicAuthorization{}, failurePointer(operationID, sdkgo.FailureAuthentication, "Twilio connection credentials are incomplete"), false
 	}
@@ -552,15 +608,6 @@ func (client *Client) resolveAuthorization(call sdkgo.Call, operationID string) 
 		return basicAuthorization{}, failurePointer(operationID, sdkgo.FailureAuthentication, "Twilio credential secret is malformed"), false
 	}
 	return authorization, nil, false
-}
-
-func isTransientCredentialFailure(err error) bool {
-	if sdkgo.IsReauthorizationRequired(err) {
-		return false
-	}
-	var networkError net.Error
-	return errors.Is(err, context.DeadlineExceeded) ||
-		(errors.As(err, &networkError) && (networkError.Timeout() || networkError.Temporary()))
 }
 
 // exchange performs one request; an error with isDispatched false proves Twilio received nothing.

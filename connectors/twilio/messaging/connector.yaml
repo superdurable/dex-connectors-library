@@ -109,7 +109,8 @@ spec:
         - name: trialRecipientRejected
           branch: providerRejected
           description: "A trial account send to an unverified recipient is rejected before message creation."
-          failure: {kind: PROVIDER_REJECTION, message: Twilio rejected the message with error 21608.}
+          output: {accountSid: ACmockAccount, from: "+14155550100", to: "+14155550123", errorCode: 21608}
+          failure: {kind: PROVIDER_REJECTION, message: Twilio rejected the message with error 21608}
     - name: getMessage
       goName: GetMessage
       inputType: GetMessageInput
