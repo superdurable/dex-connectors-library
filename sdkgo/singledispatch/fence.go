@@ -7,6 +7,7 @@ package singledispatch
 import (
 	"context"
 	"errors"
+	"math"
 	"sync"
 	"time"
 
@@ -49,7 +50,7 @@ const (
 	FailClosed
 )
 
-// Decision contains the previous marker, when present, and a heartbeat read error.
+// Decision contains a same-call prior marker, when present, and a heartbeat read error.
 // A caller must resolve credentials only after inspecting this decision.
 type Decision struct {
 	// Kind identifies the allowed action.
@@ -69,8 +70,9 @@ var (
 	ErrCheckpoint = errors.New("single-dispatch checkpoint could not be recorded")
 )
 
-// Fence owns the checkpoint and send decision for one Step attempt.
-// Construct it at Invoke entry, call Decide before provider work, and use Dispatch once.
+// Fence owns the checkpoint and send decision for one Step call and attempt.
+// Construct exactly one per call per attempt. Its methods are safe for concurrent callers.
+// A five-second ticker repeats the claim while Dispatch runs; a slow heartbeat can delay Dispatch's return.
 type Fence struct {
 	call               sdkgo.Call
 	writeDeadline      time.Time
@@ -78,18 +80,48 @@ type Fence struct {
 	heartbeatInterval  time.Duration
 	mu                 sync.Mutex
 	decision           Decision
-	decided            bool
-	dispatched         bool
-	sendFinished       bool
-	preSendRetry       bool
+	hasDecision        bool
+	hasDispatched      bool
+	hasSendFinished    bool
+	hasPreSendRetry    bool
 	marker             Marker
 }
 
+// FenceOption configures the write window of a Fence.
+type FenceOption interface{ applyFence(*fenceConfig) }
+
+type fenceConfig struct{ writeWindowFraction float64 }
+type writeWindowOption struct{ writeWindowFraction float64 }
+
+func (option writeWindowOption) applyFence(config *fenceConfig) {
+	config.writeWindowFraction = option.writeWindowFraction
+}
+
+// WithWriteWindow sets the fraction of the initial attempt budget available to the request.
+// Use 7/12 when read-back needs time; at most 5/6 is allowed when no read-back is needed.
+// NewFence rejects values outside (0, 5/6], including NaN and infinity.
+func WithWriteWindow(fraction float64) FenceOption {
+	return writeWindowOption{writeWindowFraction: fraction}
+}
+
 // NewFence captures the smaller of Execute timeout and the current Step deadline.
+// The default request context ends after 7/12 of that budget; WithWriteWindow can use up to 5/6.
+// Dispatch refuses a send when less than one tenth of the initial budget remains before that deadline.
 // executeTimeout must be positive; the operation must use sync Execute durability.
-func NewFence(call sdkgo.Call, executeTimeout time.Duration) (*Fence, error) {
+func NewFence(call sdkgo.Call, executeTimeout time.Duration, options ...FenceOption) (*Fence, error) {
 	if call.Context == nil || call.ID == "" || call.Context.Attempt() < 1 || executeTimeout <= 0 {
 		return nil, errors.New("single dispatch requires a call, positive attempt, and Execute timeout")
+	}
+	config := fenceConfig{writeWindowFraction: 7.0 / 12.0}
+	for _, option := range options {
+		if option == nil {
+			return nil, errors.New("single-dispatch FenceOption is nil")
+		}
+		option.applyFence(&config)
+	}
+	if math.IsNaN(config.writeWindowFraction) || math.IsInf(config.writeWindowFraction, 0) ||
+		config.writeWindowFraction <= 0 || config.writeWindowFraction > 5.0/6.0 {
+		return nil, errors.New("single-dispatch write window must be within (0, 5/6]")
 	}
 	startedAt := time.Now()
 	budget := executeTimeout
@@ -99,20 +131,20 @@ func NewFence(call sdkgo.Call, executeTimeout time.Duration) (*Fence, error) {
 	budget = max(budget, 0)
 	return &Fence{
 		call:               call,
-		writeDeadline:      startedAt.Add(budget * 7 / 12),
+		writeDeadline:      startedAt.Add(time.Duration(float64(budget) * config.writeWindowFraction)),
 		minimumRequestTime: budget / 10, heartbeatInterval: 5 * time.Second,
 	}, nil
 }
 
 // Decide reads the last heartbeat before any credential or provider lookup.
-// A missing, foreign, stale, claimed, or invalid checkpoint never permits a send.
+// On a later attempt, a missing, foreign, stale, claimed, or invalid checkpoint forbids a send.
 func (fence *Fence) Decide() Decision {
 	fence.mu.Lock()
 	defer fence.mu.Unlock()
-	if fence.decided {
+	if fence.hasDecision {
 		return fence.decision
 	}
-	fence.decided = true
+	fence.hasDecision = true
 	var previous Marker
 	hasPrevious, err := fence.call.Context.GetLastHeartbeatValue(&previous)
 	if err != nil {
@@ -125,6 +157,10 @@ func (fence *Fence) Decide() Decision {
 		} else {
 			fence.decision = Decision{Kind: ReadBackRequired}
 		}
+		return fence.decision
+	}
+	if previous.CallID != fence.call.ID {
+		fence.decision = Decision{Kind: FailClosed, Err: errors.New("foreign single-dispatch checkpoint")}
 		return fence.decision
 	}
 	fence.decision = Decision{Kind: ReadBackRequired, Marker: previous}
@@ -141,27 +177,12 @@ func (fence *Fence) Decide() Decision {
 	return fence.decision
 }
 
-// RecordNotSent checkpoints a decided pre-send Retry, including credential failure.
-// It is refused after Dispatch starts, because the request may have reached the provider.
-func (fence *Fence) RecordNotSent() error {
-	fence.mu.Lock()
-	defer fence.mu.Unlock()
-	if !fence.decided || fence.decision.Kind != SendAllowed || fence.dispatched || fence.preSendRetry {
-		return ErrDispatchNotAllowed
-	}
-	if err := fence.record(Marker{CallID: fence.call.ID, Attempt: fence.call.Context.Attempt(), State: StateNotSent}); err != nil {
-		return err
-	}
-	fence.preSendRetry = true
-	return nil
-}
-
 // Dispatch records the claim as the send path's first heartbeat, then calls send once.
 // A heartbeat failure or short budget returns an error without calling send; return Retry.
-// The request context ends before the Step attempt, leaving time to classify its outcome.
+// The request context ends at the configured write window, leaving time to classify its outcome.
 func (fence *Fence) Dispatch(send func(context.Context) error) error {
 	fence.mu.Lock()
-	if !fence.decided || fence.decision.Kind != SendAllowed || fence.dispatched || fence.preSendRetry || send == nil {
+	if !fence.hasDecision || fence.decision.Kind != SendAllowed || fence.hasDispatched || fence.hasPreSendRetry || send == nil {
 		fence.mu.Unlock()
 		return ErrDispatchNotAllowed
 	}
@@ -172,12 +193,12 @@ func (fence *Fence) Dispatch(send func(context.Context) error) error {
 		}
 		return ErrInsufficientTime
 	}
-	fence.dispatched = true
+	fence.hasDispatched = true
 	claim := Marker{CallID: fence.call.ID, Attempt: fence.call.Context.Attempt(), State: StateClaimed}
 	if err := fence.record(claim); err != nil {
-		fence.dispatched = false
+		fence.hasPreSendRetry = true
+		// A failed claim never permits a send; a best-effort notSent may permit the next attempt.
 		_ = fence.record(Marker{CallID: fence.call.ID, Attempt: fence.call.Context.Attempt(), State: StateNotSent})
-		fence.preSendRetry = true
 		fence.mu.Unlock()
 		return errors.Join(ErrCheckpoint, err)
 	}
@@ -188,13 +209,27 @@ func (fence *Fence) Dispatch(send func(context.Context) error) error {
 	stop := make(chan struct{})
 	stopped := make(chan struct{})
 	go fence.repeatClaim(claim, stop, stopped)
+	defer func() {
+		close(stop)
+		<-stopped
+	}()
 	err := send(requestContext)
-	close(stop)
-	<-stopped
 	fence.mu.Lock()
-	fence.sendFinished = true
+	fence.hasSendFinished = true
 	fence.mu.Unlock()
 	return err
+}
+
+// RecordNotSent checkpoints a decided pre-send Retry, including credential failure.
+// It permanently forbids Dispatch in this attempt, even when its heartbeat write fails.
+func (fence *Fence) RecordNotSent() error {
+	fence.mu.Lock()
+	defer fence.mu.Unlock()
+	if !fence.hasDecision || fence.decision.Kind != SendAllowed || fence.hasDispatched || fence.hasPreSendRetry {
+		return ErrDispatchNotAllowed
+	}
+	fence.hasPreSendRetry = true
+	return fence.record(Marker{CallID: fence.call.ID, Attempt: fence.call.Context.Attempt(), State: StateNotSent})
 }
 
 // RecordCanResend checkpoints positive evidence that Dispatch was not processed.
@@ -202,7 +237,7 @@ func (fence *Fence) Dispatch(send func(context.Context) error) error {
 func (fence *Fence) RecordCanResend() error {
 	fence.mu.Lock()
 	defer fence.mu.Unlock()
-	if !fence.sendFinished || fence.marker.State != StateClaimed || fence.marker.ProviderID != "" {
+	if !fence.hasSendFinished || fence.marker.State != StateClaimed || fence.marker.ProviderID != "" {
 		return ErrDispatchNotAllowed
 	}
 	return fence.record(Marker{CallID: fence.call.ID, Attempt: fence.call.Context.Attempt(), State: StateCanResend})
@@ -213,7 +248,7 @@ func (fence *Fence) RecordCanResend() error {
 func (fence *Fence) RecordProviderID(providerID string) error {
 	fence.mu.Lock()
 	defer fence.mu.Unlock()
-	if !fence.sendFinished || fence.marker.State != StateClaimed || providerID == "" {
+	if !fence.hasSendFinished || fence.marker.State != StateClaimed || providerID == "" {
 		return ErrDispatchNotAllowed
 	}
 	return fence.record(Marker{CallID: fence.call.ID, Attempt: fence.call.Context.Attempt(), State: StateClaimed, ProviderID: providerID})
@@ -240,6 +275,7 @@ func (fence *Fence) repeatClaim(claim Marker, stop <-chan struct{}, stopped chan
 		case <-ticker.C:
 			fence.mu.Lock()
 			if fence.marker == claim {
+				// The claim is best-effort repetition; failure cannot authorize another send.
 				_ = fence.call.Context.RecordHeartbeat(claim)
 			}
 			fence.mu.Unlock()

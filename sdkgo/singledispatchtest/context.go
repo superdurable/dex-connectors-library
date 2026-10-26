@@ -17,18 +17,19 @@ import (
 // It snapshots the last persisted heartbeat when an attempt advances.
 type Context struct {
 	context.Context
-	mu                  sync.Mutex
-	flowID              string
-	stepExecutionID     string
-	attempt             int32
-	lastHeartbeat       []byte
-	currentHeartbeat    []byte
-	isLocalPhase        bool
-	dropLocalHeartbeats bool
-	loseNextHeartbeat   bool
-	readError           error
-	writeError          error
-	heartbeats          [][]byte
+	mu                        sync.Mutex
+	flowID                    string
+	stepExecutionID           string
+	attempt                   int32
+	lastHeartbeat             []byte
+	currentHeartbeat          []byte
+	hasCurrentHeartbeat       bool
+	isLocalPhase              bool
+	shouldDropLocalHeartbeats bool
+	shouldLoseNextHeartbeat   bool
+	readError                 error
+	writeError                error
+	heartbeats                [][]byte
 }
 
 // NewContext constructs an attempt-one context with no heartbeat checkpoint.
@@ -57,14 +58,14 @@ func (ctx *Context) SetLocalPhase(isLocalPhase bool) {
 func (ctx *Context) DropLocalHeartbeats() {
 	ctx.mu.Lock()
 	defer ctx.mu.Unlock()
-	ctx.dropLocalHeartbeats = true
+	ctx.shouldDropLocalHeartbeats = true
 }
 
 // LoseNextHeartbeat discards one heartbeat frame while returning success.
 func (ctx *Context) LoseNextHeartbeat() {
 	ctx.mu.Lock()
 	defer ctx.mu.Unlock()
-	ctx.loseNextHeartbeat = true
+	ctx.shouldLoseNextHeartbeat = true
 }
 
 // SetReadError makes later heartbeat reads fail until cleared with nil.
@@ -98,10 +99,11 @@ func (ctx *Context) AdvanceAttempt() {
 	ctx.mu.Lock()
 	defer ctx.mu.Unlock()
 	ctx.attempt++
-	if ctx.currentHeartbeat != nil {
+	if ctx.hasCurrentHeartbeat {
 		ctx.lastHeartbeat = ctx.currentHeartbeat
 	}
 	ctx.currentHeartbeat = nil
+	ctx.hasCurrentHeartbeat = false
 	ctx.isLocalPhase = false
 }
 
@@ -149,11 +151,15 @@ func (*Context) HasTimerFiredByIndex(int) bool { return false }
 // WaitForMethodFailed reports no WaitFor failure for this fake Step.
 func (*Context) WaitForMethodFailed() bool { return false }
 
-// RecordHeartbeat persists a non-nil frame unless the configured loss mode discards it.
+// RecordHeartbeat persists a frame unless loss mode discards it; nil clears the checkpoint.
 func (ctx *Context) RecordHeartbeat(value any) error {
-	encoded, err := json.Marshal(value)
-	if err != nil {
-		return err
+	var encoded []byte
+	if value != nil {
+		var err error
+		encoded, err = json.Marshal(value)
+		if err != nil {
+			return err
+		}
 	}
 	ctx.mu.Lock()
 	defer ctx.mu.Unlock()
@@ -161,15 +167,44 @@ func (ctx *Context) RecordHeartbeat(value any) error {
 		return ctx.writeError
 	}
 	ctx.heartbeats = append(ctx.heartbeats, encoded)
-	if ctx.loseNextHeartbeat {
-		ctx.loseNextHeartbeat = false
+	if ctx.shouldLoseNextHeartbeat {
+		ctx.shouldLoseNextHeartbeat = false
 		return nil
 	}
-	if ctx.isLocalPhase && ctx.dropLocalHeartbeats {
+	if ctx.isLocalPhase && ctx.shouldDropLocalHeartbeats {
 		return nil
 	}
 	ctx.currentHeartbeat = encoded
+	ctx.hasCurrentHeartbeat = true
 	return nil
+}
+
+// Deadline returns the current fake attempt deadline without racing SetDeadline.
+func (ctx *Context) Deadline() (time.Time, bool) {
+	ctx.mu.Lock()
+	defer ctx.mu.Unlock()
+	return ctx.Context.Deadline()
+}
+
+// Done returns the current fake attempt's cancellation channel.
+func (ctx *Context) Done() <-chan struct{} {
+	ctx.mu.Lock()
+	defer ctx.mu.Unlock()
+	return ctx.Context.Done()
+}
+
+// Err returns the current fake attempt's cancellation error.
+func (ctx *Context) Err() error {
+	ctx.mu.Lock()
+	defer ctx.mu.Unlock()
+	return ctx.Context.Err()
+}
+
+// Value returns a context value from the current fake attempt.
+func (ctx *Context) Value(key any) any {
+	ctx.mu.Lock()
+	defer ctx.mu.Unlock()
+	return ctx.Context.Value(key)
 }
 
 // GetLastHeartbeatValue decodes the checkpoint visible at attempt start.

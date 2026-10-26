@@ -6,6 +6,7 @@ package singledispatch_test
 import (
 	"context"
 	"errors"
+	"math"
 	"testing"
 	"time"
 
@@ -35,7 +36,7 @@ func TestDispatchDecisionOnlyImmediateProofPermitsSend(t *testing.T) {
 		{name: "immediate canResend", attempts: 1, marker: &singledispatch.Marker{CallID: "call-1", Attempt: 1, State: singledispatch.StateCanResend}, want: singledispatch.SendAllowed},
 		{name: "immediate notSent", attempts: 1, marker: &singledispatch.Marker{CallID: "call-1", Attempt: 1, State: singledispatch.StateNotSent}, want: singledispatch.SendAllowed},
 		{name: "claimed", attempts: 1, marker: &singledispatch.Marker{CallID: "call-1", Attempt: 1, State: singledispatch.StateClaimed}, want: singledispatch.ReadBackRequired},
-		{name: "foreign", attempts: 1, marker: &singledispatch.Marker{CallID: "call-2", Attempt: 1, State: singledispatch.StateCanResend}, want: singledispatch.ReadBackRequired},
+		{name: "foreign", attempts: 1, marker: &singledispatch.Marker{CallID: "call-2", Attempt: 1, State: singledispatch.StateCanResend}, want: singledispatch.FailClosed},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
 			ctx := singledispatchtest.NewContext("flow-1", "step-1")
@@ -58,6 +59,67 @@ func TestDispatchDecisionOnlyImmediateProofPermitsSend(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestForeignMarkerDoesNotExposeProviderID(t *testing.T) {
+	ctx := singledispatchtest.NewContext("flow-1", "step-1")
+	ctx.AdvanceAttempt()
+	require.NoError(t, ctx.SetPersistedCheckpoint(singledispatch.Marker{
+		CallID: "other-call", Attempt: 1, State: singledispatch.StateClaimed, ProviderID: "other-resource",
+	}))
+	decision := newFence(t, ctx).Decide()
+	require.Equal(t, singledispatch.FailClosed, decision.Kind)
+	require.Empty(t, decision.Marker)
+	require.Error(t, decision.Err)
+}
+
+func TestFailedNotSentCheckpointLatchesAttempt(t *testing.T) {
+	ctx := singledispatchtest.NewContext("flow-1", "step-1")
+	fence := newFence(t, ctx)
+	require.Equal(t, singledispatch.SendAllowed, fence.Decide().Kind)
+	ctx.SetWriteError(errors.New("heartbeat unavailable"))
+	require.Error(t, fence.RecordNotSent())
+	ctx.SetWriteError(nil)
+	require.ErrorIs(t, fence.Dispatch(func(context.Context) error {
+		t.Fatal("sent after failed notSent checkpoint")
+		return nil
+	}), singledispatch.ErrDispatchNotAllowed)
+}
+
+func TestLostNotSentAcknowledgmentCannotOverwritePermitWithClaim(t *testing.T) {
+	ctx := singledispatchtest.NewContext("flow-1", "step-1")
+	faulty := &lostAcknowledgmentContext{Context: ctx}
+	fence, err := singledispatch.NewFence(sdkgo.Call{Context: faulty, ID: "call-1"}, time.Second)
+	require.NoError(t, err)
+	require.Equal(t, singledispatch.SendAllowed, fence.Decide().Kind)
+	require.Error(t, fence.RecordNotSent())
+	ctx.LoseNextHeartbeat()
+	require.ErrorIs(t, fence.Dispatch(func(context.Context) error {
+		t.Fatal("sent after lost notSent acknowledgment")
+		return nil
+	}), singledispatch.ErrDispatchNotAllowed)
+	ctx.AdvanceAttempt()
+	second := newFence(t, ctx)
+	require.Equal(t, singledispatch.SendAllowed, second.Decide().Kind)
+	sends := 0
+	require.NoError(t, second.Dispatch(func(context.Context) error { sends++; return nil }))
+	require.Equal(t, 1, sends)
+}
+
+type lostAcknowledgmentContext struct {
+	*singledispatchtest.Context
+	hasLostAcknowledgment bool
+}
+
+func (ctx *lostAcknowledgmentContext) RecordHeartbeat(value any) error {
+	if !ctx.hasLostAcknowledgment {
+		ctx.hasLostAcknowledgment = true
+		if err := ctx.Context.RecordHeartbeat(value); err != nil {
+			return err
+		}
+		return errors.New("heartbeat acknowledgment lost")
+	}
+	return ctx.Context.RecordHeartbeat(value)
 }
 
 func Test503CanResendButLostNextClaimCannot(t *testing.T) {
@@ -160,4 +222,56 @@ func TestLocalPhaseHeartbeatLossFailsClosed(t *testing.T) {
 	require.NoError(t, fence.Dispatch(func(context.Context) error { return nil }))
 	ctx.AdvanceAttempt()
 	require.Equal(t, singledispatch.ReadBackRequired, newFence(t, ctx).Decide().Kind)
+}
+
+func TestWriteWindowControlsRequestDeadline(t *testing.T) {
+	for _, scenario := range []struct {
+		name     string
+		fraction float64
+		want     time.Duration
+	}{
+		{name: "default", want: 700 * time.Millisecond},
+		{name: "no read back", fraction: 5.0 / 6.0, want: time.Second},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			ctx := singledispatchtest.NewContext("flow-1", "step-1")
+			started := time.Now()
+			var options []singledispatch.FenceOption
+			if scenario.fraction != 0 {
+				options = append(options, singledispatch.WithWriteWindow(scenario.fraction))
+			}
+			fence, err := singledispatch.NewFence(sdkgo.Call{Context: ctx, ID: "call-1"}, 1200*time.Millisecond, options...)
+			require.NoError(t, err)
+			require.Equal(t, singledispatch.SendAllowed, fence.Decide().Kind)
+			require.NoError(t, fence.Dispatch(func(requestContext context.Context) error {
+				deadline, hasDeadline := requestContext.Deadline()
+				require.True(t, hasDeadline)
+				require.InDelta(t, float64(scenario.want), float64(deadline.Sub(started)), float64(50*time.Millisecond))
+				return nil
+			}))
+		})
+	}
+	for _, fraction := range []float64{0, -1, 0.9, math.NaN(), math.Inf(1)} {
+		_, err := singledispatch.NewFence(sdkgo.Call{Context: singledispatchtest.NewContext("flow-1", "step-1"), ID: "call-1"}, time.Second, singledispatch.WithWriteWindow(fraction))
+		require.Error(t, err)
+	}
+}
+
+func TestNilHeartbeatClearsFakeCheckpoint(t *testing.T) {
+	ctx := singledispatchtest.NewContext("flow-1", "step-1")
+	require.NoError(t, ctx.RecordHeartbeat(singledispatch.Marker{CallID: "call-1", Attempt: 1, State: singledispatch.StateClaimed}))
+	require.NoError(t, ctx.RecordHeartbeat(nil))
+	ctx.AdvanceAttempt()
+	require.Equal(t, singledispatch.ReadBackRequired, newFence(t, ctx).Decide().Kind)
+}
+
+func TestSendPanicStopsClaimTicker(t *testing.T) {
+	ctx := singledispatchtest.NewContext("flow-1", "step-1")
+	fence := newFence(t, ctx)
+	require.Equal(t, singledispatch.SendAllowed, fence.Decide().Kind)
+	require.PanicsWithValue(t, "provider bug", func() {
+		_ = fence.Dispatch(func(context.Context) error { panic("provider bug") })
+	})
+	require.Len(t, ctx.Heartbeats(), 1)
+	require.ErrorIs(t, fence.RecordCanResend(), singledispatch.ErrDispatchNotAllowed)
 }

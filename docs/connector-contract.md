@@ -254,12 +254,20 @@ The fence reads the last checkpoint before credentials or provider lookups. It
 permits one send only on attempt one with no marker, or after the immediately
 preceding attempt recorded `notSent` or `canResend` for the same Call ID. A
 missing, foreign, stale, or claimed marker never authorizes another write.
-The connector reads back a saved provider identity when possible; an
+Use exactly one Fence per Step call per attempt; separate Fence instances do
+not share an in-process send latch. A foreign marker fails closed with no
+provider identity exposed. The connector reads back a saved provider identity when possible; an
 unconfirmable possibly sent write selects `uncertain`. `notSent` is recorded
 before a pre-send Retry; `canResend` requires positive evidence that the
 provider did not process the request. The claim is the first heartbeat of the
-send path. The request deadline leaves margin within the Execute attempt, and
-the fence declines a send when less than a tenth of its initial budget remains.
+send path. The initial budget is the smaller of Execute timeout and the remaining
+Step deadline. By default, the request context ends after 7/12 of that budget,
+leaving time for read-back and classification. `WithWriteWindow` can set a
+fraction up to 5/6 when read-back is unnecessary. Choose this deliberately for
+long operations such as OpenAI `createResponse` with a 150-second timeout:
+the default request deadline would be 87.5 seconds. A send is refused when
+less than budget/10 remains before the request deadline, and `notSent` is
+attempted before returning Retry.
 Do not record `notSent` before a credential or lookup operation that might
 later proceed to a send. If the attempt dies before deciding whether to send,
 the next attempt fails closed; a slow credential refresh does not change that.
@@ -267,7 +275,16 @@ Before `http.Client.Do`, a fenced HTTP write calls
 `singledispatch.PrepareHTTPWrite` on its request. Go's transport treats an
 `Idempotency-Key` or `X-Idempotency-Key` header with `GetBody` as replayable
 on a reused connection. Clearing `GetBody` prevents a transparent second POST
-outside the fence; bodyless writes receive a non-replayable empty body.
+outside the fence; bodyless writes receive a non-replayable empty body. This
+unconditionally blocks Go's HTTP/2 replay of nil-body writes after a stream
+`PROTOCOL_ERROR`. Under HTTP/1.1, prepared bodyless POST, PUT, and PATCH
+requests use `Transfer-Encoding: chunked`. Verify provider support before
+migrating an endpoint that requires a bodyless write.
+
+Legacy per-connector heartbeat markers are invalid to this shared fence and
+fail closed on the first deploy. Plan in-flight call reconciliation before
+replacing those markers; a saved legacy provider ID is not read back by this
+helper.
 
 `RecordHeartbeat` waits for a Worker frame, not backend persistence. If the
 claim frame is lost before persistence, the provider accepts the write, and

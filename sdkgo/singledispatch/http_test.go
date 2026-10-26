@@ -72,3 +72,23 @@ func TestPrepareBodylessHTTPWriteCannotBeReplayed(t *testing.T) {
 	require.NoError(t, request.Body.Close())
 	require.Error(t, singledispatch.PrepareHTTPWrite(nil))
 }
+
+func TestPreparedBodylessHTTPWritesUseChunkedEncoding(t *testing.T) {
+	for _, method := range []string{http.MethodPost, http.MethodPut, http.MethodPatch} {
+		t.Run(method, func(t *testing.T) {
+			transferEncoding := make(chan []string, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+				transferEncoding <- request.TransferEncoding
+				response.WriteHeader(http.StatusNoContent)
+			}))
+			defer server.Close()
+			request, err := http.NewRequest(method, server.URL, nil)
+			require.NoError(t, err)
+			require.NoError(t, singledispatch.PrepareHTTPWrite(request))
+			response, err := server.Client().Do(request)
+			require.NoError(t, err)
+			require.NoError(t, response.Body.Close())
+			require.Equal(t, []string{"chunked"}, <-transferEncoding)
+		})
+	}
+}

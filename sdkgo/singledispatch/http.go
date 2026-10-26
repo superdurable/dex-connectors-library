@@ -14,7 +14,9 @@ import (
 // Call it after building the request and before http.Client.Do. It clears
 // GetBody and gives bodyless writes a non-replayable empty body. The caller
 // must use the request only once; redirects and transport retries are not a
-// substitute for the fence's retry decision.
+// substitute for the fence's retry decision. Bodyless POST, PUT, and PATCH
+// use HTTP/1.1 chunked transfer encoding; verify provider support before migrating.
+// The unconditional empty body also blocks HTTP/2 PROTOCOL_ERROR replay of nil-body writes.
 func PrepareHTTPWrite(request *http.Request) error {
 	if request == nil {
 		return errors.New("fenced HTTP request is nil")
