@@ -5,7 +5,7 @@ metadata:
   displayName: Todoist
   description: List, read, create, update, and delete Todoist tasks through typed Dex Steps.
   company: Doist
-  version: v0.2.1
+  version: v0.3.0
 spec:
   provider: todoist
   codegen:
@@ -62,6 +62,20 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: createdTask
+          branch: found
+          description: "Reading task created-task just after creation finds its original title and description."
+          default: true
+          output: {id: created-task, projectId: inbox-project, content: Original title, description: Original description, isCompleted: false}
+        - name: deletedTaskMissing
+          branch: notFound
+          description: "Reading task created-task after deletion receives Todoist's HTTP 404."
+          failure: {kind: NOT_FOUND, message: "Todoist found no active task with that ID."}
+        - name: taskReadDenied
+          branch: providerRejected
+          description: "Reading task denied-task without permission receives Todoist's HTTP 403."
+          failure: {kind: AUTHORIZATION, message: "Todoist denied the task read."}
     - name: updateTaskContent
       goName: UpdateTask
       inputType: UpdateTaskInput
@@ -78,6 +92,20 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: lifecycleTitleUpdated
+          branch: updated
+          description: "Updating created-task content to Original title - updated keeps its description and project."
+          default: true
+          output: {id: created-task, projectId: inbox-project, content: Original title - updated, description: Original description, isCompleted: false}
+        - name: taskMissingDuringUpdate
+          branch: notFound
+          description: "Updating task missing-task receives Todoist's HTTP 404 before any change."
+          failure: {kind: NOT_FOUND, message: "Todoist found no active task to update."}
+        - name: taskUpdateDenied
+          branch: providerRejected
+          description: "Updating task denied-task without permission receives Todoist's HTTP 403."
+          failure: {kind: AUTHORIZATION, message: "Todoist denied the task update."}
     - name: listTasks
       goName: ListTasks
       inputType: ListTasksInput
@@ -94,6 +122,20 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      pagination: {inputField: cursor, nextField: nextCursor}
+      mocks:
+        - name: inboxTasksAcrossPages
+          branch: listed
+          description: "Listing inbox-project tasks from a blank cursor finds unrelated tasks before created-task on page three."
+          default: true
+          pages:
+            - {tasks: [{id: other-2, projectId: inbox-project, content: Prepare report, description: "", isCompleted: false}, {id: other-1, projectId: inbox-project, content: Check draft, description: "", isCompleted: false}], nextCursor: inbox-page-2}
+            - {tasks: [{id: other-1, projectId: inbox-project, content: Check draft, description: "", isCompleted: false}], nextCursor: inbox-page-3}
+            - {tasks: [{id: created-task, projectId: inbox-project, content: Original title - updated, description: Original description, isCompleted: false}]}
+        - name: taskListDenied
+          branch: providerRejected
+          description: "Listing denied-project tasks without permission receives Todoist's HTTP 403."
+          failure: {kind: AUTHORIZATION, message: "Todoist denied the task listing."}
     - name: createTask
       goName: CreateTask
       inputType: CreateTaskInput
@@ -111,6 +153,16 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Todoist does not state how long it deduplicates X-Request-ID, so bound createTask retries while that provider guarantee is unknown."}}
+      mocks:
+        - name: disposableTaskCreated
+          branch: created
+          description: "Creating Original title with Original description in Inbox returns task created-task."
+          default: true
+          output: {id: created-task, projectId: inbox-project, content: Original title, description: Original description, isCompleted: false}
+        - name: taskCreationDenied
+          branch: providerRejected
+          description: "Creating a task in denied-project without permission receives Todoist's HTTP 403."
+          failure: {kind: AUTHORIZATION, message: "Todoist denied task creation."}
     - name: deleteTask
       goName: DeleteTask
       inputType: DeleteTaskInput
@@ -127,3 +179,18 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: disposableTaskDeleted
+          branch: deleted
+          description: "Deleting created-task after its update removes the disposable task."
+          default: true
+          output: {taskId: created-task}
+        - name: taskAlreadyAbsent
+          branch: alreadyAbsent
+          description: "Deleting missing-task after an earlier attempt receives Todoist's HTTP 404."
+          output: {taskId: missing-task}
+          failure: {kind: NOT_FOUND, message: "Todoist found no active task to delete."}
+        - name: taskDeletionDenied
+          branch: providerRejected
+          description: "Deleting denied-task without permission receives Todoist's HTTP 403."
+          failure: {kind: AUTHORIZATION, message: "Todoist denied task deletion."}

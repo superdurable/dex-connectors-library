@@ -205,6 +205,27 @@ The token travels only in the Authorization header. Redirects are disabled.
 Failure messages exclude raw provider bodies and transport errors. Responses
 reflecting the token are rejected before returning durable values.
 
+## Mocks
+
+`todoistmock` provides defaults for one disposable Inbox task and a three-page
+listing with unrelated tasks and a duplicate across pages. The create,
+update, list, and delete defaults describe that task's lifecycle. A Flow that
+reads between those transitions scripts the corresponding `getTask` answers,
+including the final `notFound`. Optional cases cover missing tasks and
+permission denials. See [connector mocks](../../../sdkgo/README.md#connector-mocks).
+
+The [runnable real-Dex test](examples/task-crud/flow/workflow_mock_integration_test.go)
+scripts those reads and verifies that the Flow pages before deleting:
+
+```go
+	mock := todoistmock.New(t, ConnectionName)
+	mock.GetTask().Respond(
+		todoistmock.GetTaskCreatedTask(),
+		todoistmock.GetTaskFound(todoist.Task{ID: "created-task", ProjectID: "inbox-project", Content: "Original title - updated", Description: "Original description"}, nil),
+		todoistmock.GetTaskDeletedTaskMissing(),
+	)
+```
+
 ## Verification
 
 From this module:

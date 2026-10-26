@@ -48,7 +48,7 @@ mkdir -p /tmp/todoist-release
 GOWORK=off go run ./cmd/connectorctl release-artifact \
   --manifest connectors/doist/todoist/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/doist/todoist \
-  --version v0.2.1 --tag connectors/doist/todoist/v0.2.1 \
+  --version v0.3.0 --tag connectors/doist/todoist/v0.3.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/todoist-release/connector-release.json \
   --digest-output /tmp/todoist-release/connector-release.json.sha256
