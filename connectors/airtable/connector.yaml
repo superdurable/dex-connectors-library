@@ -5,7 +5,7 @@ metadata:
   displayName: Airtable
   description: List, read, idempotently upsert, and update typed Airtable records, with base and table pickers.
   company: Airtable
-  version: v0.21.2
+  version: v0.22.0
 spec:
   provider: airtable
   codegen:
@@ -91,6 +91,7 @@ spec:
       kind: query
       description: List one bounded page of a table's records, filtered by typed field equality and an optional formula, with a field subset, sort, view, and offset cursor.
       idempotency: none
+      pagination: {inputField: offset, nextField: offset}
       branches:
         - {id: listed, goName: Listed, description: Airtable returned one bounded page of matching records; the page may be empty.}
         - {id: offsetExpired, goName: OffsetExpired, description: "Airtable no longer recognizes the offset cursor, so the listing must restart from the first page.", optional: true}
@@ -101,6 +102,27 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         # Airtable asks a rate-limited client to wait 30 seconds, so the window fits several such waits.
+      mocks:
+        - name: standardRefundPolicy
+          branch: listed
+          description: Listing Policy Key refund-standard in the Policies table returns one policy and two further cursor pages.
+          default: true
+          pages:
+            - records: [{id: recPolicyStandard, createdTime: "2026-09-01T09:00:00Z", fields: {"Policy Key": refund-standard, "Approval Limit USD": 250}}]
+              offset: policies-page-2
+              filterFormula: '{Policy Key} = "refund-standard"'
+            - records: [{id: recPolicyStandard, createdTime: "2026-09-01T09:00:00Z", fields: {"Policy Key": refund-standard, "Approval Limit USD": 250}}]
+              offset: policies-page-3
+              filterFormula: '{Policy Key} = "refund-standard"'
+            - {records: [], offset: "", filterFormula: '{Policy Key} = "refund-standard"'}
+        - name: expiredPolicyOffset
+          branch: offsetExpired
+          description: Listing Policies with an expired offset cursor requires a fresh scan.
+          failure: {kind: NOT_FOUND, message: Airtable no longer recognizes the list offset.}
+        - name: policyListDenied
+          branch: providerRejected
+          description: Listing Policies without data.records:read scope is denied.
+          failure: {kind: AUTHORIZATION, message: Airtable denied the policy listing.}
     - name: getRecord
       goName: GetRecord
       inputType: GetRecordInput
@@ -118,6 +140,23 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         # Airtable asks a rate-limited client to wait 30 seconds, so the window fits several such waits.
+      mocks:
+        - name: approvedDecisionLog
+          branch: found
+          description: Reading recDecisionLog001 from Decision Log returns the approved case-approved row.
+          default: true
+          output:
+            id: recDecisionLog001
+            createdTime: "2026-10-25T09:01:00Z"
+            fields: {"Case ID": case-approved, "Customer": Jane Doe, "Amount USD": 120, "Decision": approved, "Policy": [recPolicyStandard]}
+        - name: missingDecisionLog
+          branch: notFound
+          description: Reading recMissingLog001 from Decision Log finds no record.
+          failure: {kind: NOT_FOUND, message: Airtable found no such record.}
+        - name: decisionReadDenied
+          branch: providerRejected
+          description: Reading recDecisionLog001 without data.records:read scope is denied.
+          failure: {kind: AUTHORIZATION, message: Airtable denied the record read.}
     - name: upsertRecords
       goName: UpsertRecords
       inputType: UpsertRecordsInput
@@ -134,6 +173,22 @@ spec:
         executeMethodTimeout: 30s
         # Without a unique merge key, concurrent duplicate upserts could both create; sync never overlaps attempts.
         durability: sync
+      mocks:
+        - name: loggedApprovedRefund
+          branch: upserted
+          description: Upserting Case ID case-approved in Decision Log creates its approved row linked to recPolicyStandard.
+          default: true
+          output:
+            records:
+              - id: recDecisionLog001
+                createdTime: "2026-10-25T09:01:00Z"
+                fields: {"Case ID": case-approved, "Customer": Jane Doe, "Amount USD": 120, "Decision": approved, "Policy": [recPolicyStandard]}
+            createdRecordIds: [recDecisionLog001]
+            updatedRecordIds: []
+        - name: decisionUpsertDenied
+          branch: providerRejected
+          description: Upserting case-approved without data.records:write scope is denied.
+          failure: {kind: AUTHORIZATION, message: Airtable denied the decision log upsert.}
     - name: updateRecords
       goName: UpdateRecords
       inputType: UpdateRecordsInput
@@ -151,3 +206,21 @@ spec:
         executeMethodTimeout: 30s
         durability: async
         # Airtable asks a rate-limited client to wait 30 seconds, so the window fits several such waits.
+      mocks:
+        - name: stampedStandardPolicy
+          branch: updated
+          description: Updating recPolicyStandard stamps Last Decided Case with case-approved.
+          default: true
+          output:
+            records:
+              - id: recPolicyStandard
+                createdTime: "2026-09-01T09:00:00Z"
+                fields: {"Policy Key": refund-standard, "Approval Limit USD": 250, "Last Decided Case": case-approved}
+        - name: missingPolicyStamp
+          branch: notFound
+          description: Updating recMissingPolicy1 finds no policy row to stamp.
+          failure: {kind: NOT_FOUND, message: Airtable found no such record.}
+        - name: policyStampDenied
+          branch: providerRejected
+          description: Updating recPolicyStandard without data.records:write scope is denied.
+          failure: {kind: AUTHORIZATION, message: Airtable denied the policy update.}
