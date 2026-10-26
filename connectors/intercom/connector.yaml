@@ -5,7 +5,7 @@ metadata:
   displayName: Intercom
   description: "Search, read, answer, close, reopen, and snooze Intercom conversations, find contacts by email, and receive signed conversation webhooks, with Intercom's own open, closed, and snoozed states."
   company: Intercom
-  version: v0.21.2
+  version: v0.22.0
 spec:
   provider: intercom
   codegen:
@@ -120,6 +120,26 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      pagination: {inputField: cursor, nextField: nextCursor}
+      mocks:
+        - name: adaOpenConversations
+          branch: searched
+          description: Searching contact-1 for open or snoozed conversations returns three pages with earlier 2001 repeated across a boundary.
+          default: true
+          pages:
+            - conversations: [{id: "2002", title: Duplicate refund question, state: open, isOpen: true, source: {type: conversation, body: I need help with my refund, author: {type: user, id: contact-1, name: Ada Lovelace, email: ada@example.com}}, contacts: [{id: contact-1}], createdAt: "2026-10-26T10:00:00Z", updatedAt: "2026-10-26T10:00:00Z"}, {id: "2001", title: Original refund question, state: open, isOpen: true, source: {type: conversation, author: {type: user, id: contact-1, email: ada@example.com}}, contacts: [{id: contact-1}], createdAt: "2026-10-25T10:00:00Z", updatedAt: "2026-10-25T12:00:00Z"}]
+              nextCursor: conversations-page-2
+              totalCount: 3
+            - conversations: [{id: "2001", title: Original refund question, state: open, isOpen: true, source: {type: conversation, author: {type: user, id: contact-1, email: ada@example.com}}, contacts: [{id: contact-1}], createdAt: "2026-10-25T10:00:00Z", updatedAt: "2026-10-25T12:00:00Z"}, {id: "2003", title: Later follow-up, state: open, isOpen: true, source: {type: conversation, author: {type: user, id: contact-1, email: ada@example.com}}, contacts: [{id: contact-1}], createdAt: "2026-10-26T11:00:00Z", updatedAt: "2026-10-26T11:00:00Z"}]
+              nextCursor: conversations-page-3
+              totalCount: 3
+            - conversations: []
+              totalCount: 3
+
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: Intercom denies the search of contact-1 conversations because the token lacks the required permission.
+          failure: {kind: AUTHORIZATION, message: Intercom denied the requested operation.}
     - name: getConversation
       goName: GetConversation
       inputType: GetConversationInput
@@ -136,6 +156,20 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: adaInboundConversation
+          branch: found
+          description: Reading inbound conversation 2002 returns Ada as its unanswered author.
+          default: true
+          output: {conversation: {id: "2002", title: Duplicate refund question, state: open, isOpen: true, source: {type: conversation, body: I need help with my refund, author: {type: user, id: contact-1, name: Ada Lovelace, email: ada@example.com}}, contacts: [{id: contact-1}], createdAt: "2026-10-26T10:00:00Z", updatedAt: "2026-10-26T10:00:00Z"}, latestParts: [], partCount: 0}
+        - name: notFoundFailure
+          branch: notFound
+          description: The read of conversation 2002 names a missing conversation.
+          failure: {kind: NOT_FOUND, message: "The conversation does not exist or is not visible to the connection's token."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: Intercom denies the read of conversation 2002 because the token lacks the required permission.
+          failure: {kind: AUTHORIZATION, message: Intercom denied the requested operation.}
     - name: replyToConversation
       goName: ReplyToConversation
       inputType: ReplyToConversationInput
@@ -154,6 +188,22 @@ spec:
         executeMethodTimeout: 30s
         durability: sync
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 60s, maximumAttempts: 5, totalDuration: 5m, reason: {kind: duplicateWriteRisk, explanation: "A lost dispatch checkpoint could add a second conversation part because Intercom has no reply key and the next attempt sends without read-back."}}
+      mocks:
+        - name: duplicateAnswered
+          branch: replied
+          description: Replying to duplicate conversation 2002 as admin 77 adds part 3001.
+          default: true
+          output: {conversationId: "2002", part: {id: "3001", partType: comment, body: We are working on your earlier conversation, author: {type: admin, id: "77"}, createdAt: "2026-10-26T10:05:00Z"}, conversationState: open, wasAlreadyApplied: false}
+        - name: notFoundFailure
+          branch: notFound
+          description: The reply to conversation 2002 names a missing conversation.
+          output: {conversationId: "2002"}
+          failure: {kind: NOT_FOUND, message: "The conversation does not exist or is not visible to the connection's token; nothing was added."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: Intercom denies the reply to conversation 2002 because the token lacks the required permission.
+          output: {conversationId: "2002"}
+          failure: {kind: AUTHORIZATION, message: Intercom denied the requested operation.}
     - name: updateConversationState
       goName: UpdateConversationState
       inputType: UpdateConversationStateInput
@@ -170,6 +220,20 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: duplicateClosed
+          branch: updated
+          description: Closing duplicate conversation 2002 as admin 77 returns its closed state.
+          default: true
+          output: {conversation: {id: "2002", title: Duplicate refund question, state: closed, isOpen: false, source: {type: conversation, body: I need help with my refund, author: {type: user, id: contact-1, name: Ada Lovelace, email: ada@example.com}}, contacts: [{id: contact-1}], createdAt: "2026-10-26T10:00:00Z", updatedAt: "2026-10-26T10:10:00Z"}, wasAlreadyApplied: false}
+        - name: notFoundFailure
+          branch: notFound
+          description: The close of conversation 2002 names a missing conversation.
+          failure: {kind: NOT_FOUND, message: "The conversation does not exist or is not visible to the connection's token."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: Intercom denies the close of conversation 2002 because the token lacks the required permission.
+          failure: {kind: AUTHORIZATION, message: Intercom denied the requested operation.}
     - name: findContactByEmail
       goName: FindContactByEmail
       inputType: FindContactByEmailInput
@@ -186,3 +250,18 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: adaContact
+          branch: found
+          description: Looking up ada@example.com returns user contact-1.
+          default: true
+          output: {contacts: [{id: contact-1, role: user, email: ada@example.com, name: Ada Lovelace, createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-10-25T10:00:00Z"}]}
+        - name: notFoundFailure
+          branch: notFound
+          description: Looking up nobody@example.com returns no indexed contact.
+          output: {contacts: []}
+          failure: {kind: NOT_FOUND, message: No Intercom contact has the email address.}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: Intercom denies the lookup of ada@example.com because the token lacks the required permission.
+          failure: {kind: AUTHORIZATION, message: Intercom denied the requested operation.}

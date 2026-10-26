@@ -251,7 +251,7 @@ func TestRejectedReplyFailsTheFlowWithoutIntercomTextWithRealDex(t *testing.T) {
 
 	result := harness.waitForFlow(t, flowID)
 	require.Equal(t, dex.FlowFailed, result.Status, "an unwired optional providerRejected branch fails the Flow")
-	require.Contains(t, result.ErrorMessage, `"providerRejected"`)
+	require.Contains(t, result.ErrorMessage, "providerRejected")
 	require.NotContains(t, result.ErrorMessage, "SENTINEL")
 	require.NotContains(t, result.ErrorMessage, fakeAccessToken)
 	require.Equal(t, 1, provider.count("reply"), "a conclusive rejection is not retried")

@@ -34,6 +34,10 @@ Flow per new conversation, and the Flow uses every Intercom operation:
    conversation as the same admin, and `CompleteAnsweredDuplicate` completes
    as `answeredAndClosed`.
 
+The example examines only the first `searchConversations` page. If that page
+omits an older conversation, the Flow may leave a duplicate open or choose a
+more recent conversation.
+
 The `notFound` contact route is also wired to leave a new conversation open.
 A missing conversation, an uncertain reply, a rejected request, an invalid
 response, and a local defect fail the Flow.
@@ -75,7 +79,7 @@ go run ./cmd/connectorctl ui-artifact --manifest connectors/intercom/connector.y
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/intercom/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/intercom \
-  --version v0.21.2 --tag connectors/intercom/v0.21.2 \
+  --version v0.22.0 --tag connectors/intercom/v0.22.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/intercom-release/connector-ui.tgz --ui-digest /tmp/intercom-release/connector-ui.tgz.sha256 \
   --output /tmp/intercom-release/connector-release.json \
