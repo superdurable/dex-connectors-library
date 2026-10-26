@@ -9,6 +9,21 @@ Applications normally depend on a connector module such as OpenAI rather than
 constructing the generic factories directly. Connector authors may use the
 generic `NewQueryStep` and `NewMutationStep` APIs as an advanced escape hatch.
 
+## Step Execute retries
+
+When a Query or Mutation definition leaves `StepDefaults.ExecuteRetry` nil,
+the SDK supplies `DefaultConnectorStepExecuteRetryPolicy()`: one-second initial
+delay, coefficient 2, five-minute maximum delay, unlimited attempts, and a
+one-hour total duration. A Retry keeps trying transient failures within that
+budget; when it runs out, the Flow fails. An explicit definition policy takes
+precedence, and applications can replace either policy for one Step with
+`StepOptionsOverride.ExecuteRetry`.
+
+A later manifest change will let authors omit `retry` and require a validated
+reason for a shorter policy: `billedOperation`, `personWaiting`, or
+`duplicateWriteRisk`. Those manifest rules are planned; this SDK release only
+changes the fallback for a nil definition policy.
+
 An application loads its project configuration once with
 `projectconfig.LoadFromEnvironment` and opens every declared connection with the
 connector's generated `NewProjectConnection(project, connectionName)`.
