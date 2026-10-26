@@ -150,8 +150,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Connection:          flow.connection,
 			MapToOperationInput: flow.MapToInsertRefundInput,
 			Completed:           sdkgo.GoTo(completeRefundRecording{}),
-			Uncertain:           sdkgo.GoTo(completeRefundRecording{}),
-			ResultAttribute:     &refundInsertResultAttribute,
+			// Re-read an uncertain commit by its idempotency key before deciding whether the refund was recorded.
+			Uncertain:       sdkgo.GoTo(completeRefundRecording{}),
+			ResultAttribute: &refundInsertResultAttribute,
 		})),
 		dex.DefineStep(completeRefundRecording{}),
 		dex.DefineStep(sqlserver.NewQueryRowsStep(sqlserver.QueryRowsStepConfig[RefundReadBack]{

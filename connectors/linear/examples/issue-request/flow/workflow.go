@@ -31,7 +31,6 @@ const (
 	chooseOpenIssueStepType      = "ChooseOpenIssue"
 	createRequestedIssueStepType = "CreateRequestedIssue"
 	recordCreatedIssueStepType   = "RecordCreatedIssue"
-	recordRejectedIssueStepType  = "RecordRejectedIssue"
 	listTeamStatesStepType       = "ListTeamStates"
 	chooseTargetStateStepType    = "ChooseTargetState"
 	moveIssueStepType            = "MoveIssue"
@@ -130,8 +129,6 @@ const (
 	IssueCreated IssueAction = "created"
 	// IssueReused means the team's open issue with the title was moved and commented instead.
 	IssueReused IssueAction = "reused"
-	// IssueRejected means Linear rejected the create; nothing was created.
-	IssueRejected IssueAction = "rejected"
 )
 
 // IssueRequestOutcome is the Flow result and the value of its outcome Attribute.
@@ -156,8 +153,6 @@ type IssueRequestOutcome struct {
 	CommentID string `json:"commentId,omitempty"`
 	// ReadBackStateType is the issue's state type as read back at the end, such as unstarted.
 	ReadBackStateType linear.WorkflowStateType `json:"readBackStateType,omitempty"`
-	// RejectionDetail is the connector's credential-free explanation of a rejected create.
-	RejectionDetail string `json:"rejectionDetail,omitempty"`
 }
 
 // Flow handles one issue request in one Linear team.
@@ -193,7 +188,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			StepType: findAssigneeStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{GroupID: "linear", GroupLabel: "Linear", Explanation: "Resolve the requested assignee's email to a Linear user."},
 			Connection:  flow.connection, MapToOperationInput: MapToFindUserByEmailInput,
-			Found: sdkgo.GoTo(recordAssignee{}), NotFound: sdkgo.GoTo(recordAssignee{}),
+			Found: sdkgo.GoTo(recordAssignee{}),
+			// An unknown assignee leaves the issue unassigned and the request continues.
+			NotFound: sdkgo.GoTo(recordAssignee{}),
 		})),
 		dex.DefineStep(recordAssignee{}),
 		dex.DefineStep(linear.NewSearchIssuesStep(linear.SearchIssuesStepConfig[IssueRequest]{
@@ -216,10 +213,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				},
 			}}},
 			Connection: flow.connection, MapToOperationInput: MapToCreateIssueInput,
-			Created: sdkgo.GoTo(recordCreatedIssue{}), ProviderRejected: sdkgo.GoTo(recordRejectedIssue{}),
+			Created: sdkgo.GoTo(recordCreatedIssue{}),
 		})),
 		dex.DefineStep(recordCreatedIssue{}),
-		dex.DefineStep(recordRejectedIssue{}),
 		dex.DefineStep(linear.NewListWorkflowStatesStep(linear.ListWorkflowStatesStepConfig[IssueRequest]{
 			StepType: listTeamStatesStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{GroupID: "linear", GroupLabel: "Linear", Explanation: "List the team's workflow states to find the requested one."},
@@ -393,13 +389,6 @@ func optionalAttribute[T any](ctx dex.Context, attribute dex.Attribute[T]) (T, e
 	return value, err
 }
 
-func failureMessage(failure *sdkgo.Failure) string {
-	if failure == nil {
-		return ""
-	}
-	return failure.Message
-}
-
 // dex:group group-id:request group-label:"Issue request"
 // dex:explanation text:"Validate the issue request with the picked team and record it before calling Linear."
 type recordIssueRequest struct {
@@ -515,26 +504,6 @@ func (recordCreatedIssue) Execute(ctx dex.Context, result linear.CreateIssueResu
 		return nil, err
 	}
 	return dex.GoTo(sdkgo.StepRef[IssueRequest](listTeamStatesStepType), request), nil
-}
-
-// dex:group group-id:request group-label:"Issue request"
-// dex:explanation text:"Record Linear's credential-free rejection of the create and fail the Flow; no issue exists."
-type recordRejectedIssue struct {
-	dex.StepDefaultsNoWaitFor[linear.CreateIssueResult]
-}
-
-func (recordRejectedIssue) GetStepType() string { return recordRejectedIssueStepType }
-
-func (recordRejectedIssue) Execute(ctx dex.Context, result linear.CreateIssueResult) (*dex.StepDecision, error) {
-	outcome, err := issueOutcomeAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	outcome.Action, outcome.RejectionDetail = IssueRejected, failureMessage(result.Failure)
-	if err := issueOutcomeAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
-	}
-	return dex.ForceFail("Linear rejected the issue: " + outcome.RejectionDetail), nil
 }
 
 // dex:group group-id:request group-label:"Issue request"

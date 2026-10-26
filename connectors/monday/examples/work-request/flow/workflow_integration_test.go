@@ -56,7 +56,6 @@ func TestNewRequestCreatesOneItemAndAddsOneUpdateWithRealDex(t *testing.T) {
 
 	outcome := harness.runWorkRequest(t, "new-request", integrationInput())
 	require.Equal(t, WorkItemCreated, outcome.Action)
-	require.False(t, outcome.NeedsReview)
 	require.Equal(t, "february", outcome.GroupID)
 	require.NotEmpty(t, outcome.UpdateID)
 	require.Equal(t, 1, provider.itemCount())
@@ -214,16 +213,15 @@ func TestRateLimitedCreateWaitsForMondaysDelayWithRealDex(t *testing.T) {
 	require.Equal(t, 1, provider.itemCount())
 }
 
-func TestUnusableCreateAnswerCompletesForReviewWithoutResendingWithRealDex(t *testing.T) {
+func TestUnusableCreateAnswerFailsWithoutResendingWithRealDex(t *testing.T) {
 	provider := newFakeMonday(t)
 	provider.answersCreateUnusably = true
 	harness := newWorkHarness(t, provider, defaultRequestTimeout)
 
-	outcome := harness.runWorkRequest(t, "unusable-create", integrationInput())
-	require.Equal(t, WorkItemCreationUncertain, outcome.Action)
-	require.True(t, outcome.NeedsReview)
-	require.Equal(t, "createItem", outcome.ReviewReason)
-	require.Equal(t, "monday.com accepted the item but returned an unusable item", outcome.ReviewDetail)
+	result := harness.waitForFlow(t, harness.startWorkRequest(t, "unusable-create", integrationInput()))
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "monday createItem (connection monday-workspace) selected branch uncertain with no target:")
+	require.Contains(t, result.ErrorMessage, "monday.com accepted the item but returned an unusable item")
 	require.Equal(t, 1, provider.count("create"), "an accepted create is never sent again")
 	require.Equal(t, 1, provider.itemCount(), "monday.com did create the item, which a person must now find")
 	require.Zero(t, provider.count("update"))

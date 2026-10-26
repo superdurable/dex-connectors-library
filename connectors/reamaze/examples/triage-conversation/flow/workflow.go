@@ -40,15 +40,10 @@ const (
 	recordReopenedConversationStepType      = "RecordReopenedConversation"
 	openIssueConversationStepType           = "OpenIssueConversation"
 	recordOpenedConversationStepType        = "RecordOpenedConversation"
-	recordUncertainConversationStepType     = "RecordUncertainConversation"
 	addTriageNoteStepType                   = "AddTriageNote"
 	completeTriageStepType                  = "CompleteTriage"
-	recordUncertainNoteStepType             = "RecordUncertainNote"
 
 	candidateMessageLimit = 5
-
-	openIssueConversationReviewReason = "createConversation"
-	addTriageNoteReviewReason         = "replyToConversation"
 )
 
 var (
@@ -138,8 +133,6 @@ const (
 	TriageConversationOpened TriageAction = "opened"
 	// TriageConversationFollowedUp means the customer's unresolved conversation was reopened and tagged.
 	TriageConversationFollowedUp TriageAction = "followedUp"
-	// TriageConversationCreationUncertain means the create request was sent but its outcome is unknown.
-	TriageConversationCreationUncertain TriageAction = "creationUncertain"
 )
 
 // TriageOutcome is the Flow result and the value of its outcome Attribute.
@@ -159,13 +152,6 @@ type TriageOutcome struct {
 	NoteOriginID string `json:"noteOriginId,omitempty"`
 	// NoteWasAlreadyApplied reports that a retried note found its own earlier message by origin_id.
 	NoteWasAlreadyApplied bool `json:"noteWasAlreadyApplied,omitempty"`
-	// NeedsReview reports that a write was sent with an unknown outcome, so a person must check
-	// Re:amaze; the Flow never resends it.
-	NeedsReview bool `json:"needsReview,omitempty"`
-	// ReviewReason names the uncertain write: createConversation or replyToConversation.
-	ReviewReason string `json:"reviewReason,omitempty"`
-	// ReviewDetail is the connector's credential-free explanation of why the outcome is unknown.
-	ReviewDetail string `json:"reviewDetail,omitempty"`
 }
 
 // Flow triages one customer issue in Re:amaze.
@@ -193,7 +179,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Resolve the customer's email to Re:amaze contacts; a new customer has no conversations to search.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToFindContactByEmailInput,
-			Found:    sdkgo.GoTo(routeCustomerContact{}),
+			Found: sdkgo.GoTo(routeCustomerContact{}),
+			// Open a new conversation when Re:amaze has no contact for the requester.
 			NotFound: sdkgo.GoTo(routeCustomerContact{}),
 		})),
 		dex.DefineStep(routeCustomerContact{}),
@@ -234,11 +221,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Open a conversation with the customer's message, sending the request at most once.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToCreateConversationInput,
-			Created:   sdkgo.GoTo(recordOpenedConversation{}),
-			Uncertain: sdkgo.GoTo(recordUncertainConversation{}),
+			Created: sdkgo.GoTo(recordOpenedConversation{}),
 		})),
 		dex.DefineStep(recordOpenedConversation{}),
-		dex.DefineStep(recordUncertainConversation{}),
 		dex.DefineStep(reamaze.NewReplyToConversationStep(reamaze.ReplyToConversationStepConfig[TriageNote]{
 			StepType: addTriageNoteStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
@@ -246,11 +231,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Add one internal triage note, sending the request at most once.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToReplyToConversationInput,
-			Replied:   sdkgo.GoTo(completeTriage{}),
-			Uncertain: sdkgo.GoTo(recordUncertainNote{}),
+			Replied: sdkgo.GoTo(completeTriage{}),
 		})),
 		dex.DefineStep(completeTriage{}),
-		dex.DefineStep(recordUncertainNote{}),
 	}
 }
 
@@ -601,27 +584,6 @@ func (recordOpenedConversation) Execute(ctx dex.Context, result reamaze.CreateCo
 		TriageNote{ConversationID: outcome.Conversation.ID, Text: BuildOpenedConversationNote(issue)}), nil
 }
 
-// dex:group group-id:review group-label:"Needs review"
-// dex:explanation text:"The create request was sent with an unknown outcome and no conversation carries its key; complete for a person to check Re:amaze."
-type recordUncertainConversation struct {
-	dex.StepDefaultsNoWaitFor[reamaze.CreateConversationResult]
-}
-
-func (recordUncertainConversation) GetStepType() string { return recordUncertainConversationStepType }
-
-func (recordUncertainConversation) Execute(ctx dex.Context, result reamaze.CreateConversationResult) (*dex.StepDecision, error) {
-	outcome, err := triageOutcomeAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	outcome.Action, outcome.NeedsReview = TriageConversationCreationUncertain, true
-	outcome.ReviewReason, outcome.ReviewDetail = openIssueConversationReviewReason, failureMessage(result.Failure)
-	if err := triageOutcomeAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(outcome), nil
-}
-
 // dex:group group-id:issue group-label:"Customer issue"
 // dex:explanation text:"Record the internal triage note and complete the Flow."
 type completeTriage struct {
@@ -640,33 +602,6 @@ func (completeTriage) Execute(ctx dex.Context, result reamaze.ReplyToConversatio
 		return nil, err
 	}
 	return dex.GracefulComplete(outcome), nil
-}
-
-// dex:group group-id:review group-label:"Needs review"
-// dex:explanation text:"The note request was sent with an unknown outcome and no message carries its origin_id; complete for a person to check Re:amaze."
-type recordUncertainNote struct {
-	dex.StepDefaultsNoWaitFor[reamaze.ReplyToConversationResult]
-}
-
-func (recordUncertainNote) GetStepType() string { return recordUncertainNoteStepType }
-
-func (recordUncertainNote) Execute(ctx dex.Context, result reamaze.ReplyToConversationResult) (*dex.StepDecision, error) {
-	outcome, err := triageOutcomeAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	outcome.NeedsReview, outcome.ReviewReason, outcome.ReviewDetail = true, addTriageNoteReviewReason, failureMessage(result.Failure)
-	if err := triageOutcomeAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(outcome), nil
-}
-
-func failureMessage(failure *sdkgo.Failure) string {
-	if failure == nil {
-		return ""
-	}
-	return failure.Message
 }
 
 var _ dex.Flow = (*Flow)(nil)

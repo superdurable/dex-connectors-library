@@ -62,7 +62,6 @@ func TestLatestCustomerMessageGetsOneReplyIsMarkedReadAndArchivedWithRealDex(t *
 
 	outcome := harness.runReply(t, "threaded-reply", integrationInput())
 	require.Equal(t, ReplyActionReplied, outcome.Action)
-	require.False(t, outcome.NeedsReview)
 	require.Equal(t, latest, outcome.CustomerMessageID, "the lookalike and the other customer are skipped")
 	require.Equal(t, 1, outcome.AttachmentCount)
 	require.Equal(t, "RE: Refund request for order 88213", outcome.Sent.Subject)
@@ -171,18 +170,15 @@ func TestLostSendAnswerIsConfirmedFromSentItemsAndNeverResentWithRealDex(t *test
 	require.NotNil(t, outcome.ArchivedTo, "a confirmed reply continues to mark and archive the message")
 }
 
-func TestUnconfirmedSendCompletesForReviewAndIsNeverResentWithRealDex(t *testing.T) {
+func TestUnconfirmedSendFailsAndIsNeverResentWithRealDex(t *testing.T) {
 	harness := newReplyHarness(t, "")
 	latest := seedCustomerThread(harness)
 	harness.graph.InjectFault(graphtest.Fault{Endpoint: graphtest.EndpointSendDraft, ShouldDropConnection: true})
 
-	outcome := harness.runReply(t, "unconfirmed", integrationInput())
-	require.Equal(t, ReplyActionDeliveryUncertain, outcome.Action)
-	require.True(t, outcome.NeedsReview)
-	require.Equal(t, "the send was dispatched but its answer was lost and the draft has not appeared as sent, so the message may have been sent; it is not sent again",
-		outcome.ReviewDetail)
-	require.Equal(t, latest, outcome.CustomerMessageID)
-	require.NotEmpty(t, outcome.Sent.MessageID, "the review names the draft to inspect")
+	result := harness.waitForFlow(t, harness.startReply(t, "unconfirmed", integrationInput()))
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Contains(t, result.ErrorMessage, "outlook-mail replyToMessage (connection outlook-support-mailbox) selected branch uncertain with no target:")
+	require.Contains(t, result.ErrorMessage, "the send was dispatched but its answer was lost")
 	require.Equal(t, 1, harness.graph.RequestCount(graphtest.EndpointSendDraft), "an unconfirmed send is never dispatched again")
 	require.Empty(t, harness.graph.Deliveries())
 	require.Len(t, harness.graph.MessagesInFolder("drafts"), 1)

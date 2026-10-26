@@ -25,26 +25,21 @@ const (
 	// CompletedStatusLabel is the status label of a finished item, which the Flow never reschedules.
 	CompletedStatusLabel = "Done"
 
-	recordWorkRequestStepType     = "RecordWorkRequest"
-	findExistingItemStepType      = "FindExistingItem"
-	chooseExistingItemStepType    = "ChooseExistingItem"
-	readExistingItemStepType      = "ReadExistingItem"
-	confirmExistingItemStepType   = "ConfirmExistingItem"
-	scheduleExistingItemStepType  = "ScheduleExistingItem"
-	recordScheduledItemStepType   = "RecordScheduledItem"
-	createWorkItemStepType        = "CreateWorkItem"
-	recordCreatedItemStepType     = "RecordCreatedItem"
-	recordUncertainItemStepType   = "RecordUncertainItem"
-	addWorkUpdateStepType         = "AddWorkUpdate"
-	completeWorkRequestStepType   = "CompleteWorkRequest"
-	recordUncertainUpdateStepType = "RecordUncertainUpdate"
+	recordWorkRequestStepType    = "RecordWorkRequest"
+	findExistingItemStepType     = "FindExistingItem"
+	chooseExistingItemStepType   = "ChooseExistingItem"
+	readExistingItemStepType     = "ReadExistingItem"
+	confirmExistingItemStepType  = "ConfirmExistingItem"
+	scheduleExistingItemStepType = "ScheduleExistingItem"
+	recordScheduledItemStepType  = "RecordScheduledItem"
+	createWorkItemStepType       = "CreateWorkItem"
+	recordCreatedItemStepType    = "RecordCreatedItem"
+	addWorkUpdateStepType        = "AddWorkUpdate"
+	completeWorkRequestStepType  = "CompleteWorkRequest"
 
 	// MaxSearchPages bounds how many pages of same-name items the Flow reads before creating one.
 	MaxSearchPages  = 5
 	searchPageLimit = 25
-
-	createWorkItemReviewReason = "createItem"
-	addWorkUpdateReviewReason  = "addUpdate"
 )
 
 var (
@@ -146,8 +141,6 @@ const (
 	WorkItemCreated WorkAction = "created"
 	// WorkItemScheduled means the board's open item with the name was given the status and due date.
 	WorkItemScheduled WorkAction = "scheduled"
-	// WorkItemCreationUncertain means monday.com accepted the create but its answer was unusable.
-	WorkItemCreationUncertain WorkAction = "creationUncertain"
 )
 
 // WorkRequestOutcome is the Flow result and the value of its outcome Attribute.
@@ -168,13 +161,6 @@ type WorkRequestOutcome struct {
 	WasCreateReplayed bool `json:"createReplayed,omitempty"`
 	// UpdateID is the update the Flow added.
 	UpdateID string `json:"updateId,omitempty"`
-	// NeedsReview reports that monday.com accepted a write but its answer was unusable, so a person
-	// must check the board; the Flow never sends it again.
-	NeedsReview bool `json:"needsReview,omitempty"`
-	// ReviewReason names the write: createItem or addUpdate.
-	ReviewReason string `json:"reviewReason,omitempty"`
-	// ReviewDetail is the connector's credential-free explanation.
-	ReviewDetail string `json:"reviewDetail,omitempty"`
 }
 
 // Flow handles one recurring work request on a monday.com board.
@@ -212,7 +198,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Read the candidate item with its status and due date before writing to it.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToGetItemInput,
-			Found:    sdkgo.GoTo(confirmExistingItem{}),
+			Found: sdkgo.GoTo(confirmExistingItem{}),
+			// Create the requested item if the search candidate disappeared before read-back.
 			NotFound: sdkgo.GoTo(confirmExistingItem{}),
 		})),
 		dex.DefineStep(confirmExistingItem{}),
@@ -233,11 +220,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Create the item with its status and due date under the Step's idempotency key.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToCreateItemInput,
-			Created:   sdkgo.GoTo(recordCreatedItem{}),
-			Uncertain: sdkgo.GoTo(recordUncertainItem{}),
+			Created: sdkgo.GoTo(recordCreatedItem{}),
 		})),
 		dex.DefineStep(recordCreatedItem{}),
-		dex.DefineStep(recordUncertainItem{}),
 		dex.DefineStep(monday.NewAddUpdateStep(monday.AddUpdateStepConfig[WorkUpdate]{
 			StepType: addWorkUpdateStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
@@ -245,11 +230,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Add one update describing what the Flow did, under the Step's idempotency key.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToAddUpdateInput,
-			Added:     sdkgo.GoTo(completeWorkRequest{}),
-			Uncertain: sdkgo.GoTo(recordUncertainUpdate{}),
+			Added: sdkgo.GoTo(completeWorkRequest{}),
 		})),
 		dex.DefineStep(completeWorkRequest{}),
-		dex.DefineStep(recordUncertainUpdate{}),
 	}
 }
 
@@ -386,13 +369,6 @@ func optionalAttribute[T any](ctx dex.Context, attribute dex.Attribute[T]) (T, e
 		return zero, nil
 	}
 	return value, err
-}
-
-func failureMessage(failure *sdkgo.Failure) string {
-	if failure == nil {
-		return ""
-	}
-	return failure.Message
 }
 
 func isAttributeNotFound(err error) bool {
@@ -567,29 +543,6 @@ func (recordCreatedItem) Execute(ctx dex.Context, result monday.CreateItemResult
 	return dex.GoTo(sdkgo.StepRef[WorkUpdate](addWorkUpdateStepType), WorkUpdate{ItemID: outcome.ItemID, Body: BuildUpdateBody(request, WorkItemCreated)}), nil
 }
 
-// dex:group group-id:review group-label:"Needs review"
-// dex:explanation text:"monday.com accepted the create but answered unusably; complete for a person to check the board instead of creating again."
-type recordUncertainItem struct {
-	dex.StepDefaultsNoWaitFor[monday.CreateItemResult]
-}
-
-func (recordUncertainItem) GetStepType() string { return recordUncertainItemStepType }
-
-func (recordUncertainItem) Execute(ctx dex.Context, result monday.CreateItemResult) (*dex.StepDecision, error) {
-	previous, err := workOutcomeAttribute.Get(ctx)
-	if err != nil && !isAttributeNotFound(err) {
-		return nil, err
-	}
-	outcome := WorkRequestOutcome{
-		Action: WorkItemCreationUncertain, SkippedItemID: previous.SkippedItemID, NeedsReview: true,
-		ReviewReason: createWorkItemReviewReason, ReviewDetail: failureMessage(result.Failure),
-	}
-	if err := workOutcomeAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(outcome), nil
-}
-
 // dex:group group-id:request group-label:"Work request"
 // dex:explanation text:"Record the update and complete the Flow."
 type completeWorkRequest struct {
@@ -604,26 +557,6 @@ func (completeWorkRequest) Execute(ctx dex.Context, result monday.AddUpdateResul
 		return nil, err
 	}
 	outcome.UpdateID = result.Value.UpdateID
-	if err := workOutcomeAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(outcome), nil
-}
-
-// dex:group group-id:review group-label:"Needs review"
-// dex:explanation text:"monday.com accepted the update but answered unusably; complete for a person to check the item instead of posting again."
-type recordUncertainUpdate struct {
-	dex.StepDefaultsNoWaitFor[monday.AddUpdateResult]
-}
-
-func (recordUncertainUpdate) GetStepType() string { return recordUncertainUpdateStepType }
-
-func (recordUncertainUpdate) Execute(ctx dex.Context, result monday.AddUpdateResult) (*dex.StepDecision, error) {
-	outcome, err := workOutcomeAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	outcome.NeedsReview, outcome.ReviewReason, outcome.ReviewDetail = true, addWorkUpdateReviewReason, failureMessage(result.Failure)
 	if err := workOutcomeAttribute.Set(ctx, outcome); err != nil {
 		return nil, err
 	}

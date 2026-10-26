@@ -39,7 +39,7 @@ type SummaryRequest struct {
 
 // SummaryOutcome is the Flow completion output.
 type SummaryOutcome struct {
-	// Branch is the createResponse branch that completed the Flow: completed or failed.
+	// Branch is the completed createResponse branch.
 	Branch sdkgo.BranchID `json:"branch"`
 	// Summary is the stored Response's output text; it can be partial or empty when the Response failed.
 	Summary string `json:"summary"`
@@ -104,7 +104,6 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			MapToOperationInput: flow.MapToCreateRequest,
 			TextStream:          &summaryTextStream,
 			Completed:           sdkgo.GoTo(recordSummaryOutcome{}),
-			Failed:              sdkgo.GoTo(recordSummaryOutcome{}),
 		})),
 		dex.DefineStep(recordSummaryOutcome{}),
 	}
@@ -210,7 +209,7 @@ func (recordSummaryRequest) Execute(ctx dex.Context, request SummaryRequest) (*d
 }
 
 // dex:group group-id:summary group-label:"Summary"
-// dex:explanation text:"Persist the completed or failed Response with its ID and usage and complete the Flow."
+// dex:explanation text:"Persist the completed Response with its ID and usage and complete the Flow."
 type recordSummaryOutcome struct {
 	dex.StepDefaultsNoWaitFor[openai.CreateResponseResult]
 }

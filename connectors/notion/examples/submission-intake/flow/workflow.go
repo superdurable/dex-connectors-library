@@ -50,8 +50,6 @@ const (
 	recordUpdatedSubmissionStepType    = "RecordUpdatedNotionSubmission"
 	readBackSubmissionStepType         = "ReadBackNotionSubmission"
 	completeSubmissionStepType         = "CompleteNotionSubmission"
-	recordRejectedCreateStepType       = "RecordRejectedNotionSubmissionCreate"
-	recordRejectedUpdateStepType       = "RecordRejectedNotionSubmissionUpdate"
 	maximumDatabaseTitleRunes          = 200
 	maximumSubmissionIDRunes           = 100
 	maximumNameRunes                   = 200
@@ -95,8 +93,6 @@ const (
 	PhaseDuplicateRows Phase = "duplicateRows"
 	// PhaseCreateUncertain means the create's outcome is unknown and no row with the ID is visible yet.
 	PhaseCreateUncertain Phase = "createUncertain"
-	// PhaseRejected means Notion rejected the row, such as for a missing property.
-	PhaseRejected Phase = "rejected"
 )
 
 // Input contains the submission fields entered in Dex Web Start Flow.
@@ -151,8 +147,6 @@ type SubmissionRecord struct {
 	StoredBodyText string `json:"storedBodyText,omitempty"`
 	// UncertainCreate is the secret-safe reason the create's outcome was unknown.
 	UncertainCreate *sdkgo.Failure `json:"uncertainCreate,omitempty"`
-	// Rejection is Notion's secret-safe rejection of the row.
-	Rejection *sdkgo.Failure `json:"rejection,omitempty"`
 }
 
 // Flow records one form submission as a Notion database row.
@@ -181,7 +175,6 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			},
 			Connection: flow.connection, MapToOperationInput: MapToFindSubmissionsDataSourceInput,
 			Searched: sdkgo.GoTo(resolveSubmissionsDataSource{}),
-			NoMatch:  sdkgo.GoTo(resolveSubmissionsDataSource{}),
 		})),
 		dex.DefineStep(resolveSubmissionsDataSource{}),
 		dex.DefineStep(notion.NewQueryDatabaseStep(notion.QueryDatabaseStepConfig[SubmissionRecord]{
@@ -201,9 +194,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Create the submission row with its properties and the message as the page body.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToCreateSubmissionRowInput,
-			Created:          sdkgo.GoTo(recordCreatedSubmission{}),
-			Uncertain:        sdkgo.GoTo(recordUncertainSubmission{}),
-			ProviderRejected: sdkgo.GoTo(recordRejectedCreate{}),
+			Created: sdkgo.GoTo(recordCreatedSubmission{}),
+			// Query the submission ID again after an uncertain create before deciding whether to update the row.
+			Uncertain: sdkgo.GoTo(recordUncertainSubmission{}),
 		})),
 		dex.DefineStep(recordCreatedSubmission{}),
 		dex.DefineStep(recordUncertainSubmission{}),
@@ -224,8 +217,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Explanation: "Set the existing row's name, email, and submission time to the resubmitted values.",
 			},
 			Connection: flow.connection, MapToOperationInput: MapToUpdateSubmissionRowInput,
-			Updated:          sdkgo.GoTo(recordUpdatedSubmission{}),
-			ProviderRejected: sdkgo.GoTo(recordRejectedUpdate{}),
+			Updated: sdkgo.GoTo(recordUpdatedSubmission{}),
 		})),
 		dex.DefineStep(recordUpdatedSubmission{}),
 		dex.DefineStep(notion.NewGetPageStep(notion.GetPageStepConfig[SubmissionRecord]{
@@ -238,8 +230,6 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Found: sdkgo.GoTo(completeSubmission{}),
 		})),
 		dex.DefineStep(completeSubmission{}),
-		dex.DefineStep(recordRejectedCreate{}),
-		dex.DefineStep(recordRejectedUpdate{}),
 	}
 }
 
@@ -581,46 +571,6 @@ func (completeSubmission) Execute(ctx dex.Context, result notion.GetPageResult) 
 		record.StoredProperties[name] = property.PlainText
 	}
 	record.StoredBodyText = result.Value.Content.Text
-	if err := submissionAttribute.Set(ctx, record); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(record), nil
-}
-
-// dex:group group-id:notion group-label:"Notion"
-// dex:explanation text:"Record Notion's secret-safe rejection of the new row and complete."
-type recordRejectedCreate struct {
-	dex.StepDefaultsNoWaitFor[notion.CreatePageResult]
-}
-
-func (recordRejectedCreate) GetStepType() string { return recordRejectedCreateStepType }
-
-func (recordRejectedCreate) Execute(ctx dex.Context, result notion.CreatePageResult) (*dex.StepDecision, error) {
-	record, err := submissionAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	record.Phase, record.Rejection = PhaseRejected, result.Failure
-	if err := submissionAttribute.Set(ctx, record); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(record), nil
-}
-
-// dex:group group-id:notion group-label:"Notion"
-// dex:explanation text:"Record Notion's secret-safe rejection of the row update and complete."
-type recordRejectedUpdate struct {
-	dex.StepDefaultsNoWaitFor[notion.UpdatePagePropertiesResult]
-}
-
-func (recordRejectedUpdate) GetStepType() string { return recordRejectedUpdateStepType }
-
-func (recordRejectedUpdate) Execute(ctx dex.Context, result notion.UpdatePagePropertiesResult) (*dex.StepDecision, error) {
-	record, err := submissionAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	record.Phase, record.Rejection = PhaseRejected, result.Failure
 	if err := submissionAttribute.Set(ctx, record); err != nil {
 		return nil, err
 	}

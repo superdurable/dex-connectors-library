@@ -56,7 +56,6 @@ const (
 	updateSummaryStepType     = "UpdateExcelDecisionSummary"
 	readBackSummaryStepType   = "ReadBackExcelDecisionSummary"
 	completeDecisionStepType  = "CompleteExcelApprovalDecision"
-	reportUncertainStepType   = "ReportExcelDecisionUncertain"
 	maximumTextInputRunes     = 200
 	maximumAmountUSD          = 1_000_000_000
 )
@@ -99,8 +98,6 @@ const (
 	PhaseLogged Phase = "logged"
 	// PhaseCompleted means the summary range was written and read back.
 	PhaseCompleted Phase = "completed"
-	// PhaseLogUncertain means the append may or may not have reached the decision log; a person must check it.
-	PhaseLogUncertain Phase = "logUncertain"
 )
 
 // ApprovalDecision is the Flow's durable state and completion output.
@@ -129,8 +126,6 @@ type ApprovalDecision struct {
 	SummaryText []string `json:"summaryText,omitempty"`
 	// IsSummaryConfirmed reports that the read-back shows this request and decision.
 	IsSummaryConfirmed bool `json:"summaryConfirmed"`
-	// ReviewDetail is the connector's safe failure message for a person to act on.
-	ReviewDetail string `json:"reviewDetail,omitempty"`
 }
 
 // TableConfiguration is the workbook and table a Step's workbookPicker and tablePicker units save in Dex Web.
@@ -270,8 +265,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				},
 			}},
 			Connection: flow.connection, MapToOperationInput: flow.MapToAppendDecisionInput,
-			Appended:  sdkgo.GoTo(recordDecisionLogged{}),
-			Uncertain: sdkgo.GoTo(reportDecisionUncertain{}),
+			Appended: sdkgo.GoTo(recordDecisionLogged{}),
 		})),
 		dex.DefineStep(recordDecisionLogged{}),
 		dex.DefineStep(excel.NewUpdateValuesStep(excel.UpdateValuesStepConfig[ApprovalDecision]{
@@ -314,7 +308,6 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			Read: sdkgo.GoTo(completeApprovalDecision{}),
 		})),
 		dex.DefineStep(completeApprovalDecision{}),
-		dex.DefineStep(reportDecisionUncertain{}),
 	}
 }
 
@@ -554,29 +547,6 @@ func (completeApprovalDecision) Execute(ctx dex.Context, result excel.GetValuesR
 		decision.SummaryText = result.Value.Text[0]
 		decision.IsSummaryConfirmed = len(decision.SummaryText) == 5 && decision.SummaryText[0] == decision.Request.RequestID &&
 			decision.SummaryText[3] == string(decision.Decision)
-	}
-	if err := decisionAttribute.Set(ctx, decision); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(decision), nil
-}
-
-// dex:group group-id:approval-decision group-label:"Approval decision"
-// dex:explanation text:"Complete with logUncertain so a person checks the decision log instead of the Flow appending again."
-type reportDecisionUncertain struct {
-	dex.StepDefaultsNoWaitFor[excel.AppendTableRowsResult]
-}
-
-func (reportDecisionUncertain) GetStepType() string { return reportUncertainStepType }
-
-func (reportDecisionUncertain) Execute(ctx dex.Context, result excel.AppendTableRowsResult) (*dex.StepDecision, error) {
-	decision, err := decisionAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	decision.Phase = PhaseLogUncertain
-	if result.Failure != nil {
-		decision.ReviewDetail = result.Failure.Message
 	}
 	if err := decisionAttribute.Set(ctx, decision); err != nil {
 		return nil, err

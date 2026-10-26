@@ -88,7 +88,6 @@ dex.DefineStep(openai.NewCreateResponseStep(openai.CreateResponseStepConfig[Summ
 	MapToOperationInput: flow.MapToCreateRequest,
 	TextStream:          &summaryTextStream,
 	Completed:           sdkgo.GoTo(recordSummaryOutcome{}),
-	Failed:              sdkgo.GoTo(recordSummaryOutcome{}),
 })),
 ```
 

@@ -30,11 +30,9 @@ every Re:amaze operation to triage a new customer issue:
    the status it set as Re:amaze's label and integer, such as `Open (0)`; the
    note on a newly opened conversation records why it was opened.
 
-The `uncertain` branches of the create and the note are wired: a request that
-was sent, whose outcome is unknown, and that the read-back did not find
-completes the Flow with `needsReview: true`, the `reviewReason`, and the
-connector's `reviewDetail`, so a person checks Re:amaze instead of the Flow
-sending a possible duplicate. Every other optional branch is unwired and fails
+The `uncertain` branches of the create and the note are unwired: a request that
+was sent, whose outcome is unknown, and that the read-back did not find fails
+the Flow with the connector's safe reason. Other optional branches also fail
 the Flow, such as a rejected conversation, a missing conversation, an invalid
 response, or a local defect.
 
@@ -116,8 +114,8 @@ from Re:amaze's Settings > Channels.
 ```
 
 The Flow result and the `reamaze-triage-outcome` Attribute hold the action
-(`opened`, `followedUp`, or `creationUncertain`), the conversation, whether a
-write was found already applied, the note's `origin_id`, and the review state.
+(`opened` or `followedUp`), the conversation, whether a write was found
+already applied, and the note's `origin_id`.
 
 ## Test
 
@@ -143,8 +141,8 @@ conversations the customer follows:
 - a lost create response is reconciled by the conversation's dispatch key,
   which the fake, like Re:amaze's documentation, returns only on a single
   conversation read, and the Flow continues without resending;
-- a 502 that applied nothing completes as `needsReview` after one read-back
-  and is never resent;
+- a 502 that applied nothing fails through the unwired `uncertain` branch
+  after one read-back and is never resent;
 - a lost note response is reconciled by its `origin_id`;
 - a rate-limited create waits for `Retry-After` and creates one conversation;
 - a Worker lost while Re:amaze holds the create is replaced, and the new

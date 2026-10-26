@@ -91,11 +91,12 @@ func waitForCompletedHandOff(t *testing.T, ctx context.Context, client *dex.Clie
 	return handOff
 }
 
-func waitForFailedFlow(t *testing.T, ctx context.Context, client *dex.Client, flowID string) {
+func waitForFailedFlow(t *testing.T, ctx context.Context, client *dex.Client, flowID string) dex.FlowResult {
 	t.Helper()
 	result, err := client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{})
 	require.NoError(t, err)
 	require.Equal(t, dex.FlowFailed, result.Status)
+	return result
 }
 
 // requireNoPasswordInFlow reads every Attribute through the display RPC and checks that no generated password is present.

@@ -27,12 +27,10 @@ started from Dex Web **Start Flow**, using every Outlook Mail operation:
 8. A customer without an Inbox message gets one new message from
    `SendNewCustomerMessage`, which calls `outlookmail.NewSendMessageStep`.
 
-The `uncertain` branches of the reply and the new message are wired to
-`RecordUncertainDelivery`: a send whose answer was lost and whose Sent Items
-copy never appeared completes the Flow with `needsReview: true`, the
-connector's `reviewDetail`, and the draft's ID and marker, so a person checks
-the mailbox instead of the Flow sending a possible duplicate. Every other
-optional branch is unwired and fails the Flow, such as a revoked
+The `uncertain` branches of the reply and the new message are unwired: a send
+whose answer was lost and whose Sent Items copy never appeared fails the Flow
+with the connector's safe reason. Every optional branch is unwired and fails
+the Flow, such as a revoked
 authorization, a rejected recipient, a missing message, or a local defect.
 
 ## Generate the Flow Definition
@@ -140,9 +138,9 @@ choose the Worker at `127.0.0.1:8837`, enter a unique Flow ID, and submit:
 ```
 
 The Flow result and the `outlook-support-reply-outcome` Attribute hold the
-action (`replied`, `sentNewMessage`, or `deliveryUncertain`), the answered
+action (`replied` or `sentNewMessage`), the answered
 message, the attachment count, the sent message's ID, subject, recipients,
-and marker, the message state, the archive folder, and the review state. The
+and marker, the message state, and the archive folder. The
 run sends real mail from the mailbox; use a test customer address.
 
 ## Test
@@ -169,8 +167,8 @@ and `internal/graphtest`, which, like Graph, has no send idempotency key:
   message is archived once;
 - a send whose answer is lost after Graph applied it is confirmed from the
   Sent Items copy and never sent again;
-- a send whose answer is lost and whose copy never appears completes as
-  `needsReview` without a second send;
+- a send whose answer is lost and whose copy never appears fails through the
+  unwired `uncertain` branch without a second send;
 - a Worker lost while Graph holds the send is replaced, and the new attempt
   finds the dispatch checkpoint and confirms the send instead of sending;
 - an expired access token is refreshed during the Flow and the rotated

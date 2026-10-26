@@ -61,13 +61,17 @@ func TestSummarizeTextExampleStoresOpenAIResponsesWithRealDex(t *testing.T) {
 		require.NotContains(t, string(encodedDisplay), integrationAPIKey)
 	})
 
-	t.Run("an incomplete Response for the Step's pick completes the Flow as failed", func(t *testing.T) {
+	t.Run("an incomplete Response for the Step's pick fails the Flow", func(t *testing.T) {
 		provider.EnqueueReplies(responsesStreamReply([]string{"Partial"}, "incomplete", "gpt-6-luna"))
 		flow, client := startSummaryWorker(t, provider, SummaryModelConfiguration{Model: "gpt-6-luna"})
-		outcome := runSummaryFlow(t, client, flow, fmt.Sprintf("openai-summary-failed-%d", time.Now().UnixNano()))
-		require.Equal(t, openai.CreateResponseBranchFailed, outcome.Branch)
-		require.Equal(t, "incomplete", outcome.Status)
-		require.Equal(t, "resp_summary", outcome.ResponseID, "the stored Response stays readable with retrieveResponse")
+		flowID := fmt.Sprintf("openai-summary-failed-%d", time.Now().UnixNano())
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+		_, err := client.StartFlow(ctx, flow, flowID, SummaryRequest{Text: "The OpenAI connector shipped today."}, dex.StartFlowOptions{})
+		require.NoError(t, err)
+		result := waitForSummaryResult(t, ctx, client, flowID)
+		require.Equal(t, dex.FlowFailed, result.Status)
+		require.Contains(t, result.ErrorMessage, "openai createResponse (connection openai-api) selected branch failed with no target: PROVIDER_REJECTION:")
 	})
 
 	requests := provider.Requests()

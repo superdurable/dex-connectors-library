@@ -11,14 +11,14 @@ in one Flow, `PipedriveDealIntake`:
    never linked. The Flow never creates organizations.
 3. `UpsertPipedriveLeadPerson` (`upsertObject`, sync) creates or updates the
    person by email with the name, organization, and owner. Several persons with
-   the email, a rejection, or an unconfirmed earlier create complete the Flow
-   in the `needsReview` phase without writing.
+   the email, a rejection, or an unconfirmed earlier create fail the Flow
+   through unwired optional branches without writing.
 4. `FindPipedriveOpenDeal` (`listObjects`) lists the person's most recently
    changed open deal in the configured pipeline.
 5. `AdvancePipedriveDeal` (`updateObject`) moves that deal to the configured
    stage and owner, or `CreatePipedriveDeal` (`createObject`, sync) creates it
    there with the lead source in the picked deal custom field. A rejected or
-   unconfirmed create completes in `needsReview`; a later attempt does not
+   unconfirmed create fails the Flow; a later attempt does not
    send the create again, except in the narrow case of a Worker lost before Dex
    stored its dispatch checkpoint (see the connector README's duplicate safety
    section).

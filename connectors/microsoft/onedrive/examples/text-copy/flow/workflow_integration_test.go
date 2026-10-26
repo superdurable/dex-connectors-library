@@ -19,7 +19,7 @@ func isCopyUpload(request graphfake.Request) bool {
 	return request.Method == http.MethodPut && strings.HasSuffix(request.Path, ":/content")
 }
 
-func TestTextCopyExampleRoutesEveryBusinessOutcomeWithRealDex(t *testing.T) {
+func TestTextCopyExampleCopiesAndFailsOnUnwiredBranchesWithRealDex(t *testing.T) {
 	graph := newGraphFixture(t)
 	harness := newTextCopyHarness(t, graph)
 	input := Input{SourceName: "Ops Policy.txt", CopyFolderName: "Dex copies", CopyName: "Ops Policy (copy).txt"}
@@ -47,8 +47,8 @@ func TestTextCopyExampleRoutesEveryBusinessOutcomeWithRealDex(t *testing.T) {
 
 	graph.AddItem(graphfake.Item{Name: "Ops Policy.txt", DriveID: destinationDrive, ParentID: copyFolders[0].ID, MimeType: "text/plain", Content: []byte("edited by hand")})
 	blocked := harness.run(t, "blocked", Input{SourceName: "Ops Policy.txt", CopyFolderName: "Dex copies", CopyName: "Ops Policy.txt"})
-	require.Equal(t, StatusCopyAlreadyExists, blocked.outcome.Status)
-	require.Equal(t, "Ops Policy.txt", blocked.outcome.ExistingCopy.Name)
+	require.Equal(t, dex.FlowFailed, blocked.status)
+	require.Contains(t, blocked.errorMessage, "microsoft-onedrive uploadFile (connection onedrive-files) selected branch alreadyExists with no target: CONFLICT:")
 	require.Equal(t, "edited by hand", string(graph.ItemsNamed(destinationDrive, copyFolders[0].ID, "Ops Policy.txt")[0].Content))
 
 	replaced := harness.run(t, "replaced", Input{SourceName: "Ops Policy.txt", CopyFolderName: "Dex copies", CopyName: "Ops Policy.txt", ShouldReplaceExisting: true})
@@ -56,7 +56,8 @@ func TestTextCopyExampleRoutesEveryBusinessOutcomeWithRealDex(t *testing.T) {
 	require.Equal(t, sourceText, string(graph.ItemsNamed(destinationDrive, copyFolders[0].ID, "Ops Policy.txt")[0].Content))
 
 	missing := harness.run(t, "missing", Input{SourceName: "Ops Polcy.txt", CopyFolderName: "Never", CopyName: "never.txt"})
-	require.Equal(t, StatusSourceNotFound, missing.outcome.Status)
+	require.Equal(t, dex.FlowFailed, missing.status)
+	require.Contains(t, missing.errorMessage, "microsoft-onedrive searchFiles (connection onedrive-files) selected branch notFound with no target: NOT_FOUND:")
 	require.Empty(t, graph.ItemsNamed(destinationDrive, graph.reportsFolderID, "Never"))
 
 	requestsBefore := len(graph.Requests())

@@ -8,8 +8,8 @@ This example serves the Linear connector's webhook endpoint and starts one Flow 
 2. the application's `AcceptIssueCreated` filter admits only `create` events of issues outside the trash, and
    `ResolveFlowID` names the Flow after the event ID, so a redelivery starts no second Flow;
 3. `RecordIssueEvent` records the event, `ReadEventIssue` calls `linear.NewGetIssueStep` by the issue UUID, and
-   `RecordIssueRead` completes with the issue; every other branch goes to `RecordReadFailure`, which records
-   the safe reason and fails the Flow.
+   `RecordIssueRead` completes with the issue. Optional branches are unwired and fail the Flow with the
+   connector's safe reason.
 
 ## 1. Generate the Flow Definition
 
@@ -86,7 +86,7 @@ curl -i -X POST http://127.0.0.1:8838/webhooks/linear -H 'Content-Type: applicat
 
 The event ID is `create:9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b:1791115198000`, so the Flow ID is
 `linear-issue-create-9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b-1791115198000`. With a real workspace the issue must
-exist for `getIssue` to find it; otherwise the Flow records `notFound` and fails.
+exist for `getIssue` to find it; otherwise its unwired `notFound` branch fails the Flow.
 
 ## 6. Redeliver and forge
 

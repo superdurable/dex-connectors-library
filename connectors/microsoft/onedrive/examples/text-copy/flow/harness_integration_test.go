@@ -51,8 +51,9 @@ func newGraphFixture(t *testing.T) *graphFixture {
 }
 
 type textCopyRun struct {
-	status  dex.FlowStatus
-	outcome Outcome
+	status       dex.FlowStatus
+	errorMessage string
+	outcome      Outcome
 }
 
 type textCopyHarness struct {
@@ -116,7 +117,7 @@ func (harness *textCopyHarness) run(t *testing.T, flowIDPrefix string, input Inp
 	require.NoError(t, err)
 	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
 	require.NoError(t, err)
-	run := textCopyRun{status: result.Status}
+	run := textCopyRun{status: result.Status, errorMessage: result.ErrorMessage}
 	if result.Status == dex.FlowCompleted {
 		require.NoError(t, result.DecodeSingleOutput(&run.outcome))
 	}

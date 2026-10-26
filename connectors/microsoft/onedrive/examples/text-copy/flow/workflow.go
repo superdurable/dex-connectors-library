@@ -26,13 +26,11 @@ const (
 	recordRequestStepType    = "RecordTextCopyRequest"
 	findSourceStepType       = "FindSourceFile"
 	selectSourceStepType     = "SelectSourceFile"
-	reportNotFoundStepType   = "ReportSourceNotFound"
 	ensureCopyFolderStepType = "EnsureCopyFolder"
 	recordCopyFolderStepType = "RecordCopyFolder"
 	readSourceStepType       = "ReadSourceText"
 	prepareCopyStepType      = "PrepareTextCopy"
 	uploadCopyStepType       = "UploadTextCopy"
-	reportCopyExistsStepType = "ReportCopyAlreadyExists"
 	readBackCopyStepType     = "ReadBackTextCopy"
 	completeCopyStepType     = "CompleteTextCopy"
 	fallbackTextMimeType     = "text/plain"
@@ -52,7 +50,7 @@ type Input struct {
 	CopyFolderName string `json:"copyFolderName"`
 	// CopyName is the name of the uploaded copy, such as Ops Policy (copy).txt.
 	CopyName string `json:"copyName"`
-	// ShouldReplaceExisting replaces a different existing copy; false completes as copyAlreadyExists instead.
+	// ShouldReplaceExisting replaces a different existing copy; false lets an unwired conflict fail the Flow.
 	ShouldReplaceExisting bool `json:"shouldReplaceExisting,omitempty"`
 }
 
@@ -78,10 +76,6 @@ type Status string
 const (
 	// StatusCopied means the copy was written, or already had exactly this text, and was read back.
 	StatusCopied Status = "copied"
-	// StatusSourceNotFound means the source folder has no item with the requested name.
-	StatusSourceNotFound Status = "sourceNotFound"
-	// StatusCopyAlreadyExists means a different item already has the copy's name and replacement was not requested.
-	StatusCopyAlreadyExists Status = "copyAlreadyExists"
 )
 
 // Outcome is the durable result of the Flow and its completion output.
@@ -100,8 +94,6 @@ type Outcome struct {
 	Copy *onedrive.DriveItem `json:"copy,omitempty"`
 	// IsCopyExistingIdentical reports that a file with exactly this text was already at the copy's path.
 	IsCopyExistingIdentical bool `json:"isCopyExistingIdentical,omitempty"`
-	// ExistingCopy is the item that blocked the copy for copyAlreadyExists.
-	ExistingCopy *onedrive.DriveItem `json:"existingCopy,omitempty"`
 }
 
 // CopyFolderRequest is the application input of the copy-folder Step.
@@ -198,11 +190,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				},
 			}},
 			Connection: flow.connection, MapToOperationInput: flow.MapToSearchFilesInput,
-			Found:    sdkgo.GoTo(selectSourceFile{}),
-			NotFound: sdkgo.GoTo(reportSourceNotFound{}),
+			Found: sdkgo.GoTo(selectSourceFile{}),
 		})),
 		dex.DefineStep(selectSourceFile{}),
-		dex.DefineStep(reportSourceNotFound{}),
 		dex.DefineStep(onedrive.NewCreateFolderStep(onedrive.CreateFolderStepConfig[CopyFolderRequest]{
 			StepType: ensureCopyFolderStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
@@ -256,10 +246,8 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			},
 			Connection: flow.connection, MapToOperationInput: flow.MapToUploadFileInput,
 			Uploaded:        sdkgo.GoTo(sdkgo.StepRef[onedrive.UploadFileResult](readBackCopyStepType)),
-			AlreadyExists:   sdkgo.GoTo(reportCopyAlreadyExists{}),
 			ResultAttribute: &copyUploadResultAttribute,
 		})),
-		dex.DefineStep(reportCopyAlreadyExists{}),
 		dex.DefineStep(onedrive.NewGetFileStep(onedrive.GetFileStepConfig[onedrive.UploadFileResult]{
 			StepType: readBackCopyStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
@@ -440,22 +428,6 @@ func (selectSourceFile) Execute(ctx dex.Context, result onedrive.SearchFilesResu
 }
 
 // dex:group group-id:text-copy group-label:"Text copy"
-// dex:explanation text:"Complete with sourceNotFound when the source folder has no item with the name."
-type reportSourceNotFound struct {
-	dex.StepDefaultsNoWaitFor[onedrive.SearchFilesResult]
-}
-
-func (reportSourceNotFound) GetStepType() string { return reportNotFoundStepType }
-
-func (reportSourceNotFound) Execute(ctx dex.Context, _ onedrive.SearchFilesResult) (*dex.StepDecision, error) {
-	outcome := Outcome{Status: StatusSourceNotFound}
-	if err := outcomeAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(outcome), nil
-}
-
-// dex:group group-id:text-copy group-label:"Text copy"
 // dex:explanation text:"Record the ensured copy folder and read the source text."
 type recordCopyFolder struct {
 	dex.StepDefaultsNoWaitFor[onedrive.CreateFolderResult]
@@ -507,28 +479,6 @@ func (prepareTextCopy) Execute(ctx dex.Context, result onedrive.ReadFileTextResu
 		Text: result.Value.Text, ConflictBehavior: conflictBehavior,
 	}
 	return dex.GoTo(sdkgo.StepRef[CopyRequest](uploadCopyStepType), copyRequest), nil
-}
-
-// dex:group group-id:text-copy group-label:"Text copy"
-// dex:explanation text:"Complete with copyAlreadyExists when a different item already has the copy's name."
-type reportCopyAlreadyExists struct {
-	dex.StepDefaultsNoWaitFor[onedrive.UploadFileResult]
-}
-
-func (reportCopyAlreadyExists) GetStepType() string { return reportCopyExistsStepType }
-
-func (reportCopyAlreadyExists) Execute(ctx dex.Context, result onedrive.UploadFileResult) (*dex.StepDecision, error) {
-	outcome, err := outcomeAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	existingCopy := result.Value.Item
-	outcome.Status = StatusCopyAlreadyExists
-	outcome.ExistingCopy = &existingCopy
-	if err := outcomeAttribute.Set(ctx, outcome); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(outcome), nil
 }
 
 // dex:group group-id:text-copy group-label:"Text copy"

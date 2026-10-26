@@ -28,21 +28,19 @@ const (
 	// ConnectionName is the static Dex Web connection for Pipedrive.
 	ConnectionName = "pipedrive-crm"
 
-	recordLeadStepType           = "RecordPipedriveLead"
-	findOrganizationStepType     = "FindPipedriveOrganization"
-	routeOrganizationStepType    = "RoutePipedriveOrganization"
-	upsertLeadPersonStepType     = "UpsertPipedriveLeadPerson"
-	recordLeadPersonStepType     = "RecordPipedriveLeadPerson"
-	recordUnresolvedLeadStepType = "RecordUnresolvedPipedriveLead"
-	findOpenDealStepType         = "FindPipedriveOpenDeal"
-	routeOpenDealStepType        = "RoutePipedriveOpenDeal"
-	createDealStepType           = "CreatePipedriveDeal"
-	advanceDealStepType          = "AdvancePipedriveDeal"
-	recordCreatedDealStepType    = "RecordCreatedPipedriveDeal"
-	recordAdvancedDealStepType   = "RecordAdvancedPipedriveDeal"
-	recordUnresolvedDealStepType = "RecordUnresolvedPipedriveDeal"
-	readBackDealStepType         = "ReadBackPipedriveDeal"
-	completeDealIntakeStepType   = "CompletePipedriveDealIntake"
+	recordLeadStepType         = "RecordPipedriveLead"
+	findOrganizationStepType   = "FindPipedriveOrganization"
+	routeOrganizationStepType  = "RoutePipedriveOrganization"
+	upsertLeadPersonStepType   = "UpsertPipedriveLeadPerson"
+	recordLeadPersonStepType   = "RecordPipedriveLeadPerson"
+	findOpenDealStepType       = "FindPipedriveOpenDeal"
+	routeOpenDealStepType      = "RoutePipedriveOpenDeal"
+	createDealStepType         = "CreatePipedriveDeal"
+	advanceDealStepType        = "AdvancePipedriveDeal"
+	recordCreatedDealStepType  = "RecordCreatedPipedriveDeal"
+	recordAdvancedDealStepType = "RecordAdvancedPipedriveDeal"
+	readBackDealStepType       = "ReadBackPipedriveDeal"
+	completeDealIntakeStepType = "CompletePipedriveDealIntake"
 
 	maximumEmailLength = 254
 	maximumTextLength  = 255
@@ -67,8 +65,6 @@ const (
 	PhaseDealWritten Phase = "dealWritten"
 	// PhaseCompleted means the read-back confirmed the deal's stage.
 	PhaseCompleted Phase = "completed"
-	// PhaseNeedsReview means a person must resolve the lead or deal in Pipedrive.
-	PhaseNeedsReview Phase = "needsReview"
 )
 
 // DealAction says what happened to the lead's deal.
@@ -117,12 +113,6 @@ type DealIntake struct {
 	PreviousStageID string `json:"previousStageId,omitempty"`
 	// StageID is the stage Pipedrive reported for the deal.
 	StageID string `json:"stageId,omitempty"`
-	// ReviewStep names the Step whose outcome needs a person's review.
-	ReviewStep string `json:"reviewStep,omitempty"`
-	// ReviewBranch is that Step's branch, such as multipleMatches or uncertain.
-	ReviewBranch sdkgo.BranchID `json:"reviewBranch,omitempty"`
-	// ReviewDetail is Pipedrive's secret-safe failure for the review.
-	ReviewDetail *sdkgo.Failure `json:"reviewDetail,omitempty"`
 }
 
 // LeadOwnerConfiguration is the owner pick Dex Web saves for the person upsert Step.
@@ -222,13 +212,9 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				Bindings:    []sdkgo.ConnectorUIBinding{{Port: pipedrive.UIOwnerPickerPortOwnerID, JSONPointer: "/ownerId"}},
 			}}},
 			Connection: flow.connection, MapToOperationInput: flow.MapToUpsertLeadPersonInput,
-			Upserted:         sdkgo.GoTo(recordLeadPerson{}),
-			MultipleMatches:  sdkgo.GoTo(recordUnresolvedLead{}),
-			ProviderRejected: sdkgo.GoTo(recordUnresolvedLead{}),
-			Uncertain:        sdkgo.GoTo(recordUnresolvedLead{}),
+			Upserted: sdkgo.GoTo(recordLeadPerson{}),
 		})),
 		dex.DefineStep(recordLeadPerson{}),
-		dex.DefineStep(recordUnresolvedLead{}),
 		dex.DefineStep(pipedrive.NewListObjectsStep(pipedrive.ListObjectsStepConfig[DealIntake]{
 			StepType: findOpenDealStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
@@ -264,9 +250,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 				},
 			}},
 			Connection: flow.connection, MapToOperationInput: flow.MapToCreateDealInput,
-			Created:          sdkgo.GoTo(recordCreatedDeal{}),
-			ProviderRejected: sdkgo.GoTo(recordUnresolvedDeal{}),
-			Uncertain:        sdkgo.GoTo(recordUnresolvedDeal{}),
+			Created: sdkgo.GoTo(recordCreatedDeal{}),
 		})),
 		dex.DefineStep(pipedrive.NewUpdateObjectStep(pipedrive.UpdateObjectStepConfig[DealIntake]{
 			StepType: advanceDealStepType, ConnectionName: ConnectionName,
@@ -279,7 +263,6 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 		})),
 		dex.DefineStep(recordCreatedDeal{}),
 		dex.DefineStep(recordAdvancedDeal{}),
-		dex.DefineStep(recordUnresolvedDeal{}),
 		dex.DefineStep(pipedrive.NewGetObjectStep(pipedrive.GetObjectStepConfig[DealIntake]{
 			StepType: readBackDealStepType, ConnectionName: ConnectionName,
 			Annotations: sdkgo.StepAnnotations{
@@ -482,26 +465,6 @@ func (recordLeadPerson) Execute(ctx dex.Context, result pipedrive.UpsertObjectRe
 }
 
 // dex:group group-id:pipedrive group-label:"Pipedrive"
-// dex:explanation text:"Complete for review when several persons share the email, Pipedrive rejected the person, or an earlier create is unconfirmed."
-type recordUnresolvedLead struct {
-	dex.StepDefaultsNoWaitFor[pipedrive.UpsertObjectResult]
-}
-
-func (recordUnresolvedLead) GetStepType() string { return recordUnresolvedLeadStepType }
-
-func (recordUnresolvedLead) Execute(ctx dex.Context, result pipedrive.UpsertObjectResult) (*dex.StepDecision, error) {
-	intake, err := intakeAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	intake.Phase, intake.ReviewStep, intake.ReviewBranch, intake.ReviewDetail = PhaseNeedsReview, upsertLeadPersonStepType, result.Branch, result.Failure
-	if err := intakeAttribute.Set(ctx, intake); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(intake), nil
-}
-
-// dex:group group-id:pipedrive group-label:"Pipedrive"
 // dex:explanation text:"Advance the open deal when one exists, or create the deal."
 type routeOpenDeal struct {
 	dex.StepDefaultsNoWaitFor[pipedrive.ListObjectsResult]
@@ -564,26 +527,6 @@ func (recordAdvancedDeal) Execute(ctx dex.Context, result pipedrive.UpdateObject
 		return nil, err
 	}
 	return dex.GoTo(sdkgo.StepRef[DealIntake](readBackDealStepType), intake), nil
-}
-
-// dex:group group-id:pipedrive group-label:"Pipedrive"
-// dex:explanation text:"Complete for review when Pipedrive rejected the deal or its create is unconfirmed."
-type recordUnresolvedDeal struct {
-	dex.StepDefaultsNoWaitFor[pipedrive.CreateObjectResult]
-}
-
-func (recordUnresolvedDeal) GetStepType() string { return recordUnresolvedDealStepType }
-
-func (recordUnresolvedDeal) Execute(ctx dex.Context, result pipedrive.CreateObjectResult) (*dex.StepDecision, error) {
-	intake, err := intakeAttribute.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	intake.Phase, intake.ReviewStep, intake.ReviewBranch, intake.ReviewDetail = PhaseNeedsReview, createDealStepType, result.Branch, result.Failure
-	if err := intakeAttribute.Set(ctx, intake); err != nil {
-		return nil, err
-	}
-	return dex.GracefulComplete(intake), nil
 }
 
 // dex:group group-id:pipedrive group-label:"Pipedrive"

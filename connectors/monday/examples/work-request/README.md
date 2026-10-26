@@ -23,11 +23,9 @@ every monday.com operation to handle a recurring work request:
    what the Flow did, followed by the request's text, and `CompleteWorkRequest`
    completes with the outcome.
 
-The `uncertain` branches of the create and the update are wired. When
-monday.com accepted a write but answered unusably, the Flow completes with
-`needsReview: true`, the `reviewReason`, and the connector's `reviewDetail`, so
-a person checks the board instead of the Flow writing again. Every other
-optional branch is unwired and fails the Flow, such as a rejected column value,
+The `uncertain` branches of the create and update are unwired. When monday.com
+accepted a write but answered unusably, the Flow fails with the connector's
+safe reason. Other optional branches are also unwired and fail the Flow, such as a rejected column value,
 a missing board, an invalid response, or a local defect.
 
 ## Generate the Flow Definition
@@ -108,9 +106,8 @@ board with monday.com's **Developer mode**, under the profile picture >
 ```
 
 Omit `groupId` to create a new item in the board's first group. The Flow
-result and the `monday-work-outcome` Attribute hold the action (`created`,
-`scheduled`, or `creationUncertain`), the item ID and URL, the update ID, and
-the review state. The run writes to the real board; delete the test item in
+result and the `monday-work-outcome` Attribute hold the action (`created` or
+`scheduled`), the item ID and URL, and the update ID. The run writes to the real board; delete the test item in
 monday.com afterwards.
 
 ## Test
@@ -140,7 +137,7 @@ duplicate with `409 IDEMPOTENCY_CONFLICT`, and replays a finished one with
   Worker's attempt sends the same key and receives the first item;
 - a complexity-limited create waits for `retry_in_seconds` and creates one
   item;
-- an unusable create answer completes as `needsReview` and is never resent;
+- an unusable create answer fails through the unwired `uncertain` branch and is never resent;
 - a rejected column value fails the Flow through the unwired
   `providerRejected` branch without monday.com's message text;
 - an invalid due date fails the Flow before any monday.com request.

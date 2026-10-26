@@ -102,7 +102,6 @@ func TestStepIdentitiesAndRegistration(t *testing.T) {
 	require.Equal(t, recordRequestStepType, dex.GetFinalStepType[Input](recordApprovalRequest{}))
 	require.Equal(t, decideApprovalStepType, dex.GetFinalStepType[excel.GetTableRowsResult](decideApproval{}))
 	require.Equal(t, completeDecisionStepType, dex.GetFinalStepType[excel.GetValuesResult](completeApprovalDecision{}))
-	require.Equal(t, reportUncertainStepType, dex.GetFinalStepType[excel.AppendTableRowsResult](reportDecisionUncertain{}))
 
 	client, err := excel.New(excel.Config{}, sdkgo.StaticCredentialProvider[excel.Credentials]{})
 	require.NoError(t, err)

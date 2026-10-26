@@ -17,9 +17,9 @@ Onboarding:
    instead of failing;
 4. `RecordOnboardingHandOff` completes as `onboarded` with the sign-in
    hand-off;
-5. when the name already belongs to another account, or a deleted one,
-   `RecordAddressTakenHandOff` completes as `addressTaken` without creating or
-   joining anything.
+
+An `alreadyExists` result for a different account is unwired and fails the
+Flow before group membership changes.
 
 Reinstating a returning person calls `entraid.NewEnableUserStep` instead of
 creating an account, then joins the same group and hand-off Steps and
@@ -30,7 +30,7 @@ Offboarding calls `entraid.NewGetUserStep` to find the account, then
 `entraid.NewRevokeSignInSessionsStep`, then removes the account from the group
 with `entraid.NewRemoveUserFromGroupStep`, and completes as `offboarded`.
 
-Only the happy-path branches and `alreadyExists` are wired. An unknown account
+Only the happy-path branches are wired. An unknown account
 to reinstate or offboard, a missing group, provider rejections, invalid
 responses, and local defects fail the Flow.
 

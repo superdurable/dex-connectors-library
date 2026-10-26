@@ -7,14 +7,11 @@ This example runs one operation-only Flow from Dex Web **Start Flow**:
    `newsapi-company-news-request` Attribute;
 2. `SearchCompanyArticles` calls `newsapi.NewSearchArticlesStep` for the newest
    articles whose titles name the company;
-3. `CompanyArticlesFound` records the page and completes the Flow, while
-   `CompanyNewsRejected` completes without articles when NewsAPI rejects the
-   search, such as an exhausted key.
+3. `CompanyArticlesFound` records the page and completes the Flow.
 
-Both completion Steps write the `newsapi-company-news-outcome` Attribute. The
-summary and display RPCs show the request and the outcome in Dex Web. The
-example leaves `invalidResponse` and `defect` unwired, so those outcomes fail
-the Flow.
+The summary and display RPCs show the request and the outcome in Dex Web.
+Optional branches, including an exhausted key's `providerRejected` outcome,
+are unwired and fail the Flow with the connector's safe reason.
 
 `RecordCompanyNewsRequest` computes `from` once, in UTC, and persists it, so a
 retried search uses the same window. The start Step implements a `WaitFor` that
@@ -112,8 +109,8 @@ GOWORK=off go test -race ./examples/company-news/...
 ```
 
 The real Dex suite starts Flows through the Dex Client against a local fake
-NewsAPI. It covers the found route, a retried HTTP 503, the wired rejection for
-an exhausted key, an unwired `invalidResponse` that fails without a retry, and
+NewsAPI. It covers the found route, a retried HTTP 503, an exhausted key's
+unwired rejection, an unwired `invalidResponse` that fails without a retry, and
 invalid start input:
 
 ```bash
