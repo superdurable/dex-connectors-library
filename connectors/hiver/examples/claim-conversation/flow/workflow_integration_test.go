@@ -168,7 +168,7 @@ func TestRateLimitedNoteWaitsAndAddsOneNoteWithRealDex(t *testing.T) {
 	harness := newClaimHarness(t, provider, fastRequestInterval, defaultRequestTimeout)
 
 	outcome := harness.runClaim(t, "rate-limited", integrationClaimInput())
-	require.Equal(t, ClaimActionClaimed, outcome.Action, "a 429 clears the dispatch marker, so the retry may send")
+	require.Equal(t, ClaimActionClaimed, outcome.Action, "a 429 records canResend, so the next attempt may send")
 	times := provider.requestTimes("note")
 	require.Len(t, times, 2)
 	require.GreaterOrEqual(t, times[1].Sub(times[0]), time.Second, "the retry waited for Retry-After")

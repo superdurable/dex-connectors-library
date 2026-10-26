@@ -116,7 +116,7 @@ func TestSingleDispatchOutcomes(t *testing.T) {
 			},
 			wantBranch: hiver.AddNoteBranchProviderRejected,
 		},
-		"rate limit is retried and clears the marker": {
+		"rate limit is retried and records canResend": {
 			reply: func(t *testing.T, response http.ResponseWriter) {
 				response.Header().Set("Retry-After", "2")
 				writeJSON(t, response, http.StatusTooManyRequests, `{"Message":"SENTINEL"}`)
@@ -316,7 +316,7 @@ func TestDispatchCheckpointThatDexNeverStoredFailsClosed(t *testing.T) {
 			dropConnection(t, response)
 			return
 		}
-		t.Fatal("a later attempt must not resend without an acknowledged checkpoint")
+		t.Fatal("a later attempt must not resend without a canResend or notSent checkpoint")
 	})
 	client := newHiverClient(t, provider.URL)
 	input := hiver.AddNoteInput{InboxID: "105902", ConversationID: "573741352", Content: "Triaged."}

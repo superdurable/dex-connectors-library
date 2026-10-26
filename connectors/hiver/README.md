@@ -230,8 +230,10 @@ Dex does not acknowledge heartbeat persistence when the Worker writes the
 checkpoint. A later attempt with no stored marker therefore fails closed and
 never resends, even if the first request did not leave. A lost `canResend`
 marker can likewise produce `uncertain` for a request Hiver never applied.
-Legacy Hiver checkpoints are invalid to the shared fence; reconcile any
-in-flight calls running the PR's earlier implementation before upgrading.
+Checkpoints written by v0.21.x and earlier are invalid to the shared fence:
+an in-flight `addNote` or `createSharedDraft` retrying after a 429 selects
+`uncertain` after the upgrade, even if Hiver never applied it. Reconcile those
+calls before upgrading.
 `TestSharedFenceRejectsStaleCanResendAfterLostClaim` covers the stale-marker
 case, and `TestSharedFencePacerWaitEndsBeforeStepDeadline` covers the pre-send
 checkpoint.
@@ -251,7 +253,8 @@ the HTTP status, such as `Hiver rejected the request (HTTP 400)`.
 | 409, other 4xx | `providerRejected` | `uncertain` for 409; `providerRejected` for other 4xx |
 | 3xx | `providerRejected`, `PROTOCOL`; redirects are never followed | same |
 | 429 | Retry after `Retry-After` when present, and hold the client's later requests | same |
-| traced DNS, connect, or TLS failure before a connection, or a cancelled wait for a slot | Retry | Retry with `canResend` checkpoint |
+| traced DNS, connect, or TLS failure before a connection | Retry | Retry with `canResend` checkpoint |
+| cancelled wait for a slot | Retry | Retry with `notSent` checkpoint |
 | 503 | Retry, after `Retry-After` when present | Retry with `canResend` checkpoint |
 | 408, other 5xx, lost or unreadable response | Retry, after `Retry-After` when present | `uncertain` |
 | oversized, malformed, or credential-reflecting 2xx | `invalidResponse` | `uncertain` |
