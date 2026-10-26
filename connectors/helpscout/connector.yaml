@@ -113,11 +113,11 @@ spec:
       mocks:
         - name: searchedDefaultAnswer
           branch: searched
-          description: "Matches the support inbox's active conversations for jane@example.com; page one includes conversation 501 and repeat contact 502."
+          description: "Matches the support inbox's active conversations for jane@acme.example.com; page one includes conversation 501 and repeat contact 502."
           default: true
           pages:
-            - {conversations: [{id: 502, number: 13, subject: "Earlier billing question", status: active, mailboxId: 123, tags: []}, {id: 501, number: 12, subject: "Double charge on order 88213", status: active, mailboxId: 123, tags: []}], page: 1, nextPage: 2, totalPages: 3, totalConversations: 3}
-            - {conversations: [{id: 501, number: 12, subject: "Double charge on order 88213", status: active, mailboxId: 123, tags: []}], page: 2, nextPage: 3, totalPages: 3, totalConversations: 3}
+            - {conversations: [{id: 502, number: 13, subject: "Earlier billing question", status: active, mailboxId: 123, tags: []}, {id: 501, number: 12, subject: "Double charge on order 88213", status: active, mailboxId: 123, threadCount: 1, tags: [billing]}], page: 1, nextPage: 2, totalPages: 3, totalConversations: 3}
+            - {conversations: [{id: 501, number: 12, subject: "Double charge on order 88213", status: active, mailboxId: 123, threadCount: 1, tags: [billing]}], page: 2, nextPage: 3, totalPages: 3, totalConversations: 3}
             - {conversations: [{id: 503, number: 14, subject: "Shipping question", status: active, mailboxId: 123, tags: []}], page: 3, nextPage: 0, totalPages: 3, totalConversations: 3}
         - name: providerRejectedFailure
           branch: providerRejected
@@ -150,9 +150,9 @@ spec:
           description: "Matches conversation 501 in inbox 123, with Jane as primary customer and a recent customer message."
           default: true
           output:
-            conversation: {id: 501, number: 12, subject: "Double charge on order 88213", status: active, state: published, type: email, mailboxId: 123, threadCount: 2, primaryCustomer: {id: 238604, type: customer, email: "jane@acme.example.com"}, tags: [billing]}
+            conversation: {id: 501, number: 12, subject: "Double charge on order 88213", status: active, state: published, type: email, mailboxId: 123, threadCount: 1, primaryCustomer: {id: 238604, type: customer, email: "jane@acme.example.com"}, tags: [billing]}
             threads: [{id: 560, type: customer, status: active, state: published, body: "I was charged twice", createdAt: "2026-09-30T07:59:00Z"}]
-            hasOlderThreads: true
+            hasOlderThreads: false
         - name: mergedFailure
           branch: merged
           description: "Matches conversation 501 after Help Scout merged it into conversation 777."
@@ -223,7 +223,7 @@ spec:
           description: "Matches tagging conversation 501 after triage and identifying repeat contact 502."
           default: true
           output:
-            conversation: {id: 501, number: 12, subject: "Double charge on order 88213", status: active, state: published, type: email, mailboxId: 123, threadCount: 2, primaryCustomer: {id: 238604, type: customer, email: "jane@acme.example.com"}, tags: [billing, dex-triaged, dex-repeat-contact]}
+            conversation: {id: 501, number: 12, subject: "Double charge on order 88213", status: active, state: published, type: email, mailboxId: 123, threadCount: 1, primaryCustomer: {id: 238604, type: customer, email: "jane@acme.example.com"}, tags: [billing, dex-triaged, dex-repeat-contact]}
             wasAlreadyApplied: false
         - name: notFoundFailure
           branch: notFound
@@ -260,7 +260,7 @@ spec:
           default: true
           output:
             email: "jane@acme.example.com"
-            customers: [{id: 238604, firstName: Jane, lastName: Smith, emails: ["jane@acme.example.com"], conversationCount: 2, createdAt: "2026-01-01T00:00:00Z"}]
+            customers: [{id: 238604, firstName: Jane, lastName: Smith, emails: ["jane@acme.example.com"], conversationCount: 3, createdAt: "2026-01-01T00:00:00Z"}]
         - name: notFoundFailure
           branch: notFound
           description: "Matches an email address with no customer profile."

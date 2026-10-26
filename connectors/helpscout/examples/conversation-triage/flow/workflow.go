@@ -96,7 +96,7 @@ type Triage struct {
 	CustomerEmail string `json:"customerEmail,omitempty"`
 	// CustomerProfileIDs lists every Help Scout customer profile with that email.
 	CustomerProfileIDs []int64 `json:"customerProfileIds,omitempty"`
-	// OtherActiveConversationIDs lists the customer's other active conversations in the inbox.
+	// OtherActiveConversationIDs lists the customer's other active conversations on search page one.
 	OtherActiveConversationIDs []int64 `json:"otherActiveConversationIds,omitempty"`
 	// NoteThreadID is the internal note's thread ID.
 	NoteThreadID int64 `json:"noteThreadId,omitempty"`
@@ -156,7 +156,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 			StepType: searchActiveConversationsStep, ConnectionName: ConnectionName, Connection: flow.connection,
 			Annotations: sdkgo.StepAnnotations{
 				GroupID: "helpscout-read", GroupLabel: "Help Scout reads",
-				Explanation: "List the customer's active conversations in the same inbox.",
+				Explanation: "List the first page of the customer's active conversations in the same inbox.",
 			},
 			MapToOperationInput: MapToSearchConversationsInput,
 			Searched:            sdkgo.GoTo(recordActiveConversations{}),

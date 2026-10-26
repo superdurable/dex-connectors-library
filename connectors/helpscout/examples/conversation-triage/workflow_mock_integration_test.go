@@ -37,6 +37,7 @@ func TestConversationTriageUsesHelpScoutMocksWithRealDex(t *testing.T) {
 	require.Equal(t, "completed", triage.Stage)
 	require.Equal(t, []string{"customer"}, triage.NewestThreadTypes)
 	require.Equal(t, []int64{238604}, triage.CustomerProfileIDs)
+	// The Flow reads page 1; conversation 503 on mock page 3 is outside this example's result.
 	require.Equal(t, []int64{502}, triage.OtherActiveConversationIDs)
 
 	reads := mock.GetConversation().Calls()
@@ -52,7 +53,7 @@ func TestConversationTriageUsesHelpScoutMocksWithRealDex(t *testing.T) {
 	notes := mock.ReplyToConversation().Calls()
 	require.Len(t, notes, 1)
 	require.Equal(t, helpscout.ReplyToConversationInput{ConversationID: 501, IsInternalNote: true,
-		Text: conversationtriage.BuildTriageNote("jane@acme.example.com", []int64{238604}, []int64{502})}, notes[0].Input)
+		Text: "Dex triage: 1 Help Scout customer profile matches jane@acme.example.com; the customer has 1 other active conversation in this inbox: 502."}, notes[0].Input)
 	updates := mock.UpdateConversation().Calls()
 	require.Len(t, updates, 1)
 	require.Equal(t, helpscout.UpdateConversationInput{ConversationID: 501,

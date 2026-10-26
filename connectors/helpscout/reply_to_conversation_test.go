@@ -18,6 +18,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/helpscout"
+	"github.com/superdurable/dex-connectors-library/connectors/helpscout/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
@@ -278,6 +279,63 @@ func TestReplyFenceReadsBackAcceptedThreadWithoutResending(t *testing.T) {
 	require.EqualValues(t, 568, second.Value.ThreadID)
 	require.Len(t, fake.requestsTo(http.MethodPost, "/v2/conversations/501/notes"), 1)
 	require.Len(t, fake.requestsTo(http.MethodGet, "/v2/conversations/501/threads"), 1)
+}
+
+func TestReplyFenceReadBackResolvesThePrimaryReplyCustomerWithoutResending(t *testing.T) {
+	fake := newFakeHelpScout(t, map[string]http.HandlerFunc{
+		"GET /v2/conversations/501":        respondJSON(http.StatusOK, conversationJSON(501, "active", 123)),
+		"POST /v2/conversations/501/reply": createdThread("568"),
+		"GET /v2/conversations/501/threads": respondJSON(http.StatusOK,
+			threadPageJSON([]string{threadJSON(568, "reply", "Response to Jane", "2026-09-30T12:00:00Z")}, false)),
+	})
+	client := newFakeBackedClient(t, fake)
+	step := singledispatchtest.NewContext("helpscout-test-flow", "reply")
+	input := helpscout.ReplyToConversationInput{ConversationID: 501, Text: "Response to Jane"}
+	first, err := replyToConversation(t, client, step, input)
+	require.NoError(t, err)
+	require.Equal(t, helpscout.ReplyToConversationBranchReplied, first.Branch)
+	require.EqualValues(t, 238604, first.Value.CustomerID)
+	step.AdvanceAttempt()
+	second, err := replyToConversation(t, client, step, input)
+	require.NoError(t, err)
+	require.Equal(t, helpscout.ReplyToConversationBranchReplied, second.Branch)
+	require.EqualValues(t, 238604, second.Value.CustomerID)
+	require.EqualValues(t, 568, second.Value.ThreadID)
+	require.Len(t, fake.requestsTo(http.MethodGet, "/v2/conversations/501"), 1)
+	require.Len(t, fake.requestsTo(http.MethodPost, "/v2/conversations/501/reply"), 1)
+	require.Len(t, fake.requestsTo(http.MethodGet, "/v2/conversations/501/threads"), 1)
+}
+
+func TestReplyFenceTerminalCredentialsSelectDefectWithoutSending(t *testing.T) {
+	fake := newFakeHelpScout(t, map[string]http.HandlerFunc{
+		"POST /v2/oauth2/token": respondJSON(http.StatusUnauthorized, `{"error":"invalid_client"}`),
+	})
+	credentials := testsupport.NewRefreshingCredentialSource(helpscout.Credentials{
+		AppID: "app-id", AppSecret: sdkgo.NewSecretString("app-secret"),
+	}, nil)
+	client := newRefreshingClient(t, credentials, fake.redirectingClient())
+	result, err := replyToConversation(t, client, singledispatchtest.NewContext("helpscout-test-flow", "reply"),
+		helpscout.ReplyToConversationInput{ConversationID: 501, Text: "Triage note", IsInternalNote: true})
+	require.NoError(t, err)
+	require.Equal(t, helpscout.ReplyToConversationBranchDefect, result.Branch)
+	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+	require.Len(t, fake.requestsTo(http.MethodPost, "/v2/oauth2/token"), 1)
+	require.Empty(t, fake.requestsTo(http.MethodPost, "/v2/conversations/501/notes"))
+}
+
+func TestReplyFenceUnusableTokenSelectsDefectWithoutSending(t *testing.T) {
+	fake := newFakeHelpScout(t, nil)
+	credentials := staticCredentials("")
+	stored := credentials[testConnection]
+	stored.AccessToken = sdkgo.NewSecretString("invalid\ntoken")
+	credentials[testConnection] = stored
+	result, err := replyToConversation(t, newTestClient(t, fake.redirectingClient(), credentials, helpscout.Config{}),
+		singledispatchtest.NewContext("helpscout-test-flow", "reply"),
+		helpscout.ReplyToConversationInput{ConversationID: 501, Text: "Triage note", IsInternalNote: true})
+	require.NoError(t, err)
+	require.Equal(t, helpscout.ReplyToConversationBranchDefect, result.Branch)
+	require.Equal(t, sdkgo.FailureAuthentication, result.Failure.Kind)
+	require.Empty(t, fake.recordedRequests())
 }
 
 func TestReplyFenceChecksAcceptedWriteBeforeCredentialResolution(t *testing.T) {

@@ -17,11 +17,11 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		decode func() error
 	}{
 		{name: "searchConversations/searchedDefaultAnswer/1", decode: func() error {
-			_, err := connectormock.DecodeOutput[helpscout.SearchConversationsOutput](`{"conversations":[{"id":502,"number":13,"subject":"Earlier billing question","status":"active","mailboxId":123,"tags":[]},{"id":501,"number":12,"subject":"Double charge on order 88213","status":"active","mailboxId":123,"tags":[]}],"page":1,"nextPage":2,"totalPages":3,"totalConversations":3}`)
+			_, err := connectormock.DecodeOutput[helpscout.SearchConversationsOutput](`{"conversations":[{"id":502,"number":13,"subject":"Earlier billing question","status":"active","mailboxId":123,"tags":[]},{"id":501,"number":12,"subject":"Double charge on order 88213","status":"active","mailboxId":123,"threadCount":1,"tags":["billing"]}],"page":1,"nextPage":2,"totalPages":3,"totalConversations":3}`)
 			return err
 		}},
 		{name: "searchConversations/searchedDefaultAnswer/2", decode: func() error {
-			_, err := connectormock.DecodeOutput[helpscout.SearchConversationsOutput](`{"conversations":[{"id":501,"number":12,"subject":"Double charge on order 88213","status":"active","mailboxId":123,"tags":[]}],"page":2,"nextPage":3,"totalPages":3,"totalConversations":3}`)
+			_, err := connectormock.DecodeOutput[helpscout.SearchConversationsOutput](`{"conversations":[{"id":501,"number":12,"subject":"Double charge on order 88213","status":"active","mailboxId":123,"threadCount":1,"tags":["billing"]}],"page":2,"nextPage":3,"totalPages":3,"totalConversations":3}`)
 			return err
 		}},
 		{name: "searchConversations/searchedDefaultAnswer/3", decode: func() error {
@@ -29,7 +29,7 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			return err
 		}},
 		{name: "getConversation/foundDefaultAnswer/1", decode: func() error {
-			_, err := connectormock.DecodeOutput[helpscout.ConversationDetails](`{"conversation":{"id":501,"number":12,"subject":"Double charge on order 88213","status":"active","state":"published","type":"email","mailboxId":123,"threadCount":2,"primaryCustomer":{"id":238604,"type":"customer","email":"jane@acme.example.com"},"tags":["billing"]},"threads":[{"id":560,"type":"customer","status":"active","state":"published","body":"I was charged twice","createdAt":"2026-09-30T07:59:00Z"}],"hasOlderThreads":true}`)
+			_, err := connectormock.DecodeOutput[helpscout.ConversationDetails](`{"conversation":{"id":501,"number":12,"subject":"Double charge on order 88213","status":"active","state":"published","type":"email","mailboxId":123,"threadCount":1,"primaryCustomer":{"id":238604,"type":"customer","email":"jane@acme.example.com"},"tags":["billing"]},"threads":[{"id":560,"type":"customer","status":"active","state":"published","body":"I was charged twice","createdAt":"2026-09-30T07:59:00Z"}],"hasOlderThreads":false}`)
 			return err
 		}},
 		{name: "getConversation/mergedFailure/1", decode: func() error {
@@ -41,11 +41,11 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			return err
 		}},
 		{name: "updateConversation/updatedDefaultAnswer/1", decode: func() error {
-			_, err := connectormock.DecodeOutput[helpscout.UpdateConversationOutput](`{"conversation":{"id":501,"number":12,"subject":"Double charge on order 88213","status":"active","state":"published","type":"email","mailboxId":123,"threadCount":2,"primaryCustomer":{"id":238604,"type":"customer","email":"jane@acme.example.com"},"tags":["billing","dex-triaged","dex-repeat-contact"]},"wasAlreadyApplied":false}`)
+			_, err := connectormock.DecodeOutput[helpscout.UpdateConversationOutput](`{"conversation":{"id":501,"number":12,"subject":"Double charge on order 88213","status":"active","state":"published","type":"email","mailboxId":123,"threadCount":1,"primaryCustomer":{"id":238604,"type":"customer","email":"jane@acme.example.com"},"tags":["billing","dex-triaged","dex-repeat-contact"]},"wasAlreadyApplied":false}`)
 			return err
 		}},
 		{name: "findCustomerByEmail/foundDefaultAnswer/1", decode: func() error {
-			_, err := connectormock.DecodeOutput[helpscout.CustomerMatches](`{"email":"jane@acme.example.com","customers":[{"id":238604,"firstName":"Jane","lastName":"Smith","emails":["jane@acme.example.com"],"conversationCount":2,"createdAt":"2026-01-01T00:00:00Z"}]}`)
+			_, err := connectormock.DecodeOutput[helpscout.CustomerMatches](`{"email":"jane@acme.example.com","customers":[{"id":238604,"firstName":"Jane","lastName":"Smith","emails":["jane@acme.example.com"],"conversationCount":3,"createdAt":"2026-01-01T00:00:00Z"}]}`)
 			return err
 		}},
 		{name: "findCustomerByEmail/notFoundFailure/1", decode: func() error {

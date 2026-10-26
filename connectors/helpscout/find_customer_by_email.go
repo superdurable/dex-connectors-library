@@ -97,7 +97,7 @@ func (operation FindCustomerByEmailOperation) Invoke(call sdkgo.Call, input Find
 		return credentialQueryAttempt[CustomerMatches](operationID, FindCustomerByEmailBranchDefect, err)
 	}
 	response, err := client.send(call.Context, call, &credentials,
-		helpScoutRequest{method: http.MethodGet, path: "/v3/customers", query: url.Values{"email": {input.Email}}}, nil)
+		helpScoutRequest{method: http.MethodGet, path: "/v3/customers", query: url.Values{"email": {input.Email}}})
 	branches := failureBranches{providerRejected: FindCustomerByEmailBranchProviderRejected, invalidResponse: FindCustomerByEmailBranchInvalidResponse}
 	if attempt, isTerminal := classifyQueryExchange[CustomerMatches](client, call, operationID, credentials, response, err, branches, 0); isTerminal {
 		return attempt

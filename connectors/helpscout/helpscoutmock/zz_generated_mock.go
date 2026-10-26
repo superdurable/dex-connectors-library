@@ -120,11 +120,11 @@ func SearchConversationsRetry(failure sdkgo.Failure, after time.Duration) connec
 	return connectormock.Retry[helpscout.SearchConversationsOutput](failure, after)
 }
 
-// SearchConversationsSearchedDefaultAnswer is the manifest mock searchedDefaultAnswer: Matches the support inbox's active conversations for jane@example.com; page one includes conversation 501 and repeat contact 502.
+// SearchConversationsSearchedDefaultAnswer is the manifest mock searchedDefaultAnswer: Matches the support inbox's active conversations for jane@acme.example.com; page one includes conversation 501 and repeat contact 502.
 func SearchConversationsSearchedDefaultAnswer() connectormock.Case[helpscout.SearchConversationsOutput] {
 	pages := []helpscout.SearchConversationsOutput{
-		connectormock.MustDecodeOutput[helpscout.SearchConversationsOutput](`{"conversations":[{"id":502,"number":13,"subject":"Earlier billing question","status":"active","mailboxId":123,"tags":[]},{"id":501,"number":12,"subject":"Double charge on order 88213","status":"active","mailboxId":123,"tags":[]}],"page":1,"nextPage":2,"totalPages":3,"totalConversations":3}`),
-		connectormock.MustDecodeOutput[helpscout.SearchConversationsOutput](`{"conversations":[{"id":501,"number":12,"subject":"Double charge on order 88213","status":"active","mailboxId":123,"tags":[]}],"page":2,"nextPage":3,"totalPages":3,"totalConversations":3}`),
+		connectormock.MustDecodeOutput[helpscout.SearchConversationsOutput](`{"conversations":[{"id":502,"number":13,"subject":"Earlier billing question","status":"active","mailboxId":123,"tags":[]},{"id":501,"number":12,"subject":"Double charge on order 88213","status":"active","mailboxId":123,"threadCount":1,"tags":["billing"]}],"page":1,"nextPage":2,"totalPages":3,"totalConversations":3}`),
+		connectormock.MustDecodeOutput[helpscout.SearchConversationsOutput](`{"conversations":[{"id":501,"number":12,"subject":"Double charge on order 88213","status":"active","mailboxId":123,"threadCount":1,"tags":["billing"]}],"page":2,"nextPage":3,"totalPages":3,"totalConversations":3}`),
 		connectormock.MustDecodeOutput[helpscout.SearchConversationsOutput](`{"conversations":[{"id":503,"number":14,"subject":"Shipping question","status":"active","mailboxId":123,"tags":[]}],"page":3,"nextPage":0,"totalPages":3,"totalConversations":3}`),
 	}
 	pageNumber := connectormock.CursorPageNumber[helpscout.SearchConversationsInput]("page", "nextPage", pages)
@@ -185,7 +185,7 @@ func GetConversationRetry(failure sdkgo.Failure, after time.Duration) connectorm
 
 // GetConversationFoundDefaultAnswer is the manifest mock foundDefaultAnswer: Matches conversation 501 in inbox 123, with Jane as primary customer and a recent customer message.
 func GetConversationFoundDefaultAnswer() connectormock.Case[helpscout.ConversationDetails] {
-	value := connectormock.MustDecodeOutput[helpscout.ConversationDetails](`{"conversation":{"id":501,"number":12,"subject":"Double charge on order 88213","status":"active","state":"published","type":"email","mailboxId":123,"threadCount":2,"primaryCustomer":{"id":238604,"type":"customer","email":"jane@acme.example.com"},"tags":["billing"]},"threads":[{"id":560,"type":"customer","status":"active","state":"published","body":"I was charged twice","createdAt":"2026-09-30T07:59:00Z"}],"hasOlderThreads":true}`)
+	value := connectormock.MustDecodeOutput[helpscout.ConversationDetails](`{"conversation":{"id":501,"number":12,"subject":"Double charge on order 88213","status":"active","state":"published","type":"email","mailboxId":123,"threadCount":1,"primaryCustomer":{"id":238604,"type":"customer","email":"jane@acme.example.com"},"tags":["billing"]},"threads":[{"id":560,"type":"customer","status":"active","state":"published","body":"I was charged twice","createdAt":"2026-09-30T07:59:00Z"}],"hasOlderThreads":false}`)
 	return connectormock.Branch(helpscout.GetConversationBranchFound, value, nil)
 }
 
@@ -303,7 +303,7 @@ func UpdateConversationRetry(failure sdkgo.Failure, after time.Duration) connect
 
 // UpdateConversationUpdatedDefaultAnswer is the manifest mock updatedDefaultAnswer: Matches tagging conversation 501 after triage and identifying repeat contact 502.
 func UpdateConversationUpdatedDefaultAnswer() connectormock.Case[helpscout.UpdateConversationOutput] {
-	value := connectormock.MustDecodeOutput[helpscout.UpdateConversationOutput](`{"conversation":{"id":501,"number":12,"subject":"Double charge on order 88213","status":"active","state":"published","type":"email","mailboxId":123,"threadCount":2,"primaryCustomer":{"id":238604,"type":"customer","email":"jane@acme.example.com"},"tags":["billing","dex-triaged","dex-repeat-contact"]},"wasAlreadyApplied":false}`)
+	value := connectormock.MustDecodeOutput[helpscout.UpdateConversationOutput](`{"conversation":{"id":501,"number":12,"subject":"Double charge on order 88213","status":"active","state":"published","type":"email","mailboxId":123,"threadCount":1,"primaryCustomer":{"id":238604,"type":"customer","email":"jane@acme.example.com"},"tags":["billing","dex-triaged","dex-repeat-contact"]},"wasAlreadyApplied":false}`)
 	return connectormock.Branch(helpscout.UpdateConversationBranchUpdated, value, nil)
 }
 
@@ -362,7 +362,7 @@ func FindCustomerByEmailRetry(failure sdkgo.Failure, after time.Duration) connec
 
 // FindCustomerByEmailFoundDefaultAnswer is the manifest mock foundDefaultAnswer: Matches jane@acme.example.com to customer profile 238604.
 func FindCustomerByEmailFoundDefaultAnswer() connectormock.Case[helpscout.CustomerMatches] {
-	value := connectormock.MustDecodeOutput[helpscout.CustomerMatches](`{"email":"jane@acme.example.com","customers":[{"id":238604,"firstName":"Jane","lastName":"Smith","emails":["jane@acme.example.com"],"conversationCount":2,"createdAt":"2026-01-01T00:00:00Z"}]}`)
+	value := connectormock.MustDecodeOutput[helpscout.CustomerMatches](`{"email":"jane@acme.example.com","customers":[{"id":238604,"firstName":"Jane","lastName":"Smith","emails":["jane@acme.example.com"],"conversationCount":3,"createdAt":"2026-01-01T00:00:00Z"}]}`)
 	return connectormock.Branch(helpscout.FindCustomerByEmailBranchFound, value, nil)
 }
 

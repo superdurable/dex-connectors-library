@@ -19,9 +19,9 @@ This example receives signed Help Scout webhooks and starts one
    `InspectConversation` records the status and the primary customer's email;
 6. `FindCustomerProfiles` calls `findCustomerByEmail`, and
    `RecordCustomerProfiles` records every matching profile, or none;
-7. `SearchActiveConversations` calls `searchConversations` for the customer's
-   `active` conversations in the inbox, and `RecordActiveConversations`
-   records the others and writes the note;
+7. `SearchActiveConversations` calls `searchConversations` for the first page
+   of the customer's `active` conversations in the inbox, and
+   `RecordActiveConversations` records the others on that page and writes the note;
 8. `AddTriageNote` calls `replyToConversation` with `isInternalNote`, so the
    customer is never emailed, and `RecordTriageNote` records its thread ID;
 9. `TagTriagedConversation` calls `updateConversation` to add `dex-triaged`,
@@ -180,7 +180,9 @@ completed run's `helpscout-triage` Attribute holds the triage record:
 {"stage": "completed", "subject": "Double charge on order 88213", "status": "active", "newestThreadTypes": ["customer"], "customerEmail": "jane@acme.example.com", "customerProfileIds": [1001, 1002], "otherActiveConversationIds": [502], "noteThreadId": 5011, "tags": ["billing", "dex-triaged", "dex-repeat-contact"]}
 ```
 
-The internal note reads
+The Flow reads only the first search page. Its repeat-contact note and tag
+reflect that page; another active conversation on a later page is not counted.
+In the default mock, conversation 503 is on page 3, so the internal note reads
 `Dex triage: 2 Help Scout customer profiles match jane@acme.example.com; the customer has 1 other active conversation in this inbox: 502.`
 
 ## 6. Redeliver and forge
