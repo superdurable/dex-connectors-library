@@ -5,7 +5,7 @@ metadata:
   displayName: YouTube
   description: Search YouTube videos, read videos, channels, and playlist pages, and add a video to a playlist once through the YouTube Data API v3.
   company: Google
-  version: v0.1.1
+  version: v0.2.0
 spec:
   provider: google
   codegen:
@@ -140,6 +140,30 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      pagination: {inputField: pageToken, nextField: nextPageToken}
+      mocks:
+        - name: matchingCompilerVideo
+          branch: searched
+          description: The search for compiler on channel UC1234567890123456789012 returns three pages with video AbCdEfGhI12 repeated across a boundary.
+          default: true
+          pages:
+            - results: [{videoId: AbCdEfGhI12, channelId: UC1234567890123456789012, channelTitle: Compiler Lab, title: Compiler release walkthrough, description: A short compiler tour, publishedAt: "2026-10-20T10:00:00Z"}]
+              nextPageToken: compiler-search-2
+              totalResults: 2
+            - results: [{videoId: AbCdEfGhI12, channelId: UC1234567890123456789012, channelTitle: Compiler Lab, title: Compiler release walkthrough, description: A short compiler tour, publishedAt: "2026-10-20T10:00:00Z"}, {videoId: ZxCvBnMaS34, channelId: UC1234567890123456789012, channelTitle: Compiler Lab, title: Compiler setup tips, description: A setup guide, publishedAt: "2026-10-10T10:00:00Z"}]
+              nextPageToken: compiler-search-3
+              totalResults: 2
+            - results: []
+              totalResults: 2
+
+        - name: quotaExhaustedFailure
+          branch: quotaExhausted
+          description: The search for compiler on channel UC1234567890123456789012 exhausts the project daily YouTube quota.
+          failure: {kind: QUOTA_EXHAUSTED, message: "The project's daily YouTube Data API quota is spent; it resets at midnight Pacific Time."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: YouTube denies the search for compiler on channel UC1234567890123456789012 because the grant lacks the required scope.
+          failure: {kind: AUTHORIZATION, message: YouTube denied the request.}
     - name: getVideo
       goName: GetVideo
       inputType: GetVideoInput
@@ -158,6 +182,24 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: compilerVideo
+          branch: found
+          description: The requested video AbCdEfGhI12 is a public Compiler Lab walkthrough.
+          default: true
+          output: {id: AbCdEfGhI12, channelId: UC1234567890123456789012, channelTitle: Compiler Lab, title: Compiler release walkthrough, description: A short compiler tour, publishedAt: "2026-10-20T10:00:00Z", duration: PT4M13S, privacyStatus: public, viewCount: 1200}
+        - name: notFoundFailure
+          branch: notFound
+          description: The read of another video ID ZxYwVuTsR90 names a resource the account cannot see.
+          failure: {kind: NOT_FOUND, message: "No visible video has the ID, such as a deleted or private video."}
+        - name: quotaExhaustedFailure
+          branch: quotaExhausted
+          description: The read of video AbCdEfGhI12 exhausts the project daily YouTube quota.
+          failure: {kind: QUOTA_EXHAUSTED, message: "The project's daily YouTube Data API quota is spent; it resets at midnight Pacific Time."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: YouTube denies the read of video AbCdEfGhI12 because the grant lacks the required scope.
+          failure: {kind: AUTHORIZATION, message: YouTube denied the request.}
     - name: getChannel
       goName: GetChannel
       inputType: GetChannelInput
@@ -176,6 +218,24 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      mocks:
+        - name: compilerChannel
+          branch: found
+          description: The requested @CompilerLab handle resolves to channel UC1234567890123456789012.
+          default: true
+          output: {id: UC1234567890123456789012, title: Compiler Lab, description: Compiler tutorials, customUrl: "@CompilerLab", publishedAt: "2020-01-01T00:00:00Z", uploadsPlaylistId: UU1234567890123456789012, videoCount: 42}
+        - name: notFoundFailure
+          branch: notFound
+          description: The lookup of another channel handle @MissingLab names a resource the account cannot see.
+          failure: {kind: NOT_FOUND, message: "No channel has the ID or handle, or the authorized account has no channel."}
+        - name: quotaExhaustedFailure
+          branch: quotaExhausted
+          description: The lookup of @CompilerLab exhausts the project daily YouTube quota.
+          failure: {kind: QUOTA_EXHAUSTED, message: "The project's daily YouTube Data API quota is spent; it resets at midnight Pacific Time."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: YouTube denies the lookup of @CompilerLab because the grant lacks the required scope.
+          failure: {kind: AUTHORIZATION, message: YouTube denied the request.}
     - name: listPlaylistItems
       goName: ListPlaylistItems
       inputType: ListPlaylistItemsInput
@@ -194,6 +254,34 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: async
+      pagination: {inputField: pageToken, nextField: nextPageToken}
+      mocks:
+        - name: curatedVideo
+          branch: listed
+          description: The playlist PLcurated123 listing returns item PLITEM001 on its first two pages and an empty third page.
+          default: true
+          pages:
+            - items: [{id: PLITEM001, playlistId: PLcurated123, videoId: AbCdEfGhI12, title: Compiler release walkthrough, position: 0, addedAt: "2026-10-26T10:00:00Z", videoPublishedAt: "2026-10-20T10:00:00Z"}]
+              nextPageToken: curated-items-2
+              totalResults: 1
+            - items: [{id: PLITEM001, playlistId: PLcurated123, videoId: AbCdEfGhI12, title: Compiler release walkthrough, position: 0, addedAt: "2026-10-26T10:00:00Z", videoPublishedAt: "2026-10-20T10:00:00Z"}]
+              nextPageToken: curated-items-3
+              totalResults: 1
+            - items: []
+              totalResults: 1
+
+        - name: notFoundFailure
+          branch: notFound
+          description: The listing of another playlist ID PLmissing456 names a resource the account cannot see.
+          failure: {kind: NOT_FOUND, message: "No playlist visible to the account has the ID."}
+        - name: quotaExhaustedFailure
+          branch: quotaExhausted
+          description: The listing of playlist PLcurated123 filtered to AbCdEfGhI12 exhausts the project daily YouTube quota.
+          failure: {kind: QUOTA_EXHAUSTED, message: "The project's daily YouTube Data API quota is spent; it resets at midnight Pacific Time."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: YouTube denies the listing of playlist PLcurated123 filtered to AbCdEfGhI12 because the grant lacks the required scope.
+          failure: {kind: AUTHORIZATION, message: YouTube denied the request.}
     - name: addPlaylistItem
       goName: AddPlaylistItem
       inputType: AddPlaylistItemInput
@@ -214,3 +302,21 @@ spec:
         # Check-then-insert is repeat-safe only when two attempts never overlap, so the Step uses sync durability.
         durability: sync
         retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A retry can insert again when the preceding playlist item is not yet visible to the pre-insert list, so bound addPlaylistItem retries."}}
+      mocks:
+        - name: compilerVideoAdded
+          branch: added
+          description: Adding video AbCdEfGhI12 to playlist PLcurated123 creates item PLITEM001.
+          default: true
+          output: {item: {id: PLITEM001, playlistId: PLcurated123, videoId: AbCdEfGhI12, title: Compiler release walkthrough, position: 0, addedAt: "2026-10-26T10:00:00Z", videoPublishedAt: "2026-10-20T10:00:00Z"}, wasAlreadyPresent: false}
+        - name: notFoundFailure
+          branch: notFound
+          description: The addition of another video ID ZxYwVuTsR90 to playlist PLcurated123 names a resource the account cannot see.
+          failure: {kind: NOT_FOUND, message: "No playlist the account can manage or no visible video has the ID."}
+        - name: quotaExhaustedFailure
+          branch: quotaExhausted
+          description: The addition of AbCdEfGhI12 to playlist PLcurated123 exhausts the project daily YouTube quota.
+          failure: {kind: QUOTA_EXHAUSTED, message: "The project's daily YouTube Data API quota is spent; it resets at midnight Pacific Time."}
+        - name: providerRejectedFailure
+          branch: providerRejected
+          description: YouTube denies the addition of AbCdEfGhI12 to playlist PLcurated123 because the grant lacks the required scope.
+          failure: {kind: AUTHORIZATION, message: YouTube denied the request.}
