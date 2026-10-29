@@ -1,0 +1,90 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: sendgrid
+  displayName: SendGrid
+  description: Read SendGrid global statistics and transactional templates.
+  company: SendGrid
+  version: v0.1.0
+spec:
+  provider: sendgrid
+  codegen:
+    go:
+      package: sendgrid
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Public SendGrid API base URL. Leave blank for the displayed default; override only for a trusted compatible gateway or a loopback test server.
+        default: https://api.sendgrid.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one provider HTTP request, as a positive Go duration such as 15s or 1m. Leave blank for the displayed default; increase only for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Positive maximum response size in bytes. Leave blank for the displayed default; increase only for a known larger response. Oversized replies select invalidResponse.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: sendgrid-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        description: Secret API key from SendGrid > Settings > API Keys > Create API Key at https://app.sendgrid.com/settings/api_keys. Copy the provider-issued string into this field; blank makes calls select defect. It is stored as a secret and sent only in the HTTP authorization header.
+        required: true
+    guide:
+      startURL: https://app.sendgrid.com/settings/api_keys
+      steps:
+        - Open https://app.sendgrid.com/settings/api_keys and sign in or create an account.
+        - Navigate to SendGrid > Settings > API Keys > Create API Key; create or select a key with permission for the listed read or generation operations, and copy its provider-issued string.
+        - Paste it into the secret api_key field and save the connection. Leave baseUrl, timeout, and maxResponseBytes blank to use their displayed defaults.
+  operations:
+    - name: getStats
+      goName: GetStats
+      inputType: GetStatsInput
+      outputType: StatsOutput
+      kind: query
+      description: GetStats through the documented SendGrid API.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "SendGrid returned the requested result."}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: foundDefault
+          branch: found
+          description: A representative SendGrid result for the example Flow.
+          default: true
+          output: {"days":[{"date":"2026-10-27","requests":8,"delivered":7}]}
+    - name: listTemplates
+      goName: ListTemplates
+      inputType: ListTemplatesInput
+      outputType: TemplatesOutput
+      kind: query
+      description: ListTemplates through the documented SendGrid API.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "SendGrid returned the requested result."}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: listedDefault
+          branch: listed
+          description: A representative SendGrid result for the example Flow.
+          default: true
+          output: {"templates":[{"id":"d-meridian","name":"Meridian receipt","generation":"dynamic"}],"count":1}
