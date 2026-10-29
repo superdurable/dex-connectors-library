@@ -61,6 +61,7 @@ directories:
   - connectors/postgresql
   - connectors/postmark
   - connectors/reamaze
+  - connectors/resend
   - connectors/salesforce
   - connectors/slack
   - connectors/smartsheet
