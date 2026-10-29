@@ -6,6 +6,7 @@ directories:
   - connectors/amazon/s3
   - connectors/amazon/sqs
   - connectors/asana
+  - connectors/atlassian/bitbucket
   - connectors/atlassian/confluence
   - connectors/atlassian/jira
   - connectors/atlassian/jira-service-management
@@ -61,14 +62,17 @@ directories:
   - connectors/newsapi
   - connectors/notion
   - connectors/openai
+  - connectors/paypal
   - connectors/pipedrive
   - connectors/postgresql
   - connectors/reamaze
   - connectors/salesforce
+  - connectors/shopify
   - connectors/slack
   - connectors/smartsheet
   - connectors/snowflake
   - connectors/spotify
+  - connectors/square
   - connectors/stripe
   - connectors/superdurable/email
   - connectors/superdurable/llm
@@ -78,6 +82,7 @@ directories:
   - connectors/typeform
   - connectors/unsplash
   - connectors/vercel
+  - connectors/woocommerce
   - connectors/xero
   - connectors/zendesk/support
   - connectors/zoho/crm

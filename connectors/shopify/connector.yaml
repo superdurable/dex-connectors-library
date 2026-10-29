@@ -1,0 +1,91 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: shopify
+  displayName: Shopify
+  description: "Read Shopify resources through typed Dex Query Steps."
+  company: Shopify
+  version: v0.1.0
+spec:
+  provider: shopify
+  codegen:
+    go:
+      package: shopify
+  configuration:
+    fields:
+      - name: shopSubdomain
+        goName: ShopSubdomain
+        type: string
+        description: "Non-secret Shopify shop subdomain: the acme in https://acme.myshopify.com. At https://admin.shopify.com > Settings > Domains, find the myshopify.com domain and enter only the part before .myshopify.com, using lowercase letters, digits, and hyphens. Required; blank cannot identify a store. The connector appends /admin/api/2026-10."
+        required: true
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: "Maximum duration of one provider HTTP request as a positive Go duration, such as 15s or 1m. Blank uses the displayed default; override for slow network paths."
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Maximum provider JSON response size in bytes as a positive integer. Blank uses the displayed default; raise only for larger result pages."
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: shopify-api-key
+    fields:
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        description: "Secret Admin API access token of an existing admin-created custom app at https://admin.shopify.com > Settings > Apps and sales channels > Develop apps > the app > API credentials. It is an opaque token sent only in X-Shopify-Access-Token. Blank prevents calls. New admin-created custom apps are unavailable."
+        required: true
+    guide:
+      startURL: https://admin.shopify.com/
+      steps:
+        - "This static-token connector is for an existing admin-created custom app; Shopify no longer allows creating new ones. In https://admin.shopify.com open Settings > Apps and sales channels > Develop apps > the existing app > API credentials, verify read_orders access, and copy its secret Admin API access token into access_token. Enter the matching shop subdomain in shopSubdomain; blank credentials prevent calls."
+        - "Set shopSubdomain, timeout, and maxResponseBytes only as described below; defaults appear in parentheses in Dex Web."
+  operations:
+    - name: getOrder
+      goName: GetOrder
+      inputType: GetOrderInput
+      outputType: Order
+      kind: query
+      description: "Read one Shopify order."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "Read one Shopify order."}
+        - {id: notFound, goName: NotFound, description: The requested resource was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: defaultAnswer
+          branch: found
+          description: "A realistic read-only getOrder response for a Meridian account."
+          default: true
+          output: {"id":101,"name":"#101","financial_status":"paid","total_price":"29.00","currency":"USD"}
+    - name: listOrders
+      goName: ListOrders
+      inputType: ListOrdersInput
+      outputType: OrderPage
+      kind: query
+      description: "List one page of Shopify orders across all order statuses, subject to Shopify's order history access."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "List one page of Shopify orders."}
+        - {id: notFound, goName: NotFound, description: The requested resource was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: defaultAnswer
+          branch: listed
+          description: "A realistic read-only listOrders response for a Meridian account."
+          default: true
+          output: {"orders":[{"id":101,"name":"#101","financial_status":"paid","total_price":"29.00","currency":"USD"}]}

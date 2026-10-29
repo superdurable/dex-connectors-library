@@ -1,0 +1,96 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: woocommerce
+  displayName: WooCommerce
+  description: "Read WooCommerce resources through typed Dex Query Steps."
+  company: WooCommerce
+  version: v0.1.0
+spec:
+  provider: woocommerce
+  codegen:
+    go:
+      package: woocommerce
+  configuration:
+    fields:
+      - name: storeUrl
+        goName: StoreURL
+        type: url
+        description: "Non-secret HTTPS Site Address (URL) from your WordPress admin > Settings > General, including any site path but without /wp-json/wc/v3. Required; blank cannot identify the store. The connector appends /wp-json/wc/v3."
+        required: true
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: "Maximum duration of one provider HTTP request as a positive Go duration, such as 15s or 1m. Blank uses the displayed default; override for slow network paths."
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Maximum provider JSON response size in bytes as a positive integer. Blank uses the displayed default; raise only for larger result pages."
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: woocommerce-api-key
+    fields:
+      - name: consumer_key
+        goName: ConsumerKey
+        type: secretString
+        description: "Secret WooCommerce consumer key from your store admin at WooCommerce > Settings > Advanced > REST API > Add key. Choose Read permission; key normally starts ck_. Pair with consumer_secret. Blank prevents calls."
+        required: true
+      - name: consumer_secret
+        goName: ConsumerSecret
+        type: secretString
+        description: "Secret cs_ value generated beside consumer_key at your store admin > WooCommerce > Settings > Advanced > REST API. Stored only in Dex credentials; blank prevents calls."
+        required: true
+    guide:
+      startURL: https://woocommerce.com/document/woocommerce-rest-api/
+      steps:
+        - "At your HTTPS WordPress store admin, open WooCommerce > Settings > Advanced > REST API > Add key, select a user and Read permission, then generate the key. Copy the secret ck_ consumer key into consumer_key and cs_ consumer secret into consumer_secret; both are stored only as Dex credentials. Set storeUrl to the Site Address (URL) from WordPress > Settings > General; blank credentials prevent calls."
+        - "Set storeUrl, timeout, and maxResponseBytes only as described below; defaults appear in parentheses in Dex Web."
+  operations:
+    - name: listOrders
+      goName: ListOrders
+      inputType: ListOrdersInput
+      outputType: OrderPage
+      kind: query
+      description: "List one page of WooCommerce orders."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "List one page of WooCommerce orders."}
+        - {id: notFound, goName: NotFound, description: The requested resource was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: defaultAnswer
+          branch: listed
+          description: "A realistic read-only listOrders response for a Meridian account."
+          default: true
+          output: {"orders":[{"id":101,"status":"processing","total":"29.00","currency":"USD"}]}
+    - name: getOrder
+      goName: GetOrder
+      inputType: GetOrderInput
+      outputType: Order
+      kind: query
+      description: "Read one WooCommerce order."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "Read one WooCommerce order."}
+        - {id: notFound, goName: NotFound, description: The requested resource was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: defaultAnswer
+          branch: found
+          description: "A realistic read-only getOrder response for a Meridian account."
+          default: true
+          output: {"id":101,"status":"processing","total":"29.00","currency":"USD"}
