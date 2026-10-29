@@ -1,0 +1,100 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: close
+  displayName: Close
+  description: Read Close records with a connection-owned API key.
+  company: Close
+  version: v0.1.0
+spec:
+  provider: close
+  codegen:
+    go:
+      package: close
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: "Public Close HTTPS API root; blank uses the displayed default. Override only for a trusted compatible gateway or loopback test server, and never include a key in the URL."
+        default: https://api.close.com/api/v1
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: "Maximum duration of one Close HTTP read, as a positive Go duration such as 15s or 1m. Blank uses the displayed default; raise it only for slow large reads."
+        default: 30s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Maximum bytes accepted from one Close JSON response, as a positive integer. Blank uses the displayed default; raise it for large pages or files. Oversized data selects invalidResponse."
+        default: 4194304
+  auth:
+    type: apiKey
+    connectionKind: close-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        description: "Secret Close API token from https://app.close.com/settings/api/ (Settings > Developer > API Keys); copy the token when generated, paste it here, and keep it secret. Blank makes every operation select defect before a request."
+        required: true
+    guide:
+      startURL: https://app.close.com/settings/api/
+      steps:
+        - "Open https://app.close.com/settings/api/ and sign in; navigate to Settings > Developer > API Keys."
+        - "Create a token for the identity that may read the desired resources and copy the secret value when shown."
+        - "Paste it into secret api_key. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults."
+        - "To revoke access, delete the token on the same provider page."
+  operations:
+    - name: listLeads
+      goName: ListLeads
+      inputType: ListLeadsInput
+      outputType: LeadPage
+      kind: query
+      description: Read Close data from the documented listLeads endpoint.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Close returned the requested data."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Close conclusively rejected the read.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Close returned malformed or oversized JSON.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 45s
+        durability: async
+      mocks:
+        - name: defaultAnswer
+          branch: listed
+          description: "One Meridian sample record from the same example world."
+          default: true
+          output: {leads: [{id: lead_meridian1, name: Meridian Labs}], hasMore: false}
+        - name: invalidKey
+          branch: providerRejected
+          description: "The connection token is invalid."
+          failure: {kind: AUTHENTICATION, message: "Close rejected the token."}
+    - name: getLead
+      goName: GetLead
+      inputType: GetLeadInput
+      outputType: Lead
+      kind: query
+      description: Read Close data from the documented getLead endpoint.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "Close returned the requested data."}
+        - {id: notFound, goName: NotFound, description: "Close does not have the requested resource.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Close conclusively rejected the read.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Close returned malformed or oversized JSON.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 45s
+        durability: async
+      mocks:
+        - name: defaultAnswer
+          branch: found
+          description: "One Meridian sample record from the same example world."
+          default: true
+          output: {id: lead_meridian1, name: Meridian Labs}
+        - name: invalidKey
+          branch: providerRejected
+          description: "The connection token is invalid."
+          failure: {kind: AUTHENTICATION, message: "Close rejected the token."}
