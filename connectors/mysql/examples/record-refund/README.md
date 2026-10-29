@@ -92,8 +92,7 @@ For `verify-ca` or `verify-identity` against a private CA, such as Amazon
 RDS, also set `MYSQL_SSL_CA` to the PEM bundle's path in the Worker's
 environment.
 
-In **Start Flow**, choose `MySQLRecordRefund` and the Worker at
-`127.0.0.1:8827`. Start it with a unique Flow ID:
+In **Start Flow**, choose `MySQLRecordRefund`. Start it with a unique Flow ID:
 
 ```json
 {"orderId": "88213", "amountUsd": "250.00", "externalReference": "tkt_5488"}
@@ -126,13 +125,11 @@ MySQL server. It covers:
 - another Flow's refund committed between the duplicate check and the insert;
 - a `COMMIT` whose reply was dropped, once after it applied and once before;
 - a write lost before `COMMIT` and retried with the same key;
-- a nine-second `INSERT` that Dex dispatches again after the async local
-  phase, which still writes one row;
+- an `INSERT` committed before its Worker is lost and dispatched again with the
+  same key, which still writes one row;
 - invalid input rejected before connecting.
 
 The live suite, `-tags=live` with the `MYSQL_CONNECTOR_TEST_*` variables from
 the connector README, creates the table from `schema.sql` and runs the same
 Flow against a real server. It covers concurrent Flows for one order, which
-both complete with one row, an `INSERT` blocked for nine seconds by
-`LOCK TABLES ... READ` and dispatched again on a new connection, and a real
-proxy-dropped `COMMIT`.
+both complete with one row, and a real proxy-dropped `COMMIT`.

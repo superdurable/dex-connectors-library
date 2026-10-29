@@ -207,12 +207,10 @@ ambiguous outcome instead of declaring it uncertain: a timeout, a dropped
 connection, a 5xx, or an unreadable success returns Retry, and the next attempt
 updates the record the first attempt created.
 
-- Mark the field both External ID and Unique. Two attempts of one Step can run
-  at once, because Dex starts another attempt when an async Execute outlasts
-  its seven-second local phase; a unique field makes Salesforce reject the
-  second insert with `DUPLICATE_VALUE`, which this operation retries so the
-  next attempt updates the first record. Without Unique, concurrent attempts
-  can create two records, and later upserts select `multipleMatches`.
+- Mark the field both External ID and Unique. A Worker failure or retry can
+  repeat one Step's upsert. The unique field lets a later attempt update the
+  first record. Without Unique, concurrent requests can create two records,
+  and later upserts select `multipleMatches`.
 - `multipleMatches` (HTTP 300) lists the record IDs that share the value and
   changes nothing.
 - Salesforce runs triggers, flows, and validation again on every repeat, so a
@@ -222,7 +220,7 @@ updates the record the first attempt created.
   accepts it has not been verified.
 
 `TestRecordSyncSlowUpsertSentTwiceKeepsOneRecordWithRealDex` proves the
-behavior on a real Dex Server: a nine-second upsert is sent twice and the fake
+behavior on a real Dex Server: an upsert retried after Worker loss and the fake
 provider, which serializes writes like a unique index, ends with one record.
 
 ## Updating a record

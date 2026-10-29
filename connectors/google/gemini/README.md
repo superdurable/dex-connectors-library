@@ -225,8 +225,7 @@ it until its retry policy ends.
 | Heartbeat timeout | 300 seconds |
 | Retry | 2-second initial interval, backoff 2, 60-second maximum interval, 3 attempts, 10 minutes total |
 
-A long-form generation usually exceeds the seven-second ASYNC local phase, and
-an async fallback attempt would call Gemini again, so Execute uses `sync`.
+A long-form generation can run for a while, so Execute uses `sync` to commit its result promptly.
 
 `generateContent` sends no heartbeat until Gemini answers. The real Dex
 integration test shows that a silent 15-second generation is abandoned and

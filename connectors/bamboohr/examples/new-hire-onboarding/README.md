@@ -107,16 +107,14 @@ go run ./examples/new-hire-onboarding
 ```
 
 The Worker reads the connection at startup and the credentials before every
-call, so restart it after changing the company domain. The default Worker
-address is `127.0.0.1:8836`. Override `DEX_FLOW_SERVICE_ADDRESS`,
-`DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR` when needed. For local
+call, so restart it after changing the company domain. Override `DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR` when needed. For local
 verification against a BambooHR-compatible fake only,
 `BAMBOOHR_LOCAL_API_BASE_URL` replaces
 `https://{companyDomain}.bamboohr.com/api/v1`; it must be HTTPS or a loopback
 HTTP URL, and production Workers leave it unset.
 
 In the Run workspace, choose **Start Flow**, select
-`BambooHRNewHireOnboarding`, choose the Worker at `127.0.0.1:8836`, enter a
+`BambooHRNewHireOnboarding`, enter a
 unique Flow ID, and submit:
 
 ```json
@@ -153,10 +151,9 @@ BambooHR, has no idempotency key and matches emails by substring:
 - an existing hire is handed off with only their approved or requested time
   off in the first two weeks, and a second run finds the hand-off recorded and
   writes nothing;
-- an add held for nine seconds, past Dex's async local phase, is sent exactly
-  once, because the Step is sync;
-- an update held for nine seconds is dispatched again by async Dex, and both
-  attempts store the same text;
+- a delayed add completes with one request;
+- an update interrupted by Worker loss is read by the replacement Worker,
+  which sends no second write;
 - a Worker lost while BambooHR holds the add is replaced, and the new attempt
   finds the dispatch checkpoint, sends nothing, and adopts the hire it finds
   by personal email;

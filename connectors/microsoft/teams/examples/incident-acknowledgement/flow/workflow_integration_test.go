@@ -11,7 +11,6 @@ import (
 	"errors"
 	"io"
 	"log/slog"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -47,9 +46,9 @@ const (
 	workerLossInFlight = 300 * time.Millisecond
 )
 
-// The test binary runs only a Worker, until it is killed, when workerProcessAddressVariable is set.
+// The test binary runs only a Worker until it is killed when the readiness file is configured.
 const (
-	workerProcessAddressVariable       = "TEAMS_INCIDENT_WORKER_ADDRESS"
+	workerProcessReadyFileVariable     = "TEAMS_INCIDENT_WORKER_READY_FILE"
 	workerProcessProviderURLVariable   = "TEAMS_INCIDENT_PROVIDER_URL"
 	workerProcessServerAddressVariable = "TEAMS_INCIDENT_SERVER_ADDRESS"
 	workerProcessBlobDirectoryVariable = "TEAMS_INCIDENT_BLOB_DIRECTORY"
@@ -76,8 +75,8 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	if address := os.Getenv(workerProcessAddressVariable); address != "" {
-		os.Exit(runWorkerProcess(address))
+	if readyFile := os.Getenv(workerProcessReadyFileVariable); readyFile != "" {
+		os.Exit(runWorkerProcess(readyFile))
 	}
 	os.Exit(m.Run())
 }
@@ -196,10 +195,9 @@ func TestWorkerLostDuringPostIsReconciledWithoutPostingAgainWithRealDex(t *testi
 	provider := newFakeTeams(t)
 	provider.setRootPostBehavior(rootPostStoredWithoutAnswer)
 	ctx := integrationContext(t)
-	workerAddress := net.JoinHostPort("127.0.0.1", availableIntegrationPort(t))
-	process := startWorkerProcess(t, provider, workerAddress)
+	process := startWorkerProcess(t, provider, filepath.Join(t.TempDir(), "worker-ready"))
 
-	harness := newIncidentHarnessWithWorkerAddress(t, provider, shortRequestTimeout, EscalationChatSelection{}, workerAddress, false)
+	harness := newIncidentHarnessWithWorkerStarted(t, provider, shortRequestTimeout, EscalationChatSelection{}, false)
 	flowID := harness.startIncident(t, ctx, "worker-lost", incidentInput())
 	select {
 	case <-provider.rootPostReceived:
@@ -279,22 +277,19 @@ type incidentHarness struct {
 	client        *dex.Client
 	worker        *dex.Worker
 	workerResult  chan error
-	workerAddress string
 	serverAddress string
 }
 
 func newIncidentHarness(t *testing.T, provider *fakeTeams, requestTimeout time.Duration, escalation EscalationChatSelection) *incidentHarness {
 	t.Helper()
-	workerAddress := net.JoinHostPort("127.0.0.1", availableIntegrationPort(t))
-	return newIncidentHarnessWithWorkerAddress(t, provider, requestTimeout, escalation, workerAddress, true)
+	return newIncidentHarnessWithWorkerStarted(t, provider, requestTimeout, escalation, true)
 }
 
-func newIncidentHarnessWithWorkerAddress(
+func newIncidentHarnessWithWorkerStarted(
 	t *testing.T,
 	provider *fakeTeams,
 	requestTimeout time.Duration,
 	escalation EscalationChatSelection,
-	workerAddress string,
 	isWorkerStarted bool,
 ) *incidentHarness {
 	t.Helper()
@@ -309,21 +304,21 @@ func newIncidentHarnessWithWorkerAddress(
 	require.NoError(t, err)
 	policy := AcknowledgementPolicy{CheckInterval: time.Second, MaximumChecks: 3}
 	flow := NewFlow(connection, ChannelSelection{TeamID: integrationTeamID, ChannelID: integrationChannelID}, escalation, &policy)
-	return newIncidentHarnessForFlow(t, flow, workerAddress, isWorkerStarted)
+	return newIncidentHarnessForFlow(t, flow, isWorkerStarted)
 }
 
-func newIncidentHarnessForFlow(t *testing.T, flow *Flow, workerAddress string, isWorkerStarted bool) *incidentHarness {
+func newIncidentHarnessForFlow(t *testing.T, flow *Flow, isWorkerStarted bool) *incidentHarness {
 	t.Helper()
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
 	harness := &incidentHarness{
-		flow: flow, registry: registry, cache: cache, workerAddress: workerAddress,
+		flow: flow, registry: registry, cache: cache,
 		serverAddress: environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801"),
 	}
 	harness.client, err = dex.NewClient(registry, cache, dex.ClientOptions{
-		FlowServiceAddress: harness.serverAddress, WorkerTarget: &dex.WorkerTarget{Address: workerAddress},
+		FlowServiceAddress: harness.serverAddress,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -343,14 +338,17 @@ func newIncidentHarnessForFlow(t *testing.T, flow *Flow, workerAddress string, i
 
 func (harness *incidentHarness) startWorker(t *testing.T) {
 	t.Helper()
-	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{
-		BindAddress: harness.workerAddress, FlowServiceAddress: harness.serverAddress,
-		WorkerTarget: dex.WorkerTarget{Address: harness.workerAddress},
-	})
+	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{FlowServiceAddress: harness.serverAddress})
 	require.NoError(t, err)
 	harness.worker = worker
 	harness.workerResult = make(chan error, 1)
 	go func() { harness.workerResult <- worker.Start() }()
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
 }
 
 func (harness *incidentHarness) startIncident(t *testing.T, ctx context.Context, scenario string, input Input) string {
@@ -736,12 +734,12 @@ func (provider *fakeTeams) replyCreatedAt(t *testing.T, rootID string, replyID s
 }
 
 // startWorkerProcess runs this test binary as a Worker wired like the example's main, so the test can kill it mid-request.
-func startWorkerProcess(t *testing.T, provider *fakeTeams, workerAddress string) *exec.Cmd {
+func startWorkerProcess(t *testing.T, provider *fakeTeams, readyFile string) *exec.Cmd {
 	t.Helper()
 	directory := t.TempDir()
 	process := exec.Command(os.Args[0], "-test.run=^$")
 	process.Env = append(os.Environ(),
-		workerProcessAddressVariable+"="+workerAddress, workerProcessProviderURLVariable+"="+provider.URL,
+		workerProcessReadyFileVariable+"="+readyFile, workerProcessProviderURLVariable+"="+provider.URL,
 		workerProcessServerAddressVariable+"="+environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801"),
 		workerProcessBlobDirectoryVariable+"="+filepath.Join(directory, "blobs"),
 	)
@@ -755,18 +753,15 @@ func startWorkerProcess(t *testing.T, provider *fakeTeams, workerAddress string)
 		require.NoError(t, logFile.Close())
 	})
 	require.Eventually(t, func() bool {
-		connection, err := net.DialTimeout("tcp", workerAddress, 100*time.Millisecond)
-		if err != nil {
-			return false
-		}
-		return connection.Close() == nil
-	}, time.Minute, 100*time.Millisecond, "the Worker process listens on %s", workerAddress)
+		_, err := os.Stat(readyFile)
+		return err == nil
+	}, time.Minute, 100*time.Millisecond, "the Worker process must register before the Flow starts")
 	return process
 }
 
 // runWorkerProcess serves the Flow with the picked channel, no escalation chat, and the default policy,
 // as the example's main does, until the parent test kills this process.
-func runWorkerProcess(address string) int {
+func runWorkerProcess(readyFile string) int {
 	reference := sdkgo.ConnectionRef{Provider: "microsoft", Name: ConnectionName}
 	client, err := teams.New(
 		teams.Config{Endpoint: os.Getenv(workerProcessProviderURLVariable) + "/v1.0"},
@@ -793,26 +788,28 @@ func runWorkerProcess(address string) int {
 		slog.Error("create the blob cache", "error", err)
 		return 2
 	}
-	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{
-		BindAddress: address, FlowServiceAddress: os.Getenv(workerProcessServerAddressVariable),
-	})
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: os.Getenv(workerProcessServerAddressVariable)})
 	if err != nil {
 		slog.Error("create the Worker", "error", errors.Join(err, cache.Close()))
 		return 2
 	}
-	if err := worker.Start(); err != nil {
+	workerResult := make(chan error, 1)
+	go func() { workerResult <- worker.Start() }()
+	registrationCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	if err := worker.WaitPullRegistered(registrationCtx); err != nil {
+		slog.Error("register the Worker", "error", err)
+		return 1
+	}
+	if err := os.WriteFile(readyFile, nil, 0600); err != nil {
+		slog.Error("write Worker readiness", "error", err)
+		return 2
+	}
+	if err := <-workerResult; err != nil {
 		slog.Error("the Worker stopped", "error", errors.Join(err, cache.Close()))
 		return 1
 	}
 	return 0
-}
-
-func availableIntegrationPort(t *testing.T) string {
-	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	defer listener.Close()
-	return strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
 }
 
 func environmentOr(name string, fallback string) string {

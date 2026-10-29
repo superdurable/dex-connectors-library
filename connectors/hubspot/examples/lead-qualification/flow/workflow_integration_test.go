@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -43,9 +42,6 @@ const (
 	limitedLeadEmail   = "rate-limited@example.com"
 	slowLeadEmail      = "slow@example.com"
 	vanishingLeadEmail = "vanishing@example.com"
-
-	// slowResponseDelay outlasts Dex's roughly seven-second async local phase, so Dex dispatches again.
-	slowResponseDelay = 9 * time.Second
 )
 
 var integrationSettings = Settings{
@@ -117,19 +113,21 @@ func TestRateLimitedUpsertIsRetriedAfterRetryAfterWithRealDex(t *testing.T) {
 	require.Equal(t, 1, provider.contactCount(limitedLeadEmail))
 }
 
-// TestSlowWritesDispatchedTwiceConvergeOnOneRecordWithRealDex proves async durability survives Dex's repeated dispatch of slow writes.
+// TestSlowWritesDispatchedTwiceConvergeOnOneRecordWithRealDex retries accepted writes after a lost provider answer.
 func TestSlowWritesDispatchedTwiceConvergeOnOneRecordWithRealDex(t *testing.T) {
 	provider, harness := newLeadQualificationHarness(t)
+	provider.failFirstAcceptedUpsert = true
+	provider.failFirstAcceptedPatch = true
 	ctx := integrationContext(t, 2*time.Minute)
 	flowID := startQualification(t, ctx, harness, "slow", Input{Email: slowLeadEmail, FirstName: "Katherine"})
 
 	qualification := waitForCompletedQualification(t, ctx, harness, flowID)
 	t.Logf("Flow %s: %d upsert and %d update dispatches", flowID, provider.count("upsert "+slowLeadEmail), provider.count("patch 9101"))
 	require.Equal(t, PhaseDealAdvanced, qualification.Phase)
-	require.GreaterOrEqual(t, provider.count("upsert "+slowLeadEmail), 2, "Dex's async fallback dispatched the slow upsert again")
+	require.Equal(t, 2, provider.count("upsert "+slowLeadEmail))
 	require.Equal(t, 1, provider.contactCount(slowLeadEmail), "the repeated upsert updated the contact the first dispatch created")
 	require.Equal(t, "Katherine", provider.contactByEmail(slowLeadEmail).properties["firstname"])
-	require.GreaterOrEqual(t, provider.count("patch 9101"), 2, "Dex's async fallback dispatched the slow update again")
+	require.Equal(t, 2, provider.count("patch 9101"))
 	require.Equal(t, integrationStageID, provider.deal("9101").properties["dealstage"])
 	require.Equal(t, integrationStageID, qualification.DealStageID)
 }
@@ -248,13 +246,15 @@ func integrationContext(t *testing.T, timeout time.Duration) context.Context {
 // fakeHubSpot is a stateful fake that, like HubSpot, applies a repeated upsert of one email to one contact.
 type fakeHubSpot struct {
 	*httptest.Server
-	t           *testing.T
-	accessToken string
-	mutex       sync.Mutex
-	contacts    map[string]*fakeRecord
-	deals       map[string]*fakeRecord
-	nextID      int
-	calls       map[string][]time.Time
+	t                       *testing.T
+	accessToken             string
+	mutex                   sync.Mutex
+	contacts                map[string]*fakeRecord
+	deals                   map[string]*fakeRecord
+	nextID                  int
+	calls                   map[string][]time.Time
+	failFirstAcceptedUpsert bool
+	failFirstAcceptedPatch  bool
 }
 
 type fakeRecord struct {
@@ -352,8 +352,9 @@ func (provider *fakeHubSpot) upsertContact(response http.ResponseWriter, body []
 	}
 	encoded := provider.encodeRecord(contact, map[string]any{"new": !exists})
 	provider.mutex.Unlock()
-	if input.ID == slowLeadEmail {
-		time.Sleep(slowResponseDelay)
+	if input.ID == slowLeadEmail && provider.failFirstAcceptedUpsert && attempt == 1 {
+		writeProviderJSON(provider.t, response, http.StatusServiceUnavailable, `{"status":"error","category":"TEMPORARILY_UNAVAILABLE"}`)
+		return
 	}
 	writeProviderJSON(provider.t, response, http.StatusOK, `{"status":"COMPLETE","results":[`+encoded+`]}`)
 }
@@ -408,7 +409,7 @@ func (provider *fakeHubSpot) searchDeals(response http.ResponseWriter, body []by
 }
 
 func (provider *fakeHubSpot) updateDeal(response http.ResponseWriter, dealID string, body []byte) {
-	provider.record("patch " + dealID)
+	attempt := provider.record("patch " + dealID)
 	var request struct {
 		Properties map[string]string `json:"properties"`
 	}
@@ -432,8 +433,9 @@ func (provider *fakeHubSpot) updateDeal(response http.ResponseWriter, dealID str
 	}
 	encoded := provider.encodeRecord(deal, nil)
 	provider.mutex.Unlock()
-	if dealID == "9101" {
-		time.Sleep(slowResponseDelay)
+	if dealID == "9101" && provider.failFirstAcceptedPatch && attempt == 1 {
+		writeProviderJSON(provider.t, response, http.StatusServiceUnavailable, `{"status":"error","category":"TEMPORARILY_UNAVAILABLE"}`)
+		return
 	}
 	writeProviderJSON(provider.t, response, http.StatusOK, encoded)
 }
@@ -568,15 +570,12 @@ func newHarnessForConnection(t *testing.T, connection hubspot.Connection) *leadQ
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
 	serverAddress := environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801")
-	workerAddress := net.JoinHostPort("127.0.0.1", availableIntegrationPort(t))
 	harness := &leadQualificationHarness{flow: flow, cache: cache}
 	harness.client, err = dex.NewClient(registry, cache, dex.ClientOptions{
-		FlowServiceAddress: serverAddress, WorkerTarget: &dex.WorkerTarget{Address: workerAddress},
+		FlowServiceAddress: serverAddress,
 	})
 	require.NoError(t, err)
-	harness.worker, err = dex.NewWorker(registry, cache, dex.WorkerOptions{
-		BindAddress: workerAddress, FlowServiceAddress: serverAddress, WorkerTarget: dex.WorkerTarget{Address: workerAddress},
-	})
+	harness.worker, err = dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: serverAddress})
 	require.NoError(t, err)
 	harness.workerResult = make(chan error, 1)
 	go func() { harness.workerResult <- harness.worker.Start() }()
@@ -585,15 +584,13 @@ func newHarnessForConnection(t *testing.T, connection hubspot.Connection) *leadQ
 		defer cancel()
 		require.NoError(t, errors.Join(harness.worker.Stop(stopCtx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
 	})
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := harness.worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
 	return harness
-}
-
-func availableIntegrationPort(t *testing.T) string {
-	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	defer listener.Close()
-	return strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
 }
 
 func environmentOr(name string, fallback string) string {

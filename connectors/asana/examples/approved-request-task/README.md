@@ -73,8 +73,8 @@ describes:
 go run ./examples/approved-request-task
 ```
 
-The default Worker address is `127.0.0.1:8831`. Override
-`DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR`
+Override
+`DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR`
 when needed.
 
 Start `AsanaApprovedRequestTask` with a unique Flow ID:
@@ -110,9 +110,9 @@ task, then assigned, moved, and commented; an open task with the request ID
 reused and moved out of intake; a rate-limited create retried after
 `Retry-After`; a create timeout reconciled by confirming a missing, a
 mismatched, and then the real task gid without a second create; a 5xx create
-created again only after operator approval; a nine-second create and a
-nine-second comment each sent once under sync durability; a nine-second update
-whose backup attempt resends the same move and `PUT` and leaves the same task;
+created again only after operator approval; a delayed create and comment each
+sent once; an update interrupted by Worker loss whose replacement resends the same
+`PUT` and leaves the same task;
 a comment timeout that fails without a resend; a rejected create sent once;
 and an assignee Asana rejects before an approval comment.
 

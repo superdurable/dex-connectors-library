@@ -48,7 +48,7 @@ type fakeFront struct {
 	holdsFirstComment           chan struct{}
 	shouldRejectComment         bool
 	shouldRateLimitFirstSearch  bool
-	shouldDelayFirstTagWrite    bool
+	holdsFirstTagWrite          chan struct{}
 }
 
 type fakeConversation struct {
@@ -135,7 +135,7 @@ func (provider *fakeFront) serveConversation(response http.ResponseWriter, reque
 	case "patch":
 		provider.patchConversation(response, body, conversationID)
 	case "tagAdd", "tagRemove":
-		provider.changeTags(response, body, conversationID, name == "tagAdd", attempt)
+		provider.changeTags(response, request, body, conversationID, name == "tagAdd", attempt)
 	default:
 		provider.writeError(response, http.StatusForbidden)
 	}
@@ -284,19 +284,13 @@ func (provider *fakeFront) patchConversation(response http.ResponseWriter, body 
 	response.WriteHeader(http.StatusNoContent)
 }
 
-// changeTags applies tag IDs as a set; the scripted first write answers after slowResponseDelay.
-func (provider *fakeFront) changeTags(response http.ResponseWriter, body []byte, conversationID string, isAdd bool, attempt int) {
+// changeTags applies tag IDs as a set; the first write can wait for Worker cancellation.
+func (provider *fakeFront) changeTags(response http.ResponseWriter, request *http.Request, body []byte, conversationID string, isAdd bool, attempt int) {
 	var tags struct {
 		TagIDs []string `json:"tag_ids"`
 	}
 	require.NoError(provider.t, json.Unmarshal(body, &tags))
-	if attempt == 1 && provider.shouldDelayFirstTagWrite {
-		provider.delayedRequests.Add(1)
-		defer provider.delayedRequests.Done()
-		time.Sleep(slowResponseDelay)
-	}
 	provider.mutex.Lock()
-	defer provider.mutex.Unlock()
 	conversation := provider.conversations[conversationID]
 	for _, tagID := range tags.TagIDs {
 		switch {
@@ -304,6 +298,14 @@ func (provider *fakeFront) changeTags(response http.ResponseWriter, body []byte,
 			conversation.tagIDs = append(conversation.tagIDs, tagID)
 		case !isAdd:
 			conversation.tagIDs = slices.DeleteFunc(conversation.tagIDs, func(existing string) bool { return existing == tagID })
+		}
+	}
+	provider.mutex.Unlock()
+	if attempt == 1 && provider.holdsFirstTagWrite != nil {
+		select {
+		case <-provider.holdsFirstTagWrite:
+		case <-request.Context().Done():
+			return
 		}
 	}
 	response.WriteHeader(http.StatusNoContent)

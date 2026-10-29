@@ -9,7 +9,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -413,7 +412,6 @@ type crudIntegrationHarness struct {
 	registry      *dex.Registry
 	cache         *blobcache.Cache
 	serverAddress string
-	workerAddress string
 	worker        *dex.Worker
 	workerResult  chan error
 	client        *dex.Client
@@ -438,12 +436,11 @@ func newCRUDHarnessWithConnection(t *testing.T, connection todoist.Connection) (
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
-	workerAddress := net.JoinHostPort("127.0.0.1", availableIntegrationPort(t))
 	harness := &crudIntegrationHarness{
-		registry: registry, cache: cache, serverAddress: environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801"), workerAddress: workerAddress,
+		registry: registry, cache: cache, serverAddress: environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801"),
 	}
 	harness.client, err = dex.NewClient(registry, cache, dex.ClientOptions{
-		FlowServiceAddress: harness.serverAddress, WorkerTarget: &dex.WorkerTarget{Address: workerAddress},
+		FlowServiceAddress: harness.serverAddress,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -457,14 +454,17 @@ func newCRUDHarnessWithConnection(t *testing.T, connection todoist.Connection) (
 
 func (harness *crudIntegrationHarness) startWorker(t *testing.T) {
 	t.Helper()
-	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{
-		BindAddress: harness.workerAddress, FlowServiceAddress: harness.serverAddress,
-		WorkerTarget: dex.WorkerTarget{Address: harness.workerAddress},
-	})
+	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{FlowServiceAddress: harness.serverAddress})
 	require.NoError(t, err)
 	harness.worker = worker
 	harness.workerResult = make(chan error, 1)
 	go func() { harness.workerResult <- worker.Start() }()
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
 }
 
 func (harness *crudIntegrationHarness) stopWorker(t *testing.T) {
@@ -483,14 +483,6 @@ func (harness *crudIntegrationHarness) runFlow(t *testing.T, ctx context.Context
 	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
 	require.NoError(t, err)
 	return result
-}
-
-func availableIntegrationPort(t *testing.T) string {
-	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	defer listener.Close()
-	return strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
 }
 
 func environmentOr(name string, fallback string) string {

@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -261,14 +260,11 @@ func newAPIRequestHarnessWithConnection(t *testing.T, connection oauth2http.Conn
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
 	serverAddress := environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801")
-	workerAddress := net.JoinHostPort("127.0.0.1", availablePort(t))
 	harness := &apiRequestHarness{registry: registry, cache: cache, result: make(chan error, 1)}
-	harness.worker, err = dex.NewWorker(registry, cache, dex.WorkerOptions{
-		BindAddress: workerAddress, FlowServiceAddress: serverAddress, WorkerTarget: dex.WorkerTarget{Address: workerAddress},
-	})
+	harness.worker, err = dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: serverAddress})
 	require.NoError(t, err)
 	harness.client, err = dex.NewClient(registry, cache, dex.ClientOptions{
-		FlowServiceAddress: serverAddress, WorkerTarget: &dex.WorkerTarget{Address: workerAddress},
+		FlowServiceAddress: serverAddress,
 	})
 	require.NoError(t, err)
 	go func() { harness.result <- harness.worker.Start() }()
@@ -277,15 +273,13 @@ func newAPIRequestHarnessWithConnection(t *testing.T, connection oauth2http.Conn
 		defer cancel()
 		require.NoError(t, errors.Join(harness.worker.Stop(ctx), <-harness.result, harness.client.Close(), harness.cache.Close()))
 	})
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := harness.worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
 	return flow, harness
-}
-
-func availablePort(t *testing.T) string {
-	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	defer listener.Close()
-	return strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
 }
 
 func environmentOr(name string, fallback string) string {

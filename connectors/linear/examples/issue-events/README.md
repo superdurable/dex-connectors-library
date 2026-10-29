@@ -67,8 +67,7 @@ go run ./examples/issue-events
 ```
 
 The webhook listens on `127.0.0.1:8838` at `/webhooks/linear`, `/readyz` answers 200 once the binding receives
-events, and the Worker binds `127.0.0.1:8837`. Override `WEBHOOK_BIND_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`,
-`DEX_FLOW_SERVICE_ADDRESS`, `DEX_BLOB_CACHE_DIR`, or `LOG_LEVEL` when needed. `LINEAR_LOCAL_API_URL` points
+events. Override `WEBHOOK_BIND_ADDRESS`, `DEX_FLOW_SERVICE_ADDRESS`, `DEX_BLOB_CACHE_DIR`, or `LOG_LEVEL` when needed. `LINEAR_LOCAL_API_URL` points
 `getIssue` at a local Linear-compatible fake for verification only.
 
 Create an issue in the team; Linear sends the webhook. To send a delivery by hand instead, sign the body with

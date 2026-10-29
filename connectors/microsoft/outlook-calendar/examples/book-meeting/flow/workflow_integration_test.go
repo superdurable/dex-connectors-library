@@ -11,7 +11,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -83,39 +82,44 @@ func TestBookMeetingSurvivesALostCreateResponseAndInvitesOnceWithRealDex(t *test
 	require.Equal(t, `W/"1"`, patch.ifMatch)
 }
 
-// Dex dispatches a backup attempt for an async Execute that runs past about seven seconds. Here
-// Graph stores the hold at once and answers nine seconds later, so the backup's lookup finds it.
+// Graph stores the hold before the first Worker is lost; the replacement reads it back.
 func TestBookMeetingSlowCreateBackupAttemptFindsTheStoredHoldWithRealDex(t *testing.T) {
 	provider := newFakeGraph(t, "/v1.0/me")
-	provider.firstCreateDelayAfterStore = 9 * time.Second
+	provider.holdsFirstCreateAfterStore = true
 	flow, harness := newBookMeetingHarness(t, newStaticConnection(t, provider.URL), CalendarSelection{})
 	ctx := integrationContext(t)
 
 	flowID := startBookMeeting(t, ctx, harness.client, flow, "slow-after-store", integrationMeetingInput())
+	require.Eventually(t, func() bool { return provider.count("create") == 1 && provider.storedEventCount() == 1 },
+		30*time.Second, 10*time.Millisecond)
+	harness.replaceWorker(t)
 	outcome := waitForCompletedMeeting(t, ctx, harness.client, flowID)
 
 	require.Equal(t, MeetingScheduled, outcome.Status)
 	require.Equal(t, 1, provider.storedEventCount(), "every attempt of the Step resolves to one event")
-	require.Equal(t, 1, provider.count("create"), "the backup attempt found the stored hold and sent no POST")
-	require.GreaterOrEqual(t, provider.count("lookupFound"), 1, "Dex dispatched a second attempt while the first was in flight")
+	require.Equal(t, 1, provider.count("create"), "the retry found the stored hold and sent no POST")
+	require.Equal(t, 1, provider.count("lookupFound"), "the replacement Worker found the stored hold")
 	require.Equal(t, 1, provider.count("patch"))
 	t.Logf("slow create after store: creates=%d lookupsMissing=%d lookupsFound=%d", provider.count("create"), provider.count("lookupMissing"), provider.count("lookupFound"))
 }
 
-// Here Graph is still committing the first POST when the backup attempt looks the key up, so the backup
-// POSTs again with the same transactionId. The fake rejects the repeat with 409, as Graph might.
+// Graph accepts the first POST but commits it when the replacement repeats its transactionId.
 func TestBookMeetingSlowCreateBackupAttemptRepeatsTheTransactionIDWithRealDex(t *testing.T) {
 	provider := newFakeGraph(t, "/v1.0/me")
-	provider.firstCreateDelayBeforeStore = 9 * time.Second
+	provider.holdsFirstCreateBeforeStore = true
 	flow, harness := newBookMeetingHarness(t, newStaticConnection(t, provider.URL), CalendarSelection{})
 	ctx := integrationContext(t)
 
 	flowID := startBookMeeting(t, ctx, harness.client, flow, "slow-before-store", integrationMeetingInput())
+	require.Eventually(t, func() bool { return provider.count("create") == 1 && provider.transactionIDCount() == 1 },
+		30*time.Second, 10*time.Millisecond)
+	harness.replaceWorker(t)
 	outcome := waitForCompletedMeeting(t, ctx, harness.client, flowID)
 
 	require.Equal(t, MeetingScheduled, outcome.Status)
 	require.Equal(t, 1, provider.storedEventCount(), "the repeated transactionId never created a second event")
-	require.GreaterOrEqual(t, provider.count("createRepeatedTransaction"), 1, "Dex dispatched a second POST while the first was in flight")
+	require.Equal(t, 2, provider.count("create"), "the replacement Worker repeats the POST once")
+	require.Equal(t, 1, provider.count("createRepeatedTransaction"), "Graph rejects the repeated transactionId once")
 	require.Equal(t, 1, provider.transactionIDCount(), "every POST carried the Step's one transactionId")
 	require.Equal(t, 1, provider.count("patch"))
 	t.Logf("slow create before store: creates=%d repeated=%d lookupsMissing=%d lookupsFound=%d", provider.count("create"),
@@ -235,8 +239,9 @@ type fakeGraph struct {
 	busyAttendees               map[string]bool
 	scheduleErrors              map[string]string
 	losesFirstCreateResponse    bool
-	firstCreateDelayAfterStore  time.Duration
-	firstCreateDelayBeforeStore time.Duration
+	holdsFirstCreateAfterStore  bool
+	holdsFirstCreateBeforeStore bool
+	deferredCreateBody          map[string]any
 	counts                      map[string]int
 	scheduleRequests            []map[string]any
 	createRequests              []fakeRecordedRequest
@@ -293,7 +298,7 @@ func (provider *fakeGraph) serveHTTP(response http.ResponseWriter, request *http
 	case request.Method == http.MethodGet && path == "/events":
 		provider.serveMarkerLookup(response, request.URL.Query().Get("$filter"))
 	case request.Method == http.MethodPost && (path == "/calendar/events" || (len(segments) == 3 && segments[0] == "calendars" && segments[2] == "events")):
-		provider.serveCreate(response, request.URL.Path, string(contents), body)
+		provider.serveCreate(response, request, request.URL.Path, string(contents), body)
 	case request.Method == http.MethodGet && len(segments) == 2 && segments[0] == "events":
 		event, exists := provider.events[segments[1]]
 		if !exists {
@@ -351,43 +356,59 @@ func (provider *fakeGraph) serveMarkerLookup(response http.ResponseWriter, filte
 	writeFakeJSON(response, http.StatusOK, map[string]any{"value": []any{provider.events[eventID]}})
 }
 
-func (provider *fakeGraph) serveCreate(response http.ResponseWriter, path string, contents string, body map[string]any) {
+func (provider *fakeGraph) serveCreate(response http.ResponseWriter, request *http.Request, path string, contents string, body map[string]any) {
 	provider.counts["create"]++
 	provider.createRequests = append(provider.createRequests, fakeRecordedRequest{path: path, body: contents, payload: body})
 	transactionID, _ := body["transactionId"].(string)
 	if provider.transactionIDs[transactionID] {
 		provider.counts["createRepeatedTransaction"]++
+		if provider.deferredCreateBody != nil {
+			if _, err := provider.storeCreatedEvent(provider.deferredCreateBody); err != nil {
+				writeFakeJSON(response, http.StatusBadRequest, map[string]any{"error": map[string]any{"code": "ErrorInvalidRequest"}})
+				return
+			}
+			provider.deferredCreateBody = nil
+		}
 		writeFakeJSON(response, http.StatusConflict, map[string]any{"error": map[string]any{"code": "ErrorDuplicateTransactionId"}})
 		return
 	}
 	provider.transactionIDs[transactionID] = true
 	isFirstCreate := provider.counts["create"] == 1
-	if isFirstCreate && provider.firstCreateDelayBeforeStore > 0 {
-		// Graph accepted the POST but commits the event only after the delay.
+	if isFirstCreate && provider.holdsFirstCreateBeforeStore {
+		provider.deferredCreateBody = body
 		provider.mutex.Unlock()
-		time.Sleep(provider.firstCreateDelayBeforeStore)
+		<-request.Context().Done()
 		provider.mutex.Lock()
+		return
 	}
-	event, err := storedEventFromCreate(fmt.Sprintf("event-%d", len(provider.events)+1), body)
+	event, err := provider.storeCreatedEvent(body)
 	if err != nil {
 		writeFakeJSON(response, http.StatusBadRequest, map[string]any{"error": map[string]any{"code": "ErrorInvalidRequest"}})
 		return
 	}
-	provider.events[event["id"].(string)] = event
-	for _, property := range body["singleValueExtendedProperties"].([]any) {
-		provider.eventIDsByMarker[property.(map[string]any)["value"].(string)] = event["id"].(string)
-	}
-	if isFirstCreate && provider.firstCreateDelayAfterStore > 0 {
-		// Graph has stored the event; the response arrives late while other requests proceed.
+	if isFirstCreate && provider.holdsFirstCreateAfterStore {
 		provider.mutex.Unlock()
-		time.Sleep(provider.firstCreateDelayAfterStore)
+		<-request.Context().Done()
 		provider.mutex.Lock()
+		return
 	}
 	if isFirstCreate && provider.losesFirstCreateResponse {
 		writeFakeJSON(response, http.StatusServiceUnavailable, map[string]any{"error": map[string]any{"code": "serviceNotAvailable"}})
 		return
 	}
 	writeFakeJSON(response, http.StatusCreated, event)
+}
+
+func (provider *fakeGraph) storeCreatedEvent(body map[string]any) (map[string]any, error) {
+	event, err := storedEventFromCreate(fmt.Sprintf("event-%d", len(provider.events)+1), body)
+	if err != nil {
+		return nil, err
+	}
+	provider.events[event["id"].(string)] = event
+	for _, property := range body["singleValueExtendedProperties"].([]any) {
+		provider.eventIDsByMarker[property.(map[string]any)["value"].(string)] = event["id"].(string)
+	}
+	return event, nil
 }
 
 func (provider *fakeGraph) servePatch(response http.ResponseWriter, eventID string, ifMatch string, contents string, body map[string]any) {
@@ -533,10 +554,12 @@ func newAppOnlyConnection(t *testing.T, providerURL string, accessToken string) 
 }
 
 type bookMeetingHarness struct {
-	cache        *blobcache.Cache
-	worker       *dex.Worker
-	workerResult chan error
-	client       *dex.Client
+	cache         *blobcache.Cache
+	registry      *dex.Registry
+	serverAddress string
+	worker        *dex.Worker
+	workerResult  chan error
+	client        *dex.Client
 }
 
 func newBookMeetingHarness(t *testing.T, connection outlookcalendar.Connection, selection CalendarSelection) (*Flow, *bookMeetingHarness) {
@@ -546,25 +569,43 @@ func newBookMeetingHarness(t *testing.T, connection outlookcalendar.Connection, 
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
-	workerAddress := net.JoinHostPort("127.0.0.1", availableIntegrationPort(t))
 	serverAddress := environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801")
-	harness := &bookMeetingHarness{cache: cache}
+	harness := &bookMeetingHarness{cache: cache, registry: registry, serverAddress: serverAddress}
 	harness.client, err = dex.NewClient(registry, cache, dex.ClientOptions{
-		FlowServiceAddress: serverAddress, WorkerTarget: &dex.WorkerTarget{Address: workerAddress},
+		FlowServiceAddress: serverAddress,
 	})
 	require.NoError(t, err)
-	harness.worker, err = dex.NewWorker(registry, cache, dex.WorkerOptions{
-		BindAddress: workerAddress, FlowServiceAddress: serverAddress, WorkerTarget: dex.WorkerTarget{Address: workerAddress},
-	})
-	require.NoError(t, err)
-	harness.workerResult = make(chan error, 1)
-	go func() { harness.workerResult <- harness.worker.Start() }()
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
+		if harness.worker == nil {
+			require.NoError(t, errors.Join(harness.client.Close(), harness.cache.Close()))
+			return
+		}
 		require.NoError(t, errors.Join(harness.worker.Stop(ctx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
 	})
+	harness.startWorker(t)
 	return flow, harness
+}
+
+func (harness *bookMeetingHarness) startWorker(t *testing.T) {
+	t.Helper()
+	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{FlowServiceAddress: harness.serverAddress})
+	require.NoError(t, err)
+	harness.worker, harness.workerResult = worker, make(chan error, 1)
+	go func() { harness.workerResult <- worker.Start() }()
+	registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancelRegistration()
+	require.NoError(t, worker.WaitPullRegistered(registrationContext))
+}
+
+func (harness *bookMeetingHarness) replaceWorker(t *testing.T) {
+	t.Helper()
+	expired, cancel := context.WithCancel(context.Background())
+	cancel()
+	_ = harness.worker.Stop(expired)
+	require.NoError(t, <-harness.workerResult)
+	harness.startWorker(t)
 }
 
 func integrationContext(t *testing.T) context.Context {
@@ -572,14 +613,6 @@ func integrationContext(t *testing.T) context.Context {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	t.Cleanup(cancel)
 	return ctx
-}
-
-func availableIntegrationPort(t *testing.T) string {
-	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	defer listener.Close()
-	return strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
 }
 
 func environmentOr(name string, fallback string) string {

@@ -156,8 +156,8 @@ a zero `CellValue` is rejected as `defect`, because Graph treats `null` as
 
 ## Duplicate dispatch
 
-Microsoft Graph has no idempotency key for workbook writes, and Dex re-dispatches
-an async Step whose local attempt passes about seven seconds.
+Microsoft Graph has no idempotency key for workbook writes. Dex may replay a
+Step after Worker loss or before an async result is committed.
 
 `updateValues` writes absolute values, so a repeated dispatch writes the same
 content again and the range ends the same. A dispatch that answers late can

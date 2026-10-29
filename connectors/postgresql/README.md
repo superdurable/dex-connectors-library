@@ -225,11 +225,10 @@ for. The same applies when a backend is terminated while committing or a
 synchronous-replication wait is canceled, because PostgreSQL can report an
 error after committing locally.
 
-Dex can also run `execute` more than once for one Step execution. It does so
-after a Worker is lost mid-call. It also does so when an async Step outlasts
-its local phase of about seven seconds: Dex starts a second dispatch while the
-first is still running. The example's live test holds a table lock for nine
-seconds and observes both `InsertRefund` dispatches reach PostgreSQL.
+Dex can run `execute` more than once for one Step execution after a Worker is
+lost mid-call. The scripted integration test commits the first `INSERT`, holds
+its acknowledgement, and stops the Worker. The replacement dispatches the
+same Step with the same key; the ledger still contains one row.
 
 Every run of one Step execution uses the same idempotency key, a UUID derived
 from the Dex Call ID. Set `IdempotencyKeyPlaceholder` to bind it as the last

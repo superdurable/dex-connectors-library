@@ -7,17 +7,18 @@ package main
 import (
 	"context"
 	"errors"
-	"github.com/superdurable/dex-connectors-library/connectors/close"
-	closelookup "github.com/superdurable/dex-connectors-library/connectors/close/examples/close-lookup/flow"
-	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
-	"github.com/superdurable/dex/blob-cache-go/blobcache"
-	"github.com/superdurable/dex/sdk-go/dex"
 	"log/slog"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"syscall"
 	"time"
+
+	"github.com/superdurable/dex-connectors-library/connectors/close"
+	closelookup "github.com/superdurable/dex-connectors-library/connectors/close/examples/close-lookup/flow"
+	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
+	"github.com/superdurable/dex/blob-cache-go/blobcache"
+	"github.com/superdurable/dex/sdk-go/dex"
 )
 
 func main() {
@@ -45,7 +46,7 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{BindAddress: "127.0.0.1:8891", FlowServiceAddress: os.Getenv("DEX_FLOW_SERVICE_ADDRESS")})
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: os.Getenv("DEX_FLOW_SERVICE_ADDRESS")})
 	if err != nil {
 		return errors.Join(err, cache.Close())
 	}

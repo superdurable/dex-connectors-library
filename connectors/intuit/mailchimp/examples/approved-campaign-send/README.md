@@ -104,8 +104,8 @@ describes:
 go run ./examples/approved-campaign-send
 ```
 
-The default Worker address is `127.0.0.1:8832`. Override
-`DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR`
+Override
+`DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR`
 when needed. For local verification against a Mailchimp-compatible fake only,
 `MAILCHIMP_LOCAL_API_BASE_URL` replaces the host derived from the key; it must
 be HTTPS or a loopback HTTP URL, and production Workers leave it unset.
@@ -147,10 +147,9 @@ Mailchimp, has no idempotency key:
   once after it;
 - a declined launch completes without reading or sending the campaign;
 - two approvals at the same moment schedule one send;
-- an upsert and a tag update each held for nine seconds, past Dex's async local
-  phase, are dispatched again, and both attempts leave one contact, one
-  confirmation email, and one tag;
-- a send held for nine seconds is sent exactly once, because the Step is sync;
+- an upsert and tag update retried after accepted writes return `503` leave one
+  contact, one confirmation email, and one tag;
+- a delayed send completes with one request;
 - a lost send response fails on the unwired `uncertain` branch without a resend;
 - a Worker lost while Mailchimp holds the send is replaced, and the new
   attempt finds the dispatch checkpoint, reads the campaign as sending,

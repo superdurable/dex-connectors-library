@@ -62,8 +62,8 @@ Dex Web or Superverse Studio writes that configuration:
 go run ./examples/policy-publish
 ```
 
-The default Worker address is `127.0.0.1:8823`. Override
-`DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR`
+Override
+`DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR`
 when needed.
 
 Start `GoogleDocsPolicyPublish` with a unique Flow ID:
@@ -92,13 +92,12 @@ The integration tests run the Flow on a real Dex Server against generated
 fake Docs and Drive provider that applies a batch only at its required
 revision. They prove that:
 
-- a create that answers after nine seconds is sent once, because the Step is
-  sync;
+- a delayed create completes with one request;
 - a create applied before a 429 or 500 is found again by its app property;
 - a 503 before creation retries with exactly two requests using the same key;
 - an unconfirmed create, and a Worker lost while the create is in flight,
   fail on the unwired `uncertain` branch without a second create;
-- a fill or stamp that answers after nine seconds is dispatched again by Dex
-  and still applied once, and a delayed fill that reaches Google after the
-  backup dispatch's fill is rejected for its stale revision;
+- a Worker lost after an accepted fill or stamp causes a replay that applies
+  nothing twice; a delayed first fill reaching Google after the replacement
+  fill is rejected for its stale revision;
 - a missing placeholder fails without writing anything, and an invalid request calls nothing.

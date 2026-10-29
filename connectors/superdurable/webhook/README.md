@@ -297,5 +297,5 @@ GOWORK=off go vet ./...
 The real Dex tests in the example need a running `dexcli dev`:
 
 ```bash
-DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 go test -tags=integration ./examples/form-submission/... -count=1 -v
+DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 go test -p 1 -tags=integration ./examples/form-submission/... -count=1 -v
 ```

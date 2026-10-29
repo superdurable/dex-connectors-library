@@ -74,9 +74,8 @@ From the connector module:
 GOWORK=off go run ./examples/task-crud
 ```
 
-The Worker defaults to `127.0.0.1:8874`. Set `DEX_FLOW_SERVICE_ADDRESS`,
-`DEX_WORKER_BIND_ADDRESS`, and `DEX_BLOB_CACHE_DIR` as appropriate.
-In Dex Web Start Flow, choose `TodoistTaskCRUDFlow`, this Worker, and a unique
+Set `DEX_FLOW_SERVICE_ADDRESS` and `DEX_BLOB_CACHE_DIR` as appropriate.
+In Dex Web Start Flow, choose `TodoistTaskCRUDFlow` and a unique
 Flow ID. For read-only listing, submit:
 
 ```json

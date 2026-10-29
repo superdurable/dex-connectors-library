@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -178,23 +177,31 @@ func TestResponseRecorderFailsWithoutAReadableFormWithRealDex(t *testing.T) {
 	require.Equal(t, 1, provider.formReads())
 }
 
-// Dex re-dispatches an async attempt past about seven seconds; recording reads only the committed Result.
+// A lost Worker replays the listing; recording reads only the committed Result.
 func TestResponseRecorderRecordsEachResponseOnceWhenAListingIsRedispatchedWithRealDex(t *testing.T) {
 	provider := newFormsProvider(t, 25)
 	provider.addResponse(formsResponse{id: "r_one", created: morning, lastSubmitted: morning, answers: map[string]any{}})
 	provider.addResponse(formsResponse{id: "r_two", created: sharedInstant, lastSubmitted: sharedInstant, answers: map[string]any{}})
-	provider.delayFirstListing(9 * time.Second)
+	hold := make(chan struct{})
+	provider.holdFirstListing(hold)
 	flow, harness := newFormsIntegrationHarness(t, provider.URL, FormConfiguration{FormID: intakeFormID})
 	harness.startWorker(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
-	result := runRecorder(t, ctx, harness.client, flow, "redispatched-"+strconv.FormatInt(time.Now().UnixNano(), 10), Input{})
+	flowID := "redispatched-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err := harness.client.StartFlow(ctx, flow, flowID, Input{}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	require.Eventually(t, func() bool { return provider.listCalls() == 1 }, 30*time.Second, 50*time.Millisecond)
+	harness.replaceWorker(t)
+	require.Eventually(t, func() bool { return provider.listCalls() == 2 }, time.Minute, 50*time.Millisecond)
+	close(hold)
+	result := waitForRecorder(t, ctx, harness.client, flowID)
 	require.Equal(t, dex.FlowCompleted, result.status)
 	require.Len(t, result.outcome.Responses, 2)
 	require.ElementsMatch(t, []string{"r_one", "r_two"}, recordedIDs(result.outcome))
 	require.Equal(t, 1, result.outcome.PagesRead)
-	require.GreaterOrEqual(t, provider.listCalls(), 2, "Dex should have dispatched the slow listing again")
+	require.Equal(t, 2, provider.listCalls())
 }
 
 type recorderRun struct {
@@ -207,6 +214,11 @@ func runRecorder(t *testing.T, ctx context.Context, client *dex.Client, flow *Fl
 	t.Helper()
 	_, err := client.StartFlow(ctx, flow, flowID, input, dex.StartFlowOptions{})
 	require.NoError(t, err)
+	return waitForRecorder(t, ctx, client, flowID)
+}
+
+func waitForRecorder(t *testing.T, ctx context.Context, client *dex.Client, flowID string) recorderRun {
+	t.Helper()
 	result, err := client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
 	require.NoError(t, err)
 	run := recorderRun{status: result.Status, failureReason: result.ErrorMessage}
@@ -259,7 +271,7 @@ type formsProvider struct {
 	formReadCount    int
 	listCallCount    int
 	rateLimitedReads int
-	firstListDelay   time.Duration
+	firstListHold    chan struct{}
 }
 
 func newFormsProvider(t *testing.T, pageLimit int) *formsProvider {
@@ -326,8 +338,8 @@ func (provider *formsProvider) listResponses(response http.ResponseWriter, reque
 	query := request.URL.Query()
 	provider.mutex.Lock()
 	provider.listCallCount++
-	delay := provider.firstListDelay
-	provider.firstListDelay = 0
+	hold := provider.firstListHold
+	provider.firstListHold = nil
 	pageSize, err := strconv.Atoi(query.Get("pageSize"))
 	require.NoError(provider.t, err)
 	if query.Get("pageToken") == "" {
@@ -343,7 +355,13 @@ func (provider *formsProvider) listResponses(response http.ResponseWriter, reque
 		}
 	}
 	provider.mutex.Unlock()
-	time.Sleep(delay)
+	if hold != nil {
+		select {
+		case <-hold:
+		case <-request.Context().Done():
+			return
+		}
+	}
 	offset := 0
 	if token := query.Get("pageToken"); token != "" {
 		offset, err = strconv.Atoi(strings.TrimPrefix(token, "offset-"))
@@ -416,10 +434,10 @@ func (provider *formsProvider) rateLimitFormReads(count int) {
 	provider.rateLimitedReads = count
 }
 
-func (provider *formsProvider) delayFirstListing(delay time.Duration) {
+func (provider *formsProvider) holdFirstListing(hold chan struct{}) {
 	provider.mutex.Lock()
 	defer provider.mutex.Unlock()
-	provider.firstListDelay = delay
+	provider.firstListHold = hold
 }
 
 func (provider *formsProvider) countFormRead() {
@@ -488,7 +506,6 @@ type formsIntegrationHarness struct {
 	registry      *dex.Registry
 	cache         *blobcache.Cache
 	serverAddress string
-	workerAddress string
 	worker        *dex.Worker
 	workerResult  chan error
 	client        *dex.Client
@@ -513,12 +530,11 @@ func newFormsIntegrationHarnessWithConnection(t *testing.T, connection forms.Con
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
-	workerAddress := net.JoinHostPort("127.0.0.1", availableIntegrationPort(t))
 	harness := &formsIntegrationHarness{
-		registry: registry, cache: cache, serverAddress: environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801"), workerAddress: workerAddress,
+		registry: registry, cache: cache, serverAddress: environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801"),
 	}
 	harness.client, err = dex.NewClient(registry, cache, dex.ClientOptions{
-		FlowServiceAddress: harness.serverAddress, WorkerTarget: &dex.WorkerTarget{Address: workerAddress},
+		FlowServiceAddress: harness.serverAddress,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -532,14 +548,17 @@ func newFormsIntegrationHarnessWithConnection(t *testing.T, connection forms.Con
 
 func (harness *formsIntegrationHarness) startWorker(t *testing.T) {
 	t.Helper()
-	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{
-		BindAddress: harness.workerAddress, FlowServiceAddress: harness.serverAddress,
-		WorkerTarget: dex.WorkerTarget{Address: harness.workerAddress},
-	})
+	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{FlowServiceAddress: harness.serverAddress})
 	require.NoError(t, err)
 	harness.worker = worker
 	harness.workerResult = make(chan error, 1)
 	go func() { harness.workerResult <- worker.Start() }()
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
 }
 
 func (harness *formsIntegrationHarness) stopWorker(t *testing.T) {
@@ -551,12 +570,15 @@ func (harness *formsIntegrationHarness) stopWorker(t *testing.T) {
 	harness.workerResult = nil
 }
 
-func availableIntegrationPort(t *testing.T) string {
+func (harness *formsIntegrationHarness) replaceWorker(t *testing.T) {
 	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	defer listener.Close()
-	return strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
+	expired, cancel := context.WithCancel(context.Background())
+	cancel()
+	_ = harness.worker.Stop(expired)
+	require.NoError(t, <-harness.workerResult)
+	harness.worker = nil
+	harness.workerResult = nil
+	harness.startWorker(t)
 }
 
 func environmentOr(name string, fallback string) string {

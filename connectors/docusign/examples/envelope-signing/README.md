@@ -129,9 +129,9 @@ cd "$(git rev-parse --show-toplevel)/connectors/docusign"
 go run ./examples/envelope-signing
 ```
 
-The Worker listens on `127.0.0.1:8861` and the Connect endpoint on
+The Connect endpoint listens on
 `127.0.0.1:8862`; override `DEX_FLOW_SERVICE_ADDRESS`,
-`DEX_WORKER_BIND_ADDRESS`, `CONNECT_BIND_ADDRESS`, `DEX_BLOB_CACHE_DIR`,
+`CONNECT_BIND_ADDRESS`, `DEX_BLOB_CACHE_DIR`,
 `SIGNED_DOCUMENT_DIR`, `SIGNING_STATUS_POLL_INTERVAL` (default six hours), or
 `SIGNING_DEADLINE` (default 14 days) when needed. `GET /readyz` answers `200`
 once the binding receives deliveries.

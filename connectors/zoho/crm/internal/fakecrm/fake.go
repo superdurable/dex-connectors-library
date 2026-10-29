@@ -21,7 +21,7 @@ import (
 	"time"
 )
 
-// SlowResponseDelay outlasts Dex's roughly seven-second async local phase, so Dex dispatches an async Step again.
+// SlowResponseDelay supports delayed-provider scenarios in integration tests.
 const SlowResponseDelay = 9 * time.Second
 
 // zohoZone is the offset Zoho CRM uses for the fake organization's times, so the connector must convert to UTC.
@@ -60,8 +60,12 @@ type Server struct {
 	RevokesTokenAtFirstUpsert bool
 	// DelaysFirstUpsertOf applies the first upsert of the module, then answers after SlowResponseDelay.
 	DelaysFirstUpsertOf string
+	// FailsFirstAcceptedUpsertOf returns 503 after applying the first upsert of this module.
+	FailsFirstAcceptedUpsertOf string
 	// DelaysFirstUpdate applies the first update, then answers after SlowResponseDelay.
 	DelaysFirstUpdate bool
+	// HoldsFirstUpdate holds the first accepted update response until the request is canceled.
+	HoldsFirstUpdate bool
 	// LosesFirstUpdateResponse applies the first update and drops the connection.
 	LosesFirstUpdateResponse bool
 	// RateLimitsFirstCOQL answers the first COQL query with 429 and Retry-After: 1.

@@ -54,7 +54,7 @@ A reply to a completed thread, including one found again by a restart rescan,
 is consumed as undeliverable and logged once:
 
 ```text
-time=2026-09-25T22:41:07.412-07:00 level=WARN msg="trigger event skipped: undeliverable" connector=gmail connection=gmail-inbox trigger=replyReceived binding=gmail-thread-reply-received thread_id=18c2f0a1b2c3d4e0 event_id=18c2f0a1b2c3d4e5 flow_id=gmail-thread-reply-gmail-inbox-18c2f0a1b2c3d4e0 error="Trigger event is undeliverable: dex: InvokeRPC flow \"gmail-thread-reply-gmail-inbox-18c2f0a1b2c3d4e0\": NotFound: workflow execution already completed"
+time=2026-09-25T22:41:07.412-07:00 level=WARN msg="trigger event skipped: undeliverable" connector=gmail connection=gmail-inbox trigger=replyReceived binding=gmail-thread-reply-received thread_id=18c2f0a1b2c3d4e0 event_id=18c2f0a1b2c3d4e5 flow_id=gmail-thread-reply-gmail-inbox-18c2f0a1b2c3d4e0 error="Trigger event is undeliverable: dex: InvokeRPC flow \"gmail-thread-reply-gmail-inbox-18c2f0a1b2c3d4e0\": NotFound: Flow run is not found for flow ID gmail-thread-reply-gmail-inbox-18c2f0a1b2c3d4e0"
 ```
 
 A reply that arrives while the Flow is still reading its root message stays
@@ -102,8 +102,8 @@ Dex Web writes that configuration:
 go run ./examples/thread-reply
 ```
 
-The default Worker address is `127.0.0.1:8814`. Override
-`DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or
+Override
+`DEX_FLOW_SERVICE_ADDRESS` or
 `DEX_BLOB_CACHE_DIR` when needed. If the Dex Server is unreachable when the
 example starts, it logs `dex server unavailable; retrying` with a `delay` that
 grows to 30 seconds, and starts the Worker and the Gmail runner once Dex

@@ -8,10 +8,8 @@ package resourceread
 import (
 	"context"
 	"errors"
-	"net"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strconv"
 	"testing"
 	"time"
@@ -30,20 +28,14 @@ func TestResourceReadUsesManifestMockWithRealDex(t *testing.T) {
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	workerAddress := listener.Addr().String()
-	require.NoError(t, listener.Close())
 	serverAddress := os.Getenv("DEX_FLOW_SERVICE_ADDRESS")
 	if serverAddress == "" {
 		serverAddress = "127.0.0.1:8801"
 	}
 	workerOptions := dex.WorkerOptions{FlowServiceAddress: serverAddress}
-	setLegacyWorkerAddress(&workerOptions, workerAddress)
 	worker, err := dex.NewWorker(registry, cache, workerOptions)
 	require.NoError(t, err)
 	clientOptions := dex.ClientOptions{FlowServiceAddress: serverAddress}
-	setLegacyClientWorkerTarget(&clientOptions, workerAddress)
 	client, err := dex.NewClient(registry, cache, clientOptions)
 	require.NoError(t, err)
 	workerResult := make(chan error, 1)
@@ -53,6 +45,12 @@ func TestResourceReadUsesManifestMockWithRealDex(t *testing.T) {
 		defer cancel()
 		require.NoError(t, errors.Join(worker.Stop(ctx), <-workerResult, client.Close(), cache.Close()))
 	})
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	flowID := "woocommerce-resource-read-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
@@ -70,26 +68,4 @@ func TestResourceReadUsesManifestMockWithRealDex(t *testing.T) {
 	require.Equal(t, flowID, calls[0].FlowID)
 	require.Equal(t, woocommerce.ListOrdersInput{Page: 1}, calls[0].Input)
 	require.Equal(t, woocommerce.ListOrdersBranchListed, calls[0].Branch)
-}
-
-// setLegacyWorkerAddress configures the listening Worker fields removed by pull-only Dex SDKs.
-func setLegacyWorkerAddress(options *dex.WorkerOptions, address string) {
-	fields := reflect.ValueOf(options).Elem()
-	if bindAddress := fields.FieldByName("BindAddress"); bindAddress.IsValid() {
-		bindAddress.SetString(address)
-	}
-	if workerTarget := fields.FieldByName("WorkerTarget"); workerTarget.IsValid() {
-		workerTarget.FieldByName("Address").SetString(address)
-	}
-}
-
-// setLegacyClientWorkerTarget routes old SDK Flows to the listening Worker.
-func setLegacyClientWorkerTarget(options *dex.ClientOptions, address string) {
-	workerTarget := reflect.ValueOf(options).Elem().FieldByName("WorkerTarget")
-	if !workerTarget.IsValid() {
-		return
-	}
-	target := reflect.New(workerTarget.Type().Elem())
-	target.Elem().FieldByName("Address").SetString(address)
-	workerTarget.Set(target)
 }

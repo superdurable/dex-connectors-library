@@ -80,14 +80,13 @@ func run(ctx context.Context, logger *slog.Logger, connectionOptions ...calendly
 		return fmt.Errorf("create blob cache: %w", err)
 	}
 	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{
-		BindAddress:        environmentOr("DEX_WORKER_BIND_ADDRESS", "127.0.0.1:8851"),
 		FlowServiceAddress: os.Getenv("DEX_FLOW_SERVICE_ADDRESS"),
 	})
 	if err != nil {
 		return errors.Join(err, cache.Close())
 	}
 	client, err := dex.NewClient(registry, cache, dex.ClientOptions{
-		FlowServiceAddress: os.Getenv("DEX_FLOW_SERVICE_ADDRESS"), WorkerTarget: worker.WorkerTarget(),
+		FlowServiceAddress: os.Getenv("DEX_FLOW_SERVICE_ADDRESS"),
 	})
 	if err != nil {
 		return errors.Join(err, stopWorker(worker), cache.Close())

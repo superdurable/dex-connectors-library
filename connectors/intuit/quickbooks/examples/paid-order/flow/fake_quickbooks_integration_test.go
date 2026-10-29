@@ -60,9 +60,8 @@ type fakeQuickBooks struct {
 	counts               map[string]int
 	requests             map[string][]fakeRecordedRequest
 
-	delaysFirstCreateInvoice        bool
-	delaysFirstPayment              bool
 	losesFirstCreateInvoiceResponse bool
+	losesFirstPaymentResponse       bool
 	unavailableFirstCreateInvoice   bool
 	garblesFirstSendInvoiceResponse bool
 	holdsFirstPayment               chan struct{}
@@ -343,6 +342,10 @@ func (provider *fakeQuickBooks) runIdempotent(response http.ResponseWriter, requ
 		provider.dropConnection(response)
 		return
 	}
+	if name == "recordPayment" && provider.losesFirstPaymentResponse && attempt == 1 {
+		provider.dropConnection(response)
+		return
+	}
 	if name == "sendInvoice" && provider.garblesFirstSendInvoiceResponse && attempt == 1 {
 		provider.writeJSON(response, http.StatusOK, `{"Invoice":{}}`)
 		return
@@ -379,12 +382,7 @@ func (provider *fakeQuickBooks) createCustomer(_ int, _ *http.Request, body []by
 	return http.StatusOK, provider.encode(map[string]any{"Customer": provider.customerJSON(customer), "time": provider.responseTime()})
 }
 
-func (provider *fakeQuickBooks) createInvoice(attempt int, _ *http.Request, body []byte) (int, string) {
-	if provider.delaysFirstCreateInvoice && attempt == 1 {
-		provider.delayedRequests.Add(1)
-		defer provider.delayedRequests.Done()
-		time.Sleep(slowResponseDelay)
-	}
+func (provider *fakeQuickBooks) createInvoice(_ int, _ *http.Request, body []byte) (int, string) {
 	if provider.rejectsCreateInvoice {
 		return http.StatusBadRequest, provider.faultBody("ValidationFault", "6000", "SENTINEL A business validation error has occurred")
 	}
@@ -452,11 +450,6 @@ func (provider *fakeQuickBooks) createInvoice(attempt int, _ *http.Request, body
 }
 
 func (provider *fakeQuickBooks) recordPayment(attempt int, _ *http.Request, body []byte) (int, string) {
-	if provider.delaysFirstPayment && attempt == 1 {
-		provider.delayedRequests.Add(1)
-		defer provider.delayedRequests.Done()
-		time.Sleep(slowResponseDelay)
-	}
 	if provider.holdsFirstPayment != nil && attempt == 1 {
 		provider.delayedRequests.Add(1)
 		defer provider.delayedRequests.Done()
@@ -698,7 +691,7 @@ func (provider *fakeQuickBooks) waitForDelayedRequests(t *testing.T) {
 	}()
 	select {
 	case <-finished:
-	case <-time.After(2 * slowResponseDelay):
+	case <-time.After(30 * time.Second):
 		t.Fatal("a delayed fake QuickBooks request did not finish")
 	}
 }

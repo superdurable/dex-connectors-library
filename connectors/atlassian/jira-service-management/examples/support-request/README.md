@@ -85,8 +85,8 @@ Superverse Studio writes that configuration when you save the connection.
 go run ./examples/support-request
 ```
 
-The default Worker address is `127.0.0.1:8830`. Override
-`DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR`
+Override
+`DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR`
 when needed.
 
 Start `JiraServiceManagementSupportRequest` with a unique Flow ID:
@@ -127,9 +127,8 @@ create; a rejected create sent once; a rate-limited create retried after
 `Retry-After`; a 503 create retried from an attempt-numbered checkpoint; a
 create timeout reconciled by confirming a missing, a
 mismatched, and then the real request key without a second create; a 5xx
-create raised again only after operator approval; a nine-second create and a
-nine-second public reply each sent once under sync durability; a nine-second
-label update and a nine-second transition whose backup attempts find the
+create raised again only after operator approval; a delayed create and public
+reply each sent once; label update and transition retries find the
 change already made and write nothing; a destination the workflow does not
 offer; an internal note timeout that fails without a resend; and a blank
 `cloudId` resolved to the only granted site.

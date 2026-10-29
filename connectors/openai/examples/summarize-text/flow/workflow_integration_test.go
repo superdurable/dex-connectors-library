@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -177,9 +176,8 @@ func startSummaryFlowAndLoseWorker(t *testing.T, provider *textgentest.FakeProvi
 	flow := NewFlow(newSummaryConnection(t, provider), SummaryModelConfiguration{})
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
 	require.NoError(t, err)
-	workerAddress := freeLocalAddress(t)
-	stopFirstWorker := runSummaryWorker(t, registry, workerAddress)
-	client := newSummaryClient(t, registry, workerAddress)
+	stopFirstWorker := runSummaryWorker(t, registry)
+	client := newSummaryClient(t, registry)
 	flowID := fmt.Sprintf("openai-summary-worker-loss-%d", time.Now().UnixNano())
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	t.Cleanup(cancel)
@@ -189,7 +187,7 @@ func startSummaryFlowAndLoseWorker(t *testing.T, provider *textgentest.FakeProvi
 	stoppedContext, stopNow := context.WithCancel(context.Background())
 	stopNow()
 	require.ErrorIs(t, stopFirstWorker(stoppedContext), context.Canceled)
-	runSummaryWorker(t, registry, workerAddress)
+	runSummaryWorker(t, registry)
 	return client, flowID, ctx
 }
 
@@ -271,7 +269,7 @@ func responsesEvent(eventType string, fields map[string]any) string {
 }
 
 // startSummaryWorker opens the connection from project storage the way the Worker does, points its endpoint
-// at provider, runs the example Flow's Worker on a free local port, and returns a Client targeting it.
+// at provider, runs the example Flow on a pull Worker, and returns a Client.
 func startSummaryWorker(t *testing.T, provider *textgentest.FakeProvider, summaryModel SummaryModelConfiguration) (*Flow, *dex.Client) {
 	t.Helper()
 	return startSummaryWorkerWithConnection(t, newSummaryConnection(t, provider), summaryModel)
@@ -282,9 +280,8 @@ func startSummaryWorkerWithConnection(t *testing.T, connection openai.Connection
 	flow := NewFlow(connection, summaryModel)
 	registry, err := dex.NewRegistry([]dex.Flow{flow})
 	require.NoError(t, err)
-	workerAddress := freeLocalAddress(t)
-	runSummaryWorker(t, registry, workerAddress)
-	return flow, newSummaryClient(t, registry, workerAddress)
+	runSummaryWorker(t, registry)
+	return flow, newSummaryClient(t, registry)
 }
 
 func newSummaryConnection(t *testing.T, provider *textgentest.FakeProvider) openai.Connection {
@@ -298,25 +295,20 @@ func newSummaryConnection(t *testing.T, provider *textgentest.FakeProvider) open
 	return connection
 }
 
-func freeLocalAddress(t *testing.T) string {
-	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	address := listener.Addr().String()
-	require.NoError(t, listener.Close())
-	return address
-}
-
 // runSummaryWorker starts a Worker and returns its stop function; a cancelled context stops it at once.
-func runSummaryWorker(t *testing.T, registry *dex.Registry, workerAddress string) func(context.Context) error {
+func runSummaryWorker(t *testing.T, registry *dex.Registry) func(context.Context) error {
 	t.Helper()
 	cache := newBlobCache(t)
-	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{
-		BindAddress: workerAddress, FlowServiceAddress: dexServerAddress(), WorkerTarget: dex.WorkerTarget{Address: workerAddress},
-	})
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: dexServerAddress()})
 	require.NoError(t, err)
 	workerResult := make(chan error, 1)
 	go func() { workerResult <- worker.Start() }()
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
 	var isStopped atomic.Bool
 	stop := func(ctx context.Context) error {
 		isStopped.Store(true)
@@ -333,11 +325,11 @@ func runSummaryWorker(t *testing.T, registry *dex.Registry, workerAddress string
 	return stop
 }
 
-func newSummaryClient(t *testing.T, registry *dex.Registry, workerAddress string) *dex.Client {
+func newSummaryClient(t *testing.T, registry *dex.Registry) *dex.Client {
 	t.Helper()
 	cache := newBlobCache(t)
 	client, err := dex.NewClient(registry, cache, dex.ClientOptions{
-		FlowServiceAddress: dexServerAddress(), WorkerTarget: &dex.WorkerTarget{Address: workerAddress},
+		FlowServiceAddress: dexServerAddress(),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, errors.Join(client.Close(), cache.Close())) })

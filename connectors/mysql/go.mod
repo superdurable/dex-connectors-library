@@ -6,8 +6,8 @@ require (
 	github.com/go-sql-driver/mysql v1.10.1
 	github.com/stretchr/testify v1.11.1
 	github.com/superdurable/dex-connectors-library/sdkgo v0.32.0
-	github.com/superdurable/dex/blob-cache-go v0.1.0
-	github.com/superdurable/dex/sdk-go v1.5.0
+	github.com/superdurable/dex/blob-cache-go v0.1.2
+	github.com/superdurable/dex/sdk-go v1.26.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

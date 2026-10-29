@@ -245,7 +245,7 @@ failure. Reconcile those Flows manually after this upgrade.
 
 The real-Dex tests in
 [`examples/conversation-triage`](examples/conversation-triage/main_integration_test.go)
-cover a fake Front that answers after nine seconds, a `503` then acceptance
+cover a delayed fake Front response, a `503` then acceptance
 with two comment POSTs, and a Worker lost while Front holds the comment: the
 new Worker selects `uncertain` without a second POST.
 
@@ -292,9 +292,9 @@ Retry, which repeats the writes safely. A `4xx` on a write selects
 conversation, so the missing resource is most likely a teammate, tag, or
 ticket status; a `301` on a write selects `notFound` for a conversation merged
 since the read. When an earlier write of the same attempt succeeded, the
-Failure message says that it stays applied. The real-Dex test lets
-Dex dispatch the Step again while a tag write answers after nine seconds; the
-conversation ends with the assignee and one copy of the tag.
+Failure message says that it stays applied. The real-Dex test loses the
+Worker after an applied tag write; its replacement reads the tag and sends no
+second write.
 
 The writes converge for one Step, but they are not ordered against later
 Steps: a write from a duplicate or retried attempt that Front holds can land
@@ -436,5 +436,5 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./.
 (cd ui && npm ci && npm test && npm run build)
 ```
 
-The integration run needs `dexcli dev` and takes about 30 seconds, because
-the duplicate-dispatch tests wait for a nine-second provider.
+The integration run needs `dexcli dev`; the slow comment test takes nine
+seconds.

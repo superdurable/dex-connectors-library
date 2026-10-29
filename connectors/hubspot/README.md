@@ -142,9 +142,8 @@ required; an unwired optional branch fails the Flow when selected.
 Neither Mutation declares `uncertain`. Both writes are safe to send twice, so a
 response that never arrives is retried under the Step policy. Every operation
 uses asynchronous Execute durability, a 30-second Execute timeout, and unlimited attempts within one hour. HubSpot usually answers in well under a second;
-when a write takes longer than Dex's roughly seven-second local phase, Dex
-dispatches it again, and the example's real-Dex test proves that the repeated
-upsert and update converge on one record.
+the example's real-Dex test loses accepted provider answers and proves that the
+retried upsert and update converge on one record.
 
 ## Studio units
 

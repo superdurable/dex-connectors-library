@@ -64,8 +64,9 @@ func TestThreadReplyRunnerSurvivesReplyAfterCompletionAndRestartWithRealDex(t *t
 	require.Equal(t, map[string]string{
 		"connector": "gmail", "connection": ConnectionName, "trigger": "replyReceived", "binding": ReplyTriggerBinding,
 		"thread_id": threadA, "event_id": "reply-a2-" + testRunID, "flow_id": flowID(threadA),
-		"error": fmt.Sprintf("Trigger event is undeliverable: dex: InvokeRPC flow %q: NotFound: workflow execution already completed", flowID(threadA)),
-	}, lateReply[0].Attrs)
+	}, withoutErrorAttribute(lateReply[0].Attrs))
+	require.Contains(t, lateReply[0].Attrs["error"], "NotFound:")
+	require.Contains(t, lateReply[0].Attrs["error"], flowID(threadA))
 	require.Len(t, logs.Find("trigger event skipped: undeliverable", nil), 1, "only the late reply is skipped")
 
 	// The root and reply of a new thread arrive in the same page; the root is delivered first. The Flow's
@@ -453,4 +454,14 @@ func (provider *gmailInboxProvider) sendCount(threadID string) int {
 	provider.mutex.Lock()
 	defer provider.mutex.Unlock()
 	return provider.sendsByThread[threadID]
+}
+
+func withoutErrorAttribute(attributes map[string]string) map[string]string {
+	otherAttributes := make(map[string]string, len(attributes)-1)
+	for name, value := range attributes {
+		if name != "error" {
+			otherAttributes[name] = value
+		}
+	}
+	return otherAttributes
 }

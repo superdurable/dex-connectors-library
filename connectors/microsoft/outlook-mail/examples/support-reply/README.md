@@ -119,15 +119,14 @@ go run ./examples/support-reply
 
 The Worker reads the connection and the picked folder at startup and the
 credentials before every call, so restart it after saving the folder or
-changing the mailbox. The default Worker address is `127.0.0.1:8837`.
-Override `DEX_WORKER_BIND_ADDRESS` or `DEX_BLOB_CACHE_DIR` when needed. For
+changing the mailbox. Override `DEX_BLOB_CACHE_DIR` when needed. For
 local verification against a Graph-compatible stand-in only,
 `OUTLOOK_MAIL_LOCAL_PROVIDER_URL` sends every request for
 `graph.microsoft.com` and `login.microsoftonline.com` to one loopback URL
 without a path; production Workers leave it unset.
 
 In the Run workspace, choose **Start Flow**, select `OutlookSupportReply`,
-choose the Worker at `127.0.0.1:8837`, enter a unique Flow ID, and submit:
+enter a unique Flow ID, and submit:
 
 ```json
 {
@@ -161,10 +160,9 @@ and `internal/graphtest`, which, like Graph, has no send idempotency key:
   the customer's message was read, answered, marked read, and archived;
 - a folder picked in Dex Web receives the answered message;
 - a customer with only a lookalike's message gets one new message;
-- a reply and a new message whose send Graph holds for nine seconds, past
-  Dex's async local phase, are each sent once, because both Steps are sync;
-- a move held for nine seconds is dispatched again by async Dex, and the
-  message is archived once;
+- a reply and a new message each produce one send request and one delivery;
+- a move whose answer Graph drops after applying it is confirmed by read-back,
+  and the message is archived once;
 - a send whose answer is lost after Graph applied it is confirmed from the
   Sent Items copy and never sent again;
 - a send whose answer is lost and whose copy never appears fails through the

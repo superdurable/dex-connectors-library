@@ -8,7 +8,6 @@ package main
 import (
 	"context"
 	"errors"
-	"net"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -144,22 +143,29 @@ func TestLostWorkerDuringCommentFailsWithoutResendingWithRealDex(t *testing.T) {
 	require.Zero(t, provider.count("tagAdd"), "an unconfirmed comment is not followed by routing")
 }
 
-// TestSlowTagWriteIsSafeToRepeatWithRealDex lets async Dex dispatch the update again; both attempts converge.
+// TestSlowTagWriteIsSafeToRepeatWithRealDex repeats a tag write after a Worker disconnect.
 func TestSlowTagWriteIsSafeToRepeatWithRealDex(t *testing.T) {
 	provider := newFakeFront(t)
 	scenario := seedTriageScenario(provider)
-	provider.shouldDelayFirstTagWrite = true
+	provider.holdsFirstTagWrite = make(chan struct{})
 	harness := newTriageHarness(t, provider, slowRequestTimeout, conversationtriage.RoutingConfiguration{AssigneeID: fakeTeammateID, TagID: fakeTriageTagID})
 
-	triage := harness.runTriage(t, "slow-tag", scenario.triagedID)
+	flowID := harness.startTriage(t, "lost-tag", scenario.triagedID)
+	require.Eventually(t, func() bool { return len(provider.conversation(scenario.triagedID).tagIDs) == 1 }, 30*time.Second, 50*time.Millisecond)
+	require.Equal(t, 1, provider.count("tagAdd"))
+	readsBeforeReplacement := provider.count("read")
+	harness.replaceWorker(t)
+	result := harness.waitForFlow(t, flowID)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var triage conversationtriage.Triage
+	require.NoError(t, result.DecodeSingleOutput(&triage))
 	require.Equal(t, "completed", triage.Stage)
-	provider.waitForDelayedRequests(t)
-	require.GreaterOrEqual(t, provider.count("tagAdd"), 2, "Dex dispatched the update again past its local phase")
+	require.Equal(t, readsBeforeReplacement+1, provider.count("read"), "the replacement Worker reads the applied tag")
+	require.Equal(t, 1, provider.count("tagAdd"), "the replacement Worker does not repeat the applied tag write")
 	triaged := provider.conversation(scenario.triagedID)
 	require.Equal(t, []string{fakeTriageTagID}, triaged.tagIDs, "the tag is applied once")
 	require.Equal(t, fakeTeammateID, triaged.assigneeID)
 	require.Len(t, triaged.comments, 1, "the update never repeats the comment")
-	t.Logf("slow tag write: tagAdd=%d patch=%d reads=%d", provider.count("tagAdd"), provider.count("patch"), provider.count("read"))
 }
 
 func TestRateLimitedSearchWaitsForRetryAfterWithRealDex(t *testing.T) {
@@ -214,7 +220,6 @@ type triageHarness struct {
 	registry      *dex.Registry
 	cache         *blobcache.Cache
 	serverAddress string
-	workerAddress string
 	worker        *dex.Worker
 	workerResult  chan error
 	client        *dex.Client
@@ -252,29 +257,36 @@ func newTriageHarnessForConnection(
 	require.NoError(t, err)
 	harness.cache, err = blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
-	harness.workerAddress = net.JoinHostPort("127.0.0.1", unusedPort(t))
 	harness.client, err = dex.NewClient(harness.registry, harness.cache, dex.ClientOptions{
-		FlowServiceAddress: harness.serverAddress, WorkerTarget: &dex.WorkerTarget{Address: harness.workerAddress},
+		FlowServiceAddress: harness.serverAddress,
 	})
 	require.NoError(t, err)
-	harness.startWorker(t)
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
+		if harness.worker == nil {
+			require.NoError(t, errors.Join(harness.client.Close(), harness.cache.Close()))
+			return
+		}
 		require.NoError(t, errors.Join(harness.worker.Stop(ctx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
 	})
+	harness.startWorker(t)
 	return harness
 }
 
 func (harness *triageHarness) startWorker(t *testing.T) {
 	t.Helper()
-	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{
-		BindAddress: harness.workerAddress, FlowServiceAddress: harness.serverAddress, WorkerTarget: dex.WorkerTarget{Address: harness.workerAddress},
-	})
+	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{FlowServiceAddress: harness.serverAddress})
 	require.NoError(t, err)
 	workerResult := make(chan error, 1)
-	go func() { workerResult <- worker.Start() }()
 	harness.worker, harness.workerResult = worker, workerResult
+	go func() { workerResult <- worker.Start() }()
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
 }
 
 // replaceWorker force-stops the Worker without draining its handlers, like a crash, then starts a new one.
@@ -322,13 +334,4 @@ func (harness *triageHarness) waitForFlow(t *testing.T, flowID string) dex.FlowR
 		require.NoError(t, err, "Flow %s did not close", flowID)
 		return result
 	}
-}
-
-func unusedPort(t *testing.T) string {
-	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	port := strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
-	require.NoError(t, listener.Close())
-	return port
 }

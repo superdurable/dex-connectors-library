@@ -6,6 +6,7 @@
 package reportarchive
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 	"testing"
@@ -23,8 +24,6 @@ const (
 	integrationSecretAccessKey = "report-archive-integration-secret"
 	integrationRegion          = "eu-west-1"
 	integrationBucket          = "acme-reports"
-	// slowWriteDelay outlasts the seven-second async local phase, so Dex dispatches the Step again.
-	slowWriteDelay = 9 * time.Second
 )
 
 func TestReportArchiveExampleArchivesOnceAndReadsItBackWithRealDex(t *testing.T) {
@@ -94,21 +93,21 @@ func TestReportArchiveUnwiredRejectionFailsTheFlowWithoutReadingBackWithRealDex(
 	require.Zero(t, store.RequestCount(http.MethodHead))
 }
 
-// TestReportArchiveDuplicateCreateOnlyDispatchStoresOnceWithRealDex: the repeated PUT gets 412 and finds its marker.
+// TestReportArchiveDuplicateCreateOnlyDispatchStoresOnceWithRealDex retries after losing the first PUT response.
 func TestReportArchiveDuplicateCreateOnlyDispatchStoresOnceWithRealDex(t *testing.T) {
 	store := newIntegrationStore(t)
-	store.DelayPutResponses(slowWriteDelay)
+	store.HoldNextPutResponse(make(chan struct{}))
 	flow, harness := newReportArchiveHarness(t, newFakeStoreClient(t, store))
 	ctx := integrationContext(t)
 	runID := strconv.FormatInt(time.Now().UnixNano(), 10)
 
-	result := runReportArchive(t, ctx, harness.client, flow, "duplicate-create-"+runID, Input{ReportID: "dup-" + runID, Title: "Duplicate dispatch"})
+	result := runReportArchiveAfterWorkerLoss(t, ctx, harness, flow, store, "duplicate-create-"+runID, Input{ReportID: "dup-" + runID, Title: "Duplicate dispatch"})
 
 	require.Equal(t, dex.FlowCompleted, result.status)
 	require.Equal(t, StatusArchived, result.outcome.Status, "the repeated attempt recognized its own write")
 	require.True(t, result.outcome.IsTextVerified)
 	puts := putRequests(store)
-	require.Len(t, puts, 2, "Dex dispatched the slow Step a second time")
+	require.Len(t, puts, 2, "the replacement Worker repeats the same PUT")
 	require.Equal(t, puts[0].Body, puts[1].Body)
 	require.Equal(t, puts[0].Header.Get("X-Amz-Meta-Dex-Idempotency-Key"), puts[1].Header.Get("X-Amz-Meta-Dex-Idempotency-Key"))
 	require.Equal(t, 1, store.ObjectCount())
@@ -116,15 +115,15 @@ func TestReportArchiveDuplicateCreateOnlyDispatchStoresOnceWithRealDex(t *testin
 		len(puts), store.RequestCount(http.MethodHead), result.outcome.IsFromEarlierAttempt)
 }
 
-// TestReportArchiveDuplicateOverwriteDispatchConvergesWithRealDex: both PUTs send identical bytes and headers.
+// TestReportArchiveDuplicateOverwriteDispatchConvergesWithRealDex retries after losing the first PUT response.
 func TestReportArchiveDuplicateOverwriteDispatchConvergesWithRealDex(t *testing.T) {
 	store := newIntegrationStore(t)
-	store.DelayPutResponses(slowWriteDelay)
+	store.HoldNextPutResponse(make(chan struct{}))
 	flow, harness := newReportArchiveHarness(t, newFakeStoreClient(t, store))
 	ctx := integrationContext(t)
 	runID := strconv.FormatInt(time.Now().UnixNano(), 10)
 
-	result := runReportArchive(t, ctx, harness.client, flow, "duplicate-overwrite-"+runID, Input{
+	result := runReportArchiveAfterWorkerLoss(t, ctx, harness, flow, store, "duplicate-overwrite-"+runID, Input{
 		ReportID: "dup-" + runID, Title: "Duplicate dispatch", ShouldReplaceExisting: true,
 	})
 
@@ -132,7 +131,7 @@ func TestReportArchiveDuplicateOverwriteDispatchConvergesWithRealDex(t *testing.
 	require.Equal(t, StatusArchived, result.outcome.Status)
 	require.True(t, result.outcome.IsTextVerified)
 	puts := putRequests(store)
-	require.Len(t, puts, 2, "Dex dispatched the slow Step a second time")
+	require.Len(t, puts, 2, "the replacement Worker repeats the same PUT")
 	for _, name := range []string{"Content-Type", "Content-Md5", "X-Amz-Content-Sha256", "X-Amz-Meta-Report-Id", "X-Amz-Meta-Dex-Idempotency-Key"} {
 		require.Equal(t, puts[0].Header.Get(name), puts[1].Header.Get(name), name)
 	}
@@ -142,6 +141,21 @@ func TestReportArchiveDuplicateOverwriteDispatchConvergesWithRealDex(t *testing.
 	require.Equal(t, puts[0].Body, stored.Body)
 	require.Equal(t, stored.ETag, result.outcome.Report.ETag)
 	require.Equal(t, 1, store.ObjectCount())
+}
+
+func runReportArchiveAfterWorkerLoss(t *testing.T, ctx context.Context, harness *reportArchiveHarness, flow *Flow, store *s3fake.Server, flowID string, input Input) reportArchiveRun {
+	t.Helper()
+	_, err := harness.client.StartFlow(ctx, flow, flowID, input, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	require.Eventually(t, func() bool { return store.ObjectCount() == 1 }, 30*time.Second, 50*time.Millisecond)
+	harness.replaceWorker(t)
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	run := reportArchiveRun{status: result.Status}
+	if result.Status == dex.FlowCompleted {
+		require.NoError(t, result.DecodeSingleOutput(&run.outcome))
+	}
+	return run
 }
 
 func putRequests(store *s3fake.Server) []s3fake.Request {

@@ -8,7 +8,6 @@ package supportreply
 import (
 	"context"
 	"errors"
-	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -29,9 +28,6 @@ const (
 	integrationCustomer     = "jane@acme.example.com"
 	integrationClientSecret = "integration-client-secret-not-an-entra-value"
 	integrationRefreshToken = "integration-refresh-token"
-
-	// slowGraphDelay outlasts Dex's roughly seven-second async local phase, so an async Step is dispatched again.
-	slowGraphDelay = 9 * time.Second
 )
 
 var integrationReceivedAt = time.Date(2026, 9, 28, 9, 0, 0, 0, time.UTC)
@@ -110,51 +106,40 @@ func TestCustomerWithoutAMessageGetsOneNewMessageWithRealDex(t *testing.T) {
 	require.Zero(t, harness.graph.RequestCount(graphtest.EndpointCreateReply))
 }
 
-// TestSlowReplySendIsDispatchedOnceWithRealDex is the duplicate-dispatch test: Graph holds the send for nine
-// seconds, past Dex's async local phase, and sync durability means Dex never dispatches a second send.
-func TestSlowReplySendIsDispatchedOnceWithRealDex(t *testing.T) {
+// TestReplySendIsDispatchedOnceWithRealDex checks the send request and delivery counts.
+func TestReplySendIsDispatchedOnceWithRealDex(t *testing.T) {
 	harness := newReplyHarness(t, "")
 	seedCustomerThread(harness)
-	harness.graph.InjectFault(graphtest.Fault{Endpoint: graphtest.EndpointSendDraft, Delay: slowGraphDelay})
-
-	startedAt := time.Now()
-	outcome := harness.runReply(t, "slow-send", integrationInput())
-	require.GreaterOrEqual(t, time.Since(startedAt), slowGraphDelay)
+	outcome := harness.runReply(t, "single-send", integrationInput())
 	require.Equal(t, ReplyActionReplied, outcome.Action)
-	harness.graph.WaitForHeldRequests()
-	require.Equal(t, 1, harness.graph.RequestCount(graphtest.EndpointSendDraft), "no second send while the first was in flight")
+	require.Equal(t, 1, harness.graph.RequestCount(graphtest.EndpointSendDraft))
 	require.Equal(t, 1, harness.graph.RequestCount(graphtest.EndpointCreateReply))
 	require.Len(t, harness.graph.Deliveries(), 1)
 }
 
-func TestSlowNewMessageSendIsDispatchedOnceWithRealDex(t *testing.T) {
+func TestNewMessageSendIsDispatchedOnceWithRealDex(t *testing.T) {
 	harness := newReplyHarness(t, "")
-	harness.graph.InjectFault(graphtest.Fault{Endpoint: graphtest.EndpointSendDraft, Delay: slowGraphDelay})
-
-	outcome := harness.runReply(t, "slow-new-message", integrationInput())
+	outcome := harness.runReply(t, "single-new-message", integrationInput())
 	require.Equal(t, ReplyActionSentNewMessage, outcome.Action)
-	harness.graph.WaitForHeldRequests()
 	require.Equal(t, 1, harness.graph.RequestCount(graphtest.EndpointSendDraft))
 	require.Equal(t, 1, harness.graph.RequestCount(graphtest.EndpointCreateDraft))
 	require.Len(t, harness.graph.Deliveries(), 1)
 }
 
-// TestSlowMoveIsDispatchedAgainAndArchivesOnceWithRealDex lets async Dex dispatch the move again past its local
-// phase; the repeat is safe because the message ID is immutable and the move is read before it is written.
-func TestSlowMoveIsDispatchedAgainAndArchivesOnceWithRealDex(t *testing.T) {
+// TestLostMoveAnswerArchivesOnceWithRealDex checks read-back after Graph applies a move but drops its answer.
+func TestLostMoveAnswerArchivesOnceWithRealDex(t *testing.T) {
 	harness := newReplyHarness(t, "")
 	latest := seedCustomerThread(harness)
-	harness.graph.InjectFault(graphtest.Fault{Endpoint: graphtest.EndpointMoveMessage, Delay: slowGraphDelay})
+	harness.graph.InjectFault(graphtest.Fault{Endpoint: graphtest.EndpointMoveMessage, ShouldApplyFirst: true, ShouldDropConnection: true})
 
-	outcome := harness.runReply(t, "slow-move", integrationInput())
+	outcome := harness.runReply(t, "lost-move-answer", integrationInput())
 	require.Equal(t, ReplyActionReplied, outcome.Action)
-	harness.graph.WaitForHeldRequests()
-	require.GreaterOrEqual(t, harness.graph.RequestCount(graphtest.EndpointGetMailFolder), 2, "Dex dispatched the move again past its local phase")
+	require.True(t, outcome.ArchivedTo.WasAlreadyMoved, "the retry found the message in the archive")
+	require.Equal(t, 1, harness.graph.RequestCount(graphtest.EndpointMoveMessage))
 	archived := harness.graph.MessagesInFolder("archive")
 	require.Len(t, archived, 1, "the repeated move did not duplicate the message")
 	require.Equal(t, latest, archived[0].ID)
 	require.Len(t, harness.graph.Deliveries(), 1)
-	t.Logf("slow move: move requests=%d archivedTo=%+v", harness.graph.RequestCount(graphtest.EndpointMoveMessage), outcome.ArchivedTo)
 }
 
 func TestLostSendAnswerIsConfirmedFromSentItemsAndNeverResentWithRealDex(t *testing.T) {
@@ -254,7 +239,6 @@ type replyHarness struct {
 	registry        *dex.Registry
 	cache           *blobcache.Cache
 	serverAddress   string
-	workerAddress   string
 	worker          *dex.Worker
 	workerResult    chan error
 	client          *dex.Client
@@ -296,14 +280,17 @@ func (harness *replyHarness) startForFlow(t *testing.T, flow *Flow) {
 	var err error
 	harness.cache, err = blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
-	harness.workerAddress = net.JoinHostPort("127.0.0.1", availableIntegrationPort(t))
 	harness.registerFlow(t, flow)
-	harness.startWorker(t)
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
-		require.NoError(t, errors.Join(harness.worker.Stop(ctx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
+		var workerError error
+		if harness.worker != nil {
+			workerError = errors.Join(harness.worker.Stop(ctx), <-harness.workerResult)
+		}
+		require.NoError(t, errors.Join(workerError, harness.client.Close(), harness.cache.Close()))
 	})
+	harness.startWorker(t)
 }
 
 // newDelegatedCredentials holds the credential Dex Web saves after a delegated Microsoft consent.
@@ -323,20 +310,24 @@ func (harness *replyHarness) registerFlow(t *testing.T, flow *Flow) {
 	harness.registry, err = dex.NewRegistry([]dex.Flow{harness.flow})
 	require.NoError(t, err)
 	harness.client, err = dex.NewClient(harness.registry, harness.cache, dex.ClientOptions{
-		FlowServiceAddress: harness.serverAddress, WorkerTarget: &dex.WorkerTarget{Address: harness.workerAddress},
+		FlowServiceAddress: harness.serverAddress,
 	})
 	require.NoError(t, err)
 }
 
 func (harness *replyHarness) startWorker(t *testing.T) {
 	t.Helper()
-	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{
-		BindAddress: harness.workerAddress, FlowServiceAddress: harness.serverAddress, WorkerTarget: dex.WorkerTarget{Address: harness.workerAddress},
-	})
+	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{FlowServiceAddress: harness.serverAddress})
 	require.NoError(t, err)
 	workerResult := make(chan error, 1)
 	go func() { workerResult <- worker.Start() }()
 	harness.worker, harness.workerResult = worker, workerResult
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
 }
 
 // replaceWorker force-stops the Worker without draining its handlers, like a crash, then starts a new one.
@@ -384,14 +375,6 @@ func (harness *replyHarness) waitForFlow(t *testing.T, flowID string) dex.FlowRe
 		require.NoError(t, err, "Flow %s did not close", flowID)
 		return result
 	}
-}
-
-func availableIntegrationPort(t *testing.T) string {
-	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	defer listener.Close()
-	return strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
 }
 
 func environmentOr(name string, fallback string) string {

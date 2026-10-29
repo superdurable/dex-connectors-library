@@ -14,7 +14,6 @@ import (
 	"fmt"
 	"io"
 	"math/big"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -51,9 +50,7 @@ const (
 	integrationEmail        = "accounts@cityagency.example.com"
 
 	defaultRequestTimeout = 5 * time.Second
-	// slowResponseDelay outlasts Dex's roughly seven-second async local phase, so an async Step is dispatched again.
-	slowResponseDelay  = 9 * time.Second
-	slowRequestTimeout = 20 * time.Second
+	heldRequestTimeout    = 20 * time.Second
 )
 
 var whereEmailPattern = regexp.MustCompile(`^EmailAddress=="([^"]+)"$`)
@@ -121,44 +118,53 @@ func TestApprovedOrderRaisesOneInvoiceAndRecordsOnePaymentWithRealDex(t *testing
 	require.True(t, stored.ExpiresAt.After(time.Now().Add(20*time.Minute)))
 }
 
-// TestSlowInvoiceCreateIsDispatchedAgainAndRaisesOneInvoiceWithRealDex is a duplicate-dispatch test: Xero
-// answers the second dispatch's identical key with the first request's cached response.
-func TestSlowInvoiceCreateIsDispatchedAgainAndRaisesOneInvoiceWithRealDex(t *testing.T) {
+// TestLostWorkerDuringInvoiceCreateRaisesOneInvoiceWithRealDex verifies Xero replays the accepted write under one key.
+func TestLostWorkerDuringInvoiceCreateRaisesOneInvoiceWithRealDex(t *testing.T) {
 	provider := newFakeXero(t)
-	provider.delaysFirstCreate = true
-	harness := newOrderHarness(t, provider, customConnection, slowRequestTimeout)
-
-	startedAt := time.Now()
-	outcome := harness.runOrder(t, "slow-create", integrationOrder())
-	require.GreaterOrEqual(t, time.Since(startedAt), slowResponseDelay)
+	provider.holdsFirstCreate = make(chan struct{})
+	harness := newOrderHarness(t, provider, customConnection, heldRequestTimeout)
+	flowID := harness.startOrder(t, "lost-worker-create", integrationOrder())
+	require.Eventually(t, func() bool { return provider.count("appliedCreateInvoice") == 1 }, 30*time.Second, 50*time.Millisecond)
+	harness.replaceWorker(t)
+	require.Eventually(t, func() bool { return provider.count("createInvoice") == 2 }, time.Minute, 50*time.Millisecond)
+	close(provider.holdsFirstCreate)
+	result := harness.waitForFlow(t, flowID)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var outcome InvoicedOrderOutcome
+	require.NoError(t, result.DecodeSingleOutput(&outcome))
 	require.Equal(t, OrderInvoicedAndPaid, outcome.Action)
-	provider.waitForDelayedRequests(t)
-	require.GreaterOrEqual(t, provider.count("createInvoice"), 2, "Dex dispatched the create again past its local phase")
+	provider.waitForHeldRequests(t)
+	require.Equal(t, 2, provider.count("createInvoice"))
 	require.Equal(t, 1, provider.count("appliedCreateInvoice"), "Xero ran the request once")
-	require.Equal(t, 1, provider.invoiceCount(), "the repeated dispatch did not raise a second invoice")
+	require.Equal(t, 1, provider.invoiceCount())
 	require.Len(t, provider.distinctIdempotencyKeys("createInvoice"), 1, "every attempt sent the same key")
 	require.Equal(t, 1, provider.paymentCount())
-	t.Logf("slow create: requests=%d replays=%d", provider.count("createInvoice"), provider.count("replay"))
 }
 
-// TestSlowPaymentIsDispatchedAgainAndRecordsOnePaymentWithRealDex is a duplicate-dispatch test for recordPayment.
-func TestSlowPaymentIsDispatchedAgainAndRecordsOnePaymentWithRealDex(t *testing.T) {
+// TestLostWorkerDuringAcceptedPaymentRecordsOnePaymentWithRealDex verifies Xero replays the accepted payment.
+func TestLostWorkerDuringAcceptedPaymentRecordsOnePaymentWithRealDex(t *testing.T) {
 	provider := newFakeXero(t)
-	provider.delaysFirstPayment = true
-	harness := newOrderHarness(t, provider, customConnection, slowRequestTimeout)
-
-	outcome := harness.runOrder(t, "slow-payment", integrationOrder())
+	provider.holdsFirstPayment = make(chan struct{})
+	harness := newOrderHarness(t, provider, customConnection, heldRequestTimeout)
+	flowID := harness.startOrder(t, "lost-worker-payment", integrationOrder())
+	require.Eventually(t, func() bool { return provider.count("appliedRecordPayment") == 1 }, 30*time.Second, 50*time.Millisecond)
+	harness.replaceWorker(t)
+	require.Eventually(t, func() bool { return provider.count("recordPayment") == 2 }, time.Minute, 50*time.Millisecond)
+	close(provider.holdsFirstPayment)
+	result := harness.waitForFlow(t, flowID)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var outcome InvoicedOrderOutcome
+	require.NoError(t, result.DecodeSingleOutput(&outcome))
 	require.Equal(t, OrderInvoicedAndPaid, outcome.Action)
 	require.True(t, outcome.IsFullyPaid)
-	provider.waitForDelayedRequests(t)
-	require.GreaterOrEqual(t, provider.count("recordPayment"), 2, "Dex dispatched the payment again past its local phase")
+	provider.waitForHeldRequests(t)
+	require.Equal(t, 2, provider.count("recordPayment"))
 	require.Equal(t, 1, provider.count("appliedRecordPayment"))
 	require.Equal(t, 1, provider.paymentCount(), "the repeated dispatch did not pay the invoice twice")
 	require.Len(t, provider.distinctIdempotencyKeys("recordPayment"), 1)
 	invoice := provider.invoice(outcome.InvoiceID)
 	require.Equal(t, "122.39", invoice.amountPaid.FloatString(2))
 	require.Equal(t, "0.00", invoice.amountDue.FloatString(2))
-	t.Logf("slow payment: requests=%d replays=%d", provider.count("recordPayment"), provider.count("replay"))
 }
 
 func TestLostInvoiceResponseIsReplayedUnderTheSameKeyWithRealDex(t *testing.T) {
@@ -178,18 +184,19 @@ func TestLostInvoiceResponseIsReplayedUnderTheSameKeyWithRealDex(t *testing.T) {
 func TestLostWorkerDuringPaymentRecordsOnePaymentWithRealDex(t *testing.T) {
 	provider := newFakeXero(t)
 	provider.holdsFirstPayment = make(chan struct{})
-	harness := newOrderHarness(t, provider, customConnection, slowRequestTimeout)
+	harness := newOrderHarness(t, provider, customConnection, heldRequestTimeout)
 	flowID := harness.startOrder(t, "lost-worker", integrationOrder())
-	require.Eventually(t, func() bool { return provider.count("recordPayment") == 1 }, 30*time.Second, 50*time.Millisecond,
+	require.Eventually(t, func() bool { return provider.count("appliedRecordPayment") == 1 }, 30*time.Second, 50*time.Millisecond,
 		"the first payment attempt must reach Xero")
 	harness.replaceWorker(t)
-	require.Eventually(t, func() bool { return provider.count("recordPayment") >= 2 }, time.Minute, 50*time.Millisecond,
+	require.Eventually(t, func() bool { return provider.count("recordPayment") == 2 }, time.Minute, 50*time.Millisecond,
 		"an attempt on the new Worker must reach Xero")
 	close(provider.holdsFirstPayment)
 
 	result := harness.waitForFlow(t, flowID)
 	require.Equal(t, dex.FlowCompleted, result.Status, "Flow %s: %s", flowID, result.ErrorMessage)
-	provider.waitForDelayedRequests(t)
+	provider.waitForHeldRequests(t)
+	require.Equal(t, 2, provider.count("recordPayment"))
 	require.Equal(t, 1, provider.paymentCount(), "the attempt on the new Worker did not pay twice")
 	require.Len(t, provider.distinctIdempotencyKeys("recordPayment"), 1, "the key survives Worker replacement")
 }
@@ -317,8 +324,8 @@ type fakeXero struct {
 	*httptest.Server
 	t     *testing.T
 	mutex sync.Mutex
-	// delayedRequests tracks handlers still sleeping, so a test can assert their final effect.
-	delayedRequests sync.WaitGroup
+	// heldRequests tracks held handlers until cancellation or release.
+	heldRequests sync.WaitGroup
 
 	clock             time.Time
 	nextInvoiceNumber int
@@ -332,9 +339,8 @@ type fakeXero struct {
 	counts            map[string]int
 	requests          map[string][]fakeRecordedRequest
 
-	delaysFirstCreate            bool
-	delaysFirstPayment           bool
 	losesFirstCreateResponse     bool
+	holdsFirstCreate             chan struct{}
 	holdsFirstPayment            chan struct{}
 	rateLimitsFirstContactLookup bool
 	dailyLimitsCreate            bool
@@ -584,6 +590,23 @@ func (provider *fakeXero) runIdempotent(response http.ResponseWriter, request *h
 	status, answer := execute(attempt, body)
 	earlier.status, earlier.body = status, answer
 	close(earlier.done)
+	var hold chan struct{}
+	if attempt == 1 {
+		if name == "createInvoice" {
+			hold = provider.holdsFirstCreate
+		} else if name == "recordPayment" {
+			hold = provider.holdsFirstPayment
+		}
+	}
+	if hold != nil {
+		provider.heldRequests.Add(1)
+		defer provider.heldRequests.Done()
+		select {
+		case <-hold:
+		case <-request.Context().Done():
+			return
+		}
+	}
 	if name == "createInvoice" && provider.losesFirstCreateResponse && attempt == 1 {
 		provider.dropConnection(response)
 		return
@@ -592,11 +615,6 @@ func (provider *fakeXero) runIdempotent(response http.ResponseWriter, request *h
 }
 
 func (provider *fakeXero) createInvoice(attempt int, body []byte) (int, string) {
-	if provider.delaysFirstCreate && attempt == 1 {
-		provider.delayedRequests.Add(1)
-		defer provider.delayedRequests.Done()
-		time.Sleep(slowResponseDelay)
-	}
 	if provider.rejectsCreate {
 		return http.StatusBadRequest, `{"ErrorNumber":10,"Type":"ValidationException","Message":"SENTINEL A validation exception occurred",
 			"Elements":[{"ValidationErrors":[{"Message":"SENTINEL Account code '200' is not a valid code"}]}]}`
@@ -653,16 +671,6 @@ func (provider *fakeXero) createInvoice(attempt int, body []byte) (int, string) 
 }
 
 func (provider *fakeXero) recordPayment(attempt int, body []byte) (int, string) {
-	if provider.delaysFirstPayment && attempt == 1 {
-		provider.delayedRequests.Add(1)
-		defer provider.delayedRequests.Done()
-		time.Sleep(slowResponseDelay)
-	}
-	if provider.holdsFirstPayment != nil && attempt == 1 {
-		provider.delayedRequests.Add(1)
-		defer provider.delayedRequests.Done()
-		<-provider.holdsFirstPayment
-	}
 	var payload struct {
 		Invoice struct {
 			InvoiceID string `json:"InvoiceID"`
@@ -803,17 +811,17 @@ func (provider *fakeXero) dropConnection(response http.ResponseWriter) {
 	require.NoError(provider.t, connection.Close())
 }
 
-func (provider *fakeXero) waitForDelayedRequests(t *testing.T) {
+func (provider *fakeXero) waitForHeldRequests(t *testing.T) {
 	t.Helper()
 	finished := make(chan struct{})
 	go func() {
-		provider.delayedRequests.Wait()
+		provider.heldRequests.Wait()
 		close(finished)
 	}()
 	select {
 	case <-finished:
-	case <-time.After(2 * slowResponseDelay):
-		t.Fatal("a delayed fake Xero request did not finish")
+	case <-time.After(30 * time.Second):
+		t.Fatal("a held fake Xero request did not finish")
 	}
 }
 
@@ -924,7 +932,6 @@ type orderHarness struct {
 	registry      *dex.Registry
 	cache         *blobcache.Cache
 	serverAddress string
-	workerAddress string
 	worker        *dex.Worker
 	workerResult  chan error
 	client        *dex.Client
@@ -965,17 +972,20 @@ func newOrderHarness(t *testing.T, provider *fakeXero, method connectionMethod, 
 	require.NoError(t, err)
 	harness.cache, err = blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
-	harness.workerAddress = net.JoinHostPort("127.0.0.1", availableIntegrationPort(t))
 	harness.client, err = dex.NewClient(harness.registry, harness.cache, dex.ClientOptions{
-		FlowServiceAddress: harness.serverAddress, WorkerTarget: &dex.WorkerTarget{Address: harness.workerAddress},
+		FlowServiceAddress: harness.serverAddress,
 	})
 	require.NoError(t, err)
-	harness.startWorker(t)
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
-		require.NoError(t, errors.Join(harness.worker.Stop(ctx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
+		var stopError error
+		if harness.worker != nil {
+			stopError = errors.Join(harness.worker.Stop(ctx), <-harness.workerResult)
+		}
+		require.NoError(t, errors.Join(stopError, harness.client.Close(), harness.cache.Close()))
 	})
+	harness.startWorker(t)
 	return harness
 }
 
@@ -989,13 +999,17 @@ func (harness *orderHarness) readStoredCredentials(t *testing.T) storedCredentia
 
 func (harness *orderHarness) startWorker(t *testing.T) {
 	t.Helper()
-	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{
-		BindAddress: harness.workerAddress, FlowServiceAddress: harness.serverAddress, WorkerTarget: dex.WorkerTarget{Address: harness.workerAddress},
-	})
+	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{FlowServiceAddress: harness.serverAddress})
 	require.NoError(t, err)
 	workerResult := make(chan error, 1)
 	go func() { workerResult <- worker.Start() }()
 	harness.worker, harness.workerResult = worker, workerResult
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
 }
 
 // replaceWorker force-stops the Worker without draining its handlers, like a crash, then starts a new one.
@@ -1043,14 +1057,6 @@ func (harness *orderHarness) waitForFlow(t *testing.T, flowID string) dex.FlowRe
 		require.NoError(t, err, "Flow %s did not close", flowID)
 		return result
 	}
-}
-
-func availableIntegrationPort(t *testing.T) string {
-	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	defer listener.Close()
-	return strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
 }
 
 func environmentOr(name string, fallback string) string {

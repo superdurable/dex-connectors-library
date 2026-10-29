@@ -73,7 +73,7 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 \
 go run ./examples/account-usage-summary
 ```
 
-In **Start Flow**, choose `SnowflakeAccountUsageSummary` and the Worker at `127.0.0.1:8857`, and
+In **Start Flow**, choose `SnowflakeAccountUsageSummary`, and
 start it with a unique Flow ID:
 
 ```json
@@ -100,7 +100,7 @@ The integration suite runs the Flow on a real Dex Worker against the scripted SQ
 - a statement that outlasts the wait budget and is canceled;
 - a statement that finishes after the final running read and refuses cancellation,
   completing with `isCancellationAccepted: false`;
-- a submission that answers after nine seconds, which Dex dispatches twice with the same
-  `requestId` while the scripted API runs the statement once;
+- a submission accepted before Worker loss and repeated by the replacement with
+  the same `requestId` while the scripted API runs the statement once;
 - a Worker force-stopped during the durable wait and replaced, which resumes without resubmitting;
 - invalid input rejected before Snowflake.

@@ -8,7 +8,6 @@ package accountlifecycle
 import (
 	"context"
 	"errors"
-	"net"
 	"path/filepath"
 	"testing"
 	"time"
@@ -29,15 +28,12 @@ func TestAccountLifecycleExampleRunsOnEntraIDMockWithRealDex(t *testing.T) {
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
 	serverAddress := environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801")
-	workerAddress := net.JoinHostPort("127.0.0.1", availableIntegrationPort(t))
 	harness := &accountLifecycleHarness{cache: cache}
 	harness.client, err = dex.NewClient(registry, cache, dex.ClientOptions{
-		FlowServiceAddress: serverAddress, WorkerTarget: &dex.WorkerTarget{Address: workerAddress},
+		FlowServiceAddress: serverAddress,
 	})
 	require.NoError(t, err)
-	harness.worker, err = dex.NewWorker(registry, cache, dex.WorkerOptions{
-		BindAddress: workerAddress, FlowServiceAddress: serverAddress, WorkerTarget: dex.WorkerTarget{Address: workerAddress},
-	})
+	harness.worker, err = dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: serverAddress})
 	require.NoError(t, err)
 	harness.workerResult = make(chan error, 1)
 	go func() { harness.workerResult <- harness.worker.Start() }()
@@ -46,6 +42,12 @@ func TestAccountLifecycleExampleRunsOnEntraIDMockWithRealDex(t *testing.T) {
 		defer cancel()
 		require.NoError(t, errors.Join(harness.worker.Stop(ctx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
 	})
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := harness.worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
 	ctx := integrationContext(t)
 
 	onboardID := startAccountLifecycle(t, ctx, harness.client, flow, "mock-onboard", onboardingInput())

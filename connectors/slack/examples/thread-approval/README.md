@@ -320,13 +320,6 @@ GOWORK=off go run \
 ```
 
 Replace `127.0.0.1:8801` when dexcli printed another Dex Server address. The
-Worker listens on `127.0.0.1:8813` by default. If that address is occupied, set
-another one before starting it:
-
-```bash
-export DEX_WORKER_BIND_ADDRESS="127.0.0.1:8913"
-```
-
 The example also listens on `127.0.0.1:8839`, or `TRIGGER_BIND_ADDRESS`, at
 `slack.RelayedTriggerPath("slack-workspace")`, where a host posts the events it
 relays for a shared connection without an `app_token`
@@ -381,7 +374,7 @@ completed thread:
 - The Worker logs one WARN record that it skipped the event as undeliverable:
 
   ```text
-  time=<timestamp> level=WARN msg="trigger event skipped: undeliverable" connector=slack connection=slack-workspace trigger=threadReplyCreated binding=slack-thread-approval-reply channel=<channel-id> thread_ts=<root-ts> event_id=<event-id> flow_id=<flow-id> error="Trigger event is undeliverable: dex: InvokeRPC flow \"<flow-id>\": NotFound: workflow execution already completed"
+  time=<timestamp> level=WARN msg="trigger event skipped: undeliverable" connector=slack connection=slack-workspace trigger=threadReplyCreated binding=slack-thread-approval-reply channel=<channel-id> thread_ts=<root-ts> event_id=<event-id> flow_id=<flow-id> error="Trigger event is undeliverable: dex: InvokeRPC flow \"<flow-id>\": NotFound: Flow run is not found for flow ID <flow-id>"
   ```
 
 - A new top-level message still starts a new Flow.
@@ -433,7 +426,7 @@ carry the `event_id`, and `flow_id` for Dex errors, but not `channel` or
 skipped once:
 
 ```text
-time=2026-09-25T22:41:07.412-07:00 level=WARN msg="trigger event skipped: undeliverable" connector=slack connection=slack-workspace trigger=threadReplyCreated binding=slack-thread-approval-reply channel=C0456EFGH thread_ts=1790400000.000100 event_id=Ev0AB1CD2EF3 flow_id=slack-thread-approval-T0123ABCD-C0456EFGH-1790400000.000100 error="Trigger event is undeliverable: dex: InvokeRPC flow \"slack-thread-approval-T0123ABCD-C0456EFGH-1790400000.000100\": NotFound: workflow execution already completed"
+time=2026-09-25T22:41:07.412-07:00 level=WARN msg="trigger event skipped: undeliverable" connector=slack connection=slack-workspace trigger=threadReplyCreated binding=slack-thread-approval-reply channel=C0456EFGH thread_ts=1790400000.000100 event_id=Ev0AB1CD2EF3 flow_id=slack-thread-approval-T0123ABCD-C0456EFGH-1790400000.000100 error="Trigger event is undeliverable: dex: InvokeRPC flow \"slack-thread-approval-T0123ABCD-C0456EFGH-1790400000.000100\": NotFound: Flow run is not found for flow ID slack-thread-approval-T0123ABCD-C0456EFGH-1790400000.000100"
 ```
 
 An approval posted while the Dex Server is down retries with a delay that

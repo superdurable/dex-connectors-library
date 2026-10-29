@@ -81,13 +81,11 @@ Web or Superverse Studio writes that configuration when you save the connection.
 go run ./examples/issue-request
 ```
 
-The default Worker address is `127.0.0.1:8836`. Override `DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`,
-or `DEX_BLOB_CACHE_DIR` when needed. For local verification against a Linear-compatible fake only,
+Override `DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR` when needed. For local verification against a Linear-compatible fake only,
 `LINEAR_LOCAL_API_URL` replaces `https://api.linear.app/graphql`; it must be HTTPS or a loopback HTTP URL, and
 production Workers leave it unset.
 
-In the Run workspace, choose **Start Flow**, select `LinearIssueRequest`, choose the Worker at
-`127.0.0.1:8836`, enter a unique Flow ID, and submit:
+In the Run workspace, choose **Start Flow**, select `LinearIssueRequest`, enter a unique Flow ID, and submit:
 
 ```json
 {
@@ -117,9 +115,8 @@ a stateful fake Linear that stores client-supplied IDs and refuses to store one 
 - the team's open issue with the title is reused, and these decoys stay untouched: a completed issue with the
   title, one in another team, and a look-alike title;
 - an unknown assignee email leaves the issue unassigned, and a blank state name picks `Todo`;
-- a create, a comment, and an update held for nine seconds, past Dex's async local phase, are each dispatched
-  again; the repeated create and comment meet the stored UUID and read the record back, so Linear holds one
-  issue and one comment;
+- a Worker lost during a held create, comment, or update causes another dispatch;
+  repeated creates and comments use the stored UUID, so Linear holds one issue and one comment;
 - a Worker lost while Linear holds the create is replaced, and the new Worker's attempt sends the same UUID and
   reads back the first issue;
 - a search answered with Linear's HTTP 400 `RATELIMITED` and `Retry-After: 1` is retried;

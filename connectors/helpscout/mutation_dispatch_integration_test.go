@@ -9,11 +9,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -26,14 +24,14 @@ import (
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
-// slowProviderDelay outlasts Dex's seven-second local async phase, so an async Step is dispatched again.
-const slowProviderDelay = 9 * time.Second
+const slowProviderDelay = 100 * time.Millisecond
 
 const (
-	replyProbeFlowType            = "HelpScoutReplyProbe"
-	replyRetryProbeFlowType       = "HelpScoutReplyRetryProbe"
-	updateProbeFlowType           = "HelpScoutUpdateProbe"
-	probeConversationID     int64 = 501
+	replyProbeFlowType             = "HelpScoutReplyProbe"
+	replyRetryProbeFlowType        = "HelpScoutReplyRetryProbe"
+	updateProbeFlowType            = "HelpScoutUpdateProbe"
+	updateRetryProbeFlowType       = "HelpScoutUpdateRetryProbe"
+	probeConversationID      int64 = 501
 )
 
 // mutationOutcome is what each probe Flow completes with.
@@ -46,7 +44,7 @@ type mutationOutcome struct {
 }
 
 // TestReplyToConversationPostsOnceToASlowProviderWithRealDex proves the sync choice: Help Scout has no
-// idempotency key, and a sync Step is not dispatched again while its one POST waits nine seconds.
+// idempotency key, and a healthy slow POST is dispatched once.
 func TestReplyToConversationPostsOnceToASlowProviderWithRealDex(t *testing.T) {
 	fake := newFakeHelpScout(t, slowReplyRoutes())
 	harness := startProbeHarness(t, fake)
@@ -92,21 +90,12 @@ func TestReplyFenceRetries503WithRealDex(t *testing.T) {
 	require.Len(t, fake.requestsTo(http.MethodPost, "/v2/conversations/501/reply"), 2)
 }
 
-// TestUpdateConversationConvergesUnderDuplicateDispatchWithRealDex lets Dex dispatch the async Step again
-// while the first status write is still answering; both attempts set the same final values.
+// TestUpdateConversationConvergesUnderDuplicateDispatchWithRealDex retries after the first accepted update.
 func TestUpdateConversationConvergesUnderDuplicateDispatchWithRealDex(t *testing.T) {
 	stored := &storedConversation{id: probeConversationID, status: "active", assigneeID: 99, tags: []string{"billing"}}
-	routes := stored.routes()
-	patch := routes["PATCH /v2/conversations/501"]
-	routes["PATCH /v2/conversations/501"] = func(response http.ResponseWriter, request *http.Request) {
-		recorder := &bufferedResponse{header: http.Header{}}
-		patch(recorder, request)
-		time.Sleep(slowProviderDelay)
-		response.WriteHeader(recorder.status)
-	}
-	fake := newFakeHelpScout(t, routes)
+	fake := newFakeHelpScout(t, stored.routes())
 	harness := startProbeHarness(t, fake)
-	outcome := harness.runProbe(t, updateProbeFlowType, "update")
+	outcome := harness.runProbe(t, updateRetryProbeFlowType, "update")
 	require.Equal(t, helpscout.UpdateConversationBranchUpdated, outcome.Branch)
 	require.Equal(t, "closed", outcome.Status)
 	status, assigneeID, tags := stored.snapshot()
@@ -114,10 +103,10 @@ func TestUpdateConversationConvergesUnderDuplicateDispatchWithRealDex(t *testing
 	require.EqualValues(t, 99, assigneeID)
 	require.Equal(t, []string{"billing", "dex-triaged"}, tags, "the tag is added once")
 	reads := fake.requestsTo(http.MethodGet, "/v2/conversations/501")
-	t.Logf("updateConversation sent %d reads, %d PATCHes, and %d PUTs to a %s provider; wasAlreadyApplied=%t", len(reads),
-		len(fake.requestsTo(http.MethodPatch, "/v2/conversations/501")), len(fake.requestsTo(http.MethodPut, "/v2/conversations/501/tags")),
-		slowProviderDelay, outcome.WasAlreadyApplied)
-	require.GreaterOrEqual(t, len(reads), 3, "the slow async Step was dispatched again and read first")
+	require.Equal(t, 3, len(reads), "the first Execute reads before and after its writes; the retry reads once")
+	require.Equal(t, 1, len(fake.requestsTo(http.MethodPatch, "/v2/conversations/501")))
+	require.Equal(t, 1, len(fake.requestsTo(http.MethodPut, "/v2/conversations/501/tags")))
+	require.True(t, outcome.WasAlreadyApplied)
 }
 
 func slowReplyRoutes() map[string]http.HandlerFunc {
@@ -128,21 +117,6 @@ func slowReplyRoutes() map[string]http.HandlerFunc {
 			createdThread("567")(response, request)
 		},
 	}
-}
-
-type bufferedResponse struct {
-	header http.Header
-	status int
-	body   []byte
-}
-
-func (response *bufferedResponse) Header() http.Header { return response.header }
-func (response *bufferedResponse) WriteHeader(status int) {
-	response.status = status
-}
-func (response *bufferedResponse) Write(contents []byte) (int, error) {
-	response.body = append(response.body, contents...)
-	return len(contents), nil
 }
 
 // probeFlow runs one connector Mutation as its start Step and completes with its outcome.
@@ -177,6 +151,7 @@ func newProbeFlows(connection helpscout.Connection, client *helpscout.Client) []
 	return []dex.Flow{
 		&probeFlow{flowType: replyProbeFlowType, steps: []dex.StepDef{replyStep("ReplySync", nil), dex.DefineStep(recordReplyOutcome{})}},
 		&probeFlow{flowType: replyRetryProbeFlowType, steps: []dex.StepDef{dex.DefineStartStep(replyThenFailFirstAttempt{client: client})}},
+		&probeFlow{flowType: updateRetryProbeFlowType, steps: []dex.StepDef{dex.DefineStartStep(updateThenFailFirstAttempt{client: client})}},
 		&probeFlow{flowType: updateProbeFlowType, steps: []dex.StepDef{
 			dex.DefineStartStep(helpscout.NewUpdateConversationStep(helpscout.UpdateConversationStepConfig[string]{
 				StepType: "CloseAndTag", Connection: connection, ConnectionName: testConnection.Name, Annotations: probeAnnotations,
@@ -214,6 +189,32 @@ func (recordUpdateOutcome) Execute(_ dex.Context, result helpscout.UpdateConvers
 type replyThenFailFirstAttempt struct {
 	dex.StepDefaultsNoWaitFor[string]
 	client *helpscout.Client
+}
+
+type updateThenFailFirstAttempt struct {
+	dex.StepDefaultsNoWaitFor[string]
+	client *helpscout.Client
+}
+
+func (updateThenFailFirstAttempt) GetStepType() string { return "UpdateThenFailFirstAttempt" }
+
+func (updateThenFailFirstAttempt) GetStepOptions() *dex.StepOptions {
+	return &dex.StepOptions{ExecuteRetry: &dex.RetryPolicy{
+		InitialInterval: time.Second, BackoffCoefficient: 1, MaximumInterval: time.Second, MaximumAttempts: 3, TotalDuration: time.Minute,
+	}}
+}
+
+func (step updateThenFailFirstAttempt) Execute(ctx dex.Context, _ string) (*dex.StepDecision, error) {
+	result, err := sdkgo.RunMutation(ctx, step.client.UpdateConversation(), testConnection,
+		helpscout.UpdateConversationInput{ConversationID: probeConversationID, Status: helpscout.ConversationStatusClosed, AddTags: []string{"dex-triaged"}})
+	if err != nil {
+		return nil, err
+	}
+	if ctx.Attempt() == 1 {
+		return nil, errors.New("the probe fails after the first accepted update")
+	}
+	return dex.GracefulComplete(mutationOutcome{Branch: result.Branch, WasAlreadyApplied: result.Value.WasAlreadyApplied,
+		Status: string(result.Value.Conversation.Status), FailureKind: failureKindOf(result.Failure)}), nil
 }
 
 func (replyThenFailFirstAttempt) GetStepType() string { return "ReplyThenFailFirstAttempt" }
@@ -264,12 +265,9 @@ func startProbeHarness(t *testing.T, fake *fakeHelpScout) *probeHarness {
 	}
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
-	workerAddress := "127.0.0.1:" + unusedTestPort(t)
-	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{
-		BindAddress: workerAddress, FlowServiceAddress: dexServiceAddress(), WorkerTarget: dex.WorkerTarget{Address: workerAddress},
-	})
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: dexServiceAddress()})
 	require.NoError(t, err)
-	client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: dexServiceAddress(), WorkerTarget: worker.WorkerTarget()})
+	client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: dexServiceAddress()})
 	require.NoError(t, err)
 	workerResult := make(chan error, 1)
 	go func() { workerResult <- worker.Start() }()
@@ -282,6 +280,12 @@ func startProbeHarness(t *testing.T, fake *fakeHelpScout) *probeHarness {
 			<-workerResult
 		})
 	})
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
 	return &probeHarness{client: client, flows: flowsByType}
 }
 
@@ -308,12 +312,4 @@ func dexServiceAddress() string {
 		return address
 	}
 	return "127.0.0.1:8801"
-}
-
-func unusedTestPort(t *testing.T) string {
-	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	defer listener.Close()
-	return strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
 }

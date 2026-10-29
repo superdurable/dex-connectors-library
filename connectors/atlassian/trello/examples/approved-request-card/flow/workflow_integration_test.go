@@ -11,7 +11,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -44,7 +43,7 @@ const (
 	missingCardID      = "6512f0a1c2d3e4f5a6ffffff"
 
 	shortRequestTimeout = 500 * time.Millisecond
-	// slowRequestTimeout outlasts the fake's nine-second responses and Dex's roughly seven-second async local phase.
+	// slowRequestTimeout outlasts the fake's nine-second responses.
 	slowRequestTimeout = 20 * time.Second
 	slowProviderDelay  = 9 * time.Second
 	fakePageSize       = 2
@@ -206,8 +205,7 @@ func TestServerErrorIsCreatedAgainOnlyAfterOperatorApprovalWithRealDex(t *testin
 	require.Equal(t, 2, provider.createCount(cardName), "only the approved retry sent a second create")
 }
 
-// TestSlowCreateIsSentOnceUnderSyncDurabilityWithRealDex is the duplicate-dispatch test: an async fallback
-// attempt would send a create that outlasts Dex's roughly seven-second local phase a second time.
+// TestSlowCreateIsSentOnceUnderSyncDurabilityWithRealDex verifies one create during a healthy slow request.
 func TestSlowCreateIsSentOnceUnderSyncDurabilityWithRealDex(t *testing.T) {
 	provider := newFakeTrello(t)
 	harness := newTrelloHarness(t, provider, slowRequestTimeout, DuplicateCheck{PageSize: fakePageSize})
@@ -221,19 +219,22 @@ func TestSlowCreateIsSentOnceUnderSyncDurabilityWithRealDex(t *testing.T) {
 	require.Equal(t, 1, provider.totalCreateCount())
 }
 
-// TestSlowMoveBackupAttemptLeavesTheSameCardWithRealDex proves updateCard is safe under async durability: a
-// backup attempt reads the labels again, resends the same absolute values, and the card ends the same.
+// TestSlowMoveBackupAttemptLeavesTheSameCardWithRealDex repeats the absolute move after Worker loss.
 func TestSlowMoveBackupAttemptLeavesTheSameCardWithRealDex(t *testing.T) {
 	provider := newFakeTrello(t)
 	slowCardID := provider.seedCard("[REQ-3006] "+markerSlowUpdate+" Sprinkler inspection", intakeListID, false)
 	harness := newTrelloHarness(t, provider, slowRequestTimeout, DuplicateCheck{PageSize: fakePageSize})
 
-	record := harness.runRequestFlow(t, "slow-move", requestInput("REQ-3006", markerSlowUpdate+" Sprinkler inspection"))
+	flowID := harness.startRequestFlow(t, "lost-move", requestInput("REQ-3006", markerSlowUpdate+" Sprinkler inspection"))
+	require.Eventually(t, func() bool {
+		return len(provider.updateBodies(slowCardID)) == 1 && provider.snapshot(slowCardID).listID == approvedListID
+	}, 30*time.Second, 50*time.Millisecond)
+	harness.replaceWorker(t)
+	record := harness.waitForFlowOutput(t, flowID)
 	require.Equal(t, PhaseReady, record.Phase)
 	require.Equal(t, slowCardID, record.CardID)
-	provider.waitForDelayedRequests(t)
 	bodies := provider.updateBodies(slowCardID)
-	require.GreaterOrEqual(t, len(bodies), 2, "Dex dispatched a backup attempt while the first nine-second update was in flight")
+	require.Len(t, bodies, 2, "the replacement Worker repeats the move once")
 	for _, body := range bodies {
 		require.JSONEq(t, bodies[0], body, "every attempt sends the same absolute values")
 	}
@@ -242,7 +243,6 @@ func TestSlowMoveBackupAttemptLeavesTheSameCardWithRealDex(t *testing.T) {
 	require.Equal(t, []string{complianceLabelID}, card.labelIDs, "the label was added once")
 	require.Equal(t, "2026-10-15T17:00:00.000Z", card.due)
 	require.Len(t, provider.commentTexts(slowCardID), 1, "the Flow moved on exactly once")
-	t.Logf("slow move: updates=%d", len(bodies))
 }
 
 // TestSlowCommentIsSentOnceUnderSyncDurabilityWithRealDex guards addComment's sync durability.
@@ -404,7 +404,7 @@ func (provider *fakeTrello) serveHTTP(response http.ResponseWriter, request *htt
 		provider.mutex.Unlock()
 		provider.writeJSON(response, http.StatusOK, body)
 	case request.Method == http.MethodPut && match[2] == "":
-		provider.updateCard(response, match[1], card, contents)
+		provider.updateCard(response, request, match[1], card, contents)
 	case request.Method == http.MethodPost && match[2] != "":
 		provider.addComment(response, request, match[1], card, contents)
 	default:
@@ -488,7 +488,7 @@ func (provider *fakeTrello) createCard(response http.ResponseWriter, request *ht
 	}
 }
 
-func (provider *fakeTrello) updateCard(response http.ResponseWriter, cardID string, card *fakeCard, contents []byte) {
+func (provider *fakeTrello) updateCard(response http.ResponseWriter, request *http.Request, cardID string, card *fakeCard, contents []byte) {
 	var body map[string]json.RawMessage
 	require.NoError(provider.t, json.Unmarshal(contents, &body))
 	var labelIDs []string
@@ -505,6 +505,7 @@ func (provider *fakeTrello) updateCard(response http.ResponseWriter, cardID stri
 	}
 	provider.mutex.Lock()
 	provider.updateBodiesByID[cardID] = append(provider.updateBodiesByID[cardID], string(contents))
+	attempt := len(provider.updateBodiesByID[cardID])
 	if raw, isSet := body["idList"]; isSet {
 		require.NoError(provider.t, json.Unmarshal(raw, &card.listID))
 	}
@@ -524,11 +525,9 @@ func (provider *fakeTrello) updateCard(response http.ResponseWriter, cardID stri
 	}
 	rendered := provider.cardJSON(cardID, false)
 	provider.mutex.Unlock()
-	if strings.Contains(card.name, markerSlowUpdate) {
-		provider.delayedRequests.Add(1)
-		defer provider.delayedRequests.Done()
-		// Trello applied the update, but the response arrives after Dex's async local phase ends.
-		time.Sleep(slowProviderDelay)
+	if strings.Contains(card.name, markerSlowUpdate) && attempt == 1 {
+		<-request.Context().Done()
+		return
 	}
 	provider.writeJSON(response, http.StatusOK, rendered)
 }
@@ -710,7 +709,6 @@ type trelloHarness struct {
 	registry      *dex.Registry
 	cache         *blobcache.Cache
 	serverAddress string
-	workerAddress string
 	worker        *dex.Worker
 	workerResult  chan error
 	client        *dex.Client
@@ -739,29 +737,36 @@ func newTrelloHarnessForConnection(t *testing.T, connection trello.Connection, d
 	require.NoError(t, err)
 	harness.cache, err = blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
-	harness.workerAddress = net.JoinHostPort("127.0.0.1", availableIntegrationPort(t))
 	harness.client, err = dex.NewClient(harness.registry, harness.cache, dex.ClientOptions{
-		FlowServiceAddress: harness.serverAddress, WorkerTarget: &dex.WorkerTarget{Address: harness.workerAddress},
+		FlowServiceAddress: harness.serverAddress,
 	})
 	require.NoError(t, err)
-	harness.startWorker(t)
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
+		if harness.worker == nil {
+			require.NoError(t, errors.Join(harness.client.Close(), harness.cache.Close()))
+			return
+		}
 		require.NoError(t, errors.Join(harness.worker.Stop(ctx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
 	})
+	harness.startWorker(t)
 	return harness
 }
 
 func (harness *trelloHarness) startWorker(t *testing.T) {
 	t.Helper()
-	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{
-		BindAddress: harness.workerAddress, FlowServiceAddress: harness.serverAddress, WorkerTarget: dex.WorkerTarget{Address: harness.workerAddress},
-	})
+	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{FlowServiceAddress: harness.serverAddress})
 	require.NoError(t, err)
 	workerResult := make(chan error, 1)
-	go func() { workerResult <- worker.Start() }()
 	harness.worker, harness.workerResult = worker, workerResult
+	go func() { workerResult <- worker.Start() }()
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
 }
 
 // replaceWorker force-stops the Worker without draining its handlers, like a crash, then starts a new one.
@@ -846,14 +851,6 @@ func (harness *trelloHarness) waitForRecord(t *testing.T, flowID string, isExpec
 		return harness.client.InvokeRPC(ctx, flowID, harness.flow.GetRequestCard, nil, &record) == nil && isExpected(record)
 	}, time.Minute, 100*time.Millisecond, "Flow %s last record %+v", flowID, record)
 	return record
-}
-
-func availableIntegrationPort(t *testing.T) string {
-	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	defer listener.Close()
-	return strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
 }
 
 func environmentOr(name string, fallback string) string {

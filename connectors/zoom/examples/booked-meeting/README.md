@@ -61,8 +61,8 @@ Superverse Studio writes that configuration when you save the connection.
 go run ./examples/booked-meeting
 ```
 
-The default Worker address is `127.0.0.1:8831`. Override
-`DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR`
+Override
+`DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR`
 when needed.
 
 Start `ZoomBookedMeeting` with a unique Flow ID and a future slot:
@@ -95,12 +95,11 @@ GOWORK=off go test -tags=integration ./examples/booked-meeting/... -count=1 -v
 ```
 
 They cover a meeting created once with its UTC start and join URL; a create
-that answers after nine seconds, which outlasts Dex's async local phase, and
-is still sent once; a create whose response never arrives, adopted from the
+with a delayed answer that is sent once; a create whose response never arrives, adopted from the
 meeting list with one create request; a 5xx create that finds no match and
 stops for an operator with one create request; a `3161` rejection; a
-reschedule read back and followed by attendance; a nine-second reschedule that
-Dex dispatches twice with identical patches; a reschedule of a deleted
+reschedule read back and followed by attendance; a delayed reschedule that
+completes with one patch; a reschedule of a deleted
 meeting; a no-show; the attendance Timer after a one-minute meeting; and a
 Worker process killed one second into its create request, whose replacement
 reconciles instead of creating again. The Timer test takes about a minute, and

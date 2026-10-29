@@ -103,6 +103,10 @@ type WriteBehavior struct {
 	DelayBeforeApplying time.Duration
 	// DelayAfterApplying sleeps after applying, before answering.
 	DelayAfterApplying time.Duration
+	// HoldBeforeApplying waits for release before checking the revision, even after client cancellation.
+	HoldBeforeApplying chan struct{}
+	// HoldAfterApplying waits for release or cancellation after committing the batch.
+	HoldAfterApplying chan struct{}
 	// StatusAfterApplying answers this status instead of 200 after applying; zero answers 200.
 	StatusAfterApplying int
 }
@@ -285,7 +289,7 @@ func (server *Server) serveHTTP(response http.ResponseWriter, request *http.Requ
 	case request.Method == http.MethodGet && strings.HasPrefix(path, "/v1/documents/"):
 		server.getDocument(response, request, strings.TrimPrefix(path, "/v1/documents/"))
 	case request.Method == http.MethodPost && strings.HasPrefix(path, "/v1/documents/") && strings.HasSuffix(path, ":batchUpdate"):
-		server.batchUpdate(response, strings.TrimSuffix(strings.TrimPrefix(path, "/v1/documents/"), ":batchUpdate"), body)
+		server.batchUpdate(response, request, strings.TrimSuffix(strings.TrimPrefix(path, "/v1/documents/"), ":batchUpdate"), body)
 	case request.Method == http.MethodGet && path == "/drive/v3/files":
 		server.lookUpEarlierDocument(response, request.URL.Query().Get("q"))
 	case request.Method == http.MethodGet && strings.HasPrefix(path, "/drive/v3/files/"):
@@ -315,7 +319,7 @@ func (server *Server) getDocument(response http.ResponseWriter, request *http.Re
 	writeJSON(response, http.StatusOK, document.resource())
 }
 
-func (server *Server) batchUpdate(response http.ResponseWriter, id string, body []byte) {
+func (server *Server) batchUpdate(response http.ResponseWriter, request *http.Request, id string, body []byte) {
 	var update struct {
 		Requests     []map[string]json.RawMessage `json:"requests"`
 		WriteControl struct {
@@ -333,6 +337,11 @@ func (server *Server) batchUpdate(response http.ResponseWriter, id string, body 
 		}
 	}
 	behavior := server.claimWriteBehavior(kind)
+	if behavior.HoldBeforeApplying != nil {
+		server.delayedRequests.Add(1)
+		defer server.delayedRequests.Done()
+		<-behavior.HoldBeforeApplying
+	}
 	if behavior.DelayBeforeApplying > 0 {
 		server.delayedRequests.Add(1)
 		defer server.delayedRequests.Done()
@@ -363,6 +372,15 @@ func (server *Server) batchUpdate(response http.ResponseWriter, id string, body 
 	server.counts[CountBatchUpdatesApplied]++
 	answer := map[string]any{"documentId": id, "replies": replies, "writeControl": map[string]any{"requiredRevisionId": document.RevisionID()}}
 	server.mutex.Unlock()
+	if behavior.HoldAfterApplying != nil {
+		server.delayedRequests.Add(1)
+		defer server.delayedRequests.Done()
+		select {
+		case <-behavior.HoldAfterApplying:
+		case <-request.Context().Done():
+			return
+		}
+	}
 	if behavior.DelayAfterApplying > 0 {
 		server.delayedRequests.Add(1)
 		defer server.delayedRequests.Done()

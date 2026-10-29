@@ -56,7 +56,6 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("create blob cache: %w", err)
 	}
 	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{
-		BindAddress:        environmentOr("DEX_WORKER_BIND_ADDRESS", "127.0.0.1:8839"),
 		FlowServiceAddress: os.Getenv("DEX_FLOW_SERVICE_ADDRESS"),
 	})
 	if err != nil {

@@ -36,7 +36,7 @@ cd connectors/mixpanel
 go run ./examples/event-track
 ```
 
-Configure `mixpanel / mixpanel` in Dex Web Connections using a service account created in [Organization Settings > Service Accounts](https://mixpanel.com/settings/org/) and your numeric ID from [Project Settings > Overview](https://mixpanel.com/settings/project/). In Start Flow choose `MixpanelEventTrack`, select the Worker, enter a unique Flow ID, and submit:
+Configure `mixpanel / mixpanel` in Dex Web Connections using a service account created in [Organization Settings > Service Accounts](https://mixpanel.com/settings/org/) and your numeric ID from [Project Settings > Overview](https://mixpanel.com/settings/project/). In Start Flow choose `MixpanelEventTrack`, enter a unique Flow ID, and submit:
 
 ```json
 {"event":"Signed Up","distinctID":"member-1"}

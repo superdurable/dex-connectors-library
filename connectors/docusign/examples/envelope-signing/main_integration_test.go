@@ -11,7 +11,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"log/slog"
-	"net"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -150,14 +149,13 @@ func TestSigningDeadlineVoidsTheUnsignedEnvelopeWithRealDex(t *testing.T) {
 
 // signingHarness is one Worker, Client, and Connect endpoint for the example Flow.
 type signingHarness struct {
-	client        *dex.Client
-	flow          *envelopesigning.EnvelopeSigningFlow
-	endpoint      *connectEndpoint
-	registry      *dex.Registry
-	cache         *blobcache.Cache
-	workerAddress string
-	worker        *dex.Worker
-	workerResult  chan error
+	client       *dex.Client
+	flow         *envelopesigning.EnvelopeSigningFlow
+	endpoint     *connectEndpoint
+	registry     *dex.Registry
+	cache        *blobcache.Cache
+	worker       *dex.Worker
+	workerResult chan error
 }
 
 func startSigningHarness(t *testing.T, fake *fakeDocuSign, logs *recordedLogs, documents string, policy envelopesigning.SigningPolicy) *signingHarness {
@@ -182,9 +180,9 @@ func startSigningHarnessWithConnection(t *testing.T, connection docusign.Connect
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
-	harness := &signingHarness{flow: flow, registry: registry, cache: cache, workerAddress: "127.0.0.1:" + unusedPort(t)}
+	harness := &signingHarness{flow: flow, registry: registry, cache: cache}
 	harness.startWorker(t)
-	harness.client, err = dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: dexAddress(), WorkerTarget: harness.worker.WorkerTarget()})
+	harness.client, err = dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: dexAddress()})
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, errors.Join(stopWorker(harness.worker), harness.client.Close(), cache.Close()))
@@ -195,12 +193,16 @@ func startSigningHarnessWithConnection(t *testing.T, connection docusign.Connect
 
 func (harness *signingHarness) startWorker(t *testing.T) {
 	t.Helper()
-	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{
-		BindAddress: harness.workerAddress, FlowServiceAddress: dexAddress(), WorkerTarget: dex.WorkerTarget{Address: harness.workerAddress},
-	})
+	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{FlowServiceAddress: dexAddress()})
 	require.NoError(t, err)
 	workerResult := make(chan error, 1)
 	go func() { workerResult <- worker.Start() }()
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
 	harness.worker, harness.workerResult = worker, workerResult
 }
 
@@ -269,12 +271,4 @@ func dexAddress() string {
 
 func uniqueRequestID(prefix string) string {
 	return prefix + "-" + strconv.FormatInt(time.Now().UnixNano(), 36)
-}
-
-func unusedPort(t *testing.T) string {
-	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	defer listener.Close()
-	return strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
 }

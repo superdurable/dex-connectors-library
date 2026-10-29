@@ -221,8 +221,7 @@ unverified. BambooHR rejects an email another employee already holds with 409.
 ## Duplicate safety
 
 BambooHR API v1 documents no idempotency key, so a repeated add is a second
-employee. Dex re-dispatches an async Step whose local attempt passes about
-seven seconds, and it retries a Step after a lost Worker, so the operations
+employee. Dex can replay a Step after Worker loss or before a result is committed, so the operations
 take these positions:
 
 - **updateEmployee** is safe to repeat. Its write sets absolute plain values

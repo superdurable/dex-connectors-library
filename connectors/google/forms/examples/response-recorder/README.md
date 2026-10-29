@@ -108,8 +108,8 @@ cd connectors/google/forms
 go run ./examples/response-recorder
 ```
 
-The default Worker address is `127.0.0.1:8823`. Override
-`DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR`
+Override
+`DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR`
 when needed.
 
 Start `GoogleFormsResponseRecorder` with a unique Flow ID. `{}` records every
@@ -143,4 +143,4 @@ insertion first, not by time. They cover:
 - a listing longer than the page budget, which keeps the input cursor;
 - a rate-limited form read retried after `Retry-After`;
 - a Worker without a form pick and a deleted form;
-- a nine-second listing that Dex dispatches again, recorded once.
+- a listing replayed after Worker loss, recorded once.

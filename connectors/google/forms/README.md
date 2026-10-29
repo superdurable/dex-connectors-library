@@ -298,5 +298,5 @@ Worker, retry, re-dispatch, persistence, and transition coverage:
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./... -count=1 -v
 ```
 
-The re-dispatch test waits for a nine-second fake provider, so the run takes
-about fifteen seconds.
+The re-dispatch test interrupts the Worker while the fake provider is handling
+a listing request.

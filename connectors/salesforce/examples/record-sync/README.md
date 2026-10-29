@@ -71,8 +71,8 @@ Superverse Studio writes that configuration when you save the connection.
 go run ./examples/record-sync
 ```
 
-The default Worker address is `127.0.0.1:8827`. Override
-`DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR`
+Override
+`DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR`
 when needed.
 
 Start `SalesforceRecordSync` with a unique Flow ID:
@@ -102,4 +102,4 @@ fake Salesforce with the CRM research fixture's decoys: a Lead that shares a
 new contact's email, two contacts with one email, a near-duplicate email, and
 a contact that already carries another external ID. They also prove that an
 upsert whose response is lost is retried into one record, and that a
-nine-second upsert that Dex sends twice still leaves one record.
+upsert retried after Worker loss still leaves one record.

@@ -88,14 +88,13 @@ go run ./examples/customer-reply
 ```
 
 The Worker reads the connection at startup and the credentials before every
-call, so restart it after changing a host, port, or sender. The default Worker
-address is `127.0.0.1:8834`. Override `DEX_WORKER_BIND_ADDRESS` or
-`DEX_BLOB_CACHE_DIR` when needed. `EMAIL_TLS_ROOT_CA_FILE` names a PEM bundle
+call, so restart it after changing a host, port, or sender. Override `DEX_BLOB_CACHE_DIR` when needed.
+`EMAIL_TLS_ROOT_CA_FILE` names a PEM bundle
 the Worker trusts instead of the system store, for a server with a private
 certificate authority, such as a self-hosted server or a local test server.
 
 In the Run workspace, choose **Start Flow**, select `EmailCustomerReply`,
-choose the Worker at `127.0.0.1:8834`, enter a unique Flow ID, and submit:
+enter a unique Flow ID, and submit:
 
 ```json
 {
@@ -126,11 +125,9 @@ the Flow on a real Worker against the in-process IMAP and SMTP servers in
   stay untouched;
 - a customer with only a lookalike's message gets one new message;
 - a match on a later search page is found;
-- a reply and a new message whose server holds the answer to the final dot
-  for nine seconds, past Dex's async local phase, are each submitted once,
-  because both Steps are sync;
-- a move held for nine seconds is dispatched again by async Dex, and the
-  message is archived once;
+- a reply and a new message each produce one submission;
+- a move whose answer IMAP drops after applying it is confirmed by read-back,
+  and the message is archived once;
 - an answer lost after the final dot fails the Flow through the unwired
   `uncertain` branch and is never resubmitted;
 - a Worker lost while the server holds the final dot is replaced, and the new

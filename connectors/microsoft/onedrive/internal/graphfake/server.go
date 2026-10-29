@@ -102,6 +102,7 @@ type Server struct {
 	beforeApply   func(Request) *Response
 	afterApply    func(Request) *Response
 	responseDelay func(Request) time.Duration
+	holdResponse  func(Request) bool
 }
 
 // NewServer starts a fake with an empty root folder in every drive. Callers close it.
@@ -146,6 +147,13 @@ func (server *Server) DelayResponses(delay func(Request) time.Duration) {
 	server.mutex.Lock()
 	defer server.mutex.Unlock()
 	server.responseDelay = delay
+}
+
+// HoldResponses drops a matching response when the caller cancels after the write applied.
+func (server *Server) HoldResponses(shouldHold func(Request) bool) {
+	server.mutex.Lock()
+	defer server.mutex.Unlock()
+	server.holdResponse = shouldHold
 }
 
 // Requests returns every request received so far, in arrival order.
@@ -248,7 +256,7 @@ func (server *Server) serveHTTP(response http.ResponseWriter, request *http.Requ
 	recorded := Request{Method: request.Method, Path: request.URL.Path, Query: request.URL.Query(), Header: request.Header.Clone(), Body: body}
 	server.mutex.Lock()
 	server.requests = append(server.requests, recorded)
-	beforeApply, afterApply, responseDelay := server.beforeApply, server.afterApply, server.responseDelay
+	beforeApply, afterApply, responseDelay, holdResponse := server.beforeApply, server.afterApply, server.responseDelay, server.holdResponse
 	server.mutex.Unlock()
 
 	if strings.HasPrefix(request.URL.Path, downloadPrefix) {
@@ -267,6 +275,10 @@ func (server *Server) serveHTTP(response http.ResponseWriter, request *http.Requ
 		}
 	}
 	status, header, payload := server.route(request, body)
+	if holdResponse != nil && holdResponse(recorded) {
+		<-request.Context().Done()
+		return
+	}
 	if responseDelay != nil {
 		if delay := responseDelay(recorded); delay > 0 {
 			time.Sleep(delay)

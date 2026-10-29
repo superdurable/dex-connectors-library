@@ -60,8 +60,8 @@ Dex Web or Superverse Studio writes that configuration:
 go run ./examples/text-copy
 ```
 
-The default Worker address is `127.0.0.1:8823`. Override
-`DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR`
+Override
+`DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR`
 when needed.
 
 Start `OneDriveTextCopy` with a unique Flow ID:
@@ -87,5 +87,5 @@ GOWORK=off go test -tags=integration ./examples/text-copy/... -count=1 -v
 The integration tests run the Flow on a real Dex Server against the stateful
 fake Graph in `internal/graphfake`, including a same-named decoy outside the
 source folder, a hand-edited copy that blocks a `fail` upload, and a replace.
-They hold the first upload or folder-creation response for nine seconds, so
-Dex dispatches the Step twice, and prove one file or folder results.
+They stop the Worker after the first upload or folder creation applies. The
+replacement Worker repeats the request, and one file or folder results.

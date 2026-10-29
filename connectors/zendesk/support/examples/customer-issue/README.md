@@ -53,8 +53,8 @@ describes:
 go run ./examples/customer-issue
 ```
 
-The default Worker address is `127.0.0.1:8830`. Override
-`DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR`
+Override
+`DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR`
 when needed. For local verification against a Zendesk-compatible fake only,
 `ZENDESK_SUPPORT_LOCAL_API_BASE_URL` replaces
 `https://{subdomain}.zendesk.com/api/v2`; it must be HTTPS or a loopback HTTP
@@ -93,12 +93,12 @@ documented Idempotency-Key replay, safe updates, and audit metadata:
 - a search match whose requester has a look-alike address is read, skipped,
   and never written;
 - a lost create response is retried under the same key and replayed;
-- a create held past Dex's async local phase is dispatched again, gets 409
-  while the first request is in flight, and still creates one ticket;
+- a Worker lost after Zendesk accepts a create is replaced; a repeated request
+  gets the cached response under the same key and creates no second ticket;
 - a lost update response is retried, finds its audit marker, and writes no
   second note;
-- an update held past the local phase races a backup attempt, and the safe
-  update rejects the stale write, so exactly one note is added;
+- a Worker lost after Zendesk accepts an update is replaced; the next attempt
+  finds its audit marker and adds no second note;
 - a rate-limited search waits for `Retry-After`;
 - a rejected ticket fails the Flow through the unwired `providerRejected`
   branch without Zendesk's message text;

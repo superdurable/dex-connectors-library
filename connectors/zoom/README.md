@@ -226,8 +226,7 @@ together), duration, or settings of one meeting; a patch with no change
 selects `defect`. Every set field replaces Zoom's value, so repeating a patch
 leaves the same meeting, and the operation keeps the async default: transport
 failures, 408, 409, other 429, and 5xx are retried. In a real
-Dex run with a fake that answered after nine seconds, Dex sent the patch twice
-with identical bodies and the meeting held the requested slot once; see
+Dex run, a delayed patch leaves the requested slot once; see
 `TestSlowRescheduleIsSafeToRepeatWithRealDex`. Zoom answers `204` with no
 body, so read the meeting back with `getMeeting` to observe the stored values.
 A deleted meeting selects `notFound`. Zoom limits one meeting to 100 updates per

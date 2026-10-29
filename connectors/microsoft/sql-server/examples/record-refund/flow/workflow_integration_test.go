@@ -17,7 +17,7 @@ import (
 
 const scriptedPassword = "scripted-ledger-password"
 
-// startScriptedLedger allows 15-second statements so the nine-second insert below outlasts only Dex's local phase.
+// startScriptedLedger runs the scripted SQL Server with bounded connection and statement timeouts.
 func startScriptedLedger(t *testing.T, ledger *scriptedRefundLedger) (*scriptedtds.Server, *testWorker) {
 	t.Helper()
 	server, err := scriptedtds.Start(scriptedtds.Options{Password: scriptedPassword}, ledger.script())

@@ -98,14 +98,14 @@ go run ./examples/lead-qualification
 ```
 
 The Worker reads the connection at startup and the credentials before every
-call. The default Worker address is `127.0.0.1:8858`. Override
-`DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR`
+call. Override
+`DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR`
 when needed. For local verification against a Zoho CRM-compatible fake only,
 `ZOHO_CRM_LOCAL_API_BASE_URL` replaces `{api_domain}/crm/v8`; it must be HTTPS
 or a loopback HTTP URL, and production Workers leave it unset.
 
 In the Run workspace, choose **Start Flow**, select
-`ZohoCRMLeadQualification`, choose the Worker at `127.0.0.1:8858`, enter a
+`ZohoCRMLeadQualification`, enter a
 unique Flow ID, and submit. `stage` is a Deals `Stage` value exactly as Zoho
 CRM stores it, one of the options `ReadZohoDealStages` reads; a value Zoho does
 not offer completes as `unknownStage`. `ownerId` is a Zoho CRM user's numeric
@@ -147,10 +147,9 @@ for a new contact, and enforces the Deals `Stage` picklist:
   deal, a newer closed deal, and another contact's deal untouched;
 - an unknown or unused stage completes as `unknownStage`, and two accounts
   with the same name complete as `ambiguousAccount`, neither writing anything;
-- a contact upsert applied but answered after nine seconds, past Dex's async
-  local phase, is dispatched again, and the second upsert updates the contact,
-  so one contact exists;
-- a deal update held for nine seconds is dispatched again, and both dispatches
+- a contact upsert applied before a 503 is retried with the same fields,
+  so the second upsert updates the contact and one contact exists;
+- a deal update applied before Worker loss is dispatched again, and both dispatches
   set the same values;
 - a lost update response is retried;
 - a rate-limited query waits for `Retry-After`;

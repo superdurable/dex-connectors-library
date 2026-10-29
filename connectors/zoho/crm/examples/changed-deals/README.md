@@ -48,12 +48,11 @@ The example has no Step configuration. Start the Worker from
 go run ./examples/changed-deals
 ```
 
-The default Worker address is `127.0.0.1:8859`; `DEX_FLOW_SERVICE_ADDRESS`,
-`DEX_WORKER_BIND_ADDRESS`, `DEX_BLOB_CACHE_DIR`, and, for local verification
+`DEX_FLOW_SERVICE_ADDRESS`, `DEX_BLOB_CACHE_DIR`, and, for local verification
 only, `ZOHO_CRM_LOCAL_API_BASE_URL` work as in the lead-qualification example.
 
 In the Run workspace, choose **Start Flow**, select `ZohoCRMChangedDeals`,
-choose the Worker at `127.0.0.1:8859`, enter a unique Flow ID, and submit
+enter a unique Flow ID, and submit
 either a starting instant or a cursor, and optionally `maxPages` from 1 to 20,
 5 when blank:
 

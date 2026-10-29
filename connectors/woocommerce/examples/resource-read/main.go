@@ -11,7 +11,6 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"reflect"
 	"syscall"
 	"time"
 
@@ -48,10 +47,6 @@ func run(ctx context.Context) error {
 		return err
 	}
 	workerOptions := dex.WorkerOptions{FlowServiceAddress: os.Getenv("DEX_FLOW_SERVICE_ADDRESS")}
-	// Older Dex SDKs require a listening Worker; current SDKs use outbound task streams.
-	if bindAddress := reflect.ValueOf(&workerOptions).Elem().FieldByName("BindAddress"); bindAddress.IsValid() {
-		bindAddress.SetString("127.0.0.1:8873")
-	}
 	worker, err := dex.NewWorker(registry, cache, workerOptions)
 	if err != nil {
 		return errors.Join(err, cache.Close())

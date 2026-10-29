@@ -102,13 +102,14 @@ type Server struct {
 	config Config
 	signer *v4.Signer
 
-	mutex           sync.Mutex
-	objects         map[string]Object
-	requests        []Request
-	interceptor     func(Request) *Response
-	putDelays       []time.Duration
-	nextVersion     int
-	signatureErrors int
+	mutex               sync.Mutex
+	objects             map[string]Object
+	requests            []Request
+	interceptor         func(Request) *Response
+	putDelays           []time.Duration
+	holdNextPutResponse chan struct{}
+	nextVersion         int
+	signatureErrors     int
 }
 
 // NewServer starts a fake that closes when the test ends.
@@ -196,6 +197,13 @@ func (server *Server) DelayPutResponses(delays ...time.Duration) {
 	server.mutex.Lock()
 	defer server.mutex.Unlock()
 	server.putDelays = append(server.putDelays, delays...)
+}
+
+// HoldNextPutResponse blocks one applied PUT response until release or request cancellation.
+func (server *Server) HoldNextPutResponse(release chan struct{}) {
+	server.mutex.Lock()
+	defer server.mutex.Unlock()
+	server.holdNextPutResponse = release
 }
 
 func (server *Server) serveHTTP(response http.ResponseWriter, httpRequest *http.Request) {
@@ -457,11 +465,20 @@ func (server *Server) putObject(response http.ResponseWriter, request *http.Requ
 	}
 	stored := server.completeObject(object)
 	server.objects[location] = stored
+	holdResponse := server.holdNextPutResponse
+	server.holdNextPutResponse = nil
 	var delay time.Duration
 	if len(server.putDelays) > 0 {
 		delay, server.putDelays = server.putDelays[0], server.putDelays[1:]
 	}
 	server.mutex.Unlock()
+	if holdResponse != nil {
+		select {
+		case <-holdResponse:
+		case <-request.Context().Done():
+			return
+		}
+	}
 	if delay > 0 {
 		time.Sleep(delay) // The fake applies the write first, then answers late, as a slow store would.
 	}

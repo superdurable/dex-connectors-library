@@ -79,7 +79,6 @@ func run(ctx context.Context, logger *slog.Logger) error {
 		return fmt.Errorf("create blob cache: %w", err)
 	}
 	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{
-		BindAddress:        environmentOr("DEX_WORKER_BIND_ADDRESS", "127.0.0.1:8863"),
 		FlowServiceAddress: os.Getenv("DEX_FLOW_SERVICE_ADDRESS"),
 	})
 	if err != nil {
@@ -87,12 +86,12 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	}
 	// The Client only checks Dex Server health; Dex Web Start Flow starts every run.
 	client, err := dex.NewClient(registry, cache, dex.ClientOptions{
-		FlowServiceAddress: os.Getenv("DEX_FLOW_SERVICE_ADDRESS"), WorkerTarget: worker.WorkerTarget(),
+		FlowServiceAddress: os.Getenv("DEX_FLOW_SERVICE_ADDRESS"),
 	})
 	if err != nil {
 		return errors.Join(err, stopWorker(worker), cache.Close())
 	}
-	// Worker.Start fails at once when the Dex Server is unreachable, so wait for it first.
+	// Confirm the Dex Server is reachable before starting the pull Worker.
 	if err := waitForDexServer(ctx, client.HealthCheck, logger); err != nil {
 		if ctx.Err() != nil {
 			// Control-C while waiting is a clean shutdown, not a failure.

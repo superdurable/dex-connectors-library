@@ -10,10 +10,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"net"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -88,7 +86,6 @@ func TestRunWaitsForUnreachableDexServerAndStopsCleanly(t *testing.T) {
 	project := summaryProject(t, "", "AIzaSENTINEL-example-key")
 	// A Unix socket that nothing listens on makes the Dex Server unreachable without binding a TCP port.
 	t.Setenv("DEX_FLOW_SERVICE_ADDRESS", "unix://"+filepath.Join(os.TempDir(), fmt.Sprintf("dex-missing-%d.sock", time.Now().UnixNano())))
-	t.Setenv("DEX_WORKER_BIND_ADDRESS", "127.0.0.1:"+unusedPort(t))
 	t.Setenv("DEX_BLOB_CACHE_DIR", filepath.Join(directory, "blobs"))
 
 	output := &lockedBuffer{}
@@ -118,15 +115,6 @@ func TestRunWorkerRequiresTheDeclaredConnection(t *testing.T) {
 	project := testsupport.NewLoadedProject(t, gemini.ConnectorID, nil, nil)
 	err := runWorker(context.Background(), slog.New(slog.NewTextHandler(&lockedBuffer{}, nil)), project)
 	require.ErrorIs(t, err, projectconfig.ErrObjectNotFound)
-}
-
-// unusedPort returns a free local port for a Worker bind address that the test never starts.
-func unusedPort(t *testing.T) string {
-	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	defer listener.Close()
-	return strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
 }
 
 // TestSummaryModelComesFromTheDexWebStepPick reads the GenerateSummary Step's

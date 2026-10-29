@@ -9,7 +9,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -75,23 +74,16 @@ func startRealDexWorker(t *testing.T, flow dex.Flow) *dex.Client {
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, cache.Close()) })
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	workerAddress := listener.Addr().String()
-	require.NoError(t, listener.Close())
 	serverAddress := os.Getenv("DEX_FLOW_SERVICE_ADDRESS")
 	if serverAddress == "" {
 		serverAddress = "127.0.0.1:8801"
 	}
-	workerTarget := dex.WorkerTarget{Address: workerAddress}
 	client, err := dex.NewClient(registry, cache, dex.ClientOptions{
-		FlowServiceAddress: serverAddress, WorkerTarget: &workerTarget,
+		FlowServiceAddress: serverAddress,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, client.Close()) })
-	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{
-		BindAddress: workerAddress, FlowServiceAddress: serverAddress, WorkerTarget: workerTarget,
-	})
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: serverAddress})
 	require.NoError(t, err)
 	workerResult := make(chan error, 1)
 	go func() { workerResult <- worker.Start() }()
@@ -100,6 +92,12 @@ func startRealDexWorker(t *testing.T, flow dex.Flow) *dex.Client {
 		defer cancel()
 		require.NoError(t, errors.Join(worker.Stop(stopCtx), <-workerResult))
 	})
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
 	return client
 }
 

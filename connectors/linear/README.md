@@ -189,9 +189,9 @@ answer, or a read-back that fails is retried with the same UUID, and a conclusiv
 `providerRejected`. Linear does not document which error a repeated `id` returns, so the connector does not
 rely on its code; if Linear answered a repeated `id` with one of the errors that are not read back, a
 `providerRejected` create or comment could hide a record an earlier attempt stored. This lets both writes keep async durability:
-`TestSlowCreateIsDispatchedAgainAndCreatesOneIssueWithRealDex` holds Linear's answer for nine seconds, Dex
-dispatches the Step again, and the second attempt reads back the issue the first stored; the same holds for
-comments and for a Worker lost mid-create. `updateIssue` needs no key: its values are absolute.
+`TestSlowCreateIsDispatchedAgainAndCreatesOneIssueWithRealDex` loses the Worker during a held create.
+The replacement reads back the issue the first request stored. The comment test exercises the same
+recovery, and `updateIssue` needs no key because its values are absolute.
 
 The guarantee assumes that Linear refuses a second record with an existing `id` and that a read by `id`
 directly after a write finds the record; neither was verified against Linear. Linear has no conditional

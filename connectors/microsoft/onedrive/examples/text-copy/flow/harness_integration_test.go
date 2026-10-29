@@ -8,7 +8,6 @@ package textcopy
 import (
 	"context"
 	"errors"
-	"net"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -61,7 +60,6 @@ type textCopyHarness struct {
 	registry      *dex.Registry
 	cache         *blobcache.Cache
 	serverAddress string
-	workerAddress string
 	worker        *dex.Worker
 	workerResult  chan error
 	client        *dex.Client
@@ -92,15 +90,12 @@ func newTextCopyHarnessWithConnection(t *testing.T, connection onedrive.Connecti
 	require.NoError(t, err)
 	harness := &textCopyHarness{
 		flow: flow, registry: registry, cache: cache, serverAddress: environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801"),
-		workerAddress: net.JoinHostPort("127.0.0.1", availablePort(t)),
 	}
 	harness.client, err = dex.NewClient(registry, cache, dex.ClientOptions{
-		FlowServiceAddress: harness.serverAddress, WorkerTarget: &dex.WorkerTarget{Address: harness.workerAddress},
+		FlowServiceAddress: harness.serverAddress,
 	})
 	require.NoError(t, err)
-	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{
-		BindAddress: harness.workerAddress, FlowServiceAddress: harness.serverAddress, WorkerTarget: dex.WorkerTarget{Address: harness.workerAddress},
-	})
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: harness.serverAddress})
 	require.NoError(t, err)
 	harness.worker, harness.workerResult = worker, make(chan error, 1)
 	go func() { harness.workerResult <- worker.Start() }()
@@ -109,17 +104,36 @@ func newTextCopyHarnessWithConnection(t *testing.T, connection onedrive.Connecti
 		defer cancel()
 		require.NoError(t, errors.Join(harness.worker.Stop(ctx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
 	})
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
 	return harness
 }
 
 // run starts the Flow with a unique ID and waits for its terminal status.
 func (harness *textCopyHarness) run(t *testing.T, flowIDPrefix string, input Input) textCopyRun {
 	t.Helper()
+	flowID := harness.start(t, flowIDPrefix, input)
+	return harness.wait(t, flowID)
+}
+
+func (harness *textCopyHarness) start(t *testing.T, flowIDPrefix string, input Input) string {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 	flowID := flowIDPrefix + "-" + strconv.FormatInt(time.Now().UnixNano(), 10)
 	_, err := harness.client.StartFlow(ctx, harness.flow, flowID, input, dex.StartFlowOptions{})
 	require.NoError(t, err)
+	return flowID
+}
+
+func (harness *textCopyHarness) wait(t *testing.T, flowID string) textCopyRun {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
 	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
 	require.NoError(t, err)
 	run := textCopyRun{status: result.Status, errorMessage: result.ErrorMessage}
@@ -129,12 +143,19 @@ func (harness *textCopyHarness) run(t *testing.T, flowIDPrefix string, input Inp
 	return run
 }
 
-func availablePort(t *testing.T) string {
+func (harness *textCopyHarness) replaceWorker(t *testing.T) {
 	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	expired, cancel := context.WithCancel(context.Background())
+	cancel()
+	_ = harness.worker.Stop(expired)
+	require.NoError(t, <-harness.workerResult)
+	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{FlowServiceAddress: harness.serverAddress})
 	require.NoError(t, err)
-	defer listener.Close()
-	return strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
+	harness.worker, harness.workerResult = worker, make(chan error, 1)
+	go func() { harness.workerResult <- worker.Start() }()
+	registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancelRegistration()
+	require.NoError(t, worker.WaitPullRegistered(registrationContext))
 }
 
 func environmentOr(name string, fallback string) string {

@@ -101,9 +101,7 @@ Dex Web or Superverse Studio writes that configuration:
 go run ./examples/approval-decision
 ```
 
-The Worker reads the picks at startup, so restart it after saving them. The
-default Worker address is `127.0.0.1:8863`; override `DEX_FLOW_SERVICE_ADDRESS`,
-`DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR` when needed. For local
+The Worker reads the picks at startup, so restart it after saving them. Override `DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR` when needed. For local
 verification against a Graph-compatible fake only,
 `MICROSOFT_EXCEL_LOCAL_PROVIDER_URL` sends every request for
 `graph.microsoft.com` and `login.microsoftonline.com` to one loopback URL;
@@ -133,15 +131,13 @@ bearer token and stores typed input as Excel does. They prove that:
   back; a second Flow for the same request ID logs nothing;
 - formula-like and number-like text, such as `=HYPERLINK(...)` and `00123`,
   stays text;
-- an append queued for nine seconds, or answered nine seconds after applying,
-  is sent once, because the Step is sync;
+- a delayed append completes with one request;
 - an append applied before a 504 is found in the key column instead of being
   resent;
 - an unconfirmed append, and a Worker lost while the append is in flight,
   fail through the unwired `uncertain` branch without a second append;
 - a throttled append is retried after `Retry-After` and applied once;
-- a summary write that answers after nine seconds is dispatched again by async
-  Dex and leaves the same values;
+- a summary write replayed after Worker loss leaves the same values;
 - a throttled read waits for `Retry-After`, a missing table fails the Flow
   through an unwired branch after one request, and an invalid request calls
   nothing.

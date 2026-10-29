@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -35,9 +34,7 @@ const (
 	externalIDField        = "ERP_Id__c"
 	dataPathPrefix         = "/services/data/v62.0"
 	lostResponseExternalID = "ERP-LOST-RESPONSE"
-	slowExternalID         = "ERP-SLOW"
-	// slowUpsertDelay outlasts the seven-second local phase of async Execute durability.
-	slowUpsertDelay = 9 * time.Second
+	workerLossExternalID   = "ERP-WORKER-LOSS"
 )
 
 var matchQueryPattern = regexp.MustCompile(`^SELECT Id, (\w+) FROM (\w+) WHERE (\w+) = '((?:[^'\\]|\\.)*)' ORDER BY CreatedDate ASC LIMIT 5$`)
@@ -120,21 +117,31 @@ func TestRecordSyncRetriedUpsertAfterALostResponseKeepsOneRecordWithRealDex(t *t
 	require.Equal(t, 2, provider.upsertCount(lostResponseExternalID))
 }
 
-// Async durability repeats an attempt that outlasts its seven-second local phase.
-func TestRecordSyncSlowUpsertSentTwiceKeepsOneRecordWithRealDex(t *testing.T) {
+// TestRecordSyncLostWorkerDuringUpsertKeepsOneRecordWithRealDex verifies replay after an accepted upsert.
+func TestRecordSyncLostWorkerDuringUpsertKeepsOneRecordWithRealDex(t *testing.T) {
 	provider := newSalesforceProvider(t)
+	provider.holdsFirstUpsert = make(chan struct{})
 	flow, harness := newSalesforceIntegrationHarness(t, provider.URL)
 	harness.startWorker(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-
-	result := runRecordSync(t, ctx, harness.client, flow, "slow-upsert-"+strconv.FormatInt(time.Now().UnixNano(), 10), Input{
-		MatchValue: "slow.upsert@example.com", ExternalID: slowExternalID, Fields: map[string]string{"LastName": "Slow"},
-	})
-	require.Equal(t, dex.FlowCompleted, result.status)
-	require.Contains(t, []Status{StatusCreated, StatusUpdatedByExternalID}, result.outcome.Status)
-	require.Equal(t, []string{result.outcome.RecordID}, provider.contactIDsWithExternalID(slowExternalID))
-	require.GreaterOrEqual(t, provider.upsertCount(slowExternalID), 2, "Dex did not repeat the slow attempt, so this test proves nothing")
+	flowID := "lost-worker-upsert-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	_, err := harness.client.StartFlow(ctx, flow, flowID, Input{
+		MatchValue: "slow.upsert@example.com", ExternalID: workerLossExternalID, Fields: map[string]string{"LastName": "Slow"},
+	}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	require.Eventually(t, func() bool { return len(provider.contactIDsWithExternalID(workerLossExternalID)) == 1 }, 30*time.Second, 50*time.Millisecond)
+	harness.replaceWorker(t)
+	require.Eventually(t, func() bool { return provider.upsertCount(workerLossExternalID) == 2 }, time.Minute, 50*time.Millisecond)
+	close(provider.holdsFirstUpsert)
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var outcome Outcome
+	require.NoError(t, result.DecodeSingleOutput(&outcome))
+	require.Contains(t, []Status{StatusCreated, StatusUpdatedByExternalID}, outcome.Status)
+	require.Equal(t, []string{outcome.RecordID}, provider.contactIDsWithExternalID(workerLossExternalID))
+	require.Equal(t, 2, provider.upsertCount(workerLossExternalID))
 }
 
 type recordSyncRun struct {
@@ -180,6 +187,7 @@ type salesforceProvider struct {
 	upsertCountsByValue  map[string]int
 	writes               int
 	hasLostFirstResponse bool
+	holdsFirstUpsert     chan struct{}
 }
 
 func newSalesforceProvider(t *testing.T) *salesforceProvider {
@@ -307,8 +315,17 @@ func (provider *salesforceProvider) upsertRecord(response http.ResponseWriter, r
 	case value == lostResponseExternalID && !provider.hasLostFirstResponse:
 		provider.hasLostFirstResponse = true
 		provider.writeJSON(response, http.StatusServiceUnavailable, []map[string]any{{"errorCode": "SERVER_UNAVAILABLE", "message": "the response was lost after the write"}})
-	case value == slowExternalID:
-		time.Sleep(slowUpsertDelay)
+	case value == workerLossExternalID:
+		if provider.upsertCountsByValue[value] == 1 && provider.holdsFirstUpsert != nil {
+			provider.mutex.Unlock()
+			select {
+			case <-provider.holdsFirstUpsert:
+			case <-request.Context().Done():
+				provider.mutex.Lock()
+				return
+			}
+			provider.mutex.Lock()
+		}
 		provider.writeJSON(response, http.StatusCreated, map[string]any{"id": record.id, "success": true, "errors": []any{}, "created": true})
 	default:
 		provider.writeJSON(response, http.StatusCreated, map[string]any{"id": record.id, "success": true, "errors": []any{}, "created": true})
@@ -398,7 +415,6 @@ type salesforceIntegrationHarness struct {
 	registry      *dex.Registry
 	cache         *blobcache.Cache
 	serverAddress string
-	workerAddress string
 	worker        *dex.Worker
 	workerResult  chan error
 	client        *dex.Client
@@ -427,12 +443,11 @@ func newSalesforceIntegrationHarnessForConnection(t *testing.T, connection sales
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
-	workerAddress := net.JoinHostPort("127.0.0.1", availableIntegrationPort(t))
 	harness := &salesforceIntegrationHarness{
-		registry: registry, cache: cache, serverAddress: environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801"), workerAddress: workerAddress,
+		registry: registry, cache: cache, serverAddress: environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801"),
 	}
 	harness.client, err = dex.NewClient(registry, cache, dex.ClientOptions{
-		FlowServiceAddress: harness.serverAddress, WorkerTarget: &dex.WorkerTarget{Address: workerAddress},
+		FlowServiceAddress: harness.serverAddress,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -446,14 +461,28 @@ func newSalesforceIntegrationHarnessForConnection(t *testing.T, connection sales
 
 func (harness *salesforceIntegrationHarness) startWorker(t *testing.T) {
 	t.Helper()
-	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{
-		BindAddress: harness.workerAddress, FlowServiceAddress: harness.serverAddress,
-		WorkerTarget: dex.WorkerTarget{Address: harness.workerAddress},
-	})
+	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{FlowServiceAddress: harness.serverAddress})
 	require.NoError(t, err)
 	harness.worker = worker
 	harness.workerResult = make(chan error, 1)
 	go func() { harness.workerResult <- worker.Start() }()
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
+}
+
+func (harness *salesforceIntegrationHarness) replaceWorker(t *testing.T) {
+	t.Helper()
+	expired, cancel := context.WithCancel(context.Background())
+	cancel()
+	_ = harness.worker.Stop(expired)
+	require.NoError(t, <-harness.workerResult)
+	harness.worker = nil
+	harness.workerResult = nil
+	harness.startWorker(t)
 }
 
 func (harness *salesforceIntegrationHarness) stopWorker(t *testing.T) {
@@ -463,14 +492,6 @@ func (harness *salesforceIntegrationHarness) stopWorker(t *testing.T) {
 	require.NoError(t, errors.Join(harness.worker.Stop(ctx), <-harness.workerResult))
 	harness.worker = nil
 	harness.workerResult = nil
-}
-
-func availableIntegrationPort(t *testing.T) string {
-	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	defer listener.Close()
-	return strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
 }
 
 func environmentOr(name string, fallback string) string {

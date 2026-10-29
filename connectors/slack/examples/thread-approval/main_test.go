@@ -118,9 +118,9 @@ func TestRunUntilStoppedWaitsForUnreachableDexServerAndStopsCleanly(t *testing.T
 	require.NoError(t, err)
 	// A Unix socket that nothing listens on makes the Dex Server unreachable without binding a TCP port.
 	unreachableDex := "unix://" + filepath.Join(os.TempDir(), fmt.Sprintf("dex-missing-%d.sock", time.Now().UnixNano()))
-	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{BindAddress: "127.0.0.1:" + unusedPort(t), FlowServiceAddress: unreachableDex})
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: unreachableDex})
 	require.NoError(t, err)
-	client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: unreachableDex, WorkerTarget: worker.WorkerTarget()})
+	client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: unreachableDex})
 	require.NoError(t, err)
 	triggerRunner, err := slack.NewMessageTriggerRunner(slack.MessageTriggerRunnerConfig{
 		Connection: connection,
@@ -166,13 +166,4 @@ func TestRunUntilStoppedWaitsForUnreachableDexServerAndStopsCleanly(t *testing.T
 		t.Fatal("the example did not stop after cancellation")
 	}
 	require.NoError(t, errors.Join(client.Close(), stopWorker(worker), cache.Close()))
-}
-
-// unusedPort returns a free local port for a Worker bind address that the test never starts.
-func unusedPort(t *testing.T) string {
-	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	defer listener.Close()
-	return strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
 }

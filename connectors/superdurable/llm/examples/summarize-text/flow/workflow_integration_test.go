@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -172,8 +171,7 @@ func requireOnlyKeyInItsSlot(t *testing.T, provider *textgentest.FakeProvider) {
 	}
 }
 
-// startSummaryWorker opens the connection from project storage the way the Worker does, points it at
-// provider, runs the example Flow's Worker on a free local port, and returns a Client targeting it.
+// startSummaryWorker loads the connection from project storage and runs the example Flow on a pull Worker.
 func startSummaryWorker(
 	t *testing.T, provider *textgentest.FakeProvider, configuration map[string]any, summaryModel SummaryModelConfiguration,
 ) (*Flow, *dex.Client) {
@@ -199,7 +197,7 @@ func startSummaryWorkerWithConnection(t *testing.T, llmConnection llm.Connection
 	return flow, startWorker(t, flow)
 }
 
-// startWorker registers flow on a new Worker at a free local port and returns a Client targeting it.
+// startWorker registers the Flow on a pull Worker and returns a Client.
 func startWorker(t *testing.T, flow dex.Flow) *dex.Client {
 	t.Helper()
 	serverAddress := cmp.Or(os.Getenv(textgentest.DexFlowServiceAddressEnvironmentVariable), textgentest.DefaultDexFlowServiceAddress)
@@ -207,18 +205,18 @@ func startWorker(t *testing.T, flow dex.Flow) *dex.Client {
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	workerAddress := listener.Addr().String()
-	require.NoError(t, listener.Close())
-	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{
-		BindAddress: workerAddress, FlowServiceAddress: serverAddress, WorkerTarget: dex.WorkerTarget{Address: workerAddress},
-	})
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: serverAddress})
 	require.NoError(t, err)
 	workerResult := make(chan error, 1)
 	go func() { workerResult <- worker.Start() }()
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
 	client, err := dex.NewClient(registry, cache, dex.ClientOptions{
-		FlowServiceAddress: serverAddress, WorkerTarget: &dex.WorkerTarget{Address: workerAddress},
+		FlowServiceAddress: serverAddress,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() {

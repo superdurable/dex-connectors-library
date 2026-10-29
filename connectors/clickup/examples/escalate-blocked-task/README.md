@@ -129,9 +129,9 @@ cd "$(git rev-parse --show-toplevel)/connectors/clickup"
 go run ./examples/escalate-blocked-task
 ```
 
-The Worker listens on `127.0.0.1:8881` and the webhook endpoint on
+The webhook endpoint listens on
 `127.0.0.1:8882`; override `DEX_FLOW_SERVICE_ADDRESS`,
-`DEX_WORKER_BIND_ADDRESS`, `CLICKUP_WEBHOOK_BIND_ADDRESS`, or
+`CLICKUP_WEBHOOK_BIND_ADDRESS`, or
 `DEX_BLOB_CACHE_DIR` when needed, and set `LOG_LEVEL=debug` to see every
 delivery. `GET /readyz` answers `200` once the binding receives events. For
 local verification against a ClickUp-compatible fake only,
@@ -199,14 +199,13 @@ Flow on a real Worker against a stateful fake ClickUp that requires the raw
 - an escalation task filed earlier, even a closed one, is reused;
 - a task that is no longer blocked is skipped after one read, and an unknown
   manager is skipped before any search;
-- a create held past Dex's async local phase is sent once (the
-  duplicate-dispatch test), and so is a comment;
+- a delayed create and comment each complete with one request;
 - a create whose response was lost is found in the List and never resent;
 - a create answered 503 without being applied fails the Flow and is never
   resent;
 - a Worker lost while ClickUp holds the create leaves the next attempt to read
   the List instead of resending;
-- an update held past the local phase is dispatched again and converges on one
+- an update interrupted by Worker loss runs again and converges on one
   assignment;
 - a rate-limited search waits for `X-RateLimit-Reset`;
 - a rejected create fails the Flow without ClickUp's message text;

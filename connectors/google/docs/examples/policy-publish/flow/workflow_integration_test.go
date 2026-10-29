@@ -8,7 +8,6 @@ package policypublish
 import (
 	"context"
 	"errors"
-	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -29,8 +28,7 @@ const (
 	integrationAccessToken = "docs-integration-token"
 	templateDocumentID     = "policyTemplate1"
 	destinationFolderID    = "fld_policies"
-	// slowProviderDelay outlasts Dex's roughly seven-second async local phase, so an async Step is dispatched again.
-	slowProviderDelay = 9 * time.Second
+	slowProviderDelay      = 100 * time.Millisecond
 	// providerRequestTimeout lets a slow fake request finish inside the 30-second Execute timeout.
 	providerRequestTimeout = 20 * time.Second
 	// readsWithoutDuplicates is one read each for the template, the draft, the fill, the stamp, and the read-back.
@@ -90,7 +88,7 @@ func TestPolicyPublishSlowCreateIsSentOnceWithRealDex(t *testing.T) {
 	outcome := harness.runPublish(t, "slow-create", publishInput())
 	require.GreaterOrEqual(t, time.Since(startedAt), slowProviderDelay)
 	require.Equal(t, StatusPublished, outcome.Status)
-	provider.WaitForDelayedRequests(t, 2*slowProviderDelay)
+	provider.WaitForDelayedRequests(t, 30*time.Second)
 	require.Equal(t, 1, provider.Count(fakegoogledocs.CountCreatesReceived), "no second dispatch while the first was in flight")
 	require.Len(t, provider.CreatedDocumentIDs(), 1)
 }
@@ -153,51 +151,84 @@ func TestPolicyPublishLostWorkerDuringCreateIsNeverResentWithRealDex(t *testing.
 	require.Equal(t, dex.FlowFailed, result.Status)
 	require.Contains(t, result.ErrorMessage, "uncertain")
 	require.Contains(t, result.ErrorMessage, "no target")
-	provider.WaitForDelayedRequests(t, 2*slowProviderDelay)
+	provider.WaitForDelayedRequests(t, 30*time.Second)
 	require.Equal(t, 1, provider.Count(fakegoogledocs.CountCreatesReceived), "the attempt on the new Worker did not resend the create")
 }
 
-// A fill that answers late is dispatched again by async Dex; the second dispatch finds its own text.
+// A lost Worker after applying the fill makes the replacement read the committed text.
 func TestPolicyPublishSlowFillResponseAppliesOnceWithRealDex(t *testing.T) {
 	provider := newPolicyProvider(t)
-	provider.SetWriteBehavior(fakegoogledocs.WriteKindReplace, fakegoogledocs.WriteBehavior{DelayAfterApplying: slowProviderDelay})
+	hold := make(chan struct{})
+	provider.SetWriteBehavior(fakegoogledocs.WriteKindReplace, fakegoogledocs.WriteBehavior{HoldAfterApplying: hold})
 	harness := newPublishHarness(t, provider)
-
-	outcome := harness.runPublish(t, "slow-fill-response", publishInput())
+	outcome := harness.runAfterLostWorker(t, provider, "lost-fill-response", fakegoogledocs.CountBatchUpdatesApplied, 1, hold)
 	require.Equal(t, StatusPublished, outcome.Status)
-	provider.WaitForDelayedRequests(t, 2*slowProviderDelay)
-	require.Greater(t, provider.Count(fakegoogledocs.CountDocumentReads), readsWithoutDuplicates, "Dex dispatched the slow fill again")
+	require.True(t, outcome.WasFillAlreadyApplied)
+	require.Equal(t, readsWithoutDuplicates+1, provider.Count(fakegoogledocs.CountDocumentReads))
+	require.Equal(t, 2, provider.Count(fakegoogledocs.CountBatchUpdatesReceived))
 	require.Equal(t, 2, provider.Count(fakegoogledocs.CountBatchUpdatesApplied), "one fill and one stamp")
 	requirePublishedDocument(t, provider, outcome)
 	t.Logf("slow fill response: reads=%d batches=%d wasFillAlreadyApplied=%t", provider.Count(fakegoogledocs.CountDocumentReads),
 		provider.Count(fakegoogledocs.CountBatchUpdatesReceived), outcome.WasFillAlreadyApplied)
 }
 
-// Both dispatches read the same revision before either writes. Google applies only the first batch that reaches it.
+// The first fill arrives late and its stale revision cannot overwrite the replacement fill.
 func TestPolicyPublishConcurrentFillDispatchesApplyOnceWithRealDex(t *testing.T) {
 	provider := newPolicyProvider(t)
-	provider.SetWriteBehavior(fakegoogledocs.WriteKindReplace, fakegoogledocs.WriteBehavior{DelayBeforeApplying: slowProviderDelay})
+	hold := make(chan struct{})
+	defer func() {
+		if hold != nil {
+			close(hold)
+		}
+	}()
+	provider.SetWriteBehavior(fakegoogledocs.WriteKindReplace, fakegoogledocs.WriteBehavior{HoldBeforeApplying: hold})
 	harness := newPublishHarness(t, provider)
-
-	outcome := harness.runPublish(t, "concurrent-fill", publishInput())
+	flowID := harness.startPublish(t, "lost-before-fill", publishInput())
+	require.Eventually(t, func() bool { return provider.Count(fakegoogledocs.CountBatchUpdatesReceived) == 1 }, 30*time.Second, 50*time.Millisecond)
+	harness.replaceWorker(t)
+	require.Eventually(t, func() bool { return provider.Count(fakegoogledocs.CountBatchUpdatesApplied) >= 1 }, 30*time.Second, 50*time.Millisecond,
+		"the replacement fill must commit before the old request resumes")
+	close(hold)
+	hold = nil
+	result := harness.waitForFlow(t, flowID)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var outcome Outcome
+	require.NoError(t, result.DecodeSingleOutput(&outcome))
+	provider.WaitForDelayedRequests(t, 30*time.Second)
 	require.Equal(t, StatusPublished, outcome.Status)
-	provider.WaitForDelayedRequests(t, 2*slowProviderDelay)
-	require.Equal(t, 1, provider.Count(fakegoogledocs.CountStaleRevisionRejected), "the delayed batch carried a revision that was no longer current")
+	require.False(t, outcome.WasFillAlreadyApplied)
+	require.Equal(t, 3, provider.Count(fakegoogledocs.CountBatchUpdatesReceived), "the late fill, replacement fill, and stamp")
+	require.Equal(t, 1, provider.Count(fakegoogledocs.CountStaleRevisionRejected))
 	require.Equal(t, 2, provider.Count(fakegoogledocs.CountBatchUpdatesApplied), "one fill and one stamp")
 	requirePublishedDocument(t, provider, outcome)
 }
 
 func TestPolicyPublishSlowStampAppendsOnceWithRealDex(t *testing.T) {
 	provider := newPolicyProvider(t)
-	provider.SetWriteBehavior(fakegoogledocs.WriteKindAppend, fakegoogledocs.WriteBehavior{DelayAfterApplying: slowProviderDelay})
+	hold := make(chan struct{})
+	provider.SetWriteBehavior(fakegoogledocs.WriteKindAppend, fakegoogledocs.WriteBehavior{HoldAfterApplying: hold})
 	harness := newPublishHarness(t, provider)
-
-	outcome := harness.runPublish(t, "slow-stamp", publishInput())
+	outcome := harness.runAfterLostWorker(t, provider, "lost-stamp-response", fakegoogledocs.CountBatchUpdatesApplied, 2, hold)
 	require.Equal(t, StatusPublished, outcome.Status)
-	provider.WaitForDelayedRequests(t, 2*slowProviderDelay)
-	require.Greater(t, provider.Count(fakegoogledocs.CountDocumentReads), readsWithoutDuplicates, "Dex dispatched the slow append again")
+	require.True(t, outcome.WasStampAlreadyApplied)
+	require.Equal(t, readsWithoutDuplicates+1, provider.Count(fakegoogledocs.CountDocumentReads))
+	require.Equal(t, 2, provider.Count(fakegoogledocs.CountBatchUpdatesReceived))
 	require.Equal(t, 2, provider.Count(fakegoogledocs.CountBatchUpdatesApplied), "one fill and one stamp")
 	requirePublishedDocument(t, provider, outcome)
+}
+
+func (harness *publishHarness) runAfterLostWorker(t *testing.T, provider *fakegoogledocs.Server, scenario, gateCount string, expected int, hold chan struct{}) Outcome {
+	t.Helper()
+	flowID := harness.startPublish(t, scenario, publishInput())
+	require.Eventually(t, func() bool { return provider.Count(gateCount) == expected }, 30*time.Second, 50*time.Millisecond)
+	harness.replaceWorker(t)
+	close(hold)
+	result := harness.waitForFlow(t, flowID)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var outcome Outcome
+	require.NoError(t, result.DecodeSingleOutput(&outcome))
+	provider.WaitForDelayedRequests(t, 30*time.Second)
+	return outcome
 }
 
 func TestPolicyPublishMissingPlaceholderWritesNothingWithRealDex(t *testing.T) {
@@ -264,7 +295,6 @@ type publishHarness struct {
 	registry      *dex.Registry
 	cache         *blobcache.Cache
 	serverAddress string
-	workerAddress string
 	worker        *dex.Worker
 	workerResult  chan error
 	client        *dex.Client
@@ -297,29 +327,36 @@ func newPublishHarnessForConnection(t *testing.T, connection docs.Connection) *p
 	require.NoError(t, err)
 	harness.cache, err = blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
-	harness.workerAddress = net.JoinHostPort("127.0.0.1", availableIntegrationPort(t))
 	harness.client, err = dex.NewClient(harness.registry, harness.cache, dex.ClientOptions{
-		FlowServiceAddress: harness.serverAddress, WorkerTarget: &dex.WorkerTarget{Address: harness.workerAddress},
+		FlowServiceAddress: harness.serverAddress,
 	})
 	require.NoError(t, err)
-	harness.startWorker(t)
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
-		require.NoError(t, errors.Join(harness.worker.Stop(ctx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
+		var stopError error
+		if harness.worker != nil {
+			stopError = errors.Join(harness.worker.Stop(ctx), <-harness.workerResult)
+		}
+		require.NoError(t, errors.Join(stopError, harness.client.Close(), harness.cache.Close()))
 	})
+	harness.startWorker(t)
 	return harness
 }
 
 func (harness *publishHarness) startWorker(t *testing.T) {
 	t.Helper()
-	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{
-		BindAddress: harness.workerAddress, FlowServiceAddress: harness.serverAddress, WorkerTarget: dex.WorkerTarget{Address: harness.workerAddress},
-	})
+	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{FlowServiceAddress: harness.serverAddress})
 	require.NoError(t, err)
 	workerResult := make(chan error, 1)
 	go func() { workerResult <- worker.Start() }()
 	harness.worker, harness.workerResult = worker, workerResult
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
 }
 
 // replaceWorker force-stops the Worker without draining its handlers, like a crash, then starts a new one.
@@ -360,14 +397,6 @@ func (harness *publishHarness) waitForFlow(t *testing.T, flowID string) dex.Flow
 	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
 	require.NoError(t, err)
 	return result
-}
-
-func availableIntegrationPort(t *testing.T) string {
-	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	defer listener.Close()
-	return strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
 }
 
 func environmentOr(name string, fallback string) string {

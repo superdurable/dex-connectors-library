@@ -29,8 +29,6 @@ const (
 	fakeClientSecret = "SENTINEL-INTERCOM-CLIENT-SECRET"
 	fakeAdminID      = "5017691"
 	fakeWorkspaceID  = "ecahpwf5"
-	// slowResponseDelay outlasts Dex's roughly seven-second async local phase, so Dex dispatches a backup attempt.
-	slowResponseDelay = 9 * time.Second
 )
 
 var fakeHTMLTagPattern = regexp.MustCompile(`<[^>]*>`)
@@ -50,12 +48,11 @@ type fakeIntercom struct {
 	counts        map[string]int
 	requests      map[string][]fakeRecordedRequest
 
-	delaysFirstReply              bool
 	losesFirstReplyResponse       bool
 	failsFirstReplyBeforeApplying bool
 	rejectsReply                  bool
 	holdsFirstReply               chan struct{}
-	delaysFirstClose              bool
+	holdsFirstClose               chan struct{}
 	rejectsRedundantClose         bool
 	rateLimitsFirstSearch         bool
 }
@@ -286,11 +283,6 @@ func (provider *fakeIntercom) replyToConversation(response http.ResponseWriter, 
 		defer provider.delayedRequests.Done()
 		<-provider.holdsFirstReply
 	}
-	if attempt == 1 && provider.delaysFirstReply {
-		provider.delayedRequests.Add(1)
-		defer provider.delayedRequests.Done()
-		time.Sleep(slowResponseDelay)
-	}
 	var reply struct {
 		MessageType string `json:"message_type"`
 		Type        string `json:"type"`
@@ -321,10 +313,9 @@ func (provider *fakeIntercom) replyToConversation(response http.ResponseWriter, 
 
 func (provider *fakeIntercom) manageConversation(response http.ResponseWriter, request *http.Request, body []byte, conversationID string) {
 	attempt := provider.record("manage", request, body)
-	if attempt == 1 && provider.delaysFirstClose {
+	if attempt == 1 && provider.holdsFirstClose != nil {
 		provider.delayedRequests.Add(1)
 		defer provider.delayedRequests.Done()
-		time.Sleep(slowResponseDelay)
 	}
 	var change struct {
 		MessageType  string `json:"message_type"`
@@ -360,6 +351,13 @@ func (provider *fakeIntercom) manageConversation(response http.ResponseWriter, r
 	provider.counts["appliedManage"]++
 	value := provider.conversationJSON(conversation, true, false)
 	provider.mutex.Unlock()
+	if attempt == 1 && provider.holdsFirstClose != nil {
+		select {
+		case <-provider.holdsFirstClose:
+		case <-request.Context().Done():
+			return
+		}
+	}
 	provider.writeValue(response, http.StatusOK, value)
 }
 
@@ -505,7 +503,7 @@ func (provider *fakeIntercom) waitForDelayedRequests(t *testing.T) {
 	}()
 	select {
 	case <-finished:
-	case <-time.After(3 * slowResponseDelay):
+	case <-time.After(30 * time.Second):
 		t.Fatal("a delayed fake Intercom request did not finish")
 	}
 }

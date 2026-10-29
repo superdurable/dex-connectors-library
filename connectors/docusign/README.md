@@ -89,7 +89,7 @@ authentication and permission codes select `providerRejected`, and
 DocuSign has no idempotency key, and a duplicate envelope is a duplicate
 contract. The operation therefore:
 
-1. runs with **sync** durability, so Dex never re-dispatches a slow create;
+1. runs with **sync** durability, so Dex commits the dispatch result promptly;
 2. adds a hidden text custom field, `dexIdempotencyKey`, holding the Step's
    idempotency key, which is stable across retries of one Step execution;
 3. records a heartbeat checkpoint with the dispatch time before the `POST`;
@@ -133,7 +133,7 @@ answers `ENVELOPE_CANNOT_VOID_INVALID_STATE`, the connector reads the envelope:
 `voided` selects `voided` with `wasAlreadyVoided`, so a repeated Step and a
 duplicate dispatch are safe, and `completed`, `declined`, or a `created` draft
 select `notVoidable` with the status. A real-Dex test lets the async Step be
-dispatched twice against a nine-second provider and still ends `voided`.
+retried after an accepted void and still ends `voided`.
 
 ### downloadCombinedDocument and Dex payloads
 
@@ -309,8 +309,7 @@ GOWORK=off go vet ./...
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./... -count=1 -v
 ```
 
-The integration run needs `dexcli dev` and takes about half a minute: the
-create and void duplicate-dispatch tests wait for a nine-second provider, and
-the example's tests send an envelope, resume it from a signed Connect event
+The integration run needs `dexcli dev`. The void probe repeats Execute after
+an accepted provider call, and the example's tests send an envelope, resume it from a signed Connect event
 and its duplicates, survive a Worker replacement during the wait, resume from
 the fallback status poll, and void at the signing deadline.

@@ -144,9 +144,9 @@ cd "$(git rev-parse --show-toplevel)/connectors/typeform"
 go run ./examples/response-recorder
 ```
 
-The Worker listens on `127.0.0.1:8871` and the webhook endpoint on
+The webhook endpoint listens on
 `127.0.0.1:8872`; override `DEX_FLOW_SERVICE_ADDRESS`,
-`DEX_WORKER_BIND_ADDRESS`, `WEBHOOK_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR` when
+`WEBHOOK_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR` when
 needed, and set `LOG_LEVEL=debug` to see every delivery. `GET /readyz` answers
 `200` once the binding receives submissions.
 
@@ -227,5 +227,5 @@ without answers is filtered; and a delivery while the binding is not running
 answers `503` and its retry starts the Flow:
 
 ```bash
-DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 go test -tags=integration ./examples/response-recorder/... -count=1 -v
+DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 go test -p 1 -tags=integration ./examples/response-recorder/... -count=1 -v
 ```

@@ -18,7 +18,7 @@ every Jira operation:
    adopts the issue;
 5. `AddTriageComment` calls `jira.NewAddCommentStep`. Only `added` continues;
 6. `MoveTriageIssue` calls `jira.NewTransitionIssueStep` by destination status,
-   so a retried or backup attempt recognizes a move Jira already made.
+   so a retried attempt recognizes a move Jira already made.
 
 A blank `triageComment` skips the comment and a blank `destinationStatusName`
 skips the transition. Unwired optional branches, such as a rejected search, a
@@ -67,8 +67,8 @@ Superverse Studio writes that configuration when you save the connection.
 go run ./examples/triage-issue
 ```
 
-The default Worker address is `127.0.0.1:8830`. Override
-`DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR`
+Override
+`DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR`
 when needed.
 
 Start `JiraIssueTriage` with a unique Flow ID:
@@ -99,9 +99,9 @@ once beside a near-duplicate and read back, commented, and moved; an open
 issue with the same summary reused; a rate-limited create
 retried after `Retry-After`; a create timeout reconciled by confirming a
 missing, a mismatched, and then the real issue key without a second create; a
-5xx create created again only after operator approval; a nine-second create
-sent once under sync durability; a nine-second transition whose backup attempt
-finds the issue already moved and sends nothing; a destination the workflow does
+5xx create created again only after operator approval; a create sent once;
+a Worker lost after Jira applies a transition, whose replacement reads the
+issue already moved and sends nothing; a destination the workflow does
 not offer; a comment timeout that fails without a resend; and a blank `cloudId`
 resolved to the only granted site.
 

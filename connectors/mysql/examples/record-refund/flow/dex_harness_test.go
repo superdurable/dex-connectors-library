@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
 	"os"
 	"path/filepath"
 	"testing"
@@ -25,10 +24,13 @@ import (
 
 // testWorker runs the example Flow on a real Worker against DEX_FLOW_SERVICE_ADDRESS, or 127.0.0.1:8801.
 type testWorker struct {
-	flow   *Flow
-	client *dex.Client
-	worker *dex.Worker
-	result chan error
+	flow               *Flow
+	client             *dex.Client
+	worker             *dex.Worker
+	result             chan error
+	registry           *dex.Registry
+	cache              *blobcache.Cache
+	flowServiceAddress string
 }
 
 func startTestWorker(t *testing.T, config mysql.Config, password string) *testWorker {
@@ -49,25 +51,43 @@ func startTestWorkerWithConnection(t *testing.T, connection mysql.Connection) *t
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	address := listener.Addr().String()
-	require.NoError(t, listener.Close())
 	flowServiceAddress := os.Getenv("DEX_FLOW_SERVICE_ADDRESS")
-	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{BindAddress: address, FlowServiceAddress: flowServiceAddress})
+	dexClient, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: flowServiceAddress})
 	require.NoError(t, err)
-	dexClient, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: flowServiceAddress, WorkerTarget: &dex.WorkerTarget{Address: address}})
-	require.NoError(t, err)
-	harness := &testWorker{flow: flow, client: dexClient, worker: worker, result: make(chan error, 1)}
-	go func() { harness.result <- worker.Start() }()
+	harness := &testWorker{flow: flow, client: dexClient, registry: registry, cache: cache, flowServiceAddress: flowServiceAddress}
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
-		require.NoError(t, worker.Stop(ctx))
+		if harness.worker == nil {
+			require.NoError(t, errors.Join(dexClient.Close(), cache.Close()))
+			return
+		}
+		require.NoError(t, harness.worker.Stop(ctx))
 		require.NoError(t, <-harness.result)
 		require.NoError(t, errors.Join(dexClient.Close(), cache.Close()))
 	})
+	harness.startWorker(t)
 	return harness
+}
+
+func (harness *testWorker) startWorker(t *testing.T) {
+	t.Helper()
+	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{FlowServiceAddress: harness.flowServiceAddress})
+	require.NoError(t, err)
+	harness.worker, harness.result = worker, make(chan error, 1)
+	go func() { harness.result <- worker.Start() }()
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+	require.NoError(t, worker.WaitPullRegistered(ctx))
+}
+
+func (harness *testWorker) replaceWorker(t *testing.T) {
+	t.Helper()
+	expired, cancel := context.WithCancel(context.Background())
+	cancel()
+	_ = harness.worker.Stop(expired)
+	require.NoError(t, <-harness.result)
+	harness.startWorker(t)
 }
 
 // runRefundFlow starts one uniquely identified Flow and waits for its terminal result.

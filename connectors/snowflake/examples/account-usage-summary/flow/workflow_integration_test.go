@@ -14,9 +14,6 @@ import (
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
-// slowSubmitDelay outlasts Dex's roughly seven-second async local phase, so the submit Step is dispatched again.
-const slowSubmitDelay = 9 * time.Second
-
 var (
 	usageColumns = []fakesnowflake.Column{
 		{Name: "EVENT_COUNT", Type: "fixed", Precision: 18},
@@ -108,27 +105,30 @@ func TestAccountUsageSummaryCompletesWhenCancellationIsRefusedAfterTheStatementF
 	require.Equal(t, 1, provider.CancelCount(record.StatementHandle))
 }
 
-// The fake starts the statement, then answers after nine seconds; Dex dispatches the async submit again meanwhile.
+// The fake starts the statement, then loses its reply when the Worker stops.
 func TestAccountUsageSummarySlowSubmitDispatchedTwiceRunsOneStatementWithRealDex(t *testing.T) {
+	firstSubmitHold := make(chan struct{})
 	provider := newUsageProvider(t, func(fakesnowflake.SubmittedStatement) fakesnowflake.StatementScript {
 		script := completedScript(0)
-		script.FirstSubmitDelay = slowSubmitDelay
+		script.FirstSubmitHold = firstSubmitHold
 		return script
 	})
 	harness := newUsageHarness(t, provider, 5)
 
-	startedAt := time.Now()
-	record := harness.runSummary(t, "slow-submit", request)
+	flowID := harness.startSummary(t, "lost-submit", request)
+	require.Eventually(t, func() bool { return len(provider.Submissions()) == 1 && provider.ExecutionCount() == 1 },
+		30*time.Second, 10*time.Millisecond)
+	harness.replaceWorker(t)
+	record := harness.requireCompletedRecord(t, flowID)
 	requireUsage(t, record)
 	submissions := provider.Submissions()
-	require.GreaterOrEqual(t, len(submissions), 2, "Dex dispatched the submit again while the first request was in flight")
+	require.Len(t, submissions, 2, "the replacement Worker resubmits once")
 	for _, submission := range submissions {
 		require.Equal(t, submissions[0].RequestID, submission.RequestID, "every dispatch of one Step execution reuses its requestId")
 		require.True(t, submission.IsRetry)
 	}
 	require.Equal(t, 1, provider.ExecutionCount(), "retry=true with the same requestId never runs the statement twice")
 	require.Equal(t, provider.HandleForRequestID(submissions[0].RequestID), record.StatementHandle)
-	require.Less(t, time.Since(startedAt), 2*slowSubmitDelay+30*time.Second)
 }
 
 func TestAccountUsageSummaryResumesAfterTheWorkerIsLostDuringTheWaitWithRealDex(t *testing.T) {

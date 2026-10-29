@@ -111,12 +111,12 @@ go run ./examples/summarize-text
 
 The Worker reads the connection's settings and the Step's pick at startup,
 so restart it after changing either in Dex Web; a replaced key applies
-without a restart. It listens on `127.0.0.1:8839`; override
-`DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR`
+without a restart. Override
+`DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR`
 when needed. It logs the connection name and the pick, never a key.
 
 In the Run workspace, choose **Start Flow**, select `LLMSummarizeText`,
-choose the Worker at `127.0.0.1:8839`, enter a Flow ID, and submit:
+enter a Flow ID, and submit:
 
 ```json
 {"text": "The Dex LLM connector runs one generateText Step on the model provider that the connection names and returns typed branches."}

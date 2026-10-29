@@ -8,7 +8,6 @@ package issuerequest
 import (
 	"context"
 	"errors"
-	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -26,9 +25,7 @@ import (
 const (
 	integrationTitle      = "Monthly Fire Drill Checklist - February"
 	defaultRequestTimeout = 5 * time.Second
-	// slowResponseDelay outlasts Dex's roughly seven-second async local phase, so an async Step is dispatched again.
-	slowResponseDelay  = 9 * time.Second
-	slowRequestTimeout = 12 * time.Second
+	slowRequestTimeout    = 12 * time.Second
 )
 
 func integrationInput() Input {
@@ -102,19 +99,15 @@ func TestUnknownAssigneeLeavesTheIssueUnassignedWithRealDex(t *testing.T) {
 	require.Equal(t, todoStateID, provider.issue(outcome.IssueID).stateID)
 }
 
-// TestSlowCreateIsDispatchedAgainAndCreatesOneIssueWithRealDex is the duplicate-dispatch proof: Linear
-// already stored the issue when Dex dispatches the async Step again, and the repeated client UUID reads it back.
+// TestSlowCreateIsDispatchedAgainAndCreatesOneIssueWithRealDex verifies replay after losing the Worker mid-create.
 func TestSlowCreateIsDispatchedAgainAndCreatesOneIssueWithRealDex(t *testing.T) {
 	provider := newFakeLinear(t)
-	provider.delaysFirstCreate = true
+	provider.holdsFirstCreate = make(chan struct{})
 	harness := newRequestHarness(t, provider, slowRequestTimeout)
-
-	startedAt := time.Now()
-	outcome := harness.runIssueRequest(t, "slow-create", integrationInput())
+	outcome := harness.runAfterLostWorker(t, provider, "slow-create", "LinearCreateIssue", provider.holdsFirstCreate)
 	provider.waitForDelayedRequests(t)
-	require.GreaterOrEqual(t, time.Since(startedAt), slowResponseDelay)
 	require.Equal(t, IssueCreated, outcome.Action)
-	require.GreaterOrEqual(t, provider.count("LinearCreateIssue"), 2, "Dex dispatched the create again past its local phase")
+	require.Equal(t, 2, provider.count("LinearCreateIssue"))
 	require.Equal(t, 1, provider.count("appliedCreate"), "only the first request stored an issue")
 	require.Equal(t, 1, provider.issueCount(), "the repeated dispatch did not create a second issue")
 	require.Len(t, provider.distinctInputIDs("LinearCreateIssue"), 1, "every attempt sent the same client UUID")
@@ -125,26 +118,38 @@ func TestSlowCreateIsDispatchedAgainAndCreatesOneIssueWithRealDex(t *testing.T) 
 
 func TestSlowCommentIsDispatchedAgainAndAddsOneCommentWithRealDex(t *testing.T) {
 	provider := newFakeLinear(t)
-	provider.delaysFirstComment = true
+	provider.holdsFirstComment = make(chan struct{})
 	harness := newRequestHarness(t, provider, slowRequestTimeout)
-
-	outcome := harness.runIssueRequest(t, "slow-comment", integrationInput())
+	outcome := harness.runAfterLostWorker(t, provider, "slow-comment", "LinearAddComment", provider.holdsFirstComment)
 	provider.waitForDelayedRequests(t)
-	require.GreaterOrEqual(t, provider.count("LinearAddComment"), 2, "Dex dispatched the comment again past its local phase")
+	require.Equal(t, 2, provider.count("LinearAddComment"))
 	require.Len(t, provider.commentsOn(outcome.IssueID), 1, "the repeated dispatch did not post a second comment")
 	require.Len(t, provider.distinctInputIDs("LinearAddComment"), 1)
 }
 
 func TestSlowMoveIsSafeToRepeatWithRealDex(t *testing.T) {
 	provider := newFakeLinear(t)
-	provider.delaysFirstUpdate = true
+	provider.holdsFirstUpdate = make(chan struct{})
 	harness := newRequestHarness(t, provider, slowRequestTimeout)
-
-	outcome := harness.runIssueRequest(t, "slow-move", integrationInput())
+	outcome := harness.runAfterLostWorker(t, provider, "slow-move", "LinearUpdateIssue", provider.holdsFirstUpdate)
 	provider.waitForDelayedRequests(t)
-	require.GreaterOrEqual(t, provider.count("LinearUpdateIssue"), 2, "Dex dispatched the update again past its local phase")
+	require.Equal(t, 2, provider.count("LinearUpdateIssue"))
 	require.Equal(t, inProgressStateID, provider.issue(outcome.IssueID).stateID, "absolute values leave the same state")
 	require.Len(t, provider.commentsOn(outcome.IssueID), 1)
+}
+
+func (harness *requestHarness) runAfterLostWorker(t *testing.T, provider *fakeLinear, scenario, operation string, hold chan struct{}) IssueRequestOutcome {
+	t.Helper()
+	flowID := harness.startIssueRequest(t, scenario, integrationInput())
+	require.Eventually(t, func() bool { return provider.count(operation) == 1 }, 30*time.Second, 50*time.Millisecond)
+	harness.replaceWorker(t)
+	require.Eventually(t, func() bool { return provider.count(operation) == 2 }, time.Minute, 50*time.Millisecond)
+	close(hold)
+	result := harness.waitForFlow(t, flowID)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var outcome IssueRequestOutcome
+	require.NoError(t, result.DecodeSingleOutput(&outcome))
+	return outcome
 }
 
 // TestLostWorkerDuringCreateCreatesOneIssueWithRealDex shows the client UUID surviving a Worker lost mid-create.
@@ -216,7 +221,6 @@ type requestHarness struct {
 	registry      *dex.Registry
 	cache         *blobcache.Cache
 	serverAddress string
-	workerAddress string
 	worker        *dex.Worker
 	workerResult  chan error
 	client        *dex.Client
@@ -242,29 +246,32 @@ func newRequestHarnessWithSelection(t *testing.T, provider *fakeLinear, requestT
 	require.NoError(t, err)
 	harness.cache, err = blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
-	harness.workerAddress = net.JoinHostPort("127.0.0.1", availableIntegrationPort(t))
 	harness.client, err = dex.NewClient(harness.registry, harness.cache, dex.ClientOptions{
-		FlowServiceAddress: harness.serverAddress, WorkerTarget: &dex.WorkerTarget{Address: harness.workerAddress},
+		FlowServiceAddress: harness.serverAddress,
 	})
 	require.NoError(t, err)
-	harness.startWorker(t)
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
 		require.NoError(t, errors.Join(harness.worker.Stop(ctx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
 	})
+	harness.startWorker(t)
 	return harness
 }
 
 func (harness *requestHarness) startWorker(t *testing.T) {
 	t.Helper()
-	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{
-		BindAddress: harness.workerAddress, FlowServiceAddress: harness.serverAddress, WorkerTarget: dex.WorkerTarget{Address: harness.workerAddress},
-	})
+	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{FlowServiceAddress: harness.serverAddress})
 	require.NoError(t, err)
 	workerResult := make(chan error, 1)
 	go func() { workerResult <- worker.Start() }()
 	harness.worker, harness.workerResult = worker, workerResult
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
 }
 
 // replaceWorker force-stops the Worker without draining its handlers, like a crash, then starts a new one.
@@ -312,14 +319,6 @@ func (harness *requestHarness) waitForFlow(t *testing.T, flowID string) dex.Flow
 		require.NoError(t, err, "Flow %s did not close", flowID)
 		return result
 	}
-}
-
-func availableIntegrationPort(t *testing.T) string {
-	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	defer listener.Close()
-	return strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
 }
 
 func environmentOr(name string, fallback string) string {

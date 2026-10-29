@@ -65,8 +65,8 @@ Superverse Studio writes that configuration when you save the connection.
 go run ./examples/publish-policy
 ```
 
-The default Worker address is `127.0.0.1:8836`. Override
-`DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR`
+Override
+`DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR`
 when needed.
 
 Start `ConfluencePolicyPublication` with a unique Flow ID:
@@ -95,11 +95,11 @@ With the latest Dex development server running, the integration test drives
 the Flow on a real Worker against a stateful fake Confluence that keeps one
 page per title and accepts each version number once: a new policy published,
 read back, and commented once; an existing title updated to its next version;
-a nine-second create sent once under sync durability; a nine-second update
-whose async backup attempt is refused and finds its own version; a create
+a create sent once; an update whose Worker is lost after Confluence stores
+the version and whose replacement confirms the version by read-back; a create
 timeout confirmed by title without a second page; a rate-limited create retried
 after `Retry-After`; a concurrent edit parked and published
-over only after the Action; a nine-second comment sent once; a comment timeout
+over only after the Action; a comment sent once; a comment timeout
 confirmed by reading the comments back without a resend; and a blank `cloudId`
 resolved to the only granted site.
 

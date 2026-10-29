@@ -11,13 +11,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -33,8 +31,6 @@ import (
 const (
 	// integrationAPIKey is split so secret scanners do not mistake the 40-hex fixture for a real key.
 	integrationAPIKey = "0123456789abcdef" + "0123456789abcdef01234567"
-	// slowResponseDelay outlasts Dex's roughly seven-second async local phase, so an async Step is dispatched again.
-	slowResponseDelay = 9 * time.Second
 )
 
 var sweepStart = time.Date(2026, 9, 24, 0, 0, 0, 0, time.UTC)
@@ -99,14 +95,19 @@ func TestSweepStoppedByMaxPagesContinuesWithoutGapsOrDuplicatesWithRealDex(t *te
 func TestSlowChangeListIsSafeToRepeatWithRealDex(t *testing.T) {
 	provider := newFakeChangeHistory(t)
 	seedOnboardingChanges(provider)
-	provider.delaysFirstList = true
+	provider.holdsFirstList = make(chan struct{})
 	harness := newSweepHarness(t, provider)
 
-	sweep := harness.runSweep(t, "slow", Input{Since: sweepStart.Format(time.RFC3339), ChangeType: bamboohr.EmployeeChangeTypeInserted})
+	flowID := harness.startSweep(t, "lost-worker", Input{Since: sweepStart.Format(time.RFC3339), ChangeType: bamboohr.EmployeeChangeTypeInserted})
+	require.Eventually(t, func() bool { return provider.requestCount() == 1 }, 30*time.Second, 50*time.Millisecond)
+	harness.replaceWorker(t)
+	result := harness.waitForFlow(t, flowID)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var sweep EmployeeChangeSweep
+	require.NoError(t, result.DecodeSingleOutput(&sweep))
 	require.Equal(t, []string{"101", "102", "103", "104", "105"}, changedEmployeeIDs(sweep.Changes), "a repeated read keeps each change once")
 	require.Equal(t, 1, sweep.PagesRead)
-	provider.waitForDelayedRequests(t)
-	require.GreaterOrEqual(t, provider.requestCount(), 2, "Dex dispatched the read again past its local phase")
+	require.Equal(t, 2, provider.requestCount(), "the replacement Worker repeats the read once")
 }
 
 func TestRateLimitedChangeListWaitsAndCompletesWithRealDex(t *testing.T) {
@@ -143,13 +144,12 @@ func changedEmployeeIDs(changes []bamboohr.EmployeeChange) []string {
 // fakeChangeHistory serves BambooHR's Get Changed Employee IDs and treats since as exclusive.
 type fakeChangeHistory struct {
 	*httptest.Server
-	t               *testing.T
-	mutex           sync.Mutex
-	delayedRequests sync.WaitGroup
-	changes         map[string]fakeChange
-	requests        []url.Values
+	t        *testing.T
+	mutex    sync.Mutex
+	changes  map[string]fakeChange
+	requests []url.Values
 
-	delaysFirstList     bool
+	holdsFirstList      chan struct{}
 	rateLimitsFirstList bool
 	rejectsCredentials  bool
 }
@@ -190,10 +190,12 @@ func (provider *fakeChangeHistory) serveHTTP(response http.ResponseWriter, reque
 		response.Header().Set("Retry-After", "1")
 		response.WriteHeader(http.StatusTooManyRequests)
 		return
-	case provider.delaysFirstList && attempt == 1:
-		provider.delayedRequests.Add(1)
-		defer provider.delayedRequests.Done()
-		time.Sleep(slowResponseDelay)
+	case provider.holdsFirstList != nil && attempt == 1:
+		select {
+		case <-provider.holdsFirstList:
+		case <-request.Context().Done():
+			return
+		}
 	}
 	since, err := time.Parse(time.RFC3339, request.URL.Query().Get("since"))
 	if err != nil {
@@ -238,26 +240,11 @@ func (provider *fakeChangeHistory) requestCount() int {
 	return len(provider.requests)
 }
 
-func (provider *fakeChangeHistory) waitForDelayedRequests(t *testing.T) {
-	t.Helper()
-	finished := make(chan struct{})
-	go func() {
-		provider.delayedRequests.Wait()
-		close(finished)
-	}()
-	select {
-	case <-finished:
-	case <-time.After(30 * time.Second):
-		t.Fatal("a delayed BambooHR request did not finish")
-	}
-}
-
 type sweepHarness struct {
 	flow          *Flow
 	registry      *dex.Registry
 	cache         *blobcache.Cache
 	serverAddress string
-	workerAddress string
 	worker        *dex.Worker
 	workerResult  chan error
 	client        *dex.Client
@@ -278,23 +265,44 @@ func newSweepHarness(t *testing.T, provider *fakeChangeHistory) *sweepHarness {
 	require.NoError(t, err)
 	harness.cache, err = blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
-	harness.workerAddress = net.JoinHostPort("127.0.0.1", availableIntegrationPort(t))
 	harness.client, err = dex.NewClient(harness.registry, harness.cache, dex.ClientOptions{
-		FlowServiceAddress: harness.serverAddress, WorkerTarget: &dex.WorkerTarget{Address: harness.workerAddress},
+		FlowServiceAddress: harness.serverAddress,
 	})
 	require.NoError(t, err)
-	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{
-		BindAddress: harness.workerAddress, FlowServiceAddress: harness.serverAddress, WorkerTarget: dex.WorkerTarget{Address: harness.workerAddress},
-	})
+	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{FlowServiceAddress: harness.serverAddress})
 	require.NoError(t, err)
 	harness.worker, harness.workerResult = worker, make(chan error, 1)
-	go func() { harness.workerResult <- worker.Start() }()
+	workerResult := harness.workerResult
+	go func() { workerResult <- worker.Start() }()
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
 		require.NoError(t, errors.Join(harness.worker.Stop(ctx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
 	})
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
 	return harness
+}
+
+func (harness *sweepHarness) replaceWorker(t *testing.T) {
+	t.Helper()
+	expired, cancel := context.WithCancel(context.Background())
+	cancel()
+	_ = harness.worker.Stop(expired)
+	require.NoError(t, <-harness.workerResult)
+	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{FlowServiceAddress: harness.serverAddress})
+	require.NoError(t, err)
+	harness.worker, harness.workerResult = worker, make(chan error, 1)
+	workerResult := harness.workerResult
+	go func() { workerResult <- worker.Start() }()
+	registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+	registrationError := worker.WaitPullRegistered(registrationContext)
+	cancelRegistration()
+	require.NoError(t, registrationError)
 }
 
 func (harness *sweepHarness) runSweep(t *testing.T, scenario string, input Input) EmployeeChangeSweep {
@@ -331,14 +339,6 @@ func (harness *sweepHarness) waitForFlow(t *testing.T, flowID string) dex.FlowRe
 		require.NoError(t, err, "Flow %s did not close", flowID)
 		return result
 	}
-}
-
-func availableIntegrationPort(t *testing.T) string {
-	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	defer listener.Close()
-	return strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
 }
 
 func environmentOr(name string, fallback string) string {

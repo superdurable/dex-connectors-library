@@ -180,7 +180,7 @@ for a section of a project the task is not in.
 
 Because a repeated move or `PUT` leaves the same task, every ambiguous outcome,
 including a timeout after dispatch or a 5xx, retries instead of selecting
-`uncertain`. A retry or backup attempt can move the task back to the top of the
+`uncertain`. A retry can move the task back to the top of the
 section if someone reordered it in between.
 
 ### addComment
@@ -197,19 +197,15 @@ comment or an edited comment.
 ## Avoiding duplicate tasks and comments
 
 `createTask` and `addComment` use sync Execute durability although a request is
-usually fast. With async durability, Dex runs a Step in a local phase of about
-seven seconds and then dispatches a backup attempt. The local-phase checkpoint
-is not visible to that attempt, so a slow write may become `uncertain`.
-With sync durability, a real Dex run against a fake Asana that held
-the create, or the comment, for nine seconds recorded one request;
+usually fast. A real Dex run against a fake Asana with a delayed create or
+comment recorded one request;
 `TestSlowCreateIsSentOnceUnderSyncDurabilityWithRealDex` and
 `TestSlowCommentIsSentOnceUnderSyncDurabilityWithRealDex` guard this. Do not
 override these Steps to async.
 
-`updateTask` keeps the async default. With a fake that held the `PUT` for nine
-seconds, Dex dispatched a backup attempt, Asana received the same move and the
-same `PUT` twice, and the task ended assigned, scheduled, and in the section
-exactly as with one request;
+`updateTask` keeps the async default. After Worker loss during an applied
+`PUT`, the replacement Worker sends the same absolute update. The task ends
+assigned, scheduled, and in the section exactly as with one request;
 `TestSlowUpdateBackupAttemptLeavesTheSameTaskWithRealDex` guards this.
 
 The connector records a dispatch heartbeat before either POST and keeps it alive

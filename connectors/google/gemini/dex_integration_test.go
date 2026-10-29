@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -136,13 +135,13 @@ func (provider *probeProvider) attemptsFor(prompt string) []time.Time {
 }
 
 type probeHarness struct {
-	registry      *dex.Registry
-	cache         *blobcache.Cache
-	serverAddress string
-	workerAddress string
-	worker        *dex.Worker
-	workerResult  chan error
-	client        *dex.Client
+	registry        *dex.Registry
+	cache           *blobcache.Cache
+	serverAddress   string
+	workerReadyFile string
+	worker          *dex.Worker
+	workerResult    chan error
+	client          *dex.Client
 }
 
 func newProbeHarness(t *testing.T, flows ...dex.Flow) *probeHarness {
@@ -151,17 +150,13 @@ func newProbeHarness(t *testing.T, flows ...dex.Flow) *probeHarness {
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	workerAddress := listener.Addr().String()
-	require.NoError(t, listener.Close())
 	serverAddress := os.Getenv("DEX_FLOW_SERVICE_ADDRESS")
 	if serverAddress == "" {
 		serverAddress = "127.0.0.1:8801"
 	}
-	harness := &probeHarness{registry: registry, cache: cache, serverAddress: serverAddress, workerAddress: workerAddress}
+	harness := &probeHarness{registry: registry, cache: cache, serverAddress: serverAddress, workerReadyFile: filepath.Join(t.TempDir(), "worker-ready")}
 	harness.client, err = dex.NewClient(registry, cache, dex.ClientOptions{
-		FlowServiceAddress: serverAddress, WorkerTarget: &dex.WorkerTarget{Address: workerAddress},
+		FlowServiceAddress: serverAddress,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -175,14 +170,17 @@ func newProbeHarness(t *testing.T, flows ...dex.Flow) *probeHarness {
 
 func (harness *probeHarness) startWorker(t *testing.T) {
 	t.Helper()
-	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{
-		BindAddress: harness.workerAddress, FlowServiceAddress: harness.serverAddress,
-		WorkerTarget: dex.WorkerTarget{Address: harness.workerAddress},
-	})
+	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{FlowServiceAddress: harness.serverAddress})
 	require.NoError(t, err)
 	harness.worker = worker
 	harness.workerResult = make(chan error, 1)
 	go func() { harness.workerResult <- worker.Start() }()
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
 }
 
 func (harness *probeHarness) stopWorker(t *testing.T) {
@@ -285,16 +283,16 @@ func TestGenerateContentStepDefaultsWithRealDex(t *testing.T) {
 }
 
 const (
-	probeWorkerAddressVariable  = "GEMINI_PROBE_WORKER_ADDRESS"
-	probeProviderURLVariable    = "GEMINI_PROBE_PROVIDER_URL"
-	probeServerAddressVariable  = "GEMINI_PROBE_SERVER_ADDRESS"
-	probeBlobDirectoryVariable  = "GEMINI_PROBE_BLOB_DIRECTORY"
-	probeShortHeartbeatFlowType = "GeminiShortHeartbeatProbe"
+	probeWorkerReadyFileVariable = "GEMINI_PROBE_WORKER_READY_FILE"
+	probeProviderURLVariable     = "GEMINI_PROBE_PROVIDER_URL"
+	probeServerAddressVariable   = "GEMINI_PROBE_SERVER_ADDRESS"
+	probeBlobDirectoryVariable   = "GEMINI_PROBE_BLOB_DIRECTORY"
+	probeShortHeartbeatFlowType  = "GeminiShortHeartbeatProbe"
 )
 
 func TestMain(m *testing.M) {
-	if address := os.Getenv(probeWorkerAddressVariable); address != "" {
-		os.Exit(runProbeWorkerProcess(address))
+	if readyFile := os.Getenv(probeWorkerReadyFileVariable); readyFile != "" {
+		os.Exit(runProbeWorkerProcess(readyFile))
 	}
 	os.Exit(m.Run())
 }
@@ -314,7 +312,7 @@ func probeFlows(connection gemini.Connection) (*probeFlow, *probeFlow) {
 }
 
 // runProbeWorkerProcess serves the probe Flows until the parent test kills this process.
-func runProbeWorkerProcess(address string) int {
+func runProbeWorkerProcess(readyFile string) int {
 	reference := sdkgo.ConnectionRef{Provider: "google", Name: probeConnectionName}
 	client, err := gemini.New(gemini.Config{Endpoint: os.Getenv(probeProviderURLVariable)}, sdkgo.StaticCredentialProvider[gemini.Credentials]{
 		reference: {APIKey: sdkgo.NewSecretString(testAPIKey)},
@@ -335,14 +333,21 @@ func runProbeWorkerProcess(address string) int {
 	if err != nil {
 		return 2
 	}
-	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{
-		BindAddress: address, FlowServiceAddress: os.Getenv(probeServerAddressVariable),
-		WorkerTarget: dex.WorkerTarget{Address: address},
-	})
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: os.Getenv(probeServerAddressVariable)})
 	if err != nil {
 		return 2
 	}
-	if err := worker.Start(); err != nil {
+	workerResult := make(chan error, 1)
+	go func() { workerResult <- worker.Start() }()
+	registrationCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	if err := worker.WaitPullRegistered(registrationCtx); err != nil {
+		return 1
+	}
+	if err := os.WriteFile(readyFile, nil, 0600); err != nil {
+		return 2
+	}
+	if err := <-workerResult; err != nil {
 		return 1
 	}
 	return 0
@@ -352,7 +357,7 @@ func startProbeWorkerProcess(t *testing.T, harness *probeHarness, providerURL st
 	t.Helper()
 	process := exec.Command(os.Args[0], "-test.run=^$")
 	process.Env = append(os.Environ(),
-		probeWorkerAddressVariable+"="+harness.workerAddress,
+		probeWorkerReadyFileVariable+"="+harness.workerReadyFile,
 		probeProviderURLVariable+"="+providerURL,
 		probeServerAddressVariable+"="+harness.serverAddress,
 		probeBlobDirectoryVariable+"="+filepath.Join(t.TempDir(), "worker-blobs"),
@@ -367,12 +372,8 @@ func startProbeWorkerProcess(t *testing.T, harness *probeHarness, providerURL st
 		}
 	})
 	require.Eventually(t, func() bool {
-		connection, err := net.DialTimeout("tcp", harness.workerAddress, 100*time.Millisecond)
-		if err != nil {
-			return false
-		}
-		_ = connection.Close()
-		return true
-	}, 20*time.Second, 50*time.Millisecond, "the Worker process must listen before the Flow starts")
+		_, err := os.Stat(harness.workerReadyFile)
+		return err == nil
+	}, 20*time.Second, 50*time.Millisecond, "the Worker process must register before the Flow starts")
 	return process
 }

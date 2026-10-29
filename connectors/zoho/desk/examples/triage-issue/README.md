@@ -90,15 +90,15 @@ go run ./examples/triage-issue
 
 The Worker reads the connection at startup and the credentials before every
 call, so restart it after changing `orgId`; it refuses to start while `orgId`
-is blank. The default Worker address is `127.0.0.1:8856`. Override
-`DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR`
+is blank. Override
+`DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR`
 when needed. For local verification against a Zoho Desk-compatible fake only,
 `ZOHO_DESK_LOCAL_API_BASE_URL` replaces the data center's
 `https://desk.zoho.<domain>/api/v1`; it must be HTTPS or a loopback HTTP URL,
 and production Workers leave it unset.
 
 In the Run workspace, choose **Start Flow**, select `ZohoDeskTriageIssue`,
-choose the Worker at `127.0.0.1:8856`, enter a unique Flow ID, and submit.
+enter a unique Flow ID, and submit.
 `departmentId` is the numeric ID of a department, which
 `GET /api/v1/departments` lists; `priority` is a Zoho Desk priority name, and
 Start Flow offers the defaults High, Medium, and Low.
@@ -139,10 +139,9 @@ empty search with 204, and matches look-alike addresses in its email filter:
 - a search match the index still shows as open but that is closed is read,
   skipped, and never written;
 - a first page of look-alike addresses leads to the page at `from=25`;
-- a create and a comment held for nine seconds, past Dex's async local phase,
-  are each sent exactly once, because both Steps are sync;
-- an update held for nine seconds is dispatched again by async Dex, and both
-  attempts write the same values;
+- a healthy create and comment are each sent once;
+- a Worker lost after an update is replaced; the next attempt reads back the
+  absolute values and sends no second write;
 - a lost update response is retried and finds the values applied;
 - a lost create or comment response fails the Flow through the unwired
   `uncertain` branch and is never resent;

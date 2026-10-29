@@ -222,10 +222,9 @@ headers, and marker; a new Step execution gets a new key. The
 Amazon S3 adds an object only whole and, without a precondition, replaces the
 object at a key. A repeated PUT of the same bytes leaves the same object, so
 `putObject` keeps the async durability default and declares no `uncertain`
-branch: a timeout, dropped connection, 5xx, or a response that arrives after
-Dex dispatched the Step again is simply retried. The example's real-Dex test
-delays the first PUT's response past the seven-second async local phase, sees
-Dex send the PUT a second time, and finds one object with the same bytes.
+branch: a timeout, dropped connection, or 5xx is retried. The example's
+real-Dex test loses a Worker after S3 accepts the first PUT, then finds one
+object with the same bytes after the replacement Worker sends the PUT again.
 
 With `IsCreateOnly`, the PUT sends `If-None-Match: *`. S3 then stores the
 object only when no current object exists at the key and answers 412 otherwise.

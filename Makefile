@@ -49,7 +49,7 @@ test-sdk-integration:
 test-connector-integration:
 	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))"; \
 	for module in $$directories; do \
-		(cd "$$module" && GOWORK=off go test -tags=integration ./... -count=1 -v) || exit 1; \
+		(cd "$$module" && GOWORK=off go test -p 1 -tags=integration ./... -count=1 -v) || exit 1; \
 	done
 
 test-dex-compat-current:

@@ -234,8 +234,8 @@ that another POST is safe.
 
 A heartbeat frame can be lost between the Worker and Dex storage. The shared
 fence fails closed when the claim is missing on a later attempt, so no second
-POST follows that ambiguity. Keep these two Steps sync; async local-phase
-heartbeats are not visible to later attempts.
+POST follows that ambiguity. Heartbeats may not reach durable storage before
+a later attempt reads the fence.
 
 Before upgrading an in-flight v0.21.2 create or reply, reconcile it in
 Re:amaze by its conversation data key or message `origin_id`. The shared fence

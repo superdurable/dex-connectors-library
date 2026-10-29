@@ -102,8 +102,8 @@ returns the stored webhook without its secret. Typeform has no idempotency
 header, but every attempt sends the same body to the same tag, so the
 Mutation uses async durability: a lost answer, `408`, `429`, or `5xx` returns
 Retry, and a Dex re-dispatch repeats the same `PUT`. The real-Dex test in
-`mutation_dispatch_integration_test.go`, whose fake Typeform stores the webhook
-at once and answers after nine seconds, observed two `PUT`s and one webhook.
+`mutation_dispatch_integration_test.go` forces a second Execute after the
+first accepted PUT, and observes two identical `PUT`s and one webhook.
 `isDisabled` stores the webhook without delivering to it. A blank
 `webhook_secret` selects `defect` before any request, and Typeform's
 `webhook_url_https_required` selects `providerRejected` with `VALIDATION`.
@@ -206,9 +206,9 @@ These rely on the documentation fetched on 2026-09-30, not on a live account:
 cd connectors/typeform
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
-DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./... -count=1 -v
+DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -p 1 -tags=integration ./... -count=1 -v
 (cd ui && npm ci && npm test && npm run build)
 ```
 
-The integration run needs `dexcli dev` and takes about twenty seconds, because
-the duplicate-dispatch test waits for a nine-second provider.
+The integration run needs `dexcli dev`; the duplicate-dispatch test forces a
+retry after the first accepted PUT.

@@ -111,16 +111,16 @@ GOWORK=off go run \
   github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http/examples/api-request@v0.1.1
 ```
 
-The Worker listens on `127.0.0.1:8884` by default. Set
-`DEX_WORKER_BIND_ADDRESS` to use another address, and `DEX_BLOB_CACHE_DIR` to
+Set
+`DEX_BLOB_CACHE_DIR` to
 move its blob cache. If Dex is unreachable, the Worker logs
 `dex server unavailable; retrying` with a delay that grows to 30 seconds and
 starts once Dex answers.
 
 ## 6. Start the Flow
 
-In Dex Web, open the `OAuth2HTTPRequest` Flow, choose **Start Flow**, select
-the Worker address, and enter a path under the connection's API base URL. For a
+In Dex Web, open the `OAuth2HTTPRequest` Flow, choose **Start Flow**, and
+enter a path under the connection's API base URL. For a
 Keycloak realm whose base URL is its origin, the UserInfo endpoint is:
 
 ```json

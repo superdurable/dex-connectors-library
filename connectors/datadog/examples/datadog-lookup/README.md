@@ -39,6 +39,6 @@ In Dex Web **Connections**, select `datadog / datadog`, follow the authorization
 }
 ```
 
-The sample window is October 28, 2026, 00:00–01:00 UTC. Replace `from` and `to` with a recent window in Unix seconds when running against Datadog. The Worker defaults to `127.0.0.1:8873` and accepts `DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, and `DEX_BLOB_CACHE_DIR` overrides.
+The sample window is October 28, 2026, 00:00–01:00 UTC. Replace `from` and `to` with a recent window in Unix seconds when running against Datadog. The Worker accepts `DEX_FLOW_SERVICE_ADDRESS` and `DEX_BLOB_CACHE_DIR` overrides.
 
 Live provider authorization and the real Dex example have not been exercised locally; CI runs the mock-backed integration test.

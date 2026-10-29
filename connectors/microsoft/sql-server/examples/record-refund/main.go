@@ -15,7 +15,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/microsoft/sql-server"
+	sqlserver "github.com/superdurable/dex-connectors-library/connectors/microsoft/sql-server"
 	recordrefund "github.com/superdurable/dex-connectors-library/connectors/microsoft/sql-server/examples/record-refund/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
@@ -50,9 +50,7 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("create blob cache: %w", err)
 	}
-	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{
-		BindAddress: environmentOr("DEX_WORKER_BIND_ADDRESS", "127.0.0.1:8828"), FlowServiceAddress: os.Getenv("DEX_FLOW_SERVICE_ADDRESS"),
-	})
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: os.Getenv("DEX_FLOW_SERVICE_ADDRESS")})
 	if err != nil {
 		return errors.Join(err, cache.Close())
 	}

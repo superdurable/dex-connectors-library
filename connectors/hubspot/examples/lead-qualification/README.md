@@ -141,8 +141,8 @@ GOWORK=off go run \
   github.com/superdurable/dex-connectors-library/connectors/hubspot/examples/lead-qualification@v0.23.1
 ```
 
-The Worker listens on `127.0.0.1:8841` by default. Set
-`DEX_WORKER_BIND_ADDRESS` to use another address, and `DEX_BLOB_CACHE_DIR` to
+Set
+`DEX_BLOB_CACHE_DIR` to
 move its blob cache. It logs the loaded pipeline and stage IDs at startup. If
 Dex is unreachable, the Worker logs `dex server unavailable; retrying` with a
 delay that grows to 30 seconds and starts once Dex answers.
@@ -150,7 +150,7 @@ delay that grows to 30 seconds and starts once Dex answers.
 ## 6. Start the Flow
 
 In Dex Web, open the `HubSpotLeadQualification` Flow, choose **Start Flow**,
-select the Worker address, and enter a contact that has an open deal in the
+enter a contact that has an open deal in the
 configured pipeline:
 
 ```json
@@ -185,11 +185,9 @@ and another pipeline's deal stay untouched, a duplicate start with the same
 request ID, a new lead without an open deal, a rate-limited upsert that Dex
 retries after `Retry-After`, a rejected upsert that fails with a
 secret-safe reason, a Flow failure for the unwired `notFound` branch, an
-expired OAuth connection that refreshes before the first call, and slow
-writes. For the slow writes, HubSpot answers the
-upsert and the update after nine seconds, Dex's asynchronous fallback
-dispatches each one again, and the test proves one contact and the configured
-stage remain. That test takes about 35 seconds.
+expired OAuth connection that refreshes before the first call, and retried
+writes. When HubSpot accepts an upsert or update but its answer is lost,
+Dex retries it; the test proves one contact and the configured stage remain.
 
 Before `v0.23.1` is published, build a local release artifact with
 `go run ./cmd/connectorctl release-artifact` from the repository root and pass

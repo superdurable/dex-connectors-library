@@ -122,9 +122,9 @@ cd "$(git rev-parse --show-toplevel)/connectors/superdurable/webhook"
 go run ./examples/form-submission
 ```
 
-The Worker listens on `127.0.0.1:8841` and the webhook endpoint on
+The webhook endpoint listens on
 `127.0.0.1:8842`; override `DEX_FLOW_SERVICE_ADDRESS`,
-`DEX_WORKER_BIND_ADDRESS`, `WEBHOOK_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR` when
+`WEBHOOK_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR` when
 needed, and set `LOG_LEVEL=debug` to see every delivery. `GET /readyz` answers
 `200` once the binding receives submissions. To receive from a real sender,
 expose `http://127.0.0.1:8842/webhooks/form-submission` through an HTTPS tunnel
@@ -194,5 +194,5 @@ submission answers `400` and starts nothing; and a submission before the
 binding runs answers `503` and the sender's retry starts the Flow:
 
 ```bash
-DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 go test -tags=integration ./examples/form-submission/... -count=1 -v
+DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 go test -p 1 -tags=integration ./examples/form-submission/... -count=1 -v
 ```

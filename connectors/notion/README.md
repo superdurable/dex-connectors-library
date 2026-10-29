@@ -341,9 +341,8 @@ through a real Dex Server against a stateful fake Notion. The scenarios are:
 - a rate-limited create retried after `Retry-After`;
 - an uncertain create reconciled by query, and one that stays uncertain;
 - a create Notion saved before a 503;
-- a create the fake holds for nine seconds, which Notion receives once;
-- an update the fake holds for nine seconds, where Dex dispatches twice and
-  the row converges;
+- a delayed create, which Notion receives once;
+- a delayed update that currently completes with one dispatch and leaves the row in the intended state;
 - an unwired optional branch;
 - invalid Start Flow input.
 

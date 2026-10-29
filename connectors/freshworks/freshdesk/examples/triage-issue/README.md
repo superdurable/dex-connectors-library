@@ -83,15 +83,14 @@ go run ./examples/triage-issue
 ```
 
 The Worker reads the connection at startup and the credentials before every
-call, so restart it after changing the domain. The default Worker address is
-`127.0.0.1:8832`. Override
-`DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR`
+call, so restart it after changing the domain. Override
+`DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR`
 when needed. For local verification against a Freshdesk-compatible fake only,
 `FRESHDESK_LOCAL_API_BASE_URL` replaces `https://{domain}.freshdesk.com/api/v2`;
 it must be HTTPS or a loopback HTTP URL, and production Workers leave it unset.
 
 In the Run workspace, choose **Start Flow**, select `FreshdeskTriageIssue`,
-choose the Worker at `127.0.0.1:8832`, enter a unique Flow ID, and submit.
+enter a unique Flow ID, and submit.
 `priority` is Freshdesk's integer: 1 (Low), 2 (Medium), 3 (High), or
 4 (Urgent).
 
@@ -128,10 +127,9 @@ Freshdesk, has no idempotency key and omits tags from search results:
 - a search match whose tag the index still shows but the ticket no longer has
   is read, skipped, and never written;
 - a first page of other customers' tickets leads to the second page;
-- a create and a note held for nine seconds, past Dex's async local phase, are
-  each sent exactly once, because both Steps are sync;
-- an update held for nine seconds is dispatched again by async Dex, and both
-  attempts write the same values without duplicating a tag;
+- a delayed create and note each complete with one request;
+- an update interrupted by Worker loss is read by the replacement Worker,
+  which sends no second write and leaves the tag unchanged;
 - a lost update response is retried and finds the values applied;
 - a lost create or note response fails the Flow and is never resent;
 - a rate-limited create waits for `Retry-After` and creates one ticket;

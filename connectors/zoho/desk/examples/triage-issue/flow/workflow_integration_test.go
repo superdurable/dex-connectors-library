@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -42,9 +41,7 @@ const (
 	agentID                   = "1892000000056007"
 
 	defaultRequestTimeout = 5 * time.Second
-	// slowResponseDelay outlasts Dex's roughly seven-second async local phase, so an async Step is dispatched again.
-	slowResponseDelay  = 9 * time.Second
-	slowRequestTimeout = 20 * time.Second
+	heldRequestTimeout    = 20 * time.Second
 )
 
 func integrationIssueInput() Input {
@@ -136,53 +133,49 @@ func TestSecondSearchPageIsReadWhenTheFirstHoldsNoMatchWithRealDex(t *testing.T)
 	require.Equal(t, []string{"0", "25"}, provider.queryValues("search", "from"))
 }
 
-// TestSlowCreateIsSentOnceWithRealDex is the duplicate-dispatch test: sync durability means
-// Dex never dispatches a second attempt while the first create is still in flight.
-func TestSlowCreateIsSentOnceWithRealDex(t *testing.T) {
+func TestHealthyCreateIsSentOnceWithRealDex(t *testing.T) {
 	provider := newFakeZohoDesk(t)
-	provider.delaysFirstCreate = true
-	harness := newTriageHarness(t, provider, slowRequestTimeout)
+	harness := newTriageHarness(t, provider, defaultRequestTimeout)
 
-	startedAt := time.Now()
-	outcome := harness.runTriage(t, "slow-create", integrationIssueInput())
-	require.GreaterOrEqual(t, time.Since(startedAt), slowResponseDelay)
+	outcome := harness.runTriage(t, "healthy-create", integrationIssueInput())
 	require.Equal(t, TriageTicketOpened, outcome.Action)
-	provider.waitForDelayedRequests(t)
-	require.Equal(t, 1, provider.count("create"), "no second dispatch while the first was in flight")
+	require.Equal(t, 1, provider.count("create"))
 	require.Equal(t, 1, provider.ticketCount())
 }
 
-func TestSlowCommentIsSentOnceWithRealDex(t *testing.T) {
+func TestHealthyCommentIsSentOnceWithRealDex(t *testing.T) {
 	provider := newFakeZohoDesk(t)
-	provider.delaysFirstComment = true
-	harness := newTriageHarness(t, provider, slowRequestTimeout)
+	harness := newTriageHarness(t, provider, defaultRequestTimeout)
 
-	outcome := harness.runTriage(t, "slow-comment", integrationIssueInput())
+	outcome := harness.runTriage(t, "healthy-comment", integrationIssueInput())
 	require.Equal(t, TriageTicketOpened, outcome.Action)
-	provider.waitForDelayedRequests(t)
-	require.Equal(t, 1, provider.count("comment"), "no second dispatch while the first was in flight")
+	require.Equal(t, 1, provider.count("comment"))
 	require.Len(t, provider.ticket(outcome.Ticket.ID).comments, 1)
 }
 
-// TestSlowUpdateIsSafeToRepeatWithRealDex lets async Dex dispatch the update again; both attempts write the same values.
-func TestSlowUpdateIsSafeToRepeatWithRealDex(t *testing.T) {
+// TestLostWorkerDuringUpdateIsSafeToRepeatWithRealDex verifies read-back after an accepted update.
+func TestLostWorkerDuringUpdateIsSafeToRepeatWithRealDex(t *testing.T) {
 	provider := newFakeZohoDesk(t)
 	existing := provider.seedTicket(integrationContactEmail, integrationDepartmentID, "On Hold", "Low", "2026-01-26T14:02:00Z")
-	provider.delaysFirstUpdate = true
-	harness := newTriageHarness(t, provider, slowRequestTimeout)
-
-	outcome := harness.runTriage(t, "slow-update", integrationIssueInput())
+	provider.holdsFirstUpdate = make(chan struct{})
+	harness := newTriageHarness(t, provider, heldRequestTimeout)
+	flowID := harness.startTriage(t, "lost-worker-update", integrationIssueInput())
+	require.Eventually(t, func() bool { return provider.count("update") == 1 && provider.ticket(existing).priority == "High" }, 30*time.Second, 50*time.Millisecond)
+	harness.replaceWorker(t)
+	close(provider.holdsFirstUpdate)
+	result := harness.waitForFlow(t, flowID)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var outcome TriageOutcome
+	require.NoError(t, result.DecodeSingleOutput(&outcome))
 	require.Equal(t, TriageTicketFollowedUp, outcome.Action)
-	provider.waitForDelayedRequests(t)
-	require.GreaterOrEqual(t, provider.count("update"), 2, "Dex dispatched the update again past its local phase")
+	provider.waitForHeldRequests(t)
+	require.True(t, outcome.WasAlreadyApplied, "the next attempt reads back the accepted update")
+	require.Equal(t, 1, provider.count("update"), "read-back prevents a second write")
 	ticket := provider.ticket(existing)
 	require.Equal(t, "Open", ticket.status)
 	require.Equal(t, "High", ticket.priority)
 	require.Len(t, ticket.comments, 1, "exactly one triage comment")
-	for _, request := range provider.requestsNamed("update") {
-		require.JSONEq(t, `{"status":"Open","priority":"High"}`, request.body, "every dispatch writes the same absolute values")
-	}
-	t.Logf("slow update: updates=%d reads=%d", provider.count("update"), provider.count("read"))
+	require.JSONEq(t, `{"status":"Open","priority":"High"}`, provider.requestsNamed("update")[0].body)
 }
 
 func TestLostUpdateResponseIsRetriedAndWritesNothingTwiceWithRealDex(t *testing.T) {
@@ -230,9 +223,9 @@ func TestRateLimitedCreateWaitsAndCreatesOneTicketWithRealDex(t *testing.T) {
 func TestLostWorkerDuringCreateFailsUncertainWithoutResendingWithRealDex(t *testing.T) {
 	provider := newFakeZohoDesk(t)
 	provider.holdsFirstCreate = make(chan struct{})
-	harness := newTriageHarness(t, provider, slowRequestTimeout)
+	harness := newTriageHarness(t, provider, heldRequestTimeout)
 	flowID := harness.startTriage(t, "lost-worker", integrationIssueInput())
-	require.Eventually(t, func() bool { return provider.count("create") == 1 }, 30*time.Second, 50*time.Millisecond,
+	require.Eventually(t, func() bool { return provider.ticketCount() == 1 }, 30*time.Second, 50*time.Millisecond,
 		"the first attempt must reach Zoho Desk")
 	harness.replaceWorker(t)
 
@@ -241,7 +234,7 @@ func TestLostWorkerDuringCreateFailsUncertainWithoutResendingWithRealDex(t *test
 	require.Equal(t, dex.FlowFailed, result.Status)
 	require.Contains(t, result.ErrorMessage, "uncertain")
 	require.Contains(t, result.ErrorMessage, "no target")
-	provider.waitForDelayedRequests(t)
+	provider.waitForHeldRequests(t)
 	require.Equal(t, 1, provider.count("create"), "the attempt on the new Worker did not resend the create")
 }
 
@@ -340,8 +333,8 @@ type fakeZohoDesk struct {
 	*httptest.Server
 	t     *testing.T
 	mutex sync.Mutex
-	// delayedRequests tracks handlers still sleeping, so a test can assert their final effect.
-	delayedRequests sync.WaitGroup
+	// heldRequests tracks held handlers until cancellation or release.
+	heldRequests sync.WaitGroup
 
 	acceptedAccessToken string
 	// revokesStoredTokenAtFirstCreate makes Zoho Desk reject the stored token from the first create on.
@@ -352,15 +345,13 @@ type fakeZohoDesk struct {
 	counts                          map[string]int
 	requests                        map[string][]fakeRecordedRequest
 
-	delaysFirstCreate         bool
-	delaysFirstComment        bool
-	delaysFirstUpdate         bool
 	losesFirstCreateResponse  bool
 	losesFirstUpdateResponse  bool
 	losesFirstCommentResponse bool
 	rateLimitsFirstCreate     bool
 	rejectsCreate             bool
 	holdsFirstCreate          chan struct{}
+	holdsFirstUpdate          chan struct{}
 }
 
 type fakeTicket struct {
@@ -585,15 +576,6 @@ func (provider *fakeZohoDesk) createTicket(response http.ResponseWriter, request
 		provider.writeJSON(response, http.StatusTooManyRequests, `{"errorCode":"THRESHOLD_EXCEEDED","message":"SENTINEL"}`)
 		return
 	}
-	if attempt == 1 && (provider.delaysFirstCreate || provider.holdsFirstCreate != nil) {
-		provider.delayedRequests.Add(1)
-		defer provider.delayedRequests.Done()
-		if provider.holdsFirstCreate != nil {
-			<-provider.holdsFirstCreate
-		} else {
-			time.Sleep(slowResponseDelay)
-		}
-	}
 	var payload struct {
 		Subject      string `json:"subject"`
 		Description  string `json:"description"`
@@ -611,6 +593,9 @@ func (provider *fakeZohoDesk) createTicket(response http.ResponseWriter, request
 	ticket.subject, ticket.descriptionHTML = payload.Subject, payload.Description
 	value := provider.ticketJSON(ticket)
 	provider.mutex.Unlock()
+	if attempt == 1 && !provider.waitForHeldRequest(request, provider.holdsFirstCreate) {
+		return
+	}
 	if provider.losesFirstCreateResponse && attempt == 1 {
 		provider.dropConnection(response)
 		return
@@ -620,11 +605,6 @@ func (provider *fakeZohoDesk) createTicket(response http.ResponseWriter, request
 
 func (provider *fakeZohoDesk) updateTicket(response http.ResponseWriter, request *http.Request, body []byte, ticketID string) {
 	attempt := provider.record("update", request, body)
-	if provider.delaysFirstUpdate && attempt == 1 {
-		provider.delayedRequests.Add(1)
-		defer provider.delayedRequests.Done()
-		time.Sleep(slowResponseDelay)
-	}
 	var payload struct {
 		Status       string `json:"status"`
 		Priority     string `json:"priority"`
@@ -646,6 +626,9 @@ func (provider *fakeZohoDesk) updateTicket(response http.ResponseWriter, request
 	ticket.modifiedAt = provider.advanceClock()
 	value := provider.ticketJSON(ticket)
 	provider.mutex.Unlock()
+	if attempt == 1 && !provider.waitForHeldRequest(request, provider.holdsFirstUpdate) {
+		return
+	}
 	if provider.losesFirstUpdateResponse && attempt == 1 {
 		provider.dropConnection(response)
 		return
@@ -655,11 +638,6 @@ func (provider *fakeZohoDesk) updateTicket(response http.ResponseWriter, request
 
 func (provider *fakeZohoDesk) addComment(response http.ResponseWriter, request *http.Request, body []byte, ticketID string) {
 	attempt := provider.record("comment", request, body)
-	if provider.delaysFirstComment && attempt == 1 {
-		provider.delayedRequests.Add(1)
-		defer provider.delayedRequests.Done()
-		time.Sleep(slowResponseDelay)
-	}
 	var payload struct {
 		Content     string `json:"content"`
 		IsPublic    bool   `json:"isPublic"`
@@ -857,17 +835,31 @@ func (provider *fakeZohoDesk) writeJSON(response http.ResponseWriter, status int
 	}
 }
 
-func (provider *fakeZohoDesk) waitForDelayedRequests(t *testing.T) {
+func (provider *fakeZohoDesk) waitForHeldRequest(request *http.Request, hold chan struct{}) bool {
+	if hold == nil {
+		return true
+	}
+	provider.heldRequests.Add(1)
+	defer provider.heldRequests.Done()
+	select {
+	case <-hold:
+		return true
+	case <-request.Context().Done():
+		return false
+	}
+}
+
+func (provider *fakeZohoDesk) waitForHeldRequests(t *testing.T) {
 	t.Helper()
 	finished := make(chan struct{})
 	go func() {
-		provider.delayedRequests.Wait()
+		provider.heldRequests.Wait()
 		close(finished)
 	}()
 	select {
 	case <-finished:
-	case <-time.After(2 * slowResponseDelay):
-		t.Fatal("a delayed fake Zoho Desk request did not finish")
+	case <-time.After(30 * time.Second):
+		t.Fatal("a held fake Zoho Desk request did not finish")
 	}
 }
 
@@ -941,7 +933,6 @@ type triageHarness struct {
 	registry      *dex.Registry
 	cache         *blobcache.Cache
 	serverAddress string
-	workerAddress string
 	worker        *dex.Worker
 	workerResult  chan error
 	client        *dex.Client
@@ -973,29 +964,36 @@ func newTriageHarnessForConnection(t *testing.T, connection desk.Connection) *tr
 	require.NoError(t, err)
 	harness.cache, err = blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
-	harness.workerAddress = net.JoinHostPort("127.0.0.1", availableIntegrationPort(t))
 	harness.client, err = dex.NewClient(harness.registry, harness.cache, dex.ClientOptions{
-		FlowServiceAddress: harness.serverAddress, WorkerTarget: &dex.WorkerTarget{Address: harness.workerAddress},
+		FlowServiceAddress: harness.serverAddress,
 	})
 	require.NoError(t, err)
-	harness.startWorker(t)
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
-		require.NoError(t, errors.Join(harness.worker.Stop(ctx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
+		var stopError error
+		if harness.worker != nil {
+			stopError = errors.Join(harness.worker.Stop(ctx), <-harness.workerResult)
+		}
+		require.NoError(t, errors.Join(stopError, harness.client.Close(), harness.cache.Close()))
 	})
+	harness.startWorker(t)
 	return harness
 }
 
 func (harness *triageHarness) startWorker(t *testing.T) {
 	t.Helper()
-	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{
-		BindAddress: harness.workerAddress, FlowServiceAddress: harness.serverAddress, WorkerTarget: dex.WorkerTarget{Address: harness.workerAddress},
-	})
+	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{FlowServiceAddress: harness.serverAddress})
 	require.NoError(t, err)
 	workerResult := make(chan error, 1)
 	go func() { workerResult <- worker.Start() }()
 	harness.worker, harness.workerResult = worker, workerResult
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
 }
 
 // replaceWorker force-stops the Worker without draining its handlers, like a crash, then starts a new one.
@@ -1043,14 +1041,6 @@ func (harness *triageHarness) waitForFlow(t *testing.T, flowID string) dex.FlowR
 		require.NoError(t, err, "Flow %s did not close", flowID)
 		return result
 	}
-}
-
-func availableIntegrationPort(t *testing.T) string {
-	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	defer listener.Close()
-	return strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
 }
 
 func environmentOr(name string, fallback string) string {

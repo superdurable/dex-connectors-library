@@ -8,7 +8,6 @@ package accountlifecycle
 import (
 	"context"
 	"errors"
-	"net"
 	"path/filepath"
 	"testing"
 	"time"
@@ -28,14 +27,11 @@ func TestAccountLifecycleUsesWorkspaceAdminMockWithRealDex(t *testing.T) {
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
 	serverAddress := environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801")
-	workerAddress := net.JoinHostPort("127.0.0.1", availableIntegrationPort(t))
 	client, err := dex.NewClient(registry, cache, dex.ClientOptions{
-		FlowServiceAddress: serverAddress, WorkerTarget: &dex.WorkerTarget{Address: workerAddress},
+		FlowServiceAddress: serverAddress,
 	})
 	require.NoError(t, err)
-	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{
-		BindAddress: workerAddress, FlowServiceAddress: serverAddress, WorkerTarget: dex.WorkerTarget{Address: workerAddress},
-	})
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: serverAddress})
 	require.NoError(t, err)
 	workerResult := make(chan error, 1)
 	go func() { workerResult <- worker.Start() }()
@@ -44,6 +40,12 @@ func TestAccountLifecycleUsesWorkspaceAdminMockWithRealDex(t *testing.T) {
 		defer cancel()
 		require.NoError(t, errors.Join(worker.Stop(stopContext), <-workerResult, client.Close(), cache.Close()))
 	})
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
 	ctx := integrationContext(t)
 	onboardID := startAccountLifecycle(t, ctx, client, flow, "mock-onboard", Input{
 		Action: AccountActionOnboard, PrimaryEmail: " ADA@example.com ", GivenName: "Ada", FamilyName: "Lovelace",

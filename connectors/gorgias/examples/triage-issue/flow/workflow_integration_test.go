@@ -12,7 +12,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -43,10 +42,9 @@ const (
 	acknowledgement      = "Thanks Jane, we are refunding the duplicate charge."
 
 	defaultRequestTimeout = 5 * time.Second
-	// slowResponseDelay outlasts Dex's roughly seven-second async local phase, so an async Step is dispatched again.
-	slowResponseDelay  = 9 * time.Second
-	slowRequestTimeout = 20 * time.Second
-	fakeTimestamp      = "2006-01-02T15:04:05.000000"
+	slowResponseDelay     = 100 * time.Millisecond
+	slowRequestTimeout    = 20 * time.Second
+	fakeTimestamp         = "2006-01-02T15:04:05.000000"
 )
 
 func integrationIssueInput() Input {
@@ -183,16 +181,24 @@ func TestSlowNoteIsSentOnceWithRealDex(t *testing.T) {
 }
 
 // TestSlowUpdateIsSafeToRepeatWithRealDex lets async Dex dispatch the update again; both attempts write the same values.
+// TestSlowUpdateIsSafeToRepeatWithRealDex loses the Worker after the first update is applied.
 func TestSlowUpdateIsSafeToRepeatWithRealDex(t *testing.T) {
 	provider := newFakeGorgias(t)
 	existing := provider.seedTicket(provider.seedCustomer(integrationRequester), "open", "normal", []string{integrationIssueTag}, "2026-01-26T14:02:00")
-	provider.delaysFirstUpdate = true
+	provider.holdsFirstUpdate = make(chan struct{})
 	harness := newTriageHarness(t, provider, slowRequestTimeout)
-
-	outcome := harness.runTriage(t, "slow-update", integrationIssueInput())
+	flowID := harness.startTriage(t, "lost-worker-update", integrationIssueInput())
+	require.Eventually(t, func() bool { return provider.count("update") == 1 }, 30*time.Second, 50*time.Millisecond)
+	harness.replaceWorker(t)
+	close(provider.holdsFirstUpdate)
+	result := harness.waitForFlow(t, flowID)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var outcome TriageOutcome
+	require.NoError(t, result.DecodeSingleOutput(&outcome))
 	require.Equal(t, TriageTicketFollowedUp, outcome.Action)
+	require.True(t, outcome.WasAlreadyApplied)
 	provider.waitForDelayedRequests(t)
-	require.GreaterOrEqual(t, provider.count("update"), 2, "Dex dispatched the update again past its local phase")
+	require.Equal(t, 1, provider.count("update"), "the replacement read the applied values")
 	ticket := provider.ticket(existing)
 	require.Equal(t, "open", ticket.status)
 	require.Equal(t, "high", ticket.priority)
@@ -337,7 +343,7 @@ type fakeGorgias struct {
 
 	delaysFirstCreate              bool
 	delaysFirstNote                bool
-	delaysFirstUpdate              bool
+	holdsFirstUpdate               chan struct{}
 	losesFirstCreateResponse       bool
 	failsFirstCreateWithoutStoring bool
 	losesFirstReplyResponse        bool
@@ -586,11 +592,6 @@ func (provider *fakeGorgias) readTicket(response http.ResponseWriter, request *h
 
 func (provider *fakeGorgias) updateTicket(response http.ResponseWriter, request *http.Request, body []byte, ticketID int64) {
 	attempt := provider.record("update", request, body)
-	if provider.delaysFirstUpdate && attempt == 1 {
-		provider.delayedRequests.Add(1)
-		defer provider.delayedRequests.Done()
-		time.Sleep(slowResponseDelay)
-	}
 	var payload struct {
 		Status       string              `json:"status"`
 		Priority     string              `json:"priority"`
@@ -599,9 +600,9 @@ func (provider *fakeGorgias) updateTicket(response http.ResponseWriter, request 
 	}
 	require.NoError(provider.t, json.Unmarshal(body, &payload))
 	provider.mutex.Lock()
-	defer provider.mutex.Unlock()
 	ticket, found := provider.tickets[ticketID]
 	if !found {
+		provider.mutex.Unlock()
 		provider.writeJSON(response, http.StatusNotFound, `{"error":{"msg":"Not found"}}`)
 		return
 	}
@@ -613,7 +614,18 @@ func (provider *fakeGorgias) updateTicket(response http.ResponseWriter, request 
 		ticket.assigneeTeam = payload.AssigneeTeam.ID
 	}
 	ticket.updatedAt = provider.advanceClock()
-	provider.writeValue(response, http.StatusAccepted, provider.ticketJSON(ticket))
+	answer := provider.ticketJSON(ticket)
+	provider.mutex.Unlock()
+	if provider.holdsFirstUpdate != nil && attempt == 1 {
+		provider.delayedRequests.Add(1)
+		defer provider.delayedRequests.Done()
+		select {
+		case <-provider.holdsFirstUpdate:
+		case <-request.Context().Done():
+			return
+		}
+	}
+	provider.writeValue(response, http.StatusAccepted, answer)
 }
 
 // changeTags adds or removes tag names as sets, as Gorgias's ticket tag endpoints do.
@@ -863,7 +875,7 @@ func (provider *fakeGorgias) waitForDelayedRequests(t *testing.T) {
 	}()
 	select {
 	case <-finished:
-	case <-time.After(2 * slowResponseDelay):
+	case <-time.After(30 * time.Second):
 		t.Fatal("a delayed fake Gorgias request did not finish")
 	}
 }
@@ -933,7 +945,6 @@ type triageHarness struct {
 	registry      *dex.Registry
 	cache         *blobcache.Cache
 	serverAddress string
-	workerAddress string
 	worker        *dex.Worker
 	workerResult  chan error
 	client        *dex.Client
@@ -954,29 +965,32 @@ func newTriageHarness(t *testing.T, provider *fakeGorgias, requestTimeout time.D
 	require.NoError(t, err)
 	harness.cache, err = blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
-	harness.workerAddress = net.JoinHostPort("127.0.0.1", availableIntegrationPort(t))
 	harness.client, err = dex.NewClient(harness.registry, harness.cache, dex.ClientOptions{
-		FlowServiceAddress: harness.serverAddress, WorkerTarget: &dex.WorkerTarget{Address: harness.workerAddress},
+		FlowServiceAddress: harness.serverAddress,
 	})
 	require.NoError(t, err)
-	harness.startWorker(t)
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
 		require.NoError(t, errors.Join(harness.worker.Stop(ctx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
 	})
+	harness.startWorker(t)
 	return harness
 }
 
 func (harness *triageHarness) startWorker(t *testing.T) {
 	t.Helper()
-	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{
-		BindAddress: harness.workerAddress, FlowServiceAddress: harness.serverAddress, WorkerTarget: dex.WorkerTarget{Address: harness.workerAddress},
-	})
+	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{FlowServiceAddress: harness.serverAddress})
 	require.NoError(t, err)
 	workerResult := make(chan error, 1)
 	go func() { workerResult <- worker.Start() }()
 	harness.worker, harness.workerResult = worker, workerResult
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
 }
 
 // replaceWorker force-stops the Worker without draining its handlers, like a crash, then starts a new one.
@@ -1024,14 +1038,6 @@ func (harness *triageHarness) waitForFlow(t *testing.T, flowID string) dex.FlowR
 		require.NoError(t, err, "Flow %s did not close", flowID)
 		return result
 	}
-}
-
-func availableIntegrationPort(t *testing.T) string {
-	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	defer listener.Close()
-	return strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
 }
 
 func environmentOr(name string, fallback string) string {

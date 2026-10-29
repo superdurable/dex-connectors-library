@@ -9,7 +9,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -40,9 +39,8 @@ const (
 	stageID    = 3
 
 	defaultRequestTimeout = 5 * time.Second
-	// slowResponseDelay outlasts Dex's roughly seven-second async local phase, so an async Step is dispatched again.
-	slowResponseDelay  = 9 * time.Second
-	slowRequestTimeout = 20 * time.Second
+	slowResponseDelay     = 100 * time.Millisecond
+	slowRequestTimeout    = 20 * time.Second
 )
 
 var integrationSettings = Settings{
@@ -138,18 +136,24 @@ func TestSlowDealCreateIsSentOnceWithRealDex(t *testing.T) {
 	require.Equal(t, 1, provider.dealCount())
 }
 
-// TestSlowDealUpdateIsSafeToRepeatWithRealDex lets async Dex dispatch the update again; both attempts write the same values.
+// TestSlowDealUpdateIsSafeToRepeatWithRealDex replaces a Worker after its first update reached Pipedrive.
 func TestSlowDealUpdateIsSafeToRepeatWithRealDex(t *testing.T) {
 	provider := newFakePipedrive(t)
 	existing := provider.seedPerson("Jane Smith", integrationEmail, 0)
 	openDeal := provider.seedDeal("Acme renewal", existing, pipelineID, 1, "open")
-	provider.delaysFirstDealUpdate = true
-	harness := newIntakeHarness(t, provider, slowRequestTimeout)
+	provider.holdsFirstDealUpdate = make(chan struct{})
+	harness := newIntakeHarness(t, provider, defaultRequestTimeout)
 
-	intake := harness.runIntake(t, "slow-update", integrationLead())
+	flowID := harness.startIntake(t, "lost-update", integrationLead())
+	require.Eventually(t, func() bool { return provider.count("dealUpdate") == 1 && provider.deal(openDeal).stageID == stageID },
+		30*time.Second, 10*time.Millisecond)
+	harness.replaceWorker(t)
+	result := harness.waitForFlow(t, flowID)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var intake DealIntake
+	require.NoError(t, result.DecodeSingleOutput(&intake))
 	require.Equal(t, DealActionAdvanced, intake.DealAction)
-	provider.waitForDelayedRequests(t)
-	require.GreaterOrEqual(t, provider.count("dealUpdate"), 2, "Dex dispatched the update again past its local phase")
+	require.Equal(t, 2, provider.count("dealUpdate"), "the replacement Worker repeats the absolute update once")
 	for _, request := range provider.requestsNamed("dealUpdate") {
 		require.JSONEq(t, `{"stage_id":3,"owner_id":7}`, request.body, "every dispatch writes the same absolute values")
 	}
@@ -349,7 +353,6 @@ type intakeHarness struct {
 	registry      *dex.Registry
 	cache         *blobcache.Cache
 	serverAddress string
-	workerAddress string
 	worker        *dex.Worker
 	workerResult  chan error
 	client        *dex.Client
@@ -376,28 +379,35 @@ func newIntakeHarnessForConnection(t *testing.T, connection pipedrive.Connection
 	require.NoError(t, err)
 	harness.cache, err = blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
-	harness.workerAddress = net.JoinHostPort("127.0.0.1", availableIntegrationPort(t))
 	harness.client, err = dex.NewClient(harness.registry, harness.cache, dex.ClientOptions{
-		FlowServiceAddress: harness.serverAddress, WorkerTarget: &dex.WorkerTarget{Address: harness.workerAddress},
+		FlowServiceAddress: harness.serverAddress,
 	})
 	require.NoError(t, err)
-	harness.startWorker(t)
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
+		if harness.worker == nil {
+			require.NoError(t, errors.Join(harness.client.Close(), harness.cache.Close()))
+			return
+		}
 		require.NoError(t, errors.Join(harness.worker.Stop(ctx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
 	})
+	harness.startWorker(t)
 	return harness
 }
 
 func (harness *intakeHarness) startWorker(t *testing.T) {
 	t.Helper()
-	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{
-		BindAddress: harness.workerAddress, FlowServiceAddress: harness.serverAddress, WorkerTarget: dex.WorkerTarget{Address: harness.workerAddress},
-	})
+	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{FlowServiceAddress: harness.serverAddress})
 	require.NoError(t, err)
 	workerResult := make(chan error, 1)
 	go func() { workerResult <- worker.Start() }()
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
 	harness.worker, harness.workerResult = worker, workerResult
 }
 
@@ -451,14 +461,6 @@ func (harness *intakeHarness) waitForFlow(t *testing.T, flowID string) dex.FlowR
 		require.NoError(t, err, "Flow %s did not close", flowID)
 		return result
 	}
-}
-
-func availableIntegrationPort(t *testing.T) string {
-	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	defer listener.Close()
-	return strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
 }
 
 func environmentOr(name string, fallback string) string {

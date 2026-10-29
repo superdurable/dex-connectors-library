@@ -63,6 +63,8 @@ type StatementScript struct {
 	RejectSubmission *StatementFailure
 	// FirstSubmitDelay delays the response to the first accepted submission after the statement started.
 	FirstSubmitDelay time.Duration
+	// FirstSubmitHold holds the first accepted response until its request is canceled or the channel closes.
+	FirstSubmitHold <-chan struct{}
 	// RunningReads is the number of status reads answered 202 before the outcome.
 	RunningReads int
 	// Failure, when set, is the 422 outcome of a finished statement.
@@ -229,7 +231,13 @@ func (server *Server) submitStatement(response http.ResponseWriter, request *htt
 		server.handles[submitted.RequestID] = handle
 	}
 	server.mutex.Unlock()
-	if script.FirstSubmitDelay > 0 {
+	if script.FirstSubmitHold != nil {
+		select {
+		case <-script.FirstSubmitHold:
+		case <-request.Context().Done():
+			return
+		}
+	} else if script.FirstSubmitDelay > 0 {
 		// Snowflake already accepted the statement; only the response is slow.
 		time.Sleep(script.FirstSubmitDelay)
 	}

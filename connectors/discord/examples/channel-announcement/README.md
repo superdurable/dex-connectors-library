@@ -75,14 +75,12 @@ cd "$(git rev-parse --show-toplevel)/connectors/discord"
 go run ./examples/channel-announcement
 ```
 
-The Worker listens on `127.0.0.1:8883`. Override `DEX_FLOW_SERVICE_ADDRESS`,
-`DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR` when needed. It logs the
+Override `DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR` when needed. It logs the
 connection name, never the token.
 
 In Discord, enable **User Settings > Advanced > Developer Mode**, right-click
 the channel, and choose **Copy Channel ID**. In the Run workspace, choose
-**Start Flow**, select `DiscordChannelAnnouncement`, choose the Worker at
-`127.0.0.1:8883`, enter a Flow ID, and submit:
+**Start Flow**, select `DiscordChannelAnnouncement`, enter a Flow ID, and submit:
 
 ```json
 {

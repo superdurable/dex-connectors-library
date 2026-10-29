@@ -359,5 +359,5 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./.
 (cd ui && npm ci && npm test && npm run build)
 ```
 
-The integration run needs `dexcli dev` and takes about a minute, because the
-duplicate-dispatch tests wait for a nine-second provider.
+The integration run needs `dexcli dev` and exercises duplicate dispatch after
+Worker loss or a retry following an accepted provider write.

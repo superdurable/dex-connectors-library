@@ -8,7 +8,6 @@ package leadqualification
 import (
 	"context"
 	"errors"
-	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -138,38 +137,36 @@ func TestUnknownStageAndAmbiguousAccountCompleteWithoutWritingWithRealDex(t *tes
 	require.Zero(t, provider.Count("update"))
 }
 
-// TestSlowContactUpsertDispatchedTwiceKeepsOneContactWithRealDex is the duplicate-dispatch test: the
-// first upsert inserts and answers after nine seconds, async Dex dispatches the Step again, and the
-// second upsert finds the contact by Email and updates it.
+// TestSlowContactUpsertDispatchedTwiceKeepsOneContactWithRealDex retries after the first accepted upsert returns 503.
 func TestSlowContactUpsertDispatchedTwiceKeepsOneContactWithRealDex(t *testing.T) {
 	provider := fakecrm.New(t, integrationAccessToken)
-	provider.DelaysFirstUpsertOf = "Contacts"
+	provider.FailsFirstAcceptedUpsertOf = "Contacts"
 	provider.SeedRecord("Accounts", map[string]any{"Account_Name": "Acme Corp"}, seededAt)
-	harness := newQualificationHarness(t, provider, slowRequestTimeout)
+	harness := newQualificationHarness(t, provider, defaultRequestTimeout)
 
-	startedAt := time.Now()
-	outcome := harness.runQualification(t, "slow-upsert", integrationInput())
-	provider.WaitForDelayedRequests(t)
+	outcome := harness.runQualification(t, "accepted-then-unavailable", integrationInput())
 	require.Equal(t, PhaseNoOpenDeal, outcome.Phase)
-	require.GreaterOrEqual(t, provider.Count("upsert"), 2, "Dex dispatched the upsert again past its local phase")
+	require.Equal(t, 2, provider.Count("upsert"), "the retry repeats the accepted contact upsert once")
+	require.Equal(t, 2, provider.Count("upsert Contacts"))
 	require.Equal(t, 1, provider.RecordCount("Contacts"), "the repeated upsert updated the contact instead of creating a second")
 	upserts := provider.RequestsNamed("upsert")
-	for _, request := range upserts {
-		require.Equal(t, upserts[0].Body, request.Body, "every dispatch sends the same record")
-	}
-	t.Logf("slow upsert: upserts=%d elapsed=%s isContactCreated=%t", len(upserts), time.Since(startedAt), outcome.IsContactCreated)
+	require.Equal(t, upserts[0].Body, upserts[1].Body, "both contact attempts send the same record")
 }
 
 func TestSlowDealUpdateDispatchedTwiceSetsTheSameValuesWithRealDex(t *testing.T) {
 	provider := fakecrm.New(t, integrationAccessToken)
 	_, _, dealID, _ := seedJaneWithDeals(provider)
-	provider.DelaysFirstUpdate = true
-	harness := newQualificationHarness(t, provider, slowRequestTimeout)
+	provider.HoldsFirstUpdate = true
+	harness := newQualificationHarness(t, provider, defaultRequestTimeout)
 
-	outcome := harness.runQualification(t, "slow-update", integrationInput())
-	provider.WaitForDelayedRequests(t)
+	flowID := harness.startQualification(t, "lost-update", integrationInput())
+	require.Eventually(t, func() bool {
+		return provider.Count("update") == 1 && provider.Record("Deals", dealID)["Stage"] == "Proposal/Price Quote"
+	}, 30*time.Second, 10*time.Millisecond)
+	harness.replaceWorker(t)
+	outcome := harness.requireCompletedQualification(t, flowID)
 	require.Equal(t, PhaseDealAdvanced, outcome.Phase)
-	require.GreaterOrEqual(t, provider.Count("update"), 2, "Dex dispatched the update again past its local phase")
+	require.Equal(t, 2, provider.Count("update"), "the replacement Worker repeats the absolute update once")
 	for _, request := range provider.RequestsNamed("update") {
 		require.JSONEq(t, `{"data":[{"Stage":"Proposal/Price Quote","Owner":{"id":"`+integrationOwnerID+`"}}]}`, request.Body)
 	}
@@ -282,7 +279,6 @@ type qualificationHarness struct {
 	registry      *dex.Registry
 	cache         *blobcache.Cache
 	serverAddress string
-	workerAddress string
 	worker        *dex.Worker
 	workerResult  chan error
 	client        *dex.Client
@@ -312,28 +308,54 @@ func newQualificationHarnessForConnection(t *testing.T, connection crm.Connectio
 	require.NoError(t, err)
 	harness.cache, err = blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
-	harness.workerAddress = net.JoinHostPort("127.0.0.1", availableIntegrationPort(t))
 	harness.client, err = dex.NewClient(harness.registry, harness.cache, dex.ClientOptions{
-		FlowServiceAddress: harness.serverAddress, WorkerTarget: &dex.WorkerTarget{Address: harness.workerAddress},
+		FlowServiceAddress: harness.serverAddress,
 	})
 	require.NoError(t, err)
-	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{
-		BindAddress: harness.workerAddress, FlowServiceAddress: harness.serverAddress, WorkerTarget: dex.WorkerTarget{Address: harness.workerAddress},
-	})
-	require.NoError(t, err)
-	harness.worker, harness.workerResult = worker, make(chan error, 1)
-	go func() { harness.workerResult <- worker.Start() }()
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
+		if harness.worker == nil {
+			require.NoError(t, errors.Join(harness.client.Close(), harness.cache.Close()))
+			return
+		}
 		require.NoError(t, errors.Join(harness.worker.Stop(ctx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
 	})
+	harness.startWorker(t)
 	return harness
+}
+
+func (harness *qualificationHarness) startWorker(t *testing.T) {
+	t.Helper()
+	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{FlowServiceAddress: harness.serverAddress})
+	require.NoError(t, err)
+	harness.worker, harness.workerResult = worker, make(chan error, 1)
+	go func() { harness.workerResult <- worker.Start() }()
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
+}
+
+func (harness *qualificationHarness) replaceWorker(t *testing.T) {
+	t.Helper()
+	expired, cancel := context.WithCancel(context.Background())
+	cancel()
+	_ = harness.worker.Stop(expired)
+	require.NoError(t, <-harness.workerResult)
+	harness.startWorker(t)
 }
 
 func (harness *qualificationHarness) runQualification(t *testing.T, scenario string, input Input) LeadQualification {
 	t.Helper()
 	flowID := harness.startQualification(t, scenario, input)
+	return harness.requireCompletedQualification(t, flowID)
+}
+
+func (harness *qualificationHarness) requireCompletedQualification(t *testing.T, flowID string) LeadQualification {
+	t.Helper()
 	result := harness.waitForFlow(t, flowID)
 	require.Equal(t, dex.FlowCompleted, result.Status, "Flow %s: %s", flowID, result.ErrorMessage)
 	var outcome LeadQualification
@@ -365,14 +387,6 @@ func (harness *qualificationHarness) waitForFlow(t *testing.T, flowID string) de
 		require.NoError(t, err, "Flow %s did not close", flowID)
 		return result
 	}
-}
-
-func availableIntegrationPort(t *testing.T) string {
-	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	defer listener.Close()
-	return strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
 }
 
 func environmentOr(name string, fallback string) string {

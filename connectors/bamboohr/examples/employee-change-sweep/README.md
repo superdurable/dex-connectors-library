@@ -53,12 +53,11 @@ describes:
 go run ./examples/employee-change-sweep
 ```
 
-The default Worker address is `127.0.0.1:8837`; `DEX_FLOW_SERVICE_ADDRESS`,
-`DEX_WORKER_BIND_ADDRESS`, `DEX_BLOB_CACHE_DIR`, and, for a local fake only,
+`DEX_FLOW_SERVICE_ADDRESS`, `DEX_BLOB_CACHE_DIR`, and, for a local fake only,
 `BAMBOOHR_LOCAL_API_BASE_URL` work as in the onboarding example.
 
 In the Run workspace, choose **Start Flow**, select
-`BambooHREmployeeChangeSweep`, choose the Worker at `127.0.0.1:8837`, enter a
+`BambooHREmployeeChangeSweep`, enter a
 unique Flow ID, and submit:
 
 ```json
@@ -90,8 +89,7 @@ as exclusive:
   and keeps two hires added in the same second;
 - four sweeps that each stop at their page limit continue from the previous
   cursor with no gap or duplicate, across a page boundary inside one second;
-- a listing held for nine seconds is dispatched again by async Dex and keeps
-  each change once;
+- a listing interrupted by Worker loss runs again and keeps each change once;
 - a rate-limited listing waits for `Retry-After`;
 - rejected credentials fail the Flow through the unwired `providerRejected`
   branch.
