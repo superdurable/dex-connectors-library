@@ -5,6 +5,8 @@ This runnable Worker starts `PagerDutyIncidentReview` with typed `incidentreview
 static Dex Web connection name is `pagerduty`. Optional failure branches are
 unwired and fail the Flow when selected.
 
+The completed provider result is available in the Dex Web summary and display views.
+
 ## Generate the strict FDG 2.0 definition
 
 From `connectors/pagerduty` with a current Dex CLI:
