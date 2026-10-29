@@ -13,11 +13,11 @@ spec:
       package: woocommerce
   configuration:
     fields:
-      - name: baseUrl
-        goName: BaseURL
+      - name: storeUrl
+        goName: StoreURL
         type: url
-        description: "At your WordPress admin > Settings > General, find Site Address (URL), use its HTTPS host and path, and append /wp-json/wc/v3. This URL is not secret. Blank uses the unusable example placeholder."
-        default: https://your-store.example/wp-json/wc/v3
+        description: "Non-secret HTTPS Site Address (URL) from your WordPress admin > Settings > General, including any site path but without /wp-json/wc/v3. Required; blank cannot identify the store. The connector appends /wp-json/wc/v3."
+        required: true
       - name: timeout
         goName: Timeout
         type: duration
@@ -45,8 +45,8 @@ spec:
     guide:
       startURL: https://woocommerce.com/document/woocommerce-rest-api/
       steps:
-        - "At your HTTPS WordPress store admin, open WooCommerce > Settings > Advanced > REST API > Add key, select a user and Read permission, then generate the key. Copy the secret ck_ consumer key into consumer_key and cs_ consumer secret into consumer_secret; both are stored only as Dex credentials. Set baseUrl to the store HTTPS URL ending /wp-json/wc/v3; blank credentials prevent calls."
-        - "Set baseUrl, timeout, and maxResponseBytes only as described below; defaults appear in parentheses in Dex Web."
+        - "At your HTTPS WordPress store admin, open WooCommerce > Settings > Advanced > REST API > Add key, select a user and Read permission, then generate the key. Copy the secret ck_ consumer key into consumer_key and cs_ consumer secret into consumer_secret; both are stored only as Dex credentials. Set storeUrl to the Site Address (URL) from WordPress > Settings > General; blank credentials prevent calls."
+        - "Set storeUrl, timeout, and maxResponseBytes only as described below; defaults appear in parentheses in Dex Web."
   operations:
     - name: listOrders
       goName: ListOrders

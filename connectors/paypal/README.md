@@ -15,7 +15,7 @@ PayPal Transaction Search requires the reporting/search/read permission, returns
 
 ## Authentication and configuration
 
-Follow the authorization guide in `connector.yaml` from [https://developer.paypal.com/dashboard/applications/live](https://developer.paypal.com/dashboard/applications/live). The connection resolves credentials for each operation. Secrets travel in HTTP headers and never enter results, receipts, failures, or URLs. The `baseUrl` field uses the provider API URL, `timeout` bounds one HTTP request, and `maxResponseBytes` bounds JSON response size. The last two fields use a positive Go duration and a positive byte count, respectively; blank uses the displayed defaults.
+Follow the authorization guide in `connector.yaml` from [https://developer.paypal.com/dashboard/applications/live](https://developer.paypal.com/dashboard/applications/live). The connection resolves credentials for each operation and caches the resulting access token in memory until shortly before expiry. Secrets travel in HTTP headers and never enter results, receipts, failures, or URLs. The `baseUrl` field uses the provider API URL, `timeout` bounds one HTTP request, and `maxResponseBytes` bounds JSON response size. The last two fields use a positive Go duration and a positive byte count, respectively; blank uses the displayed defaults.
 
 ## Failure handling
 

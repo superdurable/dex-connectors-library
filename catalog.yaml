@@ -5,12 +5,12 @@ directories:
   - connectors/amazon/s3
   - connectors/amazon/sqs
   - connectors/asana
+  - connectors/atlassian/bitbucket
   - connectors/atlassian/confluence
   - connectors/atlassian/jira
   - connectors/atlassian/jira-service-management
   - connectors/atlassian/trello
   - connectors/bamboohr
-  - connectors/bitbucket
   - connectors/calendly
   - connectors/clickup
   - connectors/close

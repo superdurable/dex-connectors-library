@@ -47,13 +47,14 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if config.Timeout <= 0 || config.MaxResponseBytes <= 0 {
 		return nil, fmt.Errorf("timeout and maxResponseBytes must be positive")
 	}
-	baseURL, err := providerhttp.ValidateBaseURL(config.BaseURL)
+	storeURL, err := providerhttp.ValidateBaseURL(config.StoreURL)
 	if err != nil {
 		return nil, err
 	}
-	if strings.Contains(baseURL, "your-store") {
-		return nil, fmt.Errorf("replace the example store host in baseUrl")
+	if strings.HasSuffix(strings.ToLower(storeURL), "/wp-json/wc/v3") {
+		return nil, fmt.Errorf("storeUrl must be the WordPress Site Address without /wp-json/wc/v3")
 	}
+	baseURL := storeURL + "/wp-json/wc/v3"
 	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
 	for _, option := range options {
 		if option == nil {
@@ -146,7 +147,7 @@ func (operation GetOrderOperation) Invoke(call sdkgo.Call, input GetOrderInput) 
 	if input.OrderID <= 0 {
 		return failedAttempt[Order]("getOrder", GetOrderBranchDefect, sdkgo.FailureValidation, "orderId must be positive")
 	}
-	path := "/orders/" + strconv.FormatInt(input.OrderID, 10) + ""
+	path := "/orders/" + strconv.FormatInt(input.OrderID, 10)
 	return executeRead(operation.client, call, "getOrder", path, query, GetOrderBranchFound, GetOrderBranchNotFound, GetOrderBranchProviderRejected, GetOrderBranchInvalidResponse, GetOrderBranchDefect, decodeGetOrderResponse)
 }
 

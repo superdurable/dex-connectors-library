@@ -7,7 +7,7 @@ package bitbucketmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/bitbucket"
+	"github.com/superdurable/dex-connectors-library/connectors/atlassian/bitbucket"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

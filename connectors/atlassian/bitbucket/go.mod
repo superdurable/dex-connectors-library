@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/bitbucket
+module github.com/superdurable/dex-connectors-library/connectors/atlassian/bitbucket
 
 go 1.24.0
 

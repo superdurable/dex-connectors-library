@@ -19,7 +19,7 @@ import (
 const ConnectorID = "woocommerce"
 
 type Config struct {
-	BaseURL          string        `json:"baseUrl,omitempty" yaml:"baseUrl,omitempty"`
+	StoreURL         string        `json:"storeUrl,omitempty" yaml:"storeUrl,omitempty"`
 	Timeout          time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 	MaxResponseBytes int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
 }
@@ -150,7 +150,6 @@ func (Connection) GoString() string { return "woocommerce.Connection{[REDACTED]}
 
 func DefaultConfig() Config {
 	return Config{
-		BaseURL:          "https://your-store.example/wp-json/wc/v3",
 		Timeout:          time.Duration(15000000000),
 		MaxResponseBytes: 2097152,
 	}
@@ -158,9 +157,6 @@ func DefaultConfig() Config {
 
 func withConfigDefaults(config Config) Config {
 	defaults := DefaultConfig()
-	if config.BaseURL == "" {
-		config.BaseURL = defaults.BaseURL
-	}
 	if config.Timeout == 0 {
 		config.Timeout = defaults.Timeout
 	}
@@ -171,10 +167,13 @@ func withConfigDefaults(config Config) Config {
 }
 
 func (config Config) Validate() error {
-	if config.BaseURL != "" {
-		parsed, err := url.Parse(config.BaseURL)
+	if config.StoreURL == "" {
+		return fmt.Errorf("configuration storeUrl is required")
+	}
+	if config.StoreURL != "" {
+		parsed, err := url.Parse(config.StoreURL)
 		if err != nil || parsed.Scheme == "" || parsed.Hostname() == "" {
-			return fmt.Errorf("configuration baseUrl must be an absolute URL")
+			return fmt.Errorf("configuration storeUrl must be an absolute URL")
 		}
 	}
 	if config.Timeout < 0 {

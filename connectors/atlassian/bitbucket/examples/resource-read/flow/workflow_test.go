@@ -5,7 +5,7 @@ package resourceread
 
 import (
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/bitbucket"
+	"github.com/superdurable/dex-connectors-library/connectors/atlassian/bitbucket"
 	"github.com/superdurable/dex/sdk-go/dex"
 	"testing"
 )

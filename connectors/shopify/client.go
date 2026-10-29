@@ -47,12 +47,12 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if config.Timeout <= 0 || config.MaxResponseBytes <= 0 {
 		return nil, fmt.Errorf("timeout and maxResponseBytes must be positive")
 	}
-	baseURL, err := providerhttp.ValidateBaseURL(config.BaseURL)
+	if !isValidShopSubdomain(config.ShopSubdomain) {
+		return nil, fmt.Errorf("shopSubdomain must contain lowercase letters, digits, or internal hyphens")
+	}
+	baseURL, err := providerhttp.ValidateBaseURL("https://" + config.ShopSubdomain + ".myshopify.com/admin/api/2026-10")
 	if err != nil {
 		return nil, err
-	}
-	if strings.Contains(baseURL, "your-store") {
-		return nil, fmt.Errorf("replace the example store host in baseUrl")
 	}
 	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
 	for _, option := range options {
@@ -139,6 +139,7 @@ func (ListOrdersOperation) Definition() sdkgo.QueryDefinition { return ListOrder
 // Invoke reads the provider resource and classifies the response.
 func (operation ListOrdersOperation) Invoke(call sdkgo.Call, input ListOrdersInput) sdkgo.QueryAttempt[OrderPage] {
 	query := url.Values{}
+	query.Set("status", "any")
 	path := "/orders.json"
 	if input.Limit < 0 || input.Limit > 250 {
 		return failedAttempt[OrderPage]("listOrders", ListOrdersBranchDefect, sdkgo.FailureValidation, "limit must be 1 through 250, or zero for provider default")
@@ -229,6 +230,18 @@ func executeRead[T any](client *Client, call sdkgo.Call, operation, path string,
 
 func validPathSegment(value string) bool {
 	return value != "" && value != "." && value != ".." && !strings.ContainsAny(value, "/?#") && strings.IndexFunc(value, func(character rune) bool { return character < 32 }) < 0
+}
+
+func isValidShopSubdomain(value string) bool {
+	if len(value) == 0 || len(value) > 63 || value[0] == '-' || value[len(value)-1] == '-' {
+		return false
+	}
+	for _, character := range value {
+		if (character < 'a' || character > 'z') && (character < '0' || character > '9') && character != '-' {
+			return false
+		}
+	}
+	return true
 }
 
 func failedAttempt[T any](operation string, branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.QueryAttempt[T] {

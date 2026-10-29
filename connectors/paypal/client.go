@@ -5,6 +5,7 @@
 package paypal
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
@@ -33,6 +35,14 @@ type Client struct {
 	maxResponseBytes int64
 	credentials      CredentialSource
 	httpClient       *http.Client
+	tokenMutex       sync.Mutex
+	cachedToken      paypalAccessToken
+}
+
+type paypalAccessToken struct {
+	credentialHash [32]byte
+	value          string
+	expiresAt      time.Time
 }
 
 // New validates the connection settings without contacting PayPal.
@@ -203,6 +213,14 @@ func (client *Client) authorize(call sdkgo.Call, operation string, request *http
 	if err != nil || credentials.Validate() != nil || !providerhttp.IsHeaderSafeCredential(credentials.ClientID) || !providerhttp.IsHeaderSafeCredential(credentials.ClientSecret.Reveal()) {
 		return authResult{failure: failureFor(operation, sdkgo.FailureAuthentication, "PayPal credentials are unavailable"), branch: defectBranch}
 	}
+	credentialHash := sha256.Sum256([]byte(credentials.ClientID + "\x00" + credentials.ClientSecret.Reveal()))
+	client.tokenMutex.Lock()
+	if client.cachedToken.credentialHash == credentialHash && time.Now().Before(client.cachedToken.expiresAt) {
+		request.Header.Set("Authorization", "Bearer "+client.cachedToken.value)
+		client.tokenMutex.Unlock()
+		return authResult{}
+	}
+	client.tokenMutex.Unlock()
 	tokenRequest, err := http.NewRequestWithContext(call.Context, http.MethodPost, client.baseURL+"/v1/oauth2/token", strings.NewReader("grant_type=client_credentials"))
 	if err != nil {
 		return authResult{failure: failureFor(operation, sdkgo.FailureLocalDefect, "PayPal token request could not be built"), branch: defectBranch}
@@ -230,11 +248,18 @@ func (client *Client) authorize(call sdkgo.Call, operation string, request *http
 	var token struct {
 		AccessToken string `json:"access_token"`
 		TokenType   string `json:"token_type"`
+		ExpiresIn   int64  `json:"expires_in"`
 	}
 	if json.Unmarshal(body, &token) != nil || token.AccessToken == "" || !providerhttp.IsHeaderSafeCredential(token.AccessToken) || !strings.EqualFold(token.TokenType, "Bearer") {
 		return authResult{failure: failureFor(operation, sdkgo.FailureProtocol, "PayPal returned an invalid token response"), branch: invalidBranch}
 	}
 	request.Header.Set("Authorization", "Bearer "+token.AccessToken)
+	if token.ExpiresIn > 30 {
+		lifetime := min(token.ExpiresIn-30, int64(24*time.Hour/time.Second))
+		client.tokenMutex.Lock()
+		client.cachedToken = paypalAccessToken{credentialHash: credentialHash, value: token.AccessToken, expiresAt: time.Now().Add(time.Duration(lifetime) * time.Second)}
+		client.tokenMutex.Unlock()
+	}
 	return authResult{}
 }
 
@@ -268,6 +293,9 @@ func executeRead[T any](client *Client, call sdkgo.Call, operation, path string,
 	case response.StatusCode == http.StatusNotFound:
 		return failedAttempt[T](operation, notFoundBranch, sdkgo.FailureProviderRejection, "resource was not found")
 	case response.StatusCode == http.StatusUnauthorized:
+		client.tokenMutex.Lock()
+		client.cachedToken = paypalAccessToken{}
+		client.tokenMutex.Unlock()
 		return failedAttempt[T](operation, rejectedBranch, sdkgo.FailureAuthentication, "provider rejected credentials")
 	case response.StatusCode == http.StatusForbidden:
 		return failedAttempt[T](operation, rejectedBranch, sdkgo.FailureAuthorization, "provider denied access")

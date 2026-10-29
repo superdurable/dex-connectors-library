@@ -13,9 +13,9 @@ Each operation has optional `notFound`, `providerRejected`, `invalidResponse`, a
 
 ## Authentication and configuration
 
-Follow the authorization guide in `connector.yaml` from [https://woocommerce.com/document/woocommerce-rest-api/](https://woocommerce.com/document/woocommerce-rest-api/). The connection resolves credentials for each operation. Secrets travel in HTTP headers and never enter results, receipts, failures, or URLs. The `baseUrl` field uses the provider API URL, `timeout` bounds one HTTP request, and `maxResponseBytes` bounds JSON response size. The last two fields use a positive Go duration and a positive byte count, respectively; blank uses the displayed defaults.
+Follow the authorization guide in `connector.yaml` from [https://woocommerce.com/document/woocommerce-rest-api/](https://woocommerce.com/document/woocommerce-rest-api/). The connection resolves credentials for each operation. Secrets travel in HTTP headers and never enter results, receipts, failures, or URLs. Enter the required HTTPS `storeUrl` from WordPress Settings > General, including any site path; the connector appends `/wp-json/wc/v3`. `timeout` bounds one HTTP request, and `maxResponseBytes` bounds JSON response size. The last two fields use a positive Go duration and a positive byte count, respectively; blank uses the displayed defaults.
 
-For a live store, replace the `baseUrl` example host with your own HTTPS store before running.
+If the store returns HTTP 401 despite valid keys, check whether the web server forwards the `Authorization` header to WordPress. This connector does not put credentials in URL parameters.
 
 ## Failure handling
 

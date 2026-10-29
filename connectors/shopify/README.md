@@ -15,9 +15,9 @@ Shopify calls REST Admin a legacy API and no longer permits creating new admin-c
 
 ## Authentication and configuration
 
-Follow the authorization guide in `connector.yaml` from [https://admin.shopify.com/](https://admin.shopify.com/). The connection resolves credentials for each operation. Secrets travel in HTTP headers and never enter results, receipts, failures, or URLs. The `baseUrl` field uses the provider API URL, `timeout` bounds one HTTP request, and `maxResponseBytes` bounds JSON response size. The last two fields use a positive Go duration and a positive byte count, respectively; blank uses the displayed defaults.
+Follow the authorization guide in `connector.yaml` from [https://admin.shopify.com/](https://admin.shopify.com/). The connection resolves credentials for each operation. Secrets travel in HTTP headers and never enter results, receipts, failures, or URLs. Enter the required `shopSubdomain` from your store's myshopify.com domain; the connector appends `/admin/api/2026-10`. `timeout` bounds one HTTP request, and `maxResponseBytes` bounds JSON response size. The last two fields use a positive Go duration and a positive byte count, respectively; blank uses the displayed defaults.
 
-For a live store, replace the `baseUrl` example host with your own HTTPS store before running.
+`listOrders` sends `status=any` so open, closed, and cancelled orders can appear. Shopify's order history access still limits which older orders the app can read.
 
 ## Failure handling
 

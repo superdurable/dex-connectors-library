@@ -4,7 +4,7 @@ metadata:
   name: bitbucket
   displayName: Bitbucket
   description: "Read Bitbucket resources through typed Dex Query Steps."
-  company: Bitbucket
+  company: Atlassian
   version: v0.1.0
 spec:
   provider: bitbucket

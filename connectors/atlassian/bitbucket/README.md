@@ -1,6 +1,6 @@
 # Bitbucket connector
 
-Read-only Dex Query Steps for Bitbucket. The module is `github.com/superdurable/dex-connectors-library/connectors/bitbucket`. See the [runnable resource-read Flow](examples/resource-read/README.md).
+Read-only Dex Query Steps for Bitbucket. The module is `github.com/superdurable/dex-connectors-library/connectors/atlassian/bitbucket`. See the [runnable resource-read Flow](examples/resource-read/README.md).
 
 ## Operations
 
@@ -15,7 +15,7 @@ Workspace access tokens require Bitbucket Premium; grant Repositories > Read and
 
 ## Authentication and configuration
 
-Follow the authorization guide in `connector.yaml` from [https://bitbucket.org/account/settings/app-passwords/](https://bitbucket.org/account/settings/app-passwords/). The connection resolves credentials for each operation. Secrets travel in HTTP headers and never enter results, receipts, failures, or URLs. The `baseUrl` field uses the provider API URL, `timeout` bounds one HTTP request, and `maxResponseBytes` bounds JSON response size. The last two fields use a positive Go duration and a positive byte count, respectively; blank uses the displayed defaults.
+Follow the authorization guide in `connector.yaml` from [https://support.atlassian.com/bitbucket-cloud/docs/create-a-workspace-access-token/](https://support.atlassian.com/bitbucket-cloud/docs/create-a-workspace-access-token/). The connection resolves credentials for each operation. Secrets travel in HTTP headers and never enter results, receipts, failures, or URLs. The `baseUrl` field uses the provider API URL, `timeout` bounds one HTTP request, and `maxResponseBytes` bounds JSON response size. The last two fields use a positive Go duration and a positive byte count, respectively; blank uses the displayed defaults.
 
 ## Failure handling
 

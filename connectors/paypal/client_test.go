@@ -37,14 +37,16 @@ func newTestClient(t *testing.T, baseURL string) *Client {
 
 func TestGetOrderReadsAndClassifiesProviderStatus(t *testing.T) {
 	status := http.StatusOK
+	tokenRequests := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/v1/oauth2/token" {
+			tokenRequests++
 			user, password, hasBasic := r.BasicAuth()
 			require.True(t, hasBasic)
 			require.Equal(t, "client-test", user)
 			require.Equal(t, "secret-test", password)
 			require.Equal(t, "grant_type=client_credentials", readBody(t, r))
-			_, err := fmt.Fprint(w, `{"access_token":"short-lived-token","token_type":"Bearer"}`)
+			_, err := fmt.Fprint(w, `{"access_token":"short-lived-token","token_type":"Bearer","expires_in":3600}`)
 			require.NoError(t, err)
 			return
 		}
@@ -72,6 +74,7 @@ func TestGetOrderReadsAndClassifiesProviderStatus(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, GetOrderBranchNotFound, rejected.Branch)
 	require.NotContains(t, rejected.Failure.Message, "SENTINEL")
+	require.Equal(t, 1, tokenRequests)
 }
 
 func TestListTransactionsReadsAndClassifiesProviderStatus(t *testing.T) {

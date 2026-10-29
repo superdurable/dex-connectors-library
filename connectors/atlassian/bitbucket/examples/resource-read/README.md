@@ -4,7 +4,7 @@ This Flow uses the static `bitbucket` connection and `bitbucket.NewListRepositor
 
 ## Generate strict FDG 2.0
 
-From `connectors/bitbucket`:
+From `connectors/atlassian/bitbucket`:
 
 ```sh
 mkdir -p build
@@ -19,14 +19,14 @@ From the repository root, build a local release override, then start a Dex stack
 
 ```sh
 mkdir -p /tmp/bitbucket-release
-go run ./cmd/connectorctl release-artifact --manifest connectors/bitbucket/connector.yaml --module-path github.com/superdurable/dex-connectors-library/connectors/bitbucket --version v0.1.0 --tag connectors/bitbucket/v0.1.0 --source-sha "$(git rev-parse HEAD)" --output /tmp/bitbucket-release/connector-release.json --digest-output /tmp/bitbucket-release/connector-release.json.sha256
-dexcli dev --flow-rendering-dir "$PWD/connectors/bitbucket/build" --connector-release-override bitbucket=/tmp/bitbucket-release
+go run ./cmd/connectorctl release-artifact --manifest connectors/atlassian/bitbucket/connector.yaml --module-path github.com/superdurable/dex-connectors-library/connectors/atlassian/bitbucket --version v0.1.0 --tag connectors/atlassian/bitbucket/v0.1.0 --source-sha "$(git rev-parse HEAD)" --output /tmp/bitbucket-release/connector-release.json --digest-output /tmp/bitbucket-release/connector-release.json.sha256
+dexcli dev --flow-rendering-dir "$PWD/connectors/atlassian/bitbucket/build" --connector-release-override bitbucket=/tmp/bitbucket-release
 ```
 
 In Dex Web **Connections**, create the `bitbucket` connection with the manifest's authorization guide. Then start the Worker in another terminal:
 
 ```sh
-cd connectors/bitbucket
+cd connectors/atlassian/bitbucket
 go run ./examples/resource-read
 ```
 

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 	"time"
 
@@ -27,11 +28,32 @@ func (queryContext) Value(key any) any           { return context.Background().V
 
 var testConnection = sdkgo.ConnectionRef{Provider: "shopify", Name: "shopify"}
 
-func newTestClient(t *testing.T, baseURL string) *Client {
+type redirectTestTransport struct {
+	endpoint *url.URL
+}
+
+func (transport redirectTestTransport) RoundTrip(request *http.Request) (*http.Response, error) {
+	forwarded := request.Clone(request.Context())
+	forwarded.URL.Scheme = transport.endpoint.Scheme
+	forwarded.URL.Host = transport.endpoint.Host
+	return http.DefaultTransport.RoundTrip(forwarded)
+}
+
+func newTestClient(t *testing.T, serverURL string) *Client {
 	t.Helper()
-	client, err := New(Config{BaseURL: baseURL}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: Credentials{AccessToken: sdkgo.NewSecretString("test-token")}})
+	endpoint, err := url.Parse(serverURL)
+	require.NoError(t, err)
+	client, err := New(Config{ShopSubdomain: "test-shop"}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: Credentials{AccessToken: sdkgo.NewSecretString("test-token")}}, WithHTTPClient(&http.Client{Transport: redirectTestTransport{endpoint: endpoint}}))
 	require.NoError(t, err)
 	return client
+}
+
+func TestNewRejectsInvalidShopSubdomain(t *testing.T) {
+	credentialSource := sdkgo.StaticCredentialProvider[Credentials]{testConnection: Credentials{AccessToken: sdkgo.NewSecretString("test-token")}}
+	for _, shopSubdomain := range []string{"", "other.example.com", "bad/shop", "-shop", "shop-", "Uppercase"} {
+		_, err := New(Config{ShopSubdomain: shopSubdomain}, credentialSource)
+		require.Error(t, err, shopSubdomain)
+	}
 }
 
 func TestGetOrderReadsAndClassifiesProviderStatus(t *testing.T) {
@@ -51,7 +73,7 @@ func TestGetOrderReadsAndClassifiesProviderStatus(t *testing.T) {
 		require.NoError(t, err)
 	}))
 	defer server.Close()
-	client := newTestClient(t, server.URL+"/admin/api/2026-10")
+	client := newTestClient(t, server.URL)
 	result, err := sdkgo.RunQuery(queryContext{}, client.GetOrder(), testConnection, GetOrderInput{OrderID: 101})
 	require.NoError(t, err)
 	require.Equal(t, GetOrderBranchFound, result.Branch)
@@ -71,6 +93,7 @@ func TestListOrdersReadsAndClassifiesProviderStatus(t *testing.T) {
 		require.NotContains(t, r.URL.RawQuery, "test-token")
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/admin/api/2026-10/orders.json", r.URL.Path)
+		require.Equal(t, "any", r.URL.Query().Get("status"))
 		if status != http.StatusOK {
 			w.WriteHeader(status)
 			_, err := fmt.Fprint(w, `{"error":"SENTINEL"}`)
@@ -81,7 +104,7 @@ func TestListOrdersReadsAndClassifiesProviderStatus(t *testing.T) {
 		require.NoError(t, err)
 	}))
 	defer server.Close()
-	client := newTestClient(t, server.URL+"/admin/api/2026-10")
+	client := newTestClient(t, server.URL)
 	result, err := sdkgo.RunQuery(queryContext{}, client.ListOrders(), testConnection, ListOrdersInput{Limit: 10})
 	require.NoError(t, err)
 	require.Equal(t, ListOrdersBranchListed, result.Branch)

@@ -29,9 +29,16 @@ var testConnection = sdkgo.ConnectionRef{Provider: "woocommerce", Name: "woocomm
 
 func newTestClient(t *testing.T, baseURL string) *Client {
 	t.Helper()
-	client, err := New(Config{BaseURL: baseURL}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: Credentials{ConsumerKey: sdkgo.NewSecretString("ck_test"), ConsumerSecret: sdkgo.NewSecretString("cs_test")}})
+	client, err := New(Config{StoreURL: baseURL}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: Credentials{ConsumerKey: sdkgo.NewSecretString("ck_test"), ConsumerSecret: sdkgo.NewSecretString("cs_test")}})
 	require.NoError(t, err)
 	return client
+}
+
+func TestNewUsesWordPressSitePath(t *testing.T) {
+	client := newTestClient(t, "https://store.example/shop")
+	require.Equal(t, "https://store.example/shop/wp-json/wc/v3", client.baseURL)
+	_, err := New(Config{StoreURL: "https://store.example/shop/wp-json/wc/v3"}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: Credentials{ConsumerKey: sdkgo.NewSecretString("ck_test"), ConsumerSecret: sdkgo.NewSecretString("cs_test")}})
+	require.Error(t, err)
 }
 
 func TestListOrdersReadsAndClassifiesProviderStatus(t *testing.T) {
@@ -54,7 +61,7 @@ func TestListOrdersReadsAndClassifiesProviderStatus(t *testing.T) {
 		require.NoError(t, err)
 	}))
 	defer server.Close()
-	client := newTestClient(t, server.URL+"/wp-json/wc/v3")
+	client := newTestClient(t, server.URL)
 	result, err := sdkgo.RunQuery(queryContext{}, client.ListOrders(), testConnection, ListOrdersInput{Page: 1, PerPage: 10})
 	require.NoError(t, err)
 	require.Equal(t, ListOrdersBranchListed, result.Branch)
@@ -87,7 +94,7 @@ func TestGetOrderReadsAndClassifiesProviderStatus(t *testing.T) {
 		require.NoError(t, err)
 	}))
 	defer server.Close()
-	client := newTestClient(t, server.URL+"/wp-json/wc/v3")
+	client := newTestClient(t, server.URL)
 	result, err := sdkgo.RunQuery(queryContext{}, client.GetOrder(), testConnection, GetOrderInput{OrderID: 101})
 	require.NoError(t, err)
 	require.Equal(t, GetOrderBranchFound, result.Branch)

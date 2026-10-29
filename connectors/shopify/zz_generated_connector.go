@@ -7,7 +7,6 @@ package shopify
 import (
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
@@ -19,7 +18,7 @@ import (
 const ConnectorID = "shopify"
 
 type Config struct {
-	BaseURL          string        `json:"baseUrl,omitempty" yaml:"baseUrl,omitempty"`
+	ShopSubdomain    string        `json:"shopSubdomain,omitempty" yaml:"shopSubdomain,omitempty"`
 	Timeout          time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 	MaxResponseBytes int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
 }
@@ -147,7 +146,6 @@ func (Connection) GoString() string { return "shopify.Connection{[REDACTED]}" }
 
 func DefaultConfig() Config {
 	return Config{
-		BaseURL:          "https://your-store.myshopify.com/admin/api/2026-10",
 		Timeout:          time.Duration(15000000000),
 		MaxResponseBytes: 2097152,
 	}
@@ -155,9 +153,6 @@ func DefaultConfig() Config {
 
 func withConfigDefaults(config Config) Config {
 	defaults := DefaultConfig()
-	if config.BaseURL == "" {
-		config.BaseURL = defaults.BaseURL
-	}
 	if config.Timeout == 0 {
 		config.Timeout = defaults.Timeout
 	}
@@ -168,11 +163,8 @@ func withConfigDefaults(config Config) Config {
 }
 
 func (config Config) Validate() error {
-	if config.BaseURL != "" {
-		parsed, err := url.Parse(config.BaseURL)
-		if err != nil || parsed.Scheme == "" || parsed.Hostname() == "" {
-			return fmt.Errorf("configuration baseUrl must be an absolute URL")
-		}
+	if config.ShopSubdomain == "" {
+		return fmt.Errorf("configuration shopSubdomain is required")
 	}
 	if config.Timeout < 0 {
 		return fmt.Errorf("configuration timeout cannot be negative")
