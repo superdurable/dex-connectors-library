@@ -16,8 +16,9 @@ spec:
     - name: baseUrl
       goName: BaseURL
       type: url
-      description: Index or project API base URL from the provider console; enter
-        an HTTPS URL without a trailing slash. Required for this connection.
+      description: Index host from https://app.pinecone.io > your project > Indexes
+        > the index's HOST value, prefixed with https://, such as https://docs-example-abc123.svc.us-east1-gcp.pinecone.io;
+        no trailing slash. Required for this connection.
       required: true
     - name: timeout
       goName: Timeout

@@ -21,8 +21,8 @@ Start at [https://supabase.com/dashboard/projects](https://supabase.com/dashboar
 | Provider outcome | Dex outcome |
 | --- | --- |
 | Documented success response with valid JSON shape | Happy-path branch |
-| 400, 401, 403, or another definite 4xx | Optional `providerRejected` branch |
-| 408, 409, 429, 5xx, or transport interruption | Retry until the Step budget expires |
+| 400, 401, 403, 409 (constraint conflict), or another definite 4xx | Optional `providerRejected` branch |
+| 408, 429, 5xx, or transport interruption | Retry until the Step budget expires |
 | Malformed, incomplete, or oversized success response | Optional `invalidResponse` branch |
 | Invalid input or credential | Optional `defect` branch |
 

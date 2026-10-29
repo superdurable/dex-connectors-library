@@ -16,8 +16,9 @@ spec:
     - name: baseUrl
       goName: BaseURL
       type: url
-      description: Index or project API base URL from the provider console; enter
-        an HTTPS URL without a trailing slash. Required for this connection.
+      description: Supabase Data API URL, which is the Project URL from https://supabase.com/dashboard
+        > your project > Connect with /rest/v1 appended, such as https://abcdefghijklmnop.supabase.co/rest/v1;
+        HTTPS, no trailing slash. Required for this connection.
       required: true
     - name: timeout
       goName: Timeout

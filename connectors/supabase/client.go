@@ -134,7 +134,7 @@ func (client *Client) send(call sdkgo.Call, operationID, method, path string, qu
 		return providerResponse{retry: true, failure: failure(operationID, sdkgo.FailureAvailability, "provider request failed")}
 	}
 	defer func() { _ = response.Body.Close() }()
-	if response.StatusCode == http.StatusTooManyRequests || response.StatusCode == http.StatusRequestTimeout || response.StatusCode == http.StatusConflict || response.StatusCode >= 500 {
+	if response.StatusCode == http.StatusTooManyRequests || response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500 {
 		kind := sdkgo.FailureAvailability
 		if response.StatusCode == http.StatusTooManyRequests {
 			kind = sdkgo.FailureRateLimit
