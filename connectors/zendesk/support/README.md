@@ -144,8 +144,8 @@ request with the same key and body returns the first response with
 `x-idempotency-lookup: hit` instead of creating a second ticket, a repeated key
 with a different body returns `400 IdempotentRequestError`, and keys expire
 after two hours. The connector sends the Step's stable Call ID as the key, so
-every attempt of one Step execution, including Dex's async backup attempt and
-a replay after a Worker failure, sends the same key and the same body. The key
+every attempt of one Step execution, including a retry after a Worker failure,
+sends the same key and the same body. The key
 is also stored as `dex_idempotency_key` audit metadata. As a result:
 
 - a lost connection, a timeout, a 408, a 409, a 429, or a 5xx is retried with

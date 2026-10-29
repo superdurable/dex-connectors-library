@@ -139,10 +139,9 @@ empty search with 204, and matches look-alike addresses in its email filter:
 - a search match the index still shows as open but that is closed is read,
   skipped, and never written;
 - a first page of look-alike addresses leads to the page at `from=25`;
-- a create and a comment held for nine seconds, past Dex's async local phase,
-  are each sent exactly once, because both Steps are sync;
-- an update held for nine seconds is dispatched again by async Dex, and both
-  attempts write the same values;
+- a healthy create and comment are each sent once;
+- a Worker lost after an update is replaced; the next attempt reads back the
+  absolute values and sends no second write;
 - a lost update response is retried and finds the values applied;
 - a lost create or comment response fails the Flow through the unwired
   `uncertain` branch and is never resent;
