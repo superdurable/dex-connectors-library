@@ -60,6 +60,7 @@ directories:
   - connectors/snowflake
   - connectors/spotify
   - connectors/stripe
+  - connectors/supabase
   - connectors/superdurable/email
   - connectors/superdurable/llm
   - connectors/superdurable/oauth2-http

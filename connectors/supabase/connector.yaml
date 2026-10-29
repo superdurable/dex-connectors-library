@@ -1,0 +1,178 @@
+{
+  "apiVersion": "connectors.dex.dev/v1alpha1",
+  "kind": "Connector",
+  "metadata": {
+    "name": "supabase",
+    "displayName": "Supabase",
+    "description": "Supabase REST connector with two bounded operations.",
+    "company": "Supabase",
+    "version": "v0.1.0"
+  },
+  "spec": {
+    "provider": "supabase",
+    "codegen": {
+      "go": {
+        "package": "supabase"
+      }
+    },
+    "configuration": {
+      "fields": [
+        {
+          "name": "baseUrl",
+          "goName": "BaseURL",
+          "type": "url",
+          "description": "Index or project API base URL from the provider console; enter an HTTPS URL without a trailing slash. Required for this connection.",
+          "required": true
+        },
+        {
+          "name": "timeout",
+          "goName": "Timeout",
+          "type": "duration",
+          "description": "Maximum time for one HTTP request as a positive Go duration such as 15s or 1m; blank uses the displayed default.",
+          "default": "15s"
+        },
+        {
+          "name": "maxResponseBytes",
+          "goName": "MaxResponseBytes",
+          "type": "integer",
+          "description": "Maximum response body size in bytes; enter a positive integer to raise the safety limit for large pages. Blank uses the displayed default.",
+          "default": 2097152
+        }
+      ]
+    },
+    "auth": {
+      "type": "apiKey",
+      "connectionKind": "supabase-api-key",
+      "fields": [
+        {
+          "name": "api_key",
+          "goName": "APIKey",
+          "type": "secretString",
+          "description": "Secret Supabase credential. Start at https://supabase.com/dashboard/projects and follow the authorization guide to create or find it; paste the token exactly, without Bearer. Blank prevents calls. It is sent only in a request header.",
+          "required": true
+        }
+      ],
+      "guide": {
+        "startURL": "https://supabase.com/dashboard/projects",
+        "steps": [
+          "Open https://supabase.com/dashboard/projects, select your project, and open Connect to copy the Project URL.",
+          "Append /rest/v1 to that HTTPS project URL and enter it as baseUrl.",
+          "In Project Settings > API Keys, create or copy a server-side secret key with the table permissions you intend to use; paste it into secret api_key.",
+          "Leave timeout and maxResponseBytes blank for their displayed defaults."
+        ]
+      }
+    },
+    "operations": [
+      {
+        "name": "selectRows",
+        "goName": "SelectRows",
+        "inputType": "SelectRowsInput",
+        "outputType": "SelectRowsOutput",
+        "kind": "query",
+        "description": "Select a bounded page of table rows through PostgREST.",
+        "idempotency": "none",
+        "authorization": "required",
+        "branches": [
+          {
+            "id": "selected",
+            "goName": "Selected",
+            "description": "Select a bounded page of table rows through PostgREST."
+          },
+          {
+            "id": "providerRejected",
+            "goName": "ProviderRejected",
+            "description": "The provider conclusively rejected the request or credentials.",
+            "optional": true
+          },
+          {
+            "id": "invalidResponse",
+            "goName": "InvalidResponse",
+            "description": "The provider returned malformed or oversized JSON.",
+            "optional": true
+          },
+          {
+            "id": "defect",
+            "goName": "Defect",
+            "description": "Local input, configuration, or credentials are invalid.",
+            "optional": true
+          }
+        ],
+        "execution": {
+          "executeMethodTimeout": "30s",
+          "durability": "async"
+        },
+        "mocks": [
+          {
+            "name": "defaultSelectRows",
+            "branch": "selected",
+            "description": "A representative provider response for the example resource.",
+            "default": true,
+            "output": {
+              "data": [
+                {
+                  "id": 1,
+                  "name": "Meridian"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "upsertRows",
+        "goName": "UpsertRows",
+        "inputType": "UpsertRowsInput",
+        "outputType": "UpsertRowsOutput",
+        "kind": "mutation",
+        "description": "Upsert rows with a declared unique conflict key and merge duplicates.",
+        "idempotency": "required",
+        "authorization": "required",
+        "branches": [
+          {
+            "id": "upserted",
+            "goName": "Upserted",
+            "description": "Upsert rows with a declared unique conflict key and merge duplicates."
+          },
+          {
+            "id": "providerRejected",
+            "goName": "ProviderRejected",
+            "description": "The provider conclusively rejected the request or credentials.",
+            "optional": true
+          },
+          {
+            "id": "invalidResponse",
+            "goName": "InvalidResponse",
+            "description": "The provider returned malformed or oversized JSON.",
+            "optional": true
+          },
+          {
+            "id": "defect",
+            "goName": "Defect",
+            "description": "Local input, configuration, or credentials are invalid.",
+            "optional": true
+          }
+        ],
+        "execution": {
+          "executeMethodTimeout": "30s",
+          "durability": "async"
+        },
+        "mocks": [
+          {
+            "name": "defaultUpsertRows",
+            "branch": "upserted",
+            "description": "A representative provider response for the example resource.",
+            "default": true,
+            "output": {
+              "data": [
+                {
+                  "id": 1,
+                  "name": "Meridian"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
