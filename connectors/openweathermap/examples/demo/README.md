@@ -29,6 +29,6 @@ In Dex Web Start Flow, choose `OpenWeatherMapDemo` and enter a unique Flow ID wi
 {"latitude":37.7749,"longitude":-122.4194,"units":"metric"}
 ```
 
-The Worker starts when the Dex Server is reachable. The Flow returns `CurrentWeatherOutput`. The provider connection name is fixed in `flow/workflow.go`.
+The pull Worker connects to the Dex Server without an inbound listener. The Flow returns `CurrentWeatherOutput`. The provider connection name is fixed in `flow/workflow.go`.
 
 CI runs the mock-backed real-Dex integration test. Local provider and deterministic Flow tests run with `GOWORK=off go test -race ./...` from the connector directory.
