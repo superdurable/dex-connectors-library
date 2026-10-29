@@ -20,6 +20,7 @@ directories:
   - connectors/freshworks/freshdesk
   - connectors/front
   - connectors/github
+  - connectors/gitlab
   - connectors/google/calendar
   - connectors/google/docs
   - connectors/google/drive
