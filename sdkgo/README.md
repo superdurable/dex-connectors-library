@@ -1016,12 +1016,13 @@ The module is released independently with directory-prefixed tags such as
 release.
 
 The module requires the Dex Go SDK, `github.com/superdurable/dex/sdk-go`,
-v1.5.0 or later. That is a minimum: an application may require any newer
+v1.26.0 or later. That is a minimum: an application may require any newer
 stable Dex Go SDK release, and Dex Server stays compatible with earlier SDK
-releases. Dex Go SDK v1.5.0 registers Flow and Step types by their Go type
-name without the package, and Dex CLI v1.5.0 renders Flow definitions with the
-same names. Requiring it keeps an application's Worker registrations and its
-rendered definitions in agreement. Connector factory Steps are generic and name
+releases. Dex Go SDK v1.25.0 uses pull Workers exclusively. Clients and Workers
+need the Dex Server address, without a Worker address or target. Dex Go SDK
+v1.5.0 began registering Flow and Step types by their Go type name without the
+package, and Dex CLI v1.5.0 renders Flow definitions with the same names.
+Connector factory Steps are generic and name
 themselves through `GetStepType`, so their registered names do not change.
 Dex Go SDK v1.2.1 renamed `dex.FlowNotActiveError` to
 `dex.FlowNotActiveOrNotFoundError`, and v0.12.1 replaced

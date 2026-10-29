@@ -143,22 +143,15 @@ jobs:
           cache-dependency-path: |
             go.sum
             sdkgo/go.sum
-      - name: Download Dex and Temporal CLIs
+      - name: Download Dex CLI
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           python3 script/dex_compatibility.py install-dexcli --output ./dexcli
-          curl --fail --location --retry 4 --retry-all-errors --retry-delay 2 --output temporal.tar.gz \
-            https://github.com/temporalio/cli/releases/download/v1.9.1/temporal_cli_1.9.1_linux_amd64.tar.gz
-          echo "09a0326a51db84d02735e53542b9ebd8c4758daf47482a9ab0abce15844e60d5  temporal.tar.gz" | sha256sum --check
-          mkdir temporal-cli
-          tar --extract --gzip --file temporal.tar.gz --directory temporal-cli
-          echo "$PWD/temporal-cli" >> "$GITHUB_PATH"
       - name: Run shared SDK integration suite
         run: |
           ./dexcli dev -dex-port 18801 -web-port 18802 -open=false \
-            -blob-store-dir /tmp/dex-connectors/blobs \
-            -sqlite-db-filename /tmp/dex-connectors/dex.sqlite.db \
+            -zd-data-dir /tmp/dex-connectors/zd \
             -server-log-folder /tmp/dex-connectors/logs > /tmp/dex-connectors-server.log 2>&1 &
           dex_pid=$!
           trap 'kill "$dex_pid" 2>/dev/null || true' EXIT
@@ -198,22 +191,15 @@ jobs:
           cache-dependency-path: |
             go.sum
             connectors/**/go.sum
-      - name: Download Dex and Temporal CLIs
+      - name: Download Dex CLI
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           python3 script/dex_compatibility.py install-dexcli --output ./dexcli
-          curl --fail --location --retry 4 --retry-all-errors --retry-delay 2 --output temporal.tar.gz \
-            https://github.com/temporalio/cli/releases/download/v1.9.1/temporal_cli_1.9.1_linux_amd64.tar.gz
-          echo "09a0326a51db84d02735e53542b9ebd8c4758daf47482a9ab0abce15844e60d5  temporal.tar.gz" | sha256sum --check
-          mkdir temporal-cli
-          tar --extract --gzip --file temporal.tar.gz --directory temporal-cli
-          echo "$PWD/temporal-cli" >> "$GITHUB_PATH"
       - name: Run affected Connector integration suites
         run: |
           ./dexcli dev -dex-port 18801 -web-port 18802 -open=false \
-            -blob-store-dir /tmp/dex-connectors/blobs \
-            -sqlite-db-filename /tmp/dex-connectors/dex.sqlite.db \
+            -zd-data-dir /tmp/dex-connectors/zd \
             -server-log-folder /tmp/dex-connectors/logs > /tmp/dex-connectors-server.log 2>&1 &
           dex_pid=$!
           trap 'kill "$dex_pid" 2>/dev/null || true' EXIT
