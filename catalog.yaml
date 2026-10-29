@@ -39,6 +39,7 @@ directories:
   - connectors/intercom
   - connectors/intuit/mailchimp
   - connectors/intuit/quickbooks
+  - connectors/klaviyo
   - connectors/linear
   - connectors/linkedin
   - connectors/microsoft/entra-id

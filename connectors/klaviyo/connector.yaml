@@ -1,0 +1,86 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: klaviyo
+  displayName: Klaviyo
+  description: Retrieve profiles and create deduplicated profile events.
+  company: Klaviyo
+  version: v0.1.0
+spec:
+  provider: klaviyo
+  codegen:
+    go:
+      package: klaviyo
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Klaviyo REST API base URL; leave blank for the public endpoint, or enter a compatible HTTPS gateway URL for a custom deployment.
+        default: https://a.klaviyo.com/api
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Positive Go duration limiting each HTTP request; leave blank for the displayed default, or override for a slower network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum response bytes as a positive integer; leave blank for the displayed safety limit, or raise it for larger profiles.
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: klaviyo-private-api-key
+    fields:
+      - name: private_api_key
+        goName: PrivateAPIKey
+        type: secretString
+        required: true
+        description: Secret Klaviyo private API key starting pk_ from https://www.klaviyo.com/settings/account/api-keys after Settings > API keys > Create Private API Key; grant profiles:read and events:write. Blank prevents requests.
+    guide:
+      startURL: https://www.klaviyo.com/settings/account/api-keys
+      steps:
+        - Sign in at https://www.klaviyo.com and open Settings > API keys at https://www.klaviyo.com/settings/account/api-keys.
+        - Under Private API Keys select Create Private API Key, name it, and grant profiles:read and events:write scopes.
+        - Copy the pk_-prefixed secret once and paste it into private_api_key; leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
+  operations:
+    - name: getProfile
+      goName: GetProfile
+      inputType: GetProfileInput
+      outputType: Profile
+      kind: query
+      description: Get one profile by Klaviyo ID.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Klaviyo returned the profile.}
+        - {id: notFound, goName: NotFound, description: No profile has that ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Klaviyo rejected the request or key., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Klaviyo returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - name: foundDefaultProfile
+          branch: found
+          description: Meridian member profile exists.
+          default: true
+          output: {id: "profile-meridian-1", email: "member@meridian.co"}
+    - name: createEvent
+      goName: CreateEvent
+      inputType: CreateEventInput
+      outputType: EventAcceptance
+      kind: mutation
+      description: Submit a profile event with a unique_id derived from Dex's stable call identity.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: accepted, goName: Accepted, description: Klaviyo accepted the deduplicated event for asynchronous processing.}
+        - {id: providerRejected, goName: ProviderRejected, description: Klaviyo rejected the event or key., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - name: acceptedDefaultEvent
+          branch: accepted
+          description: Meridian member's signup event was accepted.
+          default: true
+          output: {accepted: true}
