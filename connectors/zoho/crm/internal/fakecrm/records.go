@@ -63,6 +63,10 @@ func (server *Server) upsert(response http.ResponseWriter, request *http.Request
 	if attempt == 1 && server.DelaysFirstUpsertOf == module {
 		server.sleepBeforeAnswering()
 	}
+	if attempt == 1 && server.HoldsFirstUpsertOf == module {
+		<-request.Context().Done()
+		return
+	}
 	server.writeValue(response, status, result)
 }
 
@@ -95,6 +99,10 @@ func (server *Server) update(response http.ResponseWriter, request *http.Request
 	server.mutex.Unlock()
 	if attempt == 1 && server.DelaysFirstUpdate {
 		server.sleepBeforeAnswering()
+	}
+	if attempt == 1 && server.HoldsFirstUpdate {
+		<-request.Context().Done()
+		return
 	}
 	if attempt == 1 && server.LosesFirstUpdateResponse {
 		dropConnection(response)

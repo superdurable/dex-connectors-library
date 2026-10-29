@@ -31,17 +31,22 @@ func TestRecordRefundExampleSurvivesRetriesAndDuplicateDispatch(t *testing.T) {
 		require.Equal(t, 1, ledger.committedRowCount())
 	})
 
-	t.Run("an INSERT that outlasts the async local phase writes one row when Dex dispatches it again", func(t *testing.T) {
+	t.Run("an INSERT committed before Worker loss is sent again without a second row", func(t *testing.T) {
 		ledger.mu.Lock()
-		ledger.slowInsertDelay = 9 * time.Second
+		ledger.waitForCommitDisconnect = true
 		ledger.mu.Unlock()
 		before, committedBefore := len(insertExecutions(server)), ledger.committedRowCount()
 		started := time.Now()
-		flowID, result := harness.runRefundFlow(t, Input{OrderID: "90005", AmountUSD: "8.00"})
+		flowID := harness.startRefundFlow(t, Input{OrderID: "90005", AmountUSD: "8.00"})
+		require.Eventually(t, func() bool {
+			return len(insertExecutions(server)) == before+1 && ledger.committedRowCount() == committedBefore+1
+		}, 30*time.Second, 10*time.Millisecond)
+		harness.replaceWorker(t)
+		result := harness.waitForRefundFlow(t, flowID)
 		outcome := harness.requireCompletedOutcome(t, flowID, result)
 		require.Equal(t, StatusRecorded, outcome.Status)
 		inserts := insertExecutions(server)[before:]
-		require.GreaterOrEqual(t, len(inserts), 2, "Dex dispatched InsertRefund again after the local phase")
+		require.Len(t, inserts, 2, "the replacement Worker repeats InsertRefund once")
 		for _, insert := range inserts {
 			require.Equal(t, outcome.Refund.IdempotencyKey, insert.Parameters[3].Text, "every dispatch carried the Step's key")
 		}

@@ -210,18 +210,17 @@ Every operation keeps the repository's async Execute durability with a 30-second
 and unlimited attempts within one hour. Each HTTP request is bounded by 20 seconds. No request waits
 for a statement: `async=true` returns as soon as Snowflake queues it.
 
-Dex can dispatch one Step execution more than once: after a Worker is lost, and when an async Step
-outlasts its local phase of about seven seconds while the first dispatch is still in flight.
+Dex can dispatch one Step execution more than once after a Worker is lost.
 `submitStatement` relies on Snowflake's request ID for both, without a heartbeat checkpoint. Its
 idempotency key is the connector Call ID, a UUID that every attempt of one Step execution shares,
 and it is sent as Snowflake's `requestId` with `retry=true` on every attempt. Snowflake documents
 that a resubmission with the same `requestId` and `retry=true` does not execute the statement again
 if it has already executed successfully, so the operation returns Retry, never `uncertain`, after a
 lost response. Snowflake does not document a resubmission that arrives while the first statement
-is still queued or running, which is the usual case for a duplicate dispatch of an async submit;
+is still queued or running, which may occur during a retry after Worker loss;
 this connector assumes it returns the same statement, and that is unverified against the live API.
 A statement that failed may run again on a resubmission. The example's integration test answers the
-first submission after nine seconds; Dex dispatches the Step again, both requests carry the same
+first submission until its Worker is stopped; the replacement sends the same
 `requestId`, and the scripted API runs the statement once. Snowflake notes that `retry=true` adds a
 statement-history lookup to each submission.
 

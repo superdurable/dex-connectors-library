@@ -14,6 +14,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 )
@@ -103,6 +104,8 @@ type Script struct {
 	Execute func(statement Statement) Execution
 	// Commit decides how COMMIT is handled; nil commits normally.
 	Commit func() CommitAction
+	// WaitForCommitDisconnect withholds the acknowledgement after a successful commit until the client disconnects.
+	WaitForCommitDisconnect func() bool
 }
 
 // Event is one message the server received.
@@ -346,6 +349,18 @@ func (session *session) handleCommit() error {
 		session.sendError(&ServerError{Code: "40001", Message: "could not serialize access due to concurrent update"})
 	default:
 		session.endTransaction(!isFailedTransaction)
+		if !isFailedTransaction && session.server.script.WaitForCommitDisconnect != nil {
+			if session.server.script.WaitForCommitDisconnect() {
+				if err := session.connection.SetReadDeadline(time.Now().Add(20 * time.Second)); err != nil {
+					return err
+				}
+				var nextCommand [1]byte
+				if _, err := session.connection.Read(nextCommand[:]); err != nil {
+					return errConnectionDropped
+				}
+				return errors.New("unexpected command before held commit response")
+			}
+		}
 		tag := "COMMIT"
 		if isFailedTransaction {
 			tag = "ROLLBACK"

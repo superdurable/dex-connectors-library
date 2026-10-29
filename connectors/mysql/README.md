@@ -288,14 +288,10 @@ Result's `Receipt.IdempotencyKey` tells the application which write to look
 for. The same applies when the server reports an error such as 1180 while
 committing.
 
-Dex can also run `execute` more than once for one Step execution. It does so
-after a Worker is lost mid-call. It also does so when an async Step outlasts
-its local phase of about seven seconds: Dex ends the local attempt and
-dispatches the Step again. MySQL keeps the abandoned statement waiting until
-its lock is granted and then rolls it back, because its client is gone;
-MariaDB aborts it when the client disconnects. The example's live test holds a
-table lock for nine seconds and observes a second `InsertRefund` dispatch reach
-the server on a new connection after about seven seconds.
+Dex can run `execute` more than once for one Step execution after a Worker is
+lost mid-call. The scripted integration test commits the first `INSERT`, holds
+its acknowledgement, and stops the Worker. The replacement dispatches the same
+Step with the same key; the ledger still contains one row.
 
 Every run of one Step execution uses the same idempotency key, a 36-character
 UUID derived from the Dex Call ID. Set `IdempotencyKeyPlaceholder` to bind it

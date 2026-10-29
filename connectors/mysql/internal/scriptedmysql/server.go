@@ -195,6 +195,8 @@ type Script struct {
 	Execute func(statement Statement) Execution
 	// Commit decides how COMMIT is handled; nil commits normally.
 	Commit func() CommitAction
+	// WaitForCommitDisconnect withholds the acknowledgement after a successful commit until the client disconnects.
+	WaitForCommitDisconnect func() bool
 }
 
 // Options configure one scripted server.
@@ -494,6 +496,18 @@ func (session *session) handleCommit() error {
 		return session.writeError(&ServerError{Number: 1180, SQLState: "HY000", Message: "Got error during COMMIT"})
 	default:
 		session.endTransaction(true)
+		if session.server.script.WaitForCommitDisconnect != nil {
+			if session.server.script.WaitForCommitDisconnect() {
+				if err := session.connection.SetReadDeadline(time.Now().Add(20 * time.Second)); err != nil {
+					return err
+				}
+				var nextCommand [1]byte
+				if _, err := session.connection.Read(nextCommand[:]); err != nil {
+					return errConnectionDropped
+				}
+				return errors.New("unexpected command before held commit response")
+			}
+		}
 		return session.writeOK(0, 0, 0)
 	}
 }

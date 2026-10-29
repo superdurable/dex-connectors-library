@@ -49,7 +49,7 @@ type scriptedRefundLedger struct {
 	nextRefundID            uint64
 	commitActions           []scriptedmysql.CommitAction
 	insertFaults            []bool
-	slowInsertDelay         time.Duration
+	waitForCommitDisconnect bool
 	racingOrderBeforeInsert string
 }
 
@@ -60,7 +60,8 @@ func newScriptedRefundLedger() *scriptedRefundLedger {
 }
 
 func (ledger *scriptedRefundLedger) script() scriptedmysql.Script {
-	return scriptedmysql.Script{Prepare: ledger.prepare, Execute: ledger.execute, Commit: ledger.commit}
+	return scriptedmysql.Script{Prepare: ledger.prepare, Execute: ledger.execute, Commit: ledger.commit,
+		WaitForCommitDisconnect: ledger.takeCommitDisconnect}
 }
 
 func (ledger *scriptedRefundLedger) prepare(sql string) (scriptedmysql.Shape, *scriptedmysql.ServerError) {
@@ -114,13 +115,6 @@ func (ledger *scriptedRefundLedger) execute(statement scriptedmysql.Statement) s
 	row := ledgerRow{refundID: ledger.nextRefundID, orderID: orderID, amountUSD: statement.Parameters[1].Text, externalReference: externalReference, idempotencyKey: key}
 	ledger.nextRefundID++
 	ledger.pendingKeys[key], ledger.pendingOrders[orderID] = true, true
-	if delay := ledger.slowInsertDelay; delay > 0 {
-		ledger.slowInsertDelay = 0
-		ledger.mu.Unlock()
-		// The delay is the behavior under test: the INSERT outlasts Dex's seven-second local phase.
-		time.Sleep(delay)
-		ledger.mu.Lock()
-	}
 	return scriptedmysql.Execution{
 		AffectedRows: 1, LastInsertID: row.refundID,
 		OnCommit:   func() { ledger.resolveInsert(row, true) },
@@ -164,6 +158,14 @@ func (ledger *scriptedRefundLedger) commit() scriptedmysql.CommitAction {
 	action := ledger.commitActions[0]
 	ledger.commitActions = ledger.commitActions[1:]
 	return action
+}
+
+func (ledger *scriptedRefundLedger) takeCommitDisconnect() bool {
+	ledger.mu.Lock()
+	defer ledger.mu.Unlock()
+	shouldWait := ledger.waitForCommitDisconnect
+	ledger.waitForCommitDisconnect = false
+	return shouldWait
 }
 
 func (ledger *scriptedRefundLedger) committedRowCount() int {
@@ -295,17 +297,22 @@ func TestRecordRefundExampleWithRealDex(t *testing.T) {
 		require.Equal(t, committedBefore+1, ledger.committedRowCount())
 	})
 
-	t.Run("an INSERT that outlasts the async local phase writes one row when Dex dispatches it again", func(t *testing.T) {
+	t.Run("an INSERT committed before Worker loss is sent again without a second row", func(t *testing.T) {
 		ledger.mu.Lock()
-		ledger.slowInsertDelay = 9 * time.Second
+		ledger.waitForCommitDisconnect = true
 		ledger.mu.Unlock()
 		before := len(insertExecutions(server))
 		committedBefore := ledger.committedRowCount()
-		flowID, result := harness.runRefundFlow(t, Input{OrderID: "90005", AmountUSD: "8.00"})
+		flowID := harness.startRefundFlow(t, Input{OrderID: "90005", AmountUSD: "8.00"})
+		require.Eventually(t, func() bool {
+			return len(insertExecutions(server)) == before+1 && ledger.committedRowCount() == committedBefore+1
+		}, 30*time.Second, 10*time.Millisecond)
+		harness.replaceWorker(t)
+		result := harness.waitForRefundFlow(t, flowID)
 		outcome := harness.requireCompletedOutcome(t, flowID, result)
 		require.Equal(t, StatusRecorded, outcome.Status)
 		inserts := insertExecutions(server)[before:]
-		require.GreaterOrEqual(t, len(inserts), 2, "Dex dispatched InsertRefund again after the local phase")
+		require.Len(t, inserts, 2, "the replacement Worker repeats InsertRefund once")
 		for _, insert := range inserts {
 			require.Equal(t, outcome.Refund.IdempotencyKey, insert.Parameters[3].Text, "every dispatch carried the Step's key")
 		}

@@ -194,6 +194,8 @@ type Script struct {
 	Execute func(statement Statement) Execution
 	// Commit decides how COMMIT is handled; nil commits normally.
 	Commit func() CommitAction
+	// WaitForCommitDisconnect withholds the acknowledgement after a successful commit until the client disconnects.
+	WaitForCommitDisconnect func() bool
 }
 
 // Route redirects a client after login, as an Azure SQL gateway does.
@@ -652,6 +654,19 @@ func (session *session) handleTransactionRequest(payload []byte) error {
 		}
 		descriptor := session.transactionDescriptor
 		session.endTransaction(true)
+		if session.server.script.WaitForCommitDisconnect != nil {
+			if session.server.script.WaitForCommitDisconnect() {
+				select {
+				case _, isOpen := <-session.requests:
+					if !isOpen {
+						return errConnectionDropped
+					}
+					return errors.New("unexpected request before held commit response")
+				case <-time.After(20 * time.Second):
+					return errors.New("timed out waiting for client disconnect after commit")
+				}
+			}
+		}
 		reply.environmentChange(environmentCommit, nil, binary.LittleEndian.AppendUint64(nil, descriptor))
 	case transactionRollback:
 		descriptor := session.transactionDescriptor

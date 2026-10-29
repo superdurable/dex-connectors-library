@@ -60,8 +60,12 @@ type Server struct {
 	RevokesTokenAtFirstUpsert bool
 	// DelaysFirstUpsertOf applies the first upsert of the module, then answers after SlowResponseDelay.
 	DelaysFirstUpsertOf string
+	// HoldsFirstUpsertOf holds the first accepted upsert response until the request is canceled.
+	HoldsFirstUpsertOf string
 	// DelaysFirstUpdate applies the first update, then answers after SlowResponseDelay.
 	DelaysFirstUpdate bool
+	// HoldsFirstUpdate holds the first accepted update response until the request is canceled.
+	HoldsFirstUpdate bool
 	// LosesFirstUpdateResponse applies the first update and drops the connection.
 	LosesFirstUpdateResponse bool
 	// RateLimitsFirstCOQL answers the first COQL query with 429 and Retry-After: 1.

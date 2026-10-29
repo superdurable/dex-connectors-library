@@ -298,9 +298,8 @@ is overwritten, as with any last-write-wins retry.
 
 ## Duplicate safety
 
-Zoho CRM documents no idempotency key. Dex re-dispatches an async Step whose
-local attempt passes about seven seconds, and retries a Step after a lost
-Worker, so every operation is built to be repeated:
+Zoho CRM documents no idempotency key. Dex can dispatch a Step again after
+Worker loss, so every operation is built to be repeated:
 
 - **upsertRecord** converges on one record: a repeated attempt finds the record
   an earlier attempt inserted by its duplicate-check value and updates it. If
@@ -317,8 +316,8 @@ Worker, so every operation is built to be repeated:
   again on each repeated write.
 
 `TestSlowContactUpsertDispatchedTwiceKeepsOneContactWithRealDex` proves the
-upsert on a real Dex Server: the fake applies the first contact upsert and
-answers nine seconds later, Dex dispatches the Step again, and the second
+upsert on a real Dex Server: the fake applies the first contact upsert, its
+Worker is stopped, Dex dispatches the Step again, and the second
 upsert updates the contact, so one contact exists.
 `TestSlowDealUpdateDispatchedTwiceSetsTheSameValuesWithRealDex` proves the
 update the same way.

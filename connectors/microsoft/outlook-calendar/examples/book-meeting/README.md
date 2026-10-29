@@ -126,10 +126,10 @@ GOWORK=off go test -race ./examples/book-meeting/...
 With the latest Dex development server running, the integration test drives
 the Flow on a real Worker against a stateful fake Graph: a scheduled meeting
 whose first create response is lost and whose retried Step finds its own hold;
-a create that Graph stores at once but answers after nine seconds, so Dex
-dispatches a second attempt that finds the hold; a create that Graph commits
-only after nine seconds, so the second attempt repeats the `transactionId`, is
-rejected, and retries until the lookup finds the one event; a busy attendee
+a create whose Worker is lost after Graph stores the hold, so the replacement
+finds it; a create accepted by Graph before the Worker is lost and committed
+when the replacement repeats the `transactionId`; Graph rejects that repeated
+POST, and the Step reads back the one event; a busy attendee
 through an app-only connection; a double booking; an unwired `incomplete`
 free/busy; and a time without an offset rejected before any provider request.
 

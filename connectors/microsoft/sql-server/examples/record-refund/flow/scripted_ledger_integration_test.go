@@ -7,7 +7,6 @@ package recordrefund
 
 import (
 	"sync"
-	"time"
 
 	"github.com/superdurable/dex-connectors-library/connectors/microsoft/sql-server/internal/scriptedtds"
 )
@@ -42,7 +41,7 @@ type scriptedRefundLedger struct {
 	nextRefundID            int64
 	commitActions           []scriptedtds.CommitAction
 	insertFaults            []bool
-	slowInsertDelay         time.Duration
+	waitForCommitDisconnect bool
 	racingOrderBeforeInsert string
 }
 
@@ -53,7 +52,7 @@ func newScriptedRefundLedger() *scriptedRefundLedger {
 }
 
 func (ledger *scriptedRefundLedger) script() scriptedtds.Script {
-	return scriptedtds.Script{Execute: ledger.execute, Commit: ledger.commit}
+	return scriptedtds.Script{Execute: ledger.execute, Commit: ledger.commit, WaitForCommitDisconnect: ledger.takeCommitDisconnect}
 }
 
 func (ledger *scriptedRefundLedger) execute(statement scriptedtds.Statement) scriptedtds.Execution {
@@ -101,10 +100,8 @@ func (ledger *scriptedRefundLedger) insert(statement scriptedtds.Statement) scri
 	row := ledgerRow{refundID: ledger.nextRefundID, orderID: orderID, amountUSD: statement.Parameters[1].Text, externalReference: externalReference, idempotencyKey: key}
 	ledger.nextRefundID++
 	ledger.pendingKeys[key], ledger.pendingOrders[orderID] = true, true
-	delay := ledger.slowInsertDelay
-	ledger.slowInsertDelay = 0
 	return scriptedtds.Execution{
-		Columns: refundLedgerColumns, Rows: [][]any{row.values()}, Delay: delay,
+		Columns: refundLedgerColumns, Rows: [][]any{row.values()},
 		OnCommit:   func() { ledger.resolveInsert(row, true) },
 		OnRollback: func() { ledger.resolveInsert(row, false) },
 	}
@@ -146,6 +143,14 @@ func (ledger *scriptedRefundLedger) commit() scriptedtds.CommitAction {
 	action := ledger.commitActions[0]
 	ledger.commitActions = ledger.commitActions[1:]
 	return action
+}
+
+func (ledger *scriptedRefundLedger) takeCommitDisconnect() bool {
+	ledger.mu.Lock()
+	defer ledger.mu.Unlock()
+	shouldWait := ledger.waitForCommitDisconnect
+	ledger.waitForCommitDisconnect = false
+	return shouldWait
 }
 
 func (ledger *scriptedRefundLedger) committedRowCount() int {

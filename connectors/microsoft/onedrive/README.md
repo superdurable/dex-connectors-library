@@ -195,10 +195,10 @@ because the create-folder page shows the body and the driveItem page says the
 URL. A `409 nameAlreadyExists` reads the item at the path back: a folder
 selects `created` with `isExistingFolder`; a file selects `nameConflict`.
 
-The example's real-Dex tests hold the first PUT or POST response for nine
-seconds, past the seven-second async local phase. Dex dispatches the Step
-again; with `fail` the second PUT gets `409`, reads back the identical file,
-and selects `uploaded`, with `replace` both PUTs store the same bytes, and the
+The example's real-Dex tests stop the Worker after the first PUT or POST
+applies. The replacement repeats the Step; with `fail` the second PUT gets
+`409`, reads back the identical file, and selects `uploaded`. With `replace`,
+both PUTs store the same bytes, and the
 second POST finds the folder. Each ends with one file or one folder.
 
 Limits of this design:
@@ -329,8 +329,7 @@ npm run build --prefix ui
 The UI links `sdk/react`, so build it first (`make react-sdk` from the
 repository root). With the latest Dex development server running, the example
 owns its real Worker, retry, persistence, and duplicate-dispatch coverage
-against the stateful fake in `internal/graphfake` (each duplicate test takes
-about nine seconds):
+against the stateful fake in `internal/graphfake`:
 
 ```bash
 GOWORK=off go test -tags=integration ./... -count=1 -v

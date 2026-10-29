@@ -106,11 +106,10 @@ PostgreSQL server. It covers:
 - a new refund and a duplicate order;
 - a `COMMIT` whose reply was dropped, once after it applied and once before;
 - a write lost before `COMMIT` and retried with the same key;
-- an eight-second `INSERT` that Dex dispatches again after the async local
-  phase, which still writes one row;
+- an `INSERT` committed before its Worker is lost and dispatched again with the
+  same key, which still writes one row;
 - invalid input rejected before connecting.
 
 The live suite, `-tags=live` with the `POSTGRESQL_CONNECTOR_TEST_*` variables
 from the connector README, runs the same Flow against a real database. It
-covers concurrent Flows for one order, an `INSERT` blocked for nine seconds by
-a table lock and dispatched twice, and a real proxy-dropped `COMMIT`.
+covers concurrent Flows for one order and a real proxy-dropped `COMMIT`.
