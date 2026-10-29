@@ -1,0 +1,91 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: square
+  displayName: Square
+  description: "Read Square resources through typed Dex Query Steps."
+  company: Square
+  version: v0.1.0
+spec:
+  provider: square
+  codegen:
+    go:
+      package: square
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: "Use the provider HTTPS API URL. Blank uses the displayed default; override for a matching sandbox or local test server."
+        default: https://connect.squareup.com/v2
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: "Maximum duration of one provider HTTP request as a positive Go duration, such as 15s or 1m. Blank uses the displayed default; override for slow network paths."
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Maximum provider JSON response size in bytes as a positive integer. Blank uses the displayed default; raise only for larger result pages."
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: square-api-key
+    fields:
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        description: "Secret Square production access token from https://developer.squareup.com/apps > application > Credentials > Production. It is an opaque bearer token with PAYMENTS_READ permission. Blank prevents calls. Use the matching sandbox baseUrl with a sandbox token."
+        required: true
+    guide:
+      startURL: https://developer.squareup.com/apps
+      steps:
+        - "At https://developer.squareup.com/apps create or choose an application, open Credentials > Production and copy the secret access token into access_token. Ensure PAYMENTS_READ permission for the application. For sandbox testing use its Sandbox token and override baseUrl with https://connect.squareupsandbox.com/v2. Blank prevents calls."
+        - "Set baseUrl, timeout, and maxResponseBytes only as described below; defaults appear in parentheses in Dex Web."
+  operations:
+    - name: listPayments
+      goName: ListPayments
+      inputType: ListPaymentsInput
+      outputType: PaymentPage
+      kind: query
+      description: "List one page of Square payments."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "List one page of Square payments."}
+        - {id: notFound, goName: NotFound, description: The requested resource was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: defaultAnswer
+          branch: listed
+          description: "A realistic read-only listPayments response for a Meridian account."
+          default: true
+          output: {"payments":[{"id":"pay_101","status":"COMPLETED","amount_money":{"amount":2900,"currency":"USD"}}],"cursor":""}
+    - name: getPayment
+      goName: GetPayment
+      inputType: GetPaymentInput
+      outputType: Payment
+      kind: query
+      description: "Read one Square payment."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "Read one Square payment."}
+        - {id: notFound, goName: NotFound, description: The requested resource was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: defaultAnswer
+          branch: found
+          description: "A realistic read-only getPayment response for a Meridian account."
+          default: true
+          output: {"id":"pay_101","status":"COMPLETED","amount_money":{"amount":2900,"currency":"USD"}}

@@ -67,6 +67,7 @@ directories:
   - connectors/smartsheet
   - connectors/snowflake
   - connectors/spotify
+  - connectors/square
   - connectors/stripe
   - connectors/superdurable/email
   - connectors/superdurable/llm
