@@ -1,193 +1,138 @@
-{
-  "apiVersion": "connectors.dex.dev/v1alpha1",
-  "kind": "Connector",
-  "metadata": {
-    "name": "webflow",
-    "displayName": "Webflow",
-    "description": "Webflow REST connector with two bounded operations.",
-    "company": "Webflow",
-    "version": "v0.1.0"
-  },
-  "spec": {
-    "provider": "webflow",
-    "codegen": {
-      "go": {
-        "package": "webflow"
-      }
-    },
-    "configuration": {
-      "fields": [
-        {
-          "name": "baseUrl",
-          "goName": "BaseURL",
-          "type": "url",
-          "description": "Provider REST base URL; leave blank for the displayed public endpoint. Override only for a compatible gateway or loopback test server.",
-          "default": "https://api.webflow.com/v2"
-        },
-        {
-          "name": "timeout",
-          "goName": "Timeout",
-          "type": "duration",
-          "description": "Maximum time for one HTTP request as a positive Go duration such as 15s or 1m; blank uses the displayed default.",
-          "default": "15s"
-        },
-        {
-          "name": "maxResponseBytes",
-          "goName": "MaxResponseBytes",
-          "type": "integer",
-          "description": "Maximum response body size in bytes; enter a positive integer to raise the safety limit for large pages. Blank uses the displayed default.",
-          "default": 2097152
-        }
-      ]
-    },
-    "auth": {
-      "type": "apiKey",
-      "connectionKind": "webflow-api-key",
-      "fields": [
-        {
-          "name": "site_token",
-          "goName": "SiteToken",
-          "type": "secretString",
-          "description": "Secret Webflow credential. Start at https://webflow.com/dashboard and follow the authorization guide to create or find it; paste the token exactly, without Bearer. Blank prevents calls. It is sent only in a request header.",
-          "required": true
-        }
-      ],
-      "guide": {
-        "startURL": "https://webflow.com/dashboard",
-        "steps": [
-          "Open https://webflow.com/dashboard, choose a site, then open Site settings > Apps & integrations > API access.",
-          "Choose Generate API token, give it CMS:read scope, and paste the copied secret into site_token.",
-          "Find the collection ID in the CMS collection settings or the List Collections API; supply it in each operation input.",
-          "Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults."
-        ]
-      }
-    },
-    "operations": [
-      {
-        "name": "listCollectionItems",
-        "goName": "ListCollectionItems",
-        "inputType": "ListCollectionItemsInput",
-        "outputType": "ListCollectionItemsOutput",
-        "kind": "query",
-        "description": "List a page of staged CMS collection items.",
-        "idempotency": "none",
-        "authorization": "required",
-        "branches": [
-          {
-            "id": "listed",
-            "goName": "Listed",
-            "description": "List a page of staged CMS collection items."
-          },
-          {
-            "id": "providerRejected",
-            "goName": "ProviderRejected",
-            "description": "The provider conclusively rejected the request or credentials.",
-            "optional": true
-          },
-          {
-            "id": "invalidResponse",
-            "goName": "InvalidResponse",
-            "description": "The provider returned malformed or oversized JSON.",
-            "optional": true
-          },
-          {
-            "id": "defect",
-            "goName": "Defect",
-            "description": "Local input, configuration, or credentials are invalid.",
-            "optional": true
-          }
-        ],
-        "execution": {
-          "executeMethodTimeout": "30s",
-          "durability": "async"
-        },
-        "mocks": [
-          {
-            "name": "defaultListCollectionItems",
-            "branch": "listed",
-            "description": "A representative provider response for the example resource.",
-            "default": true,
-            "output": {
-              "data": {
-                "items": [
-                  {
-                    "id": "62b720ef280c7a7a3be8cabe",
-                    "fieldData": {
-                      "name": "Meridian"
-                    }
-                  }
-                ],
-                "pagination": {
-                  "total": 1,
-                  "limit": 100,
-                  "offset": 0
-                }
-              }
-            }
-          }
-        ]
-      },
-      {
-        "name": "getCollectionItem",
-        "goName": "GetCollectionItem",
-        "inputType": "GetCollectionItemInput",
-        "outputType": "GetCollectionItemOutput",
-        "kind": "query",
-        "description": "Get one staged CMS collection item.",
-        "idempotency": "none",
-        "authorization": "required",
-        "branches": [
-          {
-            "id": "found",
-            "goName": "Found",
-            "description": "Get one staged CMS collection item."
-          },
-          {
-            "id": "notFound",
-            "goName": "NotFound",
-            "description": "The requested provider resource does not exist or is not visible.",
-            "optional": true
-          },
-          {
-            "id": "providerRejected",
-            "goName": "ProviderRejected",
-            "description": "The provider conclusively rejected the request or credentials.",
-            "optional": true
-          },
-          {
-            "id": "invalidResponse",
-            "goName": "InvalidResponse",
-            "description": "The provider returned malformed or oversized JSON.",
-            "optional": true
-          },
-          {
-            "id": "defect",
-            "goName": "Defect",
-            "description": "Local input, configuration, or credentials are invalid.",
-            "optional": true
-          }
-        ],
-        "execution": {
-          "executeMethodTimeout": "30s",
-          "durability": "async"
-        },
-        "mocks": [
-          {
-            "name": "defaultGetCollectionItem",
-            "branch": "found",
-            "description": "A representative provider response for the example resource.",
-            "default": true,
-            "output": {
-              "data": {
-                "id": "62b720ef280c7a7a3be8cabe",
-                "fieldData": {
-                  "name": "Meridian"
-                }
-              }
-            }
-          }
-        ]
-      }
-    ]
-  }
-}
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: webflow
+  displayName: Webflow
+  description: Webflow REST connector with two bounded operations.
+  company: Webflow
+  version: v0.1.0
+spec:
+  provider: webflow
+  codegen:
+    go:
+      package: webflow
+  configuration:
+    fields:
+    - name: baseUrl
+      goName: BaseURL
+      type: url
+      description: Provider REST base URL; leave blank for the displayed public endpoint.
+        Override only for a compatible gateway or loopback test server.
+      default: https://api.webflow.com/v2
+    - name: timeout
+      goName: Timeout
+      type: duration
+      description: Maximum time for one HTTP request as a positive Go duration such
+        as 15s or 1m; blank uses the displayed default.
+      default: 15s
+    - name: maxResponseBytes
+      goName: MaxResponseBytes
+      type: integer
+      description: Maximum response body size in bytes; enter a positive integer to
+        raise the safety limit for large pages. Blank uses the displayed default.
+      default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: webflow-api-key
+    fields:
+    - name: site_token
+      goName: SiteToken
+      type: secretString
+      description: Secret Webflow credential. Start at https://webflow.com/dashboard
+        and follow the authorization guide to create or find it; paste the token exactly,
+        without Bearer. Blank prevents calls. It is sent only in a request header.
+      required: true
+    guide:
+      startURL: https://webflow.com/dashboard
+      steps:
+      - Open https://webflow.com/dashboard, choose a site, then open Site settings
+        > Apps & integrations > API access.
+      - Choose Generate API token, give it CMS:read scope, and paste the copied secret
+        into site_token.
+      - Find the collection ID in the CMS collection settings or the List Collections
+        API; supply it in each operation input.
+      - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
+  operations:
+  - name: listCollectionItems
+    goName: ListCollectionItems
+    inputType: ListCollectionItemsInput
+    outputType: ListCollectionItemsOutput
+    kind: query
+    description: List a page of staged CMS collection items.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: listed
+      goName: Listed
+      description: List a page of staged CMS collection items.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: The provider conclusively rejected the request or credentials.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: The provider returned malformed or oversized JSON.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Local input, configuration, or credentials are invalid.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: defaultListCollectionItems
+      branch: listed
+      description: A representative provider response for the example resource.
+      default: true
+      output:
+        data:
+          items:
+          - id: 62b720ef280c7a7a3be8cabe
+            fieldData:
+              name: Meridian
+          pagination:
+            total: 1
+            limit: 100
+            offset: 0
+  - name: getCollectionItem
+    goName: GetCollectionItem
+    inputType: GetCollectionItemInput
+    outputType: GetCollectionItemOutput
+    kind: query
+    description: Get one staged CMS collection item.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: found
+      goName: Found
+      description: Get one staged CMS collection item.
+    - id: notFound
+      goName: NotFound
+      description: The requested provider resource does not exist or is not visible.
+      optional: true
+    - id: providerRejected
+      goName: ProviderRejected
+      description: The provider conclusively rejected the request or credentials.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: The provider returned malformed or oversized JSON.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Local input, configuration, or credentials are invalid.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: defaultGetCollectionItem
+      branch: found
+      description: A representative provider response for the example resource.
+      default: true
+      output:
+        data:
+          id: 62b720ef280c7a7a3be8cabe
+          fieldData:
+            name: Meridian

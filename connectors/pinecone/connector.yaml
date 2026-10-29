@@ -1,175 +1,126 @@
-{
-  "apiVersion": "connectors.dex.dev/v1alpha1",
-  "kind": "Connector",
-  "metadata": {
-    "name": "pinecone",
-    "displayName": "Pinecone",
-    "description": "Pinecone REST connector with two bounded operations.",
-    "company": "Pinecone",
-    "version": "v0.1.0"
-  },
-  "spec": {
-    "provider": "pinecone",
-    "codegen": {
-      "go": {
-        "package": "pinecone"
-      }
-    },
-    "configuration": {
-      "fields": [
-        {
-          "name": "baseUrl",
-          "goName": "BaseURL",
-          "type": "url",
-          "description": "Index or project API base URL from the provider console; enter an HTTPS URL without a trailing slash. Required for this connection.",
-          "required": true
-        },
-        {
-          "name": "timeout",
-          "goName": "Timeout",
-          "type": "duration",
-          "description": "Maximum time for one HTTP request as a positive Go duration such as 15s or 1m; blank uses the displayed default.",
-          "default": "15s"
-        },
-        {
-          "name": "maxResponseBytes",
-          "goName": "MaxResponseBytes",
-          "type": "integer",
-          "description": "Maximum response body size in bytes; enter a positive integer to raise the safety limit for large pages. Blank uses the displayed default.",
-          "default": 2097152
-        }
-      ]
-    },
-    "auth": {
-      "type": "apiKey",
-      "connectionKind": "pinecone-api-key",
-      "fields": [
-        {
-          "name": "api_key",
-          "goName": "APIKey",
-          "type": "secretString",
-          "description": "Secret Pinecone credential. Start at https://app.pinecone.io and follow the authorization guide to create or find it; paste the token exactly, without Bearer. Blank prevents calls. It is sent only in a request header.",
-          "required": true
-        }
-      ],
-      "guide": {
-        "startURL": "https://app.pinecone.io",
-        "steps": [
-          "Open https://app.pinecone.io, select your project, then open API keys and create or copy a key.",
-          "Open Indexes, select the target index, and copy its unique HTTPS host into baseUrl; do not use the control-plane API host.",
-          "Paste the key into secret api_key; leave timeout and maxResponseBytes blank for their displayed defaults."
-        ]
-      }
-    },
-    "operations": [
-      {
-        "name": "upsertVectors",
-        "goName": "UpsertVectors",
-        "inputType": "UpsertVectorsInput",
-        "outputType": "UpsertVectorsOutput",
-        "kind": "mutation",
-        "description": "Upsert vector IDs by absolute replacement in one namespace.",
-        "idempotency": "required",
-        "authorization": "required",
-        "branches": [
-          {
-            "id": "upserted",
-            "goName": "Upserted",
-            "description": "Upsert vector IDs by absolute replacement in one namespace."
-          },
-          {
-            "id": "providerRejected",
-            "goName": "ProviderRejected",
-            "description": "The provider conclusively rejected the request or credentials.",
-            "optional": true
-          },
-          {
-            "id": "invalidResponse",
-            "goName": "InvalidResponse",
-            "description": "The provider returned malformed or oversized JSON.",
-            "optional": true
-          },
-          {
-            "id": "defect",
-            "goName": "Defect",
-            "description": "Local input, configuration, or credentials are invalid.",
-            "optional": true
-          }
-        ],
-        "execution": {
-          "executeMethodTimeout": "30s",
-          "durability": "async"
-        },
-        "mocks": [
-          {
-            "name": "defaultUpsertVectors",
-            "branch": "upserted",
-            "description": "A representative provider response for the example resource.",
-            "default": true,
-            "output": {
-              "upsertedCount": 1
-            }
-          }
-        ]
-      },
-      {
-        "name": "queryVectors",
-        "goName": "QueryVectors",
-        "inputType": "QueryVectorsInput",
-        "outputType": "QueryVectorsOutput",
-        "kind": "query",
-        "description": "Find nearest vectors in one namespace.",
-        "idempotency": "none",
-        "authorization": "required",
-        "branches": [
-          {
-            "id": "queried",
-            "goName": "Queried",
-            "description": "Find nearest vectors in one namespace."
-          },
-          {
-            "id": "providerRejected",
-            "goName": "ProviderRejected",
-            "description": "The provider conclusively rejected the request or credentials.",
-            "optional": true
-          },
-          {
-            "id": "invalidResponse",
-            "goName": "InvalidResponse",
-            "description": "The provider returned malformed or oversized JSON.",
-            "optional": true
-          },
-          {
-            "id": "defect",
-            "goName": "Defect",
-            "description": "Local input, configuration, or credentials are invalid.",
-            "optional": true
-          }
-        ],
-        "execution": {
-          "executeMethodTimeout": "30s",
-          "durability": "async"
-        },
-        "mocks": [
-          {
-            "name": "defaultQueryVectors",
-            "branch": "queried",
-            "description": "A representative provider response for the example resource.",
-            "default": true,
-            "output": {
-              "data": {
-                "matches": [
-                  {
-                    "id": "vec-meridian",
-                    "score": 0.98
-                  }
-                ],
-                "namespace": "example"
-              }
-            }
-          }
-        ]
-      }
-    ]
-  }
-}
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: pinecone
+  displayName: Pinecone
+  description: Pinecone REST connector with two bounded operations.
+  company: Pinecone
+  version: v0.1.0
+spec:
+  provider: pinecone
+  codegen:
+    go:
+      package: pinecone
+  configuration:
+    fields:
+    - name: baseUrl
+      goName: BaseURL
+      type: url
+      description: Index or project API base URL from the provider console; enter
+        an HTTPS URL without a trailing slash. Required for this connection.
+      required: true
+    - name: timeout
+      goName: Timeout
+      type: duration
+      description: Maximum time for one HTTP request as a positive Go duration such
+        as 15s or 1m; blank uses the displayed default.
+      default: 15s
+    - name: maxResponseBytes
+      goName: MaxResponseBytes
+      type: integer
+      description: Maximum response body size in bytes; enter a positive integer to
+        raise the safety limit for large pages. Blank uses the displayed default.
+      default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: pinecone-api-key
+    fields:
+    - name: api_key
+      goName: APIKey
+      type: secretString
+      description: Secret Pinecone credential. Start at https://app.pinecone.io and
+        follow the authorization guide to create or find it; paste the token exactly,
+        without Bearer. Blank prevents calls. It is sent only in a request header.
+      required: true
+    guide:
+      startURL: https://app.pinecone.io
+      steps:
+      - Open https://app.pinecone.io, select your project, then open API keys and
+        create or copy a key.
+      - Open Indexes, select the target index, and copy its unique HTTPS host into
+        baseUrl; do not use the control-plane API host.
+      - Paste the key into secret api_key; leave timeout and maxResponseBytes blank
+        for their displayed defaults.
+  operations:
+  - name: upsertVectors
+    goName: UpsertVectors
+    inputType: UpsertVectorsInput
+    outputType: UpsertVectorsOutput
+    kind: mutation
+    description: Upsert vector IDs by absolute replacement in one namespace.
+    idempotency: required
+    authorization: required
+    branches:
+    - id: upserted
+      goName: Upserted
+      description: Upsert vector IDs by absolute replacement in one namespace.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: The provider conclusively rejected the request or credentials.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: The provider returned malformed or oversized JSON.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Local input, configuration, or credentials are invalid.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: defaultUpsertVectors
+      branch: upserted
+      description: A representative provider response for the example resource.
+      default: true
+      output:
+        upsertedCount: 1
+  - name: queryVectors
+    goName: QueryVectors
+    inputType: QueryVectorsInput
+    outputType: QueryVectorsOutput
+    kind: query
+    description: Find nearest vectors in one namespace.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: queried
+      goName: Queried
+      description: Find nearest vectors in one namespace.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: The provider conclusively rejected the request or credentials.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: The provider returned malformed or oversized JSON.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Local input, configuration, or credentials are invalid.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: defaultQueryVectors
+      branch: queried
+      description: A representative provider response for the example resource.
+      default: true
+      output:
+        data:
+          matches:
+          - id: vec-meridian
+            score: 0.98
+          namespace: example
