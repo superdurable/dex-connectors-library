@@ -36,9 +36,7 @@ const (
 	integrationItemName = "Monthly Fire Drill Checklist - February"
 
 	defaultRequestTimeout = 5 * time.Second
-	// slowResponseDelay outlasts Dex's roughly seven-second async local phase, so an async Step is dispatched again.
-	slowResponseDelay  = 9 * time.Second
-	slowRequestTimeout = 20 * time.Second
+	heldRequestTimeout    = 20 * time.Second
 )
 
 func integrationInput() Input {
@@ -112,50 +110,52 @@ func TestSecondPageIsReadWhenTheFirstHoldsOnlyCompletedItemsWithRealDex(t *testi
 	require.Equal(t, 1, provider.count("listNext"), "the cursor page carries the first page's filter")
 }
 
-func TestSlowCreateCompletesWithOneSyncDispatchWithRealDex(t *testing.T) {
+func TestHealthyCreateCompletesWithOneDispatchWithRealDex(t *testing.T) {
 	provider := newFakeMonday(t)
-	provider.delaysFirstCreate = true
-	harness := newWorkHarness(t, provider, slowRequestTimeout)
+	harness := newWorkHarness(t, provider, defaultRequestTimeout)
 
-	startedAt := time.Now()
-	outcome := harness.runWorkRequest(t, "slow-create", integrationInput())
-	require.GreaterOrEqual(t, time.Since(startedAt), slowResponseDelay)
+	outcome := harness.runWorkRequest(t, "healthy-create", integrationInput())
 	require.Equal(t, WorkItemCreated, outcome.Action)
-	provider.waitForDelayedRequests(t)
-	require.Equal(t, 1, provider.count("create"), "sync durability waits for the slow attempt")
+	require.Equal(t, 1, provider.count("create"))
 	require.Equal(t, 1, provider.count("appliedCreate"), "only the first request ran")
-	require.Equal(t, 1, provider.itemCount(), "the repeated dispatch did not create a second item")
-	require.Len(t, provider.distinctIdempotencyKeys("create"), 1, "every attempt sent the same key")
+	require.Equal(t, 1, provider.itemCount())
+	require.Len(t, provider.distinctIdempotencyKeys("create"), 1)
 	require.Len(t, provider.item(outcome.ItemID).updates, 1)
 }
 
-// TestSlowScheduleIsSafeToRepeatWithRealDex lets async Dex dispatch the column update again; the key and the absolute values both hold.
-func TestSlowScheduleIsSafeToRepeatWithRealDex(t *testing.T) {
+// TestLostWorkerDuringScheduleIsSafeToRepeatWithRealDex verifies the same-key replay after Worker loss.
+func TestLostWorkerDuringScheduleIsSafeToRepeatWithRealDex(t *testing.T) {
 	provider := newFakeMonday(t)
 	existing := provider.seedItem(integrationBoardID, "backlog", integrationItemName, "active", "", "")
-	provider.delaysFirstSchedule = true
-	harness := newWorkHarness(t, provider, slowRequestTimeout)
-
-	outcome := harness.runWorkRequest(t, "slow-schedule", integrationInput())
+	provider.holdsFirstSchedule = make(chan struct{})
+	harness := newWorkHarness(t, provider, heldRequestTimeout)
+	flowID := harness.startWorkRequest(t, "lost-worker-schedule", integrationInput())
+	require.Eventually(t, func() bool { return provider.count("appliedSchedule") == 1 }, 30*time.Second, 50*time.Millisecond)
+	harness.replaceWorker(t)
+	require.Eventually(t, func() bool { return provider.count("schedule") == 2 }, time.Minute, 50*time.Millisecond)
+	close(provider.holdsFirstSchedule)
+	result := harness.waitForFlow(t, flowID)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var outcome WorkRequestOutcome
+	require.NoError(t, result.DecodeSingleOutput(&outcome))
 	require.Equal(t, WorkItemScheduled, outcome.Action)
-	provider.waitForDelayedRequests(t)
-	require.GreaterOrEqual(t, provider.count("schedule"), 2, "Dex dispatched the update again past its local phase")
+	provider.waitForHeldRequests(t)
+	require.Equal(t, 2, provider.count("schedule"))
 	require.Equal(t, 1, provider.count("appliedSchedule"))
+	require.Len(t, provider.distinctIdempotencyKeys("schedule"), 1)
 	item := provider.item(existing)
 	require.Equal(t, "Working on it", item.columns["status"].text)
 	require.Len(t, item.updates, 1, "exactly one update")
 }
 
-func TestSlowUpdateCompletesWithOneSyncDispatchWithRealDex(t *testing.T) {
+func TestHealthyUpdateCompletesWithOneDispatchWithRealDex(t *testing.T) {
 	provider := newFakeMonday(t)
-	provider.delaysFirstUpdate = true
-	harness := newWorkHarness(t, provider, slowRequestTimeout)
+	harness := newWorkHarness(t, provider, defaultRequestTimeout)
 
-	outcome := harness.runWorkRequest(t, "slow-update", integrationInput())
+	outcome := harness.runWorkRequest(t, "healthy-update", integrationInput())
 	require.Equal(t, WorkItemCreated, outcome.Action)
-	provider.waitForDelayedRequests(t)
 	require.Equal(t, 1, provider.count("update"))
-	require.Len(t, provider.item(outcome.ItemID).updates, 1, "the repeated dispatch did not post a second update")
+	require.Len(t, provider.item(outcome.ItemID).updates, 1)
 	require.Len(t, provider.distinctIdempotencyKeys("update"), 1)
 }
 
@@ -174,9 +174,9 @@ func TestLostCreateResponseFailsClosedWithRealDex(t *testing.T) {
 func TestLostWorkerDuringCreateFailsClosedWithRealDex(t *testing.T) {
 	provider := newFakeMonday(t)
 	provider.holdsFirstCreate = make(chan struct{})
-	harness := newWorkHarness(t, provider, slowRequestTimeout)
+	harness := newWorkHarness(t, provider, heldRequestTimeout)
 	flowID := harness.startWorkRequest(t, "lost-worker", integrationInput())
-	require.Eventually(t, func() bool { return provider.count("create") == 1 }, 30*time.Second, 50*time.Millisecond,
+	require.Eventually(t, func() bool { return provider.count("appliedCreate") == 1 }, 30*time.Second, 50*time.Millisecond,
 		"the first attempt must reach monday.com")
 	harness.replaceWorker(t)
 	close(provider.holdsFirstCreate)
@@ -184,7 +184,7 @@ func TestLostWorkerDuringCreateFailsClosedWithRealDex(t *testing.T) {
 	result := harness.waitForFlow(t, flowID)
 	require.Equal(t, dex.FlowFailed, result.Status)
 	require.Contains(t, result.ErrorMessage, "uncertain")
-	provider.waitForDelayedRequests(t)
+	provider.waitForHeldRequests(t)
 	require.Equal(t, 1, provider.itemCount(), "the attempt on the new Worker did not create a second item")
 	require.Equal(t, 1, provider.count("create"), "the next attempt must not resend a dispatched write")
 }
@@ -261,8 +261,8 @@ type fakeMonday struct {
 	*httptest.Server
 	t     *testing.T
 	mutex sync.Mutex
-	// delayedRequests tracks handlers still sleeping or held, so a test can assert their final effect.
-	delayedRequests sync.WaitGroup
+	// heldRequests tracks held handlers until cancellation or release.
+	heldRequests sync.WaitGroup
 
 	clock        time.Time
 	nextItemID   int64
@@ -273,15 +273,13 @@ type fakeMonday struct {
 	counts       map[string]int
 	requests     map[string][]fakeRecordedRequest
 
-	delaysFirstCreate            bool
-	delaysFirstSchedule          bool
-	delaysFirstUpdate            bool
 	losesFirstCreateResponse     bool
 	rateLimitsFirstCreate        bool
 	temporarilyBlocksFirstCreate bool
 	rejectsCreate                bool
 	answersCreateUnusably        bool
 	holdsFirstCreate             chan struct{}
+	holdsFirstSchedule           chan struct{}
 }
 
 type fakeItem struct {
@@ -378,20 +376,28 @@ func (provider *fakeMonday) serveHTTP(response http.ResponseWriter, request *htt
 		provider.writeResponse(response, provider.getItem(document.Variables))
 	case strings.HasPrefix(document.Query, "mutation CreateItem"):
 		attempt := provider.record("create", key, document.Variables)
-		provider.runMutation(response, key, func() fakeResponse { return provider.createItem(document.Variables, attempt) })
+		var hold chan struct{}
+		if attempt == 1 {
+			hold = provider.holdsFirstCreate
+		}
+		provider.runMutation(response, request, key, hold, func() fakeResponse { return provider.createItem(document.Variables, attempt) })
 	case strings.HasPrefix(document.Query, "mutation UpdateItemColumnValues"):
 		attempt := provider.record("schedule", key, document.Variables)
-		provider.runMutation(response, key, func() fakeResponse { return provider.updateItemColumnValues(document.Variables, attempt) })
+		var hold chan struct{}
+		if attempt == 1 {
+			hold = provider.holdsFirstSchedule
+		}
+		provider.runMutation(response, request, key, hold, func() fakeResponse { return provider.updateItemColumnValues(document.Variables, attempt) })
 	case strings.HasPrefix(document.Query, "mutation AddUpdate"):
 		attempt := provider.record("update", key, document.Variables)
-		provider.runMutation(response, key, func() fakeResponse { return provider.addUpdate(document.Variables, attempt) })
+		provider.runMutation(response, request, key, nil, func() fakeResponse { return provider.addUpdate(document.Variables, attempt) })
 	default:
 		provider.writeJSON(response, http.StatusOK, `{"errors":[{"message":"x","extensions":{"code":"GRAPHQL_VALIDATION_FAILED"}}]}`)
 	}
 }
 
 // runMutation answers 409 while a key runs, replays it afterwards, and never caches a 429.
-func (provider *fakeMonday) runMutation(response http.ResponseWriter, key string, execute func() fakeResponse) {
+func (provider *fakeMonday) runMutation(response http.ResponseWriter, request *http.Request, key string, hold chan struct{}, execute func() fakeResponse) {
 	if key == "" {
 		provider.t.Errorf("a mutation arrived without an Idempotency-Key")
 		provider.writeJSON(response, http.StatusBadRequest, `{"errors":[{"message":"missing key"}]}`)
@@ -428,6 +434,15 @@ func (provider *fakeMonday) runMutation(response http.ResponseWriter, key string
 	if answer.dropsConnection {
 		provider.dropConnection(response)
 		return
+	}
+	if hold != nil {
+		provider.heldRequests.Add(1)
+		defer provider.heldRequests.Done()
+		select {
+		case <-hold:
+		case <-request.Context().Done():
+			return
+		}
 	}
 	provider.writeResponse(response, answer)
 }
@@ -510,15 +525,6 @@ func (provider *fakeMonday) createItem(variables map[string]any, attempt int) fa
 	if provider.temporarilyBlocksFirstCreate && attempt == 1 {
 		return fakeResponse{status: http.StatusOK, body: `{"errors":[{"extensions":{"code":"API_TEMPORARILY_BLOCKED"}}]}`}
 	}
-	if attempt == 1 && (provider.delaysFirstCreate || provider.holdsFirstCreate != nil) {
-		provider.delayedRequests.Add(1)
-		defer provider.delayedRequests.Done()
-		if provider.holdsFirstCreate != nil {
-			<-provider.holdsFirstCreate
-		} else {
-			time.Sleep(slowResponseDelay)
-		}
-	}
 	provider.mutex.Lock()
 	defer provider.mutex.Unlock()
 	provider.counts["appliedCreate"]++
@@ -543,11 +549,6 @@ func (provider *fakeMonday) createItem(variables map[string]any, attempt int) fa
 }
 
 func (provider *fakeMonday) updateItemColumnValues(variables map[string]any, attempt int) fakeResponse {
-	if provider.delaysFirstSchedule && attempt == 1 {
-		provider.delayedRequests.Add(1)
-		defer provider.delayedRequests.Done()
-		time.Sleep(slowResponseDelay)
-	}
 	provider.mutex.Lock()
 	defer provider.mutex.Unlock()
 	item, isFound := provider.items[fmt.Sprint(variables["itemId"])]
@@ -563,11 +564,6 @@ func (provider *fakeMonday) updateItemColumnValues(variables map[string]any, att
 }
 
 func (provider *fakeMonday) addUpdate(variables map[string]any, attempt int) fakeResponse {
-	if provider.delaysFirstUpdate && attempt == 1 {
-		provider.delayedRequests.Add(1)
-		defer provider.delayedRequests.Done()
-		time.Sleep(slowResponseDelay)
-	}
 	provider.mutex.Lock()
 	defer provider.mutex.Unlock()
 	item, isFound := provider.items[fmt.Sprint(variables["itemId"])]
@@ -708,17 +704,17 @@ func (provider *fakeMonday) dropConnection(response http.ResponseWriter) {
 	require.NoError(provider.t, connection.Close())
 }
 
-func (provider *fakeMonday) waitForDelayedRequests(t *testing.T) {
+func (provider *fakeMonday) waitForHeldRequests(t *testing.T) {
 	t.Helper()
 	finished := make(chan struct{})
 	go func() {
-		provider.delayedRequests.Wait()
+		provider.heldRequests.Wait()
 		close(finished)
 	}()
 	select {
 	case <-finished:
-	case <-time.After(2 * slowResponseDelay):
-		t.Fatal("a delayed fake monday.com request did not finish")
+	case <-time.After(30 * time.Second):
+		t.Fatal("a held fake monday.com request did not finish")
 	}
 }
 
@@ -820,12 +816,16 @@ func newWorkHarnessForConnection(t *testing.T, connection monday.Connection) *wo
 		FlowServiceAddress: harness.serverAddress,
 	})
 	require.NoError(t, err)
-	harness.startWorker(t)
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
-		require.NoError(t, errors.Join(harness.worker.Stop(ctx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
+		var stopError error
+		if harness.worker != nil {
+			stopError = errors.Join(harness.worker.Stop(ctx), <-harness.workerResult)
+		}
+		require.NoError(t, errors.Join(stopError, harness.client.Close(), harness.cache.Close()))
 	})
+	harness.startWorker(t)
 	return harness
 }
 
@@ -835,13 +835,13 @@ func (harness *workHarness) startWorker(t *testing.T) {
 	require.NoError(t, err)
 	workerResult := make(chan error, 1)
 	go func() { workerResult <- worker.Start() }()
+	harness.worker, harness.workerResult = worker, workerResult
 	{
 		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
 		registrationError := worker.WaitPullRegistered(registrationContext)
 		cancelRegistration()
 		require.NoError(t, registrationError)
 	}
-	harness.worker, harness.workerResult = worker, workerResult
 }
 
 // replaceWorker force-stops the Worker without draining its handlers, like a crash, then starts a new one.

@@ -314,9 +314,8 @@ positions:
   exist, and the connector never resends it. The example leaves the branch
   unwired, so the Flow fails and a person can check Zoho Desk before another run.
 
-Keep these two Steps sync. An application override to async durability with
-`StepOptionsOverride` lets Dex dispatch a second request after seven seconds,
-and the generated factories do not reject it. Dex can acknowledge a heartbeat
+Keep these two Steps sync. A Worker failure or retry can dispatch a Step again
+under either durability mode. Dex can acknowledge a heartbeat
 before it stores it, so a checkpoint lost before Dex stored it, or a crash
 before the request left, can make an attempt report `uncertain` for a request
 Zoho Desk never received; that direction is safe.

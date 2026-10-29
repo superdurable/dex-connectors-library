@@ -42,9 +42,7 @@ const (
 	agentUserID     = int64(235323)
 
 	defaultRequestTimeout = 5 * time.Second
-	// slowResponseDelay outlasts Dex's roughly seven-second async local phase, so Dex dispatches a backup attempt.
-	slowResponseDelay  = 9 * time.Second
-	slowRequestTimeout = 20 * time.Second
+	heldRequestTimeout    = 20 * time.Second
 )
 
 func integrationIssueInput() Input {
@@ -138,22 +136,30 @@ func TestLostCreateResponseIsReplayedUnderTheSameKeyWithRealDex(t *testing.T) {
 	require.Equal(t, keys[0], keys[1], "the retry reused the Step's Idempotency-Key")
 }
 
-// TestSlowCreateBackupDispatchCreatesOneTicketWithRealDex covers Dex's async backup attempt while the first create is in flight.
-func TestSlowCreateBackupDispatchCreatesOneTicketWithRealDex(t *testing.T) {
+// TestLostWorkerDuringCreateCreatesOneTicketWithRealDex verifies same-key replay after an accepted create.
+func TestLostWorkerDuringCreateCreatesOneTicketWithRealDex(t *testing.T) {
 	provider := newFakeZendesk(t)
-	provider.delaysFirstCreate = true
-	flow, harness := newCustomerIssueHarness(t, provider, slowRequestTimeout)
+	provider.holdsFirstCreate = make(chan struct{})
+	flow, harness := newCustomerIssueHarness(t, provider, heldRequestTimeout)
 	ctx := integrationContext(t)
-
-	outcome := runCustomerIssue(t, ctx, harness, flow, "slow-create", integrationIssueInput())
+	flowID := startCustomerIssue(t, ctx, harness, flow, "lost-worker-create", integrationIssueInput())
+	require.Eventually(t, func() bool { return provider.ticketCount() == 1 }, 30*time.Second, 50*time.Millisecond)
+	harness.replaceWorker(t)
+	require.Eventually(t, func() bool { return provider.count("create") == 2 }, time.Minute, 50*time.Millisecond)
+	close(provider.holdsFirstCreate)
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var outcome CustomerIssueOutcome
+	require.NoError(t, result.DecodeSingleOutput(&outcome))
 	require.Equal(t, IssueTicketOpened, outcome.Action)
-	provider.waitForDelayedRequests(t)
+	provider.waitForHeldRequests(t)
 	require.Equal(t, 1, provider.ticketCount(), "every dispatch carried one key, so Zendesk created one ticket")
-	require.GreaterOrEqual(t, provider.count("create"), 2, "Dex dispatched a backup attempt past its local phase")
+	require.Equal(t, 2, provider.count("create"))
+	require.Equal(t, 1, provider.count("createReplay"))
 	for _, key := range provider.createKeys() {
 		require.Equal(t, provider.createKeys()[0], key)
 	}
-	t.Logf("slow create: creates=%d inFlightConflicts=%d replays=%d", provider.count("create"), provider.count("createInFlight"), provider.count("createReplay"))
 }
 
 func TestLostUpdateResponseDoesNotRepeatTheNoteWithRealDex(t *testing.T) {
@@ -171,22 +177,30 @@ func TestLostUpdateResponseDoesNotRepeatTheNoteWithRealDex(t *testing.T) {
 	require.GreaterOrEqual(t, provider.count("audits"), 2)
 }
 
-// TestSlowUpdateBackupDispatchAddsOneNoteWithRealDex covers two concurrent update attempts of one Step.
-func TestSlowUpdateBackupDispatchAddsOneNoteWithRealDex(t *testing.T) {
+// TestLostWorkerDuringUpdateAddsOneNoteWithRealDex verifies audit reconciliation after an accepted update.
+func TestLostWorkerDuringUpdateAddsOneNoteWithRealDex(t *testing.T) {
 	provider := newFakeZendesk(t)
 	existing := provider.seedTicket(requesterUserID, "open", []string{integrationIssueTag}, "2026-01-26T14:02:00Z", "I was charged twice.")
-	provider.delaysFirstUpdate = true
-	flow, harness := newCustomerIssueHarness(t, provider, slowRequestTimeout)
+	provider.holdsFirstUpdate = make(chan struct{})
+	flow, harness := newCustomerIssueHarness(t, provider, heldRequestTimeout)
 	ctx := integrationContext(t)
-
-	outcome := runCustomerIssue(t, ctx, harness, flow, "slow-update", integrationIssueInput())
+	flowID := startCustomerIssue(t, ctx, harness, flow, "lost-worker-update", integrationIssueInput())
+	require.Eventually(t, func() bool { return provider.count("appliedUpdate") == 1 }, 30*time.Second, 50*time.Millisecond)
+	harness.replaceWorker(t)
+	require.Eventually(t, func() bool { return provider.count("audits") == 2 }, time.Minute, 50*time.Millisecond)
+	close(provider.holdsFirstUpdate)
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var outcome CustomerIssueOutcome
+	require.NoError(t, result.DecodeSingleOutput(&outcome))
 	require.Equal(t, IssueFollowUpAdded, outcome.Action)
-	provider.waitForDelayedRequests(t)
-	require.Len(t, provider.ticket(existing).comments, 2, "the safe update rejected the stale concurrent write")
+	provider.waitForHeldRequests(t)
+	require.Len(t, provider.ticket(existing).comments, 2)
 	require.Equal(t, 1, provider.count("appliedUpdate"))
-	require.GreaterOrEqual(t, provider.count("update"), 2, "Dex dispatched a backup attempt past its local phase")
-	require.Equal(t, 1, provider.count("updateConflict"), "the delayed first write carried a stale updated_stamp")
-	t.Logf("slow update: updates=%d applied=%d safeUpdateConflicts=%d", provider.count("update"), provider.count("appliedUpdate"), provider.count("updateConflict"))
+	require.Equal(t, 1, provider.count("update"), "the replay reads the audit marker before writing")
+	require.Equal(t, 2, provider.count("audits"))
+	require.Zero(t, provider.count("updateConflict"))
 }
 
 func TestRateLimitedSearchWaitsForRetryAfterWithRealDex(t *testing.T) {
@@ -258,8 +272,8 @@ type fakeZendesk struct {
 	*httptest.Server
 	t     *testing.T
 	mutex sync.Mutex
-	// delayedRequests tracks handlers still sleeping, so a test can assert their final effect.
-	delayedRequests sync.WaitGroup
+	// heldRequests tracks held handlers until cancellation or release.
+	heldRequests sync.WaitGroup
 
 	clock         time.Time
 	nextTicketID  int64
@@ -272,9 +286,9 @@ type fakeZendesk struct {
 	requests      map[string][]fakeRecordedRequest
 
 	losesFirstCreateResponse bool
-	delaysFirstCreate        bool
+	holdsFirstCreate         chan struct{}
 	losesFirstUpdateResponse bool
-	delaysFirstUpdate        bool
+	holdsFirstUpdate         chan struct{}
 	rateLimitsFirstSearch    bool
 	rejectsCreate            bool
 }
@@ -506,11 +520,6 @@ func (provider *fakeZendesk) createTicket(response http.ResponseWriter, request 
 	entry := &fakeIdempotentCreate{body: string(body), isInFlight: true}
 	provider.createsByKey[key] = entry
 	provider.mutex.Unlock()
-	if provider.delaysFirstCreate && attempt == 1 {
-		provider.delayedRequests.Add(1)
-		defer provider.delayedRequests.Done()
-		time.Sleep(slowResponseDelay)
-	}
 	var payload struct {
 		Ticket struct {
 			Subject string `json:"subject"`
@@ -536,6 +545,9 @@ func (provider *fakeZendesk) createTicket(response http.ResponseWriter, request 
 	entry.isInFlight, entry.ticketID = false, ticket.id
 	value := map[string]any{"ticket": provider.ticketJSON(ticket)}
 	provider.mutex.Unlock()
+	if attempt == 1 && !provider.waitForHeldRequest(request, provider.holdsFirstCreate) {
+		return
+	}
 	if provider.losesFirstCreateResponse && attempt == 1 {
 		provider.dropConnection(response)
 		return
@@ -546,11 +558,6 @@ func (provider *fakeZendesk) createTicket(response http.ResponseWriter, request 
 
 func (provider *fakeZendesk) updateTicket(response http.ResponseWriter, request *http.Request, body []byte, ticketID int64) {
 	attempt := provider.record("update", request, body)
-	if provider.delaysFirstUpdate && attempt == 1 {
-		provider.delayedRequests.Add(1)
-		defer provider.delayedRequests.Done()
-		time.Sleep(slowResponseDelay)
-	}
 	var payload struct {
 		Ticket struct {
 			Status       string            `json:"status"`
@@ -605,6 +612,9 @@ func (provider *fakeZendesk) updateTicket(response http.ResponseWriter, request 
 	provider.counts["appliedUpdate"]++
 	value := map[string]any{"ticket": provider.ticketJSON(ticket), "audit": map[string]any{"id": len(ticket.auditKeys)}}
 	provider.mutex.Unlock()
+	if attempt == 1 && !provider.waitForHeldRequest(request, provider.holdsFirstUpdate) {
+		return
+	}
 	if provider.losesFirstUpdateResponse && attempt == 1 {
 		provider.dropConnection(response)
 		return
@@ -720,17 +730,31 @@ func (provider *fakeZendesk) writeJSON(response http.ResponseWriter, status int,
 	}
 }
 
-func (provider *fakeZendesk) waitForDelayedRequests(t *testing.T) {
+func (provider *fakeZendesk) waitForHeldRequest(request *http.Request, hold chan struct{}) bool {
+	if hold == nil {
+		return true
+	}
+	provider.heldRequests.Add(1)
+	defer provider.heldRequests.Done()
+	select {
+	case <-hold:
+		return true
+	case <-request.Context().Done():
+		return false
+	}
+}
+
+func (provider *fakeZendesk) waitForHeldRequests(t *testing.T) {
 	t.Helper()
 	finished := make(chan struct{})
 	go func() {
-		provider.delayedRequests.Wait()
+		provider.heldRequests.Wait()
 		close(finished)
 	}()
 	select {
 	case <-finished:
-	case <-time.After(2 * slowResponseDelay):
-		t.Fatal("a delayed fake Zendesk request did not finish")
+	case <-time.After(30 * time.Second):
+		t.Fatal("a held fake Zendesk request did not finish")
 	}
 }
 
@@ -825,10 +849,12 @@ func nullableID(value int64) any {
 }
 
 type customerIssueHarness struct {
-	cache        *blobcache.Cache
-	worker       *dex.Worker
-	workerResult chan error
-	client       *dex.Client
+	cache         *blobcache.Cache
+	registry      *dex.Registry
+	serverAddress string
+	worker        *dex.Worker
+	workerResult  chan error
+	client        *dex.Client
 }
 
 func newCustomerIssueHarness(t *testing.T, provider *fakeZendesk, requestTimeout time.Duration) (*Flow, *customerIssueHarness) {
@@ -846,29 +872,46 @@ func newCustomerIssueHarness(t *testing.T, provider *fakeZendesk, requestTimeout
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
-	serverAddress := environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801")
-	harness := &customerIssueHarness{cache: cache}
+	harness := &customerIssueHarness{cache: cache, registry: registry, serverAddress: environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801")}
 	harness.client, err = dex.NewClient(registry, cache, dex.ClientOptions{
-		FlowServiceAddress: serverAddress,
+		FlowServiceAddress: harness.serverAddress,
 	})
 	require.NoError(t, err)
-	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: serverAddress})
-	require.NoError(t, err)
-	harness.worker = worker
-	harness.workerResult = make(chan error, 1)
-	go func() { harness.workerResult <- worker.Start() }()
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		require.NoError(t, errors.Join(harness.worker.Stop(ctx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
+		var stopError error
+		if harness.worker != nil {
+			stopError = errors.Join(harness.worker.Stop(ctx), <-harness.workerResult)
+		}
+		require.NoError(t, errors.Join(stopError, harness.client.Close(), harness.cache.Close()))
 	})
+	harness.startWorker(t)
+	return flow, harness
+}
+
+func (harness *customerIssueHarness) startWorker(t *testing.T) {
+	t.Helper()
+	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{FlowServiceAddress: harness.serverAddress})
+	require.NoError(t, err)
+	workerResult := make(chan error, 1)
+	go func() { workerResult <- worker.Start() }()
+	harness.worker, harness.workerResult = worker, workerResult
 	{
 		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
 		registrationError := worker.WaitPullRegistered(registrationContext)
 		cancelRegistration()
 		require.NoError(t, registrationError)
 	}
-	return flow, harness
+}
+
+func (harness *customerIssueHarness) replaceWorker(t *testing.T) {
+	t.Helper()
+	expired, cancel := context.WithCancel(context.Background())
+	cancel()
+	_ = harness.worker.Stop(expired)
+	require.NoError(t, <-harness.workerResult)
+	harness.startWorker(t)
 }
 
 func integrationContext(t *testing.T) context.Context {

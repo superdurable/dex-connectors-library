@@ -94,7 +94,7 @@ func TestDefinitionsDeclareOptionalBranchesAndDurability(t *testing.T) {
 		require.GreaterOrEqual(t, defaults.ExecuteRetry.TotalDuration, 2*time.Minute)
 	}
 	for _, defaults := range []sdkgo.StepDefaults{desk.CreateTicketDefinition.StepDefaults, desk.AddCommentDefinition.StepDefaults} {
-		require.Equal(t, dex.StepDurabilitySync, defaults.ExecuteDurability, "async would dispatch a second request after seven seconds")
+		require.Equal(t, dex.StepDurabilitySync, defaults.ExecuteDurability, "non-repeatable writes use the declared sync default")
 		require.Equal(t, 30*time.Second, defaults.ExecuteMethodTimeout)
 		require.GreaterOrEqual(t, defaults.ExecuteRetry.TotalDuration, 2*time.Minute)
 	}

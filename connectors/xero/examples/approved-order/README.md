@@ -134,9 +134,9 @@ request, and replays it:
   reference, records one payment of the exact total, and reads back `PAID`;
   the Custom Connection token is requested once with HTTP Basic, persisted,
   and sent without a tenant header;
-- an invoice create and a payment each held for nine seconds, past Dex's
-  async local phase, are dispatched again; the repeat receives the replay,
-  so Xero holds one invoice and one payment;
+- a Worker lost after Xero accepts an invoice or payment is replaced; the
+  repeated request uses the same key and receives the cached response, so
+  Xero holds one invoice and one payment;
 - a lost create response is retried under the same key and replayed;
 - a Worker lost while Xero holds the payment is replaced, and the new
   Worker's attempt sends the same key and records no second payment;
