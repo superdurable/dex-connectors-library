@@ -18,7 +18,9 @@ directories:
   - connectors/clickup
   - connectors/close
   - connectors/cloudflare
+  - connectors/coda
   - connectors/cohere
+  - connectors/contentful
   - connectors/datadog
   - connectors/discord
   - connectors/docusign
@@ -68,6 +70,7 @@ directories:
   - connectors/openweathermap
   - connectors/pagerduty
   - connectors/paypal
+  - connectors/pinecone
   - connectors/pipedrive
   - connectors/postgresql
   - connectors/postmark
@@ -83,6 +86,7 @@ directories:
   - connectors/spotify
   - connectors/square
   - connectors/stripe
+  - connectors/supabase
   - connectors/superdurable/email
   - connectors/superdurable/llm
   - connectors/superdurable/oauth2-http
@@ -92,6 +96,7 @@ directories:
   - connectors/typeform
   - connectors/unsplash
   - connectors/vercel
+  - connectors/webflow
   - connectors/woocommerce
   - connectors/xero
   - connectors/zendesk/support

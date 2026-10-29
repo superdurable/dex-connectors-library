@@ -1,0 +1,136 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: coda
+  displayName: Coda
+  description: Coda REST connector with two bounded operations.
+  company: Coda
+  version: v0.1.0
+spec:
+  provider: coda
+  codegen:
+    go:
+      package: coda
+  configuration:
+    fields:
+    - name: baseUrl
+      goName: BaseURL
+      type: url
+      description: Provider REST base URL; leave blank for the displayed public endpoint.
+        Override only for a compatible gateway or loopback test server.
+      default: https://coda.io/apis/v1
+    - name: timeout
+      goName: Timeout
+      type: duration
+      description: Maximum time for one HTTP request as a positive Go duration such
+        as 15s or 1m; blank uses the displayed default.
+      default: 15s
+    - name: maxResponseBytes
+      goName: MaxResponseBytes
+      type: integer
+      description: Maximum response body size in bytes; enter a positive integer to
+        raise the safety limit for large pages. Blank uses the displayed default.
+      default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: coda-api-key
+    fields:
+    - name: api_token
+      goName: APIToken
+      type: secretString
+      description: Secret Coda credential. Start at https://docs.superhuman.com/account
+        and follow the authorization guide to create or find it; paste the token exactly,
+        without Bearer. Blank prevents calls. It is sent only in a request header.
+      required: true
+    guide:
+      startURL: https://docs.superhuman.com/account
+      steps:
+      - Open https://docs.superhuman.com/account and scroll to API settings.
+      - Choose Generate API token, select Read only and the docs or tables to expose,
+        then copy the secret into api_token.
+      - Open a doc and its table to find their IDs; supply them in each operation
+        input.
+      - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
+  operations:
+  - name: listRows
+    goName: ListRows
+    inputType: ListRowsInput
+    outputType: ListRowsOutput
+    kind: query
+    description: List one page of rows in a Coda table.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: listed
+      goName: Listed
+      description: List one page of rows in a Coda table.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: The provider conclusively rejected the request or credentials.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: The provider returned malformed or oversized JSON.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Local input, configuration, or credentials are invalid.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: defaultListRows
+      branch: listed
+      description: A representative provider response for the example resource.
+      default: true
+      output:
+        data:
+          items:
+          - id: i-Meridian
+            name: Meridian
+            values:
+              c-Name: Meridian
+          nextPageToken: ''
+  - name: getRow
+    goName: GetRow
+    inputType: GetRowInput
+    outputType: GetRowOutput
+    kind: query
+    description: Get one row in a Coda table.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: found
+      goName: Found
+      description: Get one row in a Coda table.
+    - id: notFound
+      goName: NotFound
+      description: The requested provider resource does not exist or is not visible.
+      optional: true
+    - id: providerRejected
+      goName: ProviderRejected
+      description: The provider conclusively rejected the request or credentials.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: The provider returned malformed or oversized JSON.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Local input, configuration, or credentials are invalid.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: defaultGetRow
+      branch: found
+      description: A representative provider response for the example resource.
+      default: true
+      output:
+        data:
+          id: i-Meridian
+          name: Meridian
+          values:
+            c-Name: Meridian
