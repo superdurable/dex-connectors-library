@@ -1,6 +1,6 @@
 # Mixpanel event track example
 
-This runnable Flow imports one event from Dex Web Start Flow. The start Step fixes a missing `time` once before dispatch; the connector derives `$insert_id` from Dex's stable call identity. The `imported` branch completes after Mixpanel confirms strict ingestion. Optional branches are unwired and fail the Flow. `ConnectionName` is statically `mixpanel`.
+This runnable Flow imports one event from Dex Web Start Flow. The start Step fixes a missing `time` once before dispatch; the connector derives `$insert_id` from Dex's stable call identity. The `imported` branch completes after Mixpanel confirms strict ingestion. Optional branches are unwired and fail the Flow. `ConnectionName` is statically `mixpanel`. Dex Web summary and display views show the completed provider outcome.
 
 ## Generate strict FDG 2.0
 

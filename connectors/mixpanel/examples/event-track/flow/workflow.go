@@ -5,6 +5,7 @@
 package eventtrack
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -21,6 +22,8 @@ const (
 	ConnectionName = "mixpanel"
 	trackStepType  = "ImportMixpanelEvent"
 )
+
+var outcomeAttribute = dex.DefineAttribute[mixpanel.EventImportResult]("mixpanel-event-track-outcome")
 
 // Request is the Dex Web Start Flow input.
 type Request struct {
@@ -41,8 +44,10 @@ type Flow struct {
 // NewFlow binds the configured Mixpanel connection.
 func NewFlow(connection mixpanel.Connection) *Flow { return &Flow{connection: connection} }
 
-func (*Flow) GetFlowType() string                         { return FlowType }
-func (*Flow) GetPersistenceSchema() dex.PersistenceSchema { return dex.PersistenceSchema{} }
+func (*Flow) GetFlowType() string { return FlowType }
+func (*Flow) GetPersistenceSchema() dex.PersistenceSchema {
+	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{outcomeAttribute}}
+}
 
 func (flow *Flow) GetSteps() []dex.StepDef {
 	return []dex.StepDef{
@@ -75,6 +80,43 @@ func PrepareRequest(request Request, now time.Time) (Request, error) {
 	return request, nil
 }
 
+// GetRPCs registers the Dex Web summary and display views.
+func (flow *Flow) GetRPCs() []dex.RPCDef {
+	return []dex.RPCDef{
+		dex.DefineRPC(flow.GetDexSummary, nil),
+		dex.DefineRPC(flow.GetDexDisplay, nil),
+	}
+}
+
+// GetDexSummary returns the completed provider outcome.
+// dex:field attribute-key:mixpanel-event-track-outcome value-type:json editable:false description:"Event import outcome"
+func (*Flow) GetDexSummary(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
+	outcome, err := optionalOutcome(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &dex.RPCResult[map[string]any]{Output: map[string]any{"mixpanel-event-track-outcome": outcome}}, nil
+}
+
+// GetDexDisplay returns the completed provider outcome.
+// dex:field attribute-key:mixpanel-event-track-outcome value-type:json editable:false description:"Event import outcome"
+func (*Flow) GetDexDisplay(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
+	outcome, err := optionalOutcome(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &dex.RPCResult[map[string]any]{Output: map[string]any{"mixpanel-event-track-outcome": outcome}}, nil
+}
+
+func optionalOutcome(ctx dex.Context) (mixpanel.EventImportResult, error) {
+	outcome, err := outcomeAttribute.Get(ctx)
+	var missing *dex.AttributeNotFoundError
+	if errors.As(err, &missing) {
+		return mixpanel.EventImportResult{}, nil
+	}
+	return outcome, err
+}
+
 // dex:group group-id:event-track group-label:"Event track"
 // dex:explanation text:"Validate event identity and fix its timestamp before calling Mixpanel."
 type start struct{ dex.StepDefaults }
@@ -96,8 +138,13 @@ type imported struct {
 }
 
 func (imported) GetStepType() string { return "MixpanelEventImported" }
-func (imported) Execute(_ dex.Context, result mixpanel.TrackEventResult) (*dex.StepDecision, error) {
+func (imported) Execute(ctx dex.Context, result mixpanel.TrackEventResult) (*dex.StepDecision, error) {
+	if err := outcomeAttribute.Set(ctx, result.Value); err != nil {
+		return nil, err
+	}
 	return dex.GracefulComplete(result.Value), nil
 }
 
 var _ dex.Flow = (*Flow)(nil)
+var _ dex.RPC[dex.None, map[string]any] = (*Flow)(nil).GetDexSummary
+var _ dex.RPC[dex.None, map[string]any] = (*Flow)(nil).GetDexDisplay
