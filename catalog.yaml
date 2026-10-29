@@ -57,6 +57,7 @@ directories:
   - connectors/newsapi
   - connectors/notion
   - connectors/openai
+  - connectors/pagerduty
   - connectors/pipedrive
   - connectors/postgresql
   - connectors/postmark
