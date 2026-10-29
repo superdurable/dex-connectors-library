@@ -3,6 +3,7 @@ kind: ConnectorCatalogSource
 directories:
   - connectors/airtable
   - connectors/algolia
+  - connectors/alphavantage
   - connectors/amazon/s3
   - connectors/amazon/sqs
   - connectors/asana
@@ -22,6 +23,7 @@ directories:
   - connectors/discord
   - connectors/docusign
   - connectors/doist/todoist
+  - connectors/elevenlabs
   - connectors/figma
   - connectors/freshworks/freshdesk
   - connectors/front
@@ -48,6 +50,7 @@ directories:
   - connectors/klaviyo
   - connectors/linear
   - connectors/linkedin
+  - connectors/mailgun
   - connectors/microsoft/entra-id
   - connectors/microsoft/excel
   - connectors/microsoft/onedrive
@@ -62,6 +65,7 @@ directories:
   - connectors/newsapi
   - connectors/notion
   - connectors/openai
+  - connectors/openweathermap
   - connectors/pagerduty
   - connectors/paypal
   - connectors/pipedrive
@@ -70,6 +74,7 @@ directories:
   - connectors/reamaze
   - connectors/resend
   - connectors/salesforce
+  - connectors/sendgrid
   - connectors/sentry
   - connectors/shopify
   - connectors/slack
