@@ -7,6 +7,7 @@ package issuereview
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net"
 	"os"
@@ -63,6 +64,13 @@ func TestMockBackedFlowWithRealDex(t *testing.T) {
 	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
 	var output sentry.IssuePage
 	require.NoError(t, result.DecodeSingleOutput(&output))
+	var display map[string]any
+	require.NoError(t, client.InvokeRPC(ctx, flowID, flow.GetDexDisplay, nil, &display))
+	encodedOutcome, err := json.Marshal(display["sentry-issue-review-outcome"])
+	require.NoError(t, err)
+	var displayedOutcome sentry.IssuePage
+	require.NoError(t, json.Unmarshal(encodedOutcome, &displayedOutcome))
+	require.Equal(t, output, displayedOutcome)
 	calls := mock.ListIssues().Calls()
 	require.Len(t, calls, 1)
 	require.Equal(t, flowID, calls[0].FlowID)
