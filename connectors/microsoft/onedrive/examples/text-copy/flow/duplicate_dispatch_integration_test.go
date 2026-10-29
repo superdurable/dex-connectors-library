@@ -17,17 +17,11 @@ import (
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
-// slowResponseDelay outlasts the seven-second async local phase, so Dex dispatches the Step again.
-const slowResponseDelay = 9 * time.Second
-
-// delayFirstMatching holds only the first matching response, after the fake has applied the write.
-func delayFirstMatching(graph *graphFixture, matches func(graphfake.Request) bool) {
-	var delayed atomic.Bool
-	graph.DelayResponses(func(request graphfake.Request) time.Duration {
-		if matches(request) && delayed.CompareAndSwap(false, true) {
-			return slowResponseDelay
-		}
-		return 0
+// holdFirstMatching loses the first matching response after the fake applied the write.
+func holdFirstMatching(graph *graphFixture, matches func(graphfake.Request) bool) {
+	var held atomic.Bool
+	graph.HoldResponses(func(request graphfake.Request) bool {
+		return matches(request) && held.CompareAndSwap(false, true)
 	})
 }
 
@@ -41,17 +35,23 @@ func TestTextCopyDuplicateUploadDispatchWritesOneCopyWithRealDex(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			graph := newGraphFixture(t)
-			delayFirstMatching(graph, isCopyUpload)
+			holdFirstMatching(graph, isCopyUpload)
 			harness := newTextCopyHarness(t, graph)
 
-			result := harness.run(t, "duplicate-upload", Input{
+			flowID := harness.start(t, "duplicate-upload", Input{
 				SourceName: "Ops Policy.txt", CopyFolderName: "Dex copies", CopyName: "slow.txt", ShouldReplaceExisting: test.shouldReplaceExisting,
 			})
+			require.Eventually(t, func() bool {
+				folders := graph.ItemsNamed(destinationDrive, graph.reportsFolderID, "Dex copies")
+				return len(folders) == 1 && len(graph.ItemsNamed(destinationDrive, folders[0].ID, "slow.txt")) == 1
+			}, 30*time.Second, 10*time.Millisecond)
+			harness.replaceWorker(t)
+			result := harness.wait(t, flowID)
 
 			require.Equal(t, dex.FlowCompleted, result.status)
 			require.Equal(t, StatusCopied, result.outcome.Status)
 			puts := graph.CountRequests(http.MethodPut, func(path string) bool { return strings.HasSuffix(path, "/slow.txt:/content") })
-			require.Equal(t, 2, puts, "Dex dispatched the slow upload Step a second time")
+			require.Equal(t, 2, puts, "the replacement Worker repeats the upload once")
 			copies := graph.ItemsNamed(destinationDrive, result.outcome.CopyFolder.ID, "slow.txt")
 			require.Len(t, copies, 1)
 			require.Equal(t, sourceText, string(copies[0].Content))
@@ -62,17 +62,22 @@ func TestTextCopyDuplicateUploadDispatchWritesOneCopyWithRealDex(t *testing.T) {
 
 func TestTextCopyDuplicateFolderDispatchCreatesOneFolderWithRealDex(t *testing.T) {
 	graph := newGraphFixture(t)
-	delayFirstMatching(graph, func(request graphfake.Request) bool {
+	holdFirstMatching(graph, func(request graphfake.Request) bool {
 		return request.Method == http.MethodPost && strings.HasSuffix(request.Path, "/children")
 	})
 	harness := newTextCopyHarness(t, graph)
 
-	result := harness.run(t, "duplicate-folder", Input{SourceName: "Ops Policy.txt", CopyFolderName: "Slow folder", CopyName: "copy.txt"})
+	flowID := harness.start(t, "duplicate-folder", Input{SourceName: "Ops Policy.txt", CopyFolderName: "Slow folder", CopyName: "copy.txt"})
+	require.Eventually(t, func() bool {
+		return len(graph.ItemsNamed(destinationDrive, graph.reportsFolderID, "Slow folder")) == 1
+	}, 30*time.Second, 10*time.Millisecond)
+	harness.replaceWorker(t)
+	result := harness.wait(t, flowID)
 
 	require.Equal(t, dex.FlowCompleted, result.status)
 	require.Equal(t, StatusCopied, result.outcome.Status)
 	posts := graph.CountRequests(http.MethodPost, func(path string) bool { return strings.HasSuffix(path, "/children") })
-	require.Equal(t, 2, posts, "Dex dispatched the slow folder Step a second time")
+	require.Equal(t, 2, posts, "the replacement Worker repeats the folder create once")
 	require.Len(t, graph.ItemsNamed(destinationDrive, graph.reportsFolderID, "Slow folder"), 1)
 	t.Logf("duplicate folder dispatch: posts=%d isCopyFolderExisting=%t", posts, result.outcome.IsCopyFolderExisting)
 }

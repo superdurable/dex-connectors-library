@@ -41,9 +41,8 @@ const (
 	integrationChannel   = "support"
 
 	defaultRequestTimeout = 5 * time.Second
-	// slowResponseDelay outlasts Dex's roughly seven-second async local phase, so an async Step is dispatched again.
-	slowResponseDelay  = 9 * time.Second
-	slowRequestTimeout = 20 * time.Second
+	slowResponseDelay     = 100 * time.Millisecond
+	slowRequestTimeout    = 20 * time.Second
 
 	statusOpen      = 0
 	statusResponded = 1
@@ -175,18 +174,26 @@ func TestSlowNoteIsSentOnceWithRealDex(t *testing.T) {
 	require.Len(t, provider.conversation(outcome.Conversation.ID).messages, 2)
 }
 
-// TestSlowUpdateIsSafeToRepeatWithRealDex lets async Dex dispatch the update again; both attempts write the same values.
+// TestSlowUpdateIsSafeToRepeatWithRealDex replaces a Worker after its first update reached Re:amaze.
 func TestSlowUpdateIsSafeToRepeatWithRealDex(t *testing.T) {
 	provider := newFakeReamaze(t)
 	provider.seedContact(integrationRequester, "Jane Smith")
 	existing := provider.seedConversation(integrationRequester, statusResponded, []string{integrationIssueTag}, "2026-01-26T14:02:00Z")
-	provider.delaysFirstUpdate = true
-	harness := newTriageHarness(t, provider, slowRequestTimeout)
+	provider.holdsFirstUpdate = make(chan struct{})
+	harness := newTriageHarness(t, provider, defaultRequestTimeout)
 
-	outcome := harness.runTriage(t, "slow-update", integrationIssueInput())
+	flowID := harness.startTriage(t, "lost-update", integrationIssueInput())
+	require.Eventually(t, func() bool {
+		return provider.count("update") == 1 && provider.conversation(existing).status == statusOpen
+	},
+		30*time.Second, 10*time.Millisecond)
+	harness.replaceWorker(t)
+	result := harness.waitForFlow(t, flowID)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var outcome TriageOutcome
+	require.NoError(t, result.DecodeSingleOutput(&outcome))
 	require.Equal(t, TriageConversationFollowedUp, outcome.Action)
-	provider.waitForDelayedRequests(t)
-	require.GreaterOrEqual(t, provider.count("update"), 2, "Dex dispatched the update again past its local phase")
+	require.Equal(t, 2, provider.count("update"), "the replacement Worker repeats the absolute update once")
 	conversation := provider.conversation(existing)
 	require.Equal(t, statusOpen, conversation.status)
 	require.Equal(t, []string{integrationIssueTag, RepeatContactTag}, conversation.tags, "the repeated write did not duplicate the tag")
@@ -398,6 +405,7 @@ type fakeReamaze struct {
 	unavailableFirstCreate          bool
 	rejectsCreate                   bool
 	holdsFirstCreate                chan struct{}
+	holdsFirstUpdate                chan struct{}
 }
 
 type fakeConversation struct {
@@ -671,9 +679,9 @@ func (provider *fakeReamaze) updateConversation(response http.ResponseWriter, re
 	}
 	require.NoError(provider.t, json.Unmarshal(body, &payload))
 	provider.mutex.Lock()
-	defer provider.mutex.Unlock()
 	conversation, isFound := provider.conversations[slug]
 	if !isFound {
+		provider.mutex.Unlock()
 		provider.writeJSON(response, http.StatusNotFound, `{"error":"SENTINEL not found"}`)
 		return
 	}
@@ -687,7 +695,16 @@ func (provider *fakeReamaze) updateConversation(response http.ResponseWriter, re
 		conversation.assigneeEmail = payload.Conversation.Assignee.Email
 	}
 	conversation.changedAt = provider.advanceClock()
-	provider.writeValue(response, http.StatusOK, provider.conversationJSON(conversation))
+	encoded := provider.conversationJSON(conversation)
+	provider.mutex.Unlock()
+	if attempt == 1 && provider.holdsFirstUpdate != nil {
+		select {
+		case <-provider.holdsFirstUpdate:
+		case <-request.Context().Done():
+			return
+		}
+	}
+	provider.writeValue(response, http.StatusOK, encoded)
 }
 
 func (provider *fakeReamaze) addMessage(response http.ResponseWriter, request *http.Request, body []byte, slug string) {
@@ -852,7 +869,7 @@ func (provider *fakeReamaze) waitForDelayedRequests(t *testing.T) {
 	}()
 	select {
 	case <-finished:
-	case <-time.After(2 * slowResponseDelay):
+	case <-time.After(5 * time.Second):
 		t.Fatal("a delayed fake Re:amaze request did not finish")
 	}
 }
@@ -993,12 +1010,16 @@ func newTriageHarnessForConnection(t *testing.T, connection reamaze.Connection) 
 		FlowServiceAddress: harness.serverAddress,
 	})
 	require.NoError(t, err)
-	harness.startWorker(t)
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
+		if harness.worker == nil {
+			require.NoError(t, errors.Join(harness.client.Close(), harness.cache.Close()))
+			return
+		}
 		require.NoError(t, errors.Join(harness.worker.Stop(ctx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
 	})
+	harness.startWorker(t)
 	return harness
 }
 

@@ -279,11 +279,10 @@ TLS, so a `COMMIT` that never left the client is also retried. A connection lost
 sent is different: the server may have committed. The connector selects `uncertain` instead of
 retrying, and the Result's `Receipt.IdempotencyKey` tells the application which write to look for.
 
-Dex can also run `execute` more than once for one Step execution: after a Worker is lost mid-call,
-and when an async Step outlasts its local phase of about seven seconds. The example's integration
-test holds an `INSERT` for nine seconds in the scripted server: Dex ends the local attempt at about
-seven seconds, the driver cancels the first statement, which writes nothing, and a second dispatch
-with the same key writes the one row.
+Dex can run `execute` more than once for one Step execution after a Worker is lost mid-call.
+The example's integration test holds the commit acknowledgement after the first
+`INSERT` commits, then stops the Worker. The replacement dispatches the same
+Step with the same key, and the ledger still contains one row.
 
 Every run of one Step execution uses the same idempotency key, a 36-character lowercase UUID derived
 from the Dex Call ID, bound as `nvarchar`. Set `IdempotencyKeyPlaceholder` to bind it as the last
@@ -392,7 +391,7 @@ server errors, attentions for `statementTimeout`, dropped connections, every `CO
 malformed PRELOGIN reply, and goroutine cleanup after abandoned results.
 
 With a Dex development server running, the integration suite runs the example Flow on a real Worker
-against the scripted server, including the nine-second duplicate dispatch:
+against the scripted server, including the Worker-loss duplicate dispatch:
 
 ```bash
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./... -count=1

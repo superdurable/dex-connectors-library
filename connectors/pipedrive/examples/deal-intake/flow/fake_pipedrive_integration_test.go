@@ -46,6 +46,7 @@ type fakePipedrive struct {
 	unavailableFirstDealCreate     bool
 	rejectsDealCreate              bool
 	holdsFirstDealCreate           chan struct{}
+	holdsFirstDealUpdate           chan struct{}
 }
 
 type fakeOrganization struct {
@@ -324,15 +325,24 @@ func (provider *fakePipedrive) updateDeal(response http.ResponseWriter, request 
 		provider.delay()
 	}
 	provider.mutex.Lock()
-	defer provider.mutex.Unlock()
 	deal := provider.deals[atoi(dealID)]
 	if deal == nil {
+		provider.mutex.Unlock()
 		provider.writeJSON(response, http.StatusNotFound, `{"success":false,"error":"Deal not found SENTINEL","errorCode":404}`)
 		return
 	}
 	applyDealWrite(deal, write)
 	deal.updateTime = provider.advanceClock()
-	provider.writeValue(response, http.StatusOK, map[string]any{"success": true, "data": provider.dealJSON(deal)})
+	encoded := provider.dealJSON(deal)
+	provider.mutex.Unlock()
+	if attempt == 1 && provider.holdsFirstDealUpdate != nil {
+		select {
+		case <-provider.holdsFirstDealUpdate:
+		case <-request.Context().Done():
+			return
+		}
+	}
+	provider.writeValue(response, http.StatusOK, map[string]any{"success": true, "data": encoded})
 }
 
 func (provider *fakePipedrive) readDeal(response http.ResponseWriter, request *http.Request, body []byte, dealID string) {
@@ -373,7 +383,7 @@ func (provider *fakePipedrive) record(name string, request *http.Request, body [
 	return provider.counts[name]
 }
 
-// delay outlasts Dex's roughly seven-second async local phase; the caller holds no lock.
+// delay simulates a provider response that completes after other requests; the caller holds no lock.
 func (provider *fakePipedrive) delay() {
 	provider.delayedRequests.Add(1)
 	defer provider.delayedRequests.Done()
@@ -519,7 +529,7 @@ func (provider *fakePipedrive) waitForDelayedRequests(t *testing.T) {
 	}()
 	select {
 	case <-finished:
-	case <-time.After(2 * slowResponseDelay):
+	case <-time.After(5 * time.Second):
 		t.Fatal("a delayed fake Pipedrive request did not finish")
 	}
 }

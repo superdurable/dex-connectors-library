@@ -132,10 +132,10 @@ conversations the customer follows:
   customer's conversation the customer was copied on, and a look-alike
   address's conversation untouched;
 - a first page of Done conversations leads to the second page;
-- a create and a note held for nine seconds, past Dex's async local phase, are
-  each sent exactly once, because both Steps are sync;
-- an update held for nine seconds is dispatched again by async Dex, and both
-  attempts write the same values without duplicating a tag;
+- a create and a note with delayed responses are each sent once while their
+  handlers remain healthy;
+- an update applied before Worker loss is repeated by the replacement, and
+  both attempts write the same values without duplicating a tag;
 - a lost create response is reconciled by the conversation's dispatch key,
   which the fake, like Re:amaze's documentation, returns only on a single
   conversation read, and the Flow continues without resending;

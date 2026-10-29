@@ -39,9 +39,8 @@ const (
 	stageID    = 3
 
 	defaultRequestTimeout = 5 * time.Second
-	// slowResponseDelay outlasts Dex's roughly seven-second async local phase, so an async Step is dispatched again.
-	slowResponseDelay  = 9 * time.Second
-	slowRequestTimeout = 20 * time.Second
+	slowResponseDelay     = 100 * time.Millisecond
+	slowRequestTimeout    = 20 * time.Second
 )
 
 var integrationSettings = Settings{
@@ -137,18 +136,24 @@ func TestSlowDealCreateIsSentOnceWithRealDex(t *testing.T) {
 	require.Equal(t, 1, provider.dealCount())
 }
 
-// TestSlowDealUpdateIsSafeToRepeatWithRealDex lets async Dex dispatch the update again; both attempts write the same values.
+// TestSlowDealUpdateIsSafeToRepeatWithRealDex replaces a Worker after its first update reached Pipedrive.
 func TestSlowDealUpdateIsSafeToRepeatWithRealDex(t *testing.T) {
 	provider := newFakePipedrive(t)
 	existing := provider.seedPerson("Jane Smith", integrationEmail, 0)
 	openDeal := provider.seedDeal("Acme renewal", existing, pipelineID, 1, "open")
-	provider.delaysFirstDealUpdate = true
-	harness := newIntakeHarness(t, provider, slowRequestTimeout)
+	provider.holdsFirstDealUpdate = make(chan struct{})
+	harness := newIntakeHarness(t, provider, defaultRequestTimeout)
 
-	intake := harness.runIntake(t, "slow-update", integrationLead())
+	flowID := harness.startIntake(t, "lost-update", integrationLead())
+	require.Eventually(t, func() bool { return provider.count("dealUpdate") == 1 && provider.deal(openDeal).stageID == stageID },
+		30*time.Second, 10*time.Millisecond)
+	harness.replaceWorker(t)
+	result := harness.waitForFlow(t, flowID)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var intake DealIntake
+	require.NoError(t, result.DecodeSingleOutput(&intake))
 	require.Equal(t, DealActionAdvanced, intake.DealAction)
-	provider.waitForDelayedRequests(t)
-	require.GreaterOrEqual(t, provider.count("dealUpdate"), 2, "Dex dispatched the update again past its local phase")
+	require.Equal(t, 2, provider.count("dealUpdate"), "the replacement Worker repeats the absolute update once")
 	for _, request := range provider.requestsNamed("dealUpdate") {
 		require.JSONEq(t, `{"stage_id":3,"owner_id":7}`, request.body, "every dispatch writes the same absolute values")
 	}
@@ -378,12 +383,16 @@ func newIntakeHarnessForConnection(t *testing.T, connection pipedrive.Connection
 		FlowServiceAddress: harness.serverAddress,
 	})
 	require.NoError(t, err)
-	harness.startWorker(t)
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
+		if harness.worker == nil {
+			require.NoError(t, errors.Join(harness.client.Close(), harness.cache.Close()))
+			return
+		}
 		require.NoError(t, errors.Join(harness.worker.Stop(ctx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
 	})
+	harness.startWorker(t)
 	return harness
 }
 

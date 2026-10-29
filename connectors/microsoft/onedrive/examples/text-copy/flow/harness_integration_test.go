@@ -116,11 +116,24 @@ func newTextCopyHarnessWithConnection(t *testing.T, connection onedrive.Connecti
 // run starts the Flow with a unique ID and waits for its terminal status.
 func (harness *textCopyHarness) run(t *testing.T, flowIDPrefix string, input Input) textCopyRun {
 	t.Helper()
+	flowID := harness.start(t, flowIDPrefix, input)
+	return harness.wait(t, flowID)
+}
+
+func (harness *textCopyHarness) start(t *testing.T, flowIDPrefix string, input Input) string {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 	flowID := flowIDPrefix + "-" + strconv.FormatInt(time.Now().UnixNano(), 10)
 	_, err := harness.client.StartFlow(ctx, harness.flow, flowID, input, dex.StartFlowOptions{})
 	require.NoError(t, err)
+	return flowID
+}
+
+func (harness *textCopyHarness) wait(t *testing.T, flowID string) textCopyRun {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
 	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
 	require.NoError(t, err)
 	run := textCopyRun{status: result.Status, errorMessage: result.ErrorMessage}
@@ -128,6 +141,21 @@ func (harness *textCopyHarness) run(t *testing.T, flowIDPrefix string, input Inp
 		require.NoError(t, result.DecodeSingleOutput(&run.outcome))
 	}
 	return run
+}
+
+func (harness *textCopyHarness) replaceWorker(t *testing.T) {
+	t.Helper()
+	expired, cancel := context.WithCancel(context.Background())
+	cancel()
+	_ = harness.worker.Stop(expired)
+	require.NoError(t, <-harness.workerResult)
+	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{FlowServiceAddress: harness.serverAddress})
+	require.NoError(t, err)
+	harness.worker, harness.workerResult = worker, make(chan error, 1)
+	go func() { harness.workerResult <- worker.Start() }()
+	registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancelRegistration()
+	require.NoError(t, worker.WaitPullRegistered(registrationContext))
 }
 
 func environmentOr(name string, fallback string) string {

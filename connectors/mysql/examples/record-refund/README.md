@@ -125,13 +125,11 @@ MySQL server. It covers:
 - another Flow's refund committed between the duplicate check and the insert;
 - a `COMMIT` whose reply was dropped, once after it applied and once before;
 - a write lost before `COMMIT` and retried with the same key;
-- a nine-second `INSERT` that Dex dispatches again after the async local
-  phase, which still writes one row;
+- an `INSERT` committed before its Worker is lost and dispatched again with the
+  same key, which still writes one row;
 - invalid input rejected before connecting.
 
 The live suite, `-tags=live` with the `MYSQL_CONNECTOR_TEST_*` variables from
 the connector README, creates the table from `schema.sql` and runs the same
 Flow against a real server. It covers concurrent Flows for one order, which
-both complete with one row, an `INSERT` blocked for nine seconds by
-`LOCK TABLES ... READ` and dispatched again on a new connection, and a real
-proxy-dropped `COMMIT`.
+both complete with one row, and a real proxy-dropped `COMMIT`.
