@@ -1,179 +1,132 @@
-{
-  "apiVersion": "connectors.dex.dev/v1alpha1",
-  "kind": "Connector",
-  "metadata": {
-    "name": "resend",
-    "displayName": "Resend",
-    "description": "Read and act through the Resend public API.",
-    "company": "Resend",
-    "version": "v0.1.0"
-  },
-  "spec": {
-    "provider": "resend",
-    "codegen": {
-      "go": {
-        "package": "resend"
-      }
-    },
-    "configuration": {
-      "fields": [
-        {
-          "name": "baseUrl",
-          "goName": "BaseURL",
-          "type": "url",
-          "description": "Resend API base URL. Leave blank for the displayed public endpoint; override only for a compatible gateway or local test server.",
-          "default": "https://api.resend.com"
-        },
-        {
-          "name": "timeout",
-          "goName": "Timeout",
-          "type": "duration",
-          "description": "Maximum time for one HTTP request, as a positive Go duration such as 15s or 1m. Leave blank for the displayed default; override for slower gateways.",
-          "default": "15s"
-        },
-        {
-          "name": "maxResponseBytes",
-          "goName": "MaxResponseBytes",
-          "type": "integer",
-          "description": "Maximum accepted response size in bytes. Leave blank for the displayed default; increase only for larger legitimate pages.",
-          "default": 2097152
-        }
-      ]
-    },
-    "auth": {
-      "type": "apiKey",
-      "connectionKind": "resend-api-key",
-      "fields": [
-        {
-          "name": "api_key",
-          "goName": "APIKey",
-          "type": "secretString",
-          "required": true,
-          "description": "Secret Resend token. Start at https://resend.com/api-keys, follow API Keys > Create API Key. Create an API key with sending permission, then copy its secret value. It is an opaque secret string; blank prevents requests. It is sent only in the Authorization header."
-        }
-      ],
-      "guide": {
-        "startURL": "https://resend.com/api-keys",
-        "steps": [
-          "Open https://resend.com/api-keys and sign in or create an account.",
-          "Follow API Keys > Create API Key. Create an API key with sending permission, then copy its secret value. It is an opaque secret string; blank prevents requests.",
-          "Paste the token into the secret api_key field and save the connection; leave baseUrl, timeout, and maxResponseBytes blank to use their displayed defaults."
-        ]
-      }
-    },
-    "operations": [
-      {
-        "name": "sendEmail",
-        "goName": "SendEmail",
-        "inputType": "SendEmailInput",
-        "outputType": "SentEmail",
-        "kind": "mutation",
-        "description": "SendEmail through the Resend public JSON API.",
-        "idempotency": "required",
-        "authorization": "required",
-        "branches": [
-          {
-            "id": "sent",
-            "goName": "Sent",
-            "description": "Resend returned the requested result."
-          },
-          {
-            "id": "providerRejected",
-            "goName": "ProviderRejected",
-            "description": "The provider definitively rejected the request.",
-            "optional": true
-          },
-          {
-            "id": "invalidResponse",
-            "goName": "InvalidResponse",
-            "description": "The provider returned malformed or oversized JSON.",
-            "optional": true
-          },
-          {
-            "id": "defect",
-            "goName": "Defect",
-            "description": "Local input or connection credentials are invalid.",
-            "optional": true
-          }
-        ],
-        "execution": {
-          "executeMethodTimeout": "30s",
-          "durability": "async"
-        },
-        "mocks": [
-          {
-            "name": "sendEmailDefault",
-            "branch": "sent",
-            "description": "A representative Resend response.",
-            "default": true,
-            "output": {
-              "id": "5f9f777d-04e0-482a-bb65-088bb5bd44a4"
-            }
-          }
-        ]
-      },
-      {
-        "name": "getEmail",
-        "goName": "GetEmail",
-        "inputType": "GetEmailInput",
-        "outputType": "Email",
-        "kind": "query",
-        "description": "GetEmail through the Resend public JSON API.",
-        "idempotency": "none",
-        "authorization": "required",
-        "branches": [
-          {
-            "id": "found",
-            "goName": "Found",
-            "description": "Resend returned the requested result."
-          },
-          {
-            "id": "notFound",
-            "goName": "NotFound",
-            "description": "The requested resource does not exist.",
-            "optional": true
-          },
-          {
-            "id": "providerRejected",
-            "goName": "ProviderRejected",
-            "description": "The provider definitively rejected the request.",
-            "optional": true
-          },
-          {
-            "id": "invalidResponse",
-            "goName": "InvalidResponse",
-            "description": "The provider returned malformed or oversized JSON.",
-            "optional": true
-          },
-          {
-            "id": "defect",
-            "goName": "Defect",
-            "description": "Local input or connection credentials are invalid.",
-            "optional": true
-          }
-        ],
-        "execution": {
-          "executeMethodTimeout": "30s",
-          "durability": "async"
-        },
-        "mocks": [
-          {
-            "name": "getEmailDefault",
-            "branch": "found",
-            "description": "A representative Resend response.",
-            "default": true,
-            "output": {
-              "id": "5f9f777d-04e0-482a-bb65-088bb5bd44a4",
-              "from": "Acme <hello@example.test>",
-              "to": [
-                "reader@example.test"
-              ],
-              "subject": "Welcome",
-              "created_at": "2026-10-26T12:00:00Z"
-            }
-          }
-        ]
-      }
-    ]
-  }
-}
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: resend
+  displayName: Resend
+  description: Read and act through the Resend public API.
+  company: Resend
+  version: v0.1.0
+spec:
+  provider: resend
+  codegen:
+    go:
+      package: resend
+  configuration:
+    fields:
+    - name: baseUrl
+      goName: BaseURL
+      type: url
+      description: Resend API base URL. Leave blank for the displayed public endpoint;
+        override only for a compatible gateway or local test server.
+      default: https://api.resend.com
+    - name: timeout
+      goName: Timeout
+      type: duration
+      description: Maximum time for one HTTP request, as a positive Go duration such
+        as 15s or 1m. Leave blank for the displayed default; override for slower gateways.
+      default: 15s
+    - name: maxResponseBytes
+      goName: MaxResponseBytes
+      type: integer
+      description: Maximum accepted response size in bytes. Leave blank for the displayed
+        default; increase only for larger legitimate pages.
+      default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: resend-api-key
+    fields:
+    - name: api_key
+      goName: APIKey
+      type: secretString
+      required: true
+      description: Secret Resend token. Start at https://resend.com/api-keys, follow
+        API Keys > Create API Key. Create an API key with sending permission, then
+        copy its secret value. It is an opaque secret string; blank prevents requests.
+        It is sent only in the Authorization header.
+    guide:
+      startURL: https://resend.com/api-keys
+      steps:
+      - Open https://resend.com/api-keys and sign in or create an account.
+      - Follow API Keys > Create API Key. Create an API key with sending permission,
+        then copy its secret value. It is an opaque secret string; blank prevents
+        requests.
+      - Paste the token into the secret api_key field and save the connection; leave
+        baseUrl, timeout, and maxResponseBytes blank to use their displayed defaults.
+  operations:
+  - name: sendEmail
+    goName: SendEmail
+    inputType: SendEmailInput
+    outputType: SentEmail
+    kind: mutation
+    description: SendEmail through the Resend public JSON API.
+    idempotency: required
+    authorization: required
+    branches:
+    - id: sent
+      goName: Sent
+      description: Resend returned the requested result.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: The provider definitively rejected the request.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: The provider returned malformed or oversized JSON.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Local input or connection credentials are invalid.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: sendEmailDefault
+      branch: sent
+      description: A representative Resend response.
+      default: true
+      output:
+        id: 5f9f777d-04e0-482a-bb65-088bb5bd44a4
+  - name: getEmail
+    goName: GetEmail
+    inputType: GetEmailInput
+    outputType: Email
+    kind: query
+    description: GetEmail through the Resend public JSON API.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: found
+      goName: Found
+      description: Resend returned the requested result.
+    - id: notFound
+      goName: NotFound
+      description: The requested resource does not exist.
+      optional: true
+    - id: providerRejected
+      goName: ProviderRejected
+      description: The provider definitively rejected the request.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: The provider returned malformed or oversized JSON.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Local input or connection credentials are invalid.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: getEmailDefault
+      branch: found
+      description: A representative Resend response.
+      default: true
+      output:
+        id: 5f9f777d-04e0-482a-bb65-088bb5bd44a4
+        from: Acme <hello@example.test>
+        to:
+        - reader@example.test
+        subject: Welcome
+        created_at: '2026-10-26T12:00:00Z'
