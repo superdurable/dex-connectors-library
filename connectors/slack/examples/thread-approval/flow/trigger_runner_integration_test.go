@@ -117,9 +117,10 @@ func TestThreadApprovalRunnerSurvivesLateApprovalAndRestartWithRealDex(t *testin
 	setup.harness.stopWorker(t)
 	fake.send(t, teamID, "EvApprove3-"+teamID, socketModeMessage("3.1", "3.0", "U2", sentinelText+" approve"))
 	approval3 := map[string]string{"event_id": "EvApprove3-" + teamID}
+	// Two unavailable RPCs can each take ten seconds before the runner logs their retries.
 	require.Eventually(t, func() bool {
 		return len(setup.logs.Find("trigger delivery failed; retrying", approval3)) >= 2
-	}, 20*time.Second, 50*time.Millisecond)
+	}, 35*time.Second, 50*time.Millisecond)
 	setup.harness.startWorker(t)
 	result, err = setup.harness.client.WaitForFlow(ctx, flowID("3.0"), dex.WaitForFlowOptions{})
 	require.NoError(t, err)
