@@ -1,182 +1,133 @@
-{
-  "apiVersion": "connectors.dex.dev/v1alpha1",
-  "kind": "Connector",
-  "metadata": {
-    "name": "postmark",
-    "displayName": "Postmark",
-    "description": "Read and act through the Postmark public API.",
-    "company": "Postmark",
-    "version": "v0.1.0"
-  },
-  "spec": {
-    "provider": "postmark",
-    "codegen": {
-      "go": {
-        "package": "postmark"
-      }
-    },
-    "configuration": {
-      "fields": [
-        {
-          "name": "baseUrl",
-          "goName": "BaseURL",
-          "type": "url",
-          "description": "Postmark API base URL. Leave blank for the displayed public endpoint; override only for a compatible gateway or local test server.",
-          "default": "https://api.postmarkapp.com"
-        },
-        {
-          "name": "timeout",
-          "goName": "Timeout",
-          "type": "duration",
-          "description": "Maximum time for one HTTP request, as a positive Go duration such as 15s or 1m. Leave blank for the displayed default; override for slower gateways.",
-          "default": "15s"
-        },
-        {
-          "name": "maxResponseBytes",
-          "goName": "MaxResponseBytes",
-          "type": "integer",
-          "description": "Maximum accepted response size in bytes. Leave blank for the displayed default; increase only for larger legitimate pages.",
-          "default": 2097152
-        }
-      ]
-    },
-    "auth": {
-      "type": "apiKey",
-      "connectionKind": "postmark-api-key",
-      "fields": [
-        {
-          "name": "api_key",
-          "goName": "APIKey",
-          "type": "secretString",
-          "required": true,
-          "description": "Secret Postmark token. Start at https://account.postmarkapp.com/servers, follow Servers > select a server > API Tokens. Create a server, open its API Tokens tab, and copy the Server API token. It is a secret opaque string; blank prevents requests. It is sent only in the X-Postmark-Server-Token header."
-        }
-      ],
-      "guide": {
-        "startURL": "https://account.postmarkapp.com/servers",
-        "steps": [
-          "Open https://account.postmarkapp.com/servers and sign in or create an account.",
-          "Follow Servers > select a server > API Tokens. Create a server, open its API Tokens tab, and copy the Server API token. It is a secret opaque string; blank prevents requests.",
-          "Paste the token into the secret api_key field and save the connection; leave baseUrl, timeout, and maxResponseBytes blank to use their displayed defaults."
-        ]
-      }
-    },
-    "operations": [
-      {
-        "name": "listOutboundMessages",
-        "goName": "ListOutboundMessages",
-        "inputType": "ListOutboundMessagesInput",
-        "outputType": "MessagePage",
-        "kind": "query",
-        "description": "ListOutboundMessages through the Postmark public JSON API.",
-        "idempotency": "none",
-        "authorization": "required",
-        "branches": [
-          {
-            "id": "listed",
-            "goName": "Listed",
-            "description": "Postmark returned the requested result."
-          },
-          {
-            "id": "providerRejected",
-            "goName": "ProviderRejected",
-            "description": "The provider definitively rejected the request.",
-            "optional": true
-          },
-          {
-            "id": "invalidResponse",
-            "goName": "InvalidResponse",
-            "description": "The provider returned malformed or oversized JSON.",
-            "optional": true
-          },
-          {
-            "id": "defect",
-            "goName": "Defect",
-            "description": "Local input or connection credentials are invalid.",
-            "optional": true
-          }
-        ],
-        "execution": {
-          "executeMethodTimeout": "30s",
-          "durability": "async"
-        },
-        "mocks": [
-          {
-            "name": "listOutboundMessagesDefault",
-            "branch": "listed",
-            "description": "A representative Postmark response.",
-            "default": true,
-            "output": {
-              "totalCount": 1,
-              "messages": [
-                {
-                  "messageId": "0ac29aee-e1cd-480d-b08d-4f48548ff48d",
-                  "subject": "Welcome",
-                  "status": "Sent"
-                }
-              ]
-            }
-          }
-        ]
-      },
-      {
-        "name": "getMessageDetails",
-        "goName": "GetMessageDetails",
-        "inputType": "GetMessageDetailsInput",
-        "outputType": "MessageDetails",
-        "kind": "query",
-        "description": "GetMessageDetails through the Postmark public JSON API.",
-        "idempotency": "none",
-        "authorization": "required",
-        "branches": [
-          {
-            "id": "found",
-            "goName": "Found",
-            "description": "Postmark returned the requested result."
-          },
-          {
-            "id": "notFound",
-            "goName": "NotFound",
-            "description": "The requested resource does not exist.",
-            "optional": true
-          },
-          {
-            "id": "providerRejected",
-            "goName": "ProviderRejected",
-            "description": "The provider definitively rejected the request.",
-            "optional": true
-          },
-          {
-            "id": "invalidResponse",
-            "goName": "InvalidResponse",
-            "description": "The provider returned malformed or oversized JSON.",
-            "optional": true
-          },
-          {
-            "id": "defect",
-            "goName": "Defect",
-            "description": "Local input or connection credentials are invalid.",
-            "optional": true
-          }
-        ],
-        "execution": {
-          "executeMethodTimeout": "30s",
-          "durability": "async"
-        },
-        "mocks": [
-          {
-            "name": "getMessageDetailsDefault",
-            "branch": "found",
-            "description": "A representative Postmark response.",
-            "default": true,
-            "output": {
-              "messageId": "0ac29aee-e1cd-480d-b08d-4f48548ff48d",
-              "subject": "Welcome",
-              "status": "Sent"
-            }
-          }
-        ]
-      }
-    ]
-  }
-}
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: postmark
+  displayName: Postmark
+  description: Read and act through the Postmark public API.
+  company: Postmark
+  version: v0.1.0
+spec:
+  provider: postmark
+  codegen:
+    go:
+      package: postmark
+  configuration:
+    fields:
+    - name: baseUrl
+      goName: BaseURL
+      type: url
+      description: Postmark API base URL. Leave blank for the displayed public endpoint;
+        override only for a compatible gateway or local test server.
+      default: https://api.postmarkapp.com
+    - name: timeout
+      goName: Timeout
+      type: duration
+      description: Maximum time for one HTTP request, as a positive Go duration such
+        as 15s or 1m. Leave blank for the displayed default; override for slower gateways.
+      default: 15s
+    - name: maxResponseBytes
+      goName: MaxResponseBytes
+      type: integer
+      description: Maximum accepted response size in bytes. Leave blank for the displayed
+        default; increase only for larger legitimate pages.
+      default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: postmark-api-key
+    fields:
+    - name: api_key
+      goName: APIKey
+      type: secretString
+      required: true
+      description: Secret Postmark token. Start at https://account.postmarkapp.com/servers,
+        follow Servers > select a server > API Tokens. Create a server, open its API
+        Tokens tab, and copy the Server API token. It is a secret opaque string; blank
+        prevents requests. It is sent only in the X-Postmark-Server-Token header.
+    guide:
+      startURL: https://account.postmarkapp.com/servers
+      steps:
+      - Open https://account.postmarkapp.com/servers and sign in or create an account.
+      - Follow Servers > select a server > API Tokens. Create a server, open its API
+        Tokens tab, and copy the Server API token. It is a secret opaque string; blank
+        prevents requests.
+      - Paste the token into the secret api_key field and save the connection; leave
+        baseUrl, timeout, and maxResponseBytes blank to use their displayed defaults.
+  operations:
+  - name: listOutboundMessages
+    goName: ListOutboundMessages
+    inputType: ListOutboundMessagesInput
+    outputType: MessagePage
+    kind: query
+    description: ListOutboundMessages through the Postmark public JSON API.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: listed
+      goName: Listed
+      description: Postmark returned the requested result.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: The provider definitively rejected the request.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: The provider returned malformed or oversized JSON.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Local input or connection credentials are invalid.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: listOutboundMessagesDefault
+      branch: listed
+      description: A representative Postmark response.
+      default: true
+      output:
+        totalCount: 1
+        messages:
+        - messageId: 0ac29aee-e1cd-480d-b08d-4f48548ff48d
+          subject: Welcome
+          status: Sent
+  - name: getMessageDetails
+    goName: GetMessageDetails
+    inputType: GetMessageDetailsInput
+    outputType: MessageDetails
+    kind: query
+    description: GetMessageDetails through the Postmark public JSON API.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: found
+      goName: Found
+      description: Postmark returned the requested result.
+    - id: notFound
+      goName: NotFound
+      description: The requested resource does not exist.
+      optional: true
+    - id: providerRejected
+      goName: ProviderRejected
+      description: The provider definitively rejected the request.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: The provider returned malformed or oversized JSON.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Local input or connection credentials are invalid.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: getMessageDetailsDefault
+      branch: found
+      description: A representative Postmark response.
+      default: true
+      output:
+        messageId: 0ac29aee-e1cd-480d-b08d-4f48548ff48d
+        subject: Welcome
+        status: Sent
