@@ -75,6 +75,7 @@ directories:
   - connectors/twilio/messaging
   - connectors/typeform
   - connectors/vercel
+  - connectors/woocommerce
   - connectors/xero
   - connectors/zendesk/support
   - connectors/zoho/crm
