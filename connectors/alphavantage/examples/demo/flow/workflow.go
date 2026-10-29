@@ -45,10 +45,25 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 	}
 }
 
+// GetRPCs exposes read-only Dex Web summary and display views.
+func (flow *Flow) GetRPCs() []dex.RPCDef {
+	return []dex.RPCDef{dex.DefineRPC(flow.GetDexSummary, nil), dex.DefineRPC(flow.GetDexDisplay, nil)}
+}
+
+// GetDexSummary identifies the example's static connection in Dex Web.
+func (*Flow) GetDexSummary(_ dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
+	return &dex.RPCResult[map[string]any]{Output: map[string]any{"connection": ConnectionName}}, nil
+}
+
+// GetDexDisplay identifies the example's static connection in Dex Web.
+func (*Flow) GetDexDisplay(_ dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
+	return &dex.RPCResult[map[string]any]{Output: map[string]any{"connection": ConnectionName}}, nil
+}
+
 // MapToOperationInput preserves the validated typed start input for the provider call.
 func MapToOperationInput(input alphavantage.StockInput) alphavantage.StockInput { return input }
 
-// dex:group group-id:demo group-label:"Demo"
+// dex:group group-id:request group-label:"Request"
 // dex:explanation text:"Pass the typed start input to the provider Step."
 type startRequest struct{ dex.StepDefaults }
 
@@ -60,7 +75,7 @@ func (startRequest) Execute(_ dex.Context, input alphavantage.StockInput) (*dex.
 	return dex.GoTo(sdkgo.StepRef[alphavantage.StockInput](operationStepType), input), nil
 }
 
-// dex:group group-id:demo group-label:"Demo"
+// dex:group group-id:result group-label:"Result"
 // dex:explanation text:"Complete the Flow with the provider's typed result."
 type completeResult struct {
 	dex.StepDefaultsNoWaitFor[alphavantage.GetGlobalQuoteResult]

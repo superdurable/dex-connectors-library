@@ -1,6 +1,6 @@
 # Alpha Vantage demo Flow
 
-This runnable Flow calls `getGlobalQuote` with the static `alphavantage` connection. The start input passes through to the generated operation Step; its happy-path result completes the Flow. Optional provider branches are unwired and fail the Flow when selected.
+This runnable Flow calls `getGlobalQuote` with the static `alphavantage` connection. The start input passes through to the generated operation Step; its happy-path result completes the Flow. Dex Web summary and display RPCs identify the static connection. Optional provider branches are unwired and fail the Flow when selected.
 
 ## Strict FDG 2.0 generation
 
