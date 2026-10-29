@@ -1,0 +1,91 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: algolia
+  displayName: Algolia
+  description: Search an index and replace a record by object ID.
+  company: Algolia
+  version: v0.1.0
+spec:
+  provider: algolia
+  codegen:
+    go:
+      package: algolia
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Algolia host template; the connector prefixes your application ID to the displayed host for public calls. Leave blank normally; enter a compatible HTTPS gateway URL only for a custom deployment.
+        default: https://algolia.net/1
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Positive Go duration limiting each HTTP request; leave blank for the displayed default, or override for a slower network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum response bytes as a positive integer; leave blank for the displayed safety limit, or raise it for larger hit pages.
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: algolia-api-key
+    fields:
+      - name: application_id
+        goName: ApplicationID
+        type: string
+        required: true
+        description: Public uppercase alphanumeric Algolia Application ID from https://www.algolia.com/account/api-keys/all under Settings > Team and Access > API Keys; blank prevents requests.
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret Algolia API key from https://www.algolia.com/account/api-keys/restricted under Settings > Team and Access > API Keys > Restricted API Keys > Create API Key; grant search and addObject ACLs. Blank prevents requests.
+    guide:
+      startURL: https://www.algolia.com/account/api-keys/all
+      steps:
+        - Sign in at https://www.algolia.com and open Settings > Team and Access > API Keys at https://www.algolia.com/account/api-keys/all; copy the Application ID string.
+        - Open Restricted API Keys at https://www.algolia.com/account/api-keys/restricted, choose Create API Key, grant search and addObject ACLs for the intended index, and copy the secret key string.
+        - Enter application_id and secret api_key; leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
+  operations:
+    - name: search
+      goName: Search
+      inputType: SearchInput
+      outputType: SearchPage
+      kind: query
+      description: Search one Algolia index by query phrase.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: searched, goName: Searched, description: "Algolia returned a hit page, possibly empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: Algolia rejected the search or key., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Algolia returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - name: searchedDefaultIndex
+          branch: searched
+          description: Meridian catalog search finds one product.
+          default: true
+          output: {nbHits: 1, hits: [{objectID: "product-1", name: "Meridian notebook"}]}
+    - name: saveObject
+      goName: SaveObject
+      inputType: SaveObjectInput
+      outputType: SavedObject
+      kind: mutation
+      description: Replace one record by stable objectID; Algolia queues indexing asynchronously.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: saved, goName: Saved, description: Algolia accepted the replacement task.}
+        - {id: providerRejected, goName: ProviderRejected, description: Algolia rejected the record or key., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Algolia returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - name: savedDefaultObject
+          branch: saved
+          description: Meridian notebook record is queued for indexing.
+          default: true
+          output: {objectID: "product-1", taskID: 1514562690001}

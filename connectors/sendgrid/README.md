@@ -9,11 +9,11 @@ Read SendGrid global statistics and transactional templates. The manifest is the
 | `getStats` | Query | https://www.twilio.com/docs/sendgrid/api-reference/stats/retrieve-global-email-statistics |
 | `listTemplates` | Query | https://www.twilio.com/docs/sendgrid/api-reference/transactional-templates/retrieve-paged-transactional-templates |
 
-The demo uses `sendgrid.NewGetStatsStep` with the static `sendgrid` connection. Each operation is an operation-specific Query Step. Generation operations use synchronous Execute durability and a three-attempt billed retry budget; read operations use the default one-hour retry policy.
+The demo uses `sendgrid.NewGetStatsStep` with the static `sendgrid` connection. Each operation is an operation-specific Query Step with the default one-hour retry policy. `listTemplates` always sends `page_size`: zero in `PageSize` selects 100, and explicit values must be 1–200. Pass `NextPageToken` from one result as the next call's `PageToken`; blank starts at page one. SendGrid's exact `_metadata.count` meaning remains unverified.
 
 ## Authorization and configuration
 
-At [SendGrid > Settings > API Keys > Create API Key](https://app.sendgrid.com/settings/api_keys), create or select an API key for these operations, copy its provider-issued value, and store it in the secret `api_key` field in Dex Web Connections. A blank key is invalid. The manifest supplies the public base URL, HTTP timeout, and response-size limit; leave their fields blank unless a compatible gateway, slow request, or known larger response requires an override. For an EU account, supply its documented regional base URL in `baseUrl`.
+At [SendGrid > Settings > API Keys > Create API Key](https://app.sendgrid.com/settings/api_keys), create or select an API key for these operations, copy its provider-issued value, and store it in the secret `api_key` field in Dex Web Connections. A blank key is invalid. The manifest supplies the public base URL, HTTP timeout, and response-size limit; leave their fields blank unless a compatible gateway, slow request, or known larger response requires an override. For an EU regional subuser, set `baseUrl` to `https://api.eu.sendgrid.com`.
 
 ## Failure behavior
 
@@ -21,7 +21,6 @@ At [SendGrid > Settings > API Keys > Create API Key](https://app.sendgrid.com/se
 | --- | --- |
 | 200 with valid bounded output | Happy-path branch |
 | 400, 401, 403, or another definite provider rejection | Optional `providerRejected` branch |
-| 404 for OpenWeatherMap | Optional `notFound` branch |
 | 429, 408, transport error, or 5xx | Retry with the same input until the retry budget ends |
 | Malformed or oversized successful response | Optional `invalidResponse` branch |
 | Invalid local input or credentials | Optional `defect` branch |

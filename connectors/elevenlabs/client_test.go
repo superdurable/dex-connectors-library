@@ -46,6 +46,7 @@ func TestListVoicesProviderRequestAndRateLimit(t *testing.T) {
 		require.NoError(t, err)
 		_ = body
 		require.Equal(t, testAPIKey, r.Header.Get("xi-api-key"))
+		require.Equal(t, "application/json", r.Header.Get("Accept"))
 		require.Equal(t, "2", r.URL.Query().Get("page_size"))
 		if status.Load() == 1 {
 			w.Header().Set("Retry-After", "2")
@@ -80,6 +81,7 @@ func TestCreateSpeechProviderRequestAndRateLimit(t *testing.T) {
 		body, err := io.ReadAll(r.Body)
 		require.NoError(t, err)
 		require.Equal(t, testAPIKey, r.Header.Get("xi-api-key"))
+		require.Equal(t, "audio/mpeg", r.Header.Get("Accept"))
 		require.Contains(t, string(body), `"text":"Hello"`)
 		if status.Load() == 1 {
 			w.Header().Set("Retry-After", "2")

@@ -17,7 +17,7 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		decode func() error
 	}{
 		{name: "getEvents/listedDefault/1", decode: func() error {
-			_, err := connectormock.DecodeOutput[mailgun.EventsOutput](`{"events":[{"id":"event_meridian","event":"delivered","timestamp":1793100000}],"nextPage":"https://api.mailgun.net/v3/example.test/events/next"}`)
+			_, err := connectormock.DecodeOutput[mailgun.EventsOutput](`{"events":[{"id":"event_meridian","event":"delivered","timestamp":1793100000}]}`)
 			return err
 		}},
 		{name: "listDomains/listedDefault/1", decode: func() error {

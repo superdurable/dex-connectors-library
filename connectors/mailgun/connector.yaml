@@ -16,7 +16,7 @@ spec:
       - name: baseUrl
         goName: BaseURL
         type: url
-        description: Public Mailgun API base URL. Leave blank for the displayed default; override only for a trusted compatible gateway or a loopback test server.
+        description: Public Mailgun API base URL. Leave blank for the displayed default; use https://api.eu.mailgun.net for domains created in the EU region, or override for a trusted compatible gateway or loopback test server.
         default: https://api.mailgun.net
       - name: timeout
         goName: Timeout
@@ -49,7 +49,7 @@ spec:
       inputType: GetEventsInput
       outputType: EventsOutput
       kind: query
-      description: GetEvents through the documented Mailgun API.
+      description: Read a bounded page of delivery events for one sending domain.
       idempotency: none
       authorization: required
       branches:
@@ -65,13 +65,13 @@ spec:
           branch: listed
           description: A representative Mailgun result for the example Flow.
           default: true
-          output: {"events":[{"id":"event_meridian","event":"delivered","timestamp":1793100000}],"nextPage":"https://api.mailgun.net/v3/example.test/events/next"}
+          output: {"events":[{"id":"event_meridian","event":"delivered","timestamp":1793100000}]}
     - name: listDomains
       goName: ListDomains
       inputType: ListDomainsInput
       outputType: DomainsOutput
       kind: query
-      description: ListDomains through the documented Mailgun API.
+      description: List sending domains and the account's reported domain count.
       idempotency: none
       authorization: required
       branches:

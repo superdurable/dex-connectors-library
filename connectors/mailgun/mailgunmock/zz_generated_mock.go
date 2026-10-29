@@ -89,7 +89,7 @@ func GetEventsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Ca
 
 // GetEventsListedDefault is the manifest mock listedDefault: A representative Mailgun result for the example Flow.
 func GetEventsListedDefault() connectormock.Case[mailgun.EventsOutput] {
-	value := connectormock.MustDecodeOutput[mailgun.EventsOutput](`{"events":[{"id":"event_meridian","event":"delivered","timestamp":1793100000}],"nextPage":"https://api.mailgun.net/v3/example.test/events/next"}`)
+	value := connectormock.MustDecodeOutput[mailgun.EventsOutput](`{"events":[{"id":"event_meridian","event":"delivered","timestamp":1793100000}]}`)
 	return connectormock.Branch(mailgun.GetEventsBranchListed, value, nil)
 }
 

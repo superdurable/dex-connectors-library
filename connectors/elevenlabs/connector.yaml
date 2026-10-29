@@ -49,7 +49,7 @@ spec:
       inputType: ListVoicesInput
       outputType: ListVoicesOutput
       kind: query
-      description: ListVoices through the documented ElevenLabs API.
+      description: List available voices and their identifiers for speech generation.
       idempotency: none
       authorization: required
       branches:
@@ -71,7 +71,7 @@ spec:
       inputType: CreateSpeechInput
       outputType: CreateSpeechOutput
       kind: query
-      description: CreateSpeech through the documented ElevenLabs API.
+      description: Generate bounded MP3 speech audio from text with a selected voice.
       idempotency: none
       authorization: required
       branches:

@@ -1,6 +1,6 @@
 # SendGrid demo Flow
 
-This runnable Flow calls `getStats` with the static `sendgrid` connection. The start input passes through to the generated operation Step; its happy-path result completes the Flow. Dex Web summary and display RPCs show the persisted provider result. Optional provider branches are unwired and fail the Flow when selected.
+The two runnable Flows call `getStats` and `listTemplates` with the static `sendgrid` connection. Typed start input passes through to each generated operation Step; its happy-path result completes the Flow. Dex Web summary and display RPCs show the persisted provider result. Optional provider branches are unwired and fail the Flow when selected.
 
 ## Strict FDG 2.0 generation
 
@@ -9,9 +9,10 @@ From `connectors/sendgrid`, run:
 ```bash
 mkdir -p build
 dexcli visualize ./examples/demo/flow/workflow.go --schema-version 2.0 --json --out ./build/demo
+dexcli visualize ./examples/demo/flow/template_workflow.go --schema-version 2.0 --json --out ./build/templates
 ```
 
-The command must report `valid: true`. A local unpublished module may report `connector_release_required` until its release metadata is supplied.
+Both `workflow.go` and `template_workflow.go` must report `valid: true`. A local unpublished module may report `connector_release_required` until its release metadata is supplied.
 
 ## Run with Dex Web
 
@@ -30,5 +31,13 @@ In Dex Web Start Flow, choose `SendGridDemo` and enter a unique Flow ID with thi
 ```
 
 The pull Worker connects to the Dex Server without an inbound listener. The Flow returns `StatsOutput`. The provider connection name is fixed in `flow/workflow.go`.
+
+To list transactional templates, start `SendGridTemplateListDemo` with a unique Flow ID and this input:
+
+```json
+{"generation":"dynamic","pageSize":100}
+```
+
+The Flow returns `TemplatesOutput`. Leave `pageToken` blank for the first page; pass the preceding result's `nextPageToken` to request another page. `pageSize` must be 1–200, and zero selects 100.
 
 CI runs the mock-backed real-Dex integration test. Local provider and deterministic Flow tests run with `GOWORK=off go test -race ./...` from the connector directory.

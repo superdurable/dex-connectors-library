@@ -36,8 +36,6 @@ type Event struct {
 type EventsOutput struct {
 	// Events is the returned event page.
 	Events []Event `json:"events"`
-	// NextPage is the provider's next-page URL; blank means none was returned.
-	NextPage string `json:"nextPage,omitempty"`
 }
 
 // ListDomainsInput selects one account domains page.
@@ -115,10 +113,7 @@ var domainPattern = regexp.MustCompile(`^[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za
 
 func decodeEvents(body []byte) (EventsOutput, error) {
 	var wire struct {
-		Items  []Event `json:"items"`
-		Paging struct {
-			Next string `json:"next"`
-		} `json:"paging"`
+		Items []Event `json:"items"`
 	}
 	if err := json.Unmarshal(body, &wire); err != nil {
 		return EventsOutput{}, err
@@ -126,7 +121,7 @@ func decodeEvents(body []byte) (EventsOutput, error) {
 	if wire.Items == nil {
 		return EventsOutput{}, fmt.Errorf("events missing")
 	}
-	return EventsOutput{Events: wire.Items, NextPage: wire.Paging.Next}, nil
+	return EventsOutput{Events: wire.Items}, nil
 }
 
 func decodeDomains(body []byte) (DomainsOutput, error) {

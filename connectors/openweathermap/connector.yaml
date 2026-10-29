@@ -49,7 +49,7 @@ spec:
       inputType: WeatherInput
       outputType: CurrentWeatherOutput
       kind: query
-      description: GetCurrentWeather through the documented OpenWeatherMap API.
+      description: Read current temperature and weather conditions at geographic coordinates.
       idempotency: none
       authorization: required
       branches:
@@ -72,7 +72,7 @@ spec:
       inputType: WeatherInput
       outputType: ForecastOutput
       kind: query
-      description: GetForecast through the documented OpenWeatherMap API.
+      description: Read forecast temperatures at three-hour intervals for geographic coordinates.
       idempotency: none
       authorization: required
       branches:

@@ -21,7 +21,6 @@ At [ElevenLabs > Developers > API Keys > Create API Key](https://elevenlabs.io/a
 | --- | --- |
 | 200 with valid bounded output | Happy-path branch |
 | 400, 401, 403, or another definite provider rejection | Optional `providerRejected` branch |
-| 404 for OpenWeatherMap | Optional `notFound` branch |
 | 429, 408, transport error, or 5xx | Retry with the same input until the retry budget ends |
 | Malformed or oversized successful response | Optional `invalidResponse` branch |
 | Invalid local input or credentials | Optional `defect` branch |

@@ -16,7 +16,7 @@ spec:
       - name: baseUrl
         goName: BaseURL
         type: url
-        description: Public SendGrid API base URL. Leave blank for the displayed default; override only for a trusted compatible gateway or a loopback test server.
+        description: Public SendGrid API base URL. Leave blank for the displayed default; use https://api.eu.sendgrid.com for an EU regional subuser, or override for a trusted compatible gateway or loopback test server.
         default: https://api.sendgrid.com
       - name: timeout
         goName: Timeout
@@ -49,7 +49,7 @@ spec:
       inputType: GetStatsInput
       outputType: StatsOutput
       kind: query
-      description: GetStats through the documented SendGrid API.
+      description: Read daily email request and delivery counts across the account.
       idempotency: none
       authorization: required
       branches:
@@ -71,7 +71,7 @@ spec:
       inputType: ListTemplatesInput
       outputType: TemplatesOutput
       kind: query
-      description: ListTemplates through the documented SendGrid API.
+      description: List a bounded page of dynamic or legacy transactional email templates.
       idempotency: none
       authorization: required
       branches:

@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
@@ -79,7 +80,11 @@ func (client *Client) do(call sdkgo.Call, method, path string, query url.Values,
 		return nil, 0, 0, errRequest
 	}
 	request.Header.Set("xi-api-key", credentials.APIKey.Reveal())
-	request.Header.Set("Accept", "application/json")
+	if strings.HasPrefix(path, "/v1/text-to-speech/") {
+		request.Header.Set("Accept", "audio/mpeg")
+	} else {
+		request.Header.Set("Accept", "application/json")
+	}
 	if payload != nil {
 		request.Header.Set("Content-Type", "application/json")
 	}

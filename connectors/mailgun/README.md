@@ -9,11 +9,11 @@ Read Mailgun domain events and account domains. The manifest is the source of ge
 | `getEvents` | Query | https://documentation.mailgun.com/docs/mailgun/api-reference/send/mailgun/events/get-v3-domain_name-events |
 | `listDomains` | Query | https://documentation.mailgun.com/docs/mailgun/api-reference/send/mailgun/domains/get-v4-domains |
 
-The demo uses `mailgun.NewGetEventsStep` with the static `mailgun` connection. Each operation is an operation-specific Query Step. Generation operations use synchronous Execute durability and a three-attempt billed retry budget; read operations use the default one-hour retry policy.
+The demo uses `mailgun.NewGetEventsStep` with the static `mailgun` connection. Each operation is an operation-specific Query Step with the default one-hour retry policy. `getEvents` returns one bounded page; the provider's next-page URL is not exposed until safe page continuation is supported.
 
 ## Authorization and configuration
 
-At [Mailgun > Settings > API Security > API Keys](https://app.mailgun.com/settings/api_security), create or select an API key for these operations, copy its provider-issued value, and store it in the secret `api_key` field in Dex Web Connections. A blank key is invalid. The manifest supplies the public base URL, HTTP timeout, and response-size limit; leave their fields blank unless a compatible gateway, slow request, or known larger response requires an override. For an EU account, supply its documented regional base URL in `baseUrl`.
+At [Mailgun > Settings > API Security > API Keys](https://app.mailgun.com/settings/api_security), create or select an API key for these operations, copy its provider-issued value, and store it in the secret `api_key` field in Dex Web Connections. A blank key is invalid. The manifest supplies the public base URL, HTTP timeout, and response-size limit; leave their fields blank unless a compatible gateway, slow request, or known larger response requires an override. For domains created in the EU region, set `baseUrl` to `https://api.eu.mailgun.net`.
 
 ## Failure behavior
 
@@ -21,7 +21,6 @@ At [Mailgun > Settings > API Security > API Keys](https://app.mailgun.com/settin
 | --- | --- |
 | 200 with valid bounded output | Happy-path branch |
 | 400, 401, 403, or another definite provider rejection | Optional `providerRejected` branch |
-| 404 for OpenWeatherMap | Optional `notFound` branch |
 | 429, 408, transport error, or 5xx | Retry with the same input until the retry budget ends |
 | Malformed or oversized successful response | Optional `invalidResponse` branch |
 | Invalid local input or credentials | Optional `defect` branch |
@@ -32,7 +31,7 @@ Provider error bodies and secrets are never copied into failures, receipts, or o
 
 The generated `mailgunmock` package uses one consistent default answer per operation:
 
-- `getEvents` default `listedDefault`: `{"events":[{"id":"event_meridian","event":"delivered","timestamp":1793100000}],"nextPage":"https://api.mailgun.net/v3/example.test/events/next"}`
+- `getEvents` default `listedDefault`: `{"events":[{"id":"event_meridian","event":"delivered","timestamp":1793100000}]}`
 - `listDomains` default `listedDefault`: `{"domains":[{"name":"example.test","state":"active"}],"totalCount":1}`
 
 `examples/demo/flow/workflow_mock_integration_test.go` starts a real Dex Flow through the mock connection in CI. Provider unit tests use local HTTP servers for the documented request shape and a rate-limit response.

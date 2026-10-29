@@ -82,6 +82,7 @@ func TestListTemplatesProviderRequestAndRateLimit(t *testing.T) {
 		_ = body
 		require.Equal(t, "Bearer "+testAPIKey, r.Header.Get("Authorization"))
 		require.Equal(t, "dynamic", r.URL.Query().Get("generations"))
+		require.Equal(t, "100", r.URL.Query().Get("page_size"))
 		if status.Load() == 1 {
 			w.Header().Set("Retry-After", "2")
 			w.WriteHeader(http.StatusTooManyRequests)
@@ -89,7 +90,7 @@ func TestListTemplatesProviderRequestAndRateLimit(t *testing.T) {
 			require.NoError(t, err)
 			return
 		}
-		_, err = w.Write([]byte(`{"result":[{"id":"d-123","name":"Receipt","generation":"dynamic"}],"_metadata":{"count":1}}`))
+		_, err = w.Write([]byte(`{"result":[{"id":"d-123","name":"Receipt","generation":"dynamic"}],"_metadata":{"count":1,"next":"https://api.sendgrid.com/v3/templates?page_token=next-123"}}`))
 		require.NoError(t, err)
 	}))
 	defer server.Close()
@@ -98,6 +99,7 @@ func TestListTemplatesProviderRequestAndRateLimit(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, ListTemplatesBranchListed, result.Branch)
 	require.Equal(t, "Receipt", result.Value.Templates[0].Name)
+	require.Equal(t, "next-123", result.Value.NextPageToken)
 	status.Store(1)
 	_, err = sdkgo.RunQuery(queryContext{}, client.ListTemplates(), testConnection, ListTemplatesInput{})
 	var retry *dex.RetryAfterError
@@ -105,4 +107,23 @@ func TestListTemplatesProviderRequestAndRateLimit(t *testing.T) {
 	require.Equal(t, 2*time.Second, retry.After)
 	require.NotContains(t, err.Error(), "private provider text")
 	require.NotContains(t, err.Error(), testAPIKey)
+}
+
+func TestListTemplatesPageSelectionAndValidation(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "200", r.URL.Query().Get("page_size"))
+		require.Equal(t, "next-123", r.URL.Query().Get("page_token"))
+		_, err := w.Write([]byte(`{"result":[],"_metadata":{"count":0}}`))
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL)
+	result, err := sdkgo.RunQuery(queryContext{}, client.ListTemplates(), testConnection, ListTemplatesInput{PageSize: 200, PageToken: "next-123"})
+	require.NoError(t, err)
+	require.Equal(t, ListTemplatesBranchListed, result.Branch)
+	for _, pageSize := range []int{-1, 201} {
+		result, err = sdkgo.RunQuery(queryContext{}, client.ListTemplates(), testConnection, ListTemplatesInput{PageSize: pageSize})
+		require.NoError(t, err)
+		require.Equal(t, ListTemplatesBranchDefect, result.Branch)
+	}
 }

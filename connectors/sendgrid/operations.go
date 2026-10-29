@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
@@ -37,10 +38,14 @@ type StatsOutput struct {
 	Days []StatsDay `json:"days"`
 }
 
-// ListTemplatesInput chooses the template generation.
+// ListTemplatesInput chooses a page of transactional templates.
 type ListTemplatesInput struct {
 	// Generation is dynamic or legacy; blank selects dynamic.
 	Generation string `json:"generation,omitempty"`
+	// PageSize is 1 to 200 templates; zero selects 100.
+	PageSize int `json:"pageSize,omitempty"`
+	// PageToken is the token from the preceding page; blank starts at page one.
+	PageToken string `json:"pageToken,omitempty"`
 }
 
 // Template identifies a transactional template.
@@ -57,8 +62,10 @@ type Template struct {
 type TemplatesOutput struct {
 	// Templates is the returned page of templates.
 	Templates []Template `json:"templates"`
-	// Count is the provider-reported number on this page.
+	// Count is the provider-reported count; its precise meaning is unverified.
 	Count int `json:"count"`
+	// NextPageToken selects the next page when the provider supplies one.
+	NextPageToken string `json:"nextPageToken,omitempty"`
 }
 
 // GetStatsOperation reads global email statistics.
@@ -106,7 +113,17 @@ func (operation ListTemplatesOperation) Invoke(call sdkgo.Call, input ListTempla
 	if input.Generation != "dynamic" && input.Generation != "legacy" {
 		return queryBranch("listTemplates", branches.defect, TemplatesOutput{}, sdkgo.FailureValidation, "generation must be dynamic or legacy")
 	}
-	return invokeJSONQuery(call, operation.client, "listTemplates", branches, http.MethodGet, "/v3/templates", url.Values{"generations": {input.Generation}}, nil, decodeTemplates)
+	if input.PageSize == 0 {
+		input.PageSize = 100
+	}
+	if input.PageSize < 1 || input.PageSize > 200 {
+		return queryBranch("listTemplates", branches.defect, TemplatesOutput{}, sdkgo.FailureValidation, "pageSize must be 1 to 200")
+	}
+	query := url.Values{"generations": {input.Generation}, "page_size": {strconv.Itoa(input.PageSize)}}
+	if input.PageToken != "" {
+		query.Set("page_token", input.PageToken)
+	}
+	return invokeJSONQuery(call, operation.client, "listTemplates", branches, http.MethodGet, "/v3/templates", query, nil, decodeTemplates)
 }
 
 func decodeStats(body []byte) (StatsOutput, error) {
@@ -144,7 +161,8 @@ func decodeTemplates(body []byte) (TemplatesOutput, error) {
 	var wire struct {
 		Result   []Template `json:"result"`
 		Metadata struct {
-			Count int `json:"count"`
+			Count int    `json:"count"`
+			Next  string `json:"next"`
 		} `json:"_metadata"`
 	}
 	if err := json.Unmarshal(body, &wire); err != nil {
@@ -153,5 +171,16 @@ func decodeTemplates(body []byte) (TemplatesOutput, error) {
 	if wire.Result == nil {
 		return TemplatesOutput{}, fmt.Errorf("template result missing")
 	}
-	return TemplatesOutput{Templates: wire.Result, Count: wire.Metadata.Count}, nil
+	output := TemplatesOutput{Templates: wire.Result, Count: wire.Metadata.Count}
+	if wire.Metadata.Next != "" {
+		nextPageURL, err := url.Parse(wire.Metadata.Next)
+		if err != nil || nextPageURL.Scheme != "https" && nextPageURL.Scheme != "http" {
+			return TemplatesOutput{}, fmt.Errorf("template next-page URL invalid")
+		}
+		output.NextPageToken = nextPageURL.Query().Get("page_token")
+		if output.NextPageToken == "" {
+			return TemplatesOutput{}, fmt.Errorf("template next-page token missing")
+		}
+	}
+	return output, nil
 }

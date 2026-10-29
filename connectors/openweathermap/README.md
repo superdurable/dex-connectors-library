@@ -9,7 +9,7 @@ Read current weather and a five-day forecast by coordinates. The manifest is the
 | `getCurrentWeather` | Query | https://openweathermap.org/api/current |
 | `getForecast` | Query | https://openweathermap.org/api/forecast5 |
 
-The demo uses `openweathermap.NewGetCurrentWeatherStep` with the static `openweathermap` connection. Each operation is an operation-specific Query Step. Generation operations use synchronous Execute durability and a three-attempt billed retry budget; read operations use the default one-hour retry policy.
+The demo uses `openweathermap.NewGetCurrentWeatherStep` with the static `openweathermap` connection. Each operation is an operation-specific Query Step with the default one-hour retry policy.
 
 ## Authorization and configuration
 

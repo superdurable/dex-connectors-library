@@ -35,7 +35,7 @@ spec:
       - name: api_key
         goName: APIKey
         type: secretString
-        description: Secret API key from Alpha Vantage > Support > Claim your Free API Key at https://www.alphavantage.co/support/api-key/. Copy the provider-issued string into this field; blank makes calls select defect. It is stored as a secret and sent in the required appid URL query parameter.
+        description: Secret API key from Alpha Vantage > Support > Claim your Free API Key at https://www.alphavantage.co/support/api-key/. Copy the provider-issued string into this field; blank makes calls select defect. It is stored as a secret and sent in the required apikey URL query parameter.
         required: true
     guide:
       startURL: https://www.alphavantage.co/support/api-key/
@@ -49,7 +49,7 @@ spec:
       inputType: StockInput
       outputType: GlobalQuoteOutput
       kind: query
-      description: GetGlobalQuote through the documented Alpha Vantage API.
+      description: Read the latest available price and trading day for one stock symbol.
       idempotency: none
       authorization: required
       branches:
@@ -72,7 +72,7 @@ spec:
       inputType: StockInput
       outputType: DailySeriesOutput
       kind: query
-      description: GetTimeSeriesDaily through the documented Alpha Vantage API.
+      description: Read daily open, high, low, close, and volume values for one stock symbol.
       idempotency: none
       authorization: required
       branches:
