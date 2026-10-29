@@ -46,8 +46,8 @@ type Vector struct {
 	ID string `json:"id"`
 	// Values contains the dense vector coordinates.
 	Values []float32 `json:"values"`
-	// Metadata contains optional filterable attributes.
-	Metadata map[string]any `json:"metadata,omitempty"`
+	// Metadata contains optional string-valued filterable attributes.
+	Metadata map[string]string `json:"metadata,omitempty"`
 }
 
 // UpsertVectorsInput writes one bounded vector batch.

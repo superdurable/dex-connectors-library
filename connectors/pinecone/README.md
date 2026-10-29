@@ -4,7 +4,7 @@ This Dex connector exposes `upsertVectors`, `queryVectors`. The runnable [sample
 
 ## Provider contract
 
-`upsertVectors` replaces vectors by stable ID. It is safe to repeat with the same vector IDs and values. Supply the unique index host as `baseUrl`; there is no safe universal default. The connector pins Pinecone API version `2025-04`. Query supports dense vectors only.
+`upsertVectors` replaces vectors by stable ID. It is safe to repeat with the same vector IDs and values. Supply the unique index host as `baseUrl`; there is no safe universal default. The connector pins Pinecone API version `2025-04`. Query supports dense vectors only. The upsert input accepts string-valued metadata so Dex Web can render a strict start form.
 
 Official documentation used for the endpoint, authentication, and response contract:
 

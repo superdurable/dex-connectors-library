@@ -23,4 +23,4 @@ In Dex Web Connections, create `pinecone / pinecone`, follow the connector's aut
 {"namespace":"example","vectors":[{"id":"vec-meridian","values":[0.1,0.2]}]}
 ```
 
-The mock-backed real-Dex integration test runs in CI.
+Vector metadata in this example accepts string values, so Dex Web can render its start form. The mock-backed real-Dex integration test runs in CI.
