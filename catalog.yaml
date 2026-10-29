@@ -10,6 +10,7 @@ directories:
   - connectors/atlassian/jira-service-management
   - connectors/atlassian/trello
   - connectors/bamboohr
+  - connectors/brevo
   - connectors/calendly
   - connectors/clickup
   - connectors/cloudflare
