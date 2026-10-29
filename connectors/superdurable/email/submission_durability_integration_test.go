@@ -8,7 +8,6 @@ package email_test
 import (
 	"context"
 	"errors"
-	"net"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -23,38 +22,49 @@ import (
 )
 
 const (
-	durabilityProbeFlowType = "EmailSubmissionDurabilityProbe"
-	// probeEndOfDataDelay outlasts Dex's roughly seven-second async local phase.
-	probeEndOfDataDelay = 9 * time.Second
+	durabilityProbeFlowType      = "EmailSubmissionDurabilityProbe"
+	durabilityRetryProbeFlowType = "EmailSubmissionRetryProbe"
 )
 
-// TestAsyncOverrideOfSendMessageSubmitsTwiceToASlowServerWithRealDex is the contrast for the sync default:
-// overriding sendMessage to async durability lets Dex dispatch a second attempt while a slow server still
-// holds the first, and the local phase's heartbeat checkpoint is invisible to that attempt, so the server
-// receives the message twice. The example's slow-server tests prove the sync default submits once.
-func TestAsyncOverrideOfSendMessageSubmitsTwiceToASlowServerWithRealDex(t *testing.T) {
+// TestAsyncRetryAfterAcceptedSubmissionDoesNotResubmitWithRealDex forces a second Execute after SMTP accepts the message.
+func TestAsyncRetryAfterAcceptedSubmissionDoesNotResubmitWithRealDex(t *testing.T) {
 	fixture := newMailFixture(t)
-	fixture.smtp.HoldNextEndOfDataReply(probeEndOfDataDelay)
-	connection, err := email.NewConnection(fixture.client(t), emailConnection)
+	client := fixture.client(t)
+	connection, err := email.NewConnection(client, emailConnection)
 	require.NoError(t, err)
-	flow := &durabilityProbeFlow{connection: connection, stepOptions: &dex.StepOptions{ExecuteDurability: dex.StepDurabilityAsync}}
+	flow := &durabilityProbeFlow{connection: connection, retryClient: client}
 	result := runDurabilityProbe(t, flow)
 	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
-	fixture.smtp.WaitForHeldReplies()
-	require.Equal(t, 2, fixture.smtp.DataCount(), "async durability dispatched the submission again past the local phase")
-	require.Len(t, fixture.smtp.Submissions(), 2)
+	var outcome submissionRetryOutcome
+	require.NoError(t, result.DecodeSingleOutput(&outcome))
+	require.Equal(t, email.SendMessageBranchUncertain, outcome.Branch)
+	require.Equal(t, 1, fixture.smtp.DataCount())
+	submissions := fixture.smtp.Submissions()
+	require.Len(t, submissions, 1)
+	header, _ := readSubmittedMessage(t, submissions[0].Data)
+	messageID, err := header.MessageID()
+	require.NoError(t, err)
+	require.Equal(t, outcome.MessageID, messageID)
 }
 
 // durabilityProbeFlow sends one message with optional Step options.
 type durabilityProbeFlow struct {
 	dex.FlowDefaults
 	connection  email.Connection
-	stepOptions *dex.StepOptions
+	retryClient *email.Client
 }
 
-func (*durabilityProbeFlow) GetFlowType() string { return durabilityProbeFlowType }
+func (flow *durabilityProbeFlow) GetFlowType() string {
+	if flow.retryClient != nil {
+		return durabilityRetryProbeFlowType
+	}
+	return durabilityProbeFlowType
+}
 
 func (flow *durabilityProbeFlow) GetSteps() []dex.StepDef {
+	if flow.retryClient != nil {
+		return []dex.StepDef{dex.DefineStartStep(submitThenFailFirstAttempt{client: flow.retryClient})}
+	}
 	return []dex.StepDef{
 		dex.DefineStartStep(startDurabilityProbe{}),
 		dex.DefineStep(email.NewSendMessageStep(email.SendMessageStepConfig[email.SendMessageInput]{
@@ -63,10 +73,39 @@ func (flow *durabilityProbeFlow) GetSteps() []dex.StepDef {
 			MapToOperationInput: func(input email.SendMessageInput) email.SendMessageInput { return input },
 			Sent:                sdkgo.GoTo(completeDurabilityProbe{}),
 			Uncertain:           sdkgo.GoTo(completeDurabilityProbe{}),
-			StepOptionsOverride: flow.stepOptions,
 		})),
 		dex.DefineStep(completeDurabilityProbe{}),
 	}
+}
+
+type submissionRetryOutcome struct {
+	Branch    sdkgo.BranchID `json:"branch"`
+	MessageID string         `json:"messageId"`
+}
+
+// submitThenFailFirstAttempt retries after an accepted message with the same Dex Call ID.
+type submitThenFailFirstAttempt struct {
+	dex.StepDefaultsNoWaitFor[email.SendMessageInput]
+	client *email.Client
+}
+
+func (submitThenFailFirstAttempt) GetStepType() string { return "SubmitThenFailFirstAttempt" }
+
+func (submitThenFailFirstAttempt) GetStepOptions() *dex.StepOptions {
+	return &dex.StepOptions{ExecuteDurability: dex.StepDurabilityAsync, ExecuteRetry: &dex.RetryPolicy{
+		InitialInterval: time.Second, BackoffCoefficient: 1, MaximumInterval: time.Second, MaximumAttempts: 3, TotalDuration: time.Minute,
+	}}
+}
+
+func (step submitThenFailFirstAttempt) Execute(ctx dex.Context, input email.SendMessageInput) (*dex.StepDecision, error) {
+	result, err := sdkgo.RunMutation(ctx, step.client.SendMessage(), emailConnection, input)
+	if err != nil {
+		return nil, err
+	}
+	if ctx.Attempt() == 1 {
+		return nil, errors.New("the probe fails after SMTP accepts the first message")
+	}
+	return dex.GracefulComplete(submissionRetryOutcome{Branch: result.Branch, MessageID: result.Value.MessageID}), nil
 }
 
 func (*durabilityProbeFlow) GetRPCs() []dex.RPCDef { return nil }
@@ -110,26 +149,23 @@ func runDurabilityProbe(t *testing.T, flow *durabilityProbeFlow) dex.FlowResult 
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: serverAddress})
 	require.NoError(t, err)
-	require.NoError(t, listener.Close())
 	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: serverAddress})
 	require.NoError(t, err)
 	workerResult := make(chan error, 1)
 	go func() { workerResult <- worker.Start() }()
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		require.NoError(t, errors.Join(worker.Stop(ctx), <-workerResult, client.Close(), cache.Close()))
+	})
 	{
 		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
 		registrationError := worker.WaitPullRegistered(registrationContext)
 		cancelRegistration()
 		require.NoError(t, registrationError)
 	}
-	client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: serverAddress})
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-		defer cancel()
-		require.NoError(t, errors.Join(worker.Stop(ctx), <-workerResult, client.Close(), cache.Close()))
-	})
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
 	flowID := "email-durability-probe-" + strconv.FormatInt(time.Now().UnixNano(), 10)

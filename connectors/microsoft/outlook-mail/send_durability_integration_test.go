@@ -8,7 +8,6 @@ package outlookmail_test
 import (
 	"context"
 	"errors"
-	"net"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -24,16 +23,13 @@ import (
 )
 
 const (
-	durabilityProbeFlowType = "OutlookMailSendDurabilityProbe"
-	// probeSendDelay outlasts Dex's roughly seven-second async local phase.
-	probeSendDelay = 9 * time.Second
+	durabilityProbeFlowType      = "OutlookMailSendDurabilityProbe"
+	durabilityRetryProbeFlowType = "OutlookMailSendRetryProbe"
 )
 
-// TestSyncSendMessageSendsOnceToASlowGraphWithRealDex holds Graph's send action for nine seconds; the sync
-// default keeps Dex from dispatching a second attempt, so the draft is sent once.
-func TestSyncSendMessageSendsOnceToASlowGraphWithRealDex(t *testing.T) {
+// TestSyncSendMessageSendsOnceWithRealDex checks the default durability's send count.
+func TestSyncSendMessageSendsOnceWithRealDex(t *testing.T) {
 	fake := newGraphFake(t)
-	fake.InjectFault(graphtest.Fault{Endpoint: graphtest.EndpointSendDraft, Delay: probeSendDelay})
 	client, _ := delegatedClient(t, fake)
 	connection, err := outlookmail.NewConnection(client, outlookConnection)
 	require.NoError(t, err)
@@ -42,41 +38,47 @@ func TestSyncSendMessageSendsOnceToASlowGraphWithRealDex(t *testing.T) {
 	var branch sdkgo.BranchID
 	require.NoError(t, result.DecodeSingleOutput(&branch))
 	require.Equal(t, outlookmail.SendMessageBranchSent, branch)
-	fake.WaitForHeldRequests()
 	require.Equal(t, 1, fake.RequestCount(graphtest.EndpointSendDraft))
 	require.Equal(t, 1, fake.RequestCount(graphtest.EndpointCreateDraft))
 	require.Len(t, fake.Deliveries(), 1)
 }
 
-// TestAsyncOverrideOfSendMessageSendsTwiceToASlowGraphWithRealDex is the contrast for the sync default:
-// overriding sendMessage to async durability lets Dex dispatch a second attempt while Graph still holds the
-// first send. The local phase's dispatch checkpoint is invisible to that attempt, which finds the marked
-// draft and sends it again, so the fake, like any server without a send idempotency key, delivers twice.
-func TestAsyncOverrideOfSendMessageSendsTwiceToASlowGraphWithRealDex(t *testing.T) {
+// TestAsyncRetryAfterAcceptedSendDoesNotResendWithRealDex forces a second Execute after Graph accepts the send.
+func TestAsyncRetryAfterAcceptedSendDoesNotResendWithRealDex(t *testing.T) {
 	fake := newGraphFake(t)
-	fake.InjectFault(graphtest.Fault{Endpoint: graphtest.EndpointSendDraft, Delay: probeSendDelay})
 	client, _ := delegatedClient(t, fake)
 	connection, err := outlookmail.NewConnection(client, outlookConnection)
 	require.NoError(t, err)
-	flow := &durabilityProbeFlow{connection: connection, stepOptions: &dex.StepOptions{ExecuteDurability: dex.StepDurabilityAsync}}
+	flow := &durabilityProbeFlow{connection: connection, retryClient: client}
 	result := runDurabilityProbe(t, flow)
 	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
-	fake.WaitForHeldRequests()
-	require.Equal(t, 1, fake.RequestCount(graphtest.EndpointCreateDraft), "the marker kept the second attempt on the first attempt's draft")
-	require.Equal(t, 2, fake.RequestCount(graphtest.EndpointSendDraft), "async durability dispatched the send again past the local phase")
-	require.Len(t, fake.Deliveries(), 2)
+	var outcome sendRetryOutcome
+	require.NoError(t, result.DecodeSingleOutput(&outcome))
+	require.Equal(t, outlookmail.SendMessageBranchSent, outcome.Branch)
+	require.True(t, outcome.WasAlreadySent)
+	require.Equal(t, 1, fake.RequestCount(graphtest.EndpointCreateDraft))
+	require.Equal(t, 1, fake.RequestCount(graphtest.EndpointSendDraft))
+	require.Len(t, fake.Deliveries(), 1)
 }
 
 // durabilityProbeFlow sends one message with optional Step options.
 type durabilityProbeFlow struct {
 	dex.FlowDefaults
 	connection  outlookmail.Connection
-	stepOptions *dex.StepOptions
+	retryClient *outlookmail.Client
 }
 
-func (*durabilityProbeFlow) GetFlowType() string { return durabilityProbeFlowType }
+func (flow *durabilityProbeFlow) GetFlowType() string {
+	if flow.retryClient != nil {
+		return durabilityRetryProbeFlowType
+	}
+	return durabilityProbeFlowType
+}
 
 func (flow *durabilityProbeFlow) GetSteps() []dex.StepDef {
+	if flow.retryClient != nil {
+		return []dex.StepDef{dex.DefineStartStep(sendThenFailFirstAttempt{client: flow.retryClient})}
+	}
 	return []dex.StepDef{
 		dex.DefineStartStep(startDurabilityProbe{}),
 		dex.DefineStep(outlookmail.NewSendMessageStep(outlookmail.SendMessageStepConfig[outlookmail.SendMessageInput]{
@@ -85,10 +87,39 @@ func (flow *durabilityProbeFlow) GetSteps() []dex.StepDef {
 			MapToOperationInput: func(input outlookmail.SendMessageInput) outlookmail.SendMessageInput { return input },
 			Sent:                sdkgo.GoTo(completeDurabilityProbe{}),
 			Uncertain:           sdkgo.GoTo(completeDurabilityProbe{}),
-			StepOptionsOverride: flow.stepOptions,
 		})),
 		dex.DefineStep(completeDurabilityProbe{}),
 	}
+}
+
+type sendRetryOutcome struct {
+	Branch         sdkgo.BranchID `json:"branch"`
+	WasAlreadySent bool           `json:"wasAlreadySent"`
+}
+
+// sendThenFailFirstAttempt retries after an accepted send with the same Dex Call ID.
+type sendThenFailFirstAttempt struct {
+	dex.StepDefaultsNoWaitFor[outlookmail.SendMessageInput]
+	client *outlookmail.Client
+}
+
+func (sendThenFailFirstAttempt) GetStepType() string { return "SendThenFailFirstAttempt" }
+
+func (sendThenFailFirstAttempt) GetStepOptions() *dex.StepOptions {
+	return &dex.StepOptions{ExecuteDurability: dex.StepDurabilityAsync, ExecuteRetry: &dex.RetryPolicy{
+		InitialInterval: time.Second, BackoffCoefficient: 1, MaximumInterval: time.Second, MaximumAttempts: 3, TotalDuration: time.Minute,
+	}}
+}
+
+func (step sendThenFailFirstAttempt) Execute(ctx dex.Context, input outlookmail.SendMessageInput) (*dex.StepDecision, error) {
+	result, err := sdkgo.RunMutation(ctx, step.client.SendMessage(), outlookConnection, input)
+	if err != nil {
+		return nil, err
+	}
+	if ctx.Attempt() == 1 {
+		return nil, errors.New("the probe fails after Graph accepts the first send")
+	}
+	return dex.GracefulComplete(sendRetryOutcome{Branch: result.Branch, WasAlreadySent: result.Value.WasAlreadySent}), nil
 }
 
 func (*durabilityProbeFlow) GetRPCs() []dex.RPCDef { return nil }
@@ -132,26 +163,23 @@ func runDurabilityProbe(t *testing.T, flow *durabilityProbeFlow) dex.FlowResult 
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: serverAddress})
 	require.NoError(t, err)
-	require.NoError(t, listener.Close())
 	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: serverAddress})
 	require.NoError(t, err)
 	workerResult := make(chan error, 1)
 	go func() { workerResult <- worker.Start() }()
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		require.NoError(t, errors.Join(worker.Stop(ctx), <-workerResult, client.Close(), cache.Close()))
+	})
 	{
 		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
 		registrationError := worker.WaitPullRegistered(registrationContext)
 		cancelRegistration()
 		require.NoError(t, registrationError)
 	}
-	client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: serverAddress})
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-		defer cancel()
-		require.NoError(t, errors.Join(worker.Stop(ctx), <-workerResult, client.Close(), cache.Close()))
-	})
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
 	flowID := "outlook-mail-durability-probe-" + strconv.FormatInt(time.Now().UnixNano(), 10)

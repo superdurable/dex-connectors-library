@@ -318,28 +318,16 @@ automatically; the example leaves that branch unwired, so the Flow fails.
 
 ## Duplicate dispatch
 
-With async durability, Dex runs a Step in a local phase of about seven seconds
-and then dispatches a backup attempt, so a slow write is sent a second time
-while the first is in flight. A real Dex run with a Confluence fake that held
-each write response for nine seconds recorded:
+Both durability modes use the same attempts and retry rules. Sync persists a
+result before the Flow advances; async may replay one lost before its batched
+commit. `createPage` and `addComment` stay sync to reduce replay risk for writes
+without a provider idempotency key. Their integration tests check one request
+and one stored effect, while timeout tests check read-back and uncertainty.
 
-| Operation | Async durability | Sync durability |
-| --- | --- | --- |
-| `createPage` | two creates, one page, `created` | one create, one page |
-| `addComment` | two comments | one comment |
-| `updatePage` | two updates, one new version, `updated` | not needed |
-
-`updatePage` keeps the async default: the backup attempt's update is refused
-and finds its own version, and
-`TestSlowUpdateBackupAttemptConvergesOnItsVersionWithRealDex` guards this.
-`addComment` must stay sync, because only the heartbeat checkpoint stops a
-second comment and a backup attempt cannot see the local attempt's checkpoint;
-`TestSlowCommentIsSentOnceUnderSyncDurabilityWithRealDex` guards this.
-`createPage` stays sync even though the fake kept one page under async: a
-backup attempt sends its create concurrently, and whether Confluence enforces
-one page per title atomically under concurrent creates is not documented.
-`TestSlowCreateIsSentOnceUnderSyncDurabilityWithRealDex` guards this. Do not
-override these Steps to async.
+`updatePage` keeps the async default. In the lost-Worker integration test,
+Confluence saves version 3 before the Worker disappears. The replacement
+attempt repeats that version, receives a conflict, and confirms it by read-back.
+The page gains one version despite two update requests.
 
 ## Not in this release
 

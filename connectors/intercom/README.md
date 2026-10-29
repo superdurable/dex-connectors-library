@@ -177,9 +177,8 @@ Intercom documents no idempotency key for replies, and a repeated `comment` is
 a second message to the customer, so the operation never sends twice in one
 Step execution:
 
-1. It runs with sync durability, so Dex does not dispatch a second attempt
-   while the first is in flight, as async durability does after about seven
-   seconds.
+1. It runs with sync durability, so Dex persists the result before advancing
+   the Flow. Both durability modes use the same attempt and retry rules.
 2. Before sending, it records a Dex heartbeat checkpoint with the Worker's
    time. If Dex does not record it, nothing is sent and the attempt retries.
 3. A 429 or a connection that never opened clears the checkpoint and retries,
@@ -209,8 +208,8 @@ selects `updated` with `wasAlreadyApplied: true` and nothing is written.
 
 The operation is safe to repeat, so it keeps async durability and has no
 `uncertain` branch: every unconfirmed write retries, and the retry reads
-first. Two concurrent attempts, such as Dex's second dispatch of a slow Step,
-can both write the same state. A close without a message sends the customer
+first. Two attempts after a Worker loss can both write the same state if the
+first result is unknown. A close without a message sends the customer
 nothing, so the only trace is a second close event in the conversation. When
 Intercom rejects a write with a 4xx other than 401, 403, 404, or 429, the
 operation reads again and selects `updated` with `wasAlreadyApplied: true` if

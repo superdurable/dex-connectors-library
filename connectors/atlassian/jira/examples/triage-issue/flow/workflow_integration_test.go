@@ -33,18 +33,15 @@ const (
 	integrationCloudID     = "11223344-a1b2-4b33-8c44-def123456789"
 	integrationAccessToken = "integration-access-token"
 	shortRequestTimeout    = 500 * time.Millisecond
-	// slowRequestTimeout outlasts the fake's nine-second responses and Dex's roughly seven-second async local phase.
-	slowRequestTimeout = 20 * time.Second
-	slowProviderDelay  = 9 * time.Second
+	heldRequestTimeout     = 20 * time.Second
 
 	markerReject           = "[reject]"
 	markerRateLimit        = "[rate-limit]"
 	markerUnavailable      = "[unavailable]"
 	markerServerError      = "[server-error]"
 	markerCreateTimeout    = "[create-timeout]"
-	markerSlowCreate       = "[slow-create]"
 	markerCommentTimeout   = "[comment-timeout]"
-	markerSlowTransition   = "[slow-transition]"
+	markerHeldTransition   = "[held-transition]"
 	decoyNearDuplicateKey  = "OPS-1"
 	openDuplicateKey       = "OPS-2"
 	openDuplicateSummary   = "Badge reader offline"
@@ -164,31 +161,35 @@ func TestServerErrorIsCreatedAgainOnlyAfterOperatorApprovalWithRealDex(t *testin
 	require.Equal(t, 2, provider.createCount(summary), "only the approved retry sent a second create")
 }
 
-// TestSlowCreateIsSentOnceUnderSyncDurabilityWithRealDex guards sync durability: an async fallback
-// attempt would send a create that outlasts Dex's roughly seven-second local phase a second time.
-func TestSlowCreateIsSentOnceUnderSyncDurabilityWithRealDex(t *testing.T) {
-	provider, flow, harness := newJiraIntegrationHarness(t, integrationCloudID, slowRequestTimeout)
+// TestCreateIsSentOnceWithRealDex checks the provider request and created issue counts.
+func TestCreateIsSentOnceWithRealDex(t *testing.T) {
+	provider, flow, harness := newJiraIntegrationHarness(t, integrationCloudID, shortRequestTimeout)
 	ctx := integrationContext(t)
 
-	summary := markerSlowCreate + " Generator test overdue"
-	triage := runTriageFlow(t, ctx, harness, flow, "slow-create", triageInput(summary))
+	summary := "Generator test overdue"
+	triage := runTriageFlow(t, ctx, harness, flow, "single-create", triageInput(summary))
 	require.Equal(t, PhaseTriaged, triage.Phase)
 	require.Equal(t, 1, provider.createCount(summary), "one Step execution dispatches one create request")
 }
 
-// TestSlowTransitionBackupAttemptMovesTheIssueOnceWithRealDex proves transitionIssue is safe under async
-// durability: a backup attempt reads the issue first and finds the transition already made.
-func TestSlowTransitionBackupAttemptMovesTheIssueOnceWithRealDex(t *testing.T) {
-	provider, flow, harness := newJiraIntegrationHarness(t, integrationCloudID, slowRequestTimeout)
+// TestLostWorkerDuringTransitionMovesTheIssueOnceWithRealDex checks read-back after Jira applies a transition.
+func TestLostWorkerDuringTransitionMovesTheIssueOnceWithRealDex(t *testing.T) {
+	provider, flow, harness := newJiraIntegrationHarness(t, integrationCloudID, heldRequestTimeout)
 	ctx := integrationContext(t)
+	provider.holdsFirstTransition = make(chan struct{})
+	defer close(provider.holdsFirstTransition)
 
-	summary := markerSlowTransition + " Sprinkler inspection"
-	triage := runTriageFlow(t, ctx, harness, flow, "slow-transition", triageInput(summary))
+	summary := markerHeldTransition + " Sprinkler inspection"
+	flowID := startTriageFlow(t, ctx, harness, flow, "lost-worker-transition", triageInput(summary))
+	require.Eventually(t, func() bool { return provider.transitionPostCount(firstCreatedIssueKey) == 1 }, 30*time.Second, 50*time.Millisecond)
+	readsBeforeReplacement := provider.transitionReadCount(firstCreatedIssueKey)
+	harness.replaceWorker(t)
+	triage := waitForFlowOutput(t, ctx, harness, flowID)
 	require.Equal(t, PhaseTriaged, triage.Phase)
 	require.Equal(t, integrationDestination, triage.Status.Name)
 	issueKey := provider.issueKeyForSummary(summary)
-	require.Equal(t, 1, provider.transitionPostCount(issueKey), "Jira saw one transition request")
-	t.Logf("slow transition: transition reads=%d posts=%d", provider.transitionReadCount(issueKey), provider.transitionPostCount(issueKey))
+	require.Equal(t, 1, provider.transitionPostCount(issueKey), "the replacement Worker did not repeat the transition")
+	require.Greater(t, provider.transitionReadCount(issueKey), readsBeforeReplacement)
 }
 
 func TestUnavailableTransitionFailsWithoutMovingIssueWithRealDex(t *testing.T) {
@@ -294,17 +295,18 @@ func integrationContext(t *testing.T) context.Context {
 // fakeJira is a credential-safe, stateful Jira fake. A marker in the summary selects a failure.
 type fakeJira struct {
 	*httptest.Server
-	t                 *testing.T
-	mutex             sync.Mutex
-	nextIssueNumber   int
-	issues            map[string]*fakeIssue
-	createTimes       map[string][]time.Time
-	commentCounts     map[string]int
-	transitionPosts   map[string]int
-	transitionReads   map[string]int
-	searches          []string
-	resourcesRequests int
-	nextCommentNumber int
+	t                    *testing.T
+	mutex                sync.Mutex
+	nextIssueNumber      int
+	issues               map[string]*fakeIssue
+	createTimes          map[string][]time.Time
+	commentCounts        map[string]int
+	transitionPosts      map[string]int
+	transitionReads      map[string]int
+	holdsFirstTransition chan struct{}
+	searches             []string
+	resourcesRequests    int
+	nextCommentNumber    int
 }
 
 type fakeIssue struct {
@@ -424,10 +426,6 @@ func (provider *fakeJira) createIssue(response http.ResponseWriter, request *htt
 		provider.storeIssue(summary)
 		// Jira created the issue, but the response never arrives before the connector gives up.
 		<-request.Context().Done()
-	case strings.Contains(summary, markerSlowCreate):
-		key := provider.storeIssue(summary)
-		time.Sleep(slowProviderDelay)
-		provider.writeJSON(response, http.StatusCreated, provider.createdJSON(key))
 	default:
 		provider.writeJSON(response, http.StatusCreated, provider.createdJSON(provider.storeIssue(summary)))
 	}
@@ -495,9 +493,12 @@ func (provider *fakeJira) transitionIssue(response http.ResponseWriter, request 
 		provider.writeJSON(response, http.StatusBadRequest, `{"errorMessages":["SENTINEL Transition is not valid for this issue."],"errors":{}}`)
 		return
 	}
-	if strings.Contains(issue.summary, markerSlowTransition) {
-		// Jira moved the issue, but the response arrives after Dex's async local phase ends.
-		time.Sleep(slowProviderDelay)
+	if strings.Contains(issue.summary, markerHeldTransition) {
+		select {
+		case <-provider.holdsFirstTransition:
+		case <-request.Context().Done():
+			return
+		}
 	}
 	response.WriteHeader(http.StatusNoContent)
 }
@@ -638,23 +639,39 @@ func newJiraIntegrationHarness(t *testing.T, cloudID string, requestTimeout time
 		FlowServiceAddress: harness.serverAddress,
 	})
 	require.NoError(t, err)
-	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: harness.serverAddress})
+	t.Cleanup(func() {
+		stopCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		var workerError error
+		if harness.worker != nil {
+			workerError = errors.Join(harness.worker.Stop(stopCtx), <-harness.workerResult)
+		}
+		require.NoError(t, errors.Join(workerError, harness.client.Close(), harness.cache.Close()))
+	})
+	harness.startWorker(t)
+	return provider, flow, harness
+}
+
+func (harness *jiraIntegrationHarness) startWorker(t *testing.T) {
+	t.Helper()
+	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{FlowServiceAddress: harness.serverAddress})
 	require.NoError(t, err)
 	harness.worker = worker
 	harness.workerResult = make(chan error, 1)
 	go func() { harness.workerResult <- worker.Start() }()
-	t.Cleanup(func() {
-		stopCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		require.NoError(t, errors.Join(harness.worker.Stop(stopCtx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
-	})
-	{
-		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
-		registrationError := worker.WaitPullRegistered(registrationContext)
-		cancelRegistration()
-		require.NoError(t, registrationError)
-	}
-	return provider, flow, harness
+	registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+	registrationError := worker.WaitPullRegistered(registrationContext)
+	cancelRegistration()
+	require.NoError(t, registrationError)
+}
+
+func (harness *jiraIntegrationHarness) replaceWorker(t *testing.T) {
+	t.Helper()
+	expired, cancel := context.WithCancel(context.Background())
+	cancel()
+	_ = harness.worker.Stop(expired)
+	require.NoError(t, <-harness.workerResult)
+	harness.startWorker(t)
 }
 
 func environmentOr(name string, fallback string) string {

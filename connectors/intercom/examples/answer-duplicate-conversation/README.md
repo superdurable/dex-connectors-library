@@ -216,16 +216,15 @@ bearer token and `Intercom-Version: 2.16`:
   conversation are untouched;
 - a conversation without an earlier one is left open, and an answered one is
   skipped before any lookup;
-- a reply held past Dex's async local phase is sent once (the duplicate-dispatch
-  test);
+- a reply produces one request and one comment;
 - a reply whose response was lost is found in the conversation and never
   resent;
 - a reply answered 503 without being applied fails on the unwired `uncertain`
   branch and is never resent;
 - a Worker lost while Intercom holds the reply leaves the next attempt to read
   the conversation, then fail on `uncertain` without resending;
-- a close held past the local phase is dispatched again and converges on
-  `closed`, whether Intercom accepts or rejects the redundant close;
+- a Worker lost after Intercom applies a close is replaced; the new attempt
+  reads `closed` and does not send a redundant close;
 - a rate-limited search waits for `X-RateLimit-Reset`;
 - a rejected reply fails the Flow without Intercom's message text;
 - an unconfigured admin fails the Flow before any Intercom request;

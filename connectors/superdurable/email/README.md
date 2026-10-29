@@ -255,8 +255,8 @@ change but does not keep it selects `providerRejected`.
 ## Duplicate safety
 
 SMTP has no idempotency key, so a repeated submission is a second email to the
-customer. Dex re-dispatches an async Step whose local attempt passes about
-seven seconds, and it retries a Step after a lost Worker, so the operations
+customer. Dex may replay a Step after Worker loss or before an async result
+commit, so the operations
 take these positions:
 
 - **searchMessages** and **getMessage** only read.
@@ -264,11 +264,10 @@ take these positions:
   durability. Flags are absolute values from a fresh read, and a message can
   be moved only once; a repeat that finds it gone finds it by Message-ID in the
   destination. Every unconfirmed outcome, including a lost connection, is
-  retried. The example's test holds a `MOVE` for nine seconds, Dex dispatches
-  it again, and the message is archived once.
-- **sendMessage** and **replyToMessage** run with sync durability, so Dex never
-  sends a second attempt while the first is in flight, even when the server
-  takes seconds to answer the final dot. Before connecting to the SMTP server,
+  retried. The example drops a `MOVE` answer after applying it; read-back
+  confirms the message was archived once.
+- **sendMessage** and **replyToMessage** run with sync durability, which
+  persists the result before the Flow advances. Before connecting to the SMTP server,
   the operation records a Dex heartbeat checkpoint naming the Step's Call ID.
   A later attempt of the same Step execution that finds the checkpoint, after a
   lost Worker or an Execute timeout, selects `uncertain` without connecting.
@@ -281,10 +280,11 @@ take these positions:
   final dot, such as a dropped connection or a timeout, selects `uncertain`,
   with the Message-ID to look for; the connector never resubmits it.
 
-Keep these two Steps sync. The root integration test overrides
-`sendMessage` to async durability against a server that holds the final dot
-for nine seconds and observes two submissions, because Dex's local-phase
-heartbeats are not visible to the fallback attempt. Dex's `RecordHeartbeat`
+Keep these two Steps sync to reduce replay risk before an async result commit.
+Both durability modes use the same attempt and retry rules. The root
+integration test forces a second Execute after an accepted submission and
+confirms it selects `uncertain` without resubmitting. The example's lost-Worker
+test checks the same checkpoint through Worker replacement. Dex's `RecordHeartbeat`
 returns once the checkpoint enters the Worker's stream, not after the server
 stores it, so a Worker lost in that instant could still allow one resubmission;
 it would carry the same Message-ID. A crash after the checkpoint and before

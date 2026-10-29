@@ -35,17 +35,13 @@ const (
 	integrationSpaceID     = "98306"
 	integrationHomepageID  = "65537"
 	shortRequestTimeout    = 500 * time.Millisecond
-	// slowRequestTimeout outlasts the fake's nine-second responses and Dex's roughly seven-second async local phase.
-	slowRequestTimeout = 20 * time.Second
-	slowProviderDelay  = 9 * time.Second
+	heldRequestTimeout     = 20 * time.Second
 
-	markerSlowCreate     = "[slow-create]"
 	markerCreateTimeout  = "[create-timeout]"
 	markerRateLimit      = "[rate-limit]"
 	markerReject         = "[reject]"
-	markerSlowUpdate     = "[slow-update]"
+	markerHeldUpdate     = "[held-update]"
 	markerConcurrentEdit = "[concurrent-edit]"
-	markerSlowComment    = "[slow-comment]"
 	markerCommentTimeout = "[comment-timeout]"
 
 	existingPolicyTitle = "Travel policy"
@@ -91,33 +87,37 @@ func TestExistingPolicyIsUpdatedToItsNextVersionWithRealDex(t *testing.T) {
 	require.Equal(t, 1, provider.pageCount(existingPolicyTitle))
 }
 
-// TestSlowCreateIsSentOnceUnderSyncDurabilityWithRealDex guards sync durability: an async backup attempt
-// would send a create that outlasts Dex's roughly seven-second local phase while the first is in flight.
-func TestSlowCreateIsSentOnceUnderSyncDurabilityWithRealDex(t *testing.T) {
-	provider, flow, harness := newConfluenceIntegrationHarness(t, integrationCloudID, slowRequestTimeout)
+// TestCreateIsSentOnceWithRealDex checks the provider request and created page counts.
+func TestCreateIsSentOnceWithRealDex(t *testing.T) {
+	provider, flow, harness := newConfluenceIntegrationHarness(t, integrationCloudID, shortRequestTimeout)
 	ctx := integrationContext(t)
 
-	title := markerSlowCreate + " Generator testing policy"
-	publication := runPublicationFlow(t, ctx, harness, flow, "slow-create", publicationInput(title))
+	title := "Generator testing policy"
+	publication := runPublicationFlow(t, ctx, harness, flow, "single-create", publicationInput(title))
 	require.Equal(t, PhasePublished, publication.Phase)
 	require.False(t, publication.IsExistingPageUpdated, "the Step reports its own page as created, not as a title conflict")
 	require.Equal(t, 1, provider.createCount(title), "one Step execution sends one create")
 	require.Equal(t, 1, provider.pageCount(title))
 }
 
-// TestSlowUpdateBackupAttemptConvergesOnItsVersionWithRealDex proves updatePage is safe under async
-// durability: a backup attempt's repeated update is refused and finds the version the first attempt saved.
-func TestSlowUpdateBackupAttemptConvergesOnItsVersionWithRealDex(t *testing.T) {
-	provider, flow, harness := newConfluenceIntegrationHarness(t, integrationCloudID, slowRequestTimeout)
+// TestLostWorkerDuringUpdateConvergesOnItsVersionWithRealDex checks a repeated update after Worker loss.
+func TestLostWorkerDuringUpdateConvergesOnItsVersionWithRealDex(t *testing.T) {
+	provider, flow, harness := newConfluenceIntegrationHarness(t, integrationCloudID, heldRequestTimeout)
 	ctx := integrationContext(t)
-	title := markerSlowUpdate + " Expense policy"
+	title := markerHeldUpdate + " Expense policy"
 	provider.seedPage(title, 2)
+	provider.holdsFirstUpdate = make(chan struct{})
+	defer close(provider.holdsFirstUpdate)
 
-	publication := runPublicationFlow(t, ctx, harness, flow, "slow-update", publicationInput(title))
+	flowID := startPublicationFlow(t, ctx, harness, flow, "lost-worker-update", publicationInput(title))
+	require.Eventually(t, func() bool { return provider.updateCount(title) == 1 && provider.currentVersion(title) == 3 }, 30*time.Second, 50*time.Millisecond)
+	harness.replaceWorker(t)
+	publication := waitForFlowOutput(t, ctx, harness, flowID)
 	require.Equal(t, PhasePublished, publication.Phase)
 	require.Equal(t, 3, publication.VersionNumber)
 	require.Equal(t, 3, provider.currentVersion(title), "the page changed once")
-	t.Logf("slow update: update requests=%d, confirmed by read-back=%t", provider.updateCount(title), publication.IsConfirmedByReadBack)
+	require.Equal(t, 2, provider.updateCount(title), "the replacement Worker retried the same version")
+	require.True(t, publication.IsConfirmedByReadBack)
 }
 
 func TestCreateTimeoutIsConfirmedByTitleWithoutASecondPageWithRealDex(t *testing.T) {
@@ -179,15 +179,14 @@ func TestConcurrentEditIsParkedAndPublishedOverOnlyAfterReviewWithRealDex(t *tes
 	require.Equal(t, 7, provider.currentVersion(title))
 }
 
-// TestSlowCommentIsSentOnceUnderSyncDurabilityWithRealDex guards sync durability for addComment: a backup
-// attempt cannot see the local attempt's checkpoint and would add a second comment.
-func TestSlowCommentIsSentOnceUnderSyncDurabilityWithRealDex(t *testing.T) {
-	provider, flow, harness := newConfluenceIntegrationHarness(t, integrationCloudID, slowRequestTimeout)
+// TestCommentIsSentOnceWithRealDex checks the provider request and stored comment counts.
+func TestCommentIsSentOnceWithRealDex(t *testing.T) {
+	provider, flow, harness := newConfluenceIntegrationHarness(t, integrationCloudID, shortRequestTimeout)
 	ctx := integrationContext(t)
 
 	input := publicationInput("Parking policy")
-	input.PublicationComment = markerSlowComment + " Published for review."
-	publication := runPublicationFlow(t, ctx, harness, flow, "slow-comment", input)
+	input.PublicationComment = "Published for review."
+	publication := runPublicationFlow(t, ctx, harness, flow, "single-comment", input)
 	require.Equal(t, PhasePublished, publication.Phase)
 	require.NotEmpty(t, publication.CommentID)
 	require.Equal(t, 1, provider.commentCount(publication.PageID))
@@ -268,6 +267,7 @@ type fakeConfluence struct {
 	pages             map[string]*fakePage
 	createTimes       map[string][]time.Time
 	updates           map[string]int
+	holdsFirstUpdate  chan struct{}
 	comments          map[string][]fakeComment
 	searches          []string
 	resourcesRequests int
@@ -420,9 +420,6 @@ func (provider *fakeConfluence) createPage(response http.ResponseWriter, request
 	case strings.Contains(body.Title, markerCreateTimeout):
 		// Confluence stored the page, but the response never arrives before the connector gives up.
 		<-request.Context().Done()
-	case strings.Contains(body.Title, markerSlowCreate):
-		time.Sleep(slowProviderDelay)
-		provider.writeJSON(response, http.StatusOK, created)
 	default:
 		provider.writeJSON(response, http.StatusOK, created)
 	}
@@ -497,9 +494,12 @@ func (provider *fakeConfluence) updatePage(response http.ResponseWriter, request
 		provider.writeJSON(response, http.StatusConflict, `{"errors":[{"status":409,"title":"SENTINEL Version must be incremented"}]}`)
 		return
 	}
-	if strings.Contains(page.title, markerSlowUpdate) {
-		// Confluence saved the version, but the response arrives after Dex's async local phase ends.
-		time.Sleep(slowProviderDelay)
+	if strings.Contains(page.title, markerHeldUpdate) {
+		select {
+		case <-provider.holdsFirstUpdate:
+		case <-request.Context().Done():
+			return
+		}
 	}
 	provider.writeJSON(response, http.StatusOK, updated)
 }
@@ -523,9 +523,6 @@ func (provider *fakeConfluence) createComment(response http.ResponseWriter, requ
 	case strings.Contains(body.Body.Value, markerCommentTimeout):
 		// Confluence stored the comment, but the response never arrives before the connector gives up.
 		<-request.Context().Done()
-	case strings.Contains(body.Body.Value, markerSlowComment):
-		time.Sleep(slowProviderDelay)
-		provider.writeJSON(response, http.StatusCreated, provider.commentJSON(body.PageID, comment))
 	default:
 		provider.writeJSON(response, http.StatusCreated, provider.commentJSON(body.PageID, comment))
 	}
@@ -697,23 +694,39 @@ func newConfluenceIntegrationHarnessWithConnection(t *testing.T, connection conf
 		FlowServiceAddress: harness.serverAddress,
 	})
 	require.NoError(t, err)
-	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: harness.serverAddress})
+	t.Cleanup(func() {
+		stopCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		var workerError error
+		if harness.worker != nil {
+			workerError = errors.Join(harness.worker.Stop(stopCtx), <-harness.workerResult)
+		}
+		require.NoError(t, errors.Join(workerError, harness.client.Close(), harness.cache.Close()))
+	})
+	harness.startWorker(t)
+	return flow, harness
+}
+
+func (harness *confluenceIntegrationHarness) startWorker(t *testing.T) {
+	t.Helper()
+	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{FlowServiceAddress: harness.serverAddress})
 	require.NoError(t, err)
 	harness.worker = worker
 	harness.workerResult = make(chan error, 1)
 	go func() { harness.workerResult <- worker.Start() }()
-	t.Cleanup(func() {
-		stopCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		require.NoError(t, errors.Join(harness.worker.Stop(stopCtx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
-	})
-	{
-		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
-		registrationError := worker.WaitPullRegistered(registrationContext)
-		cancelRegistration()
-		require.NoError(t, registrationError)
-	}
-	return flow, harness
+	registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+	registrationError := worker.WaitPullRegistered(registrationContext)
+	cancelRegistration()
+	require.NoError(t, registrationError)
+}
+
+func (harness *confluenceIntegrationHarness) replaceWorker(t *testing.T) {
+	t.Helper()
+	expired, cancel := context.WithCancel(context.Background())
+	cancel()
+	_ = harness.worker.Stop(expired)
+	require.NoError(t, <-harness.workerResult)
+	harness.startWorker(t)
 }
 
 func environmentOr(name string, fallback string) string {

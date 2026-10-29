@@ -240,18 +240,15 @@ description. The branch table matches `createIssue`, except that a 404 selects
 ## Avoiding duplicate issues and comments
 
 `createIssue` and `addComment` use sync Execute durability even though a
-request is usually fast. With async durability, Dex runs the Step in a local
-phase of about seven seconds and then dispatches a fallback attempt, so a slow
-request is sent a second time while the first is still in flight. A real Dex
-run with a Jira fake that held the create response for nine seconds recorded
-two create requests under async durability and one under sync;
-`TestSlowCreateIsSentOnceUnderSyncDurabilityWithRealDex` guards this. Do not
-override these Steps to async.
+request is usually fast. Sync persists a result before the Flow advances;
+async may replay one lost before its batched commit. Both modes use the same
+attempt and retry rules. The create test records one request and one issue;
+the timeout and lost-Worker tests check uncertain outcomes without a second
+write. Keep these Steps sync to reduce replay risk.
 
-`transitionIssue` keeps the async default. The same nine-second fake holding the
-transition response recorded one transition request: the fallback attempt read
-the issue, found it in the destination status, and sent nothing;
-`TestSlowTransitionBackupAttemptMovesTheIssueOnceWithRealDex` guards this.
+`transitionIssue` keeps the async default. A lost Worker after Jira applies
+the transition causes another Execute; it reads the destination status and
+does not send the transition again. The integration test checks one POST.
 
 Each create and comment includes a non-secret hash of the stable Call ID in a
 Jira entity property. The released `sdkgo/singledispatch` fence owns the Dex
