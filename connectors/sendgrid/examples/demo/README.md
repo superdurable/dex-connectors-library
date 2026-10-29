@@ -1,6 +1,6 @@
 # SendGrid demo Flow
 
-This runnable Flow calls `getStats` with the static `sendgrid` connection. The start input passes through to the generated operation Step; its happy-path result completes the Flow. Dex Web summary and display RPCs identify the static connection. Optional provider branches are unwired and fail the Flow when selected.
+This runnable Flow calls `getStats` with the static `sendgrid` connection. The start input passes through to the generated operation Step; its happy-path result completes the Flow. Dex Web summary and display RPCs show the persisted provider result. Optional provider branches are unwired and fail the Flow when selected.
 
 ## Strict FDG 2.0 generation
 
