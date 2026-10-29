@@ -8,7 +8,6 @@ package demo
 import (
 	"context"
 	"errors"
-	"net"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -29,17 +28,13 @@ func TestDemoUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	address := listener.Addr().String()
-	require.NoError(t, listener.Close())
 	serverAddress := os.Getenv("DEX_FLOW_SERVICE_ADDRESS")
 	if serverAddress == "" {
 		serverAddress = "127.0.0.1:8801"
 	}
-	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{BindAddress: address, FlowServiceAddress: serverAddress, WorkerTarget: dex.WorkerTarget{Address: address}})
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: serverAddress})
 	require.NoError(t, err)
-	client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: serverAddress, WorkerTarget: &dex.WorkerTarget{Address: address}})
+	client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: serverAddress})
 	require.NoError(t, err)
 	workerResult := make(chan error, 1)
 	go func() { workerResult <- worker.Start() }()
@@ -50,6 +45,7 @@ func TestDemoUsesDefaultMockWithRealDex(t *testing.T) {
 	})
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
+	require.NoError(t, worker.WaitPullRegistered(ctx))
 	flowID := "sendgrid-demo-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
 	_, err = client.StartFlow(ctx, flow, flowID, sendgrid.GetStatsInput{StartDate: "2026-10-01", EndDate: "2026-10-28"}, dex.StartFlowOptions{})
 	require.NoError(t, err)

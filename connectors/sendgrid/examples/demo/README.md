@@ -29,6 +29,6 @@ In Dex Web Start Flow, choose `SendGridDemo` and enter a unique Flow ID with thi
 {"startDate":"2026-10-01","endDate":"2026-10-28"}
 ```
 
-The Worker starts when the Dex Server is reachable. The Flow returns `StatsOutput`. The provider connection name is fixed in `flow/workflow.go`.
+The pull Worker connects to the Dex Server without an inbound listener. The Flow returns `StatsOutput`. The provider connection name is fixed in `flow/workflow.go`.
 
 CI runs the mock-backed real-Dex integration test. Local provider and deterministic Flow tests run with `GOWORK=off go test -race ./...` from the connector directory.
