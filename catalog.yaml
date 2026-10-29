@@ -58,6 +58,7 @@ directories:
   - connectors/newsapi
   - connectors/notion
   - connectors/openai
+  - connectors/paypal
   - connectors/pipedrive
   - connectors/postgresql
   - connectors/reamaze
