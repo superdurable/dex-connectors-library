@@ -1,0 +1,96 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: paypal
+  displayName: PayPal
+  description: "Read PayPal resources through typed Dex Query Steps."
+  company: PayPal
+  version: v0.1.0
+spec:
+  provider: paypal
+  codegen:
+    go:
+      package: paypal
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: "Use the provider HTTPS API URL. Blank uses the displayed default; override for a matching sandbox or local test server."
+        default: https://api-m.paypal.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: "Maximum duration of one provider HTTP request as a positive Go duration, such as 15s or 1m. Blank uses the displayed default; override for slow network paths."
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Maximum provider JSON response size in bytes as a positive integer. Blank uses the displayed default; raise only for larger result pages."
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: paypal-api-key
+    fields:
+      - name: client_id
+        goName: ClientID
+        type: string
+        description: "PayPal REST app client ID from https://developer.paypal.com/dashboard/applications/live > the app. It is an opaque identifier paired with the secret client_secret. Blank prevents token exchange."
+        required: true
+      - name: client_secret
+        goName: ClientSecret
+        type: secretString
+        description: "Secret of the REST app at https://developer.paypal.com/dashboard/applications/live > the app > Secret. PayPal exchanges it for a short-lived bearer token; blank prevents calls."
+        required: true
+    guide:
+      startURL: https://developer.paypal.com/dashboard/applications/live
+      steps:
+        - "At https://developer.paypal.com/dashboard/applications/live create or select a REST app, enable Transaction Search when listTransactions is needed, and copy its client ID and secret into client_id and client_secret. Both are stored in Dex credentials; the secret is never returned. For sandbox use the matching sandbox app and baseUrl https://api-m.sandbox.paypal.com. Blank credentials prevent calls."
+        - "Set baseUrl, timeout, and maxResponseBytes only as described below; defaults appear in parentheses in Dex Web."
+  operations:
+    - name: getOrder
+      goName: GetOrder
+      inputType: GetOrderInput
+      outputType: Order
+      kind: query
+      description: "Read one PayPal checkout order."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "Read one PayPal checkout order."}
+        - {id: notFound, goName: NotFound, description: The requested resource was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: defaultAnswer
+          branch: found
+          description: "A realistic read-only getOrder response for a Meridian account."
+          default: true
+          output: {"id":"ORDER101","status":"COMPLETED"}
+    - name: listTransactions
+      goName: ListTransactions
+      inputType: ListTransactionsInput
+      outputType: TransactionPage
+      kind: query
+      description: "List one page of PayPal transactions in a date range."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "List one page of PayPal transactions in a date range."}
+        - {id: notFound, goName: NotFound, description: The requested resource was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: defaultAnswer
+          branch: listed
+          description: "A realistic read-only listTransactions response for a Meridian account."
+          default: true
+          output: {"transaction_details":[{"transaction_info":{"transaction_id":"TXN101","transaction_status":"S","transaction_amount":{"currency_code":"USD","value":"29.00"}}}],"page":1,"total_pages":1}

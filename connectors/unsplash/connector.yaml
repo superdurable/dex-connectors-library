@@ -1,0 +1,87 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: unsplash
+  displayName: Unsplash
+  description: Search public photos and retrieve one photo through Unsplash.
+  company: Unsplash
+  version: v0.1.0
+spec:
+  provider: unsplash
+  codegen:
+    go:
+      package: unsplash
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Unsplash API base URL; leave blank for the public endpoint, or enter a compatible HTTPS gateway URL for a custom deployment.
+        default: https://api.unsplash.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Positive Go duration limiting each HTTP request; leave blank for the displayed default, or override for a slower network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum response bytes as a positive integer; leave blank for the displayed safety limit, or raise it for a larger photo page.
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: unsplash-access-key
+    fields:
+      - name: access_key
+        goName: AccessKey
+        type: secretString
+        required: true
+        description: Unsplash application Access Key from https://unsplash.com/oauth/applications after New Application; a secret-looking string used in the Client-ID header. Blank prevents requests.
+    guide:
+      startURL: https://unsplash.com/oauth/applications
+      steps:
+        - Sign in at https://unsplash.com and open Your apps at https://unsplash.com/oauth/applications.
+        - Choose New Application, accept the API guidelines, enter its name and description, and copy its Access Key.
+        - Paste that string into secret access_key; leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
+  operations:
+    - name: searchPhotos
+      goName: SearchPhotos
+      inputType: SearchPhotosInput
+      outputType: PhotoPage
+      kind: query
+      description: Search one page of public photos.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: searched, goName: Searched, description: "Unsplash returned a page of photos, possibly empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: Unsplash rejected the search or key., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Unsplash returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - name: searchedDefaultPhotos
+          branch: searched
+          description: One office photo in the search results.
+          default: true
+          output: {total: 1, totalPages: 1, photos: [{id: "office-1", description: "A sunlit office", altDescription: "sunlit office interior", htmlUrl: "https://unsplash.com/photos/office-1", regularUrl: "https://images.unsplash.com/photo-office-1", photographerName: "A. Photographer", photographerURL: "https://unsplash.com/@photographer"}]}
+    - name: getPhoto
+      goName: GetPhoto
+      inputType: GetPhotoInput
+      outputType: Photo
+      kind: query
+      description: Retrieve one public photo by ID.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Unsplash returned the photo.}
+        - {id: notFound, goName: NotFound, description: No photo has that ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Unsplash rejected the request or key., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Unsplash returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - name: foundDefaultPhoto
+          branch: found
+          description: The same office photo is available by ID.
+          default: true
+          output: {id: "office-1", description: "A sunlit office", altDescription: "sunlit office interior", htmlUrl: "https://unsplash.com/photos/office-1", regularUrl: "https://images.unsplash.com/photo-office-1", photographerName: "A. Photographer", photographerURL: "https://unsplash.com/@photographer"}

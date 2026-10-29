@@ -1,0 +1,176 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: sentry
+  displayName: Sentry
+  description: Read and act through the Sentry public API.
+  company: Sentry
+  version: v0.1.0
+spec:
+  provider: sentry
+  codegen:
+    go:
+      package: sentry
+  configuration:
+    fields:
+    - name: baseUrl
+      goName: BaseURL
+      type: url
+      description: Sentry API base URL. Leave blank for the displayed public endpoint;
+        override only for a compatible gateway or local test server.
+      default: https://sentry.io/api/0
+    - name: timeout
+      goName: Timeout
+      type: duration
+      description: Maximum time for one HTTP request, as a positive Go duration such
+        as 15s or 1m. Leave blank for the displayed default; override for slower gateways.
+      default: 15s
+    - name: maxResponseBytes
+      goName: MaxResponseBytes
+      type: integer
+      description: Maximum accepted response size in bytes. Leave blank for the displayed
+        default; increase only for larger legitimate pages.
+      default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: sentry-api-key
+    fields:
+    - name: api_key
+      goName: APIKey
+      type: secretString
+      required: true
+      description: Secret Sentry token. Start at https://sentry.io/settings/account/api/auth-tokens/,
+        follow User Settings > Auth Tokens > Create New Token. Create an auth token
+        with event:read for reads and event:write for status updates. Copy the opaque
+        secret; blank prevents requests. It is sent only in the Authorization header.
+    guide:
+      startURL: https://sentry.io/settings/account/api/auth-tokens/
+      steps:
+      - Open https://sentry.io/settings/account/api/auth-tokens/ and sign in or create
+        an account.
+      - Follow User Settings > Auth Tokens > Create New Token. Create an auth token
+        with event:read for reads and event:write for status updates. Copy the opaque
+        secret; blank prevents requests.
+      - Paste the token into the secret api_key field and save the connection; leave
+        baseUrl, timeout, and maxResponseBytes blank to use their displayed defaults.
+  operations:
+  - name: listIssues
+    goName: ListIssues
+    inputType: ListIssuesInput
+    outputType: IssuePage
+    kind: query
+    description: ListIssues through the Sentry public JSON API.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: listed
+      goName: Listed
+      description: Sentry returned the requested result.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: The provider definitively rejected the request.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: The provider returned malformed or oversized JSON.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Local input or connection credentials are invalid.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: listIssuesDefault
+      branch: listed
+      description: A representative Sentry response.
+      default: true
+      output:
+        issues:
+        - id: '123'
+          shortId: APP-1
+          title: ExampleError
+          status: unresolved
+  - name: getIssue
+    goName: GetIssue
+    inputType: GetIssueInput
+    outputType: Issue
+    kind: query
+    description: GetIssue through the Sentry public JSON API.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: found
+      goName: Found
+      description: Sentry returned the requested result.
+    - id: notFound
+      goName: NotFound
+      description: The requested resource does not exist.
+      optional: true
+    - id: providerRejected
+      goName: ProviderRejected
+      description: The provider definitively rejected the request.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: The provider returned malformed or oversized JSON.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Local input or connection credentials are invalid.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: getIssueDefault
+      branch: found
+      description: A representative Sentry response.
+      default: true
+      output:
+        id: '123'
+        shortId: APP-1
+        title: ExampleError
+        status: unresolved
+  - name: updateIssueStatus
+    goName: UpdateIssueStatus
+    inputType: UpdateIssueStatusInput
+    outputType: Issue
+    kind: mutation
+    description: UpdateIssueStatus through the Sentry public JSON API.
+    idempotency: required
+    authorization: required
+    branches:
+    - id: updated
+      goName: Updated
+      description: Sentry returned the requested result.
+    - id: notFound
+      goName: NotFound
+      description: The requested resource does not exist.
+      optional: true
+    - id: providerRejected
+      goName: ProviderRejected
+      description: The provider definitively rejected the request.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: The provider returned malformed or oversized JSON.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Local input or connection credentials are invalid.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: updateIssueStatusDefault
+      branch: updated
+      description: A representative Sentry response.
+      default: true
+      output:
+        id: '123'
+        shortId: APP-1
+        title: ExampleError
+        status: resolved

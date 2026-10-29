@@ -1,0 +1,90 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: vercel
+  displayName: Vercel
+  description: "Use the Vercel REST API through typed Dex connector Steps."
+  company: Vercel
+  version: v0.1.0
+spec:
+  provider: vercel
+  codegen:
+    go:
+      package: vercel
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: "Vercel REST API base URL. Leave blank for the displayed provider endpoint; override only for a compatible HTTPS gateway or loopback test server."
+        default: https://api.vercel.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: "Positive Go duration bounding one HTTP request; leave blank for the displayed default, or override for a slower network."
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Positive byte limit for one response; leave blank for the displayed default, or override for larger pages."
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: vercel-api-key
+    fields:
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        description: "Secret Vercel access token from Account Settings > Tokens at https://vercel.com/account/tokens. Create a token for the account or team that owns the deployments; copy it once. Blank prevents requests."
+        required: true
+    guide:
+      startURL: https://vercel.com/account/tokens
+      steps:
+        - "Open https://vercel.com/account/tokens in Account Settings > Tokens and create a token scoped to the personal account or team whose deployments you will read."
+        - "Copy the secret token into access_token; leave baseUrl, timeout, and maxResponseBytes blank unless changing their displayed defaults."
+  operations:
+    - name: listDeployments
+      goName: ListDeployments
+      inputType: ListDeploymentsInput
+      outputType: DeploymentsPage
+      kind: query
+      description: "List deployments visible to a personal account or team."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "List deployments visible to a personal account or team."}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: listedDefault
+          branch: listed
+          description: "A Meridian example returns a representative DeploymentsPage."
+          default: true
+          output: {"deployments":[{"uid":"dpl_meridian1","name":"meridian-web","url":"meridian-web.vercel.app","state":"READY","created":1761436800000}],"pagination":{"next":null}}
+    - name: getDeployment
+      goName: GetDeployment
+      inputType: GetDeploymentInput
+      outputType: Deployment
+      kind: query
+      description: "Read a deployment by Vercel deployment ID or hostname."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "Read a deployment by Vercel deployment ID or hostname."}
+        - {id: notFound, goName: NotFound, description: The requested resource does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: foundDefault
+          branch: found
+          description: "A Meridian example returns a representative Deployment."
+          default: true
+          output: {"uid":"dpl_meridian1","name":"meridian-web","url":"meridian-web.vercel.app","state":"READY","created":1761436800000}

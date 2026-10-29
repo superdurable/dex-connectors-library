@@ -2,24 +2,35 @@ apiVersion: connectors.dex.dev/catalog-source/v1alpha1
 kind: ConnectorCatalogSource
 directories:
   - connectors/airtable
+  - connectors/algolia
+  - connectors/alphavantage
   - connectors/amazon/s3
   - connectors/amazon/sqs
   - connectors/asana
+  - connectors/atlassian/bitbucket
   - connectors/atlassian/confluence
   - connectors/atlassian/jira
   - connectors/atlassian/jira-service-management
   - connectors/atlassian/trello
   - connectors/bamboohr
+  - connectors/brevo
   - connectors/calendly
   - connectors/clickup
+  - connectors/close
+  - connectors/cloudflare
   - connectors/coda
+  - connectors/cohere
   - connectors/contentful
+  - connectors/datadog
   - connectors/discord
   - connectors/docusign
   - connectors/doist/todoist
+  - connectors/elevenlabs
+  - connectors/figma
   - connectors/freshworks/freshdesk
   - connectors/front
   - connectors/github
+  - connectors/gitlab
   - connectors/google/calendar
   - connectors/google/docs
   - connectors/google/drive
@@ -31,14 +42,17 @@ directories:
   - connectors/google/youtube
   - connectors/gorgias
   - connectors/hackernews
+  - connectors/harvest
   - connectors/helpscout
   - connectors/hiver
   - connectors/hubspot
   - connectors/intercom
   - connectors/intuit/mailchimp
   - connectors/intuit/quickbooks
+  - connectors/klaviyo
   - connectors/linear
   - connectors/linkedin
+  - connectors/mailgun
   - connectors/microsoft/entra-id
   - connectors/microsoft/excel
   - connectors/microsoft/onedrive
@@ -46,28 +60,44 @@ directories:
   - connectors/microsoft/outlook-mail
   - connectors/microsoft/sql-server
   - connectors/microsoft/teams
+  - connectors/mixpanel
   - connectors/monday
   - connectors/mysql
+  - connectors/netlify
   - connectors/newsapi
   - connectors/notion
   - connectors/openai
+  - connectors/openweathermap
+  - connectors/pagerduty
+  - connectors/paypal
   - connectors/pinecone
   - connectors/pipedrive
   - connectors/postgresql
+  - connectors/postmark
   - connectors/reamaze
+  - connectors/resend
   - connectors/salesforce
+  - connectors/sendgrid
+  - connectors/sentry
+  - connectors/shopify
   - connectors/slack
+  - connectors/smartsheet
   - connectors/snowflake
   - connectors/spotify
+  - connectors/square
   - connectors/stripe
   - connectors/supabase
   - connectors/superdurable/email
   - connectors/superdurable/llm
   - connectors/superdurable/oauth2-http
   - connectors/superdurable/webhook
+  - connectors/tmdb
   - connectors/twilio/messaging
   - connectors/typeform
+  - connectors/unsplash
+  - connectors/vercel
   - connectors/webflow
+  - connectors/woocommerce
   - connectors/xero
   - connectors/zendesk/support
   - connectors/zoho/crm

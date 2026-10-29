@@ -1,0 +1,100 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: smartsheet
+  displayName: Smartsheet
+  description: Read Smartsheet records with a connection-owned API key.
+  company: Smartsheet
+  version: v0.1.0
+spec:
+  provider: smartsheet
+  codegen:
+    go:
+      package: smartsheet
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: "Public Smartsheet HTTPS API root; blank uses the displayed default. Override only for a trusted compatible gateway or loopback test server, and never include a key in the URL."
+        default: https://api.smartsheet.com/2.0
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: "Maximum duration of one Smartsheet HTTP read, as a positive Go duration such as 15s or 1m. Blank uses the displayed default; raise it only for slow large reads."
+        default: 30s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Maximum bytes accepted from one Smartsheet JSON response, as a positive integer. Blank uses the displayed default; raise it for large pages or files. Oversized data selects invalidResponse."
+        default: 4194304
+  auth:
+    type: apiKey
+    connectionKind: smartsheet-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        description: "Secret Smartsheet API token from https://app.smartsheet.com (Account icon > Personal Settings > API Access > Generate new access token); copy the token when generated, paste it here, and keep it secret. Blank makes every operation select defect before a request."
+        required: true
+    guide:
+      startURL: https://app.smartsheet.com
+      steps:
+        - "Open https://app.smartsheet.com and sign in; navigate to Account icon > Personal Settings > API Access > Generate new access token."
+        - "Create a token for the identity that may read the desired resources and copy the secret value when shown."
+        - "Paste it into secret api_key. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults."
+        - "To revoke access, delete the token on the same provider page."
+  operations:
+    - name: listSheets
+      goName: ListSheets
+      inputType: ListSheetsInput
+      outputType: SheetPage
+      kind: query
+      description: Read Smartsheet data from the documented listSheets endpoint.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Smartsheet returned the requested data."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Smartsheet conclusively rejected the read.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Smartsheet returned malformed or oversized JSON.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 45s
+        durability: async
+      mocks:
+        - name: defaultAnswer
+          branch: listed
+          description: "One Meridian sample record from the same example world."
+          default: true
+          output: {sheets: [{id: 1001, name: Meridian Planning}], pageNumber: 1, totalCount: 1}
+        - name: invalidKey
+          branch: providerRejected
+          description: "The connection token is invalid."
+          failure: {kind: AUTHENTICATION, message: "Smartsheet rejected the token."}
+    - name: getSheet
+      goName: GetSheet
+      inputType: GetSheetInput
+      outputType: Sheet
+      kind: query
+      description: Read Smartsheet data from the documented getSheet endpoint.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "Smartsheet returned the requested data."}
+        - {id: notFound, goName: NotFound, description: "Smartsheet does not have the requested resource.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: "Smartsheet conclusively rejected the read.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Smartsheet returned malformed or oversized JSON.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 45s
+        durability: async
+      mocks:
+        - name: defaultAnswer
+          branch: found
+          description: "One Meridian sample record from the same example world."
+          default: true
+          output: {id: 1001, name: Meridian Planning, columns: [{id: 2001, title: Task}], rows: []}
+        - name: invalidKey
+          branch: providerRejected
+          description: "The connection token is invalid."
+          failure: {kind: AUTHENTICATION, message: "Smartsheet rejected the token."}
