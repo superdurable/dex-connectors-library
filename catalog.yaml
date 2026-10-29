@@ -12,12 +12,15 @@ directories:
   - connectors/bamboohr
   - connectors/calendly
   - connectors/clickup
+  - connectors/cloudflare
+  - connectors/datadog
   - connectors/discord
   - connectors/docusign
   - connectors/doist/todoist
   - connectors/freshworks/freshdesk
   - connectors/front
   - connectors/github
+  - connectors/gitlab
   - connectors/google/calendar
   - connectors/google/docs
   - connectors/google/drive
@@ -46,6 +49,7 @@ directories:
   - connectors/microsoft/teams
   - connectors/monday
   - connectors/mysql
+  - connectors/netlify
   - connectors/newsapi
   - connectors/notion
   - connectors/openai
@@ -63,6 +67,7 @@ directories:
   - connectors/superdurable/webhook
   - connectors/twilio/messaging
   - connectors/typeform
+  - connectors/vercel
   - connectors/xero
   - connectors/zendesk/support
   - connectors/zoho/crm

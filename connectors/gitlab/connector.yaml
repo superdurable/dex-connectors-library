@@ -1,0 +1,114 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: gitlab
+  displayName: GitLab
+  description: "Use the GitLab REST API through typed Dex connector Steps."
+  company: GitLab
+  version: v0.1.0
+spec:
+  provider: gitlab
+  codegen:
+    go:
+      package: gitlab
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: "GitLab REST API base URL. Leave blank for the displayed GitLab.com endpoint; use your self-managed instance HTTPS URL ending in /api/v4, a compatible gateway, or a loopback test server."
+        default: https://gitlab.com/api/v4
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: "Positive Go duration bounding one HTTP request; leave blank for the displayed default, or override for a slower network."
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Positive byte limit for one response; leave blank for the displayed default, or override for larger pages."
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: gitlab-api-key
+    fields:
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        description: "Secret GitLab personal access token from User Settings > Access Tokens at https://gitlab.com/-/user_settings/personal_access_tokens. Create a token with read_api for reads or api for label updates, and copy it. Blank prevents requests."
+        required: true
+    guide:
+      startURL: https://gitlab.com/-/user_settings/personal_access_tokens
+      steps:
+        - "Open https://gitlab.com/-/user_settings/personal_access_tokens and select User Settings > Access Tokens."
+        - "Create a personal token with read_api for read-only use or api for updateIssueLabels, then copy it into secret access_token. Leave baseUrl, timeout, and maxResponseBytes blank unless changing their displayed defaults."
+  operations:
+    - name: getProject
+      goName: GetProject
+      inputType: GetProjectInput
+      outputType: Project
+      kind: query
+      description: "Read one GitLab project by numeric ID or namespace path."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "Read one GitLab project by numeric ID or namespace path."}
+        - {id: notFound, goName: NotFound, description: The requested resource does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: foundDefault
+          branch: found
+          description: "A Meridian example returns a representative Project."
+          default: true
+          output: {"id":42,"name":"Meridian Web","path_with_namespace":"meridian/web","web_url":"https://gitlab.com/meridian/web"}
+    - name: listIssues
+      goName: ListIssues
+      inputType: ListIssuesInput
+      outputType: IssuesPage
+      kind: query
+      description: "List the first page of issues for a GitLab project."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "List the first page of issues for a GitLab project."}
+        - {id: notFound, goName: NotFound, description: The requested resource does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: listedDefault
+          branch: listed
+          description: "A Meridian example returns a representative IssuesPage."
+          default: true
+          output: {"issues":[{"id":123,"iid":7,"title":"Review release notes","labels":["review"],"web_url":"https://gitlab.com/meridian/web/-/issues/7"}]}
+    - name: updateIssueLabels
+      goName: UpdateIssueLabels
+      inputType: UpdateIssueLabelsInput
+      outputType: Issue
+      kind: mutation
+      description: "Replace one GitLab issue's complete label set; repeating the request is safe."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: updated, goName: Updated, description: "Replace one GitLab issue's complete label set; repeating the request is safe."}
+        - {id: notFound, goName: NotFound, description: The requested resource does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: updatedDefault
+          branch: updated
+          description: "A Meridian example returns a representative Issue."
+          default: true
+          output: {"id":123,"iid":7,"title":"Review release notes","labels":["review","ready"],"web_url":"https://gitlab.com/meridian/web/-/issues/7"}
