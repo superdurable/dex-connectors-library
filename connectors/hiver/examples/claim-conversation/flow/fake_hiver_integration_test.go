@@ -46,7 +46,7 @@ type fakeHiver struct {
 	requests           map[string][]fakeRecordedRequest
 
 	claimsOnRead                string
-	delaysFirstUpdate           bool
+	holdsFirstUpdate            chan struct{}
 	delaysFirstNote             bool
 	losesFirstNoteResponse      bool
 	rateLimitsFirstNote         bool
@@ -218,11 +218,6 @@ func (provider *fakeHiver) readConversation(response http.ResponseWriter, reques
 
 func (provider *fakeHiver) updateConversation(response http.ResponseWriter, request *http.Request, body []byte, inbox *fakeInbox, conversation *fakeConversation) {
 	attempt := provider.record("update", request, body)
-	if provider.delaysFirstUpdate && attempt == 1 {
-		provider.delayedRequests.Add(1)
-		defer provider.delayedRequests.Done()
-		time.Sleep(slowResponseDelay)
-	}
 	var change struct {
 		Status   *struct{ Name string }  `json:"status"`
 		Assignee *struct{ Email string } `json:"assignee"`
@@ -233,9 +228,9 @@ func (provider *fakeHiver) updateConversation(response http.ResponseWriter, requ
 	}
 	require.NoError(provider.t, json.Unmarshal(body, &change))
 	provider.mutex.Lock()
-	defer provider.mutex.Unlock()
 	statuses := map[string]string{"open": "open", "pending": "pending", "close": "closed"}
 	if change.Status != nil && statuses[change.Status.Name] == "" {
+		provider.mutex.Unlock()
 		provider.writeJSON(response, http.StatusBadRequest, `{"errors":[{"message":"invalid status"}]}`)
 		return
 	}
@@ -247,6 +242,7 @@ func (provider *fakeHiver) updateConversation(response http.ResponseWriter, requ
 			}
 		}
 		if assigneeID == "" {
+			provider.mutex.Unlock()
 			provider.writeJSON(response, http.StatusBadRequest, `{"errors":[{"message":"assignee is not an inbox user"}]}`)
 			return
 		}
@@ -254,6 +250,7 @@ func (provider *fakeHiver) updateConversation(response http.ResponseWriter, requ
 	if change.Tags != nil {
 		for _, id := range slices.Concat(change.Tags.ToApply, change.Tags.ToRemove) {
 			if _, isTag := inbox.tags[id]; !isTag {
+				provider.mutex.Unlock()
 				provider.writeJSON(response, http.StatusBadRequest, `{"errors":[{"message":"unknown tag"}]}`)
 				return
 			}
@@ -270,6 +267,16 @@ func (provider *fakeHiver) updateConversation(response http.ResponseWriter, requ
 	}
 	if assigneeID != "" {
 		conversation.assigneeID = assigneeID
+	}
+	provider.mutex.Unlock()
+	if provider.holdsFirstUpdate != nil && attempt == 1 {
+		provider.delayedRequests.Add(1)
+		defer provider.delayedRequests.Done()
+		select {
+		case <-provider.holdsFirstUpdate:
+		case <-request.Context().Done():
+			return
+		}
 	}
 	response.WriteHeader(http.StatusNoContent)
 }
@@ -530,7 +537,7 @@ func (provider *fakeHiver) waitForDelayedRequests(t *testing.T) {
 	}()
 	select {
 	case <-finished:
-	case <-time.After(2 * slowResponseDelay):
+	case <-time.After(30 * time.Second):
 		t.Fatal("a delayed fake Hiver request did not finish")
 	}
 }

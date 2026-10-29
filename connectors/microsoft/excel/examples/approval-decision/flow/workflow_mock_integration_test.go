@@ -40,12 +40,12 @@ func TestApprovalDecisionExampleRunsOnExcelMockWithRealDex(t *testing.T) {
 		FlowServiceAddress: harness.serverAddress,
 	})
 	require.NoError(t, err)
-	harness.startWorker(t)
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
 		require.NoError(t, errors.Join(harness.worker.Stop(ctx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
 	})
+	harness.startWorker(t)
 
 	input := travelRequest("REQ-1001", 420)
 	decision := harness.runDecision(t, "mock-default", input)

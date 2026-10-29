@@ -54,13 +54,11 @@ type fakeLinear struct {
 	counts     map[string]int
 	requests   map[string][]map[string]any
 
-	delaysFirstCreate     bool
-	delaysFirstComment    bool
-	delaysFirstUpdate     bool
 	rejectsCreate         bool
 	rateLimitsFirstSearch bool
 	holdsFirstCreate      chan struct{}
-	slowResponseDelay     time.Duration
+	holdsFirstComment     chan struct{}
+	holdsFirstUpdate      chan struct{}
 }
 
 type fakeIssue struct {
@@ -78,7 +76,7 @@ func newFakeLinear(t *testing.T) *fakeLinear {
 	t.Helper()
 	provider := &fakeLinear{
 		t: t, clock: time.Date(2026, 1, 28, 9, 0, 0, 0, time.UTC), nextNumber: 100, issues: map[string]*fakeIssue{},
-		comments: map[string]*fakeComment{}, counts: map[string]int{}, requests: map[string][]map[string]any{}, slowResponseDelay: slowResponseDelay,
+		comments: map[string]*fakeComment{}, counts: map[string]int{}, requests: map[string][]map[string]any{},
 	}
 	provider.Server = httptest.NewServer(http.HandlerFunc(provider.serveHTTP))
 	t.Cleanup(provider.Close)
@@ -116,13 +114,13 @@ func (provider *fakeLinear) serveHTTP(response http.ResponseWriter, request *htt
 	case "LinearReadIssueSummary", "LinearGetIssue":
 		provider.writeData(response, map[string]any{"issues": map[string]any{"nodes": provider.matchingIssues(variables["filter"])}})
 	case "LinearCreateIssue":
-		provider.createIssue(response, variables["input"].(map[string]any), attempt)
+		provider.createIssue(response, request, variables["input"].(map[string]any), attempt)
 	case "LinearListWorkflowStates":
 		provider.writeData(response, provider.workflowStates(fmt.Sprint(variables["teamId"])))
 	case "LinearUpdateIssue":
-		provider.updateIssue(response, fmt.Sprint(variables["id"]), variables["input"].(map[string]any), attempt)
+		provider.updateIssue(response, request, fmt.Sprint(variables["id"]), variables["input"].(map[string]any), attempt)
 	case "LinearAddComment":
-		provider.addComment(response, variables["input"].(map[string]any), attempt)
+		provider.addComment(response, request, variables["input"].(map[string]any), attempt)
 	case "LinearReadComment":
 		provider.writeData(response, provider.readComment(variables["filter"]))
 	default:
@@ -131,20 +129,19 @@ func (provider *fakeLinear) serveHTTP(response http.ResponseWriter, request *htt
 }
 
 // delayResponse holds the answer of a write that Linear already applied, as a slow Linear would.
-func (provider *fakeLinear) delayResponse(isDelayed bool) {
-	if !isDelayed {
+func (provider *fakeLinear) delayResponse(request *http.Request, isFirstAttempt bool, hold chan struct{}) {
+	if !isFirstAttempt || hold == nil {
 		return
 	}
 	provider.delayedRequests.Add(1)
 	defer provider.delayedRequests.Done()
-	if provider.holdsFirstCreate != nil {
-		<-provider.holdsFirstCreate
-		return
+	select {
+	case <-hold:
+	case <-request.Context().Done():
 	}
-	time.Sleep(provider.slowResponseDelay)
 }
 
-func (provider *fakeLinear) createIssue(response http.ResponseWriter, input map[string]any, attempt int) {
+func (provider *fakeLinear) createIssue(response http.ResponseWriter, request *http.Request, input map[string]any, attempt int) {
 	if provider.rejectsCreate {
 		provider.writeJSON(response, http.StatusBadRequest, `{"errors":[{"message":"SENTINEL Entity not found: Team","extensions":{"type":"invalid input","code":"INPUT_ERROR","userError":true}}]}`)
 		return
@@ -173,11 +170,11 @@ func (provider *fakeLinear) createIssue(response http.ResponseWriter, input map[
 	provider.issues[issueID] = issue
 	answer := map[string]any{"issueCreate": map[string]any{"success": true, "issue": provider.issueJSON(issue)}}
 	provider.mutex.Unlock()
-	provider.delayResponse(attempt == 1 && (provider.delaysFirstCreate || provider.holdsFirstCreate != nil))
+	provider.delayResponse(request, attempt == 1, provider.holdsFirstCreate)
 	provider.writeData(response, answer)
 }
 
-func (provider *fakeLinear) updateIssue(response http.ResponseWriter, issueID string, input map[string]any, attempt int) {
+func (provider *fakeLinear) updateIssue(response http.ResponseWriter, request *http.Request, issueID string, input map[string]any, attempt int) {
 	provider.mutex.Lock()
 	issue, isFound := provider.issues[issueID]
 	if !isFound {
@@ -195,11 +192,11 @@ func (provider *fakeLinear) updateIssue(response http.ResponseWriter, issueID st
 	issue.updatedAt = provider.advanceClock()
 	answer := map[string]any{"issueUpdate": map[string]any{"success": true, "issue": provider.issueJSON(issue)}}
 	provider.mutex.Unlock()
-	provider.delayResponse(attempt == 1 && provider.delaysFirstUpdate)
+	provider.delayResponse(request, attempt == 1, provider.holdsFirstUpdate)
 	provider.writeData(response, answer)
 }
 
-func (provider *fakeLinear) addComment(response http.ResponseWriter, input map[string]any, attempt int) {
+func (provider *fakeLinear) addComment(response http.ResponseWriter, request *http.Request, input map[string]any, attempt int) {
 	commentID := fmt.Sprint(input["id"])
 	provider.mutex.Lock()
 	if _, exists := provider.comments[commentID]; exists {
@@ -217,7 +214,7 @@ func (provider *fakeLinear) addComment(response http.ResponseWriter, input map[s
 	provider.comments[commentID] = comment
 	answer := map[string]any{"commentCreate": map[string]any{"success": true, "comment": provider.commentJSON(comment)}}
 	provider.mutex.Unlock()
-	provider.delayResponse(attempt == 1 && provider.delaysFirstComment)
+	provider.delayResponse(request, attempt == 1, provider.holdsFirstComment)
 	provider.writeData(response, answer)
 }
 
@@ -383,7 +380,7 @@ func (provider *fakeLinear) waitForDelayedRequests(t *testing.T) {
 	}()
 	select {
 	case <-finished:
-	case <-time.After(3 * slowResponseDelay):
+	case <-time.After(30 * time.Second):
 		t.Fatal("a delayed fake Linear request did not finish")
 	}
 }

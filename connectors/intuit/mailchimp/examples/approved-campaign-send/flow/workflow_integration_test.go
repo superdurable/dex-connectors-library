@@ -37,9 +37,8 @@ const (
 	danaSubscriberHash = "cccd26f6b8eb83e52443ce371e249ece"
 
 	defaultRequestTimeout = 5 * time.Second
-	// slowResponseDelay outlasts Dex's roughly seven-second async local phase, so an async Step is dispatched again.
-	slowResponseDelay  = 9 * time.Second
-	slowRequestTimeout = 20 * time.Second
+	slowResponseDelay     = 100 * time.Millisecond
+	slowRequestTimeout    = 20 * time.Second
 )
 
 func integrationLaunchInput() Input {
@@ -157,19 +156,18 @@ func TestRepeatedApprovalSchedulesOneSendWithRealDex(t *testing.T) {
 	require.Equal(t, 1, provider.count("send"))
 }
 
-// TestSlowUpsertAndTagsDispatchedTwiceWriteOneContactWithRealDex holds both writes past Dex's async local phase.
+// TestSlowUpsertAndTagsDispatchedTwiceWriteOneContactWithRealDex retries after each accepted write returns 503.
 func TestSlowUpsertAndTagsDispatchedTwiceWriteOneContactWithRealDex(t *testing.T) {
 	provider := newFakeMailchimp(t)
-	provider.delaysFirstUpsert, provider.delaysFirstTags = true, true
+	provider.failFirstAcceptedUpsert, provider.failFirstAcceptedTags = true, true
 	harness := newLaunchHarness(t, provider, slowRequestTimeout)
 	input := integrationLaunchInput()
 	input.Contacts = []ContactInput{{EmailAddress: "Dana.Diaz@Example.com", FirstName: "Dana"}}
 
 	flowID := harness.startLaunch(t, "slow-upsert", input)
 	waiting := harness.waitForPhase(t, flowID, PhaseAwaitingApproval)
-	provider.waitForDelayedRequests(t)
-	require.GreaterOrEqual(t, provider.count("upsert"), 2, "Dex dispatched the upsert again past its local phase")
-	require.GreaterOrEqual(t, provider.count("tags"), 2, "Dex dispatched the tag update again past its local phase")
+	require.Equal(t, 2, provider.count("upsert"))
+	require.Equal(t, 2, provider.count("tags"))
 	require.Equal(t, 1, provider.createdMemberCount(), "a repeated PUT keyed by the address creates no second contact")
 	require.Equal(t, 1, provider.confirmationEmailCount(), "the repeated PUT found the pending contact and sent no second confirmation")
 	require.Equal(t, "pending", provider.member("dana.diaz@example.com").status)
@@ -333,13 +331,13 @@ type fakeMailchimp struct {
 	counts             map[string]int
 	requests           map[string][]fakeRecordedRequest
 
-	delaysFirstUpsert      bool
-	delaysFirstTags        bool
-	delaysFirstSend        bool
-	losesFirstSendResponse bool
-	holdsFirstSend         chan struct{}
-	rateLimitsFirstSend    bool
-	rejectsUpsertFor       string
+	failFirstAcceptedUpsert bool
+	failFirstAcceptedTags   bool
+	delaysFirstSend         bool
+	losesFirstSendResponse  bool
+	holdsFirstSend          chan struct{}
+	rateLimitsFirstSend     bool
+	rejectsUpsertFor        string
 }
 
 type fakeMember struct {
@@ -445,9 +443,6 @@ func (provider *fakeMailchimp) upsertMember(response http.ResponseWriter, reques
 		provider.writeProblem(response, http.StatusBadRequest, "Member In Compliance State")
 		return
 	}
-	if provider.delaysFirstUpsert && attempt == 1 {
-		provider.sleepWhileDelayed()
-	}
 	provider.mutex.Lock()
 	member, isFound := provider.members[hash]
 	if !isFound {
@@ -470,6 +465,10 @@ func (provider *fakeMailchimp) upsertMember(response http.ResponseWriter, reques
 	member.lastChanged = time.Now().UTC()
 	value := member.json()
 	provider.mutex.Unlock()
+	if provider.failFirstAcceptedUpsert && attempt == 1 {
+		provider.writeProblem(response, http.StatusServiceUnavailable, "Service Unavailable")
+		return
+	}
 	provider.writeValue(response, http.StatusOK, value)
 }
 
@@ -485,9 +484,6 @@ func (provider *fakeMailchimp) updateTags(response http.ResponseWriter, request 
 		provider.writeProblem(response, http.StatusBadRequest, "Invalid Resource")
 		return
 	}
-	if provider.delaysFirstTags && attempt == 1 {
-		provider.sleepWhileDelayed()
-	}
 	provider.mutex.Lock()
 	member, isFound := provider.members[hash]
 	if isFound {
@@ -502,6 +498,10 @@ func (provider *fakeMailchimp) updateTags(response http.ResponseWriter, request 
 	provider.mutex.Unlock()
 	if !isFound {
 		provider.writeProblem(response, http.StatusNotFound, "Resource Not Found")
+		return
+	}
+	if provider.failFirstAcceptedTags && attempt == 1 {
+		provider.writeProblem(response, http.StatusServiceUnavailable, "Service Unavailable")
 		return
 	}
 	response.WriteHeader(http.StatusNoContent)
@@ -775,12 +775,12 @@ func newLaunchHarness(t *testing.T, provider *fakeMailchimp, requestTimeout time
 		FlowServiceAddress: harness.serverAddress,
 	})
 	require.NoError(t, err)
-	harness.startWorker(t)
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
 		require.NoError(t, errors.Join(harness.worker.Stop(ctx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
 	})
+	harness.startWorker(t)
 	return harness
 }
 
@@ -790,13 +790,13 @@ func (harness *launchHarness) startWorker(t *testing.T) {
 	require.NoError(t, err)
 	workerResult := make(chan error, 1)
 	go func() { workerResult <- worker.Start() }()
+	harness.worker, harness.workerResult = worker, workerResult
 	{
 		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
 		registrationError := worker.WaitPullRegistered(registrationContext)
 		cancelRegistration()
 		require.NoError(t, registrationError)
 	}
-	harness.worker, harness.workerResult = worker, workerResult
 }
 
 // replaceWorker force-stops the Worker without draining its handlers, like a crash, then starts a new one.

@@ -58,12 +58,12 @@ func newClaimHarnessWithConnection(t *testing.T, connection hiver.Connection) *c
 		FlowServiceAddress: harness.serverAddress,
 	})
 	require.NoError(t, err)
-	harness.startWorker(t)
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
 		require.NoError(t, errors.Join(harness.worker.Stop(ctx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
 	})
+	harness.startWorker(t)
 	return harness
 }
 
@@ -73,13 +73,13 @@ func (harness *claimHarness) startWorker(t *testing.T) {
 	require.NoError(t, err)
 	workerResult := make(chan error, 1)
 	go func() { workerResult <- worker.Start() }()
+	harness.worker, harness.workerResult = worker, workerResult
 	{
 		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
 		registrationError := worker.WaitPullRegistered(registrationContext)
 		cancelRegistration()
 		require.NoError(t, registrationError)
 	}
-	harness.worker, harness.workerResult = worker, workerResult
 }
 
 // replaceWorker force-stops the Worker without draining its handlers, like a crash, then starts a new one.

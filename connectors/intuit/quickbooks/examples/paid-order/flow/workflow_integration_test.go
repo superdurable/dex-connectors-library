@@ -34,9 +34,7 @@ const (
 	integrationDisplayName  = "City Agency"
 
 	defaultRequestTimeout = 5 * time.Second
-	// slowResponseDelay outlasts Dex's roughly seven-second async local phase, so an async Step is dispatched again.
-	slowResponseDelay  = 9 * time.Second
-	slowRequestTimeout = 20 * time.Second
+	slowRequestTimeout    = 20 * time.Second
 )
 
 func integrationOrder() Input {
@@ -130,37 +128,34 @@ func TestExistingCustomerIsFoundByEmailWithRealDex(t *testing.T) {
 	require.Zero(t, provider.count("token"), "an unexpired access token needs no refresh")
 }
 
-// Duplicate dispatch: the repeat gets Fault 600 while the first request runs, then the replay.
+// A lost reply after invoice creation makes the next Execute replay the same request ID.
 func TestSlowInvoiceCreateIsDispatchedAgainAndCreatesOneInvoiceWithRealDex(t *testing.T) {
 	provider := newFakeQuickBooks(t)
-	provider.delaysFirstCreateInvoice = true
-	harness := newOrderHarness(t, provider, unexpiredAccessToken, slowRequestTimeout)
-
-	startedAt := time.Now()
+	provider.losesFirstCreateInvoiceResponse = true
+	harness := newOrderHarness(t, provider, unexpiredAccessToken, defaultRequestTimeout)
 	outcome := harness.runOrder(t, "slow-create", integrationOrder())
-	require.GreaterOrEqual(t, time.Since(startedAt), slowResponseDelay)
 	require.Equal(t, OrderInvoicedAndPaid, outcome.Action)
-	provider.waitForDelayedRequests(t)
-	require.GreaterOrEqual(t, provider.count("createInvoice"), 2, "Dex dispatched the create again past its local phase")
+	require.Equal(t, 2, provider.count("createInvoice"))
 	require.Equal(t, 1, provider.count("appliedCreateInvoice"), "QuickBooks ran the request once")
+	require.Equal(t, 1, provider.count("replay"), "QuickBooks replayed the stored invoice response")
 	require.Equal(t, 1, provider.invoiceCount(), "the repeated dispatch did not create a second invoice")
 	require.Len(t, provider.distinctRequestIDs("createInvoice"), 1, "every attempt sent the same requestid")
 	require.Equal(t, 1, provider.paymentCount())
 	t.Logf("slow create: requests=%d duplicates=%d replays=%d", provider.count("createInvoice"), provider.count("duplicateRequestID"), provider.count("replay"))
 }
 
-// TestSlowPaymentIsDispatchedAgainAndRecordsOnePaymentWithRealDex is a duplicate-dispatch test for recordPayment.
+// TestSlowPaymentIsDispatchedAgainAndRecordsOnePaymentWithRealDex replays a payment after its accepted reply is lost.
 func TestSlowPaymentIsDispatchedAgainAndRecordsOnePaymentWithRealDex(t *testing.T) {
 	provider := newFakeQuickBooks(t)
-	provider.delaysFirstPayment = true
-	harness := newOrderHarness(t, provider, unexpiredAccessToken, slowRequestTimeout)
+	provider.losesFirstPaymentResponse = true
+	harness := newOrderHarness(t, provider, unexpiredAccessToken, defaultRequestTimeout)
 
 	outcome := harness.runOrder(t, "slow-payment", integrationOrder())
 	require.Equal(t, OrderInvoicedAndPaid, outcome.Action)
 	require.True(t, outcome.IsFullyPaid)
-	provider.waitForDelayedRequests(t)
-	require.GreaterOrEqual(t, provider.count("recordPayment"), 2, "Dex dispatched the payment again past its local phase")
+	require.Equal(t, 2, provider.count("recordPayment"))
 	require.Equal(t, 1, provider.count("appliedRecordPayment"))
+	require.Equal(t, 1, provider.count("replay"), "QuickBooks replayed the stored payment response")
 	require.Equal(t, 1, provider.paymentCount(), "the repeated dispatch did not pay the invoice twice")
 	require.Len(t, provider.distinctRequestIDs("recordPayment"), 1)
 	require.Equal(t, "0.00", provider.invoice(outcome.InvoiceID).balance.FloatString(2))
@@ -389,12 +384,12 @@ func newOrderHarnessForFlow(t *testing.T, flow *Flow, credentials *testsupport.R
 		FlowServiceAddress: harness.serverAddress,
 	})
 	require.NoError(t, err)
-	harness.startWorker(t)
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
 		require.NoError(t, errors.Join(harness.worker.Stop(ctx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
 	})
+	harness.startWorker(t)
 	return harness
 }
 
@@ -413,13 +408,13 @@ func (harness *orderHarness) startWorker(t *testing.T) {
 	require.NoError(t, err)
 	workerResult := make(chan error, 1)
 	go func() { workerResult <- worker.Start() }()
+	harness.worker, harness.workerResult = worker, workerResult
 	{
 		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
 		registrationError := worker.WaitPullRegistered(registrationContext)
 		cancelRegistration()
 		require.NoError(t, registrationError)
 	}
-	harness.worker, harness.workerResult = worker, workerResult
 }
 
 // replaceWorker force-stops the Worker without draining its handlers, like a crash, then starts a new one.
