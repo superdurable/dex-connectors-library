@@ -5,6 +5,7 @@
 package photosearch
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/superdurable/dex-connectors-library/connectors/unsplash"
@@ -19,6 +20,8 @@ const (
 	ConnectionName = "unsplash"
 	searchStepType = "SearchUnsplashPhotos"
 )
+
+var outcomeAttribute = dex.DefineAttribute[unsplash.PhotoPage]("unsplash-photo-search-outcome")
 
 // Request is the Dex Web Start Flow input.
 type Request struct {
@@ -37,8 +40,10 @@ type Flow struct {
 // NewFlow binds a configured Unsplash connection.
 func NewFlow(connection unsplash.Connection) *Flow { return &Flow{connection: connection} }
 
-func (*Flow) GetFlowType() string                         { return FlowType }
-func (*Flow) GetPersistenceSchema() dex.PersistenceSchema { return dex.PersistenceSchema{} }
+func (*Flow) GetFlowType() string { return FlowType }
+func (*Flow) GetPersistenceSchema() dex.PersistenceSchema {
+	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{outcomeAttribute}}
+}
 
 func (flow *Flow) GetSteps() []dex.StepDef {
 	return []dex.StepDef{
@@ -56,6 +61,43 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 // MapToSearchPhotosInput maps a validated request to the provider search.
 func MapToSearchPhotosInput(request Request) unsplash.SearchPhotosInput {
 	return unsplash.SearchPhotosInput{Query: request.Query, PerPage: request.PerPage}
+}
+
+// GetRPCs registers the Dex Web summary and display views.
+func (flow *Flow) GetRPCs() []dex.RPCDef {
+	return []dex.RPCDef{
+		dex.DefineRPC(flow.GetDexSummary, nil),
+		dex.DefineRPC(flow.GetDexDisplay, nil),
+	}
+}
+
+// GetDexSummary returns the completed provider outcome.
+// dex:field attribute-key:unsplash-photo-search-outcome value-type:json editable:false description:"Photo search results and attribution"
+func (*Flow) GetDexSummary(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
+	outcome, err := optionalOutcome(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &dex.RPCResult[map[string]any]{Output: map[string]any{"unsplash-photo-search-outcome": outcome}}, nil
+}
+
+// GetDexDisplay returns the completed provider outcome.
+// dex:field attribute-key:unsplash-photo-search-outcome value-type:json editable:false description:"Photo search results and attribution"
+func (*Flow) GetDexDisplay(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
+	outcome, err := optionalOutcome(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &dex.RPCResult[map[string]any]{Output: map[string]any{"unsplash-photo-search-outcome": outcome}}, nil
+}
+
+func optionalOutcome(ctx dex.Context) (unsplash.PhotoPage, error) {
+	outcome, err := outcomeAttribute.Get(ctx)
+	var missing *dex.AttributeNotFoundError
+	if errors.As(err, &missing) {
+		return unsplash.PhotoPage{}, nil
+	}
+	return outcome, err
 }
 
 // dex:group group-id:photo-search group-label:"Photo search"
@@ -82,8 +124,13 @@ type searched struct {
 }
 
 func (searched) GetStepType() string { return "UnsplashPhotosFound" }
-func (searched) Execute(_ dex.Context, result unsplash.SearchPhotosResult) (*dex.StepDecision, error) {
+func (searched) Execute(ctx dex.Context, result unsplash.SearchPhotosResult) (*dex.StepDecision, error) {
+	if err := outcomeAttribute.Set(ctx, result.Value); err != nil {
+		return nil, err
+	}
 	return dex.GracefulComplete(result.Value), nil
 }
 
 var _ dex.Flow = (*Flow)(nil)
+var _ dex.RPC[dex.None, map[string]any] = (*Flow)(nil).GetDexSummary
+var _ dex.RPC[dex.None, map[string]any] = (*Flow)(nil).GetDexDisplay

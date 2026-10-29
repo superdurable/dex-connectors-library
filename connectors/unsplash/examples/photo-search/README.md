@@ -1,6 +1,6 @@
 # Unsplash photo search example
 
-This runnable Flow searches public Unsplash photos from Dex Web Start Flow. The `searched` branch completes with photo URLs and attribution. Other branches are unwired and fail the Flow. `ConnectionName` is statically `unsplash`.
+This runnable Flow searches public Unsplash photos from Dex Web Start Flow. The `searched` branch completes with photo URLs and attribution. Other branches are unwired and fail the Flow. `ConnectionName` is statically `unsplash`. Dex Web summary and display views show the completed provider outcome.
 
 ## Generate strict FDG 2.0
 
