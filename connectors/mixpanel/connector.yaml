@@ -1,0 +1,100 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: mixpanel
+  displayName: Mixpanel
+  description: Import a deduplicated event and export a bounded day of raw events.
+  company: Mixpanel
+  version: v0.1.0
+spec:
+  provider: mixpanel
+  codegen:
+    go:
+      package: mixpanel
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Mixpanel ingestion API base URL; leave blank for the US endpoint, or enter the region's documented HTTPS host for EU or India residency.
+        default: https://api.mixpanel.com
+      - name: exportBaseUrl
+        goName: ExportBaseURL
+        type: url
+        description: Mixpanel raw export API base URL; leave blank for the US endpoint, or enter the matching regional HTTPS host for your project.
+        default: https://data.mixpanel.com/api/2.0
+      - name: projectId
+        goName: ProjectID
+        type: integer
+        description: Positive numeric Project ID from https://mixpanel.com/settings/project/ under Project Settings > Overview; required for service-account authentication. Blank cannot authenticate.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Positive Go duration limiting each HTTP request; leave blank for the displayed default, or override for a slower network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum response bytes as a positive integer; leave blank for the displayed safety limit, or raise it for a larger export.
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: mixpanel-service-account
+    fields:
+      - name: service_account_username
+        goName: ServiceAccountUsername
+        type: secretString
+        required: true
+        description: Secret Mixpanel service-account username from https://mixpanel.com/settings/org/ under Organization Settings > Service Accounts > Create Service Account; copy the generated username. Blank prevents requests.
+      - name: service_account_secret
+        goName: ServiceAccountSecret
+        type: secretString
+        required: true
+        description: Secret Mixpanel service-account password shown once at https://mixpanel.com/settings/org/ under Organization Settings > Service Accounts > Create Service Account. Blank prevents requests.
+    guide:
+      startURL: https://mixpanel.com/settings/org/
+      steps:
+        - Sign in at https://mixpanel.com, open Organization Settings > Service Accounts at https://mixpanel.com/settings/org/, and choose Create Service Account with Owner or Admin access to the project.
+        - Copy its username and secret once into the two secret fields service_account_username and service_account_secret.
+        - Open Project Settings > Overview at https://mixpanel.com/settings/project/, copy the numeric Project ID into projectId, and leave baseUrl, exportBaseUrl, timeout, and maxResponseBytes blank for their displayed defaults unless your project uses another region.
+  operations:
+    - name: trackEvent
+      goName: TrackEvent
+      inputType: TrackEventInput
+      outputType: EventImportResult
+      kind: mutation
+      description: Import one event with stable time, distinct_id, and a derived $insert_id.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: imported, goName: Imported, description: Mixpanel accepted the event for ingestion.}
+        - {id: providerRejected, goName: ProviderRejected, description: Mixpanel rejected the event or credentials., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Mixpanel returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - name: importedDefaultEvent
+          branch: imported
+          description: Meridian signup event was accepted.
+          default: true
+          output: {imported: true}
+    - name: exportEvents
+      goName: ExportEvents
+      inputType: ExportEventsInput
+      outputType: ExportedEvents
+      kind: query
+      description: Export a bounded date range of raw events without arbitrary properties.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: exported, goName: Exported, description: "Mixpanel returned raw events, possibly empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: Mixpanel rejected the export or credentials., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Mixpanel returned malformed or oversized JSONL., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - name: exportedDefaultEvents
+          branch: exported
+          description: Meridian signup event appears in raw export.
+          default: true
+          output: {events: [{event: "Signed Up", distinctID: "member-1", time: 1793232000, insertID: "4b5d3f33-2e21-4c1c-b392-2dae2a74a2ed"}]}
