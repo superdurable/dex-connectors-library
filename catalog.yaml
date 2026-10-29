@@ -58,6 +58,7 @@ directories:
   - connectors/slack
   - connectors/snowflake
   - connectors/spotify
+  - connectors/square
   - connectors/stripe
   - connectors/superdurable/email
   - connectors/superdurable/llm
