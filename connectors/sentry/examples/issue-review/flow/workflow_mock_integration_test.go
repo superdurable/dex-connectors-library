@@ -1,0 +1,71 @@
+//go:build integration
+
+// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+
+package issuereview
+
+import (
+	"context"
+	"errors"
+	"net"
+	"os"
+	"path/filepath"
+	"strconv"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
+	"github.com/superdurable/dex-connectors-library/connectors/sentry"
+	"github.com/superdurable/dex-connectors-library/connectors/sentry/sentrymock"
+	"github.com/superdurable/dex/blob-cache-go/blobcache"
+	"github.com/superdurable/dex/sdk-go/dex"
+)
+
+func TestMockBackedFlowWithRealDex(t *testing.T) {
+	mock := sentrymock.New(t, ConnectionName)
+	flow := NewFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	require.NoError(t, err)
+	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
+	require.NoError(t, err)
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	address := listener.Addr().String()
+	require.NoError(t, listener.Close())
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{BindAddress: address, FlowServiceAddress: os.Getenv("DEX_FLOW_SERVICE_ADDRESS")})
+	require.NoError(t, err)
+	client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: os.Getenv("DEX_FLOW_SERVICE_ADDRESS"), WorkerTarget: &dex.WorkerTarget{Address: address}})
+	require.NoError(t, err)
+	workerResult := make(chan error, 1)
+	go func() { workerResult <- worker.Start() }()
+	t.Cleanup(func() {
+		stopContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		require.NoError(t, errors.Join(worker.Stop(stopContext), <-workerResult, client.Close(), cache.Close()))
+	})
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	flowID := "sentry-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	input := Request(sentry.ListIssuesInput{Organization: "acme"})
+	_, err = client.StartFlow(ctx, flow, flowID, input, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	var result dex.FlowResult
+	for {
+		result, err = client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+		var timeout *dex.LongPollTimeoutError
+		if errors.As(err, &timeout) {
+			continue
+		}
+		require.NoError(t, err)
+		break
+	}
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var output sentry.IssuePage
+	require.NoError(t, result.DecodeSingleOutput(&output))
+	calls := mock.ListIssues().Calls()
+	require.Len(t, calls, 1)
+	require.Equal(t, flowID, calls[0].FlowID)
+	require.Equal(t, sentry.ListIssuesInput(input), calls[0].Input)
+	require.Equal(t, sentry.ListIssuesBranchListed, calls[0].Branch)
+}

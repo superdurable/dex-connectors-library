@@ -64,6 +64,7 @@ directories:
   - connectors/reamaze
   - connectors/resend
   - connectors/salesforce
+  - connectors/sentry
   - connectors/slack
   - connectors/smartsheet
   - connectors/snowflake
