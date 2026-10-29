@@ -29,6 +29,6 @@ In Dex Web Start Flow, choose `ElevenLabsDemo` and enter a unique Flow ID with t
 {"pageSize":10}
 ```
 
-The Worker starts when the Dex Server is reachable. The Flow returns `ListVoicesOutput`. The provider connection name is fixed in `flow/workflow.go`.
+The pull Worker connects to the Dex Server without an inbound listener. The Flow returns `ListVoicesOutput`. The provider connection name is fixed in `flow/workflow.go`.
 
 CI runs the mock-backed real-Dex integration test. Local provider and deterministic Flow tests run with `GOWORK=off go test -race ./...` from the connector directory.
