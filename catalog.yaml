@@ -42,6 +42,7 @@ directories:
   - connectors/intuit/quickbooks
   - connectors/linear
   - connectors/linkedin
+  - connectors/mailgun
   - connectors/microsoft/entra-id
   - connectors/microsoft/excel
   - connectors/microsoft/onedrive

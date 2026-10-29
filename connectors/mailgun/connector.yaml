@@ -1,0 +1,90 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: mailgun
+  displayName: Mailgun
+  description: Read Mailgun domain events and account domains.
+  company: Mailgun
+  version: v0.1.0
+spec:
+  provider: mailgun
+  codegen:
+    go:
+      package: mailgun
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Public Mailgun API base URL. Leave blank for the displayed default; override only for a trusted compatible gateway or a loopback test server.
+        default: https://api.mailgun.net
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one provider HTTP request, as a positive Go duration such as 15s or 1m. Leave blank for the displayed default; increase only for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Positive maximum response size in bytes. Leave blank for the displayed default; increase only for a known larger response. Oversized replies select invalidResponse.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: mailgun-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        description: Secret API key from Mailgun > Settings > API Security > API Keys at https://app.mailgun.com/settings/api_security. Copy the provider-issued string into this field; blank makes calls select defect. It is stored as a secret and sent only in the HTTP authorization header.
+        required: true
+    guide:
+      startURL: https://app.mailgun.com/settings/api_security
+      steps:
+        - Open https://app.mailgun.com/settings/api_security and sign in or create an account.
+        - Navigate to Mailgun > Settings > API Security > API Keys; create or select a key with permission for the listed read or generation operations, and copy its provider-issued string.
+        - Paste it into the secret api_key field and save the connection. Leave baseUrl, timeout, and maxResponseBytes blank to use their displayed defaults.
+  operations:
+    - name: getEvents
+      goName: GetEvents
+      inputType: GetEventsInput
+      outputType: EventsOutput
+      kind: query
+      description: GetEvents through the documented Mailgun API.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Mailgun returned the requested result."}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: listedDefault
+          branch: listed
+          description: A representative Mailgun result for the example Flow.
+          default: true
+          output: {"events":[{"id":"event_meridian","event":"delivered","timestamp":1793100000}],"nextPage":"https://api.mailgun.net/v3/example.test/events/next"}
+    - name: listDomains
+      goName: ListDomains
+      inputType: ListDomainsInput
+      outputType: DomainsOutput
+      kind: query
+      description: ListDomains through the documented Mailgun API.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Mailgun returned the requested result."}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: listedDefault
+          branch: listed
+          description: A representative Mailgun result for the example Flow.
+          default: true
+          output: {"domains":[{"name":"example.test","state":"active"}],"totalCount":1}
