@@ -5,6 +5,7 @@
 package demo
 
 import (
+	"errors"
 	"github.com/superdurable/dex-connectors-library/connectors/alphavantage"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
@@ -18,6 +19,8 @@ const (
 	operationStepType = "CallGetGlobalQuote"
 )
 
+var demoOutcomeAttribute = dex.DefineAttribute[alphavantage.GlobalQuoteOutput]("alphavantage-demo-outcome")
+
 // Flow runs GetGlobalQuote once and completes with its typed output.
 type Flow struct {
 	dex.FlowDefaults
@@ -29,7 +32,9 @@ func NewFlow(connection alphavantage.Connection) *Flow { return &Flow{connection
 
 func (*Flow) GetFlowType() string { return FlowType }
 
-func (*Flow) GetPersistenceSchema() dex.PersistenceSchema { return dex.PersistenceSchema{} }
+func (*Flow) GetPersistenceSchema() dex.PersistenceSchema {
+	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{demoOutcomeAttribute}}
+}
 
 func (flow *Flow) GetSteps() []dex.StepDef {
 	return []dex.StepDef{
@@ -50,14 +55,33 @@ func (flow *Flow) GetRPCs() []dex.RPCDef {
 	return []dex.RPCDef{dex.DefineRPC(flow.GetDexSummary, nil), dex.DefineRPC(flow.GetDexDisplay, nil)}
 }
 
-// GetDexSummary identifies the example's static connection in Dex Web.
-func (*Flow) GetDexSummary(_ dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
-	return &dex.RPCResult[map[string]any]{Output: map[string]any{"connection": ConnectionName}}, nil
+// dex:field attribute-key:alphavantage-demo-outcome value-type:json editable:false description:"Provider result"
+// GetDexSummary shows the last provider result in Dex Web.
+func (*Flow) GetDexSummary(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
+	outcome, err := readDemoOutcome(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &dex.RPCResult[map[string]any]{Output: map[string]any{"alphavantage-demo-outcome": outcome}}, nil
 }
 
-// GetDexDisplay identifies the example's static connection in Dex Web.
-func (*Flow) GetDexDisplay(_ dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
-	return &dex.RPCResult[map[string]any]{Output: map[string]any{"connection": ConnectionName}}, nil
+// dex:field attribute-key:alphavantage-demo-outcome value-type:json editable:false description:"Provider result"
+// GetDexDisplay shows the last provider result in Dex Web.
+func (*Flow) GetDexDisplay(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
+	outcome, err := readDemoOutcome(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &dex.RPCResult[map[string]any]{Output: map[string]any{"alphavantage-demo-outcome": outcome}}, nil
+}
+
+func readDemoOutcome(ctx dex.Context) (alphavantage.GlobalQuoteOutput, error) {
+	outcome, err := demoOutcomeAttribute.Get(ctx)
+	var missing *dex.AttributeNotFoundError
+	if errors.As(err, &missing) {
+		return alphavantage.GlobalQuoteOutput{}, nil
+	}
+	return outcome, err
 }
 
 // MapToOperationInput preserves the validated typed start input for the provider call.
@@ -82,7 +106,10 @@ type completeResult struct {
 }
 
 func (completeResult) GetStepType() string { return "CompleteGetGlobalQuote" }
-func (completeResult) Execute(_ dex.Context, result alphavantage.GetGlobalQuoteResult) (*dex.StepDecision, error) {
+func (completeResult) Execute(ctx dex.Context, result alphavantage.GetGlobalQuoteResult) (*dex.StepDecision, error) {
+	if err := demoOutcomeAttribute.Set(ctx, result.Value); err != nil {
+		return nil, err
+	}
 	return dex.GracefulComplete(result.Value), nil
 }
 
