@@ -1,186 +1,137 @@
-{
-  "apiVersion": "connectors.dex.dev/v1alpha1",
-  "kind": "Connector",
-  "metadata": {
-    "name": "tmdb",
-    "displayName": "TMDB",
-    "description": "Read and act through the TMDB public API.",
-    "company": "TMDB",
-    "version": "v0.1.0"
-  },
-  "spec": {
-    "provider": "tmdb",
-    "codegen": {
-      "go": {
-        "package": "tmdb"
-      }
-    },
-    "configuration": {
-      "fields": [
-        {
-          "name": "baseUrl",
-          "goName": "BaseURL",
-          "type": "url",
-          "description": "TMDB API base URL. Leave blank for the displayed public endpoint; override only for a compatible gateway or local test server.",
-          "default": "https://api.themoviedb.org/3"
-        },
-        {
-          "name": "timeout",
-          "goName": "Timeout",
-          "type": "duration",
-          "description": "Maximum time for one HTTP request, as a positive Go duration such as 15s or 1m. Leave blank for the displayed default; override for slower gateways.",
-          "default": "15s"
-        },
-        {
-          "name": "maxResponseBytes",
-          "goName": "MaxResponseBytes",
-          "type": "integer",
-          "description": "Maximum accepted response size in bytes. Leave blank for the displayed default; increase only for larger legitimate pages.",
-          "default": 2097152
-        }
-      ]
-    },
-    "auth": {
-      "type": "apiKey",
-      "connectionKind": "tmdb-api-key",
-      "fields": [
-        {
-          "name": "api_key",
-          "goName": "APIKey",
-          "type": "secretString",
-          "required": true,
-          "description": "Secret TMDB token. Start at https://www.themoviedb.org/settings/api, follow Account Settings > API > API Read Access Token. Request API access in account settings, then copy the API Read Access Token. It is a secret opaque string; blank prevents requests. It is sent only in the Authorization header."
-        }
-      ],
-      "guide": {
-        "startURL": "https://www.themoviedb.org/settings/api",
-        "steps": [
-          "Open https://www.themoviedb.org/settings/api and sign in or create an account.",
-          "Follow Account Settings > API > API Read Access Token. Request API access in account settings, then copy the API Read Access Token. It is a secret opaque string; blank prevents requests.",
-          "Paste the token into the secret api_key field and save the connection; leave baseUrl, timeout, and maxResponseBytes blank to use their displayed defaults."
-        ]
-      }
-    },
-    "operations": [
-      {
-        "name": "searchMovies",
-        "goName": "SearchMovies",
-        "inputType": "SearchMoviesInput",
-        "outputType": "MoviePage",
-        "kind": "query",
-        "description": "SearchMovies through the TMDB public JSON API.",
-        "idempotency": "none",
-        "authorization": "required",
-        "branches": [
-          {
-            "id": "searched",
-            "goName": "Searched",
-            "description": "TMDB returned the requested result."
-          },
-          {
-            "id": "providerRejected",
-            "goName": "ProviderRejected",
-            "description": "The provider definitively rejected the request.",
-            "optional": true
-          },
-          {
-            "id": "invalidResponse",
-            "goName": "InvalidResponse",
-            "description": "The provider returned malformed or oversized JSON.",
-            "optional": true
-          },
-          {
-            "id": "defect",
-            "goName": "Defect",
-            "description": "Local input or connection credentials are invalid.",
-            "optional": true
-          }
-        ],
-        "execution": {
-          "executeMethodTimeout": "30s",
-          "durability": "async"
-        },
-        "mocks": [
-          {
-            "name": "searchMoviesDefault",
-            "branch": "searched",
-            "description": "A representative TMDB response.",
-            "default": true,
-            "output": {
-              "page": 1,
-              "total_pages": 1,
-              "total_results": 1,
-              "results": [
-                {
-                  "id": 343611,
-                  "title": "Jack Reacher: Never Go Back",
-                  "overview": "A thriller.",
-                  "release_date": "2016-10-19"
-                }
-              ]
-            }
-          }
-        ]
-      },
-      {
-        "name": "getMovie",
-        "goName": "GetMovie",
-        "inputType": "GetMovieInput",
-        "outputType": "Movie",
-        "kind": "query",
-        "description": "GetMovie through the TMDB public JSON API.",
-        "idempotency": "none",
-        "authorization": "required",
-        "branches": [
-          {
-            "id": "found",
-            "goName": "Found",
-            "description": "TMDB returned the requested result."
-          },
-          {
-            "id": "notFound",
-            "goName": "NotFound",
-            "description": "The requested resource does not exist.",
-            "optional": true
-          },
-          {
-            "id": "providerRejected",
-            "goName": "ProviderRejected",
-            "description": "The provider definitively rejected the request.",
-            "optional": true
-          },
-          {
-            "id": "invalidResponse",
-            "goName": "InvalidResponse",
-            "description": "The provider returned malformed or oversized JSON.",
-            "optional": true
-          },
-          {
-            "id": "defect",
-            "goName": "Defect",
-            "description": "Local input or connection credentials are invalid.",
-            "optional": true
-          }
-        ],
-        "execution": {
-          "executeMethodTimeout": "30s",
-          "durability": "async"
-        },
-        "mocks": [
-          {
-            "name": "getMovieDefault",
-            "branch": "found",
-            "description": "A representative TMDB response.",
-            "default": true,
-            "output": {
-              "id": 343611,
-              "title": "Jack Reacher: Never Go Back",
-              "overview": "A thriller.",
-              "release_date": "2016-10-19"
-            }
-          }
-        ]
-      }
-    ]
-  }
-}
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: tmdb
+  displayName: TMDB
+  description: Read and act through the TMDB public API.
+  company: TMDB
+  version: v0.1.0
+spec:
+  provider: tmdb
+  codegen:
+    go:
+      package: tmdb
+  configuration:
+    fields:
+    - name: baseUrl
+      goName: BaseURL
+      type: url
+      description: TMDB API base URL. Leave blank for the displayed public endpoint;
+        override only for a compatible gateway or local test server.
+      default: https://api.themoviedb.org/3
+    - name: timeout
+      goName: Timeout
+      type: duration
+      description: Maximum time for one HTTP request, as a positive Go duration such
+        as 15s or 1m. Leave blank for the displayed default; override for slower gateways.
+      default: 15s
+    - name: maxResponseBytes
+      goName: MaxResponseBytes
+      type: integer
+      description: Maximum accepted response size in bytes. Leave blank for the displayed
+        default; increase only for larger legitimate pages.
+      default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: tmdb-api-key
+    fields:
+    - name: api_key
+      goName: APIKey
+      type: secretString
+      required: true
+      description: Secret TMDB token. Start at https://www.themoviedb.org/settings/api,
+        follow Account Settings > API > API Read Access Token. Request API access
+        in account settings, then copy the API Read Access Token. It is a secret opaque
+        string; blank prevents requests. It is sent only in the Authorization header.
+    guide:
+      startURL: https://www.themoviedb.org/settings/api
+      steps:
+      - Open https://www.themoviedb.org/settings/api and sign in or create an account.
+      - Follow Account Settings > API > API Read Access Token. Request API access
+        in account settings, then copy the API Read Access Token. It is a secret opaque
+        string; blank prevents requests.
+      - Paste the token into the secret api_key field and save the connection; leave
+        baseUrl, timeout, and maxResponseBytes blank to use their displayed defaults.
+  operations:
+  - name: searchMovies
+    goName: SearchMovies
+    inputType: SearchMoviesInput
+    outputType: MoviePage
+    kind: query
+    description: SearchMovies through the TMDB public JSON API.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: searched
+      goName: Searched
+      description: TMDB returned the requested result.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: The provider definitively rejected the request.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: The provider returned malformed or oversized JSON.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Local input or connection credentials are invalid.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: searchMoviesDefault
+      branch: searched
+      description: A representative TMDB response.
+      default: true
+      output:
+        page: 1
+        total_pages: 1
+        total_results: 1
+        results:
+        - id: 343611
+          title: 'Jack Reacher: Never Go Back'
+          overview: A thriller.
+          release_date: '2016-10-19'
+  - name: getMovie
+    goName: GetMovie
+    inputType: GetMovieInput
+    outputType: Movie
+    kind: query
+    description: GetMovie through the TMDB public JSON API.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: found
+      goName: Found
+      description: TMDB returned the requested result.
+    - id: notFound
+      goName: NotFound
+      description: The requested resource does not exist.
+      optional: true
+    - id: providerRejected
+      goName: ProviderRejected
+      description: The provider definitively rejected the request.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: The provider returned malformed or oversized JSON.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Local input or connection credentials are invalid.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: getMovieDefault
+      branch: found
+      description: A representative TMDB response.
+      default: true
+      output:
+        id: 343611
+        title: 'Jack Reacher: Never Go Back'
+        overview: A thriller.
+        release_date: '2016-10-19'
