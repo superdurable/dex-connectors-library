@@ -59,6 +59,7 @@ directories:
   - connectors/openai
   - connectors/pipedrive
   - connectors/postgresql
+  - connectors/postmark
   - connectors/reamaze
   - connectors/salesforce
   - connectors/slack
