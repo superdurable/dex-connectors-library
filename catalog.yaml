@@ -12,6 +12,7 @@ directories:
   - connectors/bamboohr
   - connectors/calendly
   - connectors/clickup
+  - connectors/coda
   - connectors/discord
   - connectors/docusign
   - connectors/doist/todoist
