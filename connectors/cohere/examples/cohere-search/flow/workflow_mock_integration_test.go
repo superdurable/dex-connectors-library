@@ -36,12 +36,17 @@ func TestMockAnswersWithRealDex(t *testing.T) {
 	require.NoError(t, err)
 	workerResult := make(chan error, 1)
 	go func() { workerResult <- worker.Start() }()
-	require.NoError(t, worker.WaitPullRegistered(t.Context()))
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		require.NoError(t, errors.Join(worker.Stop(ctx), <-workerResult))
 	}()
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
 	client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: server})
 	require.NoError(t, err)
 	defer func() { require.NoError(t, client.Close()) }()

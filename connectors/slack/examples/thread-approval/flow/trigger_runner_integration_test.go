@@ -8,6 +8,7 @@ package threadapproval
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -70,6 +71,7 @@ func TestThreadApprovalRunnerSurvivesLateApprovalAndRestartWithRealDex(t *testin
 	// Step 8: a second approval after completion is consumed and does not stop the shared socket.
 	fake.send(t, teamID, "EvApprove1Late-"+teamID, socketModeMessage("1.2", "1.0", "U2", sentinelText+" approved, thanks"))
 	fake.send(t, teamID, "EvRoot2-"+teamID, socketModeMessage("2.0", "", "U1", sentinelText+" request approval"))
+	stopSlackFlowAtCleanup(t, setup.harness.client, flowID("2.0"))
 	waitForSlackStatus(t, ctx, setup.harness.client, setup.flow, flowID("2.0"), StatusWaitingForReply)
 	require.Empty(t, setup.pendingEventIDs(t))
 	firstRun.stop(t)
@@ -81,8 +83,9 @@ func TestThreadApprovalRunnerSurvivesLateApprovalAndRestartWithRealDex(t *testin
 	require.Equal(t, map[string]string{
 		"connector": "slack", "connection": ConnectionName, "trigger": "threadReplyCreated", "binding": ReplyTriggerBinding,
 		"channel": "C1", "thread_ts": "1.0", "event_id": "EvApprove1Late-" + teamID, "flow_id": flowID("1.0"),
-		"error": fmt.Sprintf("Trigger event is undeliverable: dex: InvokeRPC flow %q: NotFound: workflow execution already completed", flowID("1.0")),
-	}, lateApproval[0].Attrs)
+	}, withoutErrorAttribute(lateApproval[0].Attrs))
+	require.Contains(t, lateApproval[0].Attrs["error"], "NotFound:")
+	require.Contains(t, lateApproval[0].Attrs["error"], flowID("1.0"))
 	require.Len(t, setup.logs.Find("trigger event skipped: undeliverable", nil), 1, "only the late approval is skipped")
 
 	// Step 9: a restart replays past a reply that was persisted for the completed Flow before a crash.
@@ -168,13 +171,15 @@ func TestThreadApprovalRunnerConsumesReplyWithoutFlowWithRealDex(t *testing.T) {
 	fake.waitForConnection(t)
 	fake.send(t, teamID, "EvOrphan-"+teamID, socketModeMessage("61.0", "60.0", "U2", sentinelText+" I approve of pizza friday"))
 	fake.send(t, teamID, "EvRoot-"+teamID, socketModeMessage("70.0", "", "U1", sentinelText+" request approval"))
+	stopSlackFlowAtCleanup(t, setup.harness.client, fmt.Sprintf("slack-thread-approval-%s-C1-70.0", teamID))
 	waitForSlackStatus(t, ctx, setup.harness.client, setup.flow, fmt.Sprintf("slack-thread-approval-%s-C1-70.0", teamID), StatusWaitingForReply)
 	require.Empty(t, setup.pendingEventIDs(t))
 	firstRun.stop(t)
 	orphan := setup.logs.Find("trigger event skipped: undeliverable", map[string]string{"event_id": "EvOrphan-" + teamID})
 	require.Len(t, orphan, 1)
 	require.Equal(t, ReplyTriggerBinding, orphan[0].Attrs["binding"])
-	require.Contains(t, orphan[0].Attrs["error"], "workflow not found")
+	require.Contains(t, orphan[0].Attrs["error"], "NotFound:")
+	require.Contains(t, orphan[0].Attrs["error"], fmt.Sprintf("slack-thread-approval-%s-C1-60.0", teamID))
 
 	secondRun := setup.startRunner(t, ctx)
 	fake.waitForConnection(t)
@@ -654,4 +659,28 @@ func socketModeEvent(teamID string, timestamp string, threadTimestamp string, us
 	return slack.MessageEvent{
 		TeamID: teamID, ChannelID: "C1", Timestamp: timestamp, ThreadTimestamp: threadTimestamp, UserID: userID, Text: text,
 	}
+}
+
+func withoutErrorAttribute(attributes map[string]string) map[string]string {
+	otherAttributes := make(map[string]string, len(attributes)-1)
+	for name, value := range attributes {
+		if name != "error" {
+			otherAttributes[name] = value
+		}
+	}
+	return otherAttributes
+}
+
+func stopSlackFlowAtCleanup(t *testing.T, client *dex.Client, flowID string) {
+	t.Helper()
+	t.Cleanup(func() {
+		stopContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		err := client.StopFlow(stopContext, flowID, dex.StopOptions{Type: dex.CancelFlow, Reason: "integration test finished"})
+		var serviceError *dex.ServiceError
+		if errors.As(err, &serviceError) && serviceError.SubStatus == dex.ErrorSubStatusFlowNotFound {
+			return
+		}
+		require.NoError(t, err)
+	})
 }

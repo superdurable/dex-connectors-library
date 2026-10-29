@@ -75,7 +75,7 @@ go run ./examples/record-refund
 
 For a private CA, also set `SQLSERVER_SSL_CA` to the PEM bundle's path in the Worker's environment.
 
-In **Start Flow**, choose `SQLServerRecordRefund` and the Worker at `127.0.0.1:8828`. Start it with a
+In **Start Flow**, choose `SQLServerRecordRefund`. Start it with a
 unique Flow ID:
 
 ```json

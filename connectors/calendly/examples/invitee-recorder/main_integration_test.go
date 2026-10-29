@@ -153,10 +153,15 @@ func startWorkerAndClient(t *testing.T, flow dex.Flow) *dex.Client {
 	require.NoError(t, err)
 	workerResult := make(chan error, 1)
 	go func() { workerResult <- worker.Start() }()
-	require.NoError(t, worker.WaitPullRegistered(t.Context()))
 	t.Cleanup(func() {
 		require.NoError(t, errors.Join(stopWorker(worker), client.Close(), cache.Close()))
 		<-workerResult
 	})
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
 	return client
 }

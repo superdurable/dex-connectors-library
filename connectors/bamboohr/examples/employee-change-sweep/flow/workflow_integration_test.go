@@ -283,12 +283,17 @@ func newSweepHarness(t *testing.T, provider *fakeChangeHistory) *sweepHarness {
 	require.NoError(t, err)
 	harness.worker, harness.workerResult = worker, make(chan error, 1)
 	go func() { harness.workerResult <- worker.Start() }()
-	require.NoError(t, worker.WaitPullRegistered(t.Context()))
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
 		require.NoError(t, errors.Join(harness.worker.Stop(ctx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
 	})
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
 	return harness
 }
 

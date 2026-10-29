@@ -92,8 +92,7 @@ For `verify-ca` or `verify-identity` against a private CA, such as Amazon
 RDS, also set `MYSQL_SSL_CA` to the PEM bundle's path in the Worker's
 environment.
 
-In **Start Flow**, choose `MySQLRecordRefund` and the Worker at
-`127.0.0.1:8827`. Start it with a unique Flow ID:
+In **Start Flow**, choose `MySQLRecordRefund`. Start it with a unique Flow ID:
 
 ```json
 {"orderId": "88213", "amountUsd": "250.00", "externalReference": "tkt_5488"}

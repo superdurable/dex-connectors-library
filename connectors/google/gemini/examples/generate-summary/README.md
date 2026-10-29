@@ -102,8 +102,7 @@ go run ./examples/generate-summary
 
 The Worker calls the Step's pick, or the connection's model when the pick is
 empty. It reads both at startup, so restart it after changing either in Dex
-Web; a replaced key applies without a restart. The Worker listens
-on `127.0.0.1:8815`. Override
+Web; a replaced key applies without a restart. The Worker connects outbound to Dex. Override
 `DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR`
 when needed. If the Dex Server is unreachable, the Worker logs `dex server
 unavailable; retrying` and starts once Dex answers. It logs the connection name,

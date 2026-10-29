@@ -73,7 +73,7 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 \
 go run ./examples/account-usage-summary
 ```
 
-In **Start Flow**, choose `SnowflakeAccountUsageSummary` and the Worker at `127.0.0.1:8857`, and
+In **Start Flow**, choose `SnowflakeAccountUsageSummary`, and
 start it with a unique Flow ID:
 
 ```json

@@ -36,7 +36,7 @@ cd connectors/klaviyo
 go run ./examples/profile-event
 ```
 
-Configure `klaviyo / klaviyo` in Dex Web Connections using a private key with `events:write` and `profiles:read` from [Klaviyo API keys](https://www.klaviyo.com/settings/account/api-keys). In Start Flow choose `KlaviyoProfileEvent`, select the Worker, provide a unique Flow ID, and enter:
+Configure `klaviyo / klaviyo` in Dex Web Connections using a private key with `events:write` and `profiles:read` from [Klaviyo API keys](https://www.klaviyo.com/settings/account/api-keys). In Start Flow choose `KlaviyoProfileEvent`, provide a unique Flow ID, and enter:
 
 ```json
 {"email":"member@your-domain.com","metricName":"Signed Up"}

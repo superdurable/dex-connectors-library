@@ -48,8 +48,7 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 \
 go run ./examples/daily-digest
 ```
 
-In **Start Flow**, choose `HackerNewsDaily` and the healthy Worker at
-`127.0.0.1:8818`. This input produces one current snapshot and completes:
+In **Start Flow**, choose `HackerNewsDaily`. This input produces one current snapshot and completes:
 
 ```json
 {"once": true}

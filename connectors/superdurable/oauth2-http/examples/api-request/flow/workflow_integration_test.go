@@ -268,12 +268,17 @@ func newAPIRequestHarnessWithConnection(t *testing.T, connection oauth2http.Conn
 	})
 	require.NoError(t, err)
 	go func() { harness.result <- harness.worker.Start() }()
-	require.NoError(t, harness.worker.WaitPullRegistered(t.Context()))
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		require.NoError(t, errors.Join(harness.worker.Stop(ctx), <-harness.result, harness.client.Close(), harness.cache.Close()))
 	})
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := harness.worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
 	return flow, harness
 }
 

@@ -36,7 +36,7 @@ cd connectors/algolia
 go run ./examples/index-search
 ```
 
-Configure `algolia / algolia` in Dex Web Connections using the Application ID and restricted API key from [Algolia API Keys](https://www.algolia.com/account/api-keys/all). Find your index under **Search > Indices** in the Algolia dashboard; use its exact name in `indexName`. In Start Flow choose `AlgoliaIndexSearch`, select the Worker, enter a unique Flow ID, and submit:
+Configure `algolia / algolia` in Dex Web Connections using the Application ID and restricted API key from [Algolia API Keys](https://www.algolia.com/account/api-keys/all). Find your index under **Search > Indices** in the Algolia dashboard; use its exact name in `indexName`. In Start Flow choose `AlgoliaIndexSearch`, enter a unique Flow ID, and submit:
 
 ```json
 {"indexName":"products","query":"notebook"}

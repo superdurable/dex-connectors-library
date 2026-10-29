@@ -36,7 +36,7 @@ cd connectors/brevo
 go run ./examples/contact-sync
 ```
 
-In Dex Web Connections, configure `brevo / brevo` using the [Brevo API key page](https://app.brevo.com/settings/keys/api). In Start Flow, select `BrevoContactSync`, choose the Worker, enter a unique Flow ID, and use:
+In Dex Web Connections, configure `brevo / brevo` using the [Brevo API key page](https://app.brevo.com/settings/keys/api). In Start Flow, select `BrevoContactSync`, enter a unique Flow ID, and use:
 
 ```json
 {"email":"member@your-domain.example","firstName":"Meridian"}

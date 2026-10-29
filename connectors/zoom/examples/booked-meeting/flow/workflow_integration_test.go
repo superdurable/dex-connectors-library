@@ -636,7 +636,12 @@ func (harness *bookedMeetingHarness) startWorker(t *testing.T) {
 	harness.worker = worker
 	harness.workerResult = make(chan error, 1)
 	go func() { harness.workerResult <- worker.Start() }()
-	require.NoError(t, worker.WaitPullRegistered(t.Context()))
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
 }
 
 func (harness *bookedMeetingHarness) startBookedMeeting(t *testing.T, ctx context.Context, scenario string, booking Input) string {

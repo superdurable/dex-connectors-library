@@ -74,8 +74,7 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 \
 go run ./examples/record-refund
 ```
 
-In **Start Flow**, choose `PostgreSQLRecordRefund` and the Worker at
-`127.0.0.1:8826`. Start it with a unique Flow ID:
+In **Start Flow**, choose `PostgreSQLRecordRefund`. Start it with a unique Flow ID:
 
 ```json
 {"orderId": "88213", "amountUsd": "250.00", "externalReference": "tkt_5488"}

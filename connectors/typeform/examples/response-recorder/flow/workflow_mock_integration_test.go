@@ -8,7 +8,6 @@ package responserecorder
 import (
 	"context"
 	"errors"
-	"net"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -31,9 +30,6 @@ func TestResponseRecorderExampleRunsOnTypeformMockWithRealDex(t *testing.T) {
 	require.NoError(t, err)
 	defer func() { require.NoError(t, cache.Close()) }()
 
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	require.NoError(t, listener.Close())
 	serverAddress := os.Getenv("DEX_FLOW_SERVICE_ADDRESS")
 	if serverAddress == "" {
 		serverAddress = "127.0.0.1:8801"
@@ -47,12 +43,17 @@ func TestResponseRecorderExampleRunsOnTypeformMockWithRealDex(t *testing.T) {
 	require.NoError(t, err)
 	workerResult := make(chan error, 1)
 	go func() { workerResult <- worker.Start() }()
-	require.NoError(t, worker.WaitPullRegistered(t.Context()))
 	defer func() {
 		stopContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		require.NoError(t, errors.Join(worker.Stop(stopContext), <-workerResult))
 	}()
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()

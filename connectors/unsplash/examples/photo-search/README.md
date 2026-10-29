@@ -36,7 +36,7 @@ cd connectors/unsplash
 go run ./examples/photo-search
 ```
 
-Configure `unsplash / unsplash` in Dex Web Connections using an Access Key from [Your apps](https://unsplash.com/oauth/applications). In Start Flow choose `UnsplashPhotoSearch`, select the Worker, provide a unique Flow ID, and enter:
+Configure `unsplash / unsplash` in Dex Web Connections using an Access Key from [Your apps](https://unsplash.com/oauth/applications). In Start Flow choose `UnsplashPhotoSearch`, provide a unique Flow ID, and enter:
 
 ```json
 {"query":"office","perPage":5}

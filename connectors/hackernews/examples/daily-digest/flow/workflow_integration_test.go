@@ -149,7 +149,12 @@ func startTestWorker(t *testing.T, flow dex.Flow) *testWorker {
 	require.NoError(t, err)
 	suite := &testWorker{client: client, worker: worker, registry: registry, cache: cache, options: options, result: make(chan error, 1)}
 	go func() { suite.result <- worker.Start() }()
-	require.NoError(t, worker.WaitPullRegistered(t.Context()))
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
 	t.Cleanup(func() { suite.stop(t); require.NoError(t, errors.Join(client.Close(), cache.Close())) })
 	return suite
 }
@@ -167,7 +172,12 @@ func (suite *testWorker) restart(t *testing.T) {
 	require.NoError(t, err)
 	suite.worker = worker
 	go func() { suite.result <- worker.Start() }()
-	require.NoError(t, worker.WaitPullRegistered(t.Context()))
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
 }
 func waitForDigest(t *testing.T, client *dex.Client, flowID string) dex.FlowResult {
 	t.Helper()

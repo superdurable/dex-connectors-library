@@ -268,7 +268,12 @@ func startProbeHarness(t *testing.T, fake *fakeHelpScout) *probeHarness {
 	require.NoError(t, err)
 	workerResult := make(chan error, 1)
 	go func() { workerResult <- worker.Start() }()
-	require.NoError(t, worker.WaitPullRegistered(t.Context()))
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
 	var stopOnce sync.Once
 	t.Cleanup(func() {
 		stopOnce.Do(func() {

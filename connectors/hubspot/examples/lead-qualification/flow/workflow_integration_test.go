@@ -576,12 +576,17 @@ func newHarnessForConnection(t *testing.T, connection hubspot.Connection) *leadQ
 	require.NoError(t, err)
 	harness.workerResult = make(chan error, 1)
 	go func() { harness.workerResult <- harness.worker.Start() }()
-	require.NoError(t, harness.worker.WaitPullRegistered(t.Context()))
 	t.Cleanup(func() {
 		stopCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		require.NoError(t, errors.Join(harness.worker.Stop(stopCtx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
 	})
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := harness.worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
 	return harness
 }
 

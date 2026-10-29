@@ -39,12 +39,17 @@ func TestLookupUsesMockDefaultWithRealDex(t *testing.T) {
 	require.NoError(t, err)
 	workerResult := make(chan error, 1)
 	go func() { workerResult <- worker.Start() }()
-	require.NoError(t, worker.WaitPullRegistered(t.Context()))
 	defer func() {
 		stopContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		require.NoError(t, errors.Join(client.Close(), worker.Stop(stopContext), <-workerResult))
 	}()
+	{
+		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+		registrationError := worker.WaitPullRegistered(registrationContext)
+		cancelRegistration()
+		require.NoError(t, registrationError)
+	}
 	contextWithDeadline, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	request := netlify.ListSitesInput{}

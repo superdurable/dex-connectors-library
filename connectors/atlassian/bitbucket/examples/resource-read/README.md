@@ -30,7 +30,7 @@ cd connectors/atlassian/bitbucket
 go run ./examples/resource-read
 ```
 
-With the current pull Worker SDK, the Worker connects outbound to Dex; older SDKs listen on `127.0.0.1:8873`. In **Start Flow**, choose `BitbucketResourceRead`, the Worker at `127.0.0.1:8873`, a unique Flow ID, and input like:
+The pull Worker connects outbound to Dex. In **Start Flow**, choose `BitbucketResourceRead`, a unique Flow ID, and input like:
 
 ```json
 {"workspace":"meridian"}
