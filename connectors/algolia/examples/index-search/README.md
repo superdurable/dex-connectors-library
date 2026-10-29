@@ -1,6 +1,6 @@
 # Algolia index search example
 
-This runnable Flow searches an Algolia index from Dex Web Start Flow. The `searched` branch completes with a bounded hit page. Optional branches are unwired and fail the Flow. `ConnectionName` is statically `algolia`.
+This runnable Flow searches an Algolia index from Dex Web Start Flow. The `searched` branch completes with a bounded hit page. Optional branches are unwired and fail the Flow. `ConnectionName` is statically `algolia`. Dex Web summary and display views show the completed provider outcome.
 
 ## Generate strict FDG 2.0
 

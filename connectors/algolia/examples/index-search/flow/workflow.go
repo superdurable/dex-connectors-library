@@ -5,6 +5,7 @@
 package indexsearch
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/superdurable/dex-connectors-library/connectors/algolia"
@@ -19,6 +20,8 @@ const (
 	ConnectionName = "algolia"
 	searchStepType = "SearchAlgoliaIndex"
 )
+
+var outcomeAttribute = dex.DefineAttribute[algolia.SearchPage]("algolia-index-search-outcome")
 
 // Request is the Dex Web Start Flow input.
 type Request struct {
@@ -37,8 +40,10 @@ type Flow struct {
 // NewFlow binds the configured Algolia connection.
 func NewFlow(connection algolia.Connection) *Flow { return &Flow{connection: connection} }
 
-func (*Flow) GetFlowType() string                         { return FlowType }
-func (*Flow) GetPersistenceSchema() dex.PersistenceSchema { return dex.PersistenceSchema{} }
+func (*Flow) GetFlowType() string { return FlowType }
+func (*Flow) GetPersistenceSchema() dex.PersistenceSchema {
+	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{outcomeAttribute}}
+}
 
 func (flow *Flow) GetSteps() []dex.StepDef {
 	return []dex.StepDef{
@@ -56,6 +61,43 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 // MapToSearchInput maps the validated request to one bounded Algolia search.
 func MapToSearchInput(request Request) algolia.SearchInput {
 	return algolia.SearchInput{IndexName: request.IndexName, Query: request.Query, HitsPerPage: 10}
+}
+
+// GetRPCs registers the Dex Web summary and display views.
+func (flow *Flow) GetRPCs() []dex.RPCDef {
+	return []dex.RPCDef{
+		dex.DefineRPC(flow.GetDexSummary, nil),
+		dex.DefineRPC(flow.GetDexDisplay, nil),
+	}
+}
+
+// GetDexSummary returns the completed provider outcome.
+// dex:field attribute-key:algolia-index-search-outcome value-type:json editable:false description:"Index search results"
+func (*Flow) GetDexSummary(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
+	outcome, err := optionalOutcome(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &dex.RPCResult[map[string]any]{Output: map[string]any{"algolia-index-search-outcome": outcome}}, nil
+}
+
+// GetDexDisplay returns the completed provider outcome.
+// dex:field attribute-key:algolia-index-search-outcome value-type:json editable:false description:"Index search results"
+func (*Flow) GetDexDisplay(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
+	outcome, err := optionalOutcome(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &dex.RPCResult[map[string]any]{Output: map[string]any{"algolia-index-search-outcome": outcome}}, nil
+}
+
+func optionalOutcome(ctx dex.Context) (algolia.SearchPage, error) {
+	outcome, err := outcomeAttribute.Get(ctx)
+	var missing *dex.AttributeNotFoundError
+	if errors.As(err, &missing) {
+		return algolia.SearchPage{}, nil
+	}
+	return outcome, err
 }
 
 // dex:group group-id:index-search group-label:"Index search"
@@ -79,8 +121,13 @@ type searched struct {
 }
 
 func (searched) GetStepType() string { return "AlgoliaHitsFound" }
-func (searched) Execute(_ dex.Context, result algolia.SearchResult) (*dex.StepDecision, error) {
+func (searched) Execute(ctx dex.Context, result algolia.SearchResult) (*dex.StepDecision, error) {
+	if err := outcomeAttribute.Set(ctx, result.Value); err != nil {
+		return nil, err
+	}
 	return dex.GracefulComplete(result.Value), nil
 }
 
 var _ dex.Flow = (*Flow)(nil)
+var _ dex.RPC[dex.None, map[string]any] = (*Flow)(nil).GetDexSummary
+var _ dex.RPC[dex.None, map[string]any] = (*Flow)(nil).GetDexDisplay
