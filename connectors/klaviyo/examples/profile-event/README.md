@@ -1,6 +1,6 @@
 # Klaviyo profile event example
 
-This runnable Flow submits one profile event from Dex Web Start Flow. The `accepted` branch completes after Klaviyo queues the event; optional branches remain unwired and fail the Flow. The connector derives a stable `unique_id` from the Dex call. `ConnectionName` is statically `klaviyo`.
+This runnable Flow submits one profile event from Dex Web Start Flow. The `accepted` branch completes after Klaviyo queues the event; optional branches remain unwired and fail the Flow. The connector derives a stable `unique_id` from the Dex call. `ConnectionName` is statically `klaviyo`. Dex Web summary and display views show the completed provider outcome.
 
 ## Generate strict FDG 2.0
 
