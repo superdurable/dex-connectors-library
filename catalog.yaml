@@ -64,6 +64,7 @@ directories:
   - connectors/superdurable/webhook
   - connectors/twilio/messaging
   - connectors/typeform
+  - connectors/vercel
   - connectors/xero
   - connectors/zendesk/support
   - connectors/zoho/crm
