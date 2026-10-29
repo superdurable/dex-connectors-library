@@ -1,184 +1,135 @@
-{
-  "apiVersion": "connectors.dex.dev/v1alpha1",
-  "kind": "Connector",
-  "metadata": {
-    "name": "pagerduty",
-    "displayName": "PagerDuty",
-    "description": "Read and act through the PagerDuty public API.",
-    "company": "PagerDuty",
-    "version": "v0.1.0"
-  },
-  "spec": {
-    "provider": "pagerduty",
-    "codegen": {
-      "go": {
-        "package": "pagerduty"
-      }
-    },
-    "configuration": {
-      "fields": [
-        {
-          "name": "baseUrl",
-          "goName": "BaseURL",
-          "type": "url",
-          "description": "PagerDuty API base URL. Leave blank for the displayed public endpoint; override only for a compatible gateway or local test server.",
-          "default": "https://api.pagerduty.com"
-        },
-        {
-          "name": "timeout",
-          "goName": "Timeout",
-          "type": "duration",
-          "description": "Maximum time for one HTTP request, as a positive Go duration such as 15s or 1m. Leave blank for the displayed default; override for slower gateways.",
-          "default": "15s"
-        },
-        {
-          "name": "maxResponseBytes",
-          "goName": "MaxResponseBytes",
-          "type": "integer",
-          "description": "Maximum accepted response size in bytes. Leave blank for the displayed default; increase only for larger legitimate pages.",
-          "default": 2097152
-        }
-      ]
-    },
-    "auth": {
-      "type": "apiKey",
-      "connectionKind": "pagerduty-api-key",
-      "fields": [
-        {
-          "name": "api_key",
-          "goName": "APIKey",
-          "type": "secretString",
-          "required": true,
-          "description": "Secret PagerDuty token. Start at https://support.pagerduty.com/main/docs/api-access-keys, follow Integrations > Developer Tools > API Access Keys. Create a read-only REST API key and copy it. It is an opaque secret string; blank prevents requests. It is sent only in the Authorization header."
-        }
-      ],
-      "guide": {
-        "startURL": "https://support.pagerduty.com/main/docs/api-access-keys",
-        "steps": [
-          "Open https://support.pagerduty.com/main/docs/api-access-keys and sign in or create an account.",
-          "Follow Integrations > Developer Tools > API Access Keys. Create a read-only REST API key and copy it. It is an opaque secret string; blank prevents requests.",
-          "Paste the token into the secret api_key field and save the connection; leave baseUrl, timeout, and maxResponseBytes blank to use their displayed defaults."
-        ]
-      }
-    },
-    "operations": [
-      {
-        "name": "listIncidents",
-        "goName": "ListIncidents",
-        "inputType": "ListIncidentsInput",
-        "outputType": "IncidentPage",
-        "kind": "query",
-        "description": "ListIncidents through the PagerDuty public JSON API.",
-        "idempotency": "none",
-        "authorization": "required",
-        "branches": [
-          {
-            "id": "listed",
-            "goName": "Listed",
-            "description": "PagerDuty returned the requested result."
-          },
-          {
-            "id": "providerRejected",
-            "goName": "ProviderRejected",
-            "description": "The provider definitively rejected the request.",
-            "optional": true
-          },
-          {
-            "id": "invalidResponse",
-            "goName": "InvalidResponse",
-            "description": "The provider returned malformed or oversized JSON.",
-            "optional": true
-          },
-          {
-            "id": "defect",
-            "goName": "Defect",
-            "description": "Local input or connection credentials are invalid.",
-            "optional": true
-          }
-        ],
-        "execution": {
-          "executeMethodTimeout": "30s",
-          "durability": "async"
-        },
-        "mocks": [
-          {
-            "name": "listIncidentsDefault",
-            "branch": "listed",
-            "description": "A representative PagerDuty response.",
-            "default": true,
-            "output": {
-              "incidents": [
-                {
-                  "id": "P123456",
-                  "title": "API latency",
-                  "status": "triggered"
-                }
-              ],
-              "limit": 25,
-              "offset": 0,
-              "more": false
-            }
-          }
-        ]
-      },
-      {
-        "name": "getIncident",
-        "goName": "GetIncident",
-        "inputType": "GetIncidentInput",
-        "outputType": "Incident",
-        "kind": "query",
-        "description": "GetIncident through the PagerDuty public JSON API.",
-        "idempotency": "none",
-        "authorization": "required",
-        "branches": [
-          {
-            "id": "found",
-            "goName": "Found",
-            "description": "PagerDuty returned the requested result."
-          },
-          {
-            "id": "notFound",
-            "goName": "NotFound",
-            "description": "The requested resource does not exist.",
-            "optional": true
-          },
-          {
-            "id": "providerRejected",
-            "goName": "ProviderRejected",
-            "description": "The provider definitively rejected the request.",
-            "optional": true
-          },
-          {
-            "id": "invalidResponse",
-            "goName": "InvalidResponse",
-            "description": "The provider returned malformed or oversized JSON.",
-            "optional": true
-          },
-          {
-            "id": "defect",
-            "goName": "Defect",
-            "description": "Local input or connection credentials are invalid.",
-            "optional": true
-          }
-        ],
-        "execution": {
-          "executeMethodTimeout": "30s",
-          "durability": "async"
-        },
-        "mocks": [
-          {
-            "name": "getIncidentDefault",
-            "branch": "found",
-            "description": "A representative PagerDuty response.",
-            "default": true,
-            "output": {
-              "id": "P123456",
-              "title": "API latency",
-              "status": "triggered"
-            }
-          }
-        ]
-      }
-    ]
-  }
-}
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: pagerduty
+  displayName: PagerDuty
+  description: Read and act through the PagerDuty public API.
+  company: PagerDuty
+  version: v0.1.0
+spec:
+  provider: pagerduty
+  codegen:
+    go:
+      package: pagerduty
+  configuration:
+    fields:
+    - name: baseUrl
+      goName: BaseURL
+      type: url
+      description: PagerDuty API base URL. Leave blank for the displayed public endpoint;
+        override only for a compatible gateway or local test server.
+      default: https://api.pagerduty.com
+    - name: timeout
+      goName: Timeout
+      type: duration
+      description: Maximum time for one HTTP request, as a positive Go duration such
+        as 15s or 1m. Leave blank for the displayed default; override for slower gateways.
+      default: 15s
+    - name: maxResponseBytes
+      goName: MaxResponseBytes
+      type: integer
+      description: Maximum accepted response size in bytes. Leave blank for the displayed
+        default; increase only for larger legitimate pages.
+      default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: pagerduty-api-key
+    fields:
+    - name: api_key
+      goName: APIKey
+      type: secretString
+      required: true
+      description: Secret PagerDuty token. Start at https://support.pagerduty.com/main/docs/api-access-keys,
+        follow Integrations > Developer Tools > API Access Keys. Create a read-only
+        REST API key and copy it. It is an opaque secret string; blank prevents requests.
+        It is sent only in the Authorization header.
+    guide:
+      startURL: https://support.pagerduty.com/main/docs/api-access-keys
+      steps:
+      - Open https://support.pagerduty.com/main/docs/api-access-keys and sign in or
+        create an account.
+      - Follow Integrations > Developer Tools > API Access Keys. Create a read-only
+        REST API key and copy it. It is an opaque secret string; blank prevents requests.
+      - Paste the token into the secret api_key field and save the connection; leave
+        baseUrl, timeout, and maxResponseBytes blank to use their displayed defaults.
+  operations:
+  - name: listIncidents
+    goName: ListIncidents
+    inputType: ListIncidentsInput
+    outputType: IncidentPage
+    kind: query
+    description: ListIncidents through the PagerDuty public JSON API.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: listed
+      goName: Listed
+      description: PagerDuty returned the requested result.
+    - id: providerRejected
+      goName: ProviderRejected
+      description: The provider definitively rejected the request.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: The provider returned malformed or oversized JSON.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Local input or connection credentials are invalid.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: listIncidentsDefault
+      branch: listed
+      description: A representative PagerDuty response.
+      default: true
+      output:
+        incidents:
+        - id: P123456
+          title: API latency
+          status: triggered
+        limit: 25
+        offset: 0
+        more: false
+  - name: getIncident
+    goName: GetIncident
+    inputType: GetIncidentInput
+    outputType: Incident
+    kind: query
+    description: GetIncident through the PagerDuty public JSON API.
+    idempotency: none
+    authorization: required
+    branches:
+    - id: found
+      goName: Found
+      description: PagerDuty returned the requested result.
+    - id: notFound
+      goName: NotFound
+      description: The requested resource does not exist.
+      optional: true
+    - id: providerRejected
+      goName: ProviderRejected
+      description: The provider definitively rejected the request.
+      optional: true
+    - id: invalidResponse
+      goName: InvalidResponse
+      description: The provider returned malformed or oversized JSON.
+      optional: true
+    - id: defect
+      goName: Defect
+      description: Local input or connection credentials are invalid.
+      optional: true
+    execution:
+      executeMethodTimeout: 30s
+      durability: async
+    mocks:
+    - name: getIncidentDefault
+      branch: found
+      description: A representative PagerDuty response.
+      default: true
+      output:
+        id: P123456
+        title: API latency
+        status: triggered
