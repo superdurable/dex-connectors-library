@@ -5,11 +5,16 @@ package flow
 
 import (
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/pinecone"
+	"github.com/superdurable/dex-connectors-library/connectors/pinecone/pineconemock"
+	"github.com/superdurable/dex/sdk-go/dex"
 	"testing"
 )
 
-func TestMapToOperationInputPreservesRequest(t *testing.T) {
-	request := pinecone.UpsertVectorsInput{Namespace: "example", Vectors: []pinecone.Vector{{ID: "vec-meridian", Values: []float32{0.1, 0.2}}}}
-	require.Equal(t, request, MapToOperationInput(request))
+func TestSampleFlowRegistersWithMockConnection(t *testing.T) {
+	mock := pineconemock.New(t, ConnectionName)
+	flow := NewFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	require.NoError(t, err)
+	require.NotNil(t, registry)
+	require.Len(t, flow.GetRPCs(), 2)
 }

@@ -5,11 +5,16 @@ package flow
 
 import (
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/coda"
+	"github.com/superdurable/dex-connectors-library/connectors/coda/codamock"
+	"github.com/superdurable/dex/sdk-go/dex"
 	"testing"
 )
 
-func TestMapToOperationInputPreservesRequest(t *testing.T) {
-	request := coda.ListRowsInput{DocID: "AbCDeFGH", TableID: "grid-pqRst-U", Limit: 10}
-	require.Equal(t, request, MapToOperationInput(request))
+func TestSampleFlowRegistersWithMockConnection(t *testing.T) {
+	mock := codamock.New(t, ConnectionName)
+	flow := NewFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	require.NoError(t, err)
+	require.NotNil(t, registry)
+	require.Len(t, flow.GetRPCs(), 2)
 }

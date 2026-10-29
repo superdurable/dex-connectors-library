@@ -5,11 +5,16 @@ package flow
 
 import (
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/supabase"
+	"github.com/superdurable/dex-connectors-library/connectors/supabase/supabasemock"
+	"github.com/superdurable/dex/sdk-go/dex"
 	"testing"
 )
 
-func TestMapToOperationInputPreservesRequest(t *testing.T) {
-	request := supabase.SelectRowsInput{Table: "projects", Limit: 10}
-	require.Equal(t, request, MapToOperationInput(request))
+func TestSampleFlowRegistersWithMockConnection(t *testing.T) {
+	mock := supabasemock.New(t, ConnectionName)
+	flow := NewFlow(mock.Connection())
+	registry, err := dex.NewRegistry([]dex.Flow{flow})
+	require.NoError(t, err)
+	require.NotNil(t, registry)
+	require.Len(t, flow.GetRPCs(), 2)
 }
