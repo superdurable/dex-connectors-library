@@ -1,0 +1,90 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: cloudflare
+  displayName: Cloudflare
+  description: "Use the Cloudflare REST API through typed Dex connector Steps."
+  company: Cloudflare
+  version: v0.1.0
+spec:
+  provider: cloudflare
+  codegen:
+    go:
+      package: cloudflare
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: "Cloudflare REST API base URL. Leave blank for the displayed provider endpoint; override only for a compatible HTTPS gateway or loopback test server."
+        default: https://api.cloudflare.com/client/v4
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: "Positive Go duration bounding one HTTP request; leave blank for the displayed default, or override for a slower network."
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Positive byte limit for one response; leave blank for the displayed default, or override for larger pages."
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: cloudflare-api-key
+    fields:
+      - name: api_token
+        goName: APIToken
+        type: secretString
+        description: "Secret Cloudflare API token from My Profile > API Tokens at https://dash.cloudflare.com/profile/api-tokens. Create a custom token with Zone > Zone > Read and Zone > Cache Purge permissions for the intended zones, then copy it. Blank prevents requests."
+        required: true
+    guide:
+      startURL: https://dash.cloudflare.com/profile/api-tokens
+      steps:
+        - "Open https://dash.cloudflare.com/profile/api-tokens and select My Profile > API Tokens > Create Token."
+        - "Create a custom token with Zone > Zone > Read and Zone > Cache Purge for the zones you will use, then copy it into secret api_token. Leave baseUrl, timeout, and maxResponseBytes blank unless changing their displayed defaults."
+  operations:
+    - name: listZones
+      goName: ListZones
+      inputType: ListZonesInput
+      outputType: ZonesPage
+      kind: query
+      description: "List the first page of Cloudflare zones."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "List the first page of Cloudflare zones."}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: listedDefault
+          branch: listed
+          description: "A Meridian example returns a representative ZonesPage."
+          default: true
+          output: {"success":true,"result":[{"id":"zone-meridian","name":"meridian.example","status":"active"}]}
+    - name: purgeCacheByURLs
+      goName: PurgeCacheByURLs
+      inputType: PurgeCacheByURLsInput
+      outputType: CachePurge
+      kind: mutation
+      description: "Purge specific URLs from a Cloudflare zone; repeating the same purge has the same cache-removal effect."
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: purged, goName: Purged, description: "Purge specific URLs from a Cloudflare zone; repeating the same purge has the same cache-removal effect."}
+        - {id: notFound, goName: NotFound, description: The requested resource does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: purgedDefault
+          branch: purged
+          description: "A Meridian example returns a representative CachePurge."
+          default: true
+          output: {"success":true,"result":{"id":"purge-meridian"}}

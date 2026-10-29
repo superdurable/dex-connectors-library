@@ -1,0 +1,95 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: datadog
+  displayName: Datadog
+  description: "Use the Datadog REST API through typed Dex connector Steps."
+  company: Datadog
+  version: v0.1.0
+spec:
+  provider: datadog
+  codegen:
+    go:
+      package: datadog
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: "Datadog REST API base URL. Leave blank for the displayed US site endpoint; use the HTTPS API host of your Datadog region (such as https://api.datadoghq.eu), a compatible gateway, or a loopback test server."
+        default: https://api.datadoghq.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: "Positive Go duration bounding one HTTP request; leave blank for the displayed default, or override for a slower network."
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Positive byte limit for one response; leave blank for the displayed default, or override for larger pages."
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: datadog-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        description: "Secret Datadog API key from Organization Settings > API Keys at https://app.datadoghq.com/organization-settings/api-keys. Create API Key and copy it; blank prevents requests."
+        required: true
+      - name: application_key
+        goName: ApplicationKey
+        type: secretString
+        description: "Secret Datadog application key from Organization Settings > Application Keys at https://app.datadoghq.com/organization-settings/application-keys. Select New Key with timeseries_query and monitors_read permissions; copy the key at creation; blank prevents requests."
+        required: true
+    guide:
+      startURL: https://app.datadoghq.com/organization-settings/api-keys
+      steps:
+        - "Open https://app.datadoghq.com/organization-settings/api-keys and create or select an API key in Organization Settings > API Keys."
+        - "Open https://app.datadoghq.com/organization-settings/application-keys, select New Key in Organization Settings > Application Keys, and grant timeseries_query and monitors_read permissions."
+        - "Copy both secret values into api_key and application_key; leave baseUrl, timeout, and maxResponseBytes blank unless changing their displayed defaults."
+  operations:
+    - name: queryMetrics
+      goName: QueryMetrics
+      inputType: QueryMetricsInput
+      outputType: MetricsQuery
+      kind: query
+      description: "Query Datadog timeseries points over an explicit Unix-second interval."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: queried, goName: Queried, description: "Query Datadog timeseries points over an explicit Unix-second interval."}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: queriedDefault
+          branch: queried
+          description: "A Meridian example returns a representative MetricsQuery."
+          default: true
+          output: {"status":"ok","series":[{"metric":"system.cpu.user","pointlist":[[1761436800000,0.23]]}]}
+    - name: listMonitors
+      goName: ListMonitors
+      inputType: ListMonitorsInput
+      outputType: MonitorsPage
+      kind: query
+      description: "List one page of Datadog monitors."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "List one page of Datadog monitors."}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: listedDefault
+          branch: listed
+          description: "A Meridian example returns a representative MonitorsPage."
+          default: true
+          output: {"monitors":[{"id":12345,"name":"Meridian API latency","type":"metric alert","overall_state":"OK"}]}
