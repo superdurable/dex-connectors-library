@@ -13,6 +13,7 @@ directories:
   - connectors/calendly
   - connectors/clickup
   - connectors/coda
+  - connectors/contentful
   - connectors/discord
   - connectors/docusign
   - connectors/doist/todoist
