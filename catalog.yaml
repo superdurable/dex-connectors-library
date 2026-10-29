@@ -54,6 +54,7 @@ directories:
   - connectors/postgresql
   - connectors/reamaze
   - connectors/salesforce
+  - connectors/shopify
   - connectors/slack
   - connectors/snowflake
   - connectors/spotify
