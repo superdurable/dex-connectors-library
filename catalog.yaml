@@ -2,6 +2,7 @@ apiVersion: connectors.dex.dev/catalog-source/v1alpha1
 kind: ConnectorCatalogSource
 directories:
   - connectors/airtable
+  - connectors/alphavantage
   - connectors/amazon/s3
   - connectors/amazon/sqs
   - connectors/asana

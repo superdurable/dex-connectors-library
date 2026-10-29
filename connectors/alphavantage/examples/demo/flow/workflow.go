@@ -1,0 +1,74 @@
+// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+
+// Package demo runs Alpha Vantage getGlobalQuote as one Dex Flow.
+package demo
+
+import (
+	"github.com/superdurable/dex-connectors-library/connectors/alphavantage"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex/sdk-go/dex"
+)
+
+const (
+	// FlowType is the stable example Flow identity.
+	FlowType = "AlphaVantageDemo"
+	// ConnectionName is the static Dex Web connection used by this example.
+	ConnectionName    = "alphavantage"
+	operationStepType = "CallGetGlobalQuote"
+)
+
+// Flow runs GetGlobalQuote once and completes with its typed output.
+type Flow struct {
+	dex.FlowDefaults
+	connection alphavantage.Connection
+}
+
+// NewFlow binds the provider connection at registration time.
+func NewFlow(connection alphavantage.Connection) *Flow { return &Flow{connection: connection} }
+
+func (*Flow) GetFlowType() string { return FlowType }
+
+func (*Flow) GetPersistenceSchema() dex.PersistenceSchema { return dex.PersistenceSchema{} }
+
+func (flow *Flow) GetSteps() []dex.StepDef {
+	return []dex.StepDef{
+		dex.DefineStartStep(startRequest{}),
+		dex.DefineStep(alphavantage.NewGetGlobalQuoteStep(alphavantage.GetGlobalQuoteStepConfig[alphavantage.StockInput]{
+			StepType: operationStepType, ConnectionName: ConnectionName,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Alpha Vantage", Explanation: "Call the provider's getGlobalQuote operation."},
+			Connection:          flow.connection,
+			MapToOperationInput: MapToOperationInput,
+			Found:               sdkgo.GoTo(completeResult{}),
+		})),
+		dex.DefineStep(completeResult{}),
+	}
+}
+
+// MapToOperationInput preserves the validated typed start input for the provider call.
+func MapToOperationInput(input alphavantage.StockInput) alphavantage.StockInput { return input }
+
+// dex:group group-id:demo group-label:"Demo"
+// dex:explanation text:"Pass the typed start input to the provider Step."
+type startRequest struct{ dex.StepDefaults }
+
+func (startRequest) GetStepType() string { return "StartGetGlobalQuote" }
+func (startRequest) WaitFor(dex.Context, alphavantage.StockInput) (*dex.Wait, error) {
+	return dex.SkipWaitImmediately(), nil
+}
+func (startRequest) Execute(_ dex.Context, input alphavantage.StockInput) (*dex.StepDecision, error) {
+	return dex.GoTo(sdkgo.StepRef[alphavantage.StockInput](operationStepType), input), nil
+}
+
+// dex:group group-id:demo group-label:"Demo"
+// dex:explanation text:"Complete the Flow with the provider's typed result."
+type completeResult struct {
+	dex.StepDefaultsNoWaitFor[alphavantage.GetGlobalQuoteResult]
+}
+
+func (completeResult) GetStepType() string { return "CompleteGetGlobalQuote" }
+func (completeResult) Execute(_ dex.Context, result alphavantage.GetGlobalQuoteResult) (*dex.StepDecision, error) {
+	return dex.GracefulComplete(result.Value), nil
+}
+
+var _ dex.Flow = (*Flow)(nil)

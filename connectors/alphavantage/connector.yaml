@@ -1,0 +1,92 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: alphavantage
+  displayName: Alpha Vantage
+  description: Read a global equity quote and compact daily time series.
+  company: Alpha Vantage
+  version: v0.1.0
+spec:
+  provider: alphavantage
+  codegen:
+    go:
+      package: alphavantage
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Public Alpha Vantage API base URL. Leave blank for the displayed default; override only for a trusted compatible gateway or a loopback test server.
+        default: https://www.alphavantage.co
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one provider HTTP request, as a positive Go duration such as 15s or 1m. Leave blank for the displayed default; increase only for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Positive maximum response size in bytes. Leave blank for the displayed default; increase only for a known larger response. Oversized replies select invalidResponse.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: alphavantage-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        description: Secret API key from Alpha Vantage > Support > Claim your Free API Key at https://www.alphavantage.co/support/api-key/. Copy the provider-issued string into this field; blank makes calls select defect. It is stored as a secret and sent in the required appid URL query parameter.
+        required: true
+    guide:
+      startURL: https://www.alphavantage.co/support/api-key/
+      steps:
+        - Open https://www.alphavantage.co/support/api-key/ and sign in or create an account.
+        - Navigate to Alpha Vantage > Support > Claim your Free API Key; create or select a key with permission for the listed read or generation operations, and copy its provider-issued string.
+        - Paste it into the secret api_key field and save the connection. Leave baseUrl, timeout, and maxResponseBytes blank to use their displayed defaults.
+  operations:
+    - name: getGlobalQuote
+      goName: GetGlobalQuote
+      inputType: StockInput
+      outputType: GlobalQuoteOutput
+      kind: query
+      description: GetGlobalQuote through the documented Alpha Vantage API.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "Alpha Vantage returned the requested result."}
+        - {id: notFound, goName: NotFound, description: No market data exists for the requested symbol., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: foundDefault
+          branch: found
+          description: A representative Alpha Vantage result for the example Flow.
+          default: true
+          output: {"symbol":"IBM","price":"255.25","latestTradingDay":"2026-10-28"}
+    - name: getTimeSeriesDaily
+      goName: GetTimeSeriesDaily
+      inputType: StockInput
+      outputType: DailySeriesOutput
+      kind: query
+      description: GetTimeSeriesDaily through the documented Alpha Vantage API.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "Alpha Vantage returned the requested result."}
+        - {id: notFound, goName: NotFound, description: No market data exists for the requested symbol., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: foundDefault
+          branch: found
+          description: A representative Alpha Vantage result for the example Flow.
+          default: true
+          output: {"symbol":"IBM","days":[{"date":"2026-10-28","open":"254.00","high":"256.00","low":"253.00","close":"255.25","volume":"1200000"}]}
