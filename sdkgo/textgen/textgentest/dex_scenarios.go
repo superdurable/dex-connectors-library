@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -488,7 +487,6 @@ type scenarioHarness struct {
 	registry      *dex.Registry
 	cache         *blobcache.Cache
 	serverAddress string
-	workerAddress string
 	worker        *dex.Worker
 	workerResult  chan error
 	client        *dex.Client
@@ -500,13 +498,9 @@ func newScenarioHarness(t *testing.T, serverAddress string, flow dex.Flow) *scen
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	workerAddress := listener.Addr().String()
-	require.NoError(t, listener.Close())
-	harness := &scenarioHarness{registry: registry, cache: cache, serverAddress: serverAddress, workerAddress: workerAddress}
+	harness := &scenarioHarness{registry: registry, cache: cache, serverAddress: serverAddress}
 	harness.client, err = dex.NewClient(registry, cache, dex.ClientOptions{
-		FlowServiceAddress: serverAddress, WorkerTarget: &dex.WorkerTarget{Address: workerAddress},
+		FlowServiceAddress: serverAddress,
 	})
 	require.NoError(t, err)
 	harness.startWorker(t)
@@ -517,16 +511,18 @@ func newScenarioHarness(t *testing.T, serverAddress string, flow dex.Flow) *scen
 func (harness *scenarioHarness) startWorker(t *testing.T) {
 	t.Helper()
 	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{
-		BindAddress: harness.workerAddress, FlowServiceAddress: harness.serverAddress,
-		WorkerTarget: dex.WorkerTarget{Address: harness.workerAddress},
+		FlowServiceAddress: harness.serverAddress,
 	})
 	require.NoError(t, err)
 	workerResult := make(chan error, 1)
 	go func() { workerResult <- worker.Start() }()
 	harness.worker, harness.workerResult = worker, workerResult
+	registrationContext, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	require.NoError(t, worker.WaitPullRegistered(registrationContext))
 }
 
-// replaceWorker force-stops the Worker without draining its handlers, then starts a new one at the same address.
+// replaceWorker force-stops the Worker without draining its handlers, then starts a new one.
 func (harness *scenarioHarness) replaceWorker(t *testing.T) {
 	t.Helper()
 	expired, cancel := context.WithCancel(context.Background())

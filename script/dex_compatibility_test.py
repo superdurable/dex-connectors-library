@@ -1,9 +1,12 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 
+import hashlib
 import io
 import re
+import shutil
 import subprocess
+import tarfile
 import tempfile
 import unittest
 import urllib.error
@@ -20,12 +23,14 @@ from script.dex_compatibility import (
     connector_releases,
     create_module_proxy,
     dexcli_archive_name,
+    download_dexcli,
     dex_web_compatibility_sources,
     dex_web_compatibility_test_names,
     download,
     example_consumer_name,
     fixture_module_path,
     flow_examples,
+    install_dexcli,
     manifests,
     rate_limit_wait,
     resolve_dex_release,
@@ -54,6 +59,50 @@ class ModuleProxyTest(unittest.TestCase):
 
             self.assertRegex(first, re.compile(r"^v0\.0\.[1-9][0-9]*$"))
             self.assertNotEqual(first, second)
+
+
+class DexCliInstallTest(unittest.TestCase):
+    def test_installs_bundled_server_and_legacy_cli_archives(self) -> None:
+        for has_bundled_server in (False, True):
+            with self.subTest(has_bundled_server=has_bundled_server), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                archive_name = dexcli_archive_name("v1.26.1")
+                source_archive = root / "source.tar.gz"
+                with tarfile.open(source_archive, "w:gz") as archive:
+                    files = {"package/dexcli": b"cli"}
+                    if has_bundled_server:
+                        files["server/dex-server-zd"] = b"server"
+                    for name, contents in files.items():
+                        member = tarfile.TarInfo(name)
+                        member.size = len(contents)
+                        member.mode = 0o755
+                        archive.addfile(member, io.BytesIO(contents))
+                source_checksums = root / "source-checksums.txt"
+                source_checksums.write_text(f"{hashlib.sha256(source_archive.read_bytes()).hexdigest()}  {archive_name}\n")
+                assets = {"archive": source_archive, "checksums": source_checksums}
+
+                def copy_asset(url: str, output: Path) -> None:
+                    shutil.copy2(assets[url], output)
+
+                release = {
+                    "tag_name": "cli-v1.26.1",
+                    "assets": [
+                        {"name": archive_name, "browser_download_url": "archive"},
+                        {"name": "checksums.txt", "browser_download_url": "checksums"},
+                    ],
+                }
+                extraction = root / "extracted"
+                extraction.mkdir()
+                with patch("script.dex_compatibility.download", side_effect=copy_asset):
+                    binary = download_dexcli(release, extraction)
+                output = root / "installed" / "dexcli"
+                install_dexcli(binary, output)
+
+                self.assertEqual(b"cli", output.read_bytes())
+                bundled_server = output.with_name("dex-server-zd")
+                self.assertEqual(has_bundled_server, bundled_server.exists())
+                if has_bundled_server:
+                    self.assertEqual(b"server", bundled_server.read_bytes())
 
 
 class ExampleConsumerNameTest(unittest.TestCase):

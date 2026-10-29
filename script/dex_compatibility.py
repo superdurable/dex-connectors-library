@@ -84,9 +84,7 @@ def main() -> int:
             if not args.output:
                 parser.error("install-dexcli requires --output")
             output = Path(args.output).resolve()
-            output.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(dexcli, output)
-            output.chmod(0o755)
+            install_dexcli(dexcli, output)
             return 0
         artifacts = temporary_root / "connector-artifacts"
         examples = temporary_root / "examples"
@@ -361,10 +359,31 @@ def download_dexcli(release: dict[str, object], directory: Path) -> Path:
         members = [member for member in archive_file.getmembers() if Path(member.name).name == "dexcli" and member.isfile()]
         if len(members) != 1:
             raise RuntimeError("Dex CLI archive must contain exactly one dexcli binary")
-        extract_data(archive_file, members, directory)
+        server_members = [member for member in archive_file.getmembers() if Path(member.name).name == "dex-server-zd" and member.isfile()]
+        if len(server_members) > 1:
+            raise RuntimeError("Dex CLI archive contains multiple dex-server-zd binaries")
+        extract_data(archive_file, members + server_members, directory)
         binary = directory / members[0].name
+        if server_members:
+            server = directory / server_members[0].name
+            adjacent_server = binary.with_name("dex-server-zd")
+            if server != adjacent_server:
+                shutil.copy2(server, adjacent_server)
+            adjacent_server.chmod(0o755)
     binary.chmod(0o755)
     return binary
+
+
+def install_dexcli(binary: Path, output: Path) -> None:
+    """Install the CLI and its optional bundled server-zd binary side by side."""
+    output.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(binary, output)
+    output.chmod(0o755)
+    bundled_server = binary.with_name("dex-server-zd")
+    if bundled_server.is_file():
+        server_output = output.with_name("dex-server-zd")
+        shutil.copy2(bundled_server, server_output)
+        server_output.chmod(0o755)
 
 
 def extract_data(archive: tarfile.TarFile, members: list[tarfile.TarInfo], directory: Path) -> None:

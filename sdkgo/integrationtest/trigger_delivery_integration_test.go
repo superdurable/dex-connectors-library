@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -351,11 +352,14 @@ func TestDurableTriggerInboxSurvivesApprovalAfterCompletionAndRestartWithRealDex
 		skipped := logs.find("trigger event skipped: undeliverable", map[string]string{"event_id": lateApproval.ID})
 		require.Len(t, skipped, 1)
 		require.Equal(t, slog.LevelWarn, skipped[0].level)
+		errorText := skipped[0].attrs["error"]
+		require.True(t, strings.HasPrefix(errorText, fmt.Sprintf(`Trigger event is undeliverable: dex: InvokeRPC flow %q: NotFound: `, flowA)), "unexpected error: %q", errorText)
+		skippedAttributes := maps.Clone(skipped[0].attrs)
+		delete(skippedAttributes, "error")
 		require.Equal(t, map[string]string{
 			"connector": "fixture", "connection": "local", "trigger": "threadReplied", "binding": "approval-reply",
 			"event_id": lateApproval.ID, "flow_id": flowA,
-			"error": fmt.Sprintf(`Trigger event is undeliverable: dex: InvokeRPC flow %q: NotFound: workflow execution already completed`, flowA),
-		}, skipped[0].attrs)
+		}, skippedAttributes)
 	})
 
 	t.Run("an approval the application filter rejects is consumed", func(t *testing.T) {
@@ -446,8 +450,10 @@ func TestDurableRPCTriggerConsumesReplyWithoutFlowWithRealDex(t *testing.T) {
 	orphanSkip := logs.find("trigger event skipped: undeliverable", map[string]string{"event_id": orphanApproval.ID})
 	require.Len(t, orphanSkip, 1)
 	require.Equal(t, slog.LevelWarn, orphanSkip[0].level)
-	require.Contains(t, orphanSkip[0].attrs["error"], "workflow not found")
-	require.Equal(t, resolveTriggerApprovalFlowID(orphanApproval), orphanSkip[0].attrs["flow_id"])
+	orphanFlowID := resolveTriggerApprovalFlowID(orphanApproval)
+	orphanError := orphanSkip[0].attrs["error"]
+	require.True(t, strings.HasPrefix(orphanError, fmt.Sprintf(`Trigger event is undeliverable: dex: InvokeRPC flow %q: NotFound: `, orphanFlowID)), "unexpected error: %q", orphanError)
+	require.Equal(t, orphanFlowID, orphanSkip[0].attrs["flow_id"])
 
 	restarted := newTriggerApprovalRoutes(t, store, harness.client, flow, logs.logger())
 	replayer, ok := restarted.reply.(sdkgo.TriggerDeliveryReplayer)
@@ -520,10 +526,9 @@ func TestDurableTriggerReplayWaitsForUnavailableWorkerWithRealDex(t *testing.T) 
 	}, waitForTriggerApprovalOutput(ctx, t, harness.client, flowD))
 	require.Empty(t, pendingTriggerEventIDs(t, store))
 
-	// The replay logs every backoff with its attempt and the scheduled delay, then the recovery.
+	// Pull dispatch may wait through the outage, so successful replay need not log a retry.
 	replayIdentity := map[string]string{"binding": "approval-reply", "event_id": approvalD.ID}
 	retries := logs.find("trigger delivery failed; retrying", replayIdentity)
-	require.GreaterOrEqual(t, len(retries), 2, "the 3-second Worker outage spans at least two backoffs")
 	schedule := []time.Duration{250 * time.Millisecond, 500 * time.Millisecond, time.Second, 2 * time.Second, 4 * time.Second,
 		8 * time.Second, 16 * time.Second, 30 * time.Second}
 	for index, record := range retries {
@@ -534,9 +539,13 @@ func TestDurableTriggerReplayWaitsForUnavailableWorkerWithRealDex(t *testing.T) 
 		require.NotEmpty(t, record.attrs["error"])
 	}
 	recovered := logs.find("trigger delivered after retry", replayIdentity)
-	require.Len(t, recovered, 1)
-	require.Equal(t, slog.LevelInfo, recovered[0].level)
-	require.Equal(t, strconv.Itoa(len(retries)+1), recovered[0].attrs["attempts"])
+	if len(retries) == 0 {
+		require.Empty(t, recovered)
+	} else {
+		require.Len(t, recovered, 1)
+		require.Equal(t, slog.LevelInfo, recovered[0].level)
+		require.Equal(t, strconv.Itoa(len(retries)+1), recovered[0].attrs["attempts"])
+	}
 	require.Len(t, logs.find("replaying pending trigger events", map[string]string{"binding": "approval-reply", "count": "1"}), 1)
 	require.Len(t, logs.find("finished replaying pending trigger events", map[string]string{
 		"binding": "approval-reply", "delivered": "1", "skipped": "0", "remaining": "0",
