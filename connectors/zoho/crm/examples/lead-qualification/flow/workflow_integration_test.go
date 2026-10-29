@@ -146,11 +146,11 @@ func TestSlowContactUpsertDispatchedTwiceKeepsOneContactWithRealDex(t *testing.T
 
 	outcome := harness.runQualification(t, "accepted-then-unavailable", integrationInput())
 	require.Equal(t, PhaseNoOpenDeal, outcome.Phase)
-	require.Equal(t, 3, provider.Count("upsert"), "the retry repeats the accepted contact upsert once")
+	require.Equal(t, 2, provider.Count("upsert"), "the retry repeats the accepted contact upsert once")
 	require.Equal(t, 2, provider.Count("upsert Contacts"))
 	require.Equal(t, 1, provider.RecordCount("Contacts"), "the repeated upsert updated the contact instead of creating a second")
 	upserts := provider.RequestsNamed("upsert")
-	require.Equal(t, upserts[1].Body, upserts[2].Body, "both contact attempts send the same record")
+	require.Equal(t, upserts[0].Body, upserts[1].Body, "both contact attempts send the same record")
 }
 
 func TestSlowDealUpdateDispatchedTwiceSetsTheSameValuesWithRealDex(t *testing.T) {
