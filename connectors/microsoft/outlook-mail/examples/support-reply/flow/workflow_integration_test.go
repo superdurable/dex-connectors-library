@@ -134,6 +134,7 @@ func TestLostMoveAnswerArchivesOnceWithRealDex(t *testing.T) {
 
 	outcome := harness.runReply(t, "lost-move-answer", integrationInput())
 	require.Equal(t, ReplyActionReplied, outcome.Action)
+	require.True(t, outcome.ArchivedTo.WasAlreadyMoved, "the retry found the message in the archive")
 	require.Equal(t, 1, harness.graph.RequestCount(graphtest.EndpointMoveMessage))
 	archived := harness.graph.MessagesInFolder("archive")
 	require.Len(t, archived, 1, "the repeated move did not duplicate the message")

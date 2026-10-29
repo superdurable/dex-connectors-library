@@ -220,7 +220,7 @@ updates the record the first attempt created.
   accepts it has not been verified.
 
 `TestRecordSyncSlowUpsertSentTwiceKeepsOneRecordWithRealDex` proves the
-behavior on a real Dex Server: a nine-second upsert is sent twice and the fake
+behavior on a real Dex Server: an upsert retried after Worker loss and the fake
 provider, which serializes writes like a unique index, ends with one record.
 
 ## Updating a record

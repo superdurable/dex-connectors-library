@@ -220,8 +220,7 @@ The message's `external_id` is the Step's idempotency key.
 
 Gorgias documents no idempotency key, so a repeated create or message is a
 duplicate ticket, a second internal note, or a second email to the customer.
-Dex re-dispatches an async Step whose local attempt passes about seven
-seconds, and it retries a Step after a lost Worker, so the operations take
+Dex can replay a Step after Worker loss or before a result is committed, so the operations take
 these positions:
 
 - **updateTicket** is safe to repeat. Its writes set absolute field values
@@ -260,9 +259,7 @@ these positions:
     The example Flow fails on this unwired branch. A possibly sent write never
     selects `defect`.
 
-Keep these two Steps sync. An application override to async durability lets
-Dex dispatch a second request after seven seconds, before the first is
-visible. Dex accepts the checkpoint when the Worker writes it to its stream,
+Keep these two Steps sync so results are committed promptly. Dex accepts the checkpoint when the Worker writes it to its stream,
 before the request leaves; a Worker lost in that instant, before Dex stored
 the checkpoint, leaves the next attempt without it. That attempt still looks
 for the write by its `external_id` before sending, so the checkpoint and the

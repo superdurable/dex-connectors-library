@@ -129,10 +129,8 @@ has no idempotency key and lists tickets filtered only by customer:
   ticket, another customer's ticket, and a look-alike address's ticket
   untouched;
 - a first page of the customer's closed tickets leads to the second page;
-- a create and a note held for nine seconds, past Dex's async local phase, are
-  each sent exactly once, because both Steps are sync;
-- an update held for nine seconds is dispatched again by async Dex, and both
-  attempts write the same values without duplicating a tag;
+- a delayed create and note each complete with one request;
+- an update retried after Worker loss writes the same values without duplicating a tag;
 - a lost create response, and a lost reply response, are found by their
   `external_id` on the retry and never resent;
 - a create that fails with a 502 and that Gorgias still does not show after

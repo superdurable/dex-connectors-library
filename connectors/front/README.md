@@ -245,7 +245,7 @@ failure. Reconcile those Flows manually after this upgrade.
 
 The real-Dex tests in
 [`examples/conversation-triage`](examples/conversation-triage/main_integration_test.go)
-cover a fake Front that answers after nine seconds, a `503` then acceptance
+cover a delayed fake Front response, a `503` then acceptance
 with two comment POSTs, and a Worker lost while Front holds the comment: the
 new Worker selects `uncertain` without a second POST.
 

@@ -227,5 +227,5 @@ without answers is filtered; and a delivery while the binding is not running
 answers `503` and its retry starts the Flow:
 
 ```bash
-DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 go test -tags=integration ./examples/response-recorder/... -count=1 -v
+DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 go test -p 1 -tags=integration ./examples/response-recorder/... -count=1 -v
 ```

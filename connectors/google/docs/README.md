@@ -135,10 +135,9 @@ the stable Dex Call ID. [Drive file search](https://developers.google.com/worksp
 supports queries on that property.
 
 The shared single-dispatch fence reads the previous Dex heartbeat before
-credentials or Drive lookup. Sync durability makes that heartbeat visible to
-later attempts. **Keep the Step sync:** overriding it to async durability can
-let Dex send a second create after about seven seconds while the first is
-still in flight. An attempt first searches for a tagged file; if found, it
+credentials or Drive lookup. Sync durability commits that heartbeat promptly.
+**Keep the Step sync:** a replay after a lost Worker must read the checkpoint
+before deciding whether a create can be sent. An attempt first searches for a tagged file; if found, it
 returns that document without another create. The fence permits a send only on
 the first attempt or after the immediately prior attempt proved that no create
 was sent, Drive returned a 429 or 503, or a 401 credential was refreshed.
@@ -183,9 +182,8 @@ the `revisionId` of a `getDocumentText` Step, and send one
 `documents.batchUpdate` with `writeControl.requiredRevisionId`. Google applies
 the batch atomically and only if the document is still at that revision;
 otherwise it answers 400 and applies nothing. Because the revision is part of
-the Step input, every dispatch of one Step execution, including the backup
-dispatch Dex starts when an async attempt passes about seven seconds, carries
-the same revision, and once one batch is applied the revision has moved, so
+the Step input, every replay of one Step execution carries the same revision.
+Once one batch is applied the revision has moved, so
 no second batch with that revision can apply. The operations therefore keep
 async durability and retry every unconfirmed outcome: a transport failure, a
 5xx, or an unreadable 2xx is retried, and the retry recognizes its own write.

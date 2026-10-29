@@ -87,7 +87,6 @@ GOWORK=off go test -tags=integration ./examples/text-message-delivery/... -count
 They cover a delivered text read twice through the Timer, a 21608 rejection,
 a 429 retried after `Retry-After`, a 503 retried with exactly two POSTs, a timeout after dispatch reconciled through
 an unknown SID, another recipient's SID, and the created SID with exactly one
-create request, a nine-second dispatch that outlasts Dex's async local phase
-and is still sent once, a 500 resent only after **Resend message**, and an
+create request, a delayed dispatch that is still sent once, a 500 resent only after **Resend message**, and an
 unconfirmed delivery that stops after the last read. Set `DEX_FLOW_SERVICE_ADDRESS` when
 the server is not at `127.0.0.1:8801`.

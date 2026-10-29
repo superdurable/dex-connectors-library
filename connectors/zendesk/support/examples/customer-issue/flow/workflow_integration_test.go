@@ -177,8 +177,8 @@ func TestLostUpdateResponseDoesNotRepeatTheNoteWithRealDex(t *testing.T) {
 	require.GreaterOrEqual(t, provider.count("audits"), 2)
 }
 
-// TestLostWorkerDuringUpdateAddsOneNoteWithRealDex verifies audit reconciliation after an accepted update.
-func TestLostWorkerDuringUpdateAddsOneNoteWithRealDex(t *testing.T) {
+// TestLostWorkerAfterAppliedUpdateAddsOneNoteWithRealDex verifies audit reconciliation after an accepted update.
+func TestLostWorkerAfterAppliedUpdateAddsOneNoteWithRealDex(t *testing.T) {
 	provider := newFakeZendesk(t)
 	existing := provider.seedTicket(requesterUserID, "open", []string{integrationIssueTag}, "2026-01-26T14:02:00Z", "I was charged twice.")
 	provider.holdsFirstUpdate = make(chan struct{})
@@ -201,6 +201,39 @@ func TestLostWorkerDuringUpdateAddsOneNoteWithRealDex(t *testing.T) {
 	require.Equal(t, 1, provider.count("update"), "the replay reads the audit marker before writing")
 	require.Equal(t, 2, provider.count("audits"))
 	require.Zero(t, provider.count("updateConflict"))
+}
+
+// A delayed first write must lose to the replacement's newer updated_stamp without adding another note.
+func TestLostWorkerDuringUpdateAddsOneNoteWithRealDex(t *testing.T) {
+	provider := newFakeZendesk(t)
+	existing := provider.seedTicket(requesterUserID, "open", []string{integrationIssueTag}, "2026-01-26T14:02:00Z", "I was charged twice.")
+	hold := make(chan struct{})
+	defer func() {
+		if hold != nil {
+			close(hold)
+		}
+	}()
+	provider.holdsFirstUpdateBeforeApplying = hold
+	flow, harness := newCustomerIssueHarness(t, provider, heldRequestTimeout)
+	ctx := integrationContext(t)
+	flowID := startCustomerIssue(t, ctx, harness, flow, "late-update", integrationIssueInput())
+	require.Eventually(t, func() bool { return provider.count("update") == 1 }, 30*time.Second, 50*time.Millisecond)
+	harness.replaceWorker(t)
+	require.Eventually(t, func() bool { return provider.count("appliedUpdate") == 1 }, time.Minute, 50*time.Millisecond,
+		"the replacement update must commit before the old request resumes")
+	close(hold)
+	hold = nil
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var outcome CustomerIssueOutcome
+	require.NoError(t, result.DecodeSingleOutput(&outcome))
+	require.Equal(t, IssueFollowUpAdded, outcome.Action)
+	provider.waitForHeldRequests(t)
+	require.Len(t, provider.ticket(existing).comments, 2)
+	require.Equal(t, 2, provider.count("update"))
+	require.Equal(t, 1, provider.count("appliedUpdate"))
+	require.Equal(t, 1, provider.count("updateConflict"))
 }
 
 func TestRateLimitedSearchWaitsForRetryAfterWithRealDex(t *testing.T) {
@@ -285,12 +318,13 @@ type fakeZendesk struct {
 	counts        map[string]int
 	requests      map[string][]fakeRecordedRequest
 
-	losesFirstCreateResponse bool
-	holdsFirstCreate         chan struct{}
-	losesFirstUpdateResponse bool
-	holdsFirstUpdate         chan struct{}
-	rateLimitsFirstSearch    bool
-	rejectsCreate            bool
+	losesFirstCreateResponse       bool
+	holdsFirstCreate               chan struct{}
+	losesFirstUpdateResponse       bool
+	holdsFirstUpdate               chan struct{}
+	holdsFirstUpdateBeforeApplying chan struct{}
+	rateLimitsFirstSearch          bool
+	rejectsCreate                  bool
 }
 
 type fakeTicket struct {
@@ -572,6 +606,9 @@ func (provider *fakeZendesk) updateTicket(response http.ResponseWriter, request 
 		} `json:"ticket"`
 	}
 	require.NoError(provider.t, json.Unmarshal(body, &payload))
+	if attempt == 1 {
+		provider.waitForLateUpdate(provider.holdsFirstUpdateBeforeApplying)
+	}
 	provider.mutex.Lock()
 	ticket, found := provider.tickets[ticketID]
 	if !found {
@@ -744,6 +781,15 @@ func (provider *fakeZendesk) waitForHeldRequest(request *http.Request, hold chan
 	}
 }
 
+func (provider *fakeZendesk) waitForLateUpdate(hold chan struct{}) {
+	if hold == nil {
+		return
+	}
+	provider.heldRequests.Add(1)
+	defer provider.heldRequests.Done()
+	<-hold
+}
+
 func (provider *fakeZendesk) waitForHeldRequests(t *testing.T) {
 	t.Helper()
 	finished := make(chan struct{})
@@ -909,6 +955,7 @@ func (harness *customerIssueHarness) replaceWorker(t *testing.T) {
 	t.Helper()
 	expired, cancel := context.WithCancel(context.Background())
 	cancel()
+	// The expired context forces cancellation; its Stop error does not change the replacement outcome.
 	_ = harness.worker.Stop(expired)
 	require.NoError(t, <-harness.workerResult)
 	harness.startWorker(t)

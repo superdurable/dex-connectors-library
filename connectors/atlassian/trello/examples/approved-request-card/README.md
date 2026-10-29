@@ -115,8 +115,7 @@ own label; a full duplicate check that stops without creating; a rejected
 create sent once; a rate-limited create retried after `Retry-After`; a create
 timeout reconciled by confirming a missing, a mismatched, and then the real
 card ID without a second create; a 5xx create created again only after
-operator approval; a nine-second create and a nine-second comment each sent
-once under sync durability; a move interrupted by Worker loss whose replacement resends the same body
+operator approval; a delayed create and comment each sent once; a move interrupted by Worker loss whose replacement resends the same body
 and leaves the same card; a comment timeout that fails without a
 resend; a Worker lost during the create, whose replacement finds the heartbeat
 checkpoint and sends nothing; and a move Trello rejects.

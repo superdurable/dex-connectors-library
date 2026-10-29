@@ -188,10 +188,8 @@ They verify:
 - a 409 conflict retried after Notion rejects the first transaction;
 - an uncertain create reconciled by query, and one that stays uncertain;
 - a create Notion saved before a 503;
-- a create held for nine seconds that Notion receives once under sync
-  durability;
-- an update held for nine seconds that Dex dispatches twice and that
-  converges;
+- a delayed create that Notion receives once;
+- a delayed update that currently completes with one dispatch and converges;
 - an unwired optional branch;
 - invalid Start Flow input.
 

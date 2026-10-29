@@ -97,7 +97,7 @@ func TestBookMeetingSlowCreateBackupAttemptFindsTheStoredHoldWithRealDex(t *test
 
 	require.Equal(t, MeetingScheduled, outcome.Status)
 	require.Equal(t, 1, provider.storedEventCount(), "every attempt of the Step resolves to one event")
-	require.Equal(t, 1, provider.count("create"), "the backup attempt found the stored hold and sent no POST")
+	require.Equal(t, 1, provider.count("create"), "the retry found the stored hold and sent no POST")
 	require.Equal(t, 1, provider.count("lookupFound"), "the replacement Worker found the stored hold")
 	require.Equal(t, 1, provider.count("patch"))
 	t.Logf("slow create after store: creates=%d lookupsMissing=%d lookupsFound=%d", provider.count("create"), provider.count("lookupMissing"), provider.count("lookupFound"))

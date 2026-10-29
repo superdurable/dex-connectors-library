@@ -190,8 +190,8 @@ Hiver raises your account's limit.
 
 Hiver API v1 documents no idempotency key, and it has no way to list a
 conversation's notes or drafts, so a repeated note or draft is a duplicate that
-the connector cannot detect. Dex re-dispatches an async Step whose local
-attempt passes about seven seconds, and it retries a Step after a lost Worker,
+the connector cannot detect. Dex can replay a Step after Worker loss or before
+a result is committed,
 so the operations take these positions:
 
 - **updateConversation** is safe to repeat. Its `PATCH` sets an absolute
@@ -223,8 +223,7 @@ so the operations take these positions:
   Hiver does not document this header as an idempotency key, so it does not
   make a repeated write safe.
 
-Keep these two Steps sync. An application override to async durability lets
-Dex dispatch a second request after seven seconds.
+Keep these two Steps sync so results are committed promptly.
 
 Dex does not acknowledge heartbeat persistence when the Worker writes the
 checkpoint. A later attempt with no stored marker therefore fails closed and

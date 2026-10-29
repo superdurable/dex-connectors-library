@@ -131,10 +131,8 @@ close together:
   with no write;
 - a conversation another agent claims between the list and the read is left
   alone as `claimedElsewhere`;
-- an update held for nine seconds is dispatched again by async Dex, and both
-  attempts send the same change without duplicating the tag;
-- a note held for nine seconds, past Dex's async local phase, is sent exactly
-  once, because the Step is sync;
+- an update retried after Worker loss sends the same change without duplicating the tag;
+- a delayed note completes with one request;
 - a lost note response fails on the unwired `uncertain` branch and is never resent;
 - a rate-limited note waits for `Retry-After` and adds one note;
 - a 503 once then success completes with exactly two note requests carrying

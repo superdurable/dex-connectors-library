@@ -330,5 +330,5 @@ With the latest Dex development server running, the connector owns its real
 Worker, Trigger delivery, RPC, persistence, and transition coverage:
 
 ```bash
-GOWORK=off go test -tags=integration ./... -count=1 -v
+GOWORK=off go test -p 1 -tags=integration ./... -count=1 -v
 ```

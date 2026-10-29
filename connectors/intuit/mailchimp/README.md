@@ -190,9 +190,8 @@ the check. The Result holds the campaign as read before the send, so after
 
 ## Duplicate safety
 
-Mailchimp documents no idempotency key. Dex re-dispatches an async Step whose
-local attempt passes about seven seconds, and it retries a Step after a lost
-Worker, so the operations take these positions:
+Mailchimp documents no idempotency key. Dex can replay a Step after Worker
+loss or a result lost before commit, so the operations take these positions:
 
 - **upsertMember** and **updateMemberTags** are safe to repeat. The PUT is
   keyed by the address and sets absolute values, and each tag is declared
@@ -217,8 +216,7 @@ Worker, so the operations take these positions:
   and the connector never sends it again. A new Step execution reads the
   campaign again first.
 
-Keep `sendCampaign` sync. An application override to async durability lets
-Dex dispatch a second send after seven seconds. A checkpoint lost before Dex
+Keep `sendCampaign` sync so its result is committed promptly. A checkpoint lost before Dex
 stored it, or a crash between the checkpoint and the send, can make an attempt
 report `uncertain` for a send Mailchimp never received; that direction is
 safe.

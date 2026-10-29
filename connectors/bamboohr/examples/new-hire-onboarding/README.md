@@ -151,8 +151,7 @@ BambooHR, has no idempotency key and matches emails by substring:
 - an existing hire is handed off with only their approved or requested time
   off in the first two weeks, and a second run finds the hand-off recorded and
   writes nothing;
-- an add held for nine seconds is sent exactly
-  once, because the Step is sync;
+- a delayed add completes with one request;
 - an update interrupted by Worker loss is read by the replacement Worker,
   which sends no second write;
 - a Worker lost while BambooHR holds the add is replaced, and the new attempt

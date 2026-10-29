@@ -228,8 +228,7 @@ transition, rather than the request API's customer transitions. Set
 
 Jira Service Management documents no idempotency key, so a repeated create is a
 second request and a repeated public reply is a second customer email. Dex
-re-dispatches an async Step whose local attempt passes about seven seconds and
-retries a Step after a lost Worker, so the writes take these positions:
+can replay a Step after Worker loss or before a result is committed, so the writes take these positions:
 
 - **createTicket** and **addComment** run with sync durability. Before resolving
   credentials or sending, each checks and records the Step's Call ID and
@@ -252,7 +251,7 @@ retries a Step after a lost Worker, so the writes take these positions:
 - **updateTicket** and **transitionTicket** keep async durability and read
   before they write, so a backup attempt finds the change already made.
 
-Real Dex runs with a fake that answers after nine seconds guard each position:
+Real Dex runs with delayed and retried fake provider requests guard each position:
 `TestSlowCreateIsSentOnceUnderSyncDurabilityWithRealDex`,
 `TestSlowPublicReplyIsSentOnceUnderSyncDurabilityWithRealDex`,
 `TestSlowLabelUpdateBackupAttemptWritesOnceWithRealDex` (two reads, one write),

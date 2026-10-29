@@ -128,7 +128,7 @@ duplicate with `409 IDEMPOTENCY_CONFLICT`, and replays a finished one with
   untouched: a completed same-name item, an archived one, one on another
   board, and a look-alike name;
 - a first page of completed same-name items leads to the cursor's second page;
-- a create and an added update held for nine seconds finish with one sync dispatch each; the absolute column update may be repeated by async dispatch, and the board still holds one item and one update;
+- a healthy create and update each use one dispatch; an update replayed after Worker loss leaves one item and one update;
 - a lost create response fails closed through `uncertain` after one request;
 - a Worker lost while monday.com holds the create is replaced; the new attempt fails closed through `uncertain` without resending;
 - a complexity-limited create waits for `retry_in_seconds` and creates one

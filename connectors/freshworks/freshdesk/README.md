@@ -231,8 +231,7 @@ An account-specific ticket custom field would change the customer's ticket
 form and still leave note or reply correlation unresolved. A search miss
 cannot prove that a possibly accepted write did not happen.
 
-Keep these two Steps sync. An application override to async durability lets
-Dex dispatch a second request after seven seconds. A checkpoint lost before
+Keep these two Steps sync so results are committed promptly. A checkpoint lost before
 Dex stored it, or a crash before the request left, can make an attempt report
 `uncertain` for a request Freshdesk never received; that direction is safe.
 

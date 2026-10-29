@@ -214,6 +214,7 @@ func TestLostIMAPMoveAnswerMovesOnceWithRealDex(t *testing.T) {
 	outcome := harness.runReply(t, "lost-move-answer", integrationInput())
 	require.Equal(t, ReplyActionReplied, outcome.Action)
 	require.Equal(t, 1, harness.imap.MoveCount())
+	require.Equal(t, 1, harness.imap.MessageIDSearchCount("Archive"), "the retry searched the destination mailbox")
 	archived := harness.imap.Messages(t, "Archive")
 	require.Len(t, archived, 1, "the repeated move did not copy the message twice")
 	require.Equal(t, "latest@acme.example.com", archived[0].MessageID)

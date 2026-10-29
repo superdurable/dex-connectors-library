@@ -147,10 +147,9 @@ Mailchimp, has no idempotency key:
   once after it;
 - a declined launch completes without reading or sending the campaign;
 - two approvals at the same moment schedule one send;
-- an upsert and a tag update each held for nine seconds, past Dex's async local
-  phase, are dispatched again, and both attempts leave one contact, one
-  confirmation email, and one tag;
-- a send held for nine seconds is sent exactly once, because the Step is sync;
+- an upsert and tag update retried after accepted writes return `503` leave one
+  contact, one confirmation email, and one tag;
+- a delayed send completes with one request;
 - a lost send response fails on the unwired `uncertain` branch without a resend;
 - a Worker lost while Mailchimp holds the send is replaced, and the new
   attempt finds the dispatch checkpoint, reads the campaign as sending,

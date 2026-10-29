@@ -21,7 +21,7 @@ import (
 	"time"
 )
 
-// SlowResponseDelay outlasts Dex's roughly seven-second async local phase, so Dex dispatches an async Step again.
+// SlowResponseDelay supports delayed-provider scenarios in integration tests.
 const SlowResponseDelay = 9 * time.Second
 
 // zohoZone is the offset Zoho CRM uses for the fake organization's times, so the connector must convert to UTC.

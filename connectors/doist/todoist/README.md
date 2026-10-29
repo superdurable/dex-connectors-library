@@ -79,7 +79,7 @@ Step context, with a reserved margin, so under normal engine timing Dex records
 the operation's own result instead of timing out the attempt and running it
 again, which for create would send a second POST. The attempt time is the
 30-second Execute timeout, or less when the Step context's deadline is earlier;
-an async Step's first attempt may get only about seven seconds. A create or update POST must finish within seven twelfths of
+the connector reserves part of that budget for recording the result. A create or update POST must finish within seven twelfths of
 that time, and every request, including a read-back, within five sixths; the
 rest covers recording the result. These limits also cut a longer `Timeout` or
 caller-supplied `http.Client.Timeout`. A request with less than a tenth of the

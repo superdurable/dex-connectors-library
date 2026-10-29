@@ -143,4 +143,4 @@ insertion first, not by time. They cover:
 - a listing longer than the page budget, which keeps the input cursor;
 - a rate-limited form read retried after `Retry-After`;
 - a Worker without a form pick and a deleted form;
-- a nine-second listing that Dex dispatches again, recorded once.
+- a listing replayed after Worker loss, recorded once.

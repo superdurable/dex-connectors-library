@@ -206,7 +206,7 @@ These rely on the documentation fetched on 2026-09-30, not on a live account:
 cd connectors/typeform
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
-DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./... -count=1 -v
+DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -p 1 -tags=integration ./... -count=1 -v
 (cd ui && npm ci && npm test && npm run build)
 ```
 

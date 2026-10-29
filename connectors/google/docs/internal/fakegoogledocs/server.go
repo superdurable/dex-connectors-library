@@ -103,7 +103,7 @@ type WriteBehavior struct {
 	DelayBeforeApplying time.Duration
 	// DelayAfterApplying sleeps after applying, before answering.
 	DelayAfterApplying time.Duration
-	// HoldBeforeApplying waits for release or cancellation before checking the document revision.
+	// HoldBeforeApplying waits for release before checking the revision, even after client cancellation.
 	HoldBeforeApplying chan struct{}
 	// HoldAfterApplying waits for release or cancellation after committing the batch.
 	HoldAfterApplying chan struct{}
@@ -340,11 +340,7 @@ func (server *Server) batchUpdate(response http.ResponseWriter, request *http.Re
 	if behavior.HoldBeforeApplying != nil {
 		server.delayedRequests.Add(1)
 		defer server.delayedRequests.Done()
-		select {
-		case <-behavior.HoldBeforeApplying:
-		case <-request.Context().Done():
-			return
-		}
+		<-behavior.HoldBeforeApplying
 	}
 	if behavior.DelayBeforeApplying > 0 {
 		server.delayedRequests.Add(1)

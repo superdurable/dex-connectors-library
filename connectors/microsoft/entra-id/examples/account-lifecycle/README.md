@@ -126,8 +126,7 @@ GOWORK=off go test -race ./examples/account-lifecycle/...
 
 With the latest Dex development server running, the integration tests drive
 the Flow on a real Worker against `internal/graphfake`: a create and a
-membership add that each answer after nine seconds, so Dex dispatches a backup
-attempt, with exactly one account and one membership; a lost create response
+membership add delayed by the fake, each completing with one dispatch and creating exactly one account and one membership; a lost create response
 followed by two membership adds that race account replication; a name that
 belongs to another account; a reinstated account that keeps its membership;
 an offboarding whose first removal response is lost; an unknown account on

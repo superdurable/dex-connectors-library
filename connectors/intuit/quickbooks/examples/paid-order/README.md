@@ -151,9 +151,8 @@ with error 600, which the connector retries:
   the rotated refresh token is stored;
 - an existing active customer is found by email, past an inactive customer
   and a look-alike address;
-- an invoice create and a payment each held for nine seconds, past Dex's
-  async local phase, are dispatched again; the repeat is refused with 600,
-  retried, and replayed, so QuickBooks holds one invoice and one payment;
+- an invoice create and a payment whose accepted replies are lost are retried
+  with the same request IDs and replayed, so QuickBooks holds one invoice and one payment;
 - a lost create response is retried under the same `requestid` and replayed;
 - a Worker lost while QuickBooks holds the payment is replaced, and the new
   Worker's attempt sends the same `requestid` and records no second payment;

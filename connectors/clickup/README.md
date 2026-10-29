@@ -255,7 +255,7 @@ member has the address, or the token's user is not in the Workspace.
 ## Avoiding duplicate tasks and comments
 
 `createTask` and `addComment` use sync Execute durability. The
-example's real-Dex tests hold a create and a comment for nine seconds and
+example's real-Dex tests delay a create and a comment and
 record one request each; another holds a create while the Worker is replaced,
 and the new attempt reads the List instead of resending. Do not override these
 Steps to async. Dex accepts the checkpoint when the Worker writes it to its

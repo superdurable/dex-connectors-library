@@ -127,8 +127,7 @@ Freshdesk, has no idempotency key and omits tags from search results:
 - a search match whose tag the index still shows but the ticket no longer has
   is read, skipped, and never written;
 - a first page of other customers' tickets leads to the second page;
-- a create and a note held for nine seconds are
-  each sent exactly once, because both Steps are sync;
+- a delayed create and note each complete with one request;
 - an update interrupted by Worker loss is read by the replacement Worker,
   which sends no second write and leaves the tag unchanged;
 - a lost update response is retried and finds the values applied;

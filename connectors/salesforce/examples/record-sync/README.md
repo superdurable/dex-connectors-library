@@ -102,4 +102,4 @@ fake Salesforce with the CRM research fixture's decoys: a Lead that shares a
 new contact's email, two contacts with one email, a near-duplicate email, and
 a contact that already carries another external ID. They also prove that an
 upsert whose response is lost is retried into one record, and that a
-nine-second upsert that Dex sends twice still leaves one record.
+upsert retried after Worker loss still leaves one record.

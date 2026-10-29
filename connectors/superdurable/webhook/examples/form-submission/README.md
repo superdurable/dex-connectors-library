@@ -194,5 +194,5 @@ submission answers `400` and starts nothing; and a submission before the
 binding runs answers `503` and the sender's retry starts the Flow:
 
 ```bash
-DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 go test -tags=integration ./examples/form-submission/... -count=1 -v
+DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 go test -p 1 -tags=integration ./examples/form-submission/... -count=1 -v
 ```

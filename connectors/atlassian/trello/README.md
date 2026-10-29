@@ -217,8 +217,8 @@ suppress a deliberately repeated comment.
 ## Avoiding duplicate cards and comments
 
 `createCard` and `addComment` use sync Execute durability although a request is
-usually fast. A real Dex run against a fake Trello that held the create for
-nine seconds recorded one create request;
+usually fast. A real Dex run against a fake Trello with a delayed create
+recorded one create request;
 `TestSlowCreateIsSentOnceUnderSyncDurabilityWithRealDex` and
 `TestSlowCommentIsSentOnceUnderSyncDurabilityWithRealDex` guard this. Do not
 override these Steps to async.

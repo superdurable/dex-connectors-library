@@ -115,9 +115,8 @@ a stateful fake Linear that stores client-supplied IDs and refuses to store one 
 - the team's open issue with the title is reused, and these decoys stay untouched: a completed issue with the
   title, one in another team, and a look-alike title;
 - an unknown assignee email leaves the issue unassigned, and a blank state name picks `Todo`;
-- a create, a comment, and an update held for nine seconds, past Dex's async local phase, are each dispatched
-  again; the repeated create and comment meet the stored UUID and read the record back, so Linear holds one
-  issue and one comment;
+- a Worker lost during a held create, comment, or update causes another dispatch;
+  repeated creates and comments use the stored UUID, so Linear holds one issue and one comment;
 - a Worker lost while Linear holds the create is replaced, and the new Worker's attempt sends the same UUID and
   reads back the first issue;
 - a search answered with Linear's HTTP 400 `RATELIMITED` and `Retry-After: 1` is retried;

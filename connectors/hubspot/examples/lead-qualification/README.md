@@ -185,11 +185,9 @@ and another pipeline's deal stay untouched, a duplicate start with the same
 request ID, a new lead without an open deal, a rate-limited upsert that Dex
 retries after `Retry-After`, a rejected upsert that fails with a
 secret-safe reason, a Flow failure for the unwired `notFound` branch, an
-expired OAuth connection that refreshes before the first call, and slow
-writes. For the slow writes, HubSpot answers the
-upsert and the update after nine seconds, Dex's asynchronous fallback
-dispatches each one again, and the test proves one contact and the configured
-stage remain. That test takes about 35 seconds.
+expired OAuth connection that refreshes before the first call, and retried
+writes. When HubSpot accepts an upsert or update but its answer is lost,
+Dex retries it; the test proves one contact and the configured stage remain.
 
 Before `v0.23.1` is published, build a local release artifact with
 `go run ./cmd/connectorctl release-artifact` from the repository root and pass

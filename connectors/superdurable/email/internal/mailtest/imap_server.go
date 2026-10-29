@@ -48,13 +48,14 @@ type IMAPServer struct {
 	// Port is the server's TCP port.
 	Port int
 
-	user     *imapmemserver.User
-	config   IMAPServerConfig
-	mutex    sync.Mutex
-	logins   int
-	moves    int
-	stores   int
-	moveHold time.Duration
+	user                       *imapmemserver.User
+	config                     IMAPServerConfig
+	mutex                      sync.Mutex
+	logins                     int
+	moves                      int
+	stores                     int
+	messageIDSearchesByMailbox map[string]int
+	moveHold                   time.Duration
 	// dropsNextMoveReply closes the connection after the next MOVE is applied, before its OK is sent.
 	dropsNextMoveReply bool
 	delayedMoves       sync.WaitGroup
@@ -75,7 +76,7 @@ type StoredMessage struct {
 // StartIMAPServer starts a server that the test's cleanup stops.
 func StartIMAPServer(t testing.TB, config IMAPServerConfig) *IMAPServer {
 	t.Helper()
-	server := &IMAPServer{Host: "127.0.0.1", config: config, user: imapmemserver.NewUser(config.Username, config.Password)}
+	server := &IMAPServer{Host: "127.0.0.1", config: config, user: imapmemserver.NewUser(config.Username, config.Password), messageIDSearchesByMailbox: make(map[string]int)}
 	for _, mailbox := range append([]string{"INBOX"}, config.Mailboxes...) {
 		require.NoError(t, server.user.Create(mailbox, nil))
 	}
@@ -182,6 +183,11 @@ func (server *IMAPServer) LoginCount() int { return server.count(func() int { re
 // MoveCount is the number of MOVE commands the server received.
 func (server *IMAPServer) MoveCount() int { return server.count(func() int { return server.moves }) }
 
+// MessageIDSearchCount counts Message-ID searches in the named mailbox.
+func (server *IMAPServer) MessageIDSearchCount(mailbox string) int {
+	return server.count(func() int { return server.messageIDSearchesByMailbox[mailbox] })
+}
+
 // StoreCount is the number of STORE commands the server received.
 func (server *IMAPServer) StoreCount() int { return server.count(func() int { return server.stores }) }
 
@@ -194,8 +200,31 @@ func (server *IMAPServer) count(read func() int) int {
 // faultInjectingSession wraps the in-memory session to count commands and inject delays and lost replies.
 type faultInjectingSession struct {
 	*imapmemserver.UserSession
-	server *IMAPServer
-	conn   *imapserver.Conn
+	server          *IMAPServer
+	conn            *imapserver.Conn
+	selectedMailbox string
+}
+
+// Select records the mailbox so Message-ID reconciliation searches can be counted precisely.
+func (session *faultInjectingSession) Select(name string, options *imap.SelectOptions) (*imap.SelectData, error) {
+	selected, err := session.UserSession.Select(name, options)
+	if err == nil {
+		session.selectedMailbox = name
+	}
+	return selected, err
+}
+
+// Search counts Message-ID lookups used to reconcile a lost move answer.
+func (session *faultInjectingSession) Search(kind imapserver.NumKind, criteria *imap.SearchCriteria, options *imap.SearchOptions) (*imap.SearchData, error) {
+	for _, header := range criteria.Header {
+		if header.Key == "Message-ID" && session.selectedMailbox != "" {
+			session.server.mutex.Lock()
+			session.server.messageIDSearchesByMailbox[session.selectedMailbox]++
+			session.server.mutex.Unlock()
+			break
+		}
+	}
+	return session.UserSession.Search(kind, criteria, options)
 }
 
 // Login accepts the configured credentials and the inspector's.

@@ -100,7 +100,7 @@ seconds, sent once under sync durability; a post whose response never arrives,
 found by reading the channel back without a second post; a lost post with no
 match, failed through the unwired `uncertain` branch without a resend; a Worker process
 killed mid-post and replaced, which reads back instead of posting again; an
-unacknowledged incident escalated once with a nine-second chat message; replies
+unacknowledged incident escalated once with a delayed chat message; replies
 forbidden without administrator consent; and a rejected channel post.
 
 ```bash

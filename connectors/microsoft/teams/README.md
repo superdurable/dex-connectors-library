@@ -58,9 +58,8 @@ sends one. Teams allows about one request per second per channel or chat.
 The documented [channel](https://learn.microsoft.com/graph/api/channel-post-messages)
 and [chat](https://learn.microsoft.com/graph/api/chat-post-messages) create
 requests expose no idempotency key or client-settable message ID. A repeated
-request can post a second message. Dex re-dispatches an async Step whose
-local attempt passes about seven seconds and replays a Step after a lost
-Worker, so every post:
+request can post a second message. Dex can replay a Step after Worker loss
+or a result lost before commit, so every post:
 
 1. runs with `sync` Execute durability so its heartbeat is visible to later attempts;
 2. uses the Connector SDK single-dispatch fence to claim the write before it sends;
@@ -116,11 +115,9 @@ The runnable example uses the generated connection in a real-Dex test:
 	flow := NewFlow(mock.Connection(), ChannelSelection{TeamID: integrationTeamID, ChannelID: integrationChannelID}, EscalationChatSelection{}, &policy)
 ```
 
-The example's integration tests prove each step on a real Dex Server: a fake
-that answers posts after nine seconds receives one post per Step, a lost
-response is found by the read-back without a second post, and a Worker killed
-mid-post is replaced without posting again. With an application override to
-async durability, the same nine-second fake received two posts.
+The example's real-Dex tests prove that a delayed post completes once, a lost
+response is found by read-back, and a Worker lost mid-post is replaced without
+posting again.
 
 ## Microsoft Entra app registration
 

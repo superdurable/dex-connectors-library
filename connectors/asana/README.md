@@ -197,8 +197,8 @@ comment or an edited comment.
 ## Avoiding duplicate tasks and comments
 
 `createTask` and `addComment` use sync Execute durability although a request is
-usually fast. A real Dex run against a fake Asana that held the create or
-comment for nine seconds recorded one request;
+usually fast. A real Dex run against a fake Asana with a delayed create or
+comment recorded one request;
 `TestSlowCreateIsSentOnceUnderSyncDurabilityWithRealDex` and
 `TestSlowCommentIsSentOnceUnderSyncDurabilityWithRealDex` guard this. Do not
 override these Steps to async.

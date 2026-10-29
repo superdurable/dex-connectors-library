@@ -172,17 +172,33 @@ func TestPolicyPublishSlowFillResponseAppliesOnceWithRealDex(t *testing.T) {
 		provider.Count(fakegoogledocs.CountBatchUpdatesReceived), outcome.WasFillAlreadyApplied)
 }
 
-// The first fill is canceled before applying; the replacement fills the document once.
+// The first fill arrives late and its stale revision cannot overwrite the replacement fill.
 func TestPolicyPublishConcurrentFillDispatchesApplyOnceWithRealDex(t *testing.T) {
 	provider := newPolicyProvider(t)
 	hold := make(chan struct{})
+	defer func() {
+		if hold != nil {
+			close(hold)
+		}
+	}()
 	provider.SetWriteBehavior(fakegoogledocs.WriteKindReplace, fakegoogledocs.WriteBehavior{HoldBeforeApplying: hold})
 	harness := newPublishHarness(t, provider)
-	outcome := harness.runAfterLostWorker(t, provider, "lost-before-fill", fakegoogledocs.CountBatchUpdatesReceived, 1, hold)
+	flowID := harness.startPublish(t, "lost-before-fill", publishInput())
+	require.Eventually(t, func() bool { return provider.Count(fakegoogledocs.CountBatchUpdatesReceived) == 1 }, 30*time.Second, 50*time.Millisecond)
+	harness.replaceWorker(t)
+	require.Eventually(t, func() bool { return provider.Count(fakegoogledocs.CountBatchUpdatesApplied) >= 1 }, 30*time.Second, 50*time.Millisecond,
+		"the replacement fill must commit before the old request resumes")
+	close(hold)
+	hold = nil
+	result := harness.waitForFlow(t, flowID)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var outcome Outcome
+	require.NoError(t, result.DecodeSingleOutput(&outcome))
+	provider.WaitForDelayedRequests(t, 30*time.Second)
 	require.Equal(t, StatusPublished, outcome.Status)
 	require.False(t, outcome.WasFillAlreadyApplied)
-	require.Equal(t, 3, provider.Count(fakegoogledocs.CountBatchUpdatesReceived), "the canceled fill, replacement fill, and stamp")
-	require.Zero(t, provider.Count(fakegoogledocs.CountStaleRevisionRejected))
+	require.Equal(t, 3, provider.Count(fakegoogledocs.CountBatchUpdatesReceived), "the late fill, replacement fill, and stamp")
+	require.Equal(t, 1, provider.Count(fakegoogledocs.CountStaleRevisionRejected))
 	require.Equal(t, 2, provider.Count(fakegoogledocs.CountBatchUpdatesApplied), "one fill and one stamp")
 	requirePublishedDocument(t, provider, outcome)
 }
@@ -318,7 +334,11 @@ func newPublishHarnessForConnection(t *testing.T, connection docs.Connection) *p
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
-		require.NoError(t, errors.Join(harness.worker.Stop(ctx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
+		var stopError error
+		if harness.worker != nil {
+			stopError = errors.Join(harness.worker.Stop(ctx), <-harness.workerResult)
+		}
+		require.NoError(t, errors.Join(stopError, harness.client.Close(), harness.cache.Close()))
 	})
 	harness.startWorker(t)
 	return harness

@@ -103,8 +103,8 @@ GOWORK=off go test -race ./examples/account-lifecycle/...
 
 With the latest Dex development server running, the integration test drives the
 Flow on a real Worker against a stateful fake Directory API: an account insert
-and a membership insert that each answer after nine seconds, so Dex dispatches
-a backup attempt, with exactly one account and one membership created; a lost
+and a membership insert delayed by the fake, each completing with one dispatch
+and creating exactly one account and one membership; a lost
 insert response followed by two "User creation is not complete" membership
 errors; an address that belongs to another account; a reinstated account that
 keeps its group role; an offboarding whose first removal response is lost; an
