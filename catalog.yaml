@@ -2,6 +2,7 @@ apiVersion: connectors.dex.dev/catalog-source/v1alpha1
 kind: ConnectorCatalogSource
 directories:
   - connectors/airtable
+  - connectors/algolia
   - connectors/amazon/s3
   - connectors/amazon/sqs
   - connectors/asana
@@ -10,6 +11,7 @@ directories:
   - connectors/atlassian/jira-service-management
   - connectors/atlassian/trello
   - connectors/bamboohr
+  - connectors/brevo
   - connectors/calendly
   - connectors/clickup
   - connectors/close
@@ -42,6 +44,7 @@ directories:
   - connectors/intercom
   - connectors/intuit/mailchimp
   - connectors/intuit/quickbooks
+  - connectors/klaviyo
   - connectors/linear
   - connectors/linkedin
   - connectors/microsoft/entra-id
@@ -51,6 +54,7 @@ directories:
   - connectors/microsoft/outlook-mail
   - connectors/microsoft/sql-server
   - connectors/microsoft/teams
+  - connectors/mixpanel
   - connectors/monday
   - connectors/mysql
   - connectors/netlify
@@ -72,6 +76,7 @@ directories:
   - connectors/superdurable/webhook
   - connectors/twilio/messaging
   - connectors/typeform
+  - connectors/unsplash
   - connectors/vercel
   - connectors/xero
   - connectors/zendesk/support

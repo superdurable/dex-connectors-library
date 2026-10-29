@@ -1,0 +1,87 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: brevo
+  displayName: Brevo
+  description: Create or update a contact by email and retrieve a contact.
+  company: Brevo
+  version: v0.1.0
+spec:
+  provider: brevo
+  codegen:
+    go:
+      package: brevo
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Brevo v3 API base URL; leave blank for the public endpoint, or enter a compatible HTTPS gateway URL for a custom deployment.
+        default: https://api.brevo.com/v3
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Positive Go duration limiting each HTTP request; leave blank for the displayed default, or override for a slower network.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum response bytes as a positive integer; leave blank for the displayed safety limit, or raise it for larger contact responses.
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: brevo-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret Brevo API key from https://app.brevo.com/settings/keys/api after Settings > SMTP & API > API keys > Generate a new API key; copy the displayed string once. Blank prevents requests.
+    guide:
+      startURL: https://app.brevo.com/settings/keys/api
+      steps:
+        - Sign in at https://app.brevo.com and open Settings > SMTP & API > API keys at https://app.brevo.com/settings/keys/api.
+        - Select Generate a new API key, give it a name, and copy the displayed secret string once.
+        - Paste the key into the secret api_key field; leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
+  operations:
+    - name: createOrUpdateContact
+      goName: CreateOrUpdateContact
+      inputType: CreateOrUpdateContactInput
+      outputType: ContactWriteResult
+      kind: mutation
+      description: Create a contact by email or set its specified attributes when it already exists.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: saved, goName: Saved, description: Brevo created or updated the contact.}
+        - {id: providerRejected, goName: ProviderRejected, description: Brevo rejected the contact or credentials., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Brevo returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - name: savedDefaultContact
+          branch: saved
+          description: Meridian contact was created.
+          default: true
+          output: {id: 21, email: "member@meridian.example", created: true}
+    - name: getContact
+      goName: GetContact
+      inputType: GetContactInput
+      outputType: Contact
+      kind: query
+      description: Get a Brevo contact by email address.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Brevo returned the contact.}
+        - {id: notFound, goName: NotFound, description: No contact has that email., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Brevo rejected the request or credentials., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Brevo returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - name: foundDefaultContact
+          branch: found
+          description: Meridian contact exists.
+          default: true
+          output: {id: 21, email: "member@meridian.example"}
