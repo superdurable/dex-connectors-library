@@ -17,6 +17,7 @@ directories:
   - connectors/discord
   - connectors/docusign
   - connectors/doist/todoist
+  - connectors/figma
   - connectors/freshworks/freshdesk
   - connectors/front
   - connectors/github
