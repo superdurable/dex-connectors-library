@@ -62,6 +62,7 @@ directories:
   - connectors/postgresql
   - connectors/reamaze
   - connectors/salesforce
+  - connectors/shopify
   - connectors/slack
   - connectors/smartsheet
   - connectors/snowflake
