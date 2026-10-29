@@ -1,0 +1,90 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: netlify
+  displayName: Netlify
+  description: "Use the Netlify REST API through typed Dex connector Steps."
+  company: Netlify
+  version: v0.1.0
+spec:
+  provider: netlify
+  codegen:
+    go:
+      package: netlify
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: "Netlify REST API base URL. Leave blank for the displayed provider endpoint; override only for a compatible HTTPS gateway or loopback test server."
+        default: https://api.netlify.com/api/v1
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: "Positive Go duration bounding one HTTP request; leave blank for the displayed default, or override for a slower network."
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Positive byte limit for one response; leave blank for the displayed default, or override for larger pages."
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: netlify-api-key
+    fields:
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        description: "Secret Netlify personal access token from User settings > Applications > Personal access tokens at https://app.netlify.com/user/applications#personal-access-tokens. Generate a token, grant team access when required by SSO, and copy it. Blank prevents requests."
+        required: true
+    guide:
+      startURL: https://app.netlify.com/user/applications#personal-access-tokens
+      steps:
+        - "Open https://app.netlify.com/user/applications#personal-access-tokens and under User settings > Applications > Personal access tokens choose New access token."
+        - "Grant access to the intended team when SSO requires it, then copy the secret token into access_token. Leave baseUrl, timeout, and maxResponseBytes blank unless changing their displayed defaults."
+  operations:
+    - name: listSites
+      goName: ListSites
+      inputType: ListSitesInput
+      outputType: SitesPage
+      kind: query
+      description: "List sites visible to the Netlify token."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "List sites visible to the Netlify token."}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: listedDefault
+          branch: listed
+          description: "A Meridian example returns a representative SitesPage."
+          default: true
+          output: {"sites":[{"id":"site-meridian","name":"meridian-web","url":"https://meridian.netlify.app","admin_url":"https://app.netlify.com/sites/meridian-web"}]}
+    - name: listDeploys
+      goName: ListDeploys
+      inputType: ListDeploysInput
+      outputType: DeploysPage
+      kind: query
+      description: "List deploys for one Netlify site."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "List deploys for one Netlify site."}
+        - {id: notFound, goName: NotFound, description: The requested resource does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: listedDefault
+          branch: listed
+          description: "A Meridian example returns a representative DeploysPage."
+          default: true
+          output: {"deploys":[{"id":"deploy-meridian","site_id":"site-meridian","state":"ready","url":"https://meridian.netlify.app"}]}
