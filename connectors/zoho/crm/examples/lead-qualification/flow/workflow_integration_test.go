@@ -137,24 +137,20 @@ func TestUnknownStageAndAmbiguousAccountCompleteWithoutWritingWithRealDex(t *tes
 	require.Zero(t, provider.Count("update"))
 }
 
-// TestSlowContactUpsertDispatchedTwiceKeepsOneContactWithRealDex loses the first upsert response with its Worker.
+// TestSlowContactUpsertDispatchedTwiceKeepsOneContactWithRealDex retries after the first accepted upsert returns 503.
 func TestSlowContactUpsertDispatchedTwiceKeepsOneContactWithRealDex(t *testing.T) {
 	provider := fakecrm.New(t, integrationAccessToken)
-	provider.HoldsFirstUpsertOf = "Contacts"
+	provider.FailsFirstAcceptedUpsertOf = "Contacts"
 	provider.SeedRecord("Accounts", map[string]any{"Account_Name": "Acme Corp"}, seededAt)
 	harness := newQualificationHarness(t, provider, defaultRequestTimeout)
 
-	flowID := harness.startQualification(t, "lost-upsert", integrationInput())
-	require.Eventually(t, func() bool { return provider.Count("upsert Contacts") == 1 && provider.RecordCount("Contacts") == 1 },
-		30*time.Second, 10*time.Millisecond)
-	harness.replaceWorker(t)
-	outcome := harness.requireCompletedQualification(t, flowID)
+	outcome := harness.runQualification(t, "accepted-then-unavailable", integrationInput())
 	require.Equal(t, PhaseNoOpenDeal, outcome.Phase)
-	require.Equal(t, 3, provider.Count("upsert"), "the replacement Worker repeats the contact upsert once")
+	require.Equal(t, 3, provider.Count("upsert"), "the retry repeats the accepted contact upsert once")
 	require.Equal(t, 2, provider.Count("upsert Contacts"))
 	require.Equal(t, 1, provider.RecordCount("Contacts"), "the repeated upsert updated the contact instead of creating a second")
 	upserts := provider.RequestsNamed("upsert")
-	require.Equal(t, upserts[1].Body, upserts[2].Body, "both contact dispatches send the same record")
+	require.Equal(t, upserts[1].Body, upserts[2].Body, "both contact attempts send the same record")
 }
 
 func TestSlowDealUpdateDispatchedTwiceSetsTheSameValuesWithRealDex(t *testing.T) {

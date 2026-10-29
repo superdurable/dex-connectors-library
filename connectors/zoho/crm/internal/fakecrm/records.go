@@ -67,8 +67,8 @@ func (server *Server) upsert(response http.ResponseWriter, request *http.Request
 	if moduleAttempt == 1 && server.DelaysFirstUpsertOf == module {
 		server.sleepBeforeAnswering()
 	}
-	if moduleAttempt == 1 && server.HoldsFirstUpsertOf == module {
-		<-request.Context().Done()
+	if moduleAttempt == 1 && server.FailsFirstAcceptedUpsertOf == module {
+		server.writeJSON(response, http.StatusServiceUnavailable, `{"code":"SERVICE_UNAVAILABLE","status":"error"}`)
 		return
 	}
 	server.writeValue(response, status, result)

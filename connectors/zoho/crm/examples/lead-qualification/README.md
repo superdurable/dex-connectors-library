@@ -147,9 +147,8 @@ for a new contact, and enforces the Deals `Stage` picklist:
   deal, a newer closed deal, and another contact's deal untouched;
 - an unknown or unused stage completes as `unknownStage`, and two accounts
   with the same name complete as `ambiguousAccount`, neither writing anything;
-- a contact upsert applied before Worker loss is dispatched by the replacement,
-  and the second upsert updates the contact,
-  so one contact exists;
+- a contact upsert applied before a 503 is retried with the same fields,
+  so the second upsert updates the contact and one contact exists;
 - a deal update applied before Worker loss is dispatched again, and both dispatches
   set the same values;
 - a lost update response is retried;

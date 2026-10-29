@@ -60,8 +60,8 @@ type Server struct {
 	RevokesTokenAtFirstUpsert bool
 	// DelaysFirstUpsertOf applies the first upsert of the module, then answers after SlowResponseDelay.
 	DelaysFirstUpsertOf string
-	// HoldsFirstUpsertOf holds the first accepted upsert response until the request is canceled.
-	HoldsFirstUpsertOf string
+	// FailsFirstAcceptedUpsertOf returns 503 after applying the first upsert of this module.
+	FailsFirstAcceptedUpsertOf string
 	// DelaysFirstUpdate applies the first update, then answers after SlowResponseDelay.
 	DelaysFirstUpdate bool
 	// HoldsFirstUpdate holds the first accepted update response until the request is canceled.
