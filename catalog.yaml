@@ -12,6 +12,7 @@ directories:
   - connectors/bamboohr
   - connectors/calendly
   - connectors/clickup
+  - connectors/cloudflare
   - connectors/datadog
   - connectors/discord
   - connectors/docusign
