@@ -26,7 +26,7 @@ import (
 const (
 	integrationCustomerEmail = "jane@acme.example.com"
 	defaultRequestTimeout    = 5 * time.Second
-	slowRequestTimeout       = 20 * time.Second
+	heldRequestTimeout       = 20 * time.Second
 )
 
 // duplicateScenario is one customer with a lead and a user record, an earlier open conversation
@@ -131,20 +131,15 @@ func TestAnsweredConversationIsSkippedBeforeAnyLookupWithRealDex(t *testing.T) {
 	require.Zero(t, provider.count("reply"))
 }
 
-// TestSlowReplyIsSentOnceWithRealDex is the duplicate-dispatch test: sync durability means Dex never
-// dispatches a second reply attempt while the first is still in flight.
-func TestSlowReplyIsSentOnceWithRealDex(t *testing.T) {
+// TestReplyIsSentOnceWithRealDex checks the reply request and side effect counts.
+func TestReplyIsSentOnceWithRealDex(t *testing.T) {
 	provider := newFakeIntercom(t)
 	scenario := seedDuplicateScenario(provider)
-	provider.delaysFirstReply = true
-	harness := newDuplicateHarness(t, provider, slowRequestTimeout, fakeAdminID)
+	harness := newDuplicateHarness(t, provider, defaultRequestTimeout, fakeAdminID)
 
-	startedAt := time.Now()
-	outcome := harness.runDuplicate(t, "slow-reply", scenario.inboundID)
-	require.GreaterOrEqual(t, time.Since(startedAt), slowResponseDelay)
+	outcome := harness.runDuplicate(t, "single-reply", scenario.inboundID)
 	require.Equal(t, answerduplicate.OutcomeAnsweredAndClosed, outcome.Action)
-	provider.waitForDelayedRequests(t)
-	require.Equal(t, 1, provider.count("reply"), "no second dispatch while the first was in flight")
+	require.Equal(t, 1, provider.count("reply"))
 	require.Len(t, provider.conversation(scenario.inboundID).partsOfType("comment"), 1)
 }
 
@@ -185,7 +180,7 @@ func TestLostWorkerDuringReplyReconcilesWithoutResendingWithRealDex(t *testing.T
 	provider := newFakeIntercom(t)
 	scenario := seedDuplicateScenario(provider)
 	provider.holdsFirstReply = make(chan struct{})
-	harness := newDuplicateHarness(t, provider, slowRequestTimeout, fakeAdminID)
+	harness := newDuplicateHarness(t, provider, heldRequestTimeout, fakeAdminID)
 	flowID := harness.startDuplicate(t, "lost-worker", scenario.inboundID)
 	require.Eventually(t, func() bool { return provider.count("reply") == 1 }, 30*time.Second, 50*time.Millisecond,
 		"the first attempt must reach Intercom")
@@ -202,28 +197,34 @@ func TestLostWorkerDuringReplyReconcilesWithoutResendingWithRealDex(t *testing.T
 	require.Len(t, provider.conversation(scenario.inboundID).partsOfType("comment"), 1, "the held reply exists, which is why the outcome is uncertain")
 }
 
-// TestSlowCloseIsSafeToRepeatWithRealDex lets async Dex dispatch the close again; every attempt converges on closed.
-func TestSlowCloseIsSafeToRepeatWithRealDex(t *testing.T) {
+// TestLostWorkerDuringCloseConvergesOnClosedWithRealDex checks read-back after the first Worker applies a close.
+func TestLostWorkerDuringCloseConvergesOnClosedWithRealDex(t *testing.T) {
 	for _, isRedundantCloseRejected := range []bool{false, true} {
 		t.Run("redundantCloseRejected="+strconv.FormatBool(isRedundantCloseRejected), func(t *testing.T) {
 			provider := newFakeIntercom(t)
 			scenario := seedDuplicateScenario(provider)
-			provider.delaysFirstClose, provider.rejectsRedundantClose = true, isRedundantCloseRejected
-			harness := newDuplicateHarness(t, provider, slowRequestTimeout, fakeAdminID)
-
-			outcome := harness.runDuplicate(t, "slow-close", scenario.inboundID)
+			provider.holdsFirstClose = make(chan struct{})
+			provider.rejectsRedundantClose = isRedundantCloseRejected
+			harness := newDuplicateHarness(t, provider, heldRequestTimeout, fakeAdminID)
+			flowID := harness.startDuplicate(t, "lost-worker-close", scenario.inboundID)
+			require.Eventually(t, func() bool { return provider.count("appliedManage") == 1 }, 30*time.Second, 50*time.Millisecond)
+			readsBeforeReplacement := provider.count("read")
+			harness.replaceWorker(t)
+			result := harness.waitForFlow(t, flowID)
+			close(provider.holdsFirstClose)
+			require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+			var outcome answerduplicate.DuplicateConversationOutcome
+			require.NoError(t, result.DecodeSingleOutput(&outcome))
 			require.Equal(t, answerduplicate.OutcomeAnsweredAndClosed, outcome.Action)
 			provider.waitForDelayedRequests(t)
-			require.GreaterOrEqual(t, provider.count("manage"), 2, "Dex dispatched the close again past its local phase")
+			require.Greater(t, provider.count("read"), readsBeforeReplacement, "the replacement Worker re-read the conversation")
+			require.Equal(t, 1, provider.count("manage"))
+			require.Equal(t, 1, provider.count("appliedManage"))
 			inbound := provider.conversation(scenario.inboundID)
 			require.Equal(t, "closed", inbound.state)
 			require.Len(t, inbound.partsOfType("comment"), 1, "the close never repeats the reply")
-			if isRedundantCloseRejected {
-				require.Len(t, inbound.partsOfType("close"), 1)
-				require.Equal(t, 1, provider.count("redundantManage"), "the delayed first close found the conversation closed")
-			}
-			t.Logf("slow close: manage=%d applied=%d redundant=%d reads=%d",
-				provider.count("manage"), provider.count("appliedManage"), provider.count("redundantManage"), provider.count("read"))
+			require.Len(t, inbound.partsOfType("close"), 1)
+			require.Zero(t, provider.count("redundantManage"))
 		})
 	}
 }
@@ -400,12 +401,16 @@ func newDuplicateHarness(t *testing.T, provider *fakeIntercom, requestTimeout ti
 		FlowServiceAddress: harness.serverAddress,
 	})
 	require.NoError(t, err)
-	harness.startWorker(t)
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
-		require.NoError(t, errors.Join(harness.worker.Stop(ctx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
+		var workerError error
+		if harness.worker != nil {
+			workerError = errors.Join(harness.worker.Stop(ctx), <-harness.workerResult)
+		}
+		require.NoError(t, errors.Join(workerError, harness.client.Close(), harness.cache.Close()))
 	})
+	harness.startWorker(t)
 	return harness
 }
 
@@ -415,13 +420,13 @@ func (harness *duplicateHarness) startWorker(t *testing.T) {
 	require.NoError(t, err)
 	workerResult := make(chan error, 1)
 	go func() { workerResult <- worker.Start() }()
+	harness.worker, harness.workerResult = worker, workerResult
 	{
 		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
 		registrationError := worker.WaitPullRegistered(registrationContext)
 		cancelRegistration()
 		require.NoError(t, registrationError)
 	}
-	harness.worker, harness.workerResult = worker, workerResult
 }
 
 // replaceWorker force-stops the Worker without draining its handlers, like a crash, then starts a new one.

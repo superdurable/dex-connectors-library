@@ -246,16 +246,15 @@ nothing and selects `updated` with `wasAlreadyApplied`.
 
 Graph has no idempotency key for mail, and `sendMail`, `send`, and `reply`
 answer `202 Accepted` with no body, so a lost answer leaves nothing to look
-up. Dex re-dispatches an async Step whose local attempt passes about seven
-seconds and retries a Step after a lost Worker, so each operation takes one
-of these positions:
+up. Dex may replay a Step after Worker loss or before an async result commit,
+so each operation takes one of these positions:
 
 - **searchMessages** and **getMessage** only read.
 - **moveMessage** and **setMessageFlags** keep async durability: both read
   before they write, the immutable ID survives the move, and the flags are
   absolute. Every unconfirmed outcome, including a 5xx or a dropped
-  connection, is retried. The example's test holds a move for nine seconds,
-  Dex dispatches the Step again, and the message is archived once.
+  connection, is retried. The example drops a move answer after Graph applies
+  the write and confirms that the message is archived once.
 - **sendMessage** and **replyToMessage** send through a draft and run with
   sync durability. The design combines a marker with a checkpoint:
   1. A draft carries the single-value extended property
@@ -278,14 +277,12 @@ of these positions:
      same draft, and a 4xx such as an invalid recipient selects
      `providerRejected` and leaves the unsent draft in Drafts.
 
-Sync durability is what makes this safe; the marker alone is not, because two
-concurrent attempts could both find no draft. The root integration test
-overrides `sendMessage` to async durability against a fake Graph that holds
-the send for nine seconds: Dex dispatches a second attempt, the local-phase
-checkpoint is invisible to it, and it finds the marked draft and sends it
-again, so the fake delivers twice. The same test with the default sync
-durability sends once, as do the example's slow-send tests. Keep these Steps
-sync.
+Sync durability persists the result before the Flow advances; async durability
+can replay a result lost before its batched commit. Both modes use the same
+attempt and retry rules. The root integration test forces a second Execute
+after an accepted send and confirms it does not resend the draft. The example's
+lost-Worker test checks the same checkpoint through Worker replacement. Keep these Steps
+sync to reduce replay risk for a non-idempotent send.
 
 Residual risks: Dex's `RecordHeartbeat` returns once the checkpoint enters
 the Worker's stream, so a Worker lost in that instant could still allow one

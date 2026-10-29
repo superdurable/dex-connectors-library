@@ -160,10 +160,9 @@ and `internal/graphtest`, which, like Graph, has no send idempotency key:
   the customer's message was read, answered, marked read, and archived;
 - a folder picked in Dex Web receives the answered message;
 - a customer with only a lookalike's message gets one new message;
-- a reply and a new message whose send Graph holds for nine seconds, past
-  Dex's async local phase, are each sent once, because both Steps are sync;
-- a move held for nine seconds is dispatched again by async Dex, and the
-  message is archived once;
+- a reply and a new message each produce one send request and one delivery;
+- a move whose answer Graph drops after applying it is confirmed by read-back,
+  and the message is archived once;
 - a send whose answer is lost after Graph applied it is confirmed from the
   Sent Items copy and never sent again;
 - a send whose answer is lost and whose copy never appears fails through the

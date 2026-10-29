@@ -125,11 +125,9 @@ the Flow on a real Worker against the in-process IMAP and SMTP servers in
   stay untouched;
 - a customer with only a lookalike's message gets one new message;
 - a match on a later search page is found;
-- a reply and a new message whose server holds the answer to the final dot
-  for nine seconds, past Dex's async local phase, are each submitted once,
-  because both Steps are sync;
-- a move held for nine seconds is dispatched again by async Dex, and the
-  message is archived once;
+- a reply and a new message each produce one submission;
+- a move whose answer IMAP drops after applying it is confirmed by read-back,
+  and the message is archived once;
 - an answer lost after the final dot fails the Flow through the unwired
   `uncertain` branch and is never resubmitted;
 - a Worker lost while the server holds the final dot is replaced, and the new

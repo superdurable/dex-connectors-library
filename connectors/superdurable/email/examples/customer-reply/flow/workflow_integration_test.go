@@ -33,9 +33,6 @@ const (
 	integrationMailbox  = "support@example.com"
 	integrationPassword = "integration-app-password-SECRET"
 	integrationCustomer = "jane@acme.example.com"
-
-	// slowReplyDelay outlasts Dex's roughly seven-second async local phase, so an async Step is dispatched again.
-	slowReplyDelay = 9 * time.Second
 )
 
 var integrationReceivedAt = time.Date(2026, 1, 28, 9, 0, 0, 0, time.UTC)
@@ -137,31 +134,22 @@ func TestCustomerMessageOnALaterSearchPageIsFoundWithRealDex(t *testing.T) {
 	require.Nil(t, outcome.ArchivedTo, "a blank archiveMailbox leaves the message in INBOX")
 }
 
-// TestSlowSMTPReplyIsSubmittedOnceWithRealDex is the duplicate-dispatch test: the server holds its answer to the
-// final dot past Dex's async local phase, and sync durability means Dex never dispatches a second submission.
-func TestSlowSMTPReplyIsSubmittedOnceWithRealDex(t *testing.T) {
+// TestSMTPReplyIsSubmittedOnceWithRealDex checks the SMTP request and delivery counts.
+func TestSMTPReplyIsSubmittedOnceWithRealDex(t *testing.T) {
 	harness := newReplyHarness(t)
 	seedCustomerThread(t, harness)
-	harness.smtp.HoldNextEndOfDataReply(slowReplyDelay)
-
-	startedAt := time.Now()
-	outcome := harness.runReply(t, "slow-reply", integrationInput())
-	require.GreaterOrEqual(t, time.Since(startedAt), slowReplyDelay)
+	outcome := harness.runReply(t, "single-reply", integrationInput())
 	require.Equal(t, ReplyActionReplied, outcome.Action)
-	harness.smtp.WaitForHeldReplies()
-	require.Equal(t, 1, harness.smtp.DataCount(), "no second submission while the first was in flight")
+	require.Equal(t, 1, harness.smtp.DataCount())
 	require.Equal(t, 1, harness.smtp.MailCount())
 	require.Len(t, harness.smtp.Submissions(), 1)
 }
 
-func TestSlowSMTPNewMessageIsSubmittedOnceWithRealDex(t *testing.T) {
+func TestSMTPNewMessageIsSubmittedOnceWithRealDex(t *testing.T) {
 	harness := newReplyHarness(t)
-	harness.smtp.HoldNextEndOfDataReply(slowReplyDelay)
-
-	outcome := harness.runReply(t, "slow-new-message", integrationInput())
+	outcome := harness.runReply(t, "single-new-message", integrationInput())
 	require.Equal(t, ReplyActionSentNewMessage, outcome.Action)
-	harness.smtp.WaitForHeldReplies()
-	require.Equal(t, 1, harness.smtp.DataCount(), "no second submission while the first was in flight")
+	require.Equal(t, 1, harness.smtp.DataCount())
 	require.Equal(t, 1, harness.smtp.MailCount())
 }
 
@@ -217,22 +205,19 @@ func TestTemporarySMTPRefusalIsRetriedAndSendsOnceWithRealDex(t *testing.T) {
 	require.Len(t, harness.smtp.Submissions(), 1)
 }
 
-// TestSlowIMAPMoveIsDispatchedAgainAndMovesOnceWithRealDex lets async Dex dispatch the move again past its local
-// phase; the repeat is safe because a message can be moved only once.
-func TestSlowIMAPMoveIsDispatchedAgainAndMovesOnceWithRealDex(t *testing.T) {
+// TestLostIMAPMoveAnswerMovesOnceWithRealDex checks read-back after IMAP applies a move but drops its answer.
+func TestLostIMAPMoveAnswerMovesOnceWithRealDex(t *testing.T) {
 	harness := newReplyHarness(t)
 	seedCustomerThread(t, harness)
-	harness.imap.HoldNextMove(slowReplyDelay)
+	harness.imap.DropNextMoveReply()
 
-	outcome := harness.runReply(t, "slow-move", integrationInput())
+	outcome := harness.runReply(t, "lost-move-answer", integrationInput())
 	require.Equal(t, ReplyActionReplied, outcome.Action)
-	harness.imap.WaitForDelayedMoves()
-	require.GreaterOrEqual(t, harness.imap.MoveCount(), 2, "Dex dispatched the move again past its local phase")
+	require.Equal(t, 1, harness.imap.MoveCount())
 	archived := harness.imap.Messages(t, "Archive")
 	require.Len(t, archived, 1, "the repeated move did not copy the message twice")
 	require.Equal(t, "latest@acme.example.com", archived[0].MessageID)
 	require.Len(t, harness.smtp.Submissions(), 1)
-	t.Logf("slow move: moves=%d archivedTo=%+v", harness.imap.MoveCount(), outcome.ArchivedTo)
 }
 
 func TestRejectedRecipientFailsTheFlowWithoutServerTextWithRealDex(t *testing.T) {
@@ -332,12 +317,16 @@ func newReplyHarnessForConnection(t *testing.T, connection email.Connection) *re
 		FlowServiceAddress: harness.serverAddress,
 	})
 	require.NoError(t, err)
-	harness.startWorker(t)
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
-		require.NoError(t, errors.Join(harness.worker.Stop(ctx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
+		var workerError error
+		if harness.worker != nil {
+			workerError = errors.Join(harness.worker.Stop(ctx), <-harness.workerResult)
+		}
+		require.NoError(t, errors.Join(workerError, harness.client.Close(), harness.cache.Close()))
 	})
+	harness.startWorker(t)
 	return harness
 }
 
@@ -353,13 +342,13 @@ func (harness *replyHarness) startWorker(t *testing.T) {
 	require.NoError(t, err)
 	workerResult := make(chan error, 1)
 	go func() { workerResult <- worker.Start() }()
+	harness.worker, harness.workerResult = worker, workerResult
 	{
 		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
 		registrationError := worker.WaitPullRegistered(registrationContext)
 		cancelRegistration()
 		require.NoError(t, registrationError)
 	}
-	harness.worker, harness.workerResult = worker, workerResult
 }
 
 // replaceWorker force-stops the Worker without draining its handlers, like a crash, then starts a new one.
