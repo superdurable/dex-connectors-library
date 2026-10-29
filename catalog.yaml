@@ -55,6 +55,7 @@ directories:
   - connectors/reamaze
   - connectors/salesforce
   - connectors/slack
+  - connectors/smartsheet
   - connectors/snowflake
   - connectors/spotify
   - connectors/stripe
