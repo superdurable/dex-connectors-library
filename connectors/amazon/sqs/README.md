@@ -143,10 +143,9 @@ and the queue's redrive policy counts the delivery.
 
 `receiveMessages` is a Mutation, because a receive hides each message and
 raises its receive count. It declares sync durability: a long poll on an idle
-queue lasts up to 20 seconds, past Dex's seven-second async local phase, after
-which an async Step would be dispatched again and hide further messages. The
-example's real-Dex test long-polls for nine seconds and sees exactly one
-`ReceiveMessage` request. An application that always passes a short
+queue can last up to 20 seconds. The example's real-Dex test long-polls for
+nine seconds and sees exactly one `ReceiveMessage` request. An application
+that always passes a short
 `WaitTimeSeconds` can override durability to async with `StepOptionsOverride`.
 
 A receive is safe to retry. For a FIFO queue every attempt of one Step
@@ -226,9 +225,8 @@ GOWORK=off go vet ./...
 ```
 
 With the latest Dex development server running, the example's real-Dex tests
-cover every business outcome, a duplicate acknowledgement dispatch, and a long
-poll past the async phase against the SigV4-verifying fake in
-`internal/sqsfake` (two tests take about nine seconds each):
+cover every business outcome, a repeated acknowledgement after Worker loss,
+and a long poll against the SigV4-verifying fake in `internal/sqsfake`:
 
 ```bash
 GOWORK=off go test -tags=integration ./... -count=1 -v

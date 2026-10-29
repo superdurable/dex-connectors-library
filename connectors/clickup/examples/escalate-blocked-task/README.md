@@ -206,7 +206,7 @@ Flow on a real Worker against a stateful fake ClickUp that requires the raw
   resent;
 - a Worker lost while ClickUp holds the create leaves the next attempt to read
   the List instead of resending;
-- an update held past the local phase is dispatched again and converges on one
+- an update interrupted by Worker loss runs again and converges on one
   assignment;
 - a rate-limited search waits for `X-RateLimit-Reset`;
 - a rejected create fails the Flow without ClickUp's message text;

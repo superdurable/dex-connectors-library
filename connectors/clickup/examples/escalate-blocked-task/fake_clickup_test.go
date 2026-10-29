@@ -68,10 +68,11 @@ type fakeClickUp struct {
 	nextID   int
 	delayed  sync.WaitGroup
 
-	delaysFirstCreate, delaysFirstUpdate, delaysFirstComment bool
+	delaysFirstCreate, delaysFirstComment                    bool
 	losesFirstCreateResponse, failsFirstCreateBeforeApplying bool
 	rateLimitsFirstSearch, rejectsCreate                     bool
 	holdsFirstCreate                                         chan struct{}
+	holdsFirstUpdate                                         chan struct{}
 }
 
 func newFakeClickUp(t *testing.T) *fakeClickUp {
@@ -102,7 +103,7 @@ func (provider *fakeClickUp) serve(response http.ResponseWriter, request *http.R
 		provider.record("read", body)
 		provider.writeTask(response, segments[1])
 	case len(segments) == 2 && segments[0] == "task" && request.Method == http.MethodPut:
-		provider.serveUpdate(response, segments[1], body)
+		provider.serveUpdate(response, request, segments[1], body)
 	case len(segments) == 4 && segments[0] == "task" && segments[2] == "tag":
 		provider.serveTag(response, request.Method, segments[1], segments[3], body)
 	case len(segments) == 3 && segments[0] == "task" && segments[2] == "comment":
@@ -194,12 +195,8 @@ func (provider *fakeClickUp) serveListRead(response http.ResponseWriter, request
 	provider.writeValue(response, map[string]any{"tasks": nonNil(matches), "last_page": true})
 }
 
-func (provider *fakeClickUp) serveUpdate(response http.ResponseWriter, taskID string, body []byte) {
-	if provider.record("update", body) == 1 && provider.delaysFirstUpdate {
-		provider.delayed.Add(1)
-		defer provider.delayed.Done()
-		time.Sleep(slowResponseDelay)
-	}
+func (provider *fakeClickUp) serveUpdate(response http.ResponseWriter, request *http.Request, taskID string, body []byte) {
+	attempt := provider.record("update", body)
 	var wire struct {
 		Status    string `json:"status"`
 		Priority  int    `json:"priority"`
@@ -228,6 +225,13 @@ func (provider *fakeClickUp) serveUpdate(response http.ResponseWriter, taskID st
 		}
 	}
 	provider.mu.Unlock()
+	if attempt == 1 && provider.holdsFirstUpdate != nil {
+		select {
+		case <-provider.holdsFirstUpdate:
+		case <-request.Context().Done():
+			return
+		}
+	}
 	provider.writeTask(response, taskID)
 }
 

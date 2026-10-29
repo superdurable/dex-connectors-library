@@ -173,14 +173,14 @@ token:
   requester's other open, archived, and other-inbox conversations and another
   customer's conversation are untouched;
 - a conversation an earlier Flow triaged is skipped before any lookup;
-- a comment held past Dex's async local phase is sent once (the
+- a healthy slow comment request is sent once (the
   duplicate-dispatch test);
 - a Worker lost while Front holds the comment leaves the next attempt to
   fail the Flow without sending again. The dispatch checkpoint
   narrows but does not close this window: a Worker lost before Dex stores the
   checkpoint can still send the comment twice;
-- a tag write held past the local phase is dispatched again and converges on
-  one copy of the tag;
+- a tag write interrupted by Worker loss runs again and converges on one
+  copy of the tag;
 - a rate-limited search waits for `Retry-After`;
 - a rejected comment fails the Flow without Front's message text;
 - an unconfigured triage tag fails the Flow before any Front request.

@@ -24,7 +24,7 @@ import (
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
-// slowProviderDelay outlasts Dex's seven-second local async phase, so an async Step is re-dispatched.
+// slowProviderDelay exercises the synchronous scheduling-link path.
 const slowProviderDelay = 9 * time.Second
 
 // mutationOutcome is what each probe Flow completes with.
@@ -65,9 +65,7 @@ func TestCreateSchedulingLinkRetries503WithRealDex(t *testing.T) {
 	require.Len(t, fake.requestsTo(http.MethodPost, "/scheduling_links"), 2)
 }
 
-// TestCancelScheduledEventIsSafeUnderDuplicateDispatchWithRealDex lets Dex re-dispatch the async Step while
-// Calendly is slow: the repeated POST is refused because the event is canceled, and the read-back makes it
-// the same canceled outcome.
+// TestCancelScheduledEventIsSafeUnderDuplicateDispatchWithRealDex retries after the first accepted cancellation.
 func TestCancelScheduledEventIsSafeUnderDuplicateDispatchWithRealDex(t *testing.T) {
 	var mu sync.Mutex
 	cancellations := 0
@@ -77,7 +75,6 @@ func TestCancelScheduledEventIsSafeUnderDuplicateDispatchWithRealDex(t *testing.
 			isAlreadyCanceled := cancellations > 0
 			cancellations++
 			mu.Unlock()
-			time.Sleep(slowProviderDelay)
 			if isAlreadyCanceled {
 				writeJSON(response, http.StatusForbidden, `{"title":"Permission Denied","message":"Event is already canceled"}`)
 				return
@@ -95,28 +92,24 @@ func TestCancelScheduledEventIsSafeUnderDuplicateDispatchWithRealDex(t *testing.
 	outcome := harness.runProbe(t, cancelProbeFlowType, "cancel")
 	require.Equal(t, calendly.CancelScheduledEventBranchCanceled, outcome.Branch)
 	posts := fake.requestsTo(http.MethodPost, "/scheduled_events/EVENT0001/cancellation")
-	t.Logf("cancelScheduledEvent sent %d POSTs to a %s provider; alreadyCanceled=%t", len(posts), slowProviderDelay, outcome.AlreadyCanceled)
-	require.GreaterOrEqual(t, len(posts), 2, "the slow async Step was dispatched again")
+	require.Len(t, posts, 2, "the second Execute verifies the accepted cancellation")
+	require.Equal(t, 2, cancellations)
 }
 
-// TestCreateWebhookSubscriptionCreatesOneSubscriptionUnderDuplicateDispatchWithRealDex lets the duplicate
-// attempt list while the first create is still in flight: it finds the subscription and creates none.
+// TestCreateWebhookSubscriptionCreatesOneSubscriptionUnderDuplicateDispatchWithRealDex retries after creation.
 func TestCreateWebhookSubscriptionCreatesOneSubscriptionUnderDuplicateDispatchWithRealDex(t *testing.T) {
 	store := &fakeSubscriptions{}
-	routes := store.routes()
-	routes["POST /webhook_subscriptions"] = storeThenDelay(routes["POST /webhook_subscriptions"])
-	fake := newFakeCalendly(t, routes)
+	fake := newFakeCalendly(t, store.routes())
 	harness := startProbeHarness(t, fake)
 	outcome := harness.runProbe(t, subscriptionProbeFlowType, "subscribe")
 	require.Equal(t, calendly.CreateWebhookSubscriptionBranchSubscribed, outcome.Branch)
 	store.mu.Lock()
 	subscriptionCount := len(store.subscriptions)
 	store.mu.Unlock()
-	require.Equal(t, 1, subscriptionCount, "a duplicate dispatch reused the subscription")
+	require.Equal(t, 1, subscriptionCount)
 	lists := fake.requestsTo(http.MethodGet, "/webhook_subscriptions")
-	t.Logf("createWebhookSubscription sent %d lists and %d creates; wasCreated=%t", len(lists),
-		len(fake.requestsTo(http.MethodPost, "/webhook_subscriptions")), outcome.WasCreated)
-	require.GreaterOrEqual(t, len(lists), 2, "the slow async Step was dispatched again and listed first")
+	require.Len(t, lists, 2, "the second Execute lists the existing subscription")
+	require.Len(t, fake.requestsTo(http.MethodPost, "/webhook_subscriptions"), 1)
 }
 
 // delayed answers after slowProviderDelay, as a slow Calendly would.
@@ -125,35 +118,6 @@ func delayed(handler http.HandlerFunc) http.HandlerFunc {
 		time.Sleep(slowProviderDelay)
 		handler(response, request)
 	}
-}
-
-// storeThenDelay applies the create at once and answers late, so Calendly holds it before the answer.
-func storeThenDelay(handler http.HandlerFunc) http.HandlerFunc {
-	return func(response http.ResponseWriter, request *http.Request) {
-		recorder := &bufferedResponse{header: http.Header{}}
-		handler(recorder, request)
-		time.Sleep(slowProviderDelay)
-		for name, values := range recorder.header {
-			response.Header()[name] = values
-		}
-		response.WriteHeader(recorder.status)
-		_, _ = response.Write(recorder.body) // A failed write leaves the Step to retry.
-	}
-}
-
-type bufferedResponse struct {
-	header http.Header
-	status int
-	body   []byte
-}
-
-func (response *bufferedResponse) Header() http.Header { return response.header }
-func (response *bufferedResponse) WriteHeader(status int) {
-	response.status = status
-}
-func (response *bufferedResponse) Write(contents []byte) (int, error) {
-	response.body = append(response.body, contents...)
-	return len(contents), nil
 }
 
 const (
@@ -180,7 +144,7 @@ func (*probeFlow) GetRPCs() []dex.RPCDef { return nil }
 
 var probeAnnotations = sdkgo.StepAnnotations{GroupID: "probe", GroupLabel: "Probe", Explanation: "Run one Calendly Mutation against the slow fake provider."}
 
-func newProbeFlows(connection calendly.Connection) []dex.Flow {
+func newProbeFlows(connection calendly.Connection, client *calendly.Client) []dex.Flow {
 	linkStep := func(stepType string) dex.StepDef {
 		return dex.DefineStartStep(calendly.NewCreateSchedulingLinkStep(calendly.CreateSchedulingLinkStepConfig[string]{
 			StepType: stepType, Connection: connection, ConnectionName: testConnection.Name, Annotations: probeAnnotations,
@@ -194,29 +158,54 @@ func newProbeFlows(connection calendly.Connection) []dex.Flow {
 	return []dex.Flow{
 		&probeFlow{flowType: linkProbeFlowType, steps: []dex.StepDef{linkStep("CreateLinkSync"), dex.DefineStep(recordLinkOutcome{})}},
 		&probeFlow{flowType: cancelProbeFlowType, steps: []dex.StepDef{
-			dex.DefineStartStep(calendly.NewCancelScheduledEventStep(calendly.CancelScheduledEventStepConfig[string]{
-				StepType: "CancelEvent", Connection: connection, ConnectionName: testConnection.Name, Annotations: probeAnnotations,
-				MapToOperationInput: func(string) calendly.CancelScheduledEventInput {
-					return calendly.CancelScheduledEventInput{ScheduledEventURI: testEventURI}
-				},
-				Canceled: sdkgo.GoTo(recordCancelOutcome{}), NotFound: sdkgo.GoTo(recordCancelOutcome{}),
-				ProviderRejected: sdkgo.GoTo(recordCancelOutcome{}), InvalidResponse: sdkgo.GoTo(recordCancelOutcome{}), Defect: sdkgo.GoTo(recordCancelOutcome{}),
-			})),
-			dex.DefineStep(recordCancelOutcome{}),
+			dex.DefineStartStep(cancelThenFailFirstAttempt{client: client}),
 		}},
 		&probeFlow{flowType: subscriptionProbeFlowType, steps: []dex.StepDef{
-			dex.DefineStartStep(calendly.NewCreateWebhookSubscriptionStep(calendly.CreateWebhookSubscriptionStepConfig[string]{
-				StepType: "SubscribeCallback", Connection: connection, ConnectionName: testConnection.Name, Annotations: probeAnnotations,
-				MapToOperationInput: func(string) calendly.CreateWebhookSubscriptionInput {
-					return calendly.CreateWebhookSubscriptionInput{CallbackURL: testCallbackURL}
-				},
-				Subscribed: sdkgo.GoTo(recordSubscriptionOutcome{}), ConflictingSubscription: sdkgo.GoTo(recordSubscriptionOutcome{}),
-				ProviderRejected: sdkgo.GoTo(recordSubscriptionOutcome{}), InvalidResponse: sdkgo.GoTo(recordSubscriptionOutcome{}),
-				Defect: sdkgo.GoTo(recordSubscriptionOutcome{}),
-			})),
-			dex.DefineStep(recordSubscriptionOutcome{}),
+			dex.DefineStartStep(subscribeThenFailFirstAttempt{client: client}),
 		}},
 	}
+}
+
+type cancelThenFailFirstAttempt struct {
+	dex.StepDefaultsNoWaitFor[string]
+	client *calendly.Client
+}
+
+func (cancelThenFailFirstAttempt) GetStepType() string              { return "CancelEvent" }
+func (cancelThenFailFirstAttempt) GetStepOptions() *dex.StepOptions { return probeRetryOptions() }
+func (step cancelThenFailFirstAttempt) Execute(ctx dex.Context, _ string) (*dex.StepDecision, error) {
+	result, err := sdkgo.RunMutation(ctx, step.client.CancelScheduledEvent(), testConnection,
+		calendly.CancelScheduledEventInput{ScheduledEventURI: testEventURI})
+	if err != nil {
+		return nil, err
+	}
+	if ctx.Attempt() == 1 {
+		return nil, errors.New("probe fails after cancellation was accepted")
+	}
+	return dex.GracefulComplete(mutationOutcome{Branch: result.Branch, AlreadyCanceled: result.Value.AlreadyCanceled, FailureKind: failureKindOf(result.Failure)}), nil
+}
+
+type subscribeThenFailFirstAttempt struct {
+	dex.StepDefaultsNoWaitFor[string]
+	client *calendly.Client
+}
+
+func (subscribeThenFailFirstAttempt) GetStepType() string              { return "SubscribeCallback" }
+func (subscribeThenFailFirstAttempt) GetStepOptions() *dex.StepOptions { return probeRetryOptions() }
+func (step subscribeThenFailFirstAttempt) Execute(ctx dex.Context, _ string) (*dex.StepDecision, error) {
+	result, err := sdkgo.RunMutation(ctx, step.client.CreateWebhookSubscription(), testConnection,
+		calendly.CreateWebhookSubscriptionInput{CallbackURL: testCallbackURL})
+	if err != nil {
+		return nil, err
+	}
+	if ctx.Attempt() == 1 {
+		return nil, errors.New("probe fails after subscription was created")
+	}
+	return dex.GracefulComplete(mutationOutcome{Branch: result.Branch, WasCreated: result.Value.WasCreated, SubscriptionURI: result.Value.URI, FailureKind: failureKindOf(result.Failure)}), nil
+}
+
+func probeRetryOptions() *dex.StepOptions {
+	return &dex.StepOptions{ExecuteRetry: &dex.RetryPolicy{InitialInterval: time.Second, BackoffCoefficient: 1, MaximumInterval: time.Second, MaximumAttempts: 3, TotalDuration: time.Minute}}
 }
 
 type recordLinkOutcome struct {
@@ -225,24 +214,6 @@ type recordLinkOutcome struct {
 
 func (recordLinkOutcome) Execute(_ dex.Context, result calendly.CreateSchedulingLinkResult) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(mutationOutcome{Branch: result.Branch, BookingURL: result.Value.BookingURL, FailureKind: failureKindOf(result.Failure)}), nil
-}
-
-type recordCancelOutcome struct {
-	dex.StepDefaultsNoWaitFor[calendly.CancelScheduledEventResult]
-}
-
-func (recordCancelOutcome) Execute(_ dex.Context, result calendly.CancelScheduledEventResult) (*dex.StepDecision, error) {
-	return dex.GracefulComplete(mutationOutcome{Branch: result.Branch, AlreadyCanceled: result.Value.AlreadyCanceled, FailureKind: failureKindOf(result.Failure)}), nil
-}
-
-type recordSubscriptionOutcome struct {
-	dex.StepDefaultsNoWaitFor[calendly.CreateWebhookSubscriptionResult]
-}
-
-func (recordSubscriptionOutcome) Execute(_ dex.Context, result calendly.CreateWebhookSubscriptionResult) (*dex.StepDecision, error) {
-	return dex.GracefulComplete(mutationOutcome{
-		Branch: result.Branch, WasCreated: result.Value.WasCreated, SubscriptionURI: result.Value.URI, FailureKind: failureKindOf(result.Failure),
-	}), nil
 }
 
 func failureKindOf(failure *sdkgo.Failure) sdkgo.FailureKind {
@@ -263,7 +234,7 @@ func startProbeHarness(t *testing.T, fake *fakeCalendly) *probeHarness {
 	calendlyClient := newTestClient(t, fake.redirectingClient(), personalAccessTokenCredentials(sentinelSigningKey), calendly.Config{})
 	connection, err := calendly.NewConnection(calendlyClient, testConnection)
 	require.NoError(t, err)
-	flows := newProbeFlows(connection)
+	flows := newProbeFlows(connection, calendlyClient)
 	registry, err := dex.NewRegistry(flows)
 	require.NoError(t, err)
 	flowsByType := make(map[string]dex.Flow, len(flows))

@@ -95,5 +95,5 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./e
 ```
 
 The integration tests run the Flow on a real Dex Server against a stateful
-fake Airtable, including a provider that answers writes after nine seconds and
+fake Airtable, including a Worker replacement after an applied policy update and
 a `429` that Dex retries after Airtable's 30-second cooldown.

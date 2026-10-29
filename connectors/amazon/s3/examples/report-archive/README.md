@@ -83,9 +83,8 @@ GOWORK=off go test -tags=integration ./examples/report-archive/... -count=1 -v
 The integration tests run the Flow on a real Dex Server against the
 SigV4-verifying fake in `internal/s3fake`: an archived report, a second Flow
 that finds it `alreadyArchived`, a replacement, an invalid report ID that sends
-nothing, and an unwired rejection. Two tests delay the first PUT's response by
-nine seconds, past the async local phase, so Dex dispatches the archive Step
-again; in create-only mode the second PUT gets 412 and finds its own marker,
+nothing, and an unwired rejection. Two tests replace the Worker after the first PUT is stored, so Dex runs
+the archive Step again; in create-only mode the second PUT gets 412 and finds its own marker,
 and in replace mode both PUTs carry identical bytes and headers. Either way the
 Flow completes `archived` with one object. The live test in
 `flow/workflow_live_test.go` runs the same Flow against a real S3 API; see the

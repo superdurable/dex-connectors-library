@@ -127,10 +127,10 @@ Freshdesk, has no idempotency key and omits tags from search results:
 - a search match whose tag the index still shows but the ticket no longer has
   is read, skipped, and never written;
 - a first page of other customers' tickets leads to the second page;
-- a create and a note held for nine seconds, past Dex's async local phase, are
+- a create and a note held for nine seconds are
   each sent exactly once, because both Steps are sync;
-- an update held for nine seconds is dispatched again by async Dex, and both
-  attempts write the same values without duplicating a tag;
+- an update interrupted by Worker loss runs again and writes the same values
+  without duplicating a tag;
 - a lost update response is retried and finds the values applied;
 - a lost create or note response fails the Flow and is never resent;
 - a rate-limited create waits for `Retry-After` and creates one ticket;

@@ -183,22 +183,29 @@ func TestLostWorkerDuringCreateReconcilesWithoutResendingWithRealDex(t *testing.
 	require.Len(t, provider.tasksInList(fakeEscalationID), 1, "the held create exists, which is why the outcome is uncertain")
 }
 
-// TestSlowUpdateIsSafeToRepeatWithRealDex lets async Dex dispatch the update again; both converge on one assignment.
+// TestSlowUpdateIsSafeToRepeatWithRealDex repeats an absolute update after a Worker disconnect.
 func TestSlowUpdateIsSafeToRepeatWithRealDex(t *testing.T) {
 	provider := newFakeClickUp(t)
 	blockedID := provider.seedTask(blockedTaskName, "blocked", fakeEngineeringID)
-	provider.delaysFirstUpdate = true
+	provider.holdsFirstUpdate = make(chan struct{})
 	harness := newEscalationHarness(t, provider, slowRequestTimeout, exampleSettings)
 
-	outcome := harness.runEscalation(t, "slow-update", blockedID)
+	flowID := harness.startEscalation(t, "lost-update", blockedID)
+	require.Eventually(t, func() bool {
+		return len(provider.task(blockedID).assignees) == 1 && provider.task(blockedID).assignees[0] == fakeManagerID
+	}, 30*time.Second, 50*time.Millisecond)
+	require.Equal(t, 1, provider.count("update"))
+	harness.replaceWorker(t)
+	result := harness.waitForFlow(t, flowID)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var outcome escalateblocked.EscalationOutcome
+	require.NoError(t, result.DecodeSingleOutput(&outcome))
 	require.Equal(t, escalateblocked.OutcomeEscalated, outcome.Action)
-	provider.waitForDelayedRequests(t)
-	require.GreaterOrEqual(t, provider.count("update"), 2, "Dex dispatched the update again past its local phase")
+	require.Equal(t, 2, provider.count("update"), "the replacement Worker repeats the update once")
 	blocked := provider.task(blockedID)
 	require.Equal(t, []int64{fakeManagerID}, blocked.assignees, "a repeated add leaves one assignment")
 	require.Equal(t, 1, blocked.priority)
 	require.Len(t, provider.commentsOf(blockedID), 1, "the update never repeats the comment")
-	t.Logf("slow update: updates=%d", provider.count("update"))
 }
 
 func TestSlowCommentIsSentOnceWithRealDex(t *testing.T) {
@@ -370,12 +377,16 @@ func newEscalationHarnessWithConnection(t *testing.T, connection clickup.Connect
 		FlowServiceAddress: harness.serverAddress,
 	})
 	require.NoError(t, err)
-	harness.startWorker(t)
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
+		if harness.worker == nil {
+			require.NoError(t, errors.Join(harness.client.Close(), harness.cache.Close()))
+			return
+		}
 		require.NoError(t, errors.Join(harness.worker.Stop(ctx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
 	})
+	harness.startWorker(t)
 	return harness
 }
 
@@ -384,6 +395,7 @@ func (harness *escalationHarness) startWorker(t *testing.T) {
 	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{FlowServiceAddress: harness.serverAddress})
 	require.NoError(t, err)
 	workerResult := make(chan error, 1)
+	harness.worker, harness.workerResult = worker, workerResult
 	go func() { workerResult <- worker.Start() }()
 	{
 		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
@@ -391,7 +403,6 @@ func (harness *escalationHarness) startWorker(t *testing.T) {
 		cancelRegistration()
 		require.NoError(t, registrationError)
 	}
-	harness.worker, harness.workerResult = worker, workerResult
 }
 
 // replaceWorker force-stops the Worker without draining its handlers, like a crash, then starts a new one.

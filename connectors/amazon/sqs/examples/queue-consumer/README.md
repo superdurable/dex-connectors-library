@@ -70,8 +70,7 @@ The integration tests run the Flow on a real Dex Server against the
 SigV4-verifying fake in `internal/sqsfake`: a processed and acknowledged event,
 a rejected message that returns with `receiveCount` 2, an empty queue, an
 invalid receipt on either acknowledgement path, and an unwired rejection that
-acknowledges nothing. One test delays the deletion's
-response by nine seconds, past the async local phase, so Dex dispatches the
+acknowledges nothing. One test replaces the Worker after SQS applies the deletion, so Dex runs the
 acknowledgement again; both attempts send the same handle and the Flow
 completes `processed`. Another sends the message nine seconds into a 20-second
 long poll and sees one `ReceiveMessage` request, because `receiveMessages` is

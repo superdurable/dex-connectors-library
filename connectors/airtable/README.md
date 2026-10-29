@@ -124,14 +124,10 @@ request; after a lost response, the record the first attempt created appears
 in `UpdatedRecordIDs`.
 
 Airtable does not enforce a unique merge key, and its documentation does not
-say that concurrent upserts are serialized. Under the default async
-durability, Dex dispatches a Step again when its local attempt passes about
-seven seconds while the first request may still be in flight, so two
-concurrent upserts could each find no match and both create a record. The
-operation therefore defaults to sync durability, which never runs two attempts
-of one Step at once. A real-Dex test with a fake Airtable that evaluates the
-merge on arrival and commits it nine seconds later sends one upsert under
-sync; the same test with async durability sends two. A residual race remains
+say that concurrent upserts are serialized. A Worker lost during a request
+can cause another Execute while the first request may still be in flight, so
+two concurrent upserts could each find no match and both create a record. The
+operation therefore defaults to sync durability. A residual race remains
 when a Worker is lost mid-request and its retry reaches Airtable before the
 abandoned request finishes; the next upsert of that key then selects
 `providerRejected` for several matches instead of writing the wrong record.
@@ -316,8 +312,8 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./e
 
 They cover an approved case end to end with a duplicate start, a rerun of one
 case that updates its log row, a duplicate policy key logged for review, a
-nine-second provider that receives one sync upsert and two converging async
-updates, a `429` retried after Airtable's 30-second cooldown, and a rejected
+Worker replacement that sends one upsert and two converging absolute updates,
+a `429` retried after Airtable's 30-second cooldown, and a rejected
 formula that fails the Flow without provider text.
 
 No live Airtable base was used. The operations, picker commands, error types,

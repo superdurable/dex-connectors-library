@@ -125,6 +125,7 @@ type Server struct {
 	requests         []Request
 	interceptor      func(Request) *Response
 	responseDelays   map[string][]time.Duration
+	responseHolds    map[string][]chan struct{}
 	signatureErrors  int
 	nextMessageIndex int
 	nextReceiveIndex int
@@ -155,7 +156,7 @@ func NewServer(t testing.TB, config Config) *Server {
 	if config.VisibilityTimeout == 0 {
 		config.VisibilityTimeout = defaultVisibilityTimeout
 	}
-	server := &Server{config: config, signer: v4.NewSigner(), queues: map[string]*queue{}, responseDelays: map[string][]time.Duration{}}
+	server := &Server{config: config, signer: v4.NewSigner(), queues: map[string]*queue{}, responseDelays: map[string][]time.Duration{}, responseHolds: map[string][]chan struct{}{}}
 	for _, name := range config.Queues {
 		server.queues[name] = &queue{name: name, isFIFO: strings.HasSuffix(name, ".fifo"), attemptBatches: map[string][]*message{}}
 	}
@@ -265,6 +266,13 @@ func (server *Server) DelayResponses(action string, delays ...time.Duration) {
 	server.responseDelays[action] = append(server.responseDelays[action], delays...)
 }
 
+// HoldNextResponse blocks one applied action until release or request cancellation.
+func (server *Server) HoldNextResponse(action string, release chan struct{}) {
+	server.mutex.Lock()
+	defer server.mutex.Unlock()
+	server.responseHolds[action] = append(server.responseHolds[action], release)
+}
+
 func (server *Server) serveHTTP(response http.ResponseWriter, httpRequest *http.Request) {
 	body, err := io.ReadAll(httpRequest.Body)
 	if err != nil {
@@ -307,7 +315,9 @@ func (server *Server) serveHTTP(response http.ResponseWriter, httpRequest *http.
 	default:
 		failure = &Response{StatusCode: http.StatusBadRequest, Code: "InvalidAction"}
 	}
-	server.delayResponse(action)
+	if !server.delayResponse(httpRequest.Context(), action) {
+		return
+	}
 	if failure != nil {
 		writeError(response, *failure)
 		return
@@ -319,15 +329,34 @@ func (server *Server) serveHTTP(response http.ResponseWriter, httpRequest *http.
 	}
 }
 
-func (server *Server) delayResponse(action string) {
+func (server *Server) delayResponse(ctx context.Context, action string) bool {
 	server.mutex.Lock()
 	delays := server.responseDelays[action]
+	holds := server.responseHolds[action]
 	var delay time.Duration
+	var hold chan struct{}
 	if len(delays) > 0 {
 		delay, server.responseDelays[action] = delays[0], delays[1:]
 	}
+	if len(holds) > 0 {
+		hold, server.responseHolds[action] = holds[0], holds[1:]
+	}
 	server.mutex.Unlock()
-	time.Sleep(delay)
+	if hold != nil {
+		select {
+		case <-hold:
+		case <-ctx.Done():
+			return false
+		}
+	}
+	if delay > 0 {
+		select {
+		case <-time.After(delay):
+		case <-ctx.Done():
+			return false
+		}
+	}
+	return true
 }
 
 // verifySignature recomputes the SigV4 signature from the request as received; a blank code means valid.

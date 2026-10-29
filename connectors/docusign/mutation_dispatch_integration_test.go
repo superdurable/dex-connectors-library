@@ -23,7 +23,7 @@ import (
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
-// slowProviderDelay outlasts Dex's seven-second local async phase, so an async Step is re-dispatched.
+// slowProviderDelay exercises the unrelated synchronous envelope-create path.
 const slowProviderDelay = 9 * time.Second
 
 // mutationOutcome is what each probe Flow completes with.
@@ -73,7 +73,7 @@ func TestCreateEnvelopeFindsItsEnvelopeAfterAServerErrorWithRealDex(t *testing.T
 	require.Equal(t, 1, store.count())
 }
 
-// TestVoidEnvelopeIsSafeUnderDuplicateDispatchWithRealDex ends voided when Dex re-dispatches a slow void.
+// TestVoidEnvelopeIsSafeUnderDuplicateDispatchWithRealDex retries after the first accepted void.
 func TestVoidEnvelopeIsSafeUnderDuplicateDispatchWithRealDex(t *testing.T) {
 	var mu sync.Mutex
 	isVoided, puts := false, 0
@@ -88,7 +88,6 @@ func TestVoidEnvelopeIsSafeUnderDuplicateDispatchWithRealDex(t *testing.T) {
 				writeJSON(response, http.StatusBadRequest, docusignError("ENVELOPE_CANNOT_VOID_INVALID_STATE"))
 				return
 			}
-			time.Sleep(slowProviderDelay)
 			writeJSON(response, http.StatusOK, `{"envelopeId":"`+testEnvelopeID+`"}`)
 		},
 		"GET " + envelopePath: func(response http.ResponseWriter, _ *http.Request) {
@@ -103,8 +102,8 @@ func TestVoidEnvelopeIsSafeUnderDuplicateDispatchWithRealDex(t *testing.T) {
 	require.Equal(t, docusign.VoidEnvelopeBranchVoided, outcome.Branch)
 	mu.Lock()
 	defer mu.Unlock()
-	t.Logf("voidEnvelope sent %d PUTs to a %s provider; wasAlreadyVoided=%t", puts, slowProviderDelay, outcome.WasAlreadyVoided)
-	require.GreaterOrEqual(t, puts, 2, "the slow async Step was dispatched again")
+	require.Equal(t, 2, puts, "the second Execute reads back the first accepted void")
+	require.True(t, outcome.WasAlreadyVoided)
 }
 
 const (
@@ -126,7 +125,7 @@ func (*probeFlow) GetRPCs() []dex.RPCDef                       { return nil }
 
 var probeAnnotations = sdkgo.StepAnnotations{GroupID: "probe", GroupLabel: "Probe", Explanation: "Run one DocuSign Mutation against the fake provider."}
 
-func newProbeFlows(connection docusign.Connection) []dex.Flow {
+func newProbeFlows(connection docusign.Connection, client *docusign.Client) []dex.Flow {
 	return []dex.Flow{
 		&probeFlow{flowType: createProbeFlowType, steps: []dex.StepDef{
 			dex.DefineStartStep(docusign.NewCreateEnvelopeFromTemplateStep(docusign.CreateEnvelopeFromTemplateStepConfig[string]{
@@ -138,17 +137,30 @@ func newProbeFlows(connection docusign.Connection) []dex.Flow {
 			dex.DefineStep(recordCreateOutcome{}),
 		}},
 		&probeFlow{flowType: voidProbeFlowType, steps: []dex.StepDef{
-			dex.DefineStartStep(docusign.NewVoidEnvelopeStep(docusign.VoidEnvelopeStepConfig[string]{
-				StepType: "VoidEnvelope", Connection: connection, ConnectionName: testConnection.Name, Annotations: probeAnnotations,
-				MapToOperationInput: func(string) docusign.VoidEnvelopeInput {
-					return docusign.VoidEnvelopeInput{EnvelopeID: testEnvelopeID, VoidedReason: "Deal lost"}
-				},
-				Voided: sdkgo.GoTo(recordVoidOutcome{}), NotVoidable: sdkgo.GoTo(recordVoidOutcome{}), NotFound: sdkgo.GoTo(recordVoidOutcome{}),
-				ProviderRejected: sdkgo.GoTo(recordVoidOutcome{}), InvalidResponse: sdkgo.GoTo(recordVoidOutcome{}), Defect: sdkgo.GoTo(recordVoidOutcome{}),
-			})),
-			dex.DefineStep(recordVoidOutcome{}),
+			dex.DefineStartStep(voidThenFailFirstAttempt{client: client}),
 		}},
 	}
+}
+
+type voidThenFailFirstAttempt struct {
+	dex.StepDefaultsNoWaitFor[string]
+	client *docusign.Client
+}
+
+func (voidThenFailFirstAttempt) GetStepType() string { return "VoidEnvelope" }
+func (voidThenFailFirstAttempt) GetStepOptions() *dex.StepOptions {
+	return &dex.StepOptions{ExecuteRetry: &dex.RetryPolicy{InitialInterval: time.Second, BackoffCoefficient: 1, MaximumInterval: time.Second, MaximumAttempts: 3, TotalDuration: time.Minute}}
+}
+func (step voidThenFailFirstAttempt) Execute(ctx dex.Context, _ string) (*dex.StepDecision, error) {
+	result, err := sdkgo.RunMutation(ctx, step.client.VoidEnvelope(), testConnection,
+		docusign.VoidEnvelopeInput{EnvelopeID: testEnvelopeID, VoidedReason: "Deal lost"})
+	if err != nil {
+		return nil, err
+	}
+	if ctx.Attempt() == 1 {
+		return nil, errors.New("probe fails after void was accepted")
+	}
+	return dex.GracefulComplete(mutationOutcome{Branch: result.Branch, EnvelopeID: result.Value.EnvelopeID, WasAlreadyVoided: result.Value.WasAlreadyVoided, FailureKind: failureKindOf(result.Failure)}), nil
 }
 
 type recordCreateOutcome struct {
@@ -158,16 +170,6 @@ type recordCreateOutcome struct {
 func (recordCreateOutcome) Execute(_ dex.Context, result docusign.CreateEnvelopeFromTemplateResult) (*dex.StepDecision, error) {
 	return dex.GracefulComplete(mutationOutcome{
 		Branch: result.Branch, EnvelopeID: result.Value.EnvelopeID, WasRecovered: result.Value.WasRecovered, FailureKind: failureKindOf(result.Failure),
-	}), nil
-}
-
-type recordVoidOutcome struct {
-	dex.StepDefaultsNoWaitFor[docusign.VoidEnvelopeResult]
-}
-
-func (recordVoidOutcome) Execute(_ dex.Context, result docusign.VoidEnvelopeResult) (*dex.StepDecision, error) {
-	return dex.GracefulComplete(mutationOutcome{
-		Branch: result.Branch, EnvelopeID: result.Value.EnvelopeID, WasAlreadyVoided: result.Value.WasAlreadyVoided, FailureKind: failureKindOf(result.Failure),
 	}), nil
 }
 
@@ -191,7 +193,7 @@ func startProbeHarness(t *testing.T, fake *fakeDocuSign) *probeHarness {
 	require.NoError(t, err)
 	connection, err := docusign.NewConnection(client, testConnection)
 	require.NoError(t, err)
-	flows := newProbeFlows(connection)
+	flows := newProbeFlows(connection, client)
 	registry, err := dex.NewRegistry(flows)
 	require.NoError(t, err)
 	flowsByType := make(map[string]dex.Flow, len(flows))

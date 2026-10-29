@@ -40,7 +40,7 @@ const (
 	adaEmail               = "ada@example.com"
 	unknownAssigneeEmail   = "nobody@example.com"
 	shortRequestTimeout    = 500 * time.Millisecond
-	// slowRequestTimeout outlasts the fake's nine-second responses and Dex's roughly seven-second async local phase.
+	// slowRequestTimeout outlasts the fake's nine-second responses.
 	slowRequestTimeout = 20 * time.Second
 	slowProviderDelay  = 9 * time.Second
 	fakePageSize       = 2
@@ -187,8 +187,7 @@ func TestServerErrorIsCreatedAgainOnlyAfterOperatorApprovalWithRealDex(t *testin
 	require.Equal(t, 2, provider.createCount(taskName), "only the approved retry sent a second create")
 }
 
-// TestSlowCreateIsSentOnceUnderSyncDurabilityWithRealDex guards sync durability: an async fallback attempt
-// would send a create that outlasts Dex's roughly seven-second local phase a second time.
+// TestSlowCreateIsSentOnceUnderSyncDurabilityWithRealDex verifies one create during a healthy slow request.
 func TestSlowCreateIsSentOnceUnderSyncDurabilityWithRealDex(t *testing.T) {
 	provider, flow, harness := newAsanaIntegrationHarness(t, slowRequestTimeout)
 	ctx := integrationContext(t)
@@ -198,20 +197,24 @@ func TestSlowCreateIsSentOnceUnderSyncDurabilityWithRealDex(t *testing.T) {
 	require.Equal(t, 1, provider.createCount("[REQ-3005] "+markerSlowCreate+" Generator test overdue"), "one Step execution dispatches one create request")
 }
 
-// TestSlowUpdateBackupAttemptLeavesTheSameTaskWithRealDex proves updateTask is safe under async durability:
-// a backup attempt resends the same absolute section move and field values, and the task ends the same.
+// TestSlowUpdateBackupAttemptLeavesTheSameTaskWithRealDex repeats the absolute update after Worker loss.
 func TestSlowUpdateBackupAttemptLeavesTheSameTaskWithRealDex(t *testing.T) {
 	provider, flow, harness := newAsanaIntegrationHarness(t, slowRequestTimeout)
 	ctx := integrationContext(t)
 
 	taskName := "[REQ-3006] " + markerSlowUpdate + " Sprinkler inspection"
-	record := runRequestFlow(t, ctx, harness, flow, "slow-update", requestInput("REQ-3006", markerSlowUpdate+" Sprinkler inspection"))
-	require.Equal(t, PhaseReady, record.Phase)
+	flowID := startRequestFlow(t, ctx, harness, flow, "lost-update", requestInput("REQ-3006", markerSlowUpdate+" Sprinkler inspection"))
+	require.Eventually(t, func() bool { return provider.totalCreateCount() == 1 }, 30*time.Second, 50*time.Millisecond)
 	taskID := provider.taskIDForName(taskName)
+	require.Eventually(t, func() bool { return provider.snapshot(taskID).assigneeID == adaUserID }, 30*time.Second, 50*time.Millisecond)
+	require.Len(t, provider.updateBodies(taskID), 1)
+	harness.replaceWorker(t)
+	record := waitForFlowOutput(t, ctx, harness, flowID)
+	require.Equal(t, PhaseReady, record.Phase)
 	require.Equal(t, 1, provider.createCount(taskName))
 	require.Equal(t, 1, len(provider.commentTexts(taskID)), "the Flow moved on exactly once")
 	bodies := provider.updateBodies(taskID)
-	require.GreaterOrEqual(t, len(bodies), 2, "Dex dispatched a backup attempt while the first nine-second update was in flight")
+	require.Len(t, bodies, 2, "the replacement Worker repeats the update once")
 	for _, body := range bodies {
 		require.JSONEq(t, bodies[0], body, "every attempt sends the same absolute values")
 	}
@@ -219,7 +222,7 @@ func TestSlowUpdateBackupAttemptLeavesTheSameTaskWithRealDex(t *testing.T) {
 	require.Equal(t, adaUserID, finalTask.assigneeID)
 	require.Equal(t, approvedSectionID, finalTask.sectionID)
 	require.Equal(t, "2026-10-15", finalTask.dueOn)
-	t.Logf("slow update: section moves=%d updates=%d", provider.sectionMoveCount(taskID), len(bodies))
+	require.Equal(t, 1, provider.sectionMoveCount(taskID), "the absolute section move is not repeated")
 }
 
 // TestSlowCommentIsSentOnceUnderSyncDurabilityWithRealDex guards addComment's sync durability.
@@ -500,7 +503,7 @@ func (provider *fakeAsana) serveTask(response http.ResponseWriter, request *http
 		provider.mutex.Unlock()
 		provider.writeJSON(response, http.StatusOK, `{"data":`+body+`}`)
 	case request.Method == http.MethodPut && !isStories:
-		provider.updateTask(response, taskID, task, contents)
+		provider.updateTask(response, request, taskID, task, contents)
 	case request.Method == http.MethodPost && isStories:
 		provider.addComment(response, request, taskID, task, contents)
 	default:
@@ -508,7 +511,7 @@ func (provider *fakeAsana) serveTask(response http.ResponseWriter, request *http
 	}
 }
 
-func (provider *fakeAsana) updateTask(response http.ResponseWriter, taskID string, task *fakeTask, contents []byte) {
+func (provider *fakeAsana) updateTask(response http.ResponseWriter, request *http.Request, taskID string, task *fakeTask, contents []byte) {
 	var body struct {
 		Data map[string]json.RawMessage `json:"data"`
 	}
@@ -523,6 +526,7 @@ func (provider *fakeAsana) updateTask(response http.ResponseWriter, taskID strin
 	}
 	provider.mutex.Lock()
 	provider.updateBodiesByID[taskID] = append(provider.updateBodiesByID[taskID], string(contents))
+	attempt := len(provider.updateBodiesByID[taskID])
 	if assignee == adaEmail || assignee == adaUserID {
 		task.assigneeID = adaUserID
 	}
@@ -531,9 +535,9 @@ func (provider *fakeAsana) updateTask(response http.ResponseWriter, taskID strin
 	}
 	rendered := provider.taskJSON(taskID)
 	provider.mutex.Unlock()
-	if strings.Contains(task.name, markerSlowUpdate) {
-		// Asana applied the update, but the response arrives after Dex's async local phase ends.
-		time.Sleep(slowProviderDelay)
+	if strings.Contains(task.name, markerSlowUpdate) && attempt == 1 {
+		<-request.Context().Done()
+		return
 	}
 	provider.writeJSON(response, http.StatusOK, `{"data":`+rendered+`}`)
 }
@@ -705,7 +709,8 @@ func newAsanaIntegrationHarness(t *testing.T, requestTimeout time.Duration) (*fa
 	require.NoError(t, err)
 	harness.worker = worker
 	harness.workerResult = make(chan error, 1)
-	go func() { harness.workerResult <- worker.Start() }()
+	workerResult := harness.workerResult
+	go func() { workerResult <- worker.Start() }()
 	t.Cleanup(func() {
 		stopCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
@@ -718,6 +723,23 @@ func newAsanaIntegrationHarness(t *testing.T, requestTimeout time.Duration) (*fa
 		require.NoError(t, registrationError)
 	}
 	return provider, flow, harness
+}
+
+func (harness *asanaIntegrationHarness) replaceWorker(t *testing.T) {
+	t.Helper()
+	expired, cancel := context.WithCancel(context.Background())
+	cancel()
+	_ = harness.worker.Stop(expired)
+	require.NoError(t, <-harness.workerResult)
+	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{FlowServiceAddress: harness.serverAddress})
+	require.NoError(t, err)
+	workerResult := make(chan error, 1)
+	harness.worker, harness.workerResult = worker, workerResult
+	go func() { workerResult <- worker.Start() }()
+	registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+	registrationError := worker.WaitPullRegistered(registrationContext)
+	cancelRegistration()
+	require.NoError(t, registrationError)
 }
 
 func environmentOr(name string, fallback string) string {

@@ -39,7 +39,7 @@ const (
 	integrationHandoffField  = "customITProvisioning"
 
 	defaultRequestTimeout = 5 * time.Second
-	// slowResponseDelay outlasts Dex's roughly seven-second async local phase, so an async Step is dispatched again.
+	// slowResponseDelay exercises a healthy slow add request.
 	slowResponseDelay  = 9 * time.Second
 	slowRequestTimeout = 20 * time.Second
 )
@@ -142,19 +142,24 @@ func TestSlowAddIsSentOnceWithRealDex(t *testing.T) {
 	require.Equal(t, 1, provider.employeeCount())
 }
 
-// TestSlowUpdateIsSafeToRepeatWithRealDex lets async Dex dispatch the update again; both attempts write the same value.
+// TestSlowUpdateIsSafeToRepeatWithRealDex repeats the absolute update after a Worker disconnect.
 func TestSlowUpdateIsSafeToRepeatWithRealDex(t *testing.T) {
 	provider := newFakeBambooHR(t)
 	hire := provider.seedEmployee(completeRecord())
-	provider.delaysFirstUpdate = true
+	provider.holdsFirstUpdate = make(chan struct{})
 	harness := newOnboardingHarness(t, provider, slowRequestTimeout)
 
-	outcome := harness.runOnboarding(t, "slow-update", integrationInput())
+	flowID := harness.startOnboarding(t, "lost-update", integrationInput())
+	require.Eventually(t, func() bool { return provider.field(hire, integrationHandoffField) != "" }, 30*time.Second, 50*time.Millisecond)
+	require.Equal(t, 1, provider.count("update"))
+	harness.replaceWorker(t)
+	result := harness.waitForFlow(t, flowID)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var outcome OnboardingOutcome
+	require.NoError(t, result.DecodeSingleOutput(&outcome))
 	require.Equal(t, OnboardingHandedOff, outcome.Action)
-	provider.waitForDelayedRequests(t)
-	require.GreaterOrEqual(t, provider.count("update"), 2, "Dex dispatched the update again past its local phase")
+	require.Equal(t, 2, provider.count("update"), "the replacement Worker repeats the update once")
 	require.Equal(t, outcome.HandoffValue, provider.field(hire, integrationHandoffField), "the repeated write stored the same text")
-	t.Logf("slow update: updates=%d reads=%d", provider.count("update"), provider.count("read"))
 }
 
 // TestLostWorkerDuringAddIsReconciledWithoutResendingWithRealDex replaces the Worker while BambooHR
@@ -320,6 +325,7 @@ type fakeBambooHR struct {
 	rejectsAdd                   bool
 	delaysFirstUpdate            bool
 	holdsFirstAdd                chan struct{}
+	holdsFirstUpdate             chan struct{}
 }
 
 type fakeTimeOff struct {
@@ -501,11 +507,6 @@ func (provider *fakeBambooHR) updateEmployee(response http.ResponseWriter, reque
 		response.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	if provider.delaysFirstUpdate && attempt == 1 {
-		provider.delayedRequests.Add(1)
-		defer provider.delayedRequests.Done()
-		time.Sleep(slowResponseDelay)
-	}
 	provider.mutex.Lock()
 	stored, isFound := provider.employees[employeeID]
 	for field, value := range fields {
@@ -514,6 +515,13 @@ func (provider *fakeBambooHR) updateEmployee(response http.ResponseWriter, reque
 		}
 	}
 	provider.mutex.Unlock()
+	if provider.holdsFirstUpdate != nil && attempt == 1 {
+		select {
+		case <-provider.holdsFirstUpdate:
+		case <-request.Context().Done():
+			return
+		}
+	}
 	if !isFound {
 		response.WriteHeader(http.StatusNotFound)
 		return
@@ -704,12 +712,16 @@ func newOnboardingHarnessForConnection(t *testing.T, connection bamboohr.Connect
 		FlowServiceAddress: harness.serverAddress,
 	})
 	require.NoError(t, err)
-	harness.startWorker(t)
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
+		if harness.worker == nil {
+			require.NoError(t, errors.Join(harness.client.Close(), harness.cache.Close()))
+			return
+		}
 		require.NoError(t, errors.Join(harness.worker.Stop(ctx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
 	})
+	harness.startWorker(t)
 	return harness
 }
 
@@ -718,6 +730,7 @@ func (harness *onboardingHarness) startWorker(t *testing.T) {
 	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{FlowServiceAddress: harness.serverAddress})
 	require.NoError(t, err)
 	workerResult := make(chan error, 1)
+	harness.worker, harness.workerResult = worker, workerResult
 	go func() { workerResult <- worker.Start() }()
 	{
 		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
@@ -725,7 +738,6 @@ func (harness *onboardingHarness) startWorker(t *testing.T) {
 		cancelRegistration()
 		require.NoError(t, registrationError)
 	}
-	harness.worker, harness.workerResult = worker, workerResult
 }
 
 // replaceWorker force-stops the Worker without draining its handlers, like a crash, then starts a new one.

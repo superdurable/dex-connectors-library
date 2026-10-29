@@ -89,8 +89,7 @@ as exclusive:
   and keeps two hires added in the same second;
 - four sweeps that each stop at their page limit continue from the previous
   cursor with no gap or duplicate, across a page boundary inside one second;
-- a listing held for nine seconds is dispatched again by async Dex and keeps
-  each change once;
+- a listing interrupted by Worker loss runs again and keeps each change once;
 - a rate-limited listing waits for `Retry-After`;
 - rejected credentials fail the Flow through the unwired `providerRejected`
   branch.

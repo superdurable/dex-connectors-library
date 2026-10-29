@@ -151,10 +151,9 @@ BambooHR, has no idempotency key and matches emails by substring:
 - an existing hire is handed off with only their approved or requested time
   off in the first two weeks, and a second run finds the hand-off recorded and
   writes nothing;
-- an add held for nine seconds, past Dex's async local phase, is sent exactly
+- an add held for nine seconds is sent exactly
   once, because the Step is sync;
-- an update held for nine seconds is dispatched again by async Dex, and both
-  attempts store the same text;
+- an update interrupted by Worker loss runs again and stores the same text;
 - a Worker lost while BambooHR holds the add is replaced, and the new attempt
   finds the dispatch checkpoint, sends nothing, and adopts the hire it finds
   by personal email;

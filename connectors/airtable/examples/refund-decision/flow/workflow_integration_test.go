@@ -46,9 +46,6 @@ const (
 	slowPolicyRecordID     = "recPolicySlowRow1"
 	limitedPolicyRecordID  = "recPolicyLimited1"
 	slowCaseID             = "case-slow"
-
-	// slowResponseDelay outlasts Dex's roughly seven-second async local phase, so an async Step is dispatched again.
-	slowResponseDelay = 9 * time.Second
 )
 
 var integrationSettings = Settings{
@@ -125,20 +122,25 @@ func TestDuplicatePolicyKeyIsLoggedForReviewWithoutALinkWithRealDex(t *testing.T
 	require.Zero(t, provider.countPrefix("update "), "no single policy is stamped")
 }
 
-// TestSlowWritesSendOneUpsertAndConvergeRepeatedUpdatesWithRealDex proves both write durability choices.
-// The fake matches upserts on arrival, so concurrent duplicates would both create a row.
+// TestSlowWritesSendOneUpsertAndConvergeRepeatedUpdatesWithRealDex repeats the policy update after Worker loss.
 func TestSlowWritesSendOneUpsertAndConvergeRepeatedUpdatesWithRealDex(t *testing.T) {
 	provider, harness := newRefundDecisionHarness(t)
 	ctx := integrationContext(t, 2*time.Minute)
-	decision := waitForCompletedDecision(t, ctx, harness, startDecision(t, ctx, harness, "slow",
-		Input{CaseID: slowCaseID, Customer: "Katherine", AmountUSD: 40, PolicyKey: slowPolicyKey}))
+	flowID := startDecision(t, ctx, harness, "lost-update",
+		Input{CaseID: slowCaseID, Customer: "Katherine", AmountUSD: 40, PolicyKey: slowPolicyKey})
+	require.Eventually(t, func() bool {
+		return string(provider.policy(slowPolicyRecordID).fields[LastDecidedCaseField]) == `"case-slow"`
+	}, 30*time.Second, 50*time.Millisecond)
+	require.Equal(t, 1, provider.count("update "+slowPolicyRecordID))
+	harness.replaceWorker(t)
+	decision := waitForCompletedDecision(t, ctx, harness, flowID)
 
 	t.Logf("Flow decided %s with %d upsert and %d update dispatches", decision.Decision,
 		provider.count("upsert "+slowCaseID), provider.count("update "+slowPolicyRecordID))
 	require.Equal(t, DecisionApproved, decision.Decision)
-	require.Equal(t, 1, provider.count("upsert "+slowCaseID), "sync durability sent the slow upsert once")
+	require.Equal(t, 1, provider.count("upsert "+slowCaseID), "the completed Flow wrote one decision row")
 	require.Len(t, provider.logRowsForCase(slowCaseID), 1)
-	require.GreaterOrEqual(t, provider.count("update "+slowPolicyRecordID), 2, "Dex's async fallback dispatched the slow update again")
+	require.Equal(t, 2, provider.count("update "+slowPolicyRecordID), "the replacement Worker repeats the update once")
 	require.JSONEq(t, `"case-slow"`, string(provider.policy(slowPolicyRecordID).fields[LastDecidedCaseField]), "the repeated absolute update converged")
 	require.True(t, decision.IsPolicyStamped)
 }
@@ -274,7 +276,7 @@ func (provider *fakeAirtable) serveHTTP(response http.ResponseWriter, request *h
 	case request.Method == http.MethodPost && len(segments) == 3 && segments[2] == "listRecords":
 		provider.listRecords(response, tableID, body)
 	case request.Method == http.MethodPatch && len(segments) == 2:
-		provider.writeRecords(response, tableID, body)
+		provider.writeRecords(response, request, tableID, body)
 	case request.Method == http.MethodGet && len(segments) == 3:
 		provider.getRecord(response, tableID, segments[2])
 	default:
@@ -315,7 +317,7 @@ func (provider *fakeAirtable) listRecords(response http.ResponseWriter, tableID 
 }
 
 // writeRecords serves PATCH: an upsert with performUpsert, or an update by record ID.
-func (provider *fakeAirtable) writeRecords(response http.ResponseWriter, tableID string, body []byte) {
+func (provider *fakeAirtable) writeRecords(response http.ResponseWriter, httpRequest *http.Request, tableID string, body []byte) {
 	var request struct {
 		PerformUpsert *struct {
 			FieldsToMergeOn []string `json:"fieldsToMergeOn"`
@@ -330,7 +332,7 @@ func (provider *fakeAirtable) writeRecords(response http.ResponseWriter, tableID
 		return
 	}
 	if request.PerformUpsert == nil {
-		provider.updateRecords(response, tableID, request.Records[0].ID, request.Records[0].Fields)
+		provider.updateRecords(response, httpRequest, tableID, request.Records[0].ID, request.Records[0].Fields)
 		return
 	}
 	mergeFields := request.PerformUpsert.FieldsToMergeOn
@@ -343,9 +345,6 @@ func (provider *fakeAirtable) writeRecords(response http.ResponseWriter, tableID
 	provider.record("upsert " + caseID)
 	// Like a slow provider, the merge is evaluated on arrival and committed only when the response is sent.
 	matches := provider.matchingRecords(tableID, mergeFields, recordFields)
-	if caseID == slowCaseID {
-		time.Sleep(slowResponseDelay)
-	}
 	if len(matches) > 1 {
 		provider.writeJSON(response, http.StatusUnprocessableEntity, `{"error":{"type":"INVALID_MULTIPLE_MATCHES","message":"`+sentinelMessage+`"}}`)
 		return
@@ -370,8 +369,8 @@ func (provider *fakeAirtable) writeRecords(response http.ResponseWriter, tableID
 	provider.writeJSON(response, http.StatusOK, `{"records":[`+encoded+`],"createdRecords":`+created+`,"updatedRecords":`+updated+`}`)
 }
 
-func (provider *fakeAirtable) updateRecords(response http.ResponseWriter, tableID string, recordID string, fields map[string]json.RawMessage) {
-	provider.record("update " + recordID)
+func (provider *fakeAirtable) updateRecords(response http.ResponseWriter, request *http.Request, tableID string, recordID string, fields map[string]json.RawMessage) {
+	attempt := provider.record("update " + recordID)
 	provider.mutex.Lock()
 	record := provider.findRecord(tableID, recordID)
 	if record == nil {
@@ -384,8 +383,9 @@ func (provider *fakeAirtable) updateRecords(response http.ResponseWriter, tableI
 	}
 	encoded := encodeFakeRecord(provider.t, record, nil)
 	provider.mutex.Unlock()
-	if recordID == slowPolicyRecordID {
-		time.Sleep(slowResponseDelay)
+	if recordID == slowPolicyRecordID && attempt == 1 {
+		<-request.Context().Done()
+		return
 	}
 	provider.writeJSON(response, http.StatusOK, `{"records":[`+encoded+`]}`)
 }
@@ -531,11 +531,13 @@ func containsString(values []string, wanted string) bool {
 }
 
 type refundDecisionHarness struct {
-	flow         *Flow
-	cache        *blobcache.Cache
-	worker       *dex.Worker
-	workerResult chan error
-	client       *dex.Client
+	flow          *Flow
+	cache         *blobcache.Cache
+	worker        *dex.Worker
+	workerResult  chan error
+	client        *dex.Client
+	registry      *dex.Registry
+	serverAddress string
 }
 
 func newRefundDecisionHarness(t *testing.T) (*fakeAirtable, *refundDecisionHarness) {
@@ -560,27 +562,40 @@ func newRefundDecisionHarnessWithConnection(t *testing.T, connection airtable.Co
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
 	serverAddress := environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801")
-	harness := &refundDecisionHarness{flow: flow, cache: cache}
+	harness := &refundDecisionHarness{flow: flow, cache: cache, registry: registry, serverAddress: serverAddress}
 	harness.client, err = dex.NewClient(registry, cache, dex.ClientOptions{
 		FlowServiceAddress: serverAddress,
 	})
 	require.NoError(t, err)
-	harness.worker, err = dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: serverAddress})
-	require.NoError(t, err)
-	harness.workerResult = make(chan error, 1)
-	go func() { harness.workerResult <- harness.worker.Start() }()
 	t.Cleanup(func() {
 		stopCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		require.NoError(t, errors.Join(harness.worker.Stop(stopCtx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
 	})
-	{
-		registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
-		registrationError := harness.worker.WaitPullRegistered(registrationContext)
-		cancelRegistration()
-		require.NoError(t, registrationError)
-	}
+	harness.startWorker(t)
 	return harness
+}
+
+func (harness *refundDecisionHarness) startWorker(t *testing.T) {
+	t.Helper()
+	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{FlowServiceAddress: harness.serverAddress})
+	require.NoError(t, err)
+	workerResult := make(chan error, 1)
+	harness.worker, harness.workerResult = worker, workerResult
+	go func() { workerResult <- worker.Start() }()
+	registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+	registrationError := worker.WaitPullRegistered(registrationContext)
+	cancelRegistration()
+	require.NoError(t, registrationError)
+}
+
+func (harness *refundDecisionHarness) replaceWorker(t *testing.T) {
+	t.Helper()
+	expired, cancel := context.WithCancel(context.Background())
+	cancel()
+	_ = harness.worker.Stop(expired)
+	require.NoError(t, <-harness.workerResult)
+	harness.startWorker(t)
 }
 
 func environmentOr(name string, fallback string) string {

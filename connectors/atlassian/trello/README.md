@@ -200,7 +200,7 @@ numbers.
 
 Because a repeated `PUT` of absolute values leaves the same card, every
 ambiguous outcome, including a timeout after dispatch or a 5xx, retries instead
-of selecting `uncertain`. A retry or backup attempt can move the card back to
+of selecting `uncertain`. A retry can move the card back to
 the top of the list if someone reordered it in between, and an add or remove
 can overwrite a label change another member made between the read and the
 `PUT`.
@@ -217,11 +217,8 @@ suppress a deliberately repeated comment.
 ## Avoiding duplicate cards and comments
 
 `createCard` and `addComment` use sync Execute durability although a request is
-usually fast. With async durability, Dex runs a Step in a local phase of about
-seven seconds and then dispatches a backup attempt, so a slow create would be
-sent twice. A real Dex run against a fake Trello that held the create for nine
-seconds recorded two create requests when the Step was overridden to async,
-even with the heartbeat checkpoint, and one under sync;
+usually fast. A real Dex run against a fake Trello that held the create for
+nine seconds recorded one create request;
 `TestSlowCreateIsSentOnceUnderSyncDurabilityWithRealDex` and
 `TestSlowCommentIsSentOnceUnderSyncDurabilityWithRealDex` guard this. Do not
 override these Steps to async.
@@ -248,9 +245,9 @@ follows Trello's [status-code guide](https://developer.atlassian.com/cloud/trell
 whether Trello can return 503 after applying either POST remains unverified.
 
 `updateCard` keeps the async default. A 2xx PUT with an unreadable body proceeds
-to GET read-back within the same attempt. With a fake that held the `PUT` for nine
-seconds, Dex dispatched a backup attempt, Trello received the same body twice,
-and the card ended in the list with the labels and due date exactly as with one
+to GET read-back within the same attempt. After Worker loss during an applied
+`PUT`, the replacement Worker sends the same body. The card ends in the list
+with the labels and due date exactly as with one
 request; `TestSlowMoveBackupAttemptLeavesTheSameCardWithRealDex` guards this.
 
 An application handles `uncertain` without creating again automatically; the

@@ -254,10 +254,8 @@ member has the address, or the token's user is not in the Workspace.
 
 ## Avoiding duplicate tasks and comments
 
-`createTask` and `addComment` use sync Execute durability. With async
-durability, Dex runs a Step in a local phase of about seven seconds and then
-dispatches a backup attempt, so a slow create would be sent twice. The
-example's real-Dex tests hold a create, and a comment, for nine seconds and
+`createTask` and `addComment` use sync Execute durability. The
+example's real-Dex tests hold a create and a comment for nine seconds and
 record one request each; another holds a create while the Worker is replaced,
 and the new attempt reads the List instead of resending. Do not override these
 Steps to async. Dex accepts the checkpoint when the Worker writes it to its
@@ -266,10 +264,9 @@ stored the checkpoint, could still send twice, and a crash after the
 checkpoint but before the request left reports `uncertain` for a request
 ClickUp never received.
 
-`updateTask` and `updateTaskTags` keep the async default. With a fake that held
-the `PUT` for nine seconds, Dex dispatched a backup attempt, ClickUp received
-the same `PUT` twice, and the task ended with one assignment, as with one
-request.
+`updateTask` and `updateTaskTags` keep the async default. After Worker loss
+during an applied `PUT`, the replacement Worker sends the same absolute
+update, and the task ends with one assignment, as with one request.
 
 ## taskEvent Trigger
 

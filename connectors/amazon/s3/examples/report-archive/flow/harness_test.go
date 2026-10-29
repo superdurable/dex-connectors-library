@@ -49,10 +49,12 @@ func integrationContext(t *testing.T) context.Context {
 }
 
 type reportArchiveHarness struct {
-	worker       *dex.Worker
-	workerResult chan error
-	client       *dex.Client
-	cache        *blobcache.Cache
+	worker        *dex.Worker
+	workerResult  chan error
+	client        *dex.Client
+	cache         *blobcache.Cache
+	registry      *dex.Registry
+	serverAddress string
 }
 
 // newReportArchiveHarness runs the example Flow on a Worker of the Dex Server at DEX_FLOW_SERVICE_ADDRESS.
@@ -71,21 +73,40 @@ func newReportArchiveHarnessWithConnection(t *testing.T, connection s3.Connectio
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
 	serverAddress := environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801")
-	harness := &reportArchiveHarness{cache: cache, workerResult: make(chan error, 1)}
+	harness := &reportArchiveHarness{cache: cache, registry: registry, serverAddress: serverAddress}
 	harness.client, err = dex.NewClient(registry, cache, dex.ClientOptions{
 		FlowServiceAddress: serverAddress,
 	})
 	require.NoError(t, err)
-	harness.worker, err = dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: serverAddress})
-	require.NoError(t, err)
-	go func() { harness.workerResult <- harness.worker.Start() }()
-	require.NoError(t, harness.worker.WaitPullRegistered(t.Context()))
 	t.Cleanup(func() {
 		stopCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
 		require.NoError(t, errors.Join(harness.worker.Stop(stopCtx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
 	})
+	harness.startWorker(t)
 	return flow, harness
+}
+
+func (harness *reportArchiveHarness) startWorker(t *testing.T) {
+	t.Helper()
+	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{FlowServiceAddress: harness.serverAddress})
+	require.NoError(t, err)
+	workerResult := make(chan error, 1)
+	harness.worker, harness.workerResult = worker, workerResult
+	go func() { workerResult <- worker.Start() }()
+	registrationContext, cancelRegistration := context.WithTimeout(t.Context(), 30*time.Second)
+	registrationError := worker.WaitPullRegistered(registrationContext)
+	cancelRegistration()
+	require.NoError(t, registrationError)
+}
+
+func (harness *reportArchiveHarness) replaceWorker(t *testing.T) {
+	t.Helper()
+	expired, cancel := context.WithCancel(context.Background())
+	cancel()
+	_ = harness.worker.Stop(expired)
+	require.NoError(t, <-harness.workerResult)
+	harness.startWorker(t)
 }
 
 func environmentOr(name string, fallback string) string {

@@ -111,8 +111,8 @@ reused and moved out of intake; a rate-limited create retried after
 `Retry-After`; a create timeout reconciled by confirming a missing, a
 mismatched, and then the real task gid without a second create; a 5xx create
 created again only after operator approval; a nine-second create and a
-nine-second comment each sent once under sync durability; a nine-second update
-whose backup attempt resends the same move and `PUT` and leaves the same task;
+nine-second comment each sent once under sync durability; an update interrupted by Worker loss whose replacement resends the same
+`PUT` and leaves the same task;
 a comment timeout that fails without a resend; a rejected create sent once;
 and an assignee Asana rejects before an approval comment.
 

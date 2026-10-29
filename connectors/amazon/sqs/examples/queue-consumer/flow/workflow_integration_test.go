@@ -23,7 +23,7 @@ const (
 	integrationSecretAccessKey = "queue-consumer-integration-secret"
 	integrationRegion          = "eu-west-1"
 	integrationQueue           = "orders"
-	// slowResponseDelay outlasts the seven-second async local phase, so Dex dispatches an async Step again.
+	// slowResponseDelay exercises a healthy long poll.
 	slowResponseDelay = 9 * time.Second
 )
 
@@ -127,20 +127,35 @@ func TestQueueConsumerLongPollPastTheAsyncPhaseReceivesOnceWithRealDex(t *testin
 	require.Equal(t, 1, result.outcome.Message.ReceiveCount)
 }
 
-// TestQueueConsumerDuplicateAcknowledgementDispatchConvergesWithRealDex: both deletes succeed on one message.
+// TestQueueConsumerDuplicateAcknowledgementDispatchConvergesWithRealDex repeats an accepted delete after Worker loss.
 func TestQueueConsumerDuplicateAcknowledgementDispatchConvergesWithRealDex(t *testing.T) {
 	queues := newIntegrationQueues(t)
-	queues.DelayResponses("DeleteMessage", slowResponseDelay)
+	queues.HoldNextResponse("DeleteMessage", make(chan struct{}))
 	messageID := queues.Send(integrationQueue, sqsfake.SentMessage{Body: `{"orderId":"1042","event":"shipped"}`})
 	flow, harness := newQueueConsumerHarness(t, newFakeQueueClient(t, queues, 1))
 
-	result := runQueueConsumer(t, integrationContext(t), harness.client, flow, "duplicate-ack-"+uniqueSuffix(), Input{})
+	ctx := integrationContext(t)
+	flowID := "duplicate-ack-" + uniqueSuffix()
+	_, err := harness.client.StartFlow(ctx, flow, flowID, Input{}, dex.StartFlowOptions{})
+	require.NoError(t, err)
+	require.Eventually(t, func() bool {
+		state, found := queues.Message(integrationQueue, messageID)
+		return found && state.IsDeleted
+	}, 30*time.Second, 50*time.Millisecond)
+	require.Equal(t, 1, queues.RequestCount("DeleteMessage"))
+	harness.replaceWorker(t)
+	flowResult, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{NeedsResults: true})
+	require.NoError(t, err)
+	result := queueConsumerRun{status: flowResult.Status}
+	if flowResult.Status == dex.FlowCompleted {
+		require.NoError(t, flowResult.DecodeSingleOutput(&result.outcome))
+	}
 
 	require.Equal(t, dex.FlowCompleted, result.status)
 	require.Equal(t, StatusProcessed, result.outcome.Status)
 	require.True(t, result.outcome.IsAcknowledgementConfirmed)
 	deletes := deleteRequests(queues)
-	require.Len(t, deletes, 2, "Dex dispatched the slow acknowledgement a second time")
+	require.Len(t, deletes, 2, "the replacement Worker repeats the acknowledgement once")
 	require.Equal(t, deletes[0].Body, deletes[1].Body, "both attempts acknowledge the same delivery")
 	state, _ := queues.Message(integrationQueue, messageID)
 	require.True(t, state.IsDeleted)

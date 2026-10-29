@@ -83,13 +83,12 @@ notes, guest emails, payment, tracking, and SMS reminder numbers are dropped.
 
 ### Mutations and duplicate dispatch
 
-Calendly documents no idempotency header, and Dex can run an async Step a
-second time while the first attempt is still waiting. Each Mutation is
-therefore safe for its own reason, proved by the real-Dex tests in
-`mutation_dispatch_integration_test.go`, whose fake Calendly answers after
-nine seconds:
+Calendly documents no idempotency header. A failed Step may run again, so each
+Mutation is safe for its own reason. The real-Dex probe tests in
+`mutation_dispatch_integration_test.go` fail the first Execute after an
+accepted provider call and verify the next attempt:
 
-| Mutation | Durability | Why a repeat is safe | Observed with a 9-second provider |
+| Mutation | Durability | Why a repeat is safe | Observed after a repeated Execute |
 | --- | --- | --- | --- |
 | `cancelScheduledEvent` | async | Calendly answers `403` for an event that is already canceled. A `403` reads the event back; a canceled event selects `canceled` with `alreadyCanceled`, whatever the message. A lost answer or a `5xx` returns Retry. | two POSTs, `canceled` |
 | `createWebhookSubscription` | async | It lists the scope's subscriptions before creating, reuses one with the same callback URL, and treats Calendly's documented `409` as "list again". | two lists, one create, one subscription |
@@ -240,5 +239,5 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./.
 (cd ui && npm ci && npm test && npm run build)
 ```
 
-The integration run needs `dexcli dev` and takes about a minute, because the
-duplicate-dispatch tests wait for a nine-second provider.
+The integration run needs `dexcli dev`; the probe tests repeat Execute after
+an accepted provider call.

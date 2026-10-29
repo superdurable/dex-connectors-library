@@ -293,7 +293,7 @@ conversation, so the missing resource is most likely a teammate, tag, or
 ticket status; a `301` on a write selects `notFound` for a conversation merged
 since the read. When an earlier write of the same attempt succeeded, the
 Failure message says that it stays applied. The real-Dex test lets
-Dex dispatch the Step again while a tag write answers after nine seconds; the
+the replacement Worker resend an applied tag write; the
 conversation ends with the assignee and one copy of the tag.
 
 The writes converge for one Step, but they are not ordered against later
@@ -436,5 +436,5 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./.
 (cd ui && npm ci && npm test && npm run build)
 ```
 
-The integration run needs `dexcli dev` and takes about 30 seconds, because
-the duplicate-dispatch tests wait for a nine-second provider.
+The integration run needs `dexcli dev`; the slow comment test takes nine
+seconds.
