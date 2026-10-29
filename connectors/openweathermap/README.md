@@ -13,7 +13,7 @@ The demo uses `openweathermap.NewGetCurrentWeatherStep` with the static `openwea
 
 ## Authorization and configuration
 
-At [OpenWeather account > API keys > Generate](https://home.openweathermap.org/api_keys), create or select an API key for these operations, copy its provider-issued value, and store it in the secret `api_key` field in Dex Web Connections. A blank key is invalid. The manifest supplies the public base URL, HTTP timeout, and response-size limit; leave their fields blank unless a compatible gateway, slow request, or known larger response requires an override. 
+At [OpenWeather account > API keys > Generate](https://home.openweathermap.org/api_keys), create or select an API key for these operations, copy its provider-issued value, and store it in the secret `api_key` field in Dex Web Connections. A blank key is invalid. The manifest supplies the public base URL, HTTP timeout, and response-size limit; leave their fields blank unless a compatible gateway, slow request, or known larger response requires an override.
 
 ## Failure behavior
 
