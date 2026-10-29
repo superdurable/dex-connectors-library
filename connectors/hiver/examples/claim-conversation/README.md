@@ -88,15 +88,13 @@ go run ./examples/claim-conversation
 ```
 
 The Worker reads the connection settings at startup and the API key before
-every call, so restart it after changing a setting. The default Worker address
-is `127.0.0.1:8863`. Override `DEX_FLOW_SERVICE_ADDRESS`,
-`DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR` when needed. For local
+every call, so restart it after changing a setting. Override `DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR` when needed. For local
 verification against a Hiver-compatible fake only, `HIVER_LOCAL_API_BASE_URL`
 replaces `https://api2.hiverhq.com/v1`; it must be HTTPS or a loopback HTTP
 URL, and production Workers leave it unset.
 
 In the Run workspace, choose **Start Flow**, select `HiverClaimConversation`,
-choose the Worker at `127.0.0.1:8863`, enter a unique Flow ID, and submit.
+enter a unique Flow ID, and submit.
 `claimTagName` must name an existing tag of the inbox; leave it out to apply
 none, and leave out `replyDraft` to create no draft.
 

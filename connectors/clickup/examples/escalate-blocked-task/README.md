@@ -129,9 +129,9 @@ cd "$(git rev-parse --show-toplevel)/connectors/clickup"
 go run ./examples/escalate-blocked-task
 ```
 
-The Worker listens on `127.0.0.1:8881` and the webhook endpoint on
+The webhook endpoint listens on
 `127.0.0.1:8882`; override `DEX_FLOW_SERVICE_ADDRESS`,
-`DEX_WORKER_BIND_ADDRESS`, `CLICKUP_WEBHOOK_BIND_ADDRESS`, or
+`CLICKUP_WEBHOOK_BIND_ADDRESS`, or
 `DEX_BLOB_CACHE_DIR` when needed, and set `LOG_LEVEL=debug` to see every
 delivery. `GET /readyz` answers `200` once the binding receives events. For
 local verification against a ClickUp-compatible fake only,

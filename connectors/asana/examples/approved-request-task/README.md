@@ -73,8 +73,8 @@ describes:
 go run ./examples/approved-request-task
 ```
 
-The default Worker address is `127.0.0.1:8831`. Override
-`DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR`
+Override
+`DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR`
 when needed.
 
 Start `AsanaApprovedRequestTask` with a unique Flow ID:

@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
 	"os"
 	"path/filepath"
 	"testing"
@@ -49,17 +48,14 @@ func startTestWorkerForConnection(t *testing.T, connection postgresql.Connection
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	address := listener.Addr().String()
-	require.NoError(t, listener.Close())
 	flowServiceAddress := os.Getenv("DEX_FLOW_SERVICE_ADDRESS")
-	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{BindAddress: address, FlowServiceAddress: flowServiceAddress})
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: flowServiceAddress})
 	require.NoError(t, err)
-	dexClient, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: flowServiceAddress, WorkerTarget: &dex.WorkerTarget{Address: address}})
+	dexClient, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: flowServiceAddress})
 	require.NoError(t, err)
 	harness := &testWorker{flow: flow, client: dexClient, worker: worker, result: make(chan error, 1)}
 	go func() { harness.result <- worker.Start() }()
+	require.NoError(t, worker.WaitPullRegistered(t.Context()))
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()

@@ -81,15 +81,15 @@ go run ./examples/approved-order
 ```
 
 The Worker reads the connection at startup and the credentials before every
-call. The default Worker address is `127.0.0.1:8836`. Override
-`DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR`
+call. Override
+`DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR`
 when needed. For local verification against a Xero-compatible fake only,
 `XERO_LOCAL_PROVIDER_URL` sends every request for `api.xero.com` and
 `identity.xero.com` to one loopback URL without a path; production Workers
 leave it unset.
 
 In the Run workspace, choose **Start Flow**, select
-`XeroApprovedOrderInvoice`, choose the Worker at `127.0.0.1:8836`, enter a
+`XeroApprovedOrderInvoice`, enter a
 unique Flow ID, and submit. The customer must already be a Xero contact with
 that email. `accountCode` is a sales account and `paymentAccountCode` a bank
 account from **Accounting > Chart of accounts**; the Demo Company has `200`

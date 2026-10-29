@@ -9,10 +9,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"net"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -79,7 +77,6 @@ func TestServeWaitsForUnreachableDexServerAndStopsCleanly(t *testing.T) {
 	require.NoError(t, err)
 	// A Unix socket that nothing listens on makes the Dex Server unreachable without binding a TCP port.
 	t.Setenv("DEX_FLOW_SERVICE_ADDRESS", "unix://"+filepath.Join(os.TempDir(), fmt.Sprintf("dex-missing-%d.sock", time.Now().UnixNano())))
-	t.Setenv("DEX_WORKER_BIND_ADDRESS", "127.0.0.1:"+unusedPort(t))
 	t.Setenv("DEX_BLOB_CACHE_DIR", filepath.Join(directory, "blobs"))
 
 	output := &lockedBuffer{}
@@ -117,13 +114,4 @@ func (buffer *lockedBuffer) String() string {
 	buffer.mutex.Lock()
 	defer buffer.mutex.Unlock()
 	return buffer.buffer.String()
-}
-
-// unusedPort returns a free local port for a Worker bind address that the test never starts.
-func unusedPort(t *testing.T) string {
-	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	defer listener.Close()
-	return strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
 }

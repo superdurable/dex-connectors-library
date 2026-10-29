@@ -8,17 +8,17 @@ package flow
 import (
 	"context"
 	"errors"
-	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/contentful"
-	"github.com/superdurable/dex-connectors-library/connectors/contentful/contentfulmock"
-	"github.com/superdurable/dex/blob-cache-go/blobcache"
-	"github.com/superdurable/dex/sdk-go/dex"
-	"net"
 	"os"
 	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
+	"github.com/superdurable/dex-connectors-library/connectors/contentful"
+	"github.com/superdurable/dex-connectors-library/connectors/contentful/contentfulmock"
+	"github.com/superdurable/dex/blob-cache-go/blobcache"
+	"github.com/superdurable/dex/sdk-go/dex"
 )
 
 func TestMockDefaultCompletesWithRealDex(t *testing.T) {
@@ -28,20 +28,17 @@ func TestMockDefaultCompletesWithRealDex(t *testing.T) {
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	workerAddress := listener.Addr().String()
-	require.NoError(t, listener.Close())
 	serverAddress := os.Getenv("DEX_FLOW_SERVICE_ADDRESS")
 	if serverAddress == "" {
 		serverAddress = "127.0.0.1:8801"
 	}
-	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{BindAddress: workerAddress, FlowServiceAddress: serverAddress, WorkerTarget: dex.WorkerTarget{Address: workerAddress}})
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: serverAddress})
 	require.NoError(t, err)
-	client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: serverAddress, WorkerTarget: &dex.WorkerTarget{Address: workerAddress}})
+	client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: serverAddress})
 	require.NoError(t, err)
 	workerResult := make(chan error, 1)
 	go func() { workerResult <- worker.Start() }()
+	require.NoError(t, worker.WaitPullRegistered(t.Context()))
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()

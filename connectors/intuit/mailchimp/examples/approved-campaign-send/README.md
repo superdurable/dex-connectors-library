@@ -104,8 +104,8 @@ describes:
 go run ./examples/approved-campaign-send
 ```
 
-The default Worker address is `127.0.0.1:8832`. Override
-`DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR`
+Override
+`DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR`
 when needed. For local verification against a Mailchimp-compatible fake only,
 `MAILCHIMP_LOCAL_API_BASE_URL` replaces the host derived from the key; it must
 be HTTPS or a loopback HTTP URL, and production Workers leave it unset.

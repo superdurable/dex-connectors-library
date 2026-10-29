@@ -102,8 +102,8 @@ Dex Web writes that configuration:
 go run ./examples/thread-reply
 ```
 
-The default Worker address is `127.0.0.1:8814`. Override
-`DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or
+Override
+`DEX_FLOW_SERVICE_ADDRESS` or
 `DEX_BLOB_CACHE_DIR` when needed. If the Dex Server is unreachable when the
 example starts, it logs `dex server unavailable; retrying` with a `delay` that
 grows to 30 seconds, and starts the Worker and the Gmail runner once Dex

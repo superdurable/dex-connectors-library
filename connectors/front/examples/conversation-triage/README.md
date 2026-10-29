@@ -116,8 +116,7 @@ cd "$(git rev-parse --show-toplevel)/connectors/front"
 go run ./examples/conversation-triage
 ```
 
-The Worker listens on `127.0.0.1:8861`; override `DEX_FLOW_SERVICE_ADDRESS`,
-`DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR` when needed, and set
+Override `DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR` when needed, and set
 `LOG_LEVEL=debug` for more detail. The picks are read once at startup, so
 restart the Worker after changing them. For local verification against a
 Front-compatible fake only, `FRONT_LOCAL_API_BASE_URL` replaces

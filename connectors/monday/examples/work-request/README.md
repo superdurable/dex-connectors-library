@@ -80,14 +80,14 @@ go run ./examples/work-request
 ```
 
 The Worker reads the connection at startup and the credentials before every
-call. The default Worker address is `127.0.0.1:8834`. Override
-`DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR`
+call. Override
+`DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR`
 when needed. For local verification against a monday.com-compatible fake only,
 `MONDAY_LOCAL_API_URL` replaces `https://api.monday.com/v2`. It must be HTTPS
 or a loopback HTTP URL, and production Workers leave it unset.
 
-In the Run workspace, choose **Start Flow**, select `MondayWorkRequest`, choose
-the Worker at `127.0.0.1:8834`, enter a unique Flow ID, and submit. The board
+In the Run workspace, choose **Start Flow**, select `MondayWorkRequest`, then
+enter a unique Flow ID, and submit. The board
 ID is the number after `/boards/` in the board's URL. Column IDs appear in the
 board with monday.com's **Developer mode**, under the profile picture >
 **monday.labs**. `statusLabel` must already exist in the status column.

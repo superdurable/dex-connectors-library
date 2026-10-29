@@ -6,7 +6,6 @@
 package incidentacknowledgement
 
 import (
-	"net"
 	"testing"
 	"time"
 
@@ -19,7 +18,7 @@ func TestIncidentAcknowledgementUsesTeamsMockDefaultsWithRealDex(t *testing.T) {
 	mock := teamsmock.New(t, ConnectionName)
 	policy := AcknowledgementPolicy{CheckInterval: time.Second, MaximumChecks: 3}
 	flow := NewFlow(mock.Connection(), ChannelSelection{TeamID: integrationTeamID, ChannelID: integrationChannelID}, EscalationChatSelection{}, &policy)
-	harness := newIncidentHarnessForFlow(t, flow, net.JoinHostPort("127.0.0.1", availableIntegrationPort(t)), true)
+	harness := newIncidentHarnessForFlow(t, flow, true)
 	input := incidentInput()
 	ctx := integrationContext(t)
 	record := harness.waitForFlowOutput(t, ctx, harness.startIncident(t, ctx, "mock-default", input))

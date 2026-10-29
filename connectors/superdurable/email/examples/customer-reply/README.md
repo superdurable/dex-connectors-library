@@ -88,14 +88,13 @@ go run ./examples/customer-reply
 ```
 
 The Worker reads the connection at startup and the credentials before every
-call, so restart it after changing a host, port, or sender. The default Worker
-address is `127.0.0.1:8834`. Override `DEX_WORKER_BIND_ADDRESS` or
-`DEX_BLOB_CACHE_DIR` when needed. `EMAIL_TLS_ROOT_CA_FILE` names a PEM bundle
+call, so restart it after changing a host, port, or sender. Override `DEX_BLOB_CACHE_DIR` when needed.
+`EMAIL_TLS_ROOT_CA_FILE` names a PEM bundle
 the Worker trusts instead of the system store, for a server with a private
 certificate authority, such as a self-hosted server or a local test server.
 
 In the Run workspace, choose **Start Flow**, select `EmailCustomerReply`,
-choose the Worker at `127.0.0.1:8834`, enter a unique Flow ID, and submit:
+enter a unique Flow ID, and submit:
 
 ```json
 {

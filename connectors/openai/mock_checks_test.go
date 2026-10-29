@@ -90,7 +90,7 @@ func TestOpenAIMockRejectsTheDefaultAnswerForStructuredOutput(t *testing.T) {
 	require.Equal(t, openai.CreateResponseBranchDefect, result.Branch)
 	require.Equal(t, sdkgo.FailureLocalDefect, result.Failure.Kind)
 	require.Len(t, recorder.failures(), 1)
-	require.Contains(t, recorder.failures()[0], `scripted answer for branch "completed" does not match request`)
+	require.Contains(t, recorder.failures()[0], `default answer for branch "completed" does not match request`)
 	for _, message := range []string{result.Failure.Message, recorder.failures()[0]} {
 		require.Contains(t, message, "the request sets StructuredOutput, so a completed answer's outputText must be exactly one JSON value")
 		require.Contains(t, message, "script JSON text with the mock's Default or Respond")

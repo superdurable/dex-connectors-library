@@ -119,15 +119,14 @@ go run ./examples/support-reply
 
 The Worker reads the connection and the picked folder at startup and the
 credentials before every call, so restart it after saving the folder or
-changing the mailbox. The default Worker address is `127.0.0.1:8837`.
-Override `DEX_WORKER_BIND_ADDRESS` or `DEX_BLOB_CACHE_DIR` when needed. For
+changing the mailbox. Override `DEX_BLOB_CACHE_DIR` when needed. For
 local verification against a Graph-compatible stand-in only,
 `OUTLOOK_MAIL_LOCAL_PROVIDER_URL` sends every request for
 `graph.microsoft.com` and `login.microsoftonline.com` to one loopback URL
 without a path; production Workers leave it unset.
 
 In the Run workspace, choose **Start Flow**, select `OutlookSupportReply`,
-choose the Worker at `127.0.0.1:8837`, enter a unique Flow ID, and submit:
+enter a unique Flow ID, and submit:
 
 ```json
 {

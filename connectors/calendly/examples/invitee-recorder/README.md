@@ -128,9 +128,9 @@ cd "$(git rev-parse --show-toplevel)/connectors/calendly"
 go run ./examples/invitee-recorder
 ```
 
-The Worker listens on `127.0.0.1:8851` and the webhook endpoint on
+The webhook endpoint listens on
 `127.0.0.1:8852`; override `DEX_FLOW_SERVICE_ADDRESS`,
-`DEX_WORKER_BIND_ADDRESS`, `WEBHOOK_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR` when
+`WEBHOOK_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR` when
 needed, and set `LOG_LEVEL=debug` to see every delivery. `GET /readyz` answers
 `200` once the binding receives deliveries.
 

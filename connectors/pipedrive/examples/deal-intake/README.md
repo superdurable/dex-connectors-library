@@ -81,7 +81,6 @@ and requires identical output.
    GOWORK=off go run .
    ```
 
-   `DEX_WORKER_BIND_ADDRESS` defaults to `127.0.0.1:8847`, and
    `DEX_FLOW_SERVICE_ADDRESS` to Dex's local default. The Worker refuses to
    start until the deal stage is saved.
 5. Choose **Start Flow** for `PipedriveDealIntake` with input such as

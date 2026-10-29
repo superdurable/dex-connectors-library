@@ -48,7 +48,7 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{BindAddress: "127.0.0.1:8873", FlowServiceAddress: os.Getenv("DEX_FLOW_SERVICE_ADDRESS")})
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: os.Getenv("DEX_FLOW_SERVICE_ADDRESS")})
 	if err != nil {
 		return errors.Join(err, cache.Close())
 	}

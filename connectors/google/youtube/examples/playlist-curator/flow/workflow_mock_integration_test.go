@@ -29,10 +29,9 @@ func TestPlaylistCuratorUsesYouTubeMocksWithRealDex(t *testing.T) {
 	require.NoError(t, err)
 	harness := &curatorHarness{
 		registry: registry, cache: cache, serverAddress: environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801"),
-		workerAddress: "127.0.0.1:" + availableIntegrationPort(t),
 	}
 	harness.client, err = dex.NewClient(registry, cache, dex.ClientOptions{
-		FlowServiceAddress: harness.serverAddress, WorkerTarget: &dex.WorkerTarget{Address: harness.workerAddress},
+		FlowServiceAddress: harness.serverAddress,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() {

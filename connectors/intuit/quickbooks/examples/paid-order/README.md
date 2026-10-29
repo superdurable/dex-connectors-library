@@ -94,15 +94,15 @@ go run ./examples/paid-order
 ```
 
 The Worker reads the connection at startup and the credentials before every
-call. The default Worker address is `127.0.0.1:8881`. Override
-`DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR`
+call. Override
+`DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR`
 when needed. For local verification against a QuickBooks-compatible fake only,
 `QUICKBOOKS_LOCAL_PROVIDER_URL` sends every request for the QuickBooks API
 hosts and `oauth.platform.intuit.com` to one loopback URL without a path;
 production Workers leave it unset.
 
 In the Run workspace, choose **Start Flow**, select
-`QuickBooksPaidOrderInvoice`, choose the Worker at `127.0.0.1:8881`, enter a
+`QuickBooksPaidOrderInvoice`, enter a
 unique Flow ID, and submit. `itemId` is the Id of a product or service in the
 company, and `depositAccountId` the Id of a bank account; leave it out to use
 Undeposited Funds. Prices are exact decimal strings, and the order ID is at

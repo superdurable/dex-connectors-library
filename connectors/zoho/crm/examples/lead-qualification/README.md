@@ -98,14 +98,14 @@ go run ./examples/lead-qualification
 ```
 
 The Worker reads the connection at startup and the credentials before every
-call. The default Worker address is `127.0.0.1:8858`. Override
-`DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR`
+call. Override
+`DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR`
 when needed. For local verification against a Zoho CRM-compatible fake only,
 `ZOHO_CRM_LOCAL_API_BASE_URL` replaces `{api_domain}/crm/v8`; it must be HTTPS
 or a loopback HTTP URL, and production Workers leave it unset.
 
 In the Run workspace, choose **Start Flow**, select
-`ZohoCRMLeadQualification`, choose the Worker at `127.0.0.1:8858`, enter a
+`ZohoCRMLeadQualification`, enter a
 unique Flow ID, and submit. `stage` is a Deals `Stage` value exactly as Zoho
 CRM stores it, one of the options `ReadZohoDealStages` reads; a value Zoho does
 not offer completes as `unknownStage`. `ownerId` is a Zoho CRM user's numeric

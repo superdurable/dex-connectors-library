@@ -90,15 +90,13 @@ go run ./examples/triage-conversation
 ```
 
 The Worker reads the connection at startup and the credentials before every
-call, so restart it after changing the brand. The default Worker address is
-`127.0.0.1:8834`. Override `DEX_FLOW_SERVICE_ADDRESS`,
-`DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR` when needed. For local
+call, so restart it after changing the brand. Override `DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR` when needed. For local
 verification against a Re:amaze-compatible fake only,
 `REAMAZE_LOCAL_API_BASE_URL` replaces `https://{brand}.reamaze.io/api/v1`; it
 must be HTTPS or a loopback HTTP URL, and production Workers leave it unset.
 
 In the Run workspace, choose **Start Flow**, select
-`ReamazeTriageConversation`, choose the Worker at `127.0.0.1:8834`, enter a
+`ReamazeTriageConversation`, enter a
 unique Flow ID, and submit. `channel` is the slug of an email or chat channel
 from Re:amaze's Settings > Channels.
 

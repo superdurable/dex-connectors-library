@@ -101,9 +101,7 @@ Dex Web or Superverse Studio writes that configuration:
 go run ./examples/approval-decision
 ```
 
-The Worker reads the picks at startup, so restart it after saving them. The
-default Worker address is `127.0.0.1:8863`; override `DEX_FLOW_SERVICE_ADDRESS`,
-`DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR` when needed. For local
+The Worker reads the picks at startup, so restart it after saving them. Override `DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR` when needed. For local
 verification against a Graph-compatible fake only,
 `MICROSOFT_EXCEL_LOCAL_PROVIDER_URL` sends every request for
 `graph.microsoft.com` and `login.microsoftonline.com` to one loopback URL;

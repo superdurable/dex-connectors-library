@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -143,17 +142,14 @@ func startTestWorker(t *testing.T, flow dex.Flow) *testWorker {
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	address := listener.Addr().String()
-	require.NoError(t, listener.Close())
-	options := dex.WorkerOptions{BindAddress: address, FlowServiceAddress: os.Getenv("DEX_FLOW_SERVICE_ADDRESS")}
+	options := dex.WorkerOptions{FlowServiceAddress: os.Getenv("DEX_FLOW_SERVICE_ADDRESS")}
 	worker, err := dex.NewWorker(registry, cache, options)
 	require.NoError(t, err)
-	client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: options.FlowServiceAddress, WorkerTarget: &dex.WorkerTarget{Address: address}})
+	client, err := dex.NewClient(registry, cache, dex.ClientOptions{FlowServiceAddress: options.FlowServiceAddress})
 	require.NoError(t, err)
 	suite := &testWorker{client: client, worker: worker, registry: registry, cache: cache, options: options, result: make(chan error, 1)}
 	go func() { suite.result <- worker.Start() }()
+	require.NoError(t, worker.WaitPullRegistered(t.Context()))
 	t.Cleanup(func() { suite.stop(t); require.NoError(t, errors.Join(client.Close(), cache.Close())) })
 	return suite
 }
@@ -171,6 +167,7 @@ func (suite *testWorker) restart(t *testing.T) {
 	require.NoError(t, err)
 	suite.worker = worker
 	go func() { suite.result <- worker.Start() }()
+	require.NoError(t, worker.WaitPullRegistered(t.Context()))
 }
 func waitForDigest(t *testing.T, client *dex.Client, flowID string) dex.FlowResult {
 	t.Helper()

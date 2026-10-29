@@ -42,9 +42,8 @@ go run ./examples/scheduling-link
 ```
 
 The Worker reads the `DEX_PROJECT_*` configuration described in
-[project configuration](../../../../sdkgo/projectconfig/README.md), listens at
-`127.0.0.1:8853`, and uses `DEX_FLOW_SERVICE_ADDRESS` and
-`DEX_WORKER_BIND_ADDRESS` when supplied. Start the Flow in Dex Web with a
+[project configuration](../../../../sdkgo/projectconfig/README.md) and uses
+`DEX_FLOW_SERVICE_ADDRESS` when supplied. Start the Flow in Dex Web with a
 `CreateSchedulingLinkInput` such as:
 
 ```json

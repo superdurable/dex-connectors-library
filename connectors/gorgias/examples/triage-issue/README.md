@@ -84,15 +84,14 @@ go run ./examples/triage-issue
 ```
 
 The Worker reads the connection at startup and the credentials before every
-call, so restart it after changing the domain. The default Worker address is
-`127.0.0.1:8833`. Override
-`DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR`
+call, so restart it after changing the domain. Override
+`DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR`
 when needed. For local verification against a Gorgias-compatible fake only,
 `GORGIAS_LOCAL_API_BASE_URL` replaces `https://{domain}.gorgias.com/api`; it
 must be HTTPS or a loopback HTTP URL, and production Workers leave it unset.
 
 In the Run workspace, choose **Start Flow**, select `GorgiasTriageIssue`,
-choose the Worker at `127.0.0.1:8833`, enter a unique Flow ID, and submit.
+enter a unique Flow ID, and submit.
 `priority` is Gorgias's string: `low`, `normal`, `high`, or `critical`.
 
 ```json

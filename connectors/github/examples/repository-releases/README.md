@@ -46,9 +46,8 @@ From `connectors/github`, run `GOWORK=off go run ./examples/repository-releases`
 The Worker reads the `DEX_PROJECT_*` project configuration environment
 described in [project configuration](../../../../sdkgo/projectconfig/README.md),
 which Dex Web or Superverse Studio writes, and the standard
-`DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS` and `DEX_BLOB_CACHE_DIR`
+`DEX_FLOW_SERVICE_ADDRESS` and `DEX_BLOB_CACHE_DIR`
 settings documented by the [repository changes setup](../repository-changes/README.md).
-Use a distinct local Worker address when both examples run.
 
 The logical connection is `github-repository-releases`. Configure the released
 GitHub v0.22.0 module through the host Configuration UI and complete OAuth with

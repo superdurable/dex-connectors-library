@@ -320,13 +320,6 @@ GOWORK=off go run \
 ```
 
 Replace `127.0.0.1:8801` when dexcli printed another Dex Server address. The
-Worker listens on `127.0.0.1:8813` by default. If that address is occupied, set
-another one before starting it:
-
-```bash
-export DEX_WORKER_BIND_ADDRESS="127.0.0.1:8913"
-```
-
 The example also listens on `127.0.0.1:8839`, or `TRIGGER_BIND_ADDRESS`, at
 `slack.RelayedTriggerPath("slack-workspace")`, where a host posts the events it
 relays for a shared connection without an `app_token`

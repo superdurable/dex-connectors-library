@@ -11,7 +11,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -241,11 +240,10 @@ func TestAttendanceTimerFiresAfterTheScheduledEndWithRealDex(t *testing.T) {
 func TestWorkerLostDuringCreateIsReconciledWithoutCreatingAgainWithRealDex(t *testing.T) {
 	provider := newFakeZoom(t)
 	ctx := integrationContext(t)
-	workerAddress := net.JoinHostPort("127.0.0.1", availableIntegrationPort(t))
-	process := startWorkerProcess(t, provider, workerAddress)
+	process := startWorkerProcess(t, provider, filepath.Join(t.TempDir(), "worker-ready"))
 
 	policy := DefaultAttendancePolicy()
-	harness := newHarnessWithWorkerAddress(t, provider, providerRequestTimeout, &policy, workerAddress, false)
+	harness := newHarnessWithWorkerStarted(t, provider, providerRequestTimeout, &policy, false)
 	flowID := harness.startBookedMeeting(t, ctx, "worker-lost", futureBooking(topicWorkerLost, time.Hour))
 	select {
 	case <-provider.workerLostCreateReceived:
@@ -575,7 +573,6 @@ type bookedMeetingHarness struct {
 	registry      *dex.Registry
 	cache         *blobcache.Cache
 	serverAddress string
-	workerAddress string
 	worker        *dex.Worker
 	workerResult  chan error
 	client        *dex.Client
@@ -584,16 +581,14 @@ type bookedMeetingHarness struct {
 func newBookedMeetingHarness(t *testing.T, requestTimeout time.Duration, policy *AttendancePolicy) (*fakeZoom, *bookedMeetingHarness) {
 	t.Helper()
 	provider := newFakeZoom(t)
-	workerAddress := net.JoinHostPort("127.0.0.1", availableIntegrationPort(t))
-	return provider, newHarnessWithWorkerAddress(t, provider, requestTimeout, policy, workerAddress, true)
+	return provider, newHarnessWithWorkerStarted(t, provider, requestTimeout, policy, true)
 }
 
-func newHarnessWithWorkerAddress(
+func newHarnessWithWorkerStarted(
 	t *testing.T,
 	provider *fakeZoom,
 	requestTimeout time.Duration,
 	policy *AttendancePolicy,
-	workerAddress string,
 	isWorkerStarted bool,
 ) *bookedMeetingHarness {
 	t.Helper()
@@ -612,11 +607,11 @@ func newHarnessWithWorkerAddress(
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
 	harness := &bookedMeetingHarness{
-		provider: provider, flow: flow, registry: registry, cache: cache, workerAddress: workerAddress,
+		provider: provider, flow: flow, registry: registry, cache: cache,
 		serverAddress: environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801"),
 	}
 	harness.client, err = dex.NewClient(registry, cache, dex.ClientOptions{
-		FlowServiceAddress: harness.serverAddress, WorkerTarget: &dex.WorkerTarget{Address: workerAddress},
+		FlowServiceAddress: harness.serverAddress,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -636,14 +631,12 @@ func newHarnessWithWorkerAddress(
 
 func (harness *bookedMeetingHarness) startWorker(t *testing.T) {
 	t.Helper()
-	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{
-		BindAddress: harness.workerAddress, FlowServiceAddress: harness.serverAddress,
-		WorkerTarget: dex.WorkerTarget{Address: harness.workerAddress},
-	})
+	worker, err := dex.NewWorker(harness.registry, harness.cache, dex.WorkerOptions{FlowServiceAddress: harness.serverAddress})
 	require.NoError(t, err)
 	harness.worker = worker
 	harness.workerResult = make(chan error, 1)
 	go func() { harness.workerResult <- worker.Start() }()
+	require.NoError(t, worker.WaitPullRegistered(t.Context()))
 }
 
 func (harness *bookedMeetingHarness) startBookedMeeting(t *testing.T, ctx context.Context, scenario string, booking Input) string {
@@ -708,6 +701,7 @@ func isTerminalPhase(phase string) bool {
 // workerProcessEndpointEnvironmentVariable gives the fake Zoom endpoint to this test binary when
 // startWorkerProcess runs it again as the Worker process the test kills.
 const workerProcessEndpointEnvironmentVariable = "ZOOM_BOOKED_MEETING_WORKER_PROCESS_ENDPOINT"
+const workerProcessReadyFileEnvironmentVariable = "ZOOM_BOOKED_MEETING_WORKER_READY_FILE"
 
 // TestMain runs the Worker process instead of the tests when startWorkerProcess re-executes this binary.
 func TestMain(m *testing.M) {
@@ -743,23 +737,31 @@ func runWorkerProcess(endpoint string) error {
 	if err != nil {
 		return err
 	}
-	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{
-		BindAddress: os.Getenv("DEX_WORKER_BIND_ADDRESS"), FlowServiceAddress: os.Getenv("DEX_FLOW_SERVICE_ADDRESS"),
-	})
+	worker, err := dex.NewWorker(registry, cache, dex.WorkerOptions{FlowServiceAddress: os.Getenv("DEX_FLOW_SERVICE_ADDRESS")})
 	if err != nil {
 		return errors.Join(err, cache.Close())
 	}
-	return errors.Join(worker.Start(), cache.Close())
+	workerResult := make(chan error, 1)
+	go func() { workerResult <- worker.Start() }()
+	registrationCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	if err := worker.WaitPullRegistered(registrationCtx); err != nil {
+		return errors.Join(err, cache.Close())
+	}
+	if err := os.WriteFile(os.Getenv(workerProcessReadyFileEnvironmentVariable), nil, 0600); err != nil {
+		return errors.Join(err, cache.Close())
+	}
+	return errors.Join(<-workerResult, cache.Close())
 }
 
 // startWorkerProcess runs this test binary again as a Worker process against the fake, so the test can kill
 // it mid-request.
-func startWorkerProcess(t *testing.T, provider *fakeZoom, workerAddress string) *exec.Cmd {
+func startWorkerProcess(t *testing.T, provider *fakeZoom, readyFile string) *exec.Cmd {
 	t.Helper()
 	directory := t.TempDir()
 	process := exec.Command(os.Args[0])
 	process.Env = append(os.Environ(),
-		workerProcessEndpointEnvironmentVariable+"="+provider.URL+"/v2", "DEX_WORKER_BIND_ADDRESS="+workerAddress,
+		workerProcessEndpointEnvironmentVariable+"="+provider.URL+"/v2", workerProcessReadyFileEnvironmentVariable+"="+readyFile,
 		"DEX_FLOW_SERVICE_ADDRESS="+environmentOr("DEX_FLOW_SERVICE_ADDRESS", "127.0.0.1:8801"),
 		"DEX_BLOB_CACHE_DIR="+filepath.Join(directory, "blobs"),
 	)
@@ -773,21 +775,10 @@ func startWorkerProcess(t *testing.T, provider *fakeZoom, workerAddress string) 
 		require.NoError(t, logFile.Close())
 	})
 	require.Eventually(t, func() bool {
-		connection, err := net.DialTimeout("tcp", workerAddress, 100*time.Millisecond)
-		if err != nil {
-			return false
-		}
-		return connection.Close() == nil
-	}, time.Minute, 100*time.Millisecond, "the Worker process listens on %s", workerAddress)
+		_, err := os.Stat(readyFile)
+		return err == nil
+	}, time.Minute, 100*time.Millisecond, "the Worker process must register before the Flow starts")
 	return process
-}
-
-func availableIntegrationPort(t *testing.T) string {
-	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	defer listener.Close()
-	return strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
 }
 
 func environmentOr(name string, fallback string) string {

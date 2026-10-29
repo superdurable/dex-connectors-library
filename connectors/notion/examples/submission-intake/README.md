@@ -134,8 +134,8 @@ GOWORK=off go run \
   github.com/superdurable/dex-connectors-library/connectors/notion/examples/submission-intake@v0.23.0
 ```
 
-The Worker listens on `127.0.0.1:8851` by default. Set
-`DEX_WORKER_BIND_ADDRESS` to use another address, and `DEX_BLOB_CACHE_DIR` to
+Set
+`DEX_BLOB_CACHE_DIR` to
 move its blob cache. If Dex is unreachable, the Worker logs
 `dex server unavailable; retrying` with a delay that grows to 30 seconds and
 starts once Dex answers.
@@ -143,7 +143,7 @@ starts once Dex answers.
 ## 6. Start the Flow
 
 In Dex Web, open the `NotionSubmissionIntake` Flow, choose **Start Flow**,
-select the Worker address, and enter:
+enter:
 
 ```json
 {

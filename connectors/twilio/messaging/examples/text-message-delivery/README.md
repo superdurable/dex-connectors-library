@@ -57,8 +57,8 @@ describes:
 go run ./examples/text-message-delivery
 ```
 
-The default Worker address is `127.0.0.1:8827`. Override
-`DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR`
+Override
+`DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR`
 when needed.
 
 Start `TwilioTextMessageDelivery` with a unique Flow ID. A blank `sender` uses

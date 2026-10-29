@@ -51,8 +51,8 @@ describes:
 go run ./examples/queue-consumer
 ```
 
-The default Worker address is `127.0.0.1:8848`. Override
-`DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR`
+Override
+`DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR`
 when needed.
 
 Send an order event to the queue, for example from the SQS console's

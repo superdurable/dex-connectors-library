@@ -76,13 +76,12 @@ cd "$(git rev-parse --show-toplevel)/connectors/newsapi"
 go run ./examples/company-news
 ```
 
-The Worker listens on `127.0.0.1:8873`. Override `DEX_FLOW_SERVICE_ADDRESS`,
-`DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR` when needed. If the Dex
+Override `DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR` when needed. If the Dex
 Server is unreachable, the Worker logs `dex server unavailable; retrying` and
 starts once Dex answers. It logs the connection name, never the key.
 
 In the Run workspace, choose **Start Flow**, select `NewsAPICompanyNews`,
-choose the Worker at `127.0.0.1:8873`, enter a Flow ID, and submit:
+enter a Flow ID, and submit:
 
 ```json
 {

@@ -35,6 +35,6 @@ In Dex Web **Connections**, select `cloudflare / cloudflare`, follow the authori
 {}
 ```
 
-Use the input type `ListZonesInput` as the JSON shape; the provider-specific fields are described in the [connector README](../../README.md). The Worker defaults to `127.0.0.1:8873` and accepts `DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, and `DEX_BLOB_CACHE_DIR` overrides.
+Use the input type `ListZonesInput` as the JSON shape; the provider-specific fields are described in the [connector README](../../README.md). The Worker accepts `DEX_FLOW_SERVICE_ADDRESS` and `DEX_BLOB_CACHE_DIR` overrides.
 
 Live provider authorization and the real Dex example have not been exercised locally; CI runs the mock-backed integration test.

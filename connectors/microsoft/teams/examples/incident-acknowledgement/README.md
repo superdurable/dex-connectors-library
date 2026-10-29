@@ -66,8 +66,8 @@ Dex Web or Superverse Studio writes that configuration:
 go run ./examples/incident-acknowledgement
 ```
 
-The default Worker address is `127.0.0.1:8883`. Override
-`DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR`
+Override
+`DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR`
 when needed.
 
 Start `TeamsIncidentAcknowledgement` with a unique Flow ID:

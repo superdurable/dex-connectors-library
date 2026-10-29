@@ -65,8 +65,8 @@ Superverse Studio writes that configuration when you save the connection.
 go run ./examples/publish-policy
 ```
 
-The default Worker address is `127.0.0.1:8836`. Override
-`DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR`
+Override
+`DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR`
 when needed.
 
 Start `ConfluencePolicyPublication` with a unique Flow ID:

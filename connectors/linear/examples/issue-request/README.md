@@ -81,13 +81,11 @@ Web or Superverse Studio writes that configuration when you save the connection.
 go run ./examples/issue-request
 ```
 
-The default Worker address is `127.0.0.1:8836`. Override `DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`,
-or `DEX_BLOB_CACHE_DIR` when needed. For local verification against a Linear-compatible fake only,
+Override `DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR` when needed. For local verification against a Linear-compatible fake only,
 `LINEAR_LOCAL_API_URL` replaces `https://api.linear.app/graphql`; it must be HTTPS or a loopback HTTP URL, and
 production Workers leave it unset.
 
-In the Run workspace, choose **Start Flow**, select `LinearIssueRequest`, choose the Worker at
-`127.0.0.1:8836`, enter a unique Flow ID, and submit:
+In the Run workspace, choose **Start Flow**, select `LinearIssueRequest`, enter a unique Flow ID, and submit:
 
 ```json
 {

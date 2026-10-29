@@ -67,8 +67,8 @@ Superverse Studio writes that configuration when you save the connection.
 go run ./examples/triage-issue
 ```
 
-The default Worker address is `127.0.0.1:8830`. Override
-`DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR`
+Override
+`DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR`
 when needed.
 
 Start `JiraIssueTriage` with a unique Flow ID:

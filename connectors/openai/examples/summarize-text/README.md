@@ -98,12 +98,12 @@ go run ./examples/summarize-text
 
 The Worker reads the connection's settings and the Step's pick at startup,
 so restart it after changing either in Dex Web; a replaced key applies
-without a restart. It listens on `127.0.0.1:8821`; override
-`DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR`
+without a restart. Override
+`DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR`
 when needed. It logs the connection name, never the key.
 
 In the Run workspace, choose **Start Flow**, select `OpenAISummarizeText`,
-choose the Worker at `127.0.0.1:8821`, enter a Flow ID, and submit:
+enter a Flow ID, and submit:
 
 ```json
 {"text": "The Dex OpenAI connector stores a Response through the Responses API, streams the text, and returns typed branches."}

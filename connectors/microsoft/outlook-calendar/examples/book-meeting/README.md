@@ -94,8 +94,8 @@ Dex Web or Superverse Studio writes that configuration:
 go run ./examples/book-meeting
 ```
 
-The default Worker address is `127.0.0.1:8839`. Override
-`DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR`
+Override
+`DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR`
 when needed. For local verification against a Graph-compatible fake only,
 `OUTLOOK_CALENDAR_LOCAL_PROVIDER_URL` sends every Graph and token request to
 one loopback URL; production Workers leave it unset.

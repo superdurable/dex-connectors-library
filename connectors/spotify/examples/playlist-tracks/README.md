@@ -66,12 +66,12 @@ cd "$(git rev-parse --show-toplevel)/connectors/spotify"
 go run ./examples/playlist-tracks
 ```
 
-The Worker listens on `127.0.0.1:8819`. Override
-`DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or
+Override
+`DEX_FLOW_SERVICE_ADDRESS` or
 `DEX_BLOB_CACHE_DIR` when needed.
 
 In the Run workspace, choose **Start Flow**, select
-`SpotifyPlaylistTracks`, choose the Worker, enter a unique Flow ID, and submit:
+`SpotifyPlaylistTracks`, enter a unique Flow ID, and submit:
 
 ```json
 {

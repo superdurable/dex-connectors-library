@@ -107,16 +107,14 @@ go run ./examples/new-hire-onboarding
 ```
 
 The Worker reads the connection at startup and the credentials before every
-call, so restart it after changing the company domain. The default Worker
-address is `127.0.0.1:8836`. Override `DEX_FLOW_SERVICE_ADDRESS`,
-`DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR` when needed. For local
+call, so restart it after changing the company domain. Override `DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR` when needed. For local
 verification against a BambooHR-compatible fake only,
 `BAMBOOHR_LOCAL_API_BASE_URL` replaces
 `https://{companyDomain}.bamboohr.com/api/v1`; it must be HTTPS or a loopback
 HTTP URL, and production Workers leave it unset.
 
 In the Run workspace, choose **Start Flow**, select
-`BambooHRNewHireOnboarding`, choose the Worker at `127.0.0.1:8836`, enter a
+`BambooHRNewHireOnboarding`, enter a
 unique Flow ID, and submit:
 
 ```json

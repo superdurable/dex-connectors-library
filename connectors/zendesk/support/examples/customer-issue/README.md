@@ -53,8 +53,8 @@ describes:
 go run ./examples/customer-issue
 ```
 
-The default Worker address is `127.0.0.1:8830`. Override
-`DEX_FLOW_SERVICE_ADDRESS`, `DEX_WORKER_BIND_ADDRESS`, or `DEX_BLOB_CACHE_DIR`
+Override
+`DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR`
 when needed. For local verification against a Zendesk-compatible fake only,
 `ZENDESK_SUPPORT_LOCAL_API_BASE_URL` replaces
 `https://{subdomain}.zendesk.com/api/v2`; it must be HTTPS or a loopback HTTP
