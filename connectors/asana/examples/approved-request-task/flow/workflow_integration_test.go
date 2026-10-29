@@ -222,7 +222,7 @@ func TestSlowUpdateBackupAttemptLeavesTheSameTaskWithRealDex(t *testing.T) {
 	require.Equal(t, adaUserID, finalTask.assigneeID)
 	require.Equal(t, approvedSectionID, finalTask.sectionID)
 	require.Equal(t, "2026-10-15", finalTask.dueOn)
-	require.Equal(t, 1, provider.sectionMoveCount(taskID), "the absolute section move is not repeated")
+	require.Equal(t, 2, provider.sectionMoveCount(taskID), "the replacement Worker repeats the same absolute section move")
 }
 
 // TestSlowCommentIsSentOnceUnderSyncDurabilityWithRealDex guards addComment's sync durability.

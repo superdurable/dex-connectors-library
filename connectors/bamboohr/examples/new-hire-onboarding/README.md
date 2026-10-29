@@ -153,7 +153,8 @@ BambooHR, has no idempotency key and matches emails by substring:
   writes nothing;
 - an add held for nine seconds is sent exactly
   once, because the Step is sync;
-- an update interrupted by Worker loss runs again and stores the same text;
+- an update interrupted by Worker loss is read by the replacement Worker,
+  which sends no second write;
 - a Worker lost while BambooHR holds the add is replaced, and the new attempt
   finds the dispatch checkpoint, sends nothing, and adopts the hire it finds
   by personal email;

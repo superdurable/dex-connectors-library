@@ -194,14 +194,12 @@ ticket description. A missing ticket selects `notFound`.
 
 Freshdesk API v2 documents no idempotency key, so a repeated create or note is
 a duplicate ticket, a second internal note, or a second email to the customer.
-Dex re-dispatches an async Step whose local attempt passes about seven
-seconds, and it retries a Step after a lost Worker, so the operations take
-these positions:
+Dex retries a Step after a lost Worker, so the operations take these positions:
 
 - **updateTicket** is safe to repeat. Its write sets absolute values computed
   from a fresh read, so a second dispatch sends the same values or finds them
-  applied. It keeps async durability, and every unconfirmed outcome, including
-  a 5xx or a lost response, is retried.
+  applied without another write. It keeps async durability, and every
+  unconfirmed outcome, including a 5xx or a lost response, is retried.
 - **createTicket** and **addNote** run with sync durability, so Dex never sends
   a second attempt while the first is in flight. The operation first checks the
   previous heartbeat, resolves credentials, then records the current Call ID

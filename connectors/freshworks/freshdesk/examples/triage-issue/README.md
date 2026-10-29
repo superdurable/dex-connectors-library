@@ -129,8 +129,8 @@ Freshdesk, has no idempotency key and omits tags from search results:
 - a first page of other customers' tickets leads to the second page;
 - a create and a note held for nine seconds are
   each sent exactly once, because both Steps are sync;
-- an update interrupted by Worker loss runs again and writes the same values
-  without duplicating a tag;
+- an update interrupted by Worker loss is read by the replacement Worker,
+  which sends no second write and leaves the tag unchanged;
 - a lost update response is retried and finds the values applied;
 - a lost create or note response fails the Flow and is never resent;
 - a rate-limited create waits for `Retry-After` and creates one ticket;

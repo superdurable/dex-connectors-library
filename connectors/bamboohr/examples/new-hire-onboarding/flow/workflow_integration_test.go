@@ -152,13 +152,15 @@ func TestSlowUpdateIsSafeToRepeatWithRealDex(t *testing.T) {
 	flowID := harness.startOnboarding(t, "lost-update", integrationInput())
 	require.Eventually(t, func() bool { return provider.field(hire, integrationHandoffField) != "" }, 30*time.Second, 50*time.Millisecond)
 	require.Equal(t, 1, provider.count("update"))
+	readsBeforeReplacement := provider.count("read")
 	harness.replaceWorker(t)
 	result := harness.waitForFlow(t, flowID)
 	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
 	var outcome OnboardingOutcome
 	require.NoError(t, result.DecodeSingleOutput(&outcome))
 	require.Equal(t, OnboardingHandedOff, outcome.Action)
-	require.Equal(t, 2, provider.count("update"), "the replacement Worker repeats the update once")
+	require.Equal(t, readsBeforeReplacement+1, provider.count("read"), "the replacement Worker reads the applied hand-off")
+	require.Equal(t, 1, provider.count("update"), "the replacement Worker does not repeat the applied update")
 	require.Equal(t, outcome.HandoffValue, provider.field(hire, integrationHandoffField), "the repeated write stored the same text")
 }
 

@@ -178,13 +178,15 @@ func TestSlowUpdateIsSafeToRepeatWithRealDex(t *testing.T) {
 
 	flowID := harness.startTriage(t, "lost-update", integrationIssueInput())
 	require.Eventually(t, func() bool { return provider.count("appliedUpdate") == 1 }, 30*time.Second, 50*time.Millisecond)
+	readsBeforeReplacement := provider.count("read")
 	harness.replaceWorker(t)
 	result := harness.waitForFlow(t, flowID)
 	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
 	var outcome TriageOutcome
 	require.NoError(t, result.DecodeSingleOutput(&outcome))
 	require.Equal(t, TriageTicketFollowedUp, outcome.Action)
-	require.Equal(t, 2, provider.count("update"), "the replacement Worker repeats the update once")
+	require.Equal(t, readsBeforeReplacement+1, provider.count("read"), "the replacement Worker reads the applied update")
+	require.Equal(t, 1, provider.count("update"), "the replacement Worker does not repeat the applied update")
 	ticket := provider.ticket(existing)
 	require.Equal(t, 2, ticket.status)
 	require.Equal(t, 3, ticket.priority)

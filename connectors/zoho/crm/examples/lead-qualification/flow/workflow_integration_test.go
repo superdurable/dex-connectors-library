@@ -145,12 +145,13 @@ func TestSlowContactUpsertDispatchedTwiceKeepsOneContactWithRealDex(t *testing.T
 	harness := newQualificationHarness(t, provider, defaultRequestTimeout)
 
 	flowID := harness.startQualification(t, "lost-upsert", integrationInput())
-	require.Eventually(t, func() bool { return provider.Count("upsert") == 2 && provider.RecordCount("Contacts") == 1 },
+	require.Eventually(t, func() bool { return provider.Count("upsert Contacts") == 1 && provider.RecordCount("Contacts") == 1 },
 		30*time.Second, 10*time.Millisecond)
 	harness.replaceWorker(t)
 	outcome := harness.requireCompletedQualification(t, flowID)
 	require.Equal(t, PhaseNoOpenDeal, outcome.Phase)
 	require.Equal(t, 3, provider.Count("upsert"), "the replacement Worker repeats the contact upsert once")
+	require.Equal(t, 2, provider.Count("upsert Contacts"))
 	require.Equal(t, 1, provider.RecordCount("Contacts"), "the repeated upsert updated the contact instead of creating a second")
 	upserts := provider.RequestsNamed("upsert")
 	require.Equal(t, upserts[1].Body, upserts[2].Body, "both contact dispatches send the same record")

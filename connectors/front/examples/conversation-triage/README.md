@@ -179,8 +179,8 @@ token:
   fail the Flow without sending again. The dispatch checkpoint
   narrows but does not close this window: a Worker lost before Dex stores the
   checkpoint can still send the comment twice;
-- a tag write interrupted by Worker loss runs again and converges on one
-  copy of the tag;
+- a tag write interrupted by Worker loss is read by the replacement Worker,
+  which sends no second write;
 - a rate-limited search waits for `Retry-After`;
 - a rejected comment fails the Flow without Front's message text;
 - an unconfigured triage tag fails the Flow before any Front request.

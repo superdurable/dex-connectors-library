@@ -187,13 +187,15 @@ func TestSlowUpdateIsSafeToRepeatWithRealDex(t *testing.T) {
 		return provider.count("update") == 1 && provider.conversation(existing).status == statusOpen
 	},
 		30*time.Second, 10*time.Millisecond)
+	readsBeforeReplacement := provider.count("read")
 	harness.replaceWorker(t)
 	result := harness.waitForFlow(t, flowID)
 	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
 	var outcome TriageOutcome
 	require.NoError(t, result.DecodeSingleOutput(&outcome))
 	require.Equal(t, TriageConversationFollowedUp, outcome.Action)
-	require.Equal(t, 2, provider.count("update"), "the replacement Worker repeats the absolute update once")
+	require.Equal(t, readsBeforeReplacement+1, provider.count("read"), "the replacement Worker reads the applied update")
+	require.Equal(t, 1, provider.count("update"), "the replacement Worker does not repeat the applied update")
 	conversation := provider.conversation(existing)
 	require.Equal(t, statusOpen, conversation.status)
 	require.Equal(t, []string{integrationIssueTag, RepeatContactTag}, conversation.tags, "the repeated write did not duplicate the tag")

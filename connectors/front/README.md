@@ -292,9 +292,9 @@ Retry, which repeats the writes safely. A `4xx` on a write selects
 conversation, so the missing resource is most likely a teammate, tag, or
 ticket status; a `301` on a write selects `notFound` for a conversation merged
 since the read. When an earlier write of the same attempt succeeded, the
-Failure message says that it stays applied. The real-Dex test lets
-the replacement Worker resend an applied tag write; the
-conversation ends with the assignee and one copy of the tag.
+Failure message says that it stays applied. The real-Dex test loses the
+Worker after an applied tag write; its replacement reads the tag and sends no
+second write.
 
 The writes converge for one Step, but they are not ordered against later
 Steps: a write from a duplicate or retried attempt that Front holds can land

@@ -28,7 +28,11 @@ type writeRequest struct {
 
 // upsert applies the record first and answers afterwards, so a slow answer leaves the record committed.
 func (server *Server) upsert(response http.ResponseWriter, request *http.Request, body []byte, module string) {
-	attempt := server.record("upsert", request, body, "")
+	server.record("upsert", request, body, "")
+	server.mutex.Lock()
+	server.counts["upsert "+module]++
+	moduleAttempt := server.counts["upsert "+module]
+	server.mutex.Unlock()
 	var input writeRequest
 	if json.Unmarshal(body, &input) != nil || len(input.Data) != 1 || len(input.DuplicateCheckFields) == 0 {
 		server.writeJSON(response, http.StatusBadRequest, `{"code":"INVALID_DATA","details":{},"message":"SENTINEL","status":"error"}`)
@@ -60,10 +64,10 @@ func (server *Server) upsert(response http.ResponseWriter, request *http.Request
 	server.applyFields(existing, fields)
 	result := writeSuccess(action, existing, duplicateField)
 	server.mutex.Unlock()
-	if attempt == 1 && server.DelaysFirstUpsertOf == module {
+	if moduleAttempt == 1 && server.DelaysFirstUpsertOf == module {
 		server.sleepBeforeAnswering()
 	}
-	if attempt == 1 && server.HoldsFirstUpsertOf == module {
+	if moduleAttempt == 1 && server.HoldsFirstUpsertOf == module {
 		<-request.Context().Done()
 		return
 	}

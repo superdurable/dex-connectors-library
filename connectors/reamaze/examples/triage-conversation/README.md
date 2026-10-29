@@ -134,8 +134,8 @@ conversations the customer follows:
 - a first page of Done conversations leads to the second page;
 - a create and a note with delayed responses are each sent once while their
   handlers remain healthy;
-- an update applied before Worker loss is repeated by the replacement, and
-  both attempts write the same values without duplicating a tag;
+- an update applied before Worker loss is read by the replacement Worker,
+  which sends no second write and does not duplicate the tag;
 - a lost create response is reconciled by the conversation's dispatch key,
   which the fake, like Re:amaze's documentation, returns only on a single
   conversation read, and the Flow continues without resending;
