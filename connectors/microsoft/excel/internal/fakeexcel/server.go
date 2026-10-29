@@ -124,6 +124,7 @@ type Server struct {
 	appendBehaviors   []AppendBehavior
 	readFailures      []ReadFailure
 	rangeUpdateDelays []time.Duration
+	rangeUpdateHolds  []chan struct{}
 	tokenGeneration   int
 	delayed           sync.WaitGroup
 }
@@ -226,6 +227,13 @@ func (server *Server) QueueRangeUpdateDelays(delays ...time.Duration) {
 	server.mutex.Lock()
 	defer server.mutex.Unlock()
 	server.rangeUpdateDelays = append(server.rangeUpdateDelays, delays...)
+}
+
+// QueueRangeUpdateHolds holds each following range update after applying it until release or cancellation.
+func (server *Server) QueueRangeUpdateHolds(holds ...chan struct{}) {
+	server.mutex.Lock()
+	defer server.mutex.Unlock()
+	server.rangeUpdateHolds = append(server.rangeUpdateHolds, holds...)
 }
 
 // Count returns the named counter.
@@ -459,6 +467,7 @@ func (server *Server) serveRange(response http.ResponseWriter, request *http.Req
 		return
 	}
 	var delay time.Duration
+	var hold chan struct{}
 	if request.Method == http.MethodPatch {
 		server.delayed.Add(1)
 		defer server.delayed.Done()
@@ -475,6 +484,10 @@ func (server *Server) serveRange(response http.ResponseWriter, request *http.Req
 		if len(server.rangeUpdateDelays) > 0 {
 			delay = server.rangeUpdateDelays[0]
 			server.rangeUpdateDelays = server.rangeUpdateDelays[1:]
+		}
+		if len(server.rangeUpdateHolds) > 0 {
+			hold = server.rangeUpdateHolds[0]
+			server.rangeUpdateHolds = server.rangeUpdateHolds[1:]
 		}
 		sheet := server.findWorksheetLocked(driveID, workbookID, worksheetReference)
 		if sheet == nil {
@@ -500,7 +513,15 @@ func (server *Server) serveRange(response http.ResponseWriter, request *http.Req
 		}
 		server.counts[CountRangeUpdatesApplied]++
 		server.mutex.Unlock()
-		time.Sleep(delay)
+		if hold != nil {
+			select {
+			case <-hold:
+			case <-request.Context().Done():
+				return
+			}
+		} else if delay > 0 {
+			time.Sleep(delay)
+		}
 	}
 	server.mutex.Lock()
 	defer server.mutex.Unlock()

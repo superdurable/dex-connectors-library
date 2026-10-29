@@ -26,9 +26,8 @@ const (
 	// hiverRequestInterval is Hiver's documented one request per second.
 	hiverRequestInterval  = time.Second
 	defaultRequestTimeout = 5 * time.Second
-	// slowResponseDelay outlasts Dex's roughly seven-second async local phase, so an async Step is dispatched again.
-	slowResponseDelay  = 9 * time.Second
-	slowRequestTimeout = 20 * time.Second
+	slowResponseDelay     = 100 * time.Millisecond
+	slowRequestTimeout    = 20 * time.Second
 )
 
 func integrationClaimInput() Input {
@@ -106,18 +105,24 @@ func TestConversationClaimedBetweenListAndReadIsLeftAloneWithRealDex(t *testing.
 	require.Zero(t, provider.writeCount())
 }
 
-// TestSlowUpdateIsSafeToRepeatWithRealDex lets async Dex dispatch the update again; both attempts send the same absolute change.
+// TestSlowUpdateIsSafeToRepeatWithRealDex loses the Worker after applying the first absolute update.
 func TestSlowUpdateIsSafeToRepeatWithRealDex(t *testing.T) {
 	provider := newFakeHiver(t, fastRequestInterval)
 	provider.seedStandardInbox()
 	target := provider.seedConversation(integrationInboxID, "open", "", nil)
-	provider.delaysFirstUpdate = true
+	provider.holdsFirstUpdate = make(chan struct{})
 	harness := newClaimHarness(t, provider, fastRequestInterval, slowRequestTimeout)
-
-	outcome := harness.runClaim(t, "slow-update", integrationClaimInput())
+	flowID := harness.startClaim(t, "lost-worker-update", integrationClaimInput())
+	require.Eventually(t, func() bool { return provider.count("update") == 1 }, 30*time.Second, 50*time.Millisecond)
+	harness.replaceWorker(t)
+	close(provider.holdsFirstUpdate)
+	result := harness.waitForFlow(t, flowID)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var outcome ClaimOutcome
+	require.NoError(t, result.DecodeSingleOutput(&outcome))
 	require.Equal(t, ClaimActionClaimed, outcome.Action)
 	provider.waitForDelayedRequests(t)
-	require.GreaterOrEqual(t, provider.count("update"), 2, "Dex dispatched the update again past its local phase")
+	require.Equal(t, 2, provider.count("update"), "the replacement repeats the absolute update")
 	conversation := provider.conversation(target)
 	require.Equal(t, "456342", conversation.assigneeID)
 	require.Equal(t, []string{"784268"}, conversation.tagIDs, "the repeated change did not duplicate the tag")

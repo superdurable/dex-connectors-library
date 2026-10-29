@@ -15,7 +15,7 @@ import (
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
-// appendTableRows runs sync, so a queued append that answers after nine seconds is never dispatched twice.
+// A healthy queued append completes once while its provider answer is delayed.
 func TestApprovalDecisionSlowQueuedAppendIsSentOnceWithRealDex(t *testing.T) {
 	provider := newApprovalProvider(t)
 	provider.QueueAppendBehaviors(fakeexcel.AppendBehavior{DelayBeforeApplying: slowProviderDelay})
@@ -25,7 +25,7 @@ func TestApprovalDecisionSlowQueuedAppendIsSentOnceWithRealDex(t *testing.T) {
 	decision := harness.runDecision(t, "slow-queued-append", travelRequest("REQ-2001", 50))
 	require.GreaterOrEqual(t, time.Since(startedAt), slowProviderDelay)
 	require.True(t, decision.IsLogRowAppended)
-	provider.WaitForDelayedRequests(t, 2*slowProviderDelay)
+	provider.WaitForDelayedRequests(t, 30*time.Second)
 	require.Equal(t, 1, provider.Count(fakeexcel.CountAppendsReceived), "no second dispatch while the first was in flight")
 	require.Len(t, decisionRows(provider), 1)
 }
@@ -37,7 +37,7 @@ func TestApprovalDecisionSlowAppendResponseIsSentOnceWithRealDex(t *testing.T) {
 
 	decision := harness.runDecision(t, "slow-append-response", travelRequest("REQ-2002", 50))
 	require.True(t, decision.IsLogRowAppended)
-	provider.WaitForDelayedRequests(t, 2*slowProviderDelay)
+	provider.WaitForDelayedRequests(t, 30*time.Second)
 	require.Equal(t, 1, provider.Count(fakeexcel.CountAppendsReceived))
 	require.Len(t, decisionRows(provider), 1)
 }
@@ -86,7 +86,7 @@ func TestApprovalDecisionLostWorkerDuringTheAppendIsNeverResentWithRealDex(t *te
 	require.Equal(t, dex.FlowFailed, result.Status)
 	require.Contains(t, result.ErrorMessage, "uncertain")
 	require.Contains(t, result.ErrorMessage, "no target")
-	provider.WaitForDelayedRequests(t, 2*slowProviderDelay)
+	provider.WaitForDelayedRequests(t, 30*time.Second)
 	require.Equal(t, 1, provider.Count(fakeexcel.CountAppendsReceived), "the attempt on the new Worker did not resend the append")
 }
 
@@ -102,16 +102,24 @@ func TestApprovalDecisionThrottledAppendIsRetriedOnceRefusedWithRealDex(t *testi
 	require.Len(t, decisionRows(provider), 1)
 }
 
-// updateValues runs async; a write that answers after nine seconds is dispatched again and leaves the same values.
+// updateValues survives a lost Worker after its first write is applied.
 func TestApprovalDecisionSlowSummaryWriteIsHarmlessWhenRepeatedWithRealDex(t *testing.T) {
 	provider := newApprovalProvider(t)
-	provider.QueueRangeUpdateDelays(slowProviderDelay)
+	hold := make(chan struct{})
+	provider.QueueRangeUpdateHolds(hold)
 	harness := newApprovalHarness(t, provider)
-
-	decision := harness.runDecision(t, "slow-summary", travelRequest("REQ-2007", 50))
+	flowID := harness.startDecision(t, "lost-worker-summary", travelRequest("REQ-2007", 50))
+	require.Eventually(t, func() bool { return provider.Count(fakeexcel.CountRangeUpdatesApplied) == 1 }, 30*time.Second, 50*time.Millisecond)
+	harness.replaceWorker(t)
+	require.Eventually(t, func() bool { return provider.Count(fakeexcel.CountRangeUpdatesReceived) == 2 }, time.Minute, 50*time.Millisecond)
+	close(hold)
+	result := harness.waitForFlow(t, flowID)
+	require.Equal(t, dex.FlowCompleted, result.Status, result.ErrorMessage)
+	var decision ApprovalDecision
+	require.NoError(t, result.DecodeSingleOutput(&decision))
 	require.True(t, decision.IsSummaryConfirmed)
-	provider.WaitForDelayedRequests(t, 2*slowProviderDelay)
-	require.Equal(t, 2, provider.Count(fakeexcel.CountRangeUpdatesReceived), "Dex dispatched the slow write again")
+	provider.WaitForDelayedRequests(t, 30*time.Second)
+	require.Equal(t, 2, provider.Count(fakeexcel.CountRangeUpdatesReceived))
 	require.Equal(t, "REQ-2007", provider.CellValue(integrationDriveID, summaryWorkbookID, "Summary", "A2"))
 	require.Len(t, decisionRows(provider), 1)
 }

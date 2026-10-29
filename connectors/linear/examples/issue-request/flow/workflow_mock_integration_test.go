@@ -34,12 +34,12 @@ func TestIssueRequestExampleRunsOnLinearMockWithRealDex(t *testing.T) {
 		FlowServiceAddress: harness.serverAddress,
 	})
 	require.NoError(t, err)
-	harness.startWorker(t)
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
 		require.NoError(t, errors.Join(harness.worker.Stop(ctx), <-harness.workerResult, harness.client.Close(), harness.cache.Close()))
 	})
+	harness.startWorker(t)
 
 	input := integrationInput()
 	flowID := harness.startIssueRequest(t, "mock-default", input)
