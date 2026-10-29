@@ -73,6 +73,7 @@ directories:
   - connectors/superdurable/llm
   - connectors/superdurable/oauth2-http
   - connectors/superdurable/webhook
+  - connectors/tmdb
   - connectors/twilio/messaging
   - connectors/typeform
   - connectors/vercel
