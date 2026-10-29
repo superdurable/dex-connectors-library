@@ -5,6 +5,8 @@ This runnable Worker starts `PostmarkOutboundLookup` with typed `outboundlookup.
 static Dex Web connection name is `postmark`. Optional failure branches are
 unwired and fail the Flow when selected.
 
+The completed provider result is available in the Dex Web summary and display views.
+
 ## Generate the strict FDG 2.0 definition
 
 From `connectors/postmark` with a current Dex CLI:
