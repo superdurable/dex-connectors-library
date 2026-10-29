@@ -66,12 +66,16 @@ directories:
   - connectors/notion
   - connectors/openai
   - connectors/openweathermap
+  - connectors/pagerduty
   - connectors/paypal
   - connectors/pipedrive
   - connectors/postgresql
+  - connectors/postmark
   - connectors/reamaze
+  - connectors/resend
   - connectors/salesforce
   - connectors/sendgrid
+  - connectors/sentry
   - connectors/shopify
   - connectors/slack
   - connectors/smartsheet
@@ -83,6 +87,7 @@ directories:
   - connectors/superdurable/llm
   - connectors/superdurable/oauth2-http
   - connectors/superdurable/webhook
+  - connectors/tmdb
   - connectors/twilio/messaging
   - connectors/typeform
   - connectors/unsplash
