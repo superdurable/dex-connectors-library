@@ -1,6 +1,6 @@
 # Brevo contact sync example
 
-This runnable Flow accepts an email and first name in Dex Web Start Flow, validates them, and calls `brevo.NewCreateOrUpdateContactStep`. The happy `saved` branch completes with the contact confirmation. Other branches remain unwired and fail the Flow. `ConnectionName` is statically `brevo`.
+This runnable Flow accepts an email and first name in Dex Web Start Flow, validates them, and calls `brevo.NewCreateOrUpdateContactStep`. The happy `saved` branch completes with the contact confirmation. Other branches remain unwired and fail the Flow. `ConnectionName` is statically `brevo`. Dex Web summary and display views show the completed provider outcome.
 
 ## Generate strict FDG 2.0
 
