@@ -1,0 +1,104 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: harvest
+  displayName: Harvest
+  description: Read Harvest records with a connection-owned API key.
+  company: Harvest
+  version: v0.1.0
+spec:
+  provider: harvest
+  codegen:
+    go:
+      package: harvest
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: "Public Harvest HTTPS API root; blank uses the displayed default. Override only for a trusted compatible gateway or loopback test server, and never include a key in the URL."
+        default: https://api.harvestapp.com/v2
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: "Maximum duration of one Harvest HTTP read, as a positive Go duration such as 15s or 1m. Blank uses the displayed default; raise it only for slow large reads."
+        default: 30s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Maximum bytes accepted from one Harvest JSON response, as a positive integer. Blank uses the displayed default; raise it for large pages or files. Oversized data selects invalidResponse."
+        default: 4194304
+      - name: accountId
+        goName: AccountID
+        type: string
+        description: "Non-secret decimal Harvest account ID shown beside the personal access token at https://id.getharvest.com/developers. Copy the ID for the account to read; blank is invalid. It is sent in Harvest-Account-Id, never in a URL."
+        required: true
+  auth:
+    type: apiKey
+    connectionKind: harvest-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        description: "Secret Harvest API token from https://id.getharvest.com/developers (Harvest ID > Developers > Personal Access Tokens); copy the token when generated, paste it here, and keep it secret. Blank makes every operation select defect before a request."
+        required: true
+    guide:
+      startURL: https://id.getharvest.com/developers
+      steps:
+        - "Open https://id.getharvest.com/developers and sign in; navigate to Harvest ID > Developers > Personal Access Tokens."
+        - "Create a token for the identity that may read the desired resources and copy the secret value when shown."
+        - "Paste it into secret api_key. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults."
+        - "Copy the decimal account ID shown with the personal token into accountId; this ID is not secret."
+  operations:
+    - name: listProjects
+      goName: ListProjects
+      inputType: ListProjectsInput
+      outputType: ProjectPage
+      kind: query
+      description: Read Harvest data from the documented listProjects endpoint.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Harvest returned the requested data."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Harvest conclusively rejected the read.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Harvest returned malformed or oversized JSON.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 45s
+        durability: async
+      mocks:
+        - name: defaultAnswer
+          branch: listed
+          description: "One Meridian sample record from the same example world."
+          default: true
+          output: {projects: [{id: 3001, name: Meridian Website, isActive: true}]}
+        - name: invalidKey
+          branch: providerRejected
+          description: "The connection token is invalid."
+          failure: {kind: AUTHENTICATION, message: "Harvest rejected the token."}
+    - name: listTimeEntries
+      goName: ListTimeEntries
+      inputType: ListTimeEntriesInput
+      outputType: TimeEntryPage
+      kind: query
+      description: Read Harvest data from the documented listTimeEntries endpoint.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "Harvest returned the requested data."}
+        - {id: providerRejected, goName: ProviderRejected, description: "Harvest conclusively rejected the read.", optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Harvest returned malformed or oversized JSON.", optional: true}
+        - {id: defect, goName: Defect, description: "Local input or connection credentials are invalid.", optional: true}
+      execution:
+        executeMethodTimeout: 45s
+        durability: async
+      mocks:
+        - name: defaultAnswer
+          branch: listed
+          description: "One Meridian sample record from the same example world."
+          default: true
+          output: {timeEntries: [{id: 4001, project: {id: 3001}, hours: 2.5, spentDate: "2026-10-28"}]}
+        - name: invalidKey
+          branch: providerRejected
+          description: "The connection token is invalid."
+          failure: {kind: AUTHENTICATION, message: "Harvest rejected the token."}

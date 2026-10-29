@@ -1,0 +1,101 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: cohere
+  displayName: Cohere
+  description: Generate text embeddings and relevance rankings through Cohere v2.
+  company: Cohere
+  version: v0.1.0
+spec:
+  provider: cohere
+  codegen:
+    go:
+      package: cohere
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: "Cohere public HTTPS API root; blank uses the displayed default. Override only for a trusted compatible gateway or loopback test server; never put a key in the URL."
+        default: https://api.cohere.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: "Maximum duration of one Cohere request, as a positive Go duration such as 30s or 1m. Blank uses the displayed default; raise it for large batches."
+        default: 30s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Maximum bytes accepted from one Cohere JSON response, as a positive integer. Blank uses the displayed default; raise it for many vectors. Oversized data selects invalidResponse."
+        default: 4194304
+  auth:
+    type: apiKey
+    connectionKind: cohere-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        description: "Secret Cohere API key from https://dashboard.cohere.com/api-keys (Dashboard > API Keys); copy the opaque token when created and paste it here. Blank makes calls select defect without a request."
+        required: true
+    guide:
+      startURL: https://dashboard.cohere.com/api-keys
+      steps:
+        - Open https://dashboard.cohere.com/api-keys and sign in to the Cohere Dashboard > API Keys page.
+        - Create an API key for the project that should own embedding and reranking usage; copy the opaque secret token when shown.
+        - Paste the token into secret api_key and leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
+        - Revoke or replace the key on the same API Keys page; the saved replacement applies on the next call.
+  operations:
+    - name: embed
+      goName: Embed
+      inputType: EmbedInput
+      outputType: EmbedOutput
+      kind: query
+      description: Generate float embeddings for text with Cohere v2.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: embedded, goName: Embedded, description: Cohere returned one float vector per text.}
+        - {id: providerRejected, goName: ProviderRejected, description: Cohere conclusively rejected the embedding request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Cohere returned malformed or oversized embedding data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 45s
+        durability: async
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 5m, reason: {kind: billedOperation, explanation: "An unconfirmed embedding may be billed; another attempt can incur an additional charge."}}
+      mocks:
+        - name: defaultEmbedding
+          branch: embedded
+          description: One Meridian query returns one three-dimensional float vector.
+          default: true
+          output: {id: embed-mock-1, embeddings: [[0.1, 0.2, 0.3]]}
+        - name: invalidKey
+          branch: providerRejected
+          description: The connection key is invalid.
+          failure: {kind: AUTHENTICATION, message: Cohere rejected the API key.}
+    - name: rerank
+      goName: Rerank
+      inputType: RerankInput
+      outputType: RerankOutput
+      kind: query
+      description: Rank text documents by relevance to one query through Cohere v2.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: ranked, goName: Ranked, description: Cohere returned ranked document indices and scores.}
+        - {id: providerRejected, goName: ProviderRejected, description: Cohere conclusively rejected the rerank request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Cohere returned malformed or oversized rerank data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 45s
+        durability: async
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 5m, reason: {kind: billedOperation, explanation: "An unconfirmed rerank request may be billed; another attempt can incur an additional charge."}}
+      mocks:
+        - name: defaultRanking
+          branch: ranked
+          description: The release note ranks above an unrelated article.
+          default: true
+          output: {results: [{index: 0, relevanceScore: 0.92}, {index: 1, relevanceScore: 0.08}]}
+        - name: invalidKey
+          branch: providerRejected
+          description: The connection key is invalid.
+          failure: {kind: AUTHENTICATION, message: Cohere rejected the API key.}
