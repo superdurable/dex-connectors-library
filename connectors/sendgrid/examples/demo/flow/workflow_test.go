@@ -23,16 +23,3 @@ func TestDemoFlowIdentityAndMapping(t *testing.T) {
 	_, err = dex.NewRegistry([]dex.Flow{NewFlow(mock.Connection())})
 	require.NoError(t, err)
 }
-
-func TestTemplateFlowIdentityAndMapping(t *testing.T) {
-	input := sendgrid.ListTemplatesInput{PageSize: 100}
-	require.Equal(t, input, MapToTemplateOperationInput(input))
-	require.Equal(t, TemplateFlowType, dex.GetFinalFlowType(NewTemplateFlow(sendgrid.Connection{})))
-	require.Equal(t, "StartListTemplates", dex.GetFinalStepType[sendgrid.ListTemplatesInput](startTemplateRequest{}))
-	wait, err := startTemplateRequest{}.WaitFor(nil, input)
-	require.NoError(t, err)
-	require.Equal(t, dex.SkipWaitImmediately(), wait)
-	mock := sendgridmock.New(t, ConnectionName)
-	_, err = dex.NewRegistry([]dex.Flow{NewFlow(mock.Connection()), NewTemplateFlow(mock.Connection())})
-	require.NoError(t, err)
-}

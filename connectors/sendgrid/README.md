@@ -1,6 +1,6 @@
 # SendGrid connector
 
-Read SendGrid global statistics and transactional templates. The manifest is the source of generated Config, Credentials, Connection, operation factories, and mocks. See the [runnable demo](examples/demo/README.md) for Worker and strict FDG 2.0 generation commands.
+Read SendGrid global statistics and transactional templates. The manifest is the source of generated Config, Credentials, Connection, operation factories, and mocks. See the runnable [statistics demo](examples/demo/README.md) and [template-list example](examples/template-list/README.md) for Worker and strict FDG 2.0 generation commands.
 
 ## Operations and provider references
 
@@ -9,7 +9,7 @@ Read SendGrid global statistics and transactional templates. The manifest is the
 | `getStats` | Query | https://www.twilio.com/docs/sendgrid/api-reference/stats/retrieve-global-email-statistics |
 | `listTemplates` | Query | https://www.twilio.com/docs/sendgrid/api-reference/transactional-templates/retrieve-paged-transactional-templates |
 
-The demo uses `sendgrid.NewGetStatsStep` with the static `sendgrid` connection. Each operation is an operation-specific Query Step with the default one-hour retry policy. `listTemplates` always sends `page_size`: zero in `PageSize` selects 100, and explicit values must be 1–200. Pass `NextPageToken` from one result as the next call's `PageToken`; blank starts at page one. SendGrid's exact `_metadata.count` meaning remains unverified.
+The examples use `sendgrid.NewGetStatsStep` and `sendgrid.NewListTemplatesStep` with the static `sendgrid` connection. Each operation is an operation-specific Query Step with the default one-hour retry policy. `listTemplates` always sends `page_size`: zero in `PageSize` selects 100, and explicit values must be 1–200. Pass `NextPageToken` from one result as the next call's `PageToken`; blank starts at page one. SendGrid's exact `_metadata.count` meaning remains unverified.
 
 ## Authorization and configuration
 
@@ -34,7 +34,7 @@ The generated `sendgridmock` package uses one consistent default answer per oper
 - `getStats` default `foundDefault`: `{"days":[{"date":"2026-10-27","requests":8,"delivered":7}]}`
 - `listTemplates` default `listedDefault`: `{"templates":[{"id":"d-meridian","name":"Meridian receipt","generation":"dynamic"}],"count":1}`
 
-`examples/demo/flow/workflow_mock_integration_test.go` starts a real Dex Flow through the mock connection in CI. Provider unit tests use local HTTP servers for the documented request shape and a rate-limit response.
+Both example Flow integration tests start real Dex Flows through the mock connection in CI. Provider unit tests use local HTTP servers for the documented request shape and a rate-limit response.
 
 ## Unverified live behavior
 

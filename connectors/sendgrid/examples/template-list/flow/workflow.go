@@ -1,7 +1,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-package demo
+// Package templatelist runs SendGrid listTemplates as one Dex Flow.
+package templatelist
 
 import (
 	"errors"
@@ -12,6 +13,8 @@ import (
 )
 
 const (
+	// ConnectionName is the static Dex Web connection used by this example.
+	ConnectionName = "sendgrid"
 	// TemplateFlowType is the stable example identity for template listing.
 	TemplateFlowType          = "SendGridTemplateListDemo"
 	templateOperationStepType = "CallListTemplates"

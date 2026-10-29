@@ -24,8 +24,7 @@ import (
 func TestDemoUsesDefaultMockWithRealDex(t *testing.T) {
 	mock := sendgridmock.New(t, ConnectionName)
 	flow := NewFlow(mock.Connection())
-	templateFlow := NewTemplateFlow(mock.Connection())
-	registry, err := dex.NewRegistry([]dex.Flow{flow, templateFlow})
+	registry, err := dex.NewRegistry([]dex.Flow{flow})
 	require.NoError(t, err)
 	cache, err := blobcache.New(&blobcache.Config{Dir: filepath.Join(t.TempDir(), "blobs"), MaxBytes: 64 << 20})
 	require.NoError(t, err)
@@ -57,14 +56,4 @@ func TestDemoUsesDefaultMockWithRealDex(t *testing.T) {
 	require.NoError(t, result.DecodeSingleOutput(&output))
 	require.Len(t, output.Days, 1)
 	require.Len(t, mock.GetStats().Calls(), 1)
-	templateFlowID := "sendgrid-template-demo-mock-" + strconv.FormatInt(time.Now().UnixNano(), 10)
-	_, err = client.StartFlow(ctx, templateFlow, templateFlowID, sendgrid.ListTemplatesInput{PageSize: 100}, dex.StartFlowOptions{})
-	require.NoError(t, err)
-	templateResult, err := client.WaitForFlow(ctx, templateFlowID, dex.WaitForFlowOptions{NeedsResults: true})
-	require.NoError(t, err)
-	require.Equal(t, dex.FlowCompleted, templateResult.Status, templateResult.ErrorMessage)
-	var templateOutput sendgrid.TemplatesOutput
-	require.NoError(t, templateResult.DecodeSingleOutput(&templateOutput))
-	require.Len(t, templateOutput.Templates, 1)
-	require.Len(t, mock.ListTemplates().Calls(), 1)
 }
