@@ -5,6 +5,8 @@ This runnable Worker starts `TMDBMovieSearch` with typed `moviesearch.Request`, 
 static Dex Web connection name is `tmdb`. Optional failure branches are
 unwired and fail the Flow when selected.
 
+The completed provider result is available in the Dex Web summary and display views.
+
 ## Generate the strict FDG 2.0 definition
 
 From `connectors/tmdb` with a current Dex CLI:
