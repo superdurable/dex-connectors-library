@@ -1,0 +1,91 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: elevenlabs
+  displayName: ElevenLabs
+  description: List voices and generate bounded audio through ElevenLabs.
+  company: ElevenLabs
+  version: v0.1.0
+spec:
+  provider: elevenlabs
+  codegen:
+    go:
+      package: elevenlabs
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Public ElevenLabs API base URL. Leave blank for the displayed default; override only for a trusted compatible gateway or a loopback test server.
+        default: https://api.elevenlabs.io
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one provider HTTP request, as a positive Go duration such as 15s or 1m. Leave blank for the displayed default; increase only for slow responses.
+        default: 120s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Positive maximum response size in bytes. Leave blank for the displayed default; increase only for a known larger response. Oversized replies select invalidResponse.
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: elevenlabs-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        description: Secret API key from ElevenLabs > Developers > API Keys > Create API Key at https://elevenlabs.io/app/developers/api-keys. Copy the provider-issued string into this field; blank makes calls select defect. It is stored as a secret and sent only in the HTTP authorization header.
+        required: true
+    guide:
+      startURL: https://elevenlabs.io/app/developers/api-keys
+      steps:
+        - Open https://elevenlabs.io/app/developers/api-keys and sign in or create an account.
+        - Navigate to ElevenLabs > Developers > API Keys > Create API Key; create or select a key with permission for the listed read or generation operations, and copy its provider-issued string.
+        - Paste it into the secret api_key field and save the connection. Leave baseUrl, timeout, and maxResponseBytes blank to use their displayed defaults.
+  operations:
+    - name: listVoices
+      goName: ListVoices
+      inputType: ListVoicesInput
+      outputType: ListVoicesOutput
+      kind: query
+      description: List available voices and their identifiers for speech generation.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "ElevenLabs returned the requested result."}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: listedDefault
+          branch: listed
+          description: A representative ElevenLabs result for the example Flow.
+          default: true
+          output: {"voices":[{"voiceId":"voice_meridian","name":"Meridian Narrator"}],"hasMore":false}
+    - name: createSpeech
+      goName: CreateSpeech
+      inputType: CreateSpeechInput
+      outputType: CreateSpeechOutput
+      kind: query
+      description: Generate bounded MP3 speech audio from text with a selected voice.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: "ElevenLabs returned the requested result."}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 150s
+        durability: sync
+        retry: {initialInterval: 2s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 3, totalDuration: 5m, reason: {kind: billedOperation, explanation: "A repeated generation may incur another charge, so this operation permits only three attempts."}}
+      mocks:
+        - name: createdDefault
+          branch: created
+          description: A representative ElevenLabs result for the example Flow.
+          default: true
+          output: {"audioBase64":"SUQz","contentType":"audio/mpeg"}
