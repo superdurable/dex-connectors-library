@@ -1,0 +1,44 @@
+# Pinecone connector
+
+This Dex connector exposes `upsertVectors`, `queryVectors`. The runnable [sample Flow](examples/sample-pinecone/flow/workflow.go) uses `upsertVectors` with the static `pinecone` connection. Each operation uses the generated typed Step factory.
+
+## Provider contract
+
+`upsertVectors` replaces vectors by stable ID. It is safe to repeat with the same vector IDs and values. Supply the unique index host as `baseUrl`; there is no safe universal default. The connector pins Pinecone API version `2025-04`. Query supports dense vectors only.
+
+Official documentation used for the endpoint, authentication, and response contract:
+
+- [https://docs.pinecone.io/reference/api/2025-04/data-plane/upsert](https://docs.pinecone.io/reference/api/2025-04/data-plane/upsert)
+- [https://docs.pinecone.io/reference/api/2025-04/data-plane/query](https://docs.pinecone.io/reference/api/2025-04/data-plane/query)
+- [https://docs.pinecone.io/guides/manage-data/target-an-index](https://docs.pinecone.io/guides/manage-data/target-an-index)
+
+## Authorization and configuration
+
+Start at [https://app.pinecone.io](https://app.pinecone.io) and follow the authorization guide shown in Dex Web Connections. The `api_key` field is secret. It is resolved for each call and sent only in the `Api-Key` header. The connector never places it in a URL, Result, receipt, Failure, or log. Leave `timeout` blank for 15 seconds and `maxResponseBytes` blank for 2,097,152 bytes. A larger bounded value can be entered if a real response page exceeds that limit.
+
+## Failure handling
+
+| Provider outcome | Dex outcome |
+| --- | --- |
+| Documented success response with valid JSON shape | Happy-path branch |
+| 400, 401, 403, or another definite 4xx | Optional `providerRejected` branch |
+| 408, 409, 429, 5xx, or transport interruption | Retry until the Step budget expires |
+| Malformed, incomplete, or oversized success response | Optional `invalidResponse` branch |
+| Invalid input or credential | Optional `defect` branch |
+
+Provider error bodies are never copied into Failures. A Flow fails when an optional branch is selected without wiring. The default retry policy is exponential from one second to five minutes, with unlimited attempts within one hour.
+
+## Mocks
+
+The generated `pineconemock` package provides a default response for each operation. The [real-Dex mock test](examples/sample-pinecone/flow/workflow_mock_integration_test.go) constructs and runs the first operation this way:
+
+```go
+mock := pineconemock.New(t, ConnectionName)
+flow := NewFlow(mock.Connection())
+```
+
+The mock defaults represent the same Meridian example resource across both operations.
+
+## Verification limits
+
+The provider HTTP behavior is tested with local `httptest` servers, and the sample's mapping has a deterministic unit test. No live provider account or Dex stack was used during this batch. Real provider authorization, permissions, response variants, and the mock-backed Dex integration remain unverified locally; CI covers the Dex integration.
