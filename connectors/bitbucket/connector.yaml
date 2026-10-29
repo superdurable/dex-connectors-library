@@ -1,0 +1,91 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: bitbucket
+  displayName: Bitbucket
+  description: "Read Bitbucket resources through typed Dex Query Steps."
+  company: Bitbucket
+  version: v0.1.0
+spec:
+  provider: bitbucket
+  codegen:
+    go:
+      package: bitbucket
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: "Fixed provider API URL; blank uses the displayed default. Override only for a compatible gateway or loopback test server."
+        default: https://api.bitbucket.org/2.0
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: "Maximum duration of one provider HTTP request as a positive Go duration, such as 15s or 1m. Blank uses the displayed default; override for slow network paths."
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: "Maximum provider JSON response size in bytes as a positive integer. Blank uses the displayed default; raise only for larger result pages."
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: bitbucket-api-key
+    fields:
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        description: "Secret Bitbucket workspace access token from https://bitbucket.org > workspace Settings > Access tokens > Create access token. Grant Repositories > Read and Pull requests > Read; copy the opaque token once into this secret field. Blank prevents calls."
+        required: true
+    guide:
+      startURL: https://support.atlassian.com/bitbucket-cloud/docs/create-a-workspace-access-token/
+      steps:
+        - "Workspace access tokens require Bitbucket Premium. In https://bitbucket.org open the workspace, choose Settings > Workspace settings > Security > Access tokens > Create access token, grant Repositories > Read and Pull requests > Read, then copy the one-time opaque token into access_token. The token is secret and Dex stores it only in this credential field."
+        - "Set baseUrl, timeout, and maxResponseBytes only as described below; defaults appear in parentheses in Dex Web."
+  operations:
+    - name: listRepositories
+      goName: ListRepositories
+      inputType: ListRepositoriesInput
+      outputType: RepositoryPage
+      kind: query
+      description: "List repositories owned by a Bitbucket workspace."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "List repositories owned by a Bitbucket workspace."}
+        - {id: notFound, goName: NotFound, description: The requested resource was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: defaultAnswer
+          branch: listed
+          description: "A realistic read-only listRepositories response for a Meridian account."
+          default: true
+          output: {"values":[{"uuid":"{a1b2c3d4-1234-4567-89ab-1234567890ab}","name":"Meridian API","full_name":"meridian/api","is_private":true}],"page":1,"pagelen":10}
+    - name: listPullRequests
+      goName: ListPullRequests
+      inputType: ListPullRequestsInput
+      outputType: PullRequestPage
+      kind: query
+      description: "List pull requests for a Bitbucket repository."
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "List pull requests for a Bitbucket repository."}
+        - {id: notFound, goName: NotFound, description: The requested resource was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: The provider conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: The provider returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: defaultAnswer
+          branch: listed
+          description: "A realistic read-only listPullRequests response for a Meridian account."
+          default: true
+          output: {"values":[{"id":7,"title":"Add client tests","state":"OPEN"}],"page":1,"pagelen":10}
