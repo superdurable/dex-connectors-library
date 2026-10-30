@@ -44,6 +44,24 @@ jobs:
           fi
           GOWORK=off go run ./cmd/connectorctl test-matrix "${arguments[@]}"
 
+  dex-version-plan:
+    runs-on: ubuntu-latest
+    outputs:
+      cli_tag: ${{ steps.versions.outputs.cli_tag }}
+      cli_asset_url: ${{ steps.versions.outputs.cli_asset_url }}
+      cli_sha256: ${{ steps.versions.outputs.cli_sha256 }}
+      go_sdk_version: ${{ steps.versions.outputs.go_sdk_version }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Resolve Dex versions once for this run
+        id: versions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 script/dex_compatibility.py plan --github-output "${GITHUB_OUTPUT}"
+
   common:
     runs-on: ubuntu-latest
     steps:
@@ -188,8 +206,13 @@ jobs:
           [ "${failed}" = false ]
 
   dex-integration-sdk:
+    needs: dex-version-plan
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
+    env:
+      DEX_CLI_RELEASE_TAG: ${{ needs.dex-version-plan.outputs.cli_tag }}
+      DEX_CLI_ASSET_URL: ${{ needs.dex-version-plan.outputs.cli_asset_url }}
+      DEX_CLI_SHA256: ${{ needs.dex-version-plan.outputs.cli_sha256 }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
@@ -200,8 +223,6 @@ jobs:
             go.sum
             sdkgo/go.sum
       - name: Download Dex CLI
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           python3 script/dex_compatibility.py install-dexcli --output ./dexcli
       - name: Run shared SDK integration suite
@@ -223,7 +244,7 @@ jobs:
           exit 1
 
   dex-integration-connectors:
-    needs: connector-plan
+    needs: [connector-plan, dex-version-plan]
     if: github.event_name != 'schedule' && needs.connector-plan.outputs.count != '0'
     runs-on: ubuntu-latest
     strategy:
@@ -231,6 +252,9 @@ jobs:
       max-parallel: 32
       matrix: ${{ fromJSON(needs.connector-plan.outputs.matrix) }}
     env:
+      DEX_CLI_RELEASE_TAG: ${{ needs.dex-version-plan.outputs.cli_tag }}
+      DEX_CLI_ASSET_URL: ${{ needs.dex-version-plan.outputs.cli_asset_url }}
+      DEX_CLI_SHA256: ${{ needs.dex-version-plan.outputs.cli_sha256 }}
       CONNECTOR_SCOPE: ${{ (github.event_name == 'pull_request' || github.event_name == 'push') && 'changed' || 'all' }}
       CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
       CONNECTOR_HEAD: ${{ github.sha }}
@@ -248,8 +272,6 @@ jobs:
             go.sum
             connectors/**/go.sum
       - name: Download Dex CLI
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           python3 script/dex_compatibility.py install-dexcli --output ./dexcli
       - name: Run affected Connector integration suites
@@ -271,7 +293,7 @@ jobs:
           exit 1
 
   dex-compat-current:
-    needs: connector-plan
+    needs: [connector-plan, dex-version-plan]
     if: github.event_name != 'schedule' && needs.connector-plan.outputs.count != '0'
     runs-on: ubuntu-latest
     strategy:
@@ -279,6 +301,9 @@ jobs:
       max-parallel: 32
       matrix: ${{ fromJSON(needs.connector-plan.outputs.matrix) }}
     env:
+      DEX_CLI_RELEASE_TAG: ${{ needs.dex-version-plan.outputs.cli_tag }}
+      DEX_CLI_ASSET_URL: ${{ needs.dex-version-plan.outputs.cli_asset_url }}
+      DEX_CLI_SHA256: ${{ needs.dex-version-plan.outputs.cli_sha256 }}
       GH_TOKEN: ${{ github.token }}
       CONNECTOR_SCOPE: ${{ (github.event_name == 'pull_request' || github.event_name == 'push') && 'changed' || 'all' }}
       CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
@@ -298,7 +323,7 @@ jobs:
       - run: make test-dex-compat-current
 
   dex-compat-released:
-    needs: connector-plan
+    needs: [connector-plan, dex-version-plan]
     if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && needs.connector-plan.outputs.count != '0'
     runs-on: ubuntu-latest
     strategy:
@@ -306,6 +331,9 @@ jobs:
       max-parallel: 32
       matrix: ${{ fromJSON(needs.connector-plan.outputs.matrix) }}
     env:
+      DEX_CLI_RELEASE_TAG: ${{ needs.dex-version-plan.outputs.cli_tag }}
+      DEX_CLI_ASSET_URL: ${{ needs.dex-version-plan.outputs.cli_asset_url }}
+      DEX_CLI_SHA256: ${{ needs.dex-version-plan.outputs.cli_sha256 }}
       GH_TOKEN: ${{ github.token }}
       CONNECTOR_SCOPE: all
       CONNECTOR_SHARD_INDEX: ${{ matrix.shard_index }}
@@ -321,7 +349,7 @@ jobs:
       - run: make test-dex-compat-released
 
   dex-compat-latest-go-sdk:
-    needs: connector-plan
+    needs: [connector-plan, dex-version-plan]
     if: needs.connector-plan.outputs.count != '0'
     runs-on: ubuntu-latest
     strategy:
@@ -329,6 +357,7 @@ jobs:
       max-parallel: 32
       matrix: ${{ fromJSON(needs.connector-plan.outputs.matrix) }}
     env:
+      DEX_GO_SDK_VERSION: ${{ needs.dex-version-plan.outputs.go_sdk_version }}
       CONNECTOR_SCOPE: ${{ (github.event_name == 'pull_request' || github.event_name == 'push') && 'changed' || 'all' }}
       CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
       CONNECTOR_HEAD: ${{ github.sha }}

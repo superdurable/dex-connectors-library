@@ -56,13 +56,14 @@ GO_MODULE_COPY_IGNORED_NAMES = ("node_modules", "dist", ".git")
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("mode", choices=("current", "released", "install-dexcli", "latest-go-sdk"))
+    parser.add_argument("mode", choices=("current", "released", "install-dexcli", "latest-go-sdk", "plan"))
     parser.add_argument(
         "--dex-version",
         default=os.environ.get("DEX_CLI_VERSION") or "latest",
         help="Dex CLI release tag such as cli-v1.4.2 for failure reproduction; defaults to the latest stable release",
     )
     parser.add_argument("--output")
+    parser.add_argument("--github-output", help="write resolved Dex versions for GitHub Actions jobs")
     parser.add_argument("--connector-tag", default=os.environ.get("CONNECTOR_RELEASE_TAG"))
     parser.add_argument(
         "--connector-directories",
@@ -71,15 +72,20 @@ def main() -> int:
     args = parser.parse_args()
 
     root = Path(__file__).resolve().parents[1]
+    if args.mode == "plan":
+        if not args.github_output:
+            parser.error("plan requires --github-output")
+        write_dex_version_plan(root, args.dex_version, Path(args.github_output))
+        return 0
     selected_directories = parse_connector_directories(root, args.connector_directories)
     if args.mode == "latest-go-sdk":
         with tempfile.TemporaryDirectory(prefix="dex-go-sdk-") as temporary:
             verify_latest_dex_go_sdk(root, Path(temporary), selected_directories)
         return 0
-    dex_release = resolve_dex_release(args.dex_version)
+    dex_release, expected_digest = dex_release_from_environment(args.dex_version)
     with tempfile.TemporaryDirectory(prefix="dex-compat-") as temporary:
         temporary_root = Path(temporary)
-        dexcli = download_dexcli(dex_release, temporary_root)
+        dexcli = download_dexcli(dex_release, temporary_root, expected_digest)
         if args.mode == "install-dexcli":
             if not args.output:
                 parser.error("install-dexcli requires --output")
@@ -107,7 +113,7 @@ def verify_latest_dex_go_sdk(root: Path, temporary_root: Path, connector_directo
     source, as an application does when it moves every library to its newest release.
     """
     connector_sdk = copy_go_module(root / CONNECTOR_SDK_DIRECTORY, temporary_root / CONNECTOR_SDK_DIRECTORY)
-    version = latest_stable_go_module_version(DEX_GO_SDK_MODULE, connector_sdk)
+    version = dex_go_sdk_version_from_environment(connector_sdk)
     print(f"Latest Dex Go SDK: module={DEX_GO_SDK_MODULE} version={version}", flush=True)
     build_and_vet_with_dex_go_sdk(connector_sdk, version)
     failures: list[str] = []
@@ -138,6 +144,58 @@ def latest_stable_go_module_version(module: str, directory: Path) -> str:
     if not STABLE_VERSION.fullmatch(version):
         raise RuntimeError(f"latest {module} version is not a stable release: {version or 'none'}")
     return version
+
+
+def dex_go_sdk_version_from_environment(directory: Path) -> str:
+    version = os.environ.get("DEX_GO_SDK_VERSION")
+    if version is None:
+        return latest_stable_go_module_version(DEX_GO_SDK_MODULE, directory)
+    if not version:
+        raise RuntimeError("pre-resolved Dex Go SDK plan output is empty")
+    if not STABLE_VERSION.fullmatch(version):
+        raise RuntimeError(f"invalid pre-resolved Dex Go SDK version: {version}")
+    return version
+
+
+def write_dex_version_plan(root: Path, requested_version: str, github_output: Path) -> None:
+    release = resolve_dex_release(requested_version)
+    tag = str(release["tag_name"])
+    # CI plans and shards currently share ubuntu-latest; this URL is platform-specific.
+    archive_name = dexcli_archive_name(tag[4:])
+    assets = {str(asset["name"]): asset for asset in release["assets"]}
+    archive_url = str(assets[archive_name]["browser_download_url"])
+    checksums_url = str(assets["checksums.txt"]["browser_download_url"])
+    for name, url in ((archive_name, archive_url), ("checksums.txt", checksums_url)):
+        if url != f"https://github.com/{DEX_REPOSITORY}/releases/download/{tag}/{name}":
+            raise RuntimeError(f"Dex release asset has an unexpected download URL: {url}")
+    with tempfile.TemporaryDirectory(prefix="dex-version-plan-") as temporary:
+        checksums = Path(temporary) / "checksums.txt"
+        download(checksums_url, checksums)
+        digest = checksum_entry(checksums.read_text(), archive_name)
+    go_sdk_version = latest_stable_go_module_version(DEX_GO_SDK_MODULE, root / CONNECTOR_SDK_DIRECTORY)
+    with github_output.open("a") as output:
+        output.write(f"cli_tag={tag}\ncli_asset_url={archive_url}\ncli_sha256={digest}\ngo_sdk_version={go_sdk_version}\n")
+    print(f"Dex version plan: cli={tag} sha256={digest} go_sdk={go_sdk_version}", flush=True)
+
+
+def dex_release_from_environment(requested_version: str) -> tuple[dict[str, object], str | None]:
+    tag = os.environ.get("DEX_CLI_RELEASE_TAG")
+    archive_url = os.environ.get("DEX_CLI_ASSET_URL")
+    digest = os.environ.get("DEX_CLI_SHA256")
+    if not any((tag, archive_url, digest)):
+        return resolve_dex_release(requested_version), None
+    if not all((tag, archive_url, digest)):
+        raise RuntimeError("pre-resolved Dex CLI tag, asset URL, and SHA-256 must all be set")
+    if not tag.startswith("cli-") or not STABLE_VERSION.fullmatch(tag[4:]):
+        raise RuntimeError(f"invalid pre-resolved Dex CLI tag: {tag}")
+    archive_name = dexcli_archive_name(tag[4:])
+    if archive_url != f"https://github.com/{DEX_REPOSITORY}/releases/download/{tag}/{archive_name}":
+        raise RuntimeError(f"invalid pre-resolved Dex CLI asset URL: {archive_url}")
+    if not re.fullmatch(r"[0-9a-f]{64}", digest):
+        raise RuntimeError("invalid pre-resolved Dex CLI SHA-256")
+    if requested_version != "latest" and requested_version not in (tag, tag.removeprefix("cli-")):
+        raise RuntimeError(f"pre-resolved Dex CLI {tag} does not match requested {requested_version}")
+    return {"tag_name": tag, "assets": [{"name": archive_name, "browser_download_url": archive_url}]}, digest
 
 
 def build_and_vet_with_dex_go_sdk(module_root: Path, version: str) -> None:
@@ -341,19 +399,20 @@ def dexcli_archive_name(version: str) -> str:
     return f"dexcli_{version}_{operating_system}_{architecture}.tar.gz"
 
 
-def download_dexcli(release: dict[str, object], directory: Path) -> Path:
+def download_dexcli(release: dict[str, object], directory: Path, expected_digest: str | None = None) -> Path:
     archive_name = dexcli_archive_name(str(release["tag_name"])[4:])
     assets = {str(asset["name"]): asset for asset in release.get("assets", [])}
-    if archive_name not in assets or "checksums.txt" not in assets:
+    if archive_name not in assets or (expected_digest is None and "checksums.txt" not in assets):
         raise RuntimeError(f"Dex release is missing {archive_name} or checksums.txt")
     archive = directory / archive_name
-    checksums = directory / "checksums.txt"
     download(str(assets[archive_name]["browser_download_url"]), archive)
-    download(str(assets["checksums.txt"]["browser_download_url"]), checksums)
-    expected = checksum_entry(checksums.read_text(), archive_name)
+    if expected_digest is None:
+        checksums = directory / "checksums.txt"
+        download(str(assets["checksums.txt"]["browser_download_url"]), checksums)
+        expected_digest = checksum_entry(checksums.read_text(), archive_name)
     actual = hashlib.sha256(archive.read_bytes()).hexdigest()
-    if actual != expected:
-        raise RuntimeError(f"Dex CLI checksum mismatch: expected {expected}, got {actual}")
+    if actual != expected_digest:
+        raise RuntimeError(f"Dex CLI checksum mismatch: expected {expected_digest}, got {actual}")
     print(f"Dex CLI: asset={archive_name} sha256={actual}", flush=True)
     with tarfile.open(archive, "r:gz") as archive_file:
         members = [member for member in archive_file.getmembers() if Path(member.name).name == "dexcli" and member.isfile()]
