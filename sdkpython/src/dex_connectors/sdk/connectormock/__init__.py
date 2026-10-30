@@ -8,12 +8,26 @@ import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Generic, TypeVar, cast
+from typing import Any, Generic, Self, TypeVar, cast
 
 from ..errors import Failure, FailureKind
 from ..projectconfig.models import go_canonical_json_bytes
-from ..types import DEFECT_BRANCH_ID, UNCERTAIN_BRANCH_ID, ConnectionRef, OperationRef
+from ..types import (
+    DEFECT_BRANCH_ID,
+    UNCERTAIN_BRANCH_ID,
+    Call,
+    CallID,
+    ConnectionRef,
+    IdempotencyKey,
+    MutationAttempt,
+    MutationDefinition,
+    OperationRef,
+    QueryAttempt,
+    QueryDefinition,
+    Receipt,
+)
 
 Input = TypeVar("Input")
 Output = TypeVar("Output")
@@ -386,6 +400,128 @@ class ScriptedOperation(Generic[Input, Output]):
                 response.failure.validate()
 
 
+class _OperationMock(Generic[Input, Output]):
+    def __init__(
+        self,
+        operation: OperationRef,
+        branches: tuple[str, ...],
+        is_mutation: bool,
+        report_failure: Callable[[str], None] | None,
+    ) -> None:
+        self._scripted = ScriptedOperation[Input, Output](
+            operation, branches, is_mutation, report_failure
+        )
+
+    def respond(self, *cases: Case[Output]) -> Self:
+        """Queue the next provider outcomes in call order."""
+        self._scripted.respond(*cases)
+        return self
+
+    def when(self, predicate: Callable[[Input], bool], response: Case[Output]) -> Self:
+        """Answer each matching input with a reusable case."""
+        self._scripted.when(predicate, response)
+        return self
+
+    def default(self, *cases: Case[Output]) -> Self:
+        """Set fallback cases; the final case repeats after exhaustion."""
+        self._scripted.default(*cases)
+        return self
+
+    def strict(self) -> Self:
+        """Require every provider call to match an explicit script."""
+        self._scripted.strict()
+        return self
+
+    def for_flow(self, flow_id_or_prefix: str) -> FlowScript[Input, Output]:
+        """Return the script for a Flow ID or prefix."""
+        return self._scripted.for_flow(flow_id_or_prefix)
+
+    def calls(self) -> tuple[RecordedCall[Input], ...]:
+        """Return answered calls, including replays and retries, in order."""
+        return self._scripted.calls()
+
+    def assert_no_failures(self) -> None:
+        """Fail a consuming test after unscripted calls or report errors."""
+        self._scripted.assert_no_failures()
+
+    def _answer(self, call: Call, input: Input, idempotency_key: str = "") -> Case[Output]:
+        if call.context is None:
+            raise ValueError("connector mock requires a live Dex Step context")
+        return self._scripted.answer(
+            call.context.flow_id, call.id, call.connection, input, idempotency_key
+        )
+
+
+class Query(_OperationMock[Input, Output]):
+    """Scripted Query implementing the real async operation contract.
+
+    Construct it from the connector's actual definition. A live Dex Step
+    context supplies Flow identity for scoped scripts during invocation.
+    """
+
+    def __init__(
+        self, definition: QueryDefinition, report_failure: Callable[[str], None] | None = None
+    ) -> None:
+        definition.validate()
+        self._definition = definition
+        super().__init__(
+            definition.operation, tuple(branch.id for branch in definition.branches or ()),
+            False, report_failure,
+        )
+
+    def definition(self) -> QueryDefinition:
+        """Return the connector's real Query definition."""
+        return self._definition
+
+    async def invoke(self, call: Call, input: Input) -> QueryAttempt[Output]:
+        """Answer one provider attempt using the configured script."""
+        resolved = self._answer(call, input)
+        if resolved.kind == "retry":
+            return QueryAttempt.retry(cast(Failure, resolved.failure), resolved.retry_after_seconds)
+        return QueryAttempt.branch_result(
+            resolved.branch, cast(Output, resolved.value), _mock_receipt(call), resolved.failure
+        )
+
+
+class Mutation(_OperationMock[Input, Output]):
+    """Scripted Mutation with provider-like replay of terminal keyed outcomes."""
+
+    def __init__(
+        self, definition: MutationDefinition, report_failure: Callable[[str], None] | None = None
+    ) -> None:
+        definition.validate()
+        self._definition = definition
+        super().__init__(
+            definition.operation, tuple(branch.id for branch in definition.branches or ()),
+            True, report_failure,
+        )
+
+    def definition(self) -> MutationDefinition:
+        """Return the connector's real Mutation definition."""
+        return self._definition
+
+    def idempotency_key(self, call_id: CallID, input: Input) -> IdempotencyKey:
+        """Use the stable Call ID as the mock provider's deduplication key."""
+        return IdempotencyKey(call_id)
+
+    async def invoke(self, call: Call, input: Input) -> MutationAttempt[Output]:
+        """Answer one attempt or replay its first terminal keyed outcome."""
+        resolved = self._answer(call, input, call.idempotency_key)
+        if resolved.kind == "retry":
+            return MutationAttempt.retry(cast(Failure, resolved.failure), resolved.retry_after_seconds)
+        if resolved.kind == "uncertain":
+            return MutationAttempt.uncertain(
+                cast(Output, resolved.value), cast(Failure, resolved.failure), _mock_receipt(call)
+            )
+        return MutationAttempt.branch_result(
+            resolved.branch, cast(Output, resolved.value), _mock_receipt(call), resolved.failure
+        )
+
+
+def _mock_receipt(call: Call) -> Receipt:
+    return Receipt(call.id, call.operation.connector_id, datetime.now(UTC), call.idempotency_key)
+
+
 def load_fixture(path: str | Path, allowed_fields: set[str] | None = None) -> dict[str, Any]:
     """Load one JSON object, rejecting duplicate and unknown top-level fields."""
 
@@ -406,4 +542,4 @@ def load_fixture(path: str | Path, allowed_fields: set[str] | None = None) -> di
     return document
 
 
-__all__ = ["Case", "FlowScript", "RecordedCall", "ScriptedOperation", "load_fixture"]
+__all__ = ["Case", "FlowScript", "Mutation", "Query", "RecordedCall", "ScriptedOperation", "load_fixture"]

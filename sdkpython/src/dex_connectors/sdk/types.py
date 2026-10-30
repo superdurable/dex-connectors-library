@@ -7,7 +7,7 @@ import math
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Generic, Literal, TypeVar, cast
+from typing import Generic, Literal, Self, TypeVar, cast
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 from dex import AsyncContext
@@ -256,7 +256,7 @@ class QueryDefinition:
         }
 
     @classmethod
-    def from_wire(cls, value: dict[str, object]) -> "QueryDefinition":
+    def from_wire(cls, value: dict[str, object]) -> Self:
         """Decode a Go Query definition."""
         operation = cast(dict[str, str], value["operation"])
         branches = cast(list[dict[str, object]] | None, value["branches"])

@@ -128,6 +128,8 @@ only safe machine tokens from bounded JSON error bodies, and
 `parse_retry_after` accepts delta seconds or HTTP dates capped at one hour.
 `send_traced` reports `ProviderTransportError.provably_not_sent` only after a
 traced pre-send connection failure; all other transport failures fail closed.
+`BodyTooLargeError` retains the response status and headers for classification
+without putting header values in its message.
 The caller closes the streaming response returned by `send_traced`; the bounded
 reader closes it on success and failure.
 The core example sends through an in-process HTTP transport.
@@ -160,6 +162,10 @@ or invalid page; `DEX_CONNECTOR_MOCK_REPORT_DIR` enables safe call rows in
 `connector-calls.json`. In pytest, pass `report_failure=pytest.fail` to
 `ScriptedOperation` so a missing script fails immediately. The core example
 answers a Query with a declared branch.
+`connectormock.Query` and `connectormock.Mutation` wrap that script as real
+async operation implementations using the connector's actual definition.
+Their `invoke` requires the live `Call.context` so Flow-scoped scripts use
+Dex's Flow ID. Step factory integration tests will exercise them after R1–R3.
 
 ## Verification
 
