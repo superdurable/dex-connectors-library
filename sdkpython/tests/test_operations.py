@@ -145,6 +145,28 @@ async def test_query_and_mutation_outcomes() -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("retry_after_seconds", "whole_seconds"),
+    [(0.5, 0), (1.9, 1), (2.0, 2)],
+)
+async def test_retry_delay_truncates_to_dex_whole_seconds(
+    retry_after_seconds: float, whole_seconds: int
+) -> None:
+    """Preserve provider precision until the Dex whole-second conversion boundary."""
+    with pytest.raises(RetryError) as query_retry:
+        await run_query(ExampleQuery(QueryAttempt.retry(FAILURE, retry_after_seconds)), CALL, "x")
+    assert query_retry.value.retry_after_seconds == retry_after_seconds
+    assert query_retry.value.retry_after_whole_seconds == whole_seconds
+
+    with pytest.raises(RetryError) as mutation_retry:
+        await run_mutation(
+            ExampleMutation(MutationAttempt.retry(FAILURE, retry_after_seconds)), CALL, "x"
+        )
+    assert mutation_retry.value.retry_after_seconds == retry_after_seconds
+    assert mutation_retry.value.retry_after_whole_seconds == whole_seconds
+
+
+@pytest.mark.asyncio
 async def test_credential_resolution_modes() -> None:
     """Resolve static, refreshed, and rejected credentials without exposing secrets."""
     driver = ExampleRefreshDriver()

@@ -77,6 +77,8 @@ the attempt against declared branches, complete the safe receipt, and raise
 receipt selects `defect`. An `uncertain` Mutation requires a declared route and
 the narrow unconfirmable-write conditions in the repository rules. Retry
 exhaustion is handled by Dex and fails the Flow.
+`RetryError.retry_after_whole_seconds` truncates positive fractional delays to
+the whole seconds accepted by Dex; zero means no explicit retry hint.
 
 From the same runnable example:
 
