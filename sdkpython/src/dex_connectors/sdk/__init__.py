@@ -14,9 +14,15 @@ from .credentials import (
     CredentialRefreshResult,
     CredentialRefreshState,
     ReauthorizationRequiredError,
+    RefreshingCredentialProvider,
+    RejectedCredentialRefreshingProvider,
     SecretString,
+    StaticCredentialProvider,
+    resolve_credential,
+    resolve_credential_after_rejection,
 )
 from .errors import Failure, FailureKind, RetryError
+from .operations import Mutation, Query
 from .retry_policy import RetryPolicy, default_connector_step_execute_retry_policy
 from .timestamps import RFC3339NanoTimestamp, format_rfc3339_nano
 from .types import (
@@ -54,20 +60,27 @@ __all__ = [
     "FailureKind",
     "IdempotencyKey",
     "MutationAttempt",
+    "Mutation",
     "MutationDefinition",
     "MutationResult",
     "OperationRef",
     "QueryAttempt",
+    "Query",
     "QueryDefinition",
     "QueryResult",
     "RFC3339NanoTimestamp",
     "Receipt",
     "StepDefaults",
     "ReauthorizationRequiredError",
+    "RejectedCredentialRefreshingProvider",
+    "RefreshingCredentialProvider",
     "RetryError",
     "RetryPolicy",
     "SecretString",
+    "StaticCredentialProvider",
     "default_connector_step_execute_retry_policy",
     "derive_call_id",
     "format_rfc3339_nano",
+    "resolve_credential",
+    "resolve_credential_after_rejection",
 ]
