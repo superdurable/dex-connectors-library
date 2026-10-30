@@ -134,7 +134,7 @@ func TestConnectionDefaultsMatchTheGeneratedConfig(t *testing.T) {
 // TestManifestDeclaresNoStudioBundle records that a per-account host cannot be a Studio command's fixed host.
 func TestManifestDeclaresNoStudioBundle(t *testing.T) {
 	require.Nil(t, readGuidanceManifest(t).Spec.Studio)
-	_, err := os.Stat("ui")
+	_, err := os.Stat("../ui")
 	require.True(t, os.IsNotExist(err))
 }
 

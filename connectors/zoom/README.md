@@ -1,5 +1,9 @@
 # Zoom Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/zoom/go@v0.24.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/zoom`.
+
 > **Verification status: Dex-integrated, not live.** The example paths, including the 503 retry and mock-backed scenarios, ran on a real Dex stack in CI against a local stand-in for Zoom. No live Zoom account was used. See
 > [verification status](../../docs/verification-status.md) for what is and
 > is not verified.
@@ -114,7 +118,7 @@ OAuth.
 Dex Web or Superverse Studio saves the connection's settings and credentials in
 the project configuration. The application loads that configuration once and
 opens the connection by the name it declares, as
-[`examples/booked-meeting/main.go`](examples/booked-meeting/main.go) does:
+[`examples/booked-meeting/main.go`](go/examples/booked-meeting/main.go) does:
 
 ```go
 project, err := projectconfig.LoadFromEnvironment(ctx)
@@ -197,7 +201,7 @@ the connector fails closed on those outcomes.
 
 On `uncertain` and `providerRejected`, `Value` has no ID and echoes the
 requested topic, start, duration, time zone, and agenda for reconciliation.
-[`examples/booked-meeting`](examples/booked-meeting) reconciles an unknown
+[`examples/booked-meeting`](go/examples/booked-meeting) reconciles an unknown
 create with `listMeetings` instead of creating again:
 
 ```go
@@ -259,7 +263,7 @@ mock := zoommock.New(t, ConnectionName)
 flow := NewFlow(mock.Connection(), &AttendancePolicy{CheckDelay: time.Hour})
 ```
 
-See [`workflow_mock_integration_test.go`](examples/booked-meeting/flow/workflow_mock_integration_test.go)
+See [`workflow_mock_integration_test.go`](go/examples/booked-meeting/flow/workflow_mock_integration_test.go)
 for literal call-input, call-count, reschedule, and attendance assertions.
 
 ## Not in this release

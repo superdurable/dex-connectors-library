@@ -52,9 +52,9 @@ The graph resolves the five Zoom Steps from the connector module in this checkou
 Run `dexcli dev` with that build directory, open Dex Web at
 `http://127.0.0.1:8802` rather than `localhost`, open **Connections**, and
 authorize `zoom / zoom-scheduler` as described in the
-[connector README](../../README.md#zoom-setup). Then start the Worker. It reads
+[connector README](../../../README.md#zoom-setup). Then start the Worker. It reads
 the `DEX_PROJECT_*` project configuration environment described in
-[project configuration](../../../../sdkgo/projectconfig/README.md); Dex Web or
+[project configuration](../../../../../sdkgo/projectconfig/README.md); Dex Web or
 Superverse Studio writes that configuration when you save the connection.
 
 ```bash

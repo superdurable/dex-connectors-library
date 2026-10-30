@@ -1,6 +1,10 @@
 # GitLab connector
 
-The `gitlab` Go module exposes typed Dex Steps for GitLab. Its [runnable lookup Flow](examples/gitlab-lookup/README.md) uses the static connection name `gitlab`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/gitlab/go@v0.2.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/gitlab`.
+
+The `gitlab` Go module exposes typed Dex Steps for GitLab. Its [runnable lookup Flow](go/examples/gitlab-lookup/README.md) uses the static connection name `gitlab`.
 
 ## Operations
 
@@ -39,7 +43,7 @@ The generated `gitlabmock` package installs these default answers:
 - `listIssues`: issue 7 titled Review release notes.
 - `updateIssueLabels`: issue 7 with `review` and `ready` labels.
 
-The [mock-backed example test](examples/gitlab-lookup/flow/workflow_mock_integration_test.go) runs the first default through a real Dex Worker and Client in CI.
+The [mock-backed example test](go/examples/gitlab-lookup/flow/workflow_mock_integration_test.go) runs the first default through a real Dex Worker and Client in CI.
 
 ## Official API references
 

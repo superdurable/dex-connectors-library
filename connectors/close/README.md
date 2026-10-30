@@ -1,6 +1,10 @@
 # Close connector
 
-`github.com/superdurable/dex-connectors-library/connectors/close` exposes read-only Dex Query Steps against Close's public REST API. Its API key is resolved from the named connection for each call and is never placed in a URL, receipt, or Flow state.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/close/go@v0.2.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/close`.
+
+`github.com/superdurable/dex-connectors-library/connectors/close/go` exposes read-only Dex Query Steps against Close's public REST API. Its API key is resolved from the named connection for each call and is never placed in a URL, receipt, or Flow state.
 
 ## Connection
 
@@ -21,7 +25,7 @@ The generated `closemock` package includes one default Meridian answer per opera
 
 ## Example
 
-The runnable [example](examples/close-lookup/README.md) registers a Worker and a Flow using the static `close` connection. CI runs its mock-backed real-Dex integration test; local unit tests verify deterministic mapping.
+The runnable [example](go/examples/close-lookup/README.md) registers a Worker and a Flow using the static `close` connection. CI runs its mock-backed real-Dex integration test; local unit tests verify deterministic mapping.
 
 ## Live verification
 

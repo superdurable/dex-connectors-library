@@ -22,19 +22,19 @@ mkdir -p /tmp/netlify-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/netlify/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/netlify/go \
-  --version v0.1.0 --tag connectors/netlify/v0.1.0 \
+  --version v0.2.0 --tag connectors/netlify/go/v0.2.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/netlify-release/connector-release.json \
   --digest-output /tmp/netlify-release/connector-release.json.sha256
-dexcli dev --flow-rendering-dir "$PWD/connectors/netlify/build" --connector-release-override netlify=/tmp/netlify-release
+dexcli dev --flow-rendering-dir "$PWD/connectors/netlify/go/build" --connector-release-override netlify=/tmp/netlify-release
 ```
 
-In Dex Web **Connections**, select `netlify / netlify`, follow the authorization guide beginning at [https://app.netlify.com/user/applications#personal-access-tokens](https://app.netlify.com/user/applications#personal-access-tokens), and save the connection. Keep keys in secret fields only. From `connectors/netlify`, run `go run ./examples/netlify-lookup` with the `DEX_PROJECT_*` environment described in [projectconfig](../../../../sdkgo/projectconfig/README.md#application-loading). In Dex Web **Start Flow**, select `NetlifyLookup` and enter this JSON request:
+In Dex Web **Connections**, select `netlify / netlify`, follow the authorization guide beginning at [https://app.netlify.com/user/applications#personal-access-tokens](https://app.netlify.com/user/applications#personal-access-tokens), and save the connection. Keep keys in secret fields only. From `connectors/netlify`, run `go run ./examples/netlify-lookup` with the `DEX_PROJECT_*` environment described in [projectconfig](../../../../../sdkgo/projectconfig/README.md#application-loading). In Dex Web **Start Flow**, select `NetlifyLookup` and enter this JSON request:
 
 ```json
 {}
 ```
 
-Use the input type `ListSitesInput` as the JSON shape; the provider-specific fields are described in the [connector README](../../README.md). The Worker accepts `DEX_FLOW_SERVICE_ADDRESS` and `DEX_BLOB_CACHE_DIR` overrides.
+Use the input type `ListSitesInput` as the JSON shape; the provider-specific fields are described in the [connector README](../../../README.md). The Worker accepts `DEX_FLOW_SERVICE_ADDRESS` and `DEX_BLOB_CACHE_DIR` overrides.
 
 Live provider authorization and the real Dex example have not been exercised locally; CI runs the mock-backed integration test.

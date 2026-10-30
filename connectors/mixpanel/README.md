@@ -1,5 +1,9 @@
 # Mixpanel connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/mixpanel/go@v0.2.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/mixpanel`.
+
 Mixpanel event import and bounded raw export for Dex. The connector uses the public REST APIs with a static service-account username and secret through HTTP Basic authentication.
 
 | Operation | Endpoint | Happy branch |
@@ -23,7 +27,7 @@ Sign in at [Mixpanel Organization Settings](https://mixpanel.com/settings/org/),
 | Invalid input or missing credentials | `defect` |
 | Transport failure, 408, 409, 429, or 5xx | Retry with Dex's default one-hour budget |
 
-Only the happy branch is wired in the [event track example](examples/event-track). Optional branches fail its Flow. There is no `uncertain` branch because Mixpanel deduplicates the stable event tuple in queries.
+Only the happy branch is wired in the [event track example](go/examples/event-track). Optional branches fail its Flow. There is no `uncertain` branch because Mixpanel deduplicates the stable event tuple in queries.
 
 ## Mocks
 

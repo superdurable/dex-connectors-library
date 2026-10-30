@@ -5,7 +5,7 @@ metadata:
   displayName: Supabase
   description: Supabase REST connector with two bounded operations.
   company: Supabase
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: supabase
   codegen:

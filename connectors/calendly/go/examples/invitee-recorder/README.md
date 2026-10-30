@@ -57,14 +57,14 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/calendly/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/calendly/go \
-  --version v0.23.0 --tag connectors/calendly/v0.23.0 \
+  --version v0.24.0 --tag connectors/calendly/go/v0.24.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/calendly-release/connector-ui.tgz \
   --ui-digest /tmp/calendly-release/connector-ui.tgz.sha256 \
   --output /tmp/calendly-release/connector-release.json \
   --digest-output /tmp/calendly-release/connector-release.json.sha256
 dexcli dev \
-  --flow-rendering-dir "$PWD/connectors/calendly/build" \
+  --flow-rendering-dir "$PWD/connectors/calendly/go/build" \
   --connector-release-override calendly=/tmp/calendly-release
 ```
 
@@ -119,12 +119,12 @@ curl -s https://api.calendly.com/webhook_subscriptions \
 
 Run the Worker in a second terminal from `connectors/calendly`. It reads the
 `DEX_PROJECT_*` project configuration environment described in
-[project configuration](../../../../sdkgo/projectconfig/README.md); Dex Web or
+[project configuration](../../../../../sdkgo/projectconfig/README.md); Dex Web or
 Superverse Studio writes that configuration when you save the connection and
 the binding:
 
 ```bash
-cd "$(git rev-parse --show-toplevel)/connectors/calendly"
+cd "$(git rev-parse --show-toplevel)/connectors/calendly/go"
 go run ./examples/invitee-recorder
 ```
 

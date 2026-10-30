@@ -1,5 +1,9 @@
 # Snowflake Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/snowflake/go@v0.23.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/snowflake`.
+
 > **Verification status: Dex-integrated.** The operations and the runnable example ran on a real
 > Dex stack against a scripted stand-in for the Snowflake SQL API; no real Snowflake account was
 > used. See [Unverified live behavior](#unverified-live-behavior) and
@@ -34,7 +38,7 @@ returns one aggregate row, and can accept cancellation while it is running.
 Script other account IDs, dates, or statement handles. Named cases cover SQL
 rejection, a running read, truncation, a failed statement, and an unknown handle.
 
-The [runnable mock integration test](examples/account-usage-summary/flow/workflow_mock_integration_test.go)
+The [runnable mock integration test](go/examples/account-usage-summary/flow/workflow_mock_integration_test.go)
 uses the defaults on a real Dex Worker:
 
 ```go
@@ -94,7 +98,7 @@ after the days chosen when it was generated; afterwards every operation selects
 Snowflake's authorization endpoint is per account, and manifest OAuth endpoints are static URLs.
 
 Open the connection at application startup, as
-[`examples/account-usage-summary/main.go`](examples/account-usage-summary/main.go) does:
+[`examples/account-usage-summary/main.go`](go/examples/account-usage-summary/main.go) does:
 
 ```go
 connection, err := snowflake.NewProjectConnection(project, accountusagesummary.ConnectionName)
@@ -243,7 +247,7 @@ twice across Flows needs its own guard, such as a `MERGE` keyed by a business ID
 
 ## Runnable example
 
-[`examples/account-usage-summary`](examples/account-usage-summary/README.md) submits a long
+[`examples/account-usage-summary`](go/examples/account-usage-summary/README.md) submits a long
 aggregate over a usage table, waits on a durable Timer between status reads, and cancels the
 statement when its wait budget runs out. A rejected statement fails the Flow.
 

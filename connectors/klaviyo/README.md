@@ -1,5 +1,9 @@
 # Klaviyo connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/klaviyo/go@v0.2.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/klaviyo`.
+
 Klaviyo profile lookup and deduplicated event submission for Dex. The connector uses the public REST/JSON API at revision `2026-10-15` with a private API key.
 
 | Operation | Endpoint | Happy branch |
@@ -24,7 +28,7 @@ Sign in at [Klaviyo API keys](https://www.klaviyo.com/settings/account/api-keys)
 | Invalid input or missing credentials | `defect` |
 | Transport failure, 408, 409, 429, or 5xx | Retry with Dex's default one-hour budget |
 
-Only the happy branch is wired in the [profile event example](examples/profile-event). Other branches fail its Flow. There is no `uncertain` branch because the unique ID makes event submission repeat-safe.
+Only the happy branch is wired in the [profile event example](go/examples/profile-event). Other branches fail its Flow. There is no `uncertain` branch because the unique ID makes event submission repeat-safe.
 
 ## Mocks
 

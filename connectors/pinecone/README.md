@@ -1,6 +1,10 @@
 # Pinecone connector
 
-This Dex connector exposes `upsertVectors`, `queryVectors`. The runnable [sample Flow](examples/sample-pinecone/flow/workflow.go) uses `upsertVectors` with the static `pinecone` connection. Each operation uses the generated typed Step factory.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/pinecone/go@v0.2.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/pinecone`.
+
+This Dex connector exposes `upsertVectors`, `queryVectors`. The runnable [sample Flow](go/examples/sample-pinecone/flow/workflow.go) uses `upsertVectors` with the static `pinecone` connection. Each operation uses the generated typed Step factory.
 
 ## Provider contract
 
@@ -30,7 +34,7 @@ Provider error bodies are never copied into Failures. A Flow fails when an optio
 
 ## Mocks
 
-The generated `pineconemock` package provides a default response for each operation. The [real-Dex mock test](examples/sample-pinecone/flow/workflow_mock_integration_test.go) constructs and runs the first operation this way:
+The generated `pineconemock` package provides a default response for each operation. The [real-Dex mock test](go/examples/sample-pinecone/flow/workflow_mock_integration_test.go) constructs and runs the first operation this way:
 
 ```go
 mock := pineconemock.New(t, ConnectionName)

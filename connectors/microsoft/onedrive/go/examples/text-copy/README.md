@@ -25,7 +25,7 @@ defect fail the Flow. A source name that names a folder also fails it.
 
 ## Configure
 
-Follow the [connector setup](../../README.md#authorization), then configure the
+Follow the [connector setup](../../../README.md#authorization), then configure the
 `microsoft-onedrive / onedrive-files` connection in Dex Web **Connections**.
 Microsoft OAuth needs Dex CLI 1.4.1 or later. The example exposes two sets of
 `sitePicker`, `drivePicker`, and `folderPicker` units; save each set in that
@@ -53,7 +53,7 @@ dexcli visualize ./examples/text-copy/flow/workflow.go \
 
 Run `dexcli dev` with that build directory, then run the Worker. It reads the
 `DEX_PROJECT_*` project configuration environment documented in
-[`sdkgo/projectconfig`](../../../../../sdkgo/projectconfig/README.md#application-loading);
+[`sdkgo/projectconfig`](../../../../../../sdkgo/projectconfig/README.md#application-loading);
 Dex Web or Superverse Studio writes that configuration:
 
 ```bash

@@ -1,9 +1,13 @@
 # TMDB connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/tmdb/go@v0.2.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/tmdb`.
+
 This Dex connector calls the public TMDB JSON API. Its
 manifest version is `v0.1.0`; the Go module requires connector SDK `v0.33.0`
     and Dex Go SDK `v1.5.0` or newer. The runnable
-[`movie-search` example](examples/movie-search/README.md) shows a
+[`movie-search` example](go/examples/movie-search/README.md) shows a
 complete Worker and the generated operation-specific Step factory.
 
 ## Operations
@@ -43,7 +47,7 @@ credentials never enter a Dex result, receipt, Stream, or log.
 
 `tmdbmock.New(t, "mock")` binds the default manifest answers and the
 generated `zz_generated_mock_test.go` strictly decodes every fixture. The
-checked-in [`workflow_mock_integration_test.go`](examples/movie-search/flow/workflow_mock_integration_test.go)
+checked-in [`workflow_mock_integration_test.go`](go/examples/movie-search/flow/workflow_mock_integration_test.go)
 uses the same generated mock against a real Dex Worker in CI. Its start looks
 like this runnable source:
 

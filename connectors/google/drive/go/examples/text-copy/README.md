@@ -23,7 +23,7 @@ The upload fence never resends an accepted write after an uncertain outcome.
 
 ## Configure
 
-Follow the [Google Drive Connector setup](../../README.md), then configure the
+Follow the [Google Drive Connector setup](../../../README.md), then configure the
 `google-drive / google-drive-files` connection in Dex Web **Connections**. The
 example exposes two `folderPicker` units:
 
@@ -47,7 +47,7 @@ dexcli visualize ./examples/text-copy/flow/workflow.go \
 
 Run `dexcli dev` with that build directory, then run the Worker. It reads the
 `DEX_PROJECT_*` project configuration environment documented in
-[`sdkgo/projectconfig`](../../../../../sdkgo/projectconfig/README.md#application-loading);
+[`sdkgo/projectconfig`](../../../../../../sdkgo/projectconfig/README.md#application-loading);
 Dex Web or Superverse Studio writes that configuration:
 
 ```bash

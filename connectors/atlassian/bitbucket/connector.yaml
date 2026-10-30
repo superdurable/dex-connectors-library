@@ -5,7 +5,7 @@ metadata:
   displayName: Bitbucket
   description: "Read Bitbucket resources through typed Dex Query Steps."
   company: Atlassian
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: bitbucket
   codegen:

@@ -5,7 +5,7 @@
 > that metadata, so the authorization steps are not verified; the repository
 > tests run the Flow against a real Dex Server and a local authorization
 > server instead. See the connector README's
-> [host support](../../README.md#architecture) note.
+> [host support](../../../README.md#architecture) note.
 
 This operation-only example reads one path of an OAuth 2.0 protected API and
 records the answer:
@@ -30,7 +30,7 @@ that returns at once, because Dex Web Start Flow in dexcli v0.13.8 invokes
 
 ## Release baseline
 
-- OAuth 2.0 HTTP Connector `v0.1.1`
+- OAuth 2.0 HTTP Connector `v0.2.0`
 - dexcli `v0.13.8` or a later stable release
 
 ## 1. Prepare a clean local test project
@@ -45,12 +45,12 @@ cd oauth2-http-api-request-e2e
 mkdir -p flow build
 
 curl -fsSL \
-  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/superdurable/oauth2-http/v0.1.1/connectors/superdurable/oauth2-http/examples/api-request/flow/workflow.go \
+  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/superdurable/oauth2-http/go/v0.2.0/connectors/superdurable/oauth2-http/go/examples/api-request/flow/workflow.go \
   -o flow/workflow.go
 
 go mod init example.com/oauth2-http-api-request-e2e
 go mod edit -go=1.24.0
-go get github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http/go@v0.1.1
+go get github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http/go@v0.2.0
 go mod tidy
 ```
 
@@ -84,7 +84,7 @@ default ports they are `http://127.0.0.1:8802` and `127.0.0.1:8801`.
 ## 3. Create an OAuth client
 
 Follow
-[authorization server setup](../../README.md#authorization-server-setup) to
+[authorization server setup](../../../README.md#authorization-server-setup) to
 create a confidential client at your authorization server. The Redirect URI is
 the Dex Web URL followed by `/api/v2/connector-oauth/callback`, such as
 `http://127.0.0.1:8802/api/v2/connector-oauth/callback`.
@@ -100,7 +100,7 @@ should be **Ready**.
 ## 5. Run the Worker
 
 The Worker reads the `DEX_PROJECT_*` project configuration environment
-described in [project configuration](../../../../../sdkgo/projectconfig/README.md);
+described in [project configuration](../../../../../../sdkgo/projectconfig/README.md);
 Dex Web or Superverse Studio writes that configuration when you save the
 connection.
 
@@ -108,7 +108,7 @@ connection.
 export DEX_FLOW_SERVICE_ADDRESS="127.0.0.1:8801"
 
 GOWORK=off go run \
-  github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http/go/examples/api-request@v0.1.1
+  github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http/go/examples/api-request@v0.2.0
 ```
 
 Set
@@ -149,7 +149,7 @@ throttled request that Dex retries after the server's `Retry-After` delay, and
 a Flow failure for an unwired `defect` branch. A mock test runs the same Flow on
 an `oauth2httpmock` connection, as an application test does.
 
-Before `v0.1.1` is published, build a local release artifact with
+Before `v0.2.0` is published, build a local release artifact with
 `go run ./cmd/connectorctl release-artifact` from the repository root and pass
 its directory to `dexcli dev --connector-release-override oauth2-http=DIRECTORY`.
 The test project must still resolve the connector `v0.1.1` module without a

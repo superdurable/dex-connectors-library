@@ -1,5 +1,9 @@
 # Zoho CRM Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/zoho/crm/go@v0.24.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/zoho/crm`.
+
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Zoho CRM; no live Zoho CRM account was used. See
 > [verification status](../../../docs/verification-status.md) for what is and
 > is not verified.
@@ -122,7 +126,7 @@ connection is reconnected.
 Dex Web or Superverse Studio saves the connection's data center, credentials,
 and `api_domain` in the project configuration. The application loads that
 configuration once and opens the connection by the name it declares, as
-[`examples/lead-qualification/main.go`](examples/lead-qualification/main.go)
+[`examples/lead-qualification/main.go`](go/examples/lead-qualification/main.go)
 does:
 
 ```go
@@ -401,13 +405,13 @@ reads the same field and stage metadata inside a Flow.
 
 ## Examples
 
-- [`examples/lead-qualification`](examples/lead-qualification) is a runnable
+- [`examples/lead-qualification`](go/examples/lead-qualification) is a runnable
   Dex Web **Start Flow** example that uses `listModuleFields`, `findRecords`,
   `upsertRecord`, `updateRecord`, and `getRecord`: it checks the requested
   stage, finds or creates the account, upserts the contact by email linked to
   the account, moves the contact's newest open deal to the stage and owner, and
   reads the deal back.
-- [`examples/changed-deals`](examples/changed-deals) reads the deals changed
+- [`examples/changed-deals`](go/examples/changed-deals) reads the deals changed
   since an instant or a stored cursor with `listModifiedRecords`, page by page,
   and completes with the cursor the next poll continues from.
 
@@ -426,7 +430,7 @@ flow := NewFlow(mock.Connection())
 ```
 
 This snippet comes from
-[`workflow_mock_integration_test.go`](examples/lead-qualification/flow/workflow_mock_integration_test.go).
+[`workflow_mock_integration_test.go`](go/examples/lead-qualification/flow/workflow_mock_integration_test.go).
 
 ## Verification
 

@@ -1,5 +1,9 @@
 # Hiver Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/hiver/go@v0.23.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/hiver`.
+
 > **Verification status: Dex-integrated in CI, not live.** The example runs
 > on a real Dex stack against a Hiver stand-in. See
 > [Verification](#verification) for what is and is not verified.
@@ -50,7 +54,7 @@ A connection needs one secret and has two optional settings:
 
 Name the factory connection and open the same name from the project
 configuration at application startup, as
-[`examples/claim-conversation/main.go`](examples/claim-conversation/main.go)
+[`examples/claim-conversation/main.go`](go/examples/claim-conversation/main.go)
 does:
 
 ```go
@@ -293,7 +297,7 @@ verified against a live account.
 
 ## Example
 
-[`examples/claim-conversation`](examples/claim-conversation) is a runnable Dex
+[`examples/claim-conversation`](go/examples/claim-conversation) is a runnable Dex
 Web **Start Flow** example that uses all six operations: it finds a shared
 inbox by its address, claims its first open unassigned conversation for a
 Hiver user, applies a tag, adds one internal note, and leaves a shared reply
@@ -309,7 +313,7 @@ are meant for the sample `support@acme.example.com` inbox and conversation
 `573741352`; script other inputs explicitly. No operation takes a structured
 output schema, so there are no mock request or answer checks.
 
-The example's [real-Dex mock test](examples/claim-conversation/flow/workflow_mock_integration_test.go)
+The example's [real-Dex mock test](go/examples/claim-conversation/flow/workflow_mock_integration_test.go)
 uses the package this way:
 
 ```go

@@ -61,7 +61,7 @@ mkdir -p /tmp/quickbooks-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/intuit/quickbooks/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/intuit/quickbooks/go \
-  --version v0.23.0 --tag connectors/intuit/quickbooks/v0.23.0 \
+  --version v0.24.0 --tag connectors/intuit/quickbooks/go/v0.24.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/quickbooks-release/connector-release.json \
   --digest-output /tmp/quickbooks-release/connector-release.json.sha256
@@ -70,7 +70,7 @@ dexcli dev \
   --connector-release-override quickbooks=/tmp/quickbooks-release
 ```
 
-Follow the [QuickBooks setup](../../README.md#quickbooks-setup) with
+Follow the [QuickBooks setup](../../../README.md#quickbooks-setup) with
 Development keys and a sandbox company, open Dex Web at
 `http://localhost:<port>`, then open **Connections** and select
 `quickbooks / quickbooks-company`, which all seven QuickBooks Steps of
@@ -86,7 +86,7 @@ invoices itself and a rerun of the same order raises a second invoice.
 
 In a second terminal, start the Worker from `connectors/intuit/quickbooks`.
 It reads the `DEX_PROJECT_*` project configuration environment described in
-[project configuration](../../../../../sdkgo/projectconfig/README.md); Dex Web
+[project configuration](../../../../../../sdkgo/projectconfig/README.md); Dex Web
 or Superverse Studio writes that configuration when you save the connection.
 
 ```bash

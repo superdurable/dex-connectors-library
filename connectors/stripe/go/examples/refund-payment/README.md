@@ -17,7 +17,7 @@ Run `dexcli dev` with that build directory and configure
 `stripe / stripe-payments` under **Connections**. The Stripe key needs
 PaymentIntent and Charge read access and Refund write access. Start the Worker
 with the `DEX_PROJECT_*` environment that names the connection, as
-[project configuration loading](../../../../sdkgo/projectconfig/README.md#application-loading)
+[project configuration loading](../../../../../sdkgo/projectconfig/README.md#application-loading)
 describes:
 
 ```bash

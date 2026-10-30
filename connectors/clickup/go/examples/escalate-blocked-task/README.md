@@ -72,19 +72,19 @@ go run ./cmd/connectorctl ui-artifact --manifest connectors/clickup/connector.ya
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/clickup/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/clickup/go \
-  --version v0.22.0 --tag connectors/clickup/v0.22.0 \
+  --version v0.23.0 --tag connectors/clickup/go/v0.23.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/clickup-release/connector-ui.tgz --ui-digest /tmp/clickup-release/connector-ui.tgz.sha256 \
   --output /tmp/clickup-release/connector-release.json \
   --digest-output /tmp/clickup-release/connector-release.json.sha256
 dexcli dev \
-  --flow-rendering-dir "$PWD/connectors/clickup/build" \
+  --flow-rendering-dir "$PWD/connectors/clickup/go/build" \
   --connector-release-override clickup=/tmp/clickup-release
 ```
 
 ## 3. Configure the connection and the events
 
-Follow the [ClickUp setup](../../README.md#authentication), then open the Dex
+Follow the [ClickUp setup](../../../README.md#authentication), then open the Dex
 Web URL that dexcli prints, select **Connectors**, and select **ClickUp**
 (connection `clickup-workspace`):
 
@@ -121,11 +121,11 @@ Dex Web or Superverse Studio writes the connection and the binding to the
 project configuration. In a second terminal, from `connectors/clickup`, run
 the Worker with those variables and the `DEX_PROJECT_*` environment that names
 that configuration, as
-[project configuration loading](../../../../sdkgo/projectconfig/README.md#application-loading)
+[project configuration loading](../../../../../sdkgo/projectconfig/README.md#application-loading)
 describes:
 
 ```bash
-cd "$(git rev-parse --show-toplevel)/connectors/clickup"
+cd "$(git rev-parse --show-toplevel)/connectors/clickup/go"
 go run ./examples/escalate-blocked-task
 ```
 
@@ -139,7 +139,7 @@ local verification against a ClickUp-compatible fake only,
 leave it unset.
 
 Expose `http://127.0.0.1:8882/webhooks/clickup` through an HTTPS tunnel and
-register it as the connector README's [webhook section](../../README.md#taskevent-trigger)
+register it as the connector README's [webhook section](../../../README.md#taskevent-trigger)
 shows, with `"events": ["taskStatusUpdated"]`. Copy `webhook.secret` into the
 connection's `webhook_secret` and save; the Worker reads it for every request,
 so no restart is needed. When someone moves a task to the blocked status, Dex

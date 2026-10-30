@@ -1,5 +1,7 @@
 # BambooHR Connector
 
+Moved from `github.com/superdurable/dex-connectors-library/connectors/bamboohr`.
+
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for BambooHR; no live BambooHR account was used. See
 > [verification status](../../docs/verification-status.md) for what is and
 > is not verified.
@@ -25,7 +27,7 @@ because BambooHR does not document whether a 503 means the add was not applied.
 It uses sync durability for its dispatch fence; see
 [Duplicate safety](#duplicate-safety).
 
-Install this connector release with `go get github.com/superdurable/dex-connectors-library/connectors/bamboohr@v0.22.0`.
+Install this connector release with `go get github.com/superdurable/dex-connectors-library/connectors/bamboohr/go@v0.23.0`.
 The module requires Connector Go SDK v0.33.0 for the shared single-dispatch fence.
 
 This release has no Triggers, no Studio pickers, and no OAuth; see
@@ -62,7 +64,7 @@ startup configuration.
 
 Name the factory connection and open the same name from the project
 configuration at application startup, as
-[`examples/new-hire-onboarding/main.go`](examples/new-hire-onboarding/main.go)
+[`examples/new-hire-onboarding/main.go`](go/examples/new-hire-onboarding/main.go)
 does:
 
 ```go
@@ -298,7 +300,7 @@ mock.FindEmployeeByEmail().Respond(bamboohrmock.FindEmployeeByEmailNotFoundFailu
 ```
 
 The complete runnable test is
-[`examples/new-hire-onboarding/flow/workflow_mock_integration_test.go`](examples/new-hire-onboarding/flow/workflow_mock_integration_test.go).
+[`examples/new-hire-onboarding/flow/workflow_mock_integration_test.go`](go/examples/new-hire-onboarding/flow/workflow_mock_integration_test.go).
 
 ## Not in this release
 
@@ -326,7 +328,7 @@ a delivery has no provider event ID, batches several employees into one POST,
 names fields by the labels the webhook's creator chose, and BambooHR documents
 neither the timestamp format nor a replay window. Until a webhook source can
 derive a stable per-employee event ID, poll with `listEmployeeChanges`, as the
-[employee change sweep](examples/employee-change-sweep) example does.
+[employee change sweep](go/examples/employee-change-sweep) example does.
 
 ### Studio pickers
 
@@ -345,12 +347,12 @@ terminations through `listEmployeeChanges`, but does not write them.
 
 ## Examples
 
-- [`examples/new-hire-onboarding`](examples/new-hire-onboarding) is a runnable
+- [`examples/new-hire-onboarding`](go/examples/new-hire-onboarding) is a runnable
   Dex Web **Start Flow** example that uses five operations: it finds a new hire
   by personal email or adds them, checks that the record holds what IT needs,
   lists time off in the first two weeks, and records the provisioning hand-off
   in a custom field.
-- [`examples/employee-change-sweep`](examples/employee-change-sweep) is a
+- [`examples/employee-change-sweep`](go/examples/employee-change-sweep) is a
   runnable **Start Flow** example that pages through `listEmployeeChanges`
   from a cursor and completes with the cursor the next sweep starts from.
 

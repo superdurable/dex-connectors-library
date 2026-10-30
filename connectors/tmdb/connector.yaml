@@ -5,7 +5,7 @@ metadata:
   displayName: TMDB
   description: Read and act through the TMDB public API.
   company: TMDB
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: tmdb
   codegen:

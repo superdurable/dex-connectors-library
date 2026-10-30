@@ -5,7 +5,7 @@ metadata:
   displayName: Square
   description: "Read Square resources through typed Dex Query Steps."
   company: Square
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: square
   codegen:

@@ -18,7 +18,7 @@ HTTP 429, which `createResponse` retries until its retry policy ends. An
 `uncertain` outcome means OpenAI may have stored the Response; reconcile it
 with `retrieveResponse` when the Response ID is known. Generation Steps that
 need no stored Response use the
-[llm connector](../../../superdurable/llm/README.md) instead.
+[llm connector](../../../../superdurable/llm/README.md) instead.
 
 The Flow and every application Step declare stable types with `GetFlowType`
 and `GetStepType`, because Dex Web Start Flow sends the type names from the
@@ -62,14 +62,14 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/openai/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/openai/go \
-  --version v0.22.2 --tag connectors/openai/v0.22.2 \
+  --version v0.23.0 --tag connectors/openai/go/v0.23.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/openai-release/connector-ui.tgz \
   --ui-digest /tmp/openai-release/connector-ui.tgz.sha256 \
   --output /tmp/openai-release/connector-release.json \
   --digest-output /tmp/openai-release/connector-release.json.sha256
 dexcli dev \
-  --flow-rendering-dir "$PWD/connectors/openai/build" \
+  --flow-rendering-dir "$PWD/connectors/openai/go/build" \
   --connector-release-override openai=/tmp/openai-release
 ```
 
@@ -87,12 +87,12 @@ connection's model, or type a model ID, and select **Save**.
 Dex Web saves the settings, the Step pick, and the key in the project
 configuration. In a second terminal, start the Worker from `connectors/openai`
 with that project's `DEX_PROJECT_*` environment, which
-[`sdkgo/projectconfig`](../../../../sdkgo/projectconfig/README.md#application-loading)
+[`sdkgo/projectconfig`](../../../../../sdkgo/projectconfig/README.md#application-loading)
 documents, including `DEX_PROJECT_ALLOW_LOCAL_STORAGE=true` and
 `DEX_PROJECT_STORAGE_ENDPOINT` for a local S3-compatible store:
 
 ```bash
-cd "$(git rev-parse --show-toplevel)/connectors/openai"
+cd "$(git rev-parse --show-toplevel)/connectors/openai/go"
 go run ./examples/summarize-text
 ```
 

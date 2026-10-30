@@ -55,7 +55,7 @@ mkdir -p /tmp/monday-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/monday/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/monday/go \
-  --version v0.23.0 --tag connectors/monday/v0.23.0 \
+  --version v0.24.0 --tag connectors/monday/go/v0.24.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/monday-release/connector-release.json \
   --digest-output /tmp/monday-release/connector-release.json.sha256
@@ -64,7 +64,7 @@ dexcli dev \
   --connector-release-override monday=/tmp/monday-release
 ```
 
-Follow the [monday.com setup](../../README.md#mondaycom-setup), then open
+Follow the [monday.com setup](../../../README.md#mondaycom-setup), then open
 **Connections** in Dex Web and select `monday / monday-workspace`, which all
 five monday.com Steps of `MondayWorkRequest` use. Choose **Personal API
 token** and paste the token, or **monday.com OAuth 2.1** and authorize, and
@@ -72,7 +72,7 @@ save; the status becomes **Ready**. The example has no Step configuration.
 
 In a second terminal, start the Worker from `connectors/monday`. It reads the
 `DEX_PROJECT_*` project configuration environment described in
-[project configuration](../../../../sdkgo/projectconfig/README.md); Dex Web or
+[project configuration](../../../../../sdkgo/projectconfig/README.md); Dex Web or
 Superverse Studio writes that configuration when you save the connection.
 
 ```bash

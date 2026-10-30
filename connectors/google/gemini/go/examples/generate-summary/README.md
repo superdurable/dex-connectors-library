@@ -62,14 +62,14 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/google/gemini/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/google/gemini/go \
-  --version v0.22.0 --tag connectors/google/gemini/v0.22.0 \
+  --version v0.23.0 --tag connectors/google/gemini/go/v0.23.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/gemini-release/connector-ui.tgz \
   --ui-digest /tmp/gemini-release/connector-ui.tgz.sha256 \
   --output /tmp/gemini-release/connector-release.json \
   --digest-output /tmp/gemini-release/connector-release.json.sha256
 dexcli dev \
-  --flow-rendering-dir "$PWD/connectors/google/gemini/build" \
+  --flow-rendering-dir "$PWD/connectors/google/gemini/go/build" \
   --connector-release-override gemini=/tmp/gemini-release
 ```
 
@@ -91,12 +91,12 @@ type a model ID, and select **Save**.
 Dex Web saves the settings, the Step pick, and the key in the project
 configuration. In a second terminal, start the Worker from
 `connectors/google/gemini` with that project's `DEX_PROJECT_*` environment,
-which [`sdkgo/projectconfig`](../../../../../sdkgo/projectconfig/README.md#application-loading)
+which [`sdkgo/projectconfig`](../../../../../../sdkgo/projectconfig/README.md#application-loading)
 documents, including `DEX_PROJECT_ALLOW_LOCAL_STORAGE=true` and
 `DEX_PROJECT_STORAGE_ENDPOINT` for a local S3-compatible store:
 
 ```bash
-cd "$(git rev-parse --show-toplevel)/connectors/google/gemini"
+cd "$(git rev-parse --show-toplevel)/connectors/google/gemini/go"
 go run ./examples/generate-summary
 ```
 

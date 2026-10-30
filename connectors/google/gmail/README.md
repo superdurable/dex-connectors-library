@@ -1,5 +1,9 @@
 # Gmail Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/gmail/go@v0.25.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/google/gmail`.
+
 ## TypeScript (v0.1.0)
 
 Install `@superdurable/connector-google-gmail` with `@superdurable/dex`. The [TypeScript README](typescript/README.md) covers OAuth and Workspace connection setup, the `gmail-inbox` static connection name, the runnable Worker and Client example, and real Dex tests. The TypeScript package implements `getMessage`, `sendMessage`, and `replyToMessage`; the Go connector owns Gmail Triggers. Its manifest-derived npm marker lets Dex CLI v1.28.0 render all three examples as strict TypeScript FDG 2.0 graphs.
@@ -204,7 +208,7 @@ The `ui/` package builds the credential-safe Studio setup bundle published as
 
 Load the project configuration once at application startup and open the
 connection by the name its operations and Trigger bindings use, as
-[`examples/thread-reply/main.go`](examples/thread-reply/main.go) does:
+[`examples/thread-reply/main.go`](go/examples/thread-reply/main.go) does:
 
 ```go
 project, err := projectconfig.LoadFromEnvironment(ctx)
@@ -225,7 +229,7 @@ empty or differs from its connection's name panics at construction. Dex Web
 stores renewable credential material only in encrypted project storage.
 Deleting a stored credential does not itself revoke the Google grant.
 
-[`examples/thread-reply`](examples/thread-reply) combines a Flow-start target,
+[`examples/thread-reply`](go/examples/thread-reply) combines a Flow-start target,
 `GetMessage`, a typed reply RPC, and `ReplyToMessage` in one runnable Flow.
 
 ## Test with gmailmock
@@ -240,7 +244,7 @@ manifest default: `customerQuestion` for `getMessage`, `sentToCustomer` for
 therefore succeeds silently, so a test of a Flow that sends should assert the
 mutation's `Calls()`, or call `Strict()` to require a script for every call. The
 thread-reply example's
-[mock test](examples/thread-reply/flow/workflow_mock_integration_test.go)
+[mock test](go/examples/thread-reply/flow/workflow_mock_integration_test.go)
 scripts one reply per Flow:
 
 ```go

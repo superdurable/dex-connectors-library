@@ -33,7 +33,7 @@ still proceeds to acknowledgement checks; other optional branches fail the Flow.
 
 ## Configure
 
-Follow the [Microsoft Teams connector setup](../../README.md); Microsoft OAuth
+Follow the [Microsoft Teams connector setup](../../../README.md); Microsoft OAuth
 needs Dex CLI 1.4.1 or later. Configure the `microsoft-teams` connection under
 **Connections** in Dex Web, then on the `PostIncidentUpdate` Step save the
 **Incident team** and **Incident channel** pickers. The Worker does not start
@@ -59,7 +59,7 @@ Before the first connector release the graph reports only the expected
 `connector_release_required` warning on the four Teams Steps. Run `dexcli dev`
 with that build directory, then run the Worker. It reads the `DEX_PROJECT_*`
 project configuration environment documented in
-[`sdkgo/projectconfig`](../../../../../sdkgo/projectconfig/README.md#application-loading);
+[`sdkgo/projectconfig`](../../../../../../sdkgo/projectconfig/README.md#application-loading);
 Dex Web or Superverse Studio writes that configuration:
 
 ```bash

@@ -143,7 +143,7 @@ func TestConversationEventTriggerConfigurationAcceptsOnlySupportedTopics(t *test
 
 // TestStudioTopicPickerListsTheSupportedTopics keeps ui/src/topics.ts equal to ConversationEventTopics.
 func TestStudioTopicPickerListsTheSupportedTopics(t *testing.T) {
-	contents, err := os.ReadFile("ui/src/topics.ts")
+	contents, err := os.ReadFile("../ui/src/topics.ts")
 	require.NoError(t, err)
 	var uiTopics []string
 	for _, match := range regexp.MustCompile(`\{topic: "([^"]+)"`).FindAllStringSubmatch(string(contents), -1) {

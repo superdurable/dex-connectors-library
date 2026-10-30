@@ -14,7 +14,7 @@ CLI dependency first. Verify the existing Codex login:
 ```sh
 codex login status
 mkdir -p /tmp/hn-daily/graphs /tmp/hn-daily/release
-dexcli visualize connectors/hackernews/examples/daily-digest/flow/workflow.go \
+dexcli visualize connectors/hackernews/go/examples/daily-digest/flow/workflow.go \
   --schema-version 2.0 --json --out /tmp/hn-daily/graphs/daily
 ```
 
@@ -25,7 +25,7 @@ publish a release or modify the Go module cache:
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/hackernews/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/hackernews/go \
-  --version v0.22.0 --tag connectors/hackernews/v0.22.0 \
+  --version v0.23.0 --tag connectors/hackernews/go/v0.23.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/hn-daily/release/connector-release.json \
   --digest-output /tmp/hn-daily/release/connector-release.json.sha256
@@ -39,11 +39,11 @@ connection must show **Ready** and **Local override**. Dex Web or Superverse
 Studio writes the connection to the project configuration. In another terminal,
 start the Worker from the connector module with the `DEX_PROJECT_*` environment
 that names that configuration, as
-[project configuration loading](../../../../sdkgo/projectconfig/README.md#application-loading)
+[project configuration loading](../../../../../sdkgo/projectconfig/README.md#application-loading)
 describes:
 
 ```sh
-cd connectors/hackernews
+cd connectors/hackernews/go
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 \
 go run ./examples/daily-digest
 ```

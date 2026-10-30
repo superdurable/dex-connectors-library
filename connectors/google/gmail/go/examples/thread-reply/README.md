@@ -27,7 +27,7 @@ calling Dex. The pure filter has no error result.
 
 ## Configure
 
-Follow the [Gmail Connector setup](../../README.md), then configure the
+Follow the [Gmail Connector setup](../../../README.md), then configure the
 `gmail-inbox` connection and these Trigger bindings in Dex Web:
 
 - `gmail-thread-reply-start` for `messageReceived`;
@@ -95,7 +95,7 @@ Steps, both Trigger bindings, branch targets, and Result Attributes.
 
 Start Dex, then run the example. It reads the `DEX_PROJECT_*` project
 configuration environment documented in
-[`sdkgo/projectconfig`](../../../../../sdkgo/projectconfig/README.md#application-loading);
+[`sdkgo/projectconfig`](../../../../../../sdkgo/projectconfig/README.md#application-loading);
 Dex Web writes that configuration:
 
 ```bash

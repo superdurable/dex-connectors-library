@@ -64,7 +64,7 @@ Then configure the two Airtable Steps:
 
 Dex Web or Superverse Studio writes the connection and both table picks to the
 project configuration. Run the Worker with the `DEX_PROJECT_*` environment that
-names it, as [project configuration loading](../../../../sdkgo/projectconfig/README.md#application-loading)
+names it, as [project configuration loading](../../../../../sdkgo/projectconfig/README.md#application-loading)
 describes. The Worker loads both table picks once at startup and refuses to
 start until both are saved and name the same base:
 

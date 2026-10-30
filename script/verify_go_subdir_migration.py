@@ -47,7 +47,13 @@ def scrub_manifest_version(contents: bytes) -> bytes:
 
 
 def scrub_install_lines(contents: str) -> str:
-    return "\n".join(line for line in contents.split("\n")
+    lines = contents.split("\n")
+    if any(line.startswith("Moved from ") for line in lines[:8]):
+        index = 1
+        while index < len(lines) and (not lines[index] or lines[index].startswith(("Moved from ", "Install the Go module with "))):
+            index += 1
+        lines = [lines[0], "", *lines[index:]]
+    return "\n".join(line for line in lines
                      if "go get " + MODULE_PREFIX + "connectors/" not in line
                      and not line.startswith("Moved from "))
 
@@ -58,26 +64,49 @@ def rewrite_readme_links(contents: str, connector: str, moved_paths: set[str]) -
         if target.startswith(("http:", "https:", "#", "/")):
             return match.group(0)
         path, _, fragment = target.partition("#")
-        if f"{connector}/{path}" in moved_paths:
+        if f"{connector}/{path}" in moved_paths or any(moved.startswith(f"{connector}/{path}/") for moved in moved_paths):
             return f"](go/{path}{'#' + fragment if fragment else ''})"
         return match.group(0)
     return re.sub(r"\]\(([^)]+)\)", rewrite, contents)
 
 
+def rewrite_moved_readme_links(contents: str, new_path: Path) -> str:
+    def rewrite(match: re.Match[str]) -> str:
+        target = match.group(1)
+        if target.startswith(("http:", "https:", "#", "/")):
+            return match.group(0)
+        path, _, fragment = target.partition("#")
+        if not (new_path.parent / path).exists() and (new_path.parent / ".." / path).exists():
+            return f"](../{path}{'#' + fragment if fragment else ''})"
+        return match.group(0)
+    return re.sub(r"\]\(([^)]+)\)", rewrite, contents)
+
+
+def rewrite_go_commands(contents: str, connector: str) -> str:
+    contents = re.sub(r"(?m)^(cd [^\n]*?)(" + re.escape(connector) + r")(?=[\" ]|$)",
+                      lambda match: match.group(1) + connector + "/go", contents)
+    return re.sub(r"(?m)^(.*--flow-rendering-dir[^\n]*?)" + re.escape(connector) + r"/build",
+                  lambda match: match.group(1) + connector + "/go/build", contents)
+
+
 def verify_connector(directory: str, baseline: str, old_files: dict[str, str]) -> tuple[int, list[str]]:
     errors = []
     moved_paths = {path for path in old_files if path.startswith(directory + "/")
-                   and path[len(directory) + 1:].split("/", 1)[0] not in SHARED_ENTRIES}
+                   and path[len(directory) + 1:].split("/", 1)[0] not in SHARED_ENTRIES | {"go"}}
     module_before = MODULE_PREFIX + directory
     module_after = module_before + "/go"
     manifest_path = Path(directory) / "connector.yaml"
+    version_match = re.search(rb"(?m)^  version: (v\d+\.\d+\.\d+)$", manifest_path.read_bytes())
+    if version_match is None:
+        raise ValueError(f"{manifest_path}: missing metadata.version")
+    version = version_match.group(1)
     if not manifest_path.is_file():
         errors.append(f"{manifest_path}: missing")
     for old_path, blob_hash in old_files.items():
         if not old_path.startswith(directory + "/"):
             continue
         relative = old_path[len(directory) + 1:]
-        if relative.split("/", 1)[0] not in SHARED_ENTRIES:
+        if relative.split("/", 1)[0] not in SHARED_ENTRIES | {"go"}:
             new_path = Path(directory) / "go" / relative
             if Path(old_path).exists():
                 errors.append(f"{old_path}: old Go path remains")
@@ -95,6 +124,7 @@ def verify_connector(directory: str, baseline: str, old_files: dict[str, str]) -
         elif relative == "README.md":
             expected = rewrite_readme_links(previous.decode(), directory, moved_paths)
             expected = expected.replace(module_before, module_after)
+            expected = rewrite_go_commands(expected, directory)
             matches = scrub_install_lines(expected) == scrub_install_lines(current.decode())
         elif relative.endswith("dex-connector.json"):
             old_document = json.loads(previous)
@@ -107,9 +137,40 @@ def verify_connector(directory: str, baseline: str, old_files: dict[str, str]) -
             matches = True
         else:
             expected = previous.replace(module_before.encode(), module_after.encode())
+            if relative.endswith(".go") and "/" not in relative:
+                expected = expected.replace(b'os.ReadFile("connector.yaml")', b'os.ReadFile("../connector.yaml")')
+                expected = expected.replace(b'readTextFile(t, "connector.yaml")', b'readTextFile(t, "../connector.yaml")')
+                expected = expected.replace(b'readTextFile(t, "README.md")', b'readTextFile(t, "../README.md")')
+                if relative == "manifest_test.go":
+                    expected = re.sub(rb'require\.Equal\(t, "v\d+\.\d+\.\d+", manifest\.Metadata\.Version\)',
+                                      b'require.Equal(t, "' + version + b'", manifest.Metadata.Version)', expected)
+                expected = expected.replace(b'os.ReadFile("README.md")', b'os.ReadFile("../README.md")')
+                expected = expected.replace(b'"README.md", filepath.Join("examples"', b'"../README.md", filepath.Join("examples"')
+                expected = expected.replace(b'os.Stat("ui")', b'os.Stat("../ui")')
+                expected = expected.replace(b'os.Stat("ui/', b'os.Stat("../ui/')
+                expected = expected.replace(b'os.ReadFile("ui/', b'os.ReadFile("../ui/')
+            elif relative.endswith(".go") and relative.startswith("examples/"):
+                expected = expected.replace(b'filepath.Join("..", "..", "README.md")', b'filepath.Join("..", "..", "..", "README.md")')
+                if relative.endswith("readme_test.go"):
+                    expected = expected.replace(b'filepath.Dir(filepath.Dir(filepath.Dir(moduleRoot)))',
+                                                b'filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(moduleRoot))))')
+                    expected = expected.replace((b'The first block runs from ' + directory.encode() + b','),
+                                                (b'The first block runs from ' + directory.encode() + b'/go,'))
             matches = expected == current
             if not matches and relative.endswith("README.md"):
-                matches = scrub_install_lines(expected.decode()) == scrub_install_lines(current.decode())
+                expected_text = expected.decode()
+                expected_text = expected_text.replace(directory + "/examples/", directory + "/go/examples/")
+                expected_text = re.sub(re.escape(directory) + r"(/examples/[A-Za-z0-9._/-]+)?@v\d+\.\d+\.\d+",
+                                       lambda match: directory + "/go" + (match.group(1) or "") + "@" + version.decode(), expected_text)
+                expected_text = re.sub(re.escape(module_after) + r"(/examples/[A-Za-z0-9._/-]+)?@v\d+\.\d+\.\d+",
+                                       lambda match: module_after + (match.group(1) or "") + "@" + version.decode(), expected_text)
+                expected_text = re.sub(re.escape(directory) + r"/v\d+\.\d+\.\d+", directory + "/go/" + version.decode(), expected_text)
+                expected_text = re.sub(r"--version v\d+\.\d+\.\d+", "--version " + version.decode(), expected_text)
+                expected_text = re.sub(r"Connector `v\d+\.\d+\.\d+`", "Connector `" + version.decode() + "`", expected_text)
+                expected_text = re.sub(r"Before `v\d+\.\d+\.\d+` is published", "Before `" + version.decode() + "` is published", expected_text)
+                expected_text = rewrite_go_commands(expected_text, directory)
+                expected_text = rewrite_moved_readme_links(expected_text, new_path)
+                matches = expected_text == current.decode()
         if not matches:
             errors.append(f"{new_path}: changed beyond permitted migration edits")
     root = Path(directory)

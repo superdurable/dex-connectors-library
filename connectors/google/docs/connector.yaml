@@ -5,7 +5,7 @@ metadata:
   displayName: Google Docs
   description: Read Google Docs as bounded Markdown or plain text with their revision, create documents in a Drive folder with duplicate-aware recovery, and replace or append text only at the revision a Flow read.
   company: Google
-  version: v0.23.0
+  version: v0.24.0
 spec:
   provider: google
   codegen:

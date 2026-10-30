@@ -1,5 +1,9 @@
 # Typeform Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/typeform/go@v0.23.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/typeform`.
+
 > **Verification status: partial live.** Only a dummy-token request reached Typeform, which returned 403; everything else ran on a real Dex stack against a local stand-in. No live Typeform account was used. See
 > [verification status](../../docs/verification-status.md) for what is and
 > is not verified.
@@ -32,7 +36,7 @@ flow := NewFlow(mock.Connection())
 ```
 
 This snippet comes from
-[`workflow_mock_integration_test.go`](examples/response-recorder/flow/workflow_mock_integration_test.go).
+[`workflow_mock_integration_test.go`](go/examples/response-recorder/flow/workflow_mock_integration_test.go).
 
 ## Authorization
 
@@ -139,7 +143,7 @@ other failures, including `400`, on a back-off of up to four hours; it disables
 a webhook that answers `404` or `410`.
 
 The checked-in example wires the endpoint like this, from
-[`examples/response-recorder/main.go`](examples/response-recorder/main.go):
+[`examples/response-recorder/main.go`](go/examples/response-recorder/main.go):
 
 ```go
 func newSubmissionEndpointRunner(
@@ -203,7 +207,7 @@ These rely on the documentation fetched on 2026-09-30, not on a live account:
 ## Verification
 
 ```bash
-cd connectors/typeform
+cd connectors/typeform/go
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -p 1 -tags=integration ./... -count=1 -v

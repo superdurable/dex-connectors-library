@@ -58,7 +58,7 @@ cd "$(git rev-parse --show-toplevel)"
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/superdurable/email/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/superdurable/email/go \
-  --version v0.22.0 --tag connectors/superdurable/email/v0.22.0 \
+  --version v0.23.0 --tag connectors/superdurable/email/go/v0.23.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/email-reply/release/connector-release.json \
   --digest-output /tmp/email-reply/release/connector-release.json.sha256
@@ -69,7 +69,7 @@ dexcli dev --open=false --flow-rendering-dir /tmp/email-reply/graphs \
 Open Dex Web at `http://127.0.0.1:8802`, choose **Connections**, and select
 `email / email-mailbox`, which all six email Steps of `EmailCustomerReply`
 use. Follow the authorization guide on the page and the
-[connection setup](../../README.md#connection-setup): enter the IMAP and SMTP
+[connection setup](../../../README.md#connection-setup): enter the IMAP and SMTP
 hosts, ports, and TLS modes from your provider's settings page, the login, and
 an app password, then save; the status becomes **Ready** and **Local
 override**. The example has no Step configuration. Dex Web or Superverse Studio
@@ -79,7 +79,7 @@ Create the archive mailbox, such as `Archive`, in your mail client first; the
 connector never creates mailboxes. In a second terminal, start the Worker from
 `connectors/superdurable/email` with the `DEX_PROJECT_*` environment that names
 that configuration, as
-[project configuration loading](../../../../../sdkgo/projectconfig/README.md#application-loading)
+[project configuration loading](../../../../../../sdkgo/projectconfig/README.md#application-loading)
 describes:
 
 ```bash

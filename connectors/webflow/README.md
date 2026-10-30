@@ -1,6 +1,10 @@
 # Webflow connector
 
-This Dex connector exposes `listCollectionItems`, `getCollectionItem`. The runnable [sample Flow](examples/sample-webflow/flow/workflow.go) uses `listCollectionItems` with the static `webflow` connection. Each operation uses the generated typed Step factory.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/webflow/go@v0.2.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/webflow`.
+
+This Dex connector exposes `listCollectionItems`, `getCollectionItem`. The runnable [sample Flow](go/examples/sample-webflow/flow/workflow.go) uses `listCollectionItems` with the static `webflow` connection. Each operation uses the generated typed Step factory.
 
 ## Provider contract
 
@@ -31,7 +35,7 @@ Provider error bodies are never copied into Failures. A Flow fails when an optio
 
 ## Mocks
 
-The generated `webflowmock` package provides a default response for each operation. The [real-Dex mock test](examples/sample-webflow/flow/workflow_mock_integration_test.go) constructs and runs the first operation this way:
+The generated `webflowmock` package provides a default response for each operation. The [real-Dex mock test](go/examples/sample-webflow/flow/workflow_mock_integration_test.go) constructs and runs the first operation this way:
 
 ```go
 mock := webflowmock.New(t, ConnectionName)

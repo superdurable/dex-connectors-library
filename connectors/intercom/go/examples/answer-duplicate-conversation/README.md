@@ -79,19 +79,19 @@ go run ./cmd/connectorctl ui-artifact --manifest connectors/intercom/connector.y
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/intercom/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/intercom/go \
-  --version v0.22.0 --tag connectors/intercom/v0.22.0 \
+  --version v0.23.0 --tag connectors/intercom/go/v0.23.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/intercom-release/connector-ui.tgz --ui-digest /tmp/intercom-release/connector-ui.tgz.sha256 \
   --output /tmp/intercom-release/connector-release.json \
   --digest-output /tmp/intercom-release/connector-release.json.sha256
 dexcli dev \
-  --flow-rendering-dir "$PWD/connectors/intercom/build" \
+  --flow-rendering-dir "$PWD/connectors/intercom/go/build" \
   --connector-release-override intercom=/tmp/intercom-release
 ```
 
 ## 3. Configure the connection, the admin, and the topics
 
-Follow the [Intercom setup](../../README.md#intercom-setup), then open the Dex
+Follow the [Intercom setup](../../../README.md#intercom-setup), then open the Dex
 Web URL that dexcli prints, select **Connectors**, and select **Intercom**
 (connection `intercom-support-inbox`):
 
@@ -137,11 +137,11 @@ Dex Web or Superverse Studio writes the connection, the admin, and the binding
 to the project configuration. In a second terminal, from `connectors/intercom`,
 run the Worker with the `DEX_PROJECT_*` environment that names that
 configuration, as
-[project configuration loading](../../../../sdkgo/projectconfig/README.md#application-loading)
+[project configuration loading](../../../../../sdkgo/projectconfig/README.md#application-loading)
 describes:
 
 ```bash
-cd "$(git rev-parse --show-toplevel)/connectors/intercom"
+cd "$(git rev-parse --show-toplevel)/connectors/intercom/go"
 go run ./examples/answer-duplicate-conversation
 ```
 

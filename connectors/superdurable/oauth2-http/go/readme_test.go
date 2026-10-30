@@ -42,7 +42,7 @@ func fencedBlocks(markdown string, language string) []string {
 
 // TestREADMESettingsSampleIsAValidConnection decodes the sample strictly and opens a client with it.
 func TestREADMESettingsSampleIsAValidConnection(t *testing.T) {
-	samples := fencedBlocks(readTextFile(t, "README.md"), "json")
+	samples := fencedBlocks(readTextFile(t, "../README.md"), "json")
 	require.Len(t, samples, 1)
 	decoder := json.NewDecoder(strings.NewReader(samples[0]))
 	decoder.DisallowUnknownFields()
@@ -56,14 +56,14 @@ func TestREADMESettingsSampleIsAValidConnection(t *testing.T) {
 
 // TestREADMEGoSnippetIsTheExampleCode keeps the README's Go snippet copied from the runnable example.
 func TestREADMEGoSnippetIsTheExampleCode(t *testing.T) {
-	snippets := fencedBlocks(readTextFile(t, "README.md"), "go")
+	snippets := fencedBlocks(readTextFile(t, "../README.md"), "go")
 	require.Len(t, snippets, 1)
 	require.Contains(t, readTextFile(t, filepath.Join("examples", "api-request", "flow", "workflow.go")), snippets[0])
 }
 
 // TestREADMEDescribesEveryFieldBranchAndMock keeps the README tables equal to the manifest.
 func TestREADMEDescribesEveryFieldBranchAndMock(t *testing.T) {
-	readme := readTextFile(t, "README.md")
+	readme := readTextFile(t, "../README.md")
 	manifest := readOAuth2Manifest(t)
 	for _, field := range append(append([]manifestField(nil), manifest.Spec.Configuration.Fields...), manifest.Spec.Auth.Fields...) {
 		require.Contains(t, readme, "| `"+field.Name+"` |", "the README documents %s", field.Name)
@@ -73,7 +73,7 @@ func TestREADMEDescribesEveryFieldBranchAndMock(t *testing.T) {
 	}
 	definition := oauth2http.SendRequestDefinition
 	require.Len(t, definition.Branches, 4)
-	for _, mock := range regexp.MustCompile(`(?m)^        - name: (\w+)$`).FindAllStringSubmatch(readTextFile(t, "connector.yaml"), -1) {
+	for _, mock := range regexp.MustCompile(`(?m)^        - name: (\w+)$`).FindAllStringSubmatch(readTextFile(t, "../connector.yaml"), -1) {
 		require.Contains(t, readme, "`"+mock[1]+"`", "the README names the %s mock", mock[1])
 	}
 }

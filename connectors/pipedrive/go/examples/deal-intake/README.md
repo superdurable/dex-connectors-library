@@ -25,7 +25,7 @@ in one Flow, `PipedriveDealIntake`:
 
 ## Release baseline
 
-- Pipedrive Connector `v0.23.0`
+- Pipedrive Connector `v0.24.0`
 - dexcli `cli-v1.5.0` or a later stable release
 
 ## Generate the Flow Definition Graph
@@ -40,12 +40,12 @@ cd pipedrive-deal-intake-e2e
 mkdir -p flow build
 
 curl -fsSL \
-  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/pipedrive/v0.23.0/connectors/pipedrive/examples/deal-intake/flow/workflow.go \
+  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/pipedrive/go/v0.24.0/connectors/pipedrive/go/examples/deal-intake/flow/workflow.go \
   -o flow/workflow.go
 
 go mod init example.com/pipedrive-deal-intake-e2e
 go mod edit -go=1.24.0
-go get github.com/superdurable/dex-connectors-library/connectors/pipedrive/go@v0.23.0
+go get github.com/superdurable/dex-connectors-library/connectors/pipedrive/go@v0.24.0
 go mod tidy
 
 dexcli visualize ./flow/workflow.go \
@@ -75,7 +75,7 @@ and requires identical output.
    (`customFieldPicker`, optional) stores a deals text custom field that
    receives the Start Flow `source`.
 4. Run the Worker with the `DEX_PROJECT_*` environment that Dex Web shows, as
-   described in [project configuration](../../../../sdkgo/projectconfig/README.md):
+   described in [project configuration](../../../../../sdkgo/projectconfig/README.md):
 
    ```bash
    GOWORK=off go run .

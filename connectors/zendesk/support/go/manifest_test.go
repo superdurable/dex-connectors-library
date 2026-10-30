@@ -105,7 +105,7 @@ func TestAPITokenGuideCoversEnablementCreationRevocationAndPhaseOut(t *testing.T
 // per-subdomain Zendesk host nor send the HTTP Basic credential an API token needs.
 func TestManifestDeclaresNoStudioBundle(t *testing.T) {
 	require.Nil(t, readGuidanceManifest(t).Spec.Studio)
-	_, err := os.Stat("ui")
+	_, err := os.Stat("../ui")
 	require.True(t, os.IsNotExist(err))
 }
 

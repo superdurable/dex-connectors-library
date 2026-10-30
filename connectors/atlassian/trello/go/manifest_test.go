@@ -90,7 +90,7 @@ func TestKeyAndTokenIsTheOnlyMethodAndItsGuideNamesThePortalPath(t *testing.T) {
 // key and token.
 func TestNoStudioPickerIsDeclared(t *testing.T) {
 	require.Empty(t, readGuidanceManifest(t).Spec.Studio)
-	_, err := os.Stat("ui")
+	_, err := os.Stat("../ui")
 	require.True(t, os.IsNotExist(err), "a connector without Studio units ships no UI bundle")
 }
 

@@ -19,7 +19,7 @@ mkdir -p /tmp/figma-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/figma/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/figma/go \
-  --version v0.1.0 --tag connectors/figma/v0.1.0 \
+  --version v0.2.0 --tag connectors/figma/go/v0.2.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/figma-release/connector-release.json \
   --digest-output /tmp/figma-release/connector-release.json.sha256
@@ -28,6 +28,6 @@ dexcli dev \
   --connector-release-override figma=/tmp/figma-release
 ```
 
-Configure the static `figma` connection in Dex Web, then in a second terminal run `GOWORK=off go run ./examples/figma-lookup` from `connectors/figma` with the project environment described in [`sdkgo/projectconfig`](../../../../sdkgo/projectconfig/README.md). Start `FigmaLookup` through Dex Web's Start Flow form.
+Configure the static `figma` connection in Dex Web, then in a second terminal run `GOWORK=off go run ./examples/figma-lookup` from `connectors/figma` with the project environment described in [`sdkgo/projectconfig`](../../../../../sdkgo/projectconfig/README.md). Start `FigmaLookup` through Dex Web's Start Flow form.
 
 The deterministic mapping unit test runs with `GOWORK=off go test ./examples/figma-lookup/...`. CI runs `flow/workflow_mock_integration_test.go` against a real Dex Worker and Client; local integration is left to CI.

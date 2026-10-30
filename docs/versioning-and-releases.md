@@ -109,8 +109,10 @@ contract, and neither are Go names, though renaming one breaks the Go API.
 
 Any other change to the connection contract is a new major version, also
 before v1: a v0 connector that breaks its connections releases `v1.0.0`, and
-the Go module path changes only from v2. Other breaking changes before v1 keep
-the minor bump. Adding an operation or a Trigger stays a minor release as long
+the Go module path normally changes only from v2. The one-time `go/` migration
+above also changes the import path without a major suffix. Other breaking
+changes before v1 keep the minor bump. Adding an operation or a Trigger stays a
+minor release as long
 as it needs no new OAuth scope. A hosting platform that authorizes connections
 with its own registered OAuth application can use a version that adds a scope
 only after the provider verifies that application again for the new scope.
@@ -331,7 +333,7 @@ because trusted publishing is configured for the stable workflow.
 
 A release candidate lets an application use a connector change before review.
 It publishes one connector from a commit that is not on `main` yet, tagged
-`<connector directory>/vX.Y.Z-rc.N`, where `vX.Y.Z` is the version the
+`<connector directory>/go/vX.Y.Z-rc.N` for Go, where `vX.Y.Z` is the version the
 commit's manifest declares and `N` counts from 1. Each new commit of the same
 change takes the next `N`. A maintainer still reviews the pull request and the
 release workflow publishes `vX.Y.Z` after merge.

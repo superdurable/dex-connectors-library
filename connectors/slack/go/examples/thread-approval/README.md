@@ -75,11 +75,11 @@ cd slack-thread-approval-e2e
 mkdir -p flow build
 
 curl -fsSL \
-  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/slack/v1.2.0/connectors/slack/examples/thread-approval/flow/workflow.go \
+  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/slack/go/v1.3.0/connectors/slack/go/examples/thread-approval/flow/workflow.go \
   -o flow/workflow.go
 
 go mod init example.com/slack-thread-approval-e2e
-go get github.com/superdurable/dex-connectors-library/connectors/slack/go@v1.2.0
+go get github.com/superdurable/dex-connectors-library/connectors/slack/go@v1.3.0
 go mod tidy
 ```
 
@@ -308,7 +308,7 @@ when exact matching is required.
 
 Open a second terminal. The Worker reads the `DEX_PROJECT_*` project
 configuration environment described in
-[project configuration](../../../../sdkgo/projectconfig/README.md); Dex Web or
+[project configuration](../../../../../sdkgo/projectconfig/README.md); Dex Web or
 a hosting platform writes that configuration when you save the connection. Use
 the Dex Server address printed by the current dexcli process:
 
@@ -316,14 +316,14 @@ the Dex Server address printed by the current dexcli process:
 export DEX_FLOW_SERVICE_ADDRESS="127.0.0.1:8801"
 
 GOWORK=off go run \
-  github.com/superdurable/dex-connectors-library/connectors/slack/go/examples/thread-approval@v1.2.0
+  github.com/superdurable/dex-connectors-library/connectors/slack/go/examples/thread-approval@v1.3.0
 ```
 
 Replace `127.0.0.1:8801` when dexcli printed another Dex Server address. The
 The example also listens on `127.0.0.1:8839`, or `TRIGGER_BIND_ADDRESS`, at
 `slack.RelayedTriggerPath("slack-workspace")`, where a host posts the events it
 relays for a shared connection without an `app_token`
-([relayed events](../../README.md#relayed-events)). This walkthrough's
+([relayed events](../../../README.md#relayed-events)). This walkthrough's
 connection has an `app_token` and uses Socket Mode, so that path answers `503`.
 
 Keep exactly one example Worker running for this Slack app. Slack distributes

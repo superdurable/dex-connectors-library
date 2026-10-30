@@ -1,5 +1,9 @@
 # DocuSign eSignature Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/docusign/go@v0.24.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/docusign`.
+
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack, through `-tags=integration` tests against `dexcli dev`, with a local stand-in for DocuSign; the example was not started from Dex Web Start Flow, and no live DocuSign account was used. See
 > [verification status](../../docs/verification-status.md) for what is and
 > is not verified.
@@ -20,7 +24,7 @@ artifact, and void as compensation.
 | Query | `downloadCombinedDocument` | Streams the combined PDF through SHA-256 into an application `CombinedDocumentStore`; the Result holds only size, digest, and location. |
 | Trigger | `envelopeEventReceived` | Receives HMAC-verified Connect `envelope-completed`, `envelope-declined`, and `envelope-voided` events in the JSON SIM format. |
 
-The runnable [`examples/envelope-signing`](examples/envelope-signing/README.md)
+The runnable [`examples/envelope-signing`](go/examples/envelope-signing/README.md)
 application sends an envelope, waits for Connect or a slow status poll, voids
 at a signing deadline, and records the signed PDF's digest.
 
@@ -190,7 +194,7 @@ no timestamp signature, so the endpoint cannot reject a replayed capture;
 recording is idempotent per event ID, and the example's RPC deduplicates it.
 
 The example resumes the waiting Flow through a typed RPC, from
-[`examples/envelope-signing/main.go`](examples/envelope-signing/main.go):
+[`examples/envelope-signing/main.go`](go/examples/envelope-signing/main.go):
 
 ```go
 // newEnvelopeEventTarget delivers each Connect outcome to the waiting Flow's ReceiveEnvelopeEvent RPC.
@@ -290,7 +294,7 @@ The mock connection serves operation Steps, while the existing provider
 integration test covers Connect delivery. See
 [connector mocks](../../sdkgo/README.md#connector-mocks).
 
-The [runnable real-Dex test](examples/envelope-signing/workflow_mock_integration_test.go)
+The [runnable real-Dex test](go/examples/envelope-signing/workflow_mock_integration_test.go)
 uses the defaults:
 
 ```go
@@ -303,7 +307,7 @@ uses the defaults:
 ## Verification
 
 ```bash
-cd connectors/docusign
+cd connectors/docusign/go
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./... -count=1 -v

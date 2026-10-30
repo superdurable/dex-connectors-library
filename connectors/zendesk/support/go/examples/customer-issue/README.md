@@ -26,7 +26,7 @@ the outcome reports `wasAlreadyApplied`.
 
 ## Configure
 
-Follow the [Zendesk Support setup](../../README.md#zendesk-setup), then open
+Follow the [Zendesk Support setup](../../../README.md#zendesk-setup), then open
 **Connections** in Dex Web and configure the `zendesk-support-desk`
 connection: the account subdomain, the agent email, and the API token. The
 example has no Step configuration, and the Worker reads the connection at
@@ -46,7 +46,7 @@ dexcli visualize ./examples/customer-issue/flow/workflow.go \
 Run `dexcli dev` with that build directory. Dex Web or Superverse Studio writes
 the connection to the project configuration; run the Worker with the
 `DEX_PROJECT_*` environment that names it, as
-[project configuration loading](../../../../../sdkgo/projectconfig/README.md#application-loading)
+[project configuration loading](../../../../../../sdkgo/projectconfig/README.md#application-loading)
 describes:
 
 ```bash

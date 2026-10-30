@@ -5,7 +5,7 @@ metadata:
   displayName: PagerDuty
   description: Read and act through the PagerDuty public API.
   company: PagerDuty
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: pagerduty
   codegen:

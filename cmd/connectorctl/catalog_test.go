@@ -375,6 +375,29 @@ directories:
 	}}, readReleaseMatrixOutput(t, githubOutput).Include, "only the connector whose version moved releases")
 }
 
+func TestGoMigrationUsesOldTagWithoutConflatingLanguageTags(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	const directory = "connectors/acme/chat"
+	writeConnectorFixture(t, repositoryRoot, directory, "example.com/"+directory)
+	catalogPath := filepath.Join(repositoryRoot, "catalog.yaml")
+	require.NoError(t, os.WriteFile(catalogPath, []byte("apiVersion: connectors.dex.dev/catalog-source/v1alpha1\nkind: ConnectorCatalogSource\ndirectories:\n  - connectors/acme/chat\n"), 0o600))
+	initializeConnectorReleaseRepository(t, repositoryRoot, directory+"/v0.1.0")
+	for _, language := range []string{"python", "typescript"} {
+		command := exec.Command("git", "tag", directory+"/"+language+"/v9.0.0")
+		command.Dir = repositoryRoot
+		output, err := command.CombinedOutput()
+		require.NoError(t, err, "%s", output)
+	}
+	releases, err := latestReachableConnectorReleases(repositoryRoot)
+	require.NoError(t, err)
+	require.Equal(t, "v0.1.0", releases[directory+"/go"].Version)
+	require.Equal(t, directory+"/v0.1.0", releases[directory+"/go"].Tag)
+	require.Equal(t, "v9.0.0", releases[directory+"/python"].Version)
+	require.Equal(t, "v9.0.0", releases[directory+"/typescript"].Version)
+	require.ErrorContains(t, validateGoMigrationVersion(directory, releases[directory+"/go"], "v0.3.0"), "exactly one minor bump")
+	require.NoError(t, validateGoMigrationVersion(directory, releases[directory+"/go"], "v0.2.0"))
+}
+
 func replaceInFile(t *testing.T, path, old, replacement string) {
 	t.Helper()
 	contents, err := os.ReadFile(path)

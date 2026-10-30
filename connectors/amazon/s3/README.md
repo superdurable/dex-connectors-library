@@ -1,5 +1,9 @@
 # Amazon S3 Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/amazon/s3/go@v0.23.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/amazon/s3`.
+
 > **Verification status: partial live.** Verified against MinIO RELEASE.2025-10-15 on a real Dex stack; Amazon S3 itself and Cloudflare R2 are not verified. See
 > [verification status](../../../docs/verification-status.md) for what is and
 > is not verified.
@@ -23,10 +27,10 @@ or tag objects, and this release has no Triggers and no Studio pickers; see
 
 ## Mocks
 
-The generated [`s3mock`](s3mock) package models one archived Ops weekly report
+The generated [`s3mock`](go/s3mock) package models one archived Ops weekly report
 across the store, metadata, text read, and three ordered listing pages. It also
 offers cases for missing objects, unsupported or oversized text, create-only
-conflicts, and permission denials. The [runnable integration test](examples/report-archive/flow/workflow_mock_integration_test.go)
+conflicts, and permission denials. The [runnable integration test](go/examples/report-archive/flow/workflow_mock_integration_test.go)
 uses the example Flow and checks its generated report and read-back decision:
 
 ```go
@@ -80,7 +84,7 @@ attempt, and `s3:ListBucket` lets `headObject` report a missing key as
 
 Name the factory connection and open the same name from the project
 configuration at application startup, as
-[`examples/report-archive/main.go`](examples/report-archive/main.go) does:
+[`examples/report-archive/main.go`](go/examples/report-archive/main.go) does:
 
 ```go
 project, err := projectconfig.LoadFromEnvironment(ctx)
@@ -280,7 +284,7 @@ Limits of this design:
 
 ## Example
 
-[`examples/report-archive`](examples/report-archive) is a runnable Dex Web
+[`examples/report-archive`](go/examples/report-archive) is a runnable Dex Web
 **Start Flow** example that generates a Markdown report, archives it once
 under `reports/<reportId>.md`, reads its metadata and text back, and lists the
 archive folder.

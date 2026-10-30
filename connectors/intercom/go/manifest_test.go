@@ -148,7 +148,7 @@ func TestAdminPickerCommandsPinEveryRegionalHost(t *testing.T) {
 	}
 	require.Contains(t, units[intercom.UIUnitAdminPicker], "stores the chosen admin's numeric ID")
 	require.Contains(t, units[intercom.UIUnitConversationTopicPicker], "selecting none accepts every supported conversation topic")
-	_, err := os.Stat("ui/package-lock.json")
+	_, err := os.Stat("../ui/package-lock.json")
 	require.NoError(t, err, "a manifest that declares Studio units ships a ui bundle")
 }
 

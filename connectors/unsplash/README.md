@@ -1,5 +1,9 @@
 # Unsplash connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/unsplash/go@v0.2.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/unsplash`.
+
 Read-only Unsplash photo operations for Dex. The connector uses the public JSON API with an application Access Key in `Authorization: Client-ID`.
 
 | Operation | Endpoint | Happy branch |
@@ -24,7 +28,7 @@ Sign in at [Unsplash Your apps](https://unsplash.com/oauth/applications), choose
 | Invalid input or missing credentials | `defect` |
 | Transport failure, 408, 429, or 5xx | Retry with Dex's default one-hour budget |
 
-Only the happy branch is wired in the [photo search example](examples/photo-search); optional branches fail its Flow.
+Only the happy branch is wired in the [photo search example](go/examples/photo-search); optional branches fail its Flow.
 
 ## Mocks
 

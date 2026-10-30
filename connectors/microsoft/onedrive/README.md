@@ -1,5 +1,7 @@
 # Microsoft OneDrive and SharePoint Connector
 
+Moved from `github.com/superdurable/dex-connectors-library/connectors/microsoft/onedrive`.
+
 > **Verification status: partial live.** Only a placeholder-token request reached Microsoft Graph, which returned 401; everything else ran on a real Dex stack against a local stand-in. No Microsoft tenant was used. See
 > [verification status](../../../docs/verification-status.md) for what is and
 > is not verified.
@@ -97,7 +99,7 @@ pickers.
 
 Load the project configuration once at application startup and open the
 connection by the name its operations use, as
-[`examples/text-copy/main.go`](examples/text-copy/main.go) does:
+[`examples/text-copy/main.go`](go/examples/text-copy/main.go) does:
 
 ```go
 project, err := projectconfig.LoadFromEnvironment(ctx)
@@ -310,7 +312,7 @@ for push delivery.
 
 ## Example
 
-[`examples/text-copy`](examples/text-copy) is a runnable Dex Web
+[`examples/text-copy`](go/examples/text-copy) is a runnable Dex Web
 **Start Flow** example that looks up a text file by name in a source folder,
 ensures a copy folder in a destination folder, copies the text into it with
 `fail` or `replace`, and reads the copy back. Both locations come from the site,
@@ -337,11 +339,11 @@ GOWORK=off go test -tags=integration ./... -count=1 -v
 
 ## Mocks
 
-`onedrivemock` describes one copy of `Ops Policy.txt`: the source lookup and text, the ensured destination folder, the uploaded copy, and its metadata read-back. Named mocks cover missing items, unsupported or oversized text, conflicts, quota exhaustion, and permission denials. The [text copy example](examples/text-copy/flow/workflow_mock_integration_test.go) checks all five operations through a real Dex Worker.
+`onedrivemock` describes one copy of `Ops Policy.txt`: the source lookup and text, the ensured destination folder, the uploaded copy, and its metadata read-back. Named mocks cover missing items, unsupported or oversized text, conflicts, quota exhaustion, and permission denials. The [text copy example](go/examples/text-copy/flow/workflow_mock_integration_test.go) checks all five operations through a real Dex Worker.
 
 ```go
 mock := onedrivemock.New(t, ConnectionName)
 harness := newTextCopyHarnessWithConnection(t, mock.Connection(), "source-folder", "destination-folder")
 ```
 
-Install this release with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/onedrive@v0.23.0`.
+Install this release with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/onedrive/go@v0.24.0`.

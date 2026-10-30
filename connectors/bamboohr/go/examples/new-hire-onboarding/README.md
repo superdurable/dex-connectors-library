@@ -47,7 +47,7 @@ since a cursor, which is how a scheduler finds hires to check.
 
 ## Prepare BambooHR
 
-Follow the [BambooHR setup](../../README.md#bamboohr-setup). The hand-off field
+Follow the [BambooHR setup](../../../README.md#bamboohr-setup). The hand-off field
 is a custom text field on the employee record, such as **IT Provisioning**
 with the alias `customITProvisioning`; BambooHR's List Fields endpoint,
 `GET /api/v1/meta/fields`, shows each field's alias. The connection's user
@@ -82,12 +82,12 @@ mkdir -p /tmp/bamboohr-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/bamboohr/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/bamboohr/go \
-  --version v0.22.0 --tag connectors/bamboohr/v0.22.0 \
+  --version v0.23.0 --tag connectors/bamboohr/go/v0.23.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/bamboohr-release/connector-release.json \
   --digest-output /tmp/bamboohr-release/connector-release.json.sha256
 dexcli dev \
-  --flow-rendering-dir "$PWD/connectors/bamboohr/build" \
+  --flow-rendering-dir "$PWD/connectors/bamboohr/go/build" \
   --connector-release-override bamboohr=/tmp/bamboohr-release
 ```
 
@@ -99,7 +99,7 @@ the project configuration.
 
 In a second terminal, start the Worker from `connectors/bamboohr` with the
 `DEX_PROJECT_*` environment that names that configuration, as
-[project configuration loading](../../../../sdkgo/projectconfig/README.md#application-loading)
+[project configuration loading](../../../../../sdkgo/projectconfig/README.md#application-loading)
 describes:
 
 ```bash

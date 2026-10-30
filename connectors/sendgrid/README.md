@@ -1,6 +1,10 @@
 # SendGrid connector
 
-Read SendGrid global statistics and transactional templates. The manifest is the source of generated Config, Credentials, Connection, operation factories, and mocks. See the runnable [statistics demo](examples/demo/README.md) and [template-list example](examples/template-list/README.md) for Worker and strict FDG 2.0 generation commands.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/sendgrid/go@v0.2.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/sendgrid`.
+
+Read SendGrid global statistics and transactional templates. The manifest is the source of generated Config, Credentials, Connection, operation factories, and mocks. See the runnable [statistics demo](go/examples/demo/README.md) and [template-list example](go/examples/template-list/README.md) for Worker and strict FDG 2.0 generation commands.
 
 ## Operations and provider references
 

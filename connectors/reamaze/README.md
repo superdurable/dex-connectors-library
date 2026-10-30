@@ -1,5 +1,9 @@
 # Re:amaze Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/reamaze/go@v0.23.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/reamaze`.
+
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Re:amaze; no live Re:amaze account was used. See
 > [verification status](../../docs/verification-status.md) for what is and
 > is not verified.
@@ -60,7 +64,7 @@ and response limit are startup configuration.
 
 Name the factory connection and open the same name from the project
 configuration at application startup, as
-[`examples/triage-conversation/main.go`](examples/triage-conversation/main.go)
+[`examples/triage-conversation/main.go`](go/examples/triage-conversation/main.go)
 does:
 
 ```go
@@ -302,7 +306,7 @@ fields this Step sets.
 
 ## Example
 
-[`examples/triage-conversation`](examples/triage-conversation) is a runnable
+[`examples/triage-conversation`](go/examples/triage-conversation) is a runnable
 Dex Web **Start Flow** example that uses all six operations: it resolves the
 customer by email, finds the customer's unresolved conversation about an issue
 or creates one, reopens and tags it, and adds one internal triage note.

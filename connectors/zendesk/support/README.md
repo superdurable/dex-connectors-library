@@ -1,5 +1,9 @@
 # Zendesk Support Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/zendesk/support/go@v0.23.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/zendesk/support`.
+
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Zendesk; no live Zendesk account was used. See
 > [verification status](../../../docs/verification-status.md) for what is and
 > is not verified.
@@ -55,7 +59,7 @@ startup configuration.
 
 Name the factory connection and open the same name from the project
 configuration at application startup, as
-[`examples/customer-issue/main.go`](examples/customer-issue/main.go) does:
+[`examples/customer-issue/main.go`](go/examples/customer-issue/main.go) does:
 
 ```go
 project, err := projectconfig.LoadFromEnvironment(ctx)
@@ -249,7 +253,7 @@ design. Until then, poll with `searchTickets` and `updatedSince`.
 
 ## Example
 
-[`examples/customer-issue`](examples/customer-issue) is a runnable Dex Web
+[`examples/customer-issue`](go/examples/customer-issue) is a runnable Dex Web
 **Start Flow** example that uses all four operations: it searches the
 customer's unsolved tickets about an issue, reads the newest one to confirm it
 still belongs to the customer, then adds one internal follow-up note, or opens
@@ -270,7 +274,7 @@ flow := NewFlow(mock.Connection())
 ```
 
 This snippet comes from
-[`workflow_mock_integration_test.go`](examples/customer-issue/flow/workflow_mock_integration_test.go).
+[`workflow_mock_integration_test.go`](go/examples/customer-issue/flow/workflow_mock_integration_test.go).
 
 ## Verification
 

@@ -37,7 +37,7 @@ with a new connector call ID.
 
 ## Configure
 
-Follow the [Confluence connector setup](../../README.md), then configure the
+Follow the [Confluence connector setup](../../../README.md), then configure the
 `confluence-policies` connection under **Connections** in Dex Web. Leave
 `cloudId` blank when the authorization covers one Confluence site. The
 **Policy space** picker on the `PublishPolicyPage` Step saves the space; the
@@ -58,7 +58,7 @@ dexcli visualize ./examples/publish-policy/flow/workflow.go \
 
 Run `dexcli dev` with that build directory, then run the Worker. It reads the
 `DEX_PROJECT_*` project configuration environment described in
-[project configuration](../../../../../sdkgo/projectconfig/README.md); Dex Web or
+[project configuration](../../../../../../sdkgo/projectconfig/README.md); Dex Web or
 Superverse Studio writes that configuration when you save the connection.
 
 ```bash

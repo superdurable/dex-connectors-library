@@ -5,7 +5,7 @@ metadata:
   displayName: Microsoft Outlook Calendar
   description: List and read Outlook calendar events in a bounded window, create and update events idempotently, and query free/busy schedules through Microsoft Graph, with delegated Microsoft OAuth or an app-only connection to one mailbox.
   company: Microsoft
-  version: v0.23.0
+  version: v0.24.0
 spec:
   provider: microsoft
   codegen:

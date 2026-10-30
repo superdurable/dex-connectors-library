@@ -5,7 +5,7 @@ metadata:
   displayName: Unsplash
   description: Search public photos and retrieve one photo through Unsplash.
   company: Unsplash
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: unsplash
   codegen:

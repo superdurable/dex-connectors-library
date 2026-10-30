@@ -1,6 +1,10 @@
 # Coda connector
 
-This Dex connector exposes `listRows`, `getRow`. The runnable [sample Flow](examples/sample-coda/flow/workflow.go) uses `listRows` with the static `coda` connection. Each operation uses the generated typed Step factory.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/coda/go@v0.2.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/coda`.
+
+This Dex connector exposes `listRows`, `getRow`. The runnable [sample Flow](go/examples/sample-coda/flow/workflow.go) uses `listRows` with the static `coda` connection. Each operation uses the generated typed Step factory.
 
 ## Provider contract
 
@@ -30,7 +34,7 @@ Provider error bodies are never copied into Failures. A Flow fails when an optio
 
 ## Mocks
 
-The generated `codamock` package provides a default response for each operation. The [real-Dex mock test](examples/sample-coda/flow/workflow_mock_integration_test.go) constructs and runs the first operation this way:
+The generated `codamock` package provides a default response for each operation. The [real-Dex mock test](go/examples/sample-coda/flow/workflow_mock_integration_test.go) constructs and runs the first operation this way:
 
 ```go
 mock := codamock.New(t, ConnectionName)

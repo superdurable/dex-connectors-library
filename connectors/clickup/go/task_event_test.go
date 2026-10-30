@@ -137,7 +137,7 @@ func TestTaskEventTriggerConfigurationAcceptsOnlyTaskEvents(t *testing.T) {
 
 // TestStudioEventPickerListsTheSupportedEvents keeps ui/src/events.ts equal to TaskEvents.
 func TestStudioEventPickerListsTheSupportedEvents(t *testing.T) {
-	contents, err := os.ReadFile("ui/src/events.ts")
+	contents, err := os.ReadFile("../ui/src/events.ts")
 	require.NoError(t, err)
 	var uiEvents []string
 	for _, match := range regexp.MustCompile(`\{event: "([^"]+)"`).FindAllStringSubmatch(string(contents), -1) {

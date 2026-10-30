@@ -47,7 +47,7 @@ each requiring `trello-request-card.reconcile`:
 
 ## Configure
 
-Follow the [Trello connector setup](../../README.md), then save the API key and
+Follow the [Trello connector setup](../../../README.md), then save the API key and
 token for the `trello-requests` connection under **Connections** in Dex Web.
 The Flow has no Studio configuration units: Trello's board and list listings
 are JSON arrays, which Dex Web's Studio commands reject, so the board and the
@@ -67,7 +67,7 @@ dexcli visualize ./examples/approved-request-card/flow/workflow.go \
 
 Run `dexcli dev` with that build directory, then run the Worker. It reads the
 `DEX_PROJECT_*` project configuration environment described in
-[project configuration](../../../../../sdkgo/projectconfig/README.md); Dex Web or
+[project configuration](../../../../../../sdkgo/projectconfig/README.md); Dex Web or
 Superverse Studio writes that configuration when you save the connection.
 
 ```bash

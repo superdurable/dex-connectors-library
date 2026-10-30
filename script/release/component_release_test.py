@@ -322,7 +322,7 @@ class ComponentReleaseTest(unittest.TestCase):
             member = tarfile.TarInfo("package/package.json")
             member.size = len(package_json)
             archive.addfile(member, io.BytesIO(package_json))
-            connector_manifest = b'{"releaseTag":"connectors/newsapi/v0.20.0","package":{"ecosystem":"npm","name":"@superdurable/connector-newsapi","version":"0.1.0"}}'
+            connector_manifest = b'{"releaseTag":"connectors/newsapi/go/v0.20.0","package":{"ecosystem":"npm","name":"@superdurable/connector-newsapi","version":"0.1.0"}}'
             member = tarfile.TarInfo("package/dex-connector.json")
             member.size = len(connector_manifest)
             archive.addfile(member, io.BytesIO(connector_manifest))
@@ -474,7 +474,7 @@ class ComponentReleaseTest(unittest.TestCase):
         manifest_directory = python_package / "src/dex_connectors/newsapi"
         manifest_directory.mkdir(parents=True)
         (manifest_directory / "dex-connector.json").write_text(json.dumps({
-            "releaseTag": "connectors/newsapi/v0.1.0",
+            "releaseTag": "connectors/newsapi/go/v0.1.0",
             "package": {"ecosystem": "pypi", "name": "dex-connector-newsapi", "version": "0.1.0"},
             "factories": [],
         }), encoding="utf-8")
@@ -510,7 +510,7 @@ class ComponentReleaseTest(unittest.TestCase):
             "name": "@superdurable/connector-newsapi", "version": "0.1.0",
         }), encoding="utf-8")
         (package / "dex-connector.json").write_text(json.dumps({
-            "releaseTag": "connectors/newsapi/v0.20.0",
+            "releaseTag": "connectors/newsapi/go/v0.20.0",
             "package": {"ecosystem": "npm", "name": "@superdurable/connector-newsapi", "version": "0.1.0"},
             "factories": [],
         }), encoding="utf-8")
@@ -560,7 +560,7 @@ class ComponentReleaseTest(unittest.TestCase):
                 member.size = len(npm_identity)
                 archive.addfile(member, io.BytesIO(npm_identity))
                 if connector_version is not None:
-                    contents = json.dumps({"releaseTag": "connectors/newsapi/v0.20.0",
+                    contents = json.dumps({"releaseTag": "connectors/newsapi/go/v0.20.0",
                                            "package": {"ecosystem": "npm", "name": "@superdurable/connector-newsapi",
                                                        "version": connector_version}}).encode("utf-8")
                     member = tarfile.TarInfo("package/dex-connector.json")
@@ -579,7 +579,7 @@ class ComponentReleaseTest(unittest.TestCase):
         wheel = self.repository / "dex_connector_newsapi-0.1.0-py3-none-any.whl"
         sdist = self.repository / "dex_connector_newsapi-0.1.0.tar.gz"
         metadata = b"Name: dex-connector-newsapi\nVersion: 0.1.0\n"
-        connector_manifest = json.dumps({"releaseTag": "connectors/newsapi/v0.20.0",
+        connector_manifest = json.dumps({"releaseTag": "connectors/newsapi/go/v0.20.0",
                                          "package": {"ecosystem": "pypi", "name": "dex-connector-newsapi",
                                                        "version": "0.1.0"}}).encode("utf-8")
         def write_python(include_wheel: bool, include_sdist: bool, import_package: str = "newsapi") -> None:
@@ -1091,6 +1091,30 @@ class ComponentReleaseTest(unittest.TestCase):
         plan = release.create_plan("connectors/openai", "connectors/openai/", "minor")
         self.assertEqual(plan.version, "v0.1.0")
         self.assertEqual(plan.tag, "connectors/openai/v0.1.0")
+
+    def test_go_subdirectory_plan_uses_old_tag_and_allows_one_time_v1_minor(self) -> None:
+        old_module = self.connector()
+        self.git("tag", "connectors/openai/v1.2.0")
+        go_module = old_module / "go"
+        go_module.mkdir()
+        (old_module / "go.mod").rename(go_module / "go.mod")
+        (old_module / "connector.go").rename(go_module / "connector.go")
+        go_mod = go_module / "go.mod"
+        go_mod.write_text(go_mod.read_text().replace("example.com/connectors/openai", f"{LIBRARY}/connectors/openai/go"))
+        self.commit("tooling: move Go connector modules (breaking)")
+        self.enter_repository()
+
+        plan = release.create_plan("connectors/openai/go", "connectors/openai/go/", target_version="v1.3.0")
+        self.assertEqual(plan.baseline_tag, "connectors/openai/v1.2.0")
+        self.assertEqual(plan.tag, "connectors/openai/go/v1.3.0")
+        self.assertEqual(plan.module_path, f"{LIBRARY}/connectors/openai/go")
+        notes, is_breaking = release.release_notes(plan, "")
+        self.assertIn(f"Moved from `{LIBRARY}/connectors/openai`", notes)
+        self.assertTrue(is_breaking)
+        release.validate_breaking_bump(plan, is_breaking)
+        skipped = release.create_plan("connectors/openai/go", "connectors/openai/go/", target_version="v1.4.0")
+        with self.assertRaisesRegex(ValueError, "v1\\+ breaking release requires a major bump"):
+            release.validate_breaking_bump(skipped, True)
 
     def test_one_commit_can_enter_each_changed_connector_release(self) -> None:
         openai = self.repository / "connectors/openai"

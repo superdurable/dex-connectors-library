@@ -28,7 +28,7 @@ link. A local unreleased connector may warn `connector_release_required`.
 
 Follow [invitee-recorder steps 2 and 3](../invitee-recorder/README.md#2-start-dex-with-this-connectors-release-metadata)
 to build the connector release override, start `dexcli dev` with
-`--flow-rendering-dir "$PWD/connectors/calendly/build"`, and save the
+`--flow-rendering-dir "$PWD/connectors/calendly/go/build"`, and save the
 `calendly-scheduling` connection. The Worker uses the same static connection
 name. A personal access token needs `scheduling_links:write`. The connector's
 authorization guide in Dex Web gives the provider page and setup steps.
@@ -42,7 +42,7 @@ go run ./examples/scheduling-link
 ```
 
 The Worker reads the `DEX_PROJECT_*` configuration described in
-[project configuration](../../../../sdkgo/projectconfig/README.md) and uses
+[project configuration](../../../../../sdkgo/projectconfig/README.md) and uses
 `DEX_FLOW_SERVICE_ADDRESS` when supplied. Start the Flow in Dex Web with a
 `CreateSchedulingLinkInput` such as:
 

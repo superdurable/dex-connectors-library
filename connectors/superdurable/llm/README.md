@@ -1,5 +1,7 @@
 # LLM Connector
 
+Moved from `github.com/superdurable/dex-connectors-library/connectors/superdurable/llm`.
+
 The LLM Connector is the one text generation connector for Dex
 applications. Its provider-neutral `generateText` Query runs a model of the
 provider that the connection names, with that provider's API key and its own
@@ -31,14 +33,14 @@ Gemini's `generateContent`.
 Install a published component release:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/superdurable/llm@v0.24.1
+go get github.com/superdurable/dex-connectors-library/connectors/superdurable/llm/go@v0.25.0
 ```
 
 The package name, `llm`, is the last element of the module path, so import
 it without an alias:
 
 ```go
-"github.com/superdurable/dex-connectors-library/connectors/superdurable/llm"
+"github.com/superdurable/dex-connectors-library/connectors/superdurable/llm/go"
 ```
 
 ## Connection
@@ -52,7 +54,7 @@ model ID manually, and Save once. A saved key stays when you leave the key blank
 switching provider asks for that provider's key. An older Dex Web renders the
 manifest form instead and offers the model picker after the first save. Either
 way, Dex Web saves the settings and the key in the project configuration, and
-the application opens the typed Connection once at startup, as [`examples/summarize-text/main.go`](examples/summarize-text/main.go)
+the application opens the typed Connection once at startup, as [`examples/summarize-text/main.go`](go/examples/summarize-text/main.go)
 does:
 
 ```go
@@ -173,7 +175,7 @@ that should run on any model the picker lists sets no `Temperature`, no
 
 ## Generate text
 
-The [summarize-text Flow](examples/summarize-text/flow/workflow.go) wires the
+The [summarize-text Flow](go/examples/summarize-text/flow/workflow.go) wires the
 Step with the model picker and streams the summary to its text Stream:
 
 ```go
@@ -624,7 +626,7 @@ returns a scripted connection that the Step factories accept in place of a
 project connection, so a Flow runs on a real Worker without a provider or a
 key. Unscripted calls to a plain text request answer with the manifest
 default, `shortSummary`, a `generated` result with usage. The example's
-[mock test](examples/summarize-text/flow/workflow_mock_integration_test.go)
+[mock test](go/examples/summarize-text/flow/workflow_mock_integration_test.go)
 passes the mock's connection to the Flow:
 
 ```go
@@ -640,8 +642,8 @@ and scripts one Flow's call with a manifest mock:
 
 A Flow whose request sets `StructuredOutput` must script its answer, because
 the manifest default `shortSummary` is plain text that does not match a schema.
-The [structured-output Flow](examples/summarize-text/structuredoutput/flow.go)
-used by the [runnable test](examples/summarize-text/flow/workflow_mock_integration_test.go)
+The [structured-output Flow](go/examples/summarize-text/structuredoutput/flow.go)
+used by the [runnable test](go/examples/summarize-text/flow/workflow_mock_integration_test.go)
 asks for this schema:
 
 ```go
@@ -712,7 +714,7 @@ shows a mismatch that the real connector would also hit:
 
 ## Example
 
-The [summarize-text example](examples/summarize-text/README.md) runs one Flow
+The [summarize-text example](go/examples/summarize-text/README.md) runs one Flow
 from Dex Web **Start Flow**: it persists the request, asks the picked model
 of the connection's provider for a summary while streaming it, and completes
 with a generated outcome. Every other branch is unwired and fails the Flow.

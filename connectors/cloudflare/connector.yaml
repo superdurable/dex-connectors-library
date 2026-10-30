@@ -5,7 +5,7 @@ metadata:
   displayName: Cloudflare
   description: "Use the Cloudflare REST API through typed Dex connector Steps."
   company: Cloudflare
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: cloudflare
   codegen:

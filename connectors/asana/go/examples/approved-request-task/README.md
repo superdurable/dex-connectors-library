@@ -44,7 +44,7 @@ around that time, then runs one of two Actions, each requiring
 
 ## Configure
 
-Follow the [Asana connector setup](../../README.md), then save a personal access
+Follow the [Asana connector setup](../../../README.md), then save a personal access
 token for the `asana-requests` connection under **Connections** in Dex Web.
 The **Request project and section** picker on the `CreateRequestTask` Step
 saves the workspace, project, and optional section; the duplicate check and
@@ -66,7 +66,7 @@ dexcli visualize ./examples/approved-request-task/flow/workflow.go \
 Run `dexcli dev` with that build directory. Dex Web or Superverse Studio writes
 the connection and the picked project to the project configuration; run the
 Worker with the `DEX_PROJECT_*` environment that names it, as
-[project configuration loading](../../../../sdkgo/projectconfig/README.md#application-loading)
+[project configuration loading](../../../../../sdkgo/projectconfig/README.md#application-loading)
 describes:
 
 ```bash

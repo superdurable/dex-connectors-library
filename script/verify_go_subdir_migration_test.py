@@ -3,7 +3,7 @@
 
 import unittest
 
-from script.verify_go_subdir_migration import git_blob_hash, rewrite_readme_links, scrub_manifest_version
+from script.verify_go_subdir_migration import git_blob_hash, rewrite_go_commands, rewrite_readme_links, scrub_manifest_version
 
 
 class MigrationVerifierTest(unittest.TestCase):
@@ -18,6 +18,10 @@ class MigrationVerifierTest(unittest.TestCase):
         contents = "[example](examples/one/README.md) [manifest](connector.yaml)"
         self.assertEqual(rewrite_readme_links(contents, "connectors/acme", {"connectors/acme/examples/one/README.md"}),
                          "[example](go/examples/one/README.md) [manifest](connector.yaml)")
+
+    def test_go_command_rewrite(self) -> None:
+        self.assertEqual(rewrite_go_commands("cd connectors/acme\ncd connectors/acme/python\n", "connectors/acme"),
+                         "cd connectors/acme/go\ncd connectors/acme/python\n")
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 {
   "connectorId": "newsapi",
-  "releaseTag": "connectors/newsapi/go/v0.22.0",
+  "releaseTag": "connectors/newsapi/go/v0.23.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-newsapi",

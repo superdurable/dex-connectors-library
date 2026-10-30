@@ -33,7 +33,7 @@ Flow, including a matched record that disappears before the link.
 
 ## Configure
 
-Follow the [Salesforce Connector setup](../../README.md), then configure the
+Follow the [Salesforce Connector setup](../../../README.md), then configure the
 `salesforce / salesforce-crm` connection in Dex Web **Connections**. The
 `FindMatchingRecords` Step exposes three units, and every Salesforce Step in
 the Flow uses them:
@@ -64,7 +64,7 @@ dexcli visualize ./examples/record-sync/flow/workflow.go \
 
 Run `dexcli dev` with that build directory, then run the Worker. It reads the
 `DEX_PROJECT_*` project configuration environment described in
-[project configuration](../../../../sdkgo/projectconfig/README.md); Dex Web or
+[project configuration](../../../../../sdkgo/projectconfig/README.md); Dex Web or
 Superverse Studio writes that configuration when you save the connection.
 
 ```bash

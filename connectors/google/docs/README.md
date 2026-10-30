@@ -1,5 +1,7 @@
 # Google Docs Connector
 
+Moved from `github.com/superdurable/dex-connectors-library/connectors/google/docs`.
+
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Google Docs; no live Google account was used. See
 > [verification status](../../../docs/verification-status.md) for what is and
 > is not verified.
@@ -79,7 +81,7 @@ encrypted project storage and never enter a Flow.
 
 Load the project configuration once at application startup and open the
 connection by the name its operations use, as
-[`examples/policy-publish/main.go`](examples/policy-publish/main.go) does:
+[`examples/policy-publish/main.go`](go/examples/policy-publish/main.go) does:
 
 ```go
 project, err := projectconfig.LoadFromEnvironment(ctx)
@@ -267,7 +269,7 @@ exists only to render the connection status and these pickers from the shared
 
 ## Example
 
-[`examples/policy-publish`](examples/policy-publish) is a runnable Dex Web
+[`examples/policy-publish`](go/examples/policy-publish) is a runnable Dex Web
 **Start Flow** example that reads a policy template, creates a document from
 it, fills its placeholders at the revision it read, appends a publication
 stamp, and reads the published text back.
@@ -297,7 +299,7 @@ mock.GetDocumentText().Respond(
 ```
 
 Install the v0.23.0 connector with
-`go get github.com/superdurable/dex-connectors-library/connectors/google/docs@v0.23.0`
+`go get github.com/superdurable/dex-connectors-library/connectors/google/docs/go@v0.24.0`
 after this release is published.
 
 ## Verification

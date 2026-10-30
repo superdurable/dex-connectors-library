@@ -101,7 +101,7 @@ func TestStudioDeclaresNoProviderCommands(t *testing.T) {
 	require.Len(t, studio.Units, 1)
 	require.Equal(t, "taskEventPicker", studio.Units[0].ID)
 	require.Contains(t, studio.Units[0].Description, "selecting none accepts every task event")
-	_, err := os.Stat("ui/package-lock.json")
+	_, err := os.Stat("../ui/package-lock.json")
 	require.NoError(t, err, "a manifest that declares Studio units ships a ui bundle")
 }
 

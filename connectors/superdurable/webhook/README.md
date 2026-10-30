@@ -1,5 +1,9 @@
 # Webhook Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook/go@v0.24.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook`.
+
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack with sender requests simulated locally; no real GitHub, Shopify, or Typeform sender was used. See
 > [verification status](../../../docs/verification-status.md) for what is and
 > is not verified.
@@ -51,7 +55,7 @@ the connection and each route's stored binding, wraps each target in the
 binding's durable project inbox, and combines the endpoint with the bindings'
 Trigger runners. Its `RunningSourceCount` supports a readiness check. The
 checked-in example wires it like this, from
-[`examples/form-submission/main.go`](examples/form-submission/main.go):
+[`examples/form-submission/main.go`](go/examples/form-submission/main.go):
 
 ```go
 func newSubmissionEndpointRunner(
@@ -265,7 +269,7 @@ question this connector does not answer.
 
 ## Example
 
-[`examples/form-submission`](examples/form-submission) is a Worker that mounts
+[`examples/form-submission`](go/examples/form-submission) is a Worker that mounts
 the endpoint and starts one `WebhookFormSubmission` Flow per verified
 submission. The Flow records the submission and forwards it to `deliveryUrl`
 with `sendEvent`.
@@ -283,7 +287,7 @@ flow := NewFlow(mock.Connection())
 ```
 
 This snippet comes from
-[`workflow_mock_integration_test.go`](examples/form-submission/flow/workflow_mock_integration_test.go).
+[`workflow_mock_integration_test.go`](go/examples/form-submission/flow/workflow_mock_integration_test.go).
 
 ## Verification
 

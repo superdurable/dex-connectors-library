@@ -1,5 +1,9 @@
 # QuickBooks Online Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/intuit/quickbooks/go@v0.24.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/intuit/quickbooks`.
+
 > **Verification status: Dex-integrated, not live.** Earlier operation and example tests ran on a real Dex stack against a local QuickBooks stand-in, and Dex Web loaded the local release and built the Intuit authorization URL. New read-back and mock-backed Dex tests are checked in for CI. No live QuickBooks company or Intuit app was used. See
 > [verification status](../../../docs/verification-status.md) for what the levels mean.
 
@@ -127,7 +131,7 @@ configuration may hold `environment`, `realmId`, and `maxResponseBytes`.
 
 Load the project configuration and open the connection by the name the
 application declares, as
-[`examples/paid-order/main.go`](examples/paid-order/main.go) does:
+[`examples/paid-order/main.go`](go/examples/paid-order/main.go) does:
 
 ```go
 project, err := projectconfig.LoadFromEnvironment(ctx)
@@ -378,7 +382,7 @@ of accounts, or with a query.
 
 ## Example
 
-[`examples/paid-order`](examples/paid-order) is a runnable Dex Web **Start
+[`examples/paid-order`](go/examples/paid-order) is a runnable Dex Web **Start
 Flow** example: for an order the customer has already paid, it finds the
 customer by email or creates them, looks for an invoice already numbered with
 the order ID, raises one when there is none, records the payment, emails the

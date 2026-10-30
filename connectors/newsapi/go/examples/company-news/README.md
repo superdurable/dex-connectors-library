@@ -49,12 +49,12 @@ mkdir -p /tmp/newsapi-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/newsapi/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/newsapi/go \
-  --version v0.22.0 --tag connectors/newsapi/v0.22.0 \
+  --version v0.23.0 --tag connectors/newsapi/go/v0.23.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/newsapi-release/connector-release.json \
   --digest-output /tmp/newsapi-release/connector-release.json.sha256
 dexcli dev \
-  --flow-rendering-dir "$PWD/connectors/newsapi/build" \
+  --flow-rendering-dir "$PWD/connectors/newsapi/go/build" \
   --connector-release-override newsapi=/tmp/newsapi-release
 ```
 
@@ -68,11 +68,11 @@ becomes **Ready**.
 
 In a second terminal, start the Worker from `connectors/newsapi` with the
 project's `DEX_PROJECT_*` environment, which
-[`sdkgo/projectconfig`](../../../../sdkgo/projectconfig/README.md#application-loading)
+[`sdkgo/projectconfig`](../../../../../sdkgo/projectconfig/README.md#application-loading)
 documents:
 
 ```bash
-cd "$(git rev-parse --show-toplevel)/connectors/newsapi"
+cd "$(git rev-parse --show-toplevel)/connectors/newsapi/go"
 go run ./examples/company-news
 ```
 

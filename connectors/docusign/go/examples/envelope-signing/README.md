@@ -69,12 +69,12 @@ mkdir -p /tmp/docusign-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/docusign/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/docusign/go \
-  --version v0.23.0 --tag connectors/docusign/v0.23.0 \
+  --version v0.24.0 --tag connectors/docusign/go/v0.24.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/docusign-release/connector-release.json \
   --digest-output /tmp/docusign-release/connector-release.json.sha256
 dexcli dev \
-  --flow-rendering-dir "$PWD/connectors/docusign/build" \
+  --flow-rendering-dir "$PWD/connectors/docusign/go/build" \
   --connector-release-override docusign=/tmp/docusign-release
 ```
 
@@ -112,7 +112,7 @@ outcomes. To record fewer, set `events` in the binding's record in the
 
 Expose `http://127.0.0.1:8862/docusign/connect` through an HTTPS tunnel and
 create a Custom Connect configuration with that URL as described in the
-[connector README](../../README.md#connect-configuration): JSON SIM format,
+[connector README](../../../README.md#connect-configuration): JSON SIM format,
 the Envelope Signed/Completed, Declined, and Voided events, Include Data:
 Custom Fields, Include HMAC Signature, and Require Acknowledgement.
 
@@ -120,12 +120,12 @@ Custom Fields, Include HMAC Signature, and Require Acknowledgement.
 
 Run the Worker from `connectors/docusign`. It reads the `DEX_PROJECT_*` project
 configuration environment described in
-[project configuration](../../../../sdkgo/projectconfig/README.md); Dex Web or
+[project configuration](../../../../../sdkgo/projectconfig/README.md); Dex Web or
 Superverse Studio writes that configuration when you save the connection and
 the binding:
 
 ```bash
-cd "$(git rev-parse --show-toplevel)/connectors/docusign"
+cd "$(git rev-parse --show-toplevel)/connectors/docusign/go"
 go run ./examples/envelope-signing
 ```
 

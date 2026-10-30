@@ -66,19 +66,19 @@ go run ./cmd/connectorctl ui-artifact --manifest connectors/front/connector.yaml
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/front/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/front/go \
-  --version v0.22.0 --tag connectors/front/v0.22.0 \
+  --version v0.23.0 --tag connectors/front/go/v0.23.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/front-release/connector-ui.tgz --ui-digest /tmp/front-release/connector-ui.tgz.sha256 \
   --output /tmp/front-release/connector-release.json \
   --digest-output /tmp/front-release/connector-release.json.sha256
 dexcli dev \
-  --flow-rendering-dir "$PWD/connectors/front/build" \
+  --flow-rendering-dir "$PWD/connectors/front/go/build" \
   --connector-release-override front=/tmp/front-release
 ```
 
 ## 3. Configure the connection and the pickers
 
-Follow the [Front authorization](../../README.md#authorization), then open the
+Follow the [Front authorization](../../../README.md#authorization), then open the
 Dex Web URL that dexcli prints, select **Connectors**, and select **Front**
 (connection `front-support`). Paste the API token into `api_token` and save.
 Dex Web then shows this Flow's three configuration units:
@@ -108,11 +108,11 @@ Dex Web then shows this Flow's three configuration units:
 Dex Web or Superverse Studio writes the connection and the picks to the
 project configuration. In a second terminal, from `connectors/front`, run the
 Worker with the `DEX_PROJECT_*` environment that names that configuration, as
-[project configuration loading](../../../../sdkgo/projectconfig/README.md#application-loading)
+[project configuration loading](../../../../../sdkgo/projectconfig/README.md#application-loading)
 describes:
 
 ```bash
-cd "$(git rev-parse --show-toplevel)/connectors/front"
+cd "$(git rev-parse --show-toplevel)/connectors/front/go"
 go run ./examples/conversation-triage
 ```
 

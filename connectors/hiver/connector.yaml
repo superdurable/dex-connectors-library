@@ -5,7 +5,7 @@ metadata:
   displayName: Hiver
   description: "List Hiver shared inboxes and their conversations, read one conversation, set its status, assignee, and tags, add internal notes, and create shared reply drafts, keeping Hiver's own open, pending, and closed statuses."
   company: Hiver
-  version: v0.22.0
+  version: v0.23.0
 spec:
   provider: hiver
   codegen:

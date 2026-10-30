@@ -50,7 +50,7 @@ configure `twilio-messaging / twilio-messaging` with either authentication
 method. Dex Web or Superverse Studio writes the connection to the project
 configuration; start the Worker with the `DEX_PROJECT_*` environment that names
 it, as
-[project configuration loading](../../../../../sdkgo/projectconfig/README.md#application-loading)
+[project configuration loading](../../../../../../sdkgo/projectconfig/README.md#application-loading)
 describes:
 
 ```bash

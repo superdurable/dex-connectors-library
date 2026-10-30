@@ -54,7 +54,7 @@ Dex needs release metadata and the Studio bundle built from this source,
 passed as an override; without it the connection shows **Unsupported**. A
 delegated Microsoft OAuth connection also needs Dex CLI and Dex Web
 `cli-v1.4.1` or later; see the
-[connector README](../../README.md#microsoft-365-account-oauth-the-default).
+[connector README](../../../README.md#microsoft-365-account-oauth-the-default).
 From the repository root:
 
 ```bash
@@ -69,7 +69,7 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/microsoft/outlook-mail/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail/go \
-  --version v0.23.1 --tag connectors/microsoft/outlook-mail/v0.23.1 \
+  --version v0.24.0 --tag connectors/microsoft/outlook-mail/go/v0.24.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/outlook-mail-reply/release/connector-ui.tgz \
   --ui-digest /tmp/outlook-mail-reply/release/connector-ui.tgz.sha256 \
@@ -82,7 +82,7 @@ dexcli dev --open=false --flow-rendering-dir /tmp/outlook-mail-reply/graphs \
 Open Dex Web at `http://127.0.0.1:8802`, choose **Connections**, and select
 `outlook-mail / outlook-support-mailbox`, which all six Outlook Mail Steps of
 `OutlookSupportReply` use. Follow the authorization guide on the page and the
-[connection setup](../../README.md#connection-setup):
+[connection setup](../../../README.md#connection-setup):
 
 - **Microsoft 365 account (OAuth)**: enter the multitenant app's client ID and
   secret, register the Redirect URI the page shows, and choose
@@ -109,7 +109,7 @@ so run the Flow once first or type the folder.
 
 In a second terminal, start the Worker from `connectors/microsoft/outlook-mail`.
 It reads the `DEX_PROJECT_*` project configuration environment documented in
-[`sdkgo/projectconfig`](../../../../../sdkgo/projectconfig/README.md#application-loading);
+[`sdkgo/projectconfig`](../../../../../../sdkgo/projectconfig/README.md#application-loading);
 Dex Web or Superverse Studio writes that configuration:
 
 ```bash

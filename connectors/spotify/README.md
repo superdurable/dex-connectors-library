@@ -1,5 +1,9 @@
 # Spotify Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/spotify/go@v0.24.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/spotify`.
+
 The Spotify connector lists one bounded page of tracks from a playlist through
 Spotify's official [Get Playlist Items](https://developer.spotify.com/documentation/web-api/reference/get-playlists-items)
 endpoint. Spotify currently permits that endpoint only for playlists the
@@ -56,7 +60,7 @@ two. Each page has one available track; the first two also skip an unavailable
 item. Script other playlist IDs, offsets, or page sizes explicitly. Named cases model a
 revoked grant, inaccessible or missing playlist, and rejected query.
 
-The [runnable mock integration test](examples/playlist-tracks/flow/workflow_mock_integration_test.go)
+The [runnable mock integration test](go/examples/playlist-tracks/flow/workflow_mock_integration_test.go)
 uses the connection on a real Dex Worker:
 
 ```go
@@ -75,9 +79,9 @@ the data must follow Spotify's
 and [Developer Policy](https://developer.spotify.com/policy), including links
 back to Spotify and the restrictions on downloads and AI training.
 
-The [playlist-tracks example](examples/playlist-tracks/README.md) is a runnable
+The [playlist-tracks example](go/examples/playlist-tracks/README.md) is a runnable
 FDG 2.0 Start Flow that lists one page and displays it in Dex Web. Its
-[`main.go`](examples/playlist-tracks/main.go) loads the project configuration
+[`main.go`](go/examples/playlist-tracks/main.go) loads the project configuration
 that Dex Web or Superverse Studio writes and opens the connection by name:
 
 ```go

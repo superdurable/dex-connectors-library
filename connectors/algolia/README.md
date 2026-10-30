@@ -1,5 +1,9 @@
 # Algolia connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/algolia/go@v0.2.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/algolia`.
+
 Algolia index search and repeat-safe record replacement for Dex. The connector uses the public Search REST API with an application ID and an API key in headers.
 
 | Operation | Endpoint | Happy branch |
@@ -25,7 +29,7 @@ The displayed `baseUrl` default is a host template: the connector changes `https
 | Invalid input or missing credentials | `defect` |
 | Transport failure, 408, 409, 429, or 5xx | Retry with Dex's default one-hour budget |
 
-Only the happy branch is wired in the [index search example](examples/index-search). Optional branches fail its Flow. There is no `uncertain` branch because full replacement by `objectID` is repeat-safe.
+Only the happy branch is wired in the [index search example](go/examples/index-search). Optional branches fail its Flow. There is no `uncertain` branch because full replacement by `objectID` is repeat-safe.
 
 ## Mocks
 

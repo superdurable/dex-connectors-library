@@ -1,5 +1,9 @@
 # monday.com Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/monday/go@v0.24.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/monday`.
+
 > **Verification status: partial live.** Only an unknown-client probe reached the monday.com OAuth token endpoint; everything else ran on a real Dex stack against a local stand-in. No live monday.com account was used. See
 > [verification status](../../docs/verification-status.md) for what is and
 > is not verified.
@@ -84,7 +88,7 @@ refresh; this release does not declare it.
 Dex Web or Superverse Studio saves the connection's settings and credentials in
 the project configuration. The application loads that configuration once and
 opens the connection by the name it declares, as
-[`examples/work-request/main.go`](examples/work-request/main.go) does:
+[`examples/work-request/main.go`](go/examples/work-request/main.go) does:
 
 ```go
 project, err := projectconfig.LoadFromEnvironment(ctx)
@@ -314,7 +318,7 @@ overwrites a concurrent change to the columns it sets.
 
 ## Example
 
-[`examples/work-request`](examples/work-request) is a runnable Dex Web
+[`examples/work-request`](go/examples/work-request) is a runnable Dex Web
 **Start Flow** example that uses all five operations. It finds a board's open
 item for a recurring work request by exact name, reads it back, and sets its
 status and due date. Otherwise it creates the item. In both cases it adds one

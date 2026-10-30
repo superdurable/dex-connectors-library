@@ -36,7 +36,7 @@ a Dex retry, or a repeated dispatch that reaches Zoho CRM after the slow write
 was applied, converges on one account, one contact, and one stage value. Zoho
 does not document whether two upserts by `Account_Name` or `Email` that arrive
 together can both insert; see
-[Duplicate safety](../../README.md#duplicate-safety). The Flow's only Attribute,
+[Duplicate safety](../../../README.md#duplicate-safety). The Flow's only Attribute,
 `zoho-crm-lead-qualification`, holds the request and progress, which the
 summary and display RPCs read, because a Connector branch target receives only
 the current operation Result.
@@ -72,7 +72,7 @@ mkdir -p /tmp/zoho-crm-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/zoho/crm/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/zoho/crm/go \
-  --version v0.23.0 --tag connectors/zoho/crm/v0.23.0 \
+  --version v0.24.0 --tag connectors/zoho/crm/go/v0.24.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/zoho-crm-release/connector-release.json \
   --digest-output /tmp/zoho-crm-release/connector-release.json.sha256
@@ -81,7 +81,7 @@ dexcli dev \
   --connector-release-override zoho-crm=/tmp/zoho-crm-release
 ```
 
-Follow the [Zoho setup](../../README.md#zoho-setup), then open
+Follow the [Zoho setup](../../../README.md#zoho-setup), then open
 **Connections** in Dex Web and select `zoho-crm / zoho-crm-sales`, which all
 Zoho CRM Steps of `ZohoCRMLeadQualification` use. Choose the **Data center** of
 your Zoho CRM account, enter the client ID and secret, and choose
@@ -90,7 +90,7 @@ your Zoho CRM account, enter the client ID and secret, and choose
 
 In a second terminal, start the Worker from `connectors/zoho/crm`. It reads
 the `DEX_PROJECT_*` project configuration environment described in
-[project configuration](../../../../../sdkgo/projectconfig/README.md); Dex Web
+[project configuration](../../../../../../sdkgo/projectconfig/README.md); Dex Web
 or Superverse Studio writes that configuration when you save the connection.
 
 ```bash

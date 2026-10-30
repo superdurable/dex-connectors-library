@@ -1,5 +1,9 @@
 # Intercom Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/intercom/go@v0.23.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/intercom`.
+
 > **Verification status: partial live.** Only placeholder-token requests reached Intercom, and all returned 401; everything else ran on a real Dex stack against a local stand-in. No live Intercom workspace was used. See
 > [verification status](../../docs/verification-status.md) for what is and
 > is not verified.
@@ -68,7 +72,7 @@ configuration for the connection name the application uses:
 {
   "connectorId": "intercom",
   "connectionName": "intercom-support-inbox",
-  "modulePath": "github.com/superdurable/dex-connectors-library/connectors/intercom",
+  "modulePath": "github.com/superdurable/dex-connectors-library/connectors/intercom/go",
   "provider": "intercom",
   "configuration": {"region": "us"}
 }
@@ -85,7 +89,7 @@ load it with `projectconfig.LoadFromEnvironment` and open the connection with
 connection and each route's stored binding, wraps each target in the binding's
 durable project inbox, and returns one `http.Handler` to mount. The checked-in
 example wires it like this, from
-[`examples/answer-duplicate-conversation/main.go`](examples/answer-duplicate-conversation/main.go):
+[`examples/answer-duplicate-conversation/main.go`](go/examples/answer-duplicate-conversation/main.go):
 
 ```go
 func newInboundEndpointRunner(
@@ -348,7 +352,7 @@ admin picker's pattern.
 The generated `intercommock` package models Ada's unanswered inbound
 conversation, a three-page search with a repeated earlier conversation, and
 the reply and close outcomes.
-The [real-Dex example test](examples/answer-duplicate-conversation/workflow_mock_integration_test.go)
+The [real-Dex example test](go/examples/answer-duplicate-conversation/workflow_mock_integration_test.go)
 starts the Flow with a mock connection and a configured replying admin:
 
 ```go
@@ -361,7 +365,7 @@ writes that can identify an absent conversation or contact also provide
 
 ## Example
 
-[`examples/answer-duplicate-conversation`](examples/answer-duplicate-conversation)
+[`examples/answer-duplicate-conversation`](go/examples/answer-duplicate-conversation)
 starts one Flow per new conversation from the `conversationEvent` Trigger,
 uses all five operations, and answers and closes the conversation only when it
 duplicates the customer's earlier open conversation.

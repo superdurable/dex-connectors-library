@@ -1,5 +1,9 @@
 # Microsoft Entra ID Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/entra-id/go@v0.24.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/microsoft/entra-id`.
+
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack, through Dex Web Start Flow and real-Dex tests, against a local stand-in for Microsoft Graph and the Microsoft identity platform; no real Microsoft Entra tenant was used. See
 > [verification status](../../../docs/verification-status.md) for what is and
 > is not verified.
@@ -98,7 +102,7 @@ never enter a Flow.
 
 Load the project configuration once at application startup and open the
 connection by the name its operations use, as
-[`examples/account-lifecycle/main.go`](examples/account-lifecycle/main.go) does:
+[`examples/account-lifecycle/main.go`](go/examples/account-lifecycle/main.go) does:
 
 ```go
 project, err := projectconfig.LoadFromEnvironment(ctx)
@@ -275,7 +279,7 @@ pages with a duplicate and a disabled account. Named cases cover missing
 resources, a taken principal name, rejected filters, and conclusive permission
 or group membership rejections. Script another case for another tenant or user.
 
-The [runnable integration test](examples/account-lifecycle/flow/workflow_mock_integration_test.go)
+The [runnable integration test](go/examples/account-lifecycle/flow/workflow_mock_integration_test.go)
 runs all three lifecycle paths on a real Dex Worker without Microsoft Graph:
 
 ```go
@@ -295,7 +299,7 @@ See [`sdkgo/connectormock`](../../../sdkgo/README.md#connector-mocks) for script
 
 ## Example
 
-[`examples/account-lifecycle`](examples/account-lifecycle) is a runnable Dex
+[`examples/account-lifecycle`](go/examples/account-lifecycle) is a runnable Dex
 Web **Start Flow** example. Onboarding creates the hire's account, or finds
 the one an earlier run created for the same hire ID, and adds it to a team
 group; a name that belongs to someone else fails the Flow without creating

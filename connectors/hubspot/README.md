@@ -1,5 +1,9 @@
 # HubSpot Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/hubspot/go@v0.24.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/hubspot`.
+
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for HubSpot; no live HubSpot account was used. See
 > [verification status](../../docs/verification-status.md) for what is and
 > is not verified.
@@ -162,7 +166,7 @@ list cannot load, each unit offers a manual ID field.
 Dex Web or Superverse Studio saves the connection's settings and credentials in
 the project configuration. The application loads that configuration once and
 opens the connection by the name it declares, as
-[`examples/lead-qualification/main.go`](examples/lead-qualification/main.go)
+[`examples/lead-qualification/main.go`](go/examples/lead-qualification/main.go)
 does:
 
 ```go
@@ -204,7 +208,7 @@ Script `updateObject` the same way so that both report one stage. Other
 contacts, deals, or pipelines need scripts for the answers that name them. See
 [`sdkgo/connectormock`](../../sdkgo/README.md#connector-mocks).
 
-The [runnable integration test](examples/lead-qualification/flow/workflow_mock_integration_test.go)
+The [runnable integration test](go/examples/lead-qualification/flow/workflow_mock_integration_test.go)
 uses these defaults on a real Dex Worker without provider credentials:
 
 ```go
@@ -218,7 +222,7 @@ require.Equal(t, PhaseDealAdvanced, qualification.Phase)
 
 ## Example
 
-[`examples/lead-qualification`](examples/lead-qualification) upserts a lead
+[`examples/lead-qualification`](go/examples/lead-qualification) upserts a lead
 contact by email, searches the contact's open deal in the configured pipeline,
 moves it to the configured stage, and reads it back. It composes the
 `ownerPicker` and `dealStagePicker` units.

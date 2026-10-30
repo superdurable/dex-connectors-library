@@ -108,7 +108,7 @@ func TestNoStudioPickerTriggerOrPresignOperationIsDeclared(t *testing.T) {
 		operations = append(operations, operation.Name)
 	}
 	require.Equal(t, []string{"listObjects", "headObject", "getObjectText", "putObject"}, operations)
-	_, err := os.Stat("ui")
+	_, err := os.Stat("../ui")
 	require.True(t, os.IsNotExist(err), "a connector without Studio units ships no UI bundle")
 }
 

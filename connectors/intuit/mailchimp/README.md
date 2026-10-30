@@ -1,5 +1,9 @@
 # Mailchimp Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/intuit/mailchimp/go@v0.23.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/intuit/mailchimp`.
+
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Mailchimp; no live Mailchimp account was used. See
 > [verification status](../../../docs/verification-status.md) for what is and
 > is not verified.
@@ -67,7 +71,7 @@ Dex Web or Superverse Studio writes the connection to the project
 configuration. Load it with `projectconfig.LoadFromEnvironment` and open the
 connection by the name the application uses with
 `mailchimp.NewProjectConnection`, as
-[`examples/approved-campaign-send/main.go`](examples/approved-campaign-send/main.go) does:
+[`examples/approved-campaign-send/main.go`](go/examples/approved-campaign-send/main.go) does:
 
 ```go
 project, err := projectconfig.LoadFromEnvironment(ctx)
@@ -303,7 +307,7 @@ oldest-first pages. Named cases cover missing contacts and audiences, denied
 access, rejected writes, and campaigns that are already sent, unsendable, or
 missing. Script a different case when a test uses another audience or campaign.
 
-The [runnable integration test](examples/approved-campaign-send/flow/workflow_mock_integration_test.go)
+The [runnable integration test](go/examples/approved-campaign-send/flow/workflow_mock_integration_test.go)
 starts the example Flow on a real Dex Worker, approves the send, and checks its
 mapped operation inputs:
 
@@ -322,7 +326,7 @@ See [`sdkgo/connectormock`](../../../sdkgo/README.md#connector-mocks) for script
 
 ## Example
 
-[`examples/approved-campaign-send`](examples/approved-campaign-send) is a
+[`examples/approved-campaign-send`](go/examples/approved-campaign-send) is a
 runnable Dex Web **Start Flow** example that uses all five operations: it reads
 each contact, leaves unsubscribed, cleaned, and archived contacts untouched,
 upserts and tags the rest, counts the subscribed audience, and waits for a

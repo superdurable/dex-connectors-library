@@ -19,7 +19,7 @@ mkdir -p /tmp/cohere-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/cohere/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/cohere/go \
-  --version v0.1.0 --tag connectors/cohere/v0.1.0 \
+  --version v0.2.0 --tag connectors/cohere/go/v0.2.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/cohere-release/connector-release.json \
   --digest-output /tmp/cohere-release/connector-release.json.sha256
@@ -28,6 +28,6 @@ dexcli dev \
   --connector-release-override cohere=/tmp/cohere-release
 ```
 
-Configure the static `cohere` connection in Dex Web, then in a second terminal run `GOWORK=off go run ./examples/cohere-search` from `connectors/cohere` with the project environment described in [`sdkgo/projectconfig`](../../../../sdkgo/projectconfig/README.md). Start `CohereSearch` through Dex Web's Start Flow form.
+Configure the static `cohere` connection in Dex Web, then in a second terminal run `GOWORK=off go run ./examples/cohere-search` from `connectors/cohere` with the project environment described in [`sdkgo/projectconfig`](../../../../../sdkgo/projectconfig/README.md). Start `CohereSearch` through Dex Web's Start Flow form.
 
 The deterministic mapping unit test runs with `GOWORK=off go test ./examples/cohere-search/...`. CI runs `flow/workflow_mock_integration_test.go` against a real Dex Worker and Client; local integration is left to CI.

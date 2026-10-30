@@ -68,7 +68,7 @@ go run ./cmd/connectorctl ui-artifact --manifest connectors/microsoft/excel/conn
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/microsoft/excel/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/microsoft/excel/go \
-  --version v0.23.0 --tag connectors/microsoft/excel/v0.23.0 \
+  --version v0.24.0 --tag connectors/microsoft/excel/go/v0.24.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/microsoft-excel-release/connector-ui.tgz \
   --ui-digest /tmp/microsoft-excel-release/connector-ui.tgz.sha256 \
@@ -80,7 +80,7 @@ dexcli dev \
 ```
 
 Microsoft OAuth needs Dex CLI 1.4.1 or later. Open Dex Web at
-`http://localhost:<port>`, follow the [Microsoft setup](../../README.md#microsoft-setup),
+`http://localhost:<port>`, follow the [Microsoft setup](../../../README.md#microsoft-setup),
 then open **Connections**, select `microsoft-excel / microsoft-excel-approvals`,
 and authorize. The example exposes three Step configurations:
 
@@ -94,7 +94,7 @@ and authorize. The example exposes three Step configurations:
 Every pick is required. In a second terminal, start the Worker from
 `connectors/microsoft/excel`. It reads the `DEX_PROJECT_*` project
 configuration environment documented in
-[`sdkgo/projectconfig`](../../../../../sdkgo/projectconfig/README.md#application-loading);
+[`sdkgo/projectconfig`](../../../../../../sdkgo/projectconfig/README.md#application-loading);
 Dex Web or Superverse Studio writes that configuration:
 
 ```bash

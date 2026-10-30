@@ -23,7 +23,7 @@ This example receives signed form submissions and starts one
 
 The connection is configured for Typeform-style signatures: HMAC-SHA256 of the
 body, base64-encoded after `sha256=` in `Typeform-Signature`, with the event ID
-at `/event_id`. Any other [sender setup](../../README.md#sender-setup) works the
+at `/event_id`. Any other [sender setup](../../../README.md#sender-setup) works the
 same way.
 
 ## 1. Generate the Flow Definition
@@ -60,12 +60,12 @@ mkdir -p /tmp/webhook-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/superdurable/webhook/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook/go \
-  --version v0.23.0 --tag connectors/superdurable/webhook/v0.23.0 \
+  --version v0.24.0 --tag connectors/superdurable/webhook/go/v0.24.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/webhook-release/connector-release.json \
   --digest-output /tmp/webhook-release/connector-release.json.sha256
 dexcli dev \
-  --flow-rendering-dir "$PWD/connectors/superdurable/webhook/build" \
+  --flow-rendering-dir "$PWD/connectors/superdurable/webhook/go/build" \
   --connector-release-override webhook=/tmp/webhook-release
 ```
 
@@ -86,7 +86,7 @@ Open the Dex Web URL that dexcli prints, select **Connectors**, and select
   submission can arrive more than once with the same `webhook-id` after a
   `408`, `409`, `425`, `429`, or `5xx` answer, a timeout, or a lost response,
   so the receiver follows the
-  [receiver contract](../../README.md#the-sendevent-mutation): it records the
+  [receiver contract](../../../README.md#the-sendevent-mutation): it records the
   `webhook-id` in the transaction that applies the event and answers `2xx`
   for an id it already applied. Leave it
   blank to see `ForwardSubmission` select `defect` and fail the Flow with
@@ -114,11 +114,11 @@ Dex Web or Superverse Studio writes the connection and the binding to the
 project configuration. In a second terminal, from
 `connectors/superdurable/webhook`, run the Worker with the `DEX_PROJECT_*`
 environment that names that configuration, as
-[project configuration loading](../../../../../sdkgo/projectconfig/README.md#application-loading)
+[project configuration loading](../../../../../../sdkgo/projectconfig/README.md#application-loading)
 describes:
 
 ```bash
-cd "$(git rev-parse --show-toplevel)/connectors/superdurable/webhook"
+cd "$(git rev-parse --show-toplevel)/connectors/superdurable/webhook/go"
 go run ./examples/form-submission
 ```
 
