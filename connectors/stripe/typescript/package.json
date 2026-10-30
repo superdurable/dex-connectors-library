@@ -48,6 +48,7 @@
     "test": "vitest run --exclude 'test/integration/**'",
     "test:integration": "vitest run test/integration/*.integration.test.ts",
     "example:card-checkout": "tsx examples/create-card-checkout-session/main.ts",
+    "example:card-checkout:start": "tsx examples/create-card-checkout-session/start.ts",
     "check": "npm run typecheck && npm run lint && npm test && npm run build"
   },
   "dependencies": {
