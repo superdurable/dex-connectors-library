@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 node_modules/
 dist/
+sdkpython/dist/dex_connectors_sdk-0.1.0-py3-none-any.whl
 site/.catalog.yaml
 coverage/
 *.out
