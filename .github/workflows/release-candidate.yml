@@ -259,13 +259,15 @@ jobs:
       - name: Test and build Python candidate
         if: needs.plan.outputs.language == 'python'
         run: |
-          uv sync --project "${COMPONENT_PATH}"
+          test -f "${COMPONENT_PATH}/uv.lock" || { echo 'Python candidate lockfile is missing' >&2; exit 1; }
+          uv sync --locked --project "${COMPONENT_PATH}"
           uv run --project "${COMPONENT_PATH}" ruff check "${COMPONENT_PATH}"
           uv run --project "${COMPONENT_PATH}" mypy --strict "${COMPONENT_PATH}/src"
           uv run --project "${COMPONENT_PATH}" pytest "${COMPONENT_PATH}/tests"
           version="${CANDIDATE_VERSION#v}"
           uv version --project "${COMPONENT_PATH}" --frozen "${version/-rc./rc}"
           uv build "${COMPONENT_PATH}" --out-dir "${RUNNER_TEMP}/language-dist"
+          rm -f "${RUNNER_TEMP}/language-dist/.gitignore"
       - name: Test and build TypeScript candidate
         if: needs.plan.outputs.language == 'typescript'
         run: |
@@ -359,6 +361,28 @@ jobs:
             --language "${RELEASE_LANGUAGE}" --package "${RELEASE_PACKAGE}" \
             --version "${CANDIDATE_VERSION}" --tag "${RELEASE_TAG}" \
             --source-sha "${RELEASE_SOURCE_SHA}" "${manifest_args[@]}"
+      - name: Publish Python pre-release
+        if: steps.state.outputs.release_required == 'true' && needs.plan.outputs.language == 'python' && env.CANDIDATE_DRY_RUN != 'true'
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
+        run: |
+          test -n "${UV_PUBLISH_TOKEN}" || { echo 'PYPI_TOKEN is required' >&2; exit 1; }
+          assets=("${RUNNER_TEMP}"/language-dist/*.whl "${RUNNER_TEMP}"/language-dist/*.tar.gz)
+          arguments=()
+          for asset in "${assets[@]}"; do arguments+=(--asset "${asset}"); done
+          python3 script/release/component_release.py verify-pypi-artifacts \
+            --package "${RELEASE_PACKAGE}" --version "${CANDIDATE_VERSION}" "${arguments[@]}"
+          uv publish --check-url https://pypi.org/simple/ "${RUNNER_TEMP}"/language-dist/*.whl "${RUNNER_TEMP}"/language-dist/*.tar.gz
+          python3 script/release/component_release.py verify-pypi-artifacts \
+            --package "${RELEASE_PACKAGE}" --version "${CANDIDATE_VERSION}" --require-all "${arguments[@]}"
+      - name: Publish npm pre-release
+        if: steps.state.outputs.release_required == 'true' && needs.plan.outputs.language == 'typescript' && env.CANDIDATE_DRY_RUN != 'true'
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          tarball=("${RUNNER_TEMP}"/language-dist/*.tgz)
+          python3 script/release/npm_publish.py publish --package "${RELEASE_PACKAGE}" \
+            --version "${CANDIDATE_VERSION}" --tarball "${tarball[0]}" --dist-tag next
       - name: Create or repair language pre-release
         if: steps.state.outputs.release_required == 'true' && env.CANDIDATE_DRY_RUN != 'true'
         run: |
@@ -372,21 +396,6 @@ jobs:
               --prerelease --title "${RELEASE_DISPLAY_NAME} ${RELEASE_LANGUAGE} ${RELEASE_VERSION}" \
               --notes-file "${RUNNER_TEMP}/language-notes.md" "${RUNNER_TEMP}"/language-dist/*
           fi
-      - name: Publish Python pre-release
-        if: steps.state.outputs.release_required == 'true' && needs.plan.outputs.language == 'python' && env.CANDIDATE_DRY_RUN != 'true'
-        env:
-          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
-        run: |
-          test -n "${UV_PUBLISH_TOKEN}" || { echo 'PYPI_TOKEN is required' >&2; exit 1; }
-          uv publish --check-url https://pypi.org/simple/ "${RUNNER_TEMP}"/language-dist/*.whl "${RUNNER_TEMP}"/language-dist/*.tar.gz
-      - name: Publish npm pre-release
-        if: steps.state.outputs.release_required == 'true' && needs.plan.outputs.language == 'typescript' && env.CANDIDATE_DRY_RUN != 'true'
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          tarball=("${RUNNER_TEMP}"/language-dist/*.tgz)
-          python3 script/release/npm_publish.py publish --package "${RELEASE_PACKAGE}" \
-            --tarball "${tarball[0]}" --dist-tag next
       - name: Mark language candidate complete
         if: steps.state.outputs.release_required == 'true' && env.CANDIDATE_DRY_RUN != 'true'
         run: |

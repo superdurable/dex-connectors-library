@@ -200,6 +200,29 @@ class ComponentReleaseTest(unittest.TestCase):
         self.assertIn("version=v0.1.0", github_output.read_text(encoding="utf-8"))
         self.assertEqual(self.git("tag", "--list", "sdkpython/*"), "")
 
+    def test_plan_can_repair_a_reachable_older_sdk_tag(self) -> None:
+        package = self.repository / "sdkpython"
+        package.mkdir()
+        manifest = package / "pyproject.toml"
+        manifest.write_text('[project]\nname = "dex-connectors-sdk"\nversion = "0.1.0"\n', encoding="utf-8")
+        self.commit("sdkpython: initial release")
+        original_sha = self.git("rev-parse", "HEAD")
+        self.git("tag", "sdkpython/v0.1.0")
+        manifest.write_text('[project]\nname = "dex-connectors-sdk"\nversion = "0.2.0"\n', encoding="utf-8")
+        self.commit("sdkpython: second release")
+        self.git("tag", "sdkpython/v0.2.0")
+        self.enter_repository()
+        self.git("checkout", "--detach", original_sha)
+        plan = release.create_plan("sdkpython", "sdkpython/", target_version="v0.1.0")
+        self.assertEqual(plan.tag, "sdkpython/v0.1.0")
+        self.assertEqual(plan.source_sha, original_sha)
+
+    def test_github_output_rejects_control_characters(self) -> None:
+        plan = release.ReleasePlan("sdkpython", "dex-connectors-sdk\nunsafe=1", "", "", "minor",
+                                   "v0.1.0", "sdkpython/v0.1.0", "abc", ())
+        with self.assertRaisesRegex(ValueError, "control characters"):
+            release.write_github_output(self.repository / "output", plan)
+
     def test_language_release_manifest_records_artifact_digest(self) -> None:
         artifact = self.repository / "package.tgz"
         with tarfile.open(artifact, "w:gz") as archive:
@@ -232,14 +255,71 @@ class ComponentReleaseTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "unexpected files"):
             release.verify_language_artifacts("typescript", "@superdurable/connector-newsapi", "v0.1.0", [artifact])
 
-    def test_python_artifacts_reject_wrong_version(self) -> None:
-        wheel = self.repository / "package.whl"
+    def test_npm_artifacts_reject_dual_roots_links_and_duplicate_manifest(self) -> None:
+        artifact = self.repository / "package.tgz"
+        planned = b'{"name":"@superdurable/connector-newsapi","version":"0.1.0"}'
+        substituted = b'{"name":"@superdurable/connectors-sdk","version":"9.9.9"}'
+        for second_name, second_content, member_type in (
+            ("zzz/package.json", substituted, tarfile.REGTYPE),
+            ("package/linked", b"", tarfile.SYMTYPE),
+            ("package/hardlink", b"", tarfile.LNKTYPE),
+            ("package/../other", substituted, tarfile.REGTYPE),
+            ("/package/other", substituted, tarfile.REGTYPE),
+            ("package/package.json", substituted, tarfile.REGTYPE),
+        ):
+            with tarfile.open(artifact, "w:gz") as archive:
+                first = tarfile.TarInfo("package/package.json")
+                first.size = len(planned)
+                archive.addfile(first, io.BytesIO(planned))
+                second = tarfile.TarInfo(second_name)
+                second.type = member_type
+                second.size = len(second_content)
+                if member_type in (tarfile.SYMTYPE, tarfile.LNKTYPE):
+                    second.linkname = "package/package.json"
+                archive.addfile(second, io.BytesIO(second_content))
+            with self.assertRaises(ValueError, msg=second_name):
+                release.verify_language_artifacts("typescript", "@superdurable/connector-newsapi", "v0.1.0", [artifact])
+
+    def test_python_artifacts_reject_ambiguous_wheel_and_sdist(self) -> None:
+        wheel = self.repository / "dex_connector_newsapi-0.1.0-py3-none-any.whl"
+        sdist = self.repository / "dex_connector_newsapi-0.1.0.tar.gz"
+        metadata = b"Name: dex-connector-newsapi\nVersion: 0.1.0\n"
         with zipfile.ZipFile(wheel, "w") as archive:
-            archive.writestr("package-0.1.0.dist-info/METADATA", "Name: dex-connector-newsapi\nVersion: 9.9.9\n")
-        sdist = self.repository / "package.tar.gz"
+            archive.writestr("dex_connector_newsapi-0.1.0.dist-info/METADATA", metadata)
+            archive.writestr("dex_connectors_sdk-9.9.9.dist-info/WHEEL", b"Wheel-Version: 1.0\n")
+        with tarfile.open(sdist, "w:gz") as archive:
+            member = tarfile.TarInfo("dex_connector_newsapi-0.1.0/PKG-INFO")
+            member.size = len(metadata)
+            archive.addfile(member, io.BytesIO(metadata))
+        with self.assertRaises(ValueError):
+            release.verify_language_artifacts("python", "dex-connector-newsapi", "v0.1.0", [wheel, sdist])
+        with zipfile.ZipFile(wheel, "w") as archive:
+            archive.writestr("dex_connector_newsapi-0.1.0.dist-info/METADATA", metadata)
+        with tarfile.open(sdist, "w:gz") as archive:
+            for root in ("dex_connector_newsapi-0.1.0", "dex_connectors_sdk-9.9.9"):
+                member = tarfile.TarInfo(f"{root}/PKG-INFO")
+                member.size = len(metadata)
+                archive.addfile(member, io.BytesIO(metadata))
+        with self.assertRaises(ValueError):
+            release.verify_language_artifacts("python", "dex-connector-newsapi", "v0.1.0", [wheel, sdist])
+
+    def test_pypi_verification_rejects_different_registry_digest(self) -> None:
+        artifact = self.repository / "dex_connector_newsapi-0.1.0.tar.gz"
+        artifact.write_bytes(b"local artifact")
+        response = io.BytesIO(json.dumps({"urls": [{"filename": artifact.name,
+                                                     "digests": {"sha256": "different"}}]}).encode("utf-8"))
+        with mock.patch.object(release.urllib.request, "urlopen", return_value=response):
+            with self.assertRaisesRegex(ValueError, "different SHA256"):
+                release.verify_pypi_artifacts("dex-connector-newsapi", "v0.1.0", [artifact])
+
+    def test_python_artifacts_reject_wrong_version(self) -> None:
+        wheel = self.repository / "dex_connector_newsapi-0.1.0-py3-none-any.whl"
+        with zipfile.ZipFile(wheel, "w") as archive:
+            archive.writestr("dex_connector_newsapi-0.1.0.dist-info/METADATA", "Name: dex-connector-newsapi\nVersion: 9.9.9\n")
+        sdist = self.repository / "dex_connector_newsapi-0.1.0.tar.gz"
         with tarfile.open(sdist, "w:gz") as archive:
             metadata = b"Name: dex-connector-newsapi\nVersion: 0.1.0\n"
-            member = tarfile.TarInfo("package-0.1.0/PKG-INFO")
+            member = tarfile.TarInfo("dex_connector_newsapi-0.1.0/PKG-INFO")
             member.size = len(metadata)
             archive.addfile(member, io.BytesIO(metadata))
         with self.assertRaisesRegex(ValueError, "differs from planned"):

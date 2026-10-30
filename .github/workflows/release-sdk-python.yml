@@ -51,6 +51,12 @@ jobs:
       - name: Plan SDK release or repair
         id: plan
         run: |
+          cp script/release/component_release.py "${RUNNER_TEMP}/component_release.py"
+          if [ -n "${REPAIR_VERSION}" ]; then
+            repair_tag="sdkpython/${REPAIR_VERSION}"
+            git merge-base --is-ancestor "${repair_tag}" HEAD || { echo "SDK tag is not reachable from main: ${repair_tag}" >&2; exit 1; }
+            git checkout --detach "$(git rev-parse "${repair_tag}^{commit}")"
+          fi
           arguments=(--component-path sdkpython --tag-prefix sdkpython/ --ref "${GITHUB_REF}" \
             --json-output "${RUNNER_TEMP}/sdk-plan.json" --github-output "${GITHUB_OUTPUT}")
           if [ -n "${REPAIR_VERSION}" ]; then
@@ -58,21 +64,16 @@ jobs:
           else
             arguments+=(--bump "${BUMP}")
           fi
-          python3 script/release/component_release.py plan "${arguments[@]}"
-          cp script/release/component_release.py "${RUNNER_TEMP}/component_release.py"
-      - name: Restore tagged SDK source for repair
-        if: inputs.repair_version != ''
-        env:
-          SOURCE_SHA: ${{ steps.plan.outputs.source_sha }}
-        run: git checkout --detach "${SOURCE_SHA}"
+          python3 "${RUNNER_TEMP}/component_release.py" plan "${arguments[@]}"
       - name: Test and build SDK
         run: |
           test -f sdkpython/pyproject.toml && test -f sdkpython/uv.lock || { echo 'Python SDK package or lockfile is missing' >&2; exit 1; }
-          uv sync --project sdkpython
+          uv sync --locked --project sdkpython
           uv run --project sdkpython ruff check sdkpython
           uv run --project sdkpython mypy --strict sdkpython/src
           uv run --project sdkpython pytest sdkpython/tests
           uv build sdkpython --out-dir "${RUNNER_TEMP}/sdk-dist"
+          rm -f "${RUNNER_TEMP}/sdk-dist/.gitignore"
       - name: Build release notes and manifest
         env:
           GH_TOKEN: ${{ github.token }}
@@ -114,6 +115,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          fetch-depth: 0
           persist-credentials: false
       - uses: astral-sh/setup-uv@v7
       - uses: actions/download-artifact@v4
@@ -127,6 +129,41 @@ jobs:
           for asset in "${assets[@]}"; do arguments+=(--asset "${asset}"); done
           python3 script/release/component_release.py verify-language-artifacts \
             --language python --package "${PACKAGE_NAME}" --version "${RELEASE_VERSION}" "${arguments[@]}"
+      - name: Regenerate trusted SDK release metadata
+        run: |
+          cp script/release/component_release.py "${RUNNER_TEMP}/component_release.py"
+          if git show-ref --verify --quiet "refs/tags/${RELEASE_TAG}"; then
+            git merge-base --is-ancestor "${RELEASE_TAG}" HEAD || { echo "SDK tag is not reachable from main: ${RELEASE_TAG}" >&2; exit 1; }
+            git checkout --detach "$(git rev-parse "${RELEASE_TAG}^{commit}")"
+          fi
+          python3 "${RUNNER_TEMP}/component_release.py" plan \
+            --component-path sdkpython --tag-prefix sdkpython/ --version "${RELEASE_VERSION}" \
+            --ref "${GITHUB_REF}" --json-output "${RUNNER_TEMP}/trusted-sdk-plan.json" \
+            --github-output "${RUNNER_TEMP}/trusted-sdk-output"
+          python3 "${RUNNER_TEMP}/component_release.py" notes \
+            --plan "${RUNNER_TEMP}/trusted-sdk-plan.json" --repository "${GITHUB_REPOSITORY}" \
+            --output "${RUNNER_TEMP}/sdk-release/notes.md"
+          rm -f "${RUNNER_TEMP}"/sdk-release/dist/*.sha256 "${RUNNER_TEMP}/sdk-release/dist/language-release.json"
+          assets=("${RUNNER_TEMP}"/sdk-release/dist/*.whl "${RUNNER_TEMP}"/sdk-release/dist/*.tar.gz)
+          arguments=()
+          for asset in "${assets[@]}"; do arguments+=(--asset "${asset}"); done
+          python3 "${RUNNER_TEMP}/component_release.py" language-manifest \
+            --output "${RUNNER_TEMP}/sdk-release/dist/language-release.json" --language python \
+            --package "${PACKAGE_NAME}" --version "${RELEASE_VERSION}" \
+            --tag "${RELEASE_TAG}" --source-sha "$(git rev-parse HEAD)" "${arguments[@]}"
+      - name: Publish SDK to PyPI
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
+        run: |
+          test -n "${UV_PUBLISH_TOKEN}" || { echo 'PYPI_TOKEN is required' >&2; exit 1; }
+          assets=("${RUNNER_TEMP}"/sdk-release/dist/*.whl "${RUNNER_TEMP}"/sdk-release/dist/*.tar.gz)
+          arguments=()
+          for asset in "${assets[@]}"; do arguments+=(--asset "${asset}"); done
+          python3 "${RUNNER_TEMP}/component_release.py" verify-pypi-artifacts \
+            --package "${PACKAGE_NAME}" --version "${RELEASE_VERSION}" "${arguments[@]}"
+          uv publish --check-url https://pypi.org/simple/ "${RUNNER_TEMP}"/sdk-release/dist/*.whl "${RUNNER_TEMP}"/sdk-release/dist/*.tar.gz
+          python3 "${RUNNER_TEMP}/component_release.py" verify-pypi-artifacts \
+            --package "${PACKAGE_NAME}" --version "${RELEASE_VERSION}" --require-all "${arguments[@]}"
       - name: Create or repair SDK release
         run: |
           if gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
@@ -136,12 +173,6 @@ jobs:
               --title "Python SDK ${RELEASE_VERSION}" \
               --notes-file "${RUNNER_TEMP}/sdk-release/notes.md" "${RUNNER_TEMP}"/sdk-release/dist/*
           fi
-      - name: Publish SDK to PyPI
-        env:
-          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
-        run: |
-          test -n "${UV_PUBLISH_TOKEN}" || { echo 'PYPI_TOKEN is required' >&2; exit 1; }
-          uv publish --check-url https://pypi.org/simple/ "${RUNNER_TEMP}"/sdk-release/dist/*.whl "${RUNNER_TEMP}"/sdk-release/dist/*.tar.gz
 
   reject-non-main:
     if: github.ref != 'refs/heads/main'

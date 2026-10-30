@@ -53,6 +53,12 @@ jobs:
       - name: Plan SDK release or repair
         id: plan
         run: |
+          cp script/release/component_release.py "${RUNNER_TEMP}/component_release.py"
+          if [ -n "${REPAIR_VERSION}" ]; then
+            repair_tag="sdkts/${REPAIR_VERSION}"
+            git merge-base --is-ancestor "${repair_tag}" HEAD || { echo "SDK tag is not reachable from main: ${repair_tag}" >&2; exit 1; }
+            git checkout --detach "$(git rev-parse "${repair_tag}^{commit}")"
+          fi
           arguments=(--component-path sdkts --tag-prefix sdkts/ --ref "${GITHUB_REF}" \
             --json-output "${RUNNER_TEMP}/sdk-plan.json" --github-output "${GITHUB_OUTPUT}")
           if [ -n "${REPAIR_VERSION}" ]; then
@@ -60,13 +66,7 @@ jobs:
           else
             arguments+=(--bump "${BUMP}")
           fi
-          python3 script/release/component_release.py plan "${arguments[@]}"
-          cp script/release/component_release.py "${RUNNER_TEMP}/component_release.py"
-      - name: Restore tagged SDK source for repair
-        if: inputs.repair_version != ''
-        env:
-          SOURCE_SHA: ${{ steps.plan.outputs.source_sha }}
-        run: git checkout --detach "${SOURCE_SHA}"
+          python3 "${RUNNER_TEMP}/component_release.py" plan "${arguments[@]}"
       - name: Test and build SDK
         run: |
           test -f sdkts/package.json && test -f sdkts/package-lock.json || { echo 'TypeScript SDK package or lockfile is missing' >&2; exit 1; }
@@ -120,6 +120,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@v6
         with:
@@ -135,6 +136,36 @@ jobs:
           for asset in "${assets[@]}"; do arguments+=(--asset "${asset}"); done
           python3 script/release/component_release.py verify-language-artifacts \
             --language typescript --package "${PACKAGE_NAME}" --version "${RELEASE_VERSION}" "${arguments[@]}"
+      - name: Regenerate trusted SDK release metadata
+        run: |
+          cp script/release/component_release.py "${RUNNER_TEMP}/component_release.py"
+          cp script/release/npm_publish.py "${RUNNER_TEMP}/npm_publish.py"
+          if git show-ref --verify --quiet "refs/tags/${RELEASE_TAG}"; then
+            git merge-base --is-ancestor "${RELEASE_TAG}" HEAD || { echo "SDK tag is not reachable from main: ${RELEASE_TAG}" >&2; exit 1; }
+            git checkout --detach "$(git rev-parse "${RELEASE_TAG}^{commit}")"
+          fi
+          python3 "${RUNNER_TEMP}/component_release.py" plan \
+            --component-path sdkts --tag-prefix sdkts/ --version "${RELEASE_VERSION}" \
+            --ref "${GITHUB_REF}" --json-output "${RUNNER_TEMP}/trusted-sdk-plan.json" \
+            --github-output "${RUNNER_TEMP}/trusted-sdk-output"
+          python3 "${RUNNER_TEMP}/component_release.py" notes \
+            --plan "${RUNNER_TEMP}/trusted-sdk-plan.json" --repository "${GITHUB_REPOSITORY}" \
+            --output "${RUNNER_TEMP}/sdk-release/notes.md"
+          rm -f "${RUNNER_TEMP}"/sdk-release/dist/*.sha256 "${RUNNER_TEMP}/sdk-release/dist/language-release.json"
+          assets=("${RUNNER_TEMP}"/sdk-release/dist/*.tgz)
+          arguments=()
+          for asset in "${assets[@]}"; do arguments+=(--asset "${asset}"); done
+          python3 "${RUNNER_TEMP}/component_release.py" language-manifest \
+            --output "${RUNNER_TEMP}/sdk-release/dist/language-release.json" --language typescript \
+            --package "${PACKAGE_NAME}" --version "${RELEASE_VERSION}" \
+            --tag "${RELEASE_TAG}" --source-sha "$(git rev-parse HEAD)" "${arguments[@]}"
+      - name: Publish SDK to npm
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          tarball=("${RUNNER_TEMP}"/sdk-release/dist/*.tgz)
+          python3 "${RUNNER_TEMP}/npm_publish.py" publish --package "${PACKAGE_NAME}" \
+            --version "${RELEASE_VERSION}" --tarball "${tarball[0]}"
       - name: Create or repair SDK release
         run: |
           if gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
@@ -144,12 +175,6 @@ jobs:
               --title "TypeScript SDK ${RELEASE_VERSION}" \
               --notes-file "${RUNNER_TEMP}/sdk-release/notes.md" "${RUNNER_TEMP}"/sdk-release/dist/*
           fi
-      - name: Publish SDK to npm
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          tarball=("${RUNNER_TEMP}"/sdk-release/dist/*.tgz)
-          python3 script/release/npm_publish.py publish --package "${PACKAGE_NAME}" --tarball "${tarball[0]}"
 
   reject-non-main:
     if: github.ref != 'refs/heads/main'

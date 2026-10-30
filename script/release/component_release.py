@@ -9,11 +9,13 @@ import hashlib
 import json
 import os
 import re
+import stat
 import subprocess
 import sys
 import tarfile
 import tomllib
 import urllib.error
+import urllib.parse
 import urllib.request
 import zipfile
 from dataclasses import asdict, dataclass
@@ -168,13 +170,10 @@ def validate_release_ref(ref: str) -> None:
 
 def module_path(component_path: Path) -> str:
     if (component_path / "pyproject.toml").is_file():
-        project_section = (component_path / "pyproject.toml").read_text(encoding="utf-8").split("[project]", 1)
-        if len(project_section) != 2:
-            raise ValueError(f"{component_path}/pyproject.toml has no [project] section")
-        match = re.search(r'''^name\s*=\s*["']([^"']+)["']\s*(?:#.*)?$''', project_section[1].split("\n[", 1)[0], re.MULTILINE)
-        if match is None:
+        project = tomllib.loads((component_path / "pyproject.toml").read_text(encoding="utf-8")).get("project", {})
+        if not isinstance(project.get("name"), str):
             raise ValueError(f"{component_path}/pyproject.toml has no project name")
-        return match.group(1)
+        return project["name"]
     if (component_path / "package.json").is_file():
         return json.loads((component_path / "package.json").read_text(encoding="utf-8"))["name"]
     go_mod = component_path / "go.mod"
@@ -254,11 +253,12 @@ def create_plan(
     latest_version = candidates[-1][2] if candidates else ""
     if target_version:
         version = target_version
-        if latest_version and parse_version(version) < parse_version(latest_version):
+        target_key = parse_version(version)
+        target_is_reachable = any(candidate[0] == target_key for candidate in candidates)
+        if latest_version and target_key < parse_version(latest_version) and not target_is_reachable:
             raise ValueError(f"target version {version} is behind latest release {latest_version}")
-        target_is_reachable = latest_version == version
         if target_is_reachable:
-            previous = [candidate for candidate in candidates if candidate[0] < parse_version(version)]
+            previous = [candidate for candidate in candidates if candidate[0] < target_key]
             baseline_tag = previous[-1][1] if previous else ""
             baseline_version = previous[-1][2] if previous else ""
             release_ref = tag_prefix + version
@@ -361,19 +361,11 @@ def validate_breaking_bump(plan: ReleasePlan, has_breaking_changes: bool) -> Non
 
 
 def write_github_output(path: Path, plan: ReleasePlan) -> None:
-    path.write_text(
-        "\n".join(
-            (
-                f"version={plan.version}",
-                f"tag={plan.tag}",
-                f"baseline_tag={plan.baseline_tag}",
-                f"module_path={plan.module_path}",
-                f"source_sha={plan.source_sha}",
-            )
-        )
-        + "\n",
-        encoding="utf-8",
-    )
+    values = {"version": plan.version, "tag": plan.tag, "baseline_tag": plan.baseline_tag,
+              "module_path": plan.module_path, "source_sha": plan.source_sha}
+    if any(ord(character) < 32 or ord(character) == 127 for value in values.values() for character in value):
+        raise ValueError("GitHub output values cannot contain control characters")
+    path.write_text("".join(f"{name}={value}\n" for name, value in values.items()), encoding="utf-8")
 
 
 def write_language_release_manifest(
@@ -417,37 +409,115 @@ def verify_language_artifacts(language: str, package: str, version: str, assets:
     if len({asset.parent.resolve() for asset in assets}) != 1:
         raise ValueError("language release artifacts must share a directory")
     expected_names = {asset.name for asset in assets}
-    actual_names = {path.name for path in assets[0].parent.iterdir() if path.is_file()}
+    entries = [path for path in assets[0].parent.iterdir() if path.is_file() or path.is_symlink()]
+    if any(path.is_symlink() for path in entries):
+        raise ValueError("language release directory contains non-regular files")
+    actual_names = {path.name for path in entries}
     release_names = expected_names | {name + ".sha256" for name in expected_names} | {"language-release.json", "language-release.json.sha256"}
     if actual_names != expected_names and actual_names != release_names:
         raise ValueError("language release directory contains unexpected files")
     for asset in assets:
         if language == "typescript":
-            with tarfile.open(asset, "r:gz") as archive:
-                member = archive.extractfile("package/package.json")
-                if member is None:
-                    raise ValueError("npm tarball has no package/package.json")
-                metadata = json.load(member)
-                actual_name, actual_version = metadata.get("name"), metadata.get("version")
+            actual_name, actual_version = npm_tarball_identity(asset)
         elif asset.name.endswith(".whl"):
+            expected_distribution = python_distribution_filename(package)
+            if not asset.name.startswith(f"{expected_distribution}-{expected_version}-"):
+                raise ValueError("wheel filename differs from planned package and version")
             with zipfile.ZipFile(asset) as archive:
-                names = [name for name in archive.namelist() if name.endswith(".dist-info/METADATA")]
-                if len(names) != 1:
+                entries = archive.infolist()
+                names = [entry.filename for entry in entries]
+                if len(set(names)) != len(names) or any(not safe_archive_path(name) for name in names):
+                    raise ValueError("wheel has duplicate or unsafe paths")
+                if any(stat.S_IFMT(entry.external_attr >> 16) == stat.S_IFLNK for entry in entries):
+                    raise ValueError("wheel contains a symbolic link")
+                dist_info = {"/".join(parts[:index + 1]) for name in names
+                             for parts in [name.split("/")] for index, part in enumerate(parts)
+                             if part.endswith(".dist-info")}
+                expected_info = f"{expected_distribution}-{expected_version}.dist-info"
+                if dist_info != {expected_info}:
+                    raise ValueError("wheel dist-info directory differs from planned package and version")
+                metadata_path = f"{expected_info}/METADATA"
+                if names.count(metadata_path) != 1:
                     raise ValueError("wheel must contain one METADATA file")
-                metadata = email.parser.Parser().parsestr(archive.read(names[0]).decode("utf-8"))
+                metadata = email.parser.Parser().parsestr(archive.read(metadata_path).decode("utf-8"))
                 actual_name, actual_version = metadata.get("Name"), metadata.get("Version")
         else:
+            expected_distribution = python_distribution_filename(package)
+            expected_root = f"{expected_distribution}-{expected_version}"
+            if asset.name != f"{expected_root}.tar.gz":
+                raise ValueError("sdist filename differs from planned package and version")
             with tarfile.open(asset, "r:gz") as archive:
-                names = [member for member in archive.getmembers() if member.name.endswith("/PKG-INFO")]
-                if len(names) != 1:
+                members = archive.getmembers()
+                names = [member.name for member in members]
+                if (len(set(names)) != len(names) or
+                    any(not safe_archive_path(name) or name.split("/")[0] != expected_root or
+                        not (member.isfile() or member.isdir()) for name, member in zip(names, members))):
+                    raise ValueError("sdist has duplicate, unsafe, or unexpected paths")
+                info = [member for member in members if member.name.endswith("/PKG-INFO")]
+                if len(info) != 1 or info[0].name != f"{expected_root}/PKG-INFO" or not info[0].isfile():
                     raise ValueError("sdist must contain one PKG-INFO file")
-                member = archive.extractfile(names[0])
+                member = archive.extractfile(info[0])
                 if member is None:
                     raise ValueError("sdist PKG-INFO is unreadable")
                 metadata = email.parser.Parser().parsestr(member.read().decode("utf-8"))
                 actual_name, actual_version = metadata.get("Name"), metadata.get("Version")
         if actual_name != package or actual_version != expected_version:
             raise ValueError(f"{asset.name} identity {actual_name}@{actual_version} differs from planned {package}@{expected_version}")
+
+
+def python_distribution_filename(package: str) -> str:
+    return re.sub(r"[-_.]+", "_", package).lower()
+
+
+def safe_archive_path(name: str) -> bool:
+    parts = name.rstrip("/").split("/")
+    return bool(name) and not name.startswith("/") and "\\" not in name and all(part not in {"", ".", ".."} for part in parts)
+
+
+def npm_tarball_identity(tarball: Path) -> tuple[str, str]:
+    """Read the sole package manifest only after validating every npm archive entry."""
+    with tarfile.open(tarball, "r:gz") as archive:
+        members = archive.getmembers()
+        names = [member.name for member in members]
+        if (len(set(names)) != len(names) or
+            any(not safe_archive_path(name) or (name != "package" and not name.startswith("package/")) or
+                (name == "package" and not member.isdir()) or
+                not (member.isfile() or member.isdir()) for name, member in zip(names, members))):
+            raise ValueError("npm tarball has duplicate, unsafe, or unexpected paths")
+        package_json = [member for member in members if member.name == "package/package.json" and member.isfile()]
+        if len(package_json) != 1:
+            raise ValueError("npm tarball must contain one package/package.json")
+        manifest = archive.extractfile(package_json[0])
+        if manifest is None:
+            raise ValueError("npm package manifest is unreadable")
+        identity = json.load(manifest)
+        if not isinstance(identity, dict) or not isinstance(identity.get("name"), str) or not isinstance(identity.get("version"), str):
+            raise ValueError("npm package manifest has no name or version")
+        return identity["name"], identity["version"]
+
+
+def verify_pypi_artifacts(package: str, version: str, assets: list[Path], require_all: bool = False) -> None:
+    """Compare local distributions with any files already published for this PyPI version."""
+    public_version = version.removeprefix("v").replace("-rc.", "rc")
+    url = f"https://pypi.org/pypi/{urllib.parse.quote(package, safe='')}/{urllib.parse.quote(public_version, safe='')}/json"
+    try:
+        with urllib.request.urlopen(url, timeout=15) as response:
+            release = json.load(response)
+    except urllib.error.HTTPError as error:
+        if error.code == 404 and not require_all:
+            return
+        raise ValueError(f"PyPI release lookup failed: HTTP {error.code}") from error
+    except urllib.error.URLError as error:
+        raise ValueError(f"PyPI release lookup failed: {error.reason}") from error
+    published = {entry["filename"]: entry["digests"]["sha256"] for entry in release["urls"]}
+    for asset in assets:
+        digest = published.get(asset.name)
+        if digest is None:
+            if require_all:
+                raise ValueError(f"PyPI release is missing {asset.name}")
+            continue
+        if digest != hashlib.sha256(asset.read_bytes()).hexdigest():
+            raise ValueError(f"PyPI artifact {asset.name} has different SHA256 from the local release")
 
 
 def validate_language_package(component_path: str, language: str, lookup: DependencyReleaseLookup) -> str:
@@ -638,6 +708,11 @@ def main() -> int:
     verify_parser.add_argument("--package", required=True)
     verify_parser.add_argument("--version", required=True)
     verify_parser.add_argument("--asset", type=Path, action="append", required=True)
+    registry_parser = subparsers.add_parser("verify-pypi-artifacts")
+    registry_parser.add_argument("--package", required=True)
+    registry_parser.add_argument("--version", required=True)
+    registry_parser.add_argument("--asset", type=Path, action="append", required=True)
+    registry_parser.add_argument("--require-all", action="store_true")
     arguments = parser.parse_args()
     try:
         if arguments.command == "plan":
@@ -663,6 +738,8 @@ def main() -> int:
                                             arguments.version, arguments.tag, arguments.source_sha, arguments.asset)
         elif arguments.command == "verify-language-artifacts":
             verify_language_artifacts(arguments.language, arguments.package, arguments.version, arguments.asset)
+        elif arguments.command == "verify-pypi-artifacts":
+            verify_pypi_artifacts(arguments.package, arguments.version, arguments.asset, arguments.require_all)
         elif arguments.command == "validate-language-package":
             print(validate_language_package(arguments.component_path, arguments.language,
                                             DependencyReleaseLookup(arguments.main_ref)))

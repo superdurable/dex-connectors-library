@@ -37,7 +37,7 @@ test-connectors:
 	done
 
 test-sdkpython:
-	@if [ -f sdkpython/pyproject.toml ]; then test -f sdkpython/uv.lock || { echo 'sdkpython/uv.lock is missing' >&2; exit 1; }; uv sync --project sdkpython && uv run --project sdkpython ruff check sdkpython && uv run --project sdkpython mypy --strict sdkpython/src && uv run --project sdkpython pytest sdkpython/tests; fi
+	@if [ -f sdkpython/pyproject.toml ]; then test -f sdkpython/uv.lock || { echo 'sdkpython/uv.lock is missing' >&2; exit 1; }; uv sync --locked --project sdkpython && uv run --project sdkpython ruff check sdkpython && uv run --project sdkpython mypy --strict sdkpython/src && uv run --project sdkpython pytest sdkpython/tests; fi
 
 test-sdkts:
 	@if [ -f sdkts/package.json ]; then test -f sdkts/package-lock.json || { echo 'sdkts/package-lock.json is missing' >&2; exit 1; }; npm ci --prefix sdkts && npm run typecheck --prefix sdkts && npm run lint --prefix sdkts && npm test --prefix sdkts; fi
@@ -48,7 +48,7 @@ test-python-connectors:
 		if [ ! -f "$$module/python/pyproject.toml" ]; then continue; fi; \
 		test -f "$$module/python/uv.lock" || { echo "$$module/python/uv.lock is missing" >&2; exit 1; }; \
 		python3 script/release/component_release.py validate-language-package --component-path "$$module/python" --language python || exit 1; \
-		uv sync --project "$$module/python" && uv run --project "$$module/python" ruff check "$$module/python" && \
+		uv sync --locked --project "$$module/python" && uv run --project "$$module/python" ruff check "$$module/python" && \
 		uv run --project "$$module/python" mypy --strict "$$module/python/src" && uv run --project "$$module/python" pytest "$$module/python/tests" || exit 1; \
 	done
 

@@ -12,13 +12,16 @@ import json
 import os
 import subprocess
 import sys
+import tarfile
 import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from component_release import npm_tarball_identity
+
 ISSUE_TITLE = "npm: NPM_TOKEN needs rotation"
 ROTATION_URL = "https://github.com/superdurable/dex-connectors-library/blob/main/docs/versioning-and-releases.md#npm-token-rotation"
-AUTH_ERRORS = ("E401", "ENEEDAUTH", "oidc", "trusted publisher", "invalid token", "token expired", "authentication failed")
+AUTH_ERRORS = ("E401", "ENEEDAUTH", "oidc token exchange failed", "failed to exchange oidc token", "invalid npm token", "token expired")
 
 
 def npm(*arguments: str, token: str = "") -> subprocess.CompletedProcess[str]:
@@ -51,10 +54,15 @@ def report_token_issue(reason: str, expiry: str = "") -> None:
     if not os.environ.get("GH_TOKEN"):
         return
     body = f"@longquanzheng NPM_TOKEN needs rotation: {reason}.\n\nExpiry: {expiry or 'unknown'}.\n\nSteps: {ROTATION_URL}\n"
-    label = subprocess.run(("gh", "label", "create", "area:release", "--color", "0e8a16", "--force"),
-                           capture_output=True, text=True, check=False)
-    if label.returncode != 0:
-        raise RuntimeError("cannot ensure npm token rotation issue label")
+    labels = subprocess.run(("gh", "label", "list", "--search", "area:release", "--json", "name", "--limit", "100"),
+                            capture_output=True, text=True, check=False)
+    if labels.returncode != 0:
+        raise RuntimeError("cannot inspect npm token rotation issue label")
+    if not any(entry.get("name") == "area:release" for entry in json.loads(labels.stdout)):
+        label = subprocess.run(("gh", "label", "create", "area:release", "--color", "0e8a16"),
+                               capture_output=True, text=True, check=False)
+        if label.returncode != 0:
+            raise RuntimeError("cannot create npm token rotation issue label")
     existing = subprocess.run(("gh", "issue", "list", "--state", "open", "--search", f"{ISSUE_TITLE} in:title",
                                "--json", "number,title", "--limit", "100"),
                               capture_output=True, text=True, check=False)
@@ -77,11 +85,12 @@ def report_token_issue(reason: str, expiry: str = "") -> None:
         raise RuntimeError("cannot create npm token rotation issue")
 
 
-def publish(package: str, tarball: str, dist_tag: str = "latest") -> None:
+def publish(package: str, tarball: str, version: str, dist_tag: str = "latest") -> None:
     tarball_integrity = "sha512-" + base64.b64encode(hashlib.sha512(Path(tarball).read_bytes()).digest()).decode("ascii")
     tarball_name, package_version = package_identity_from_tarball(Path(tarball))
-    if tarball_name != package:
-        raise RuntimeError(f"npm tarball package {tarball_name} differs from planned {package}")
+    expected_version = version.removeprefix("v")
+    if tarball_name != package or package_version != expected_version:
+        raise RuntimeError(f"npm tarball identity {tarball_name}@{package_version} differs from planned {package}@{expected_version}")
     existing_version = npm("view", f"{package}@{package_version}", "dist.integrity", "--json")
     if existing_version.returncode == 0:
         try:
@@ -97,7 +106,9 @@ def publish(package: str, tarball: str, dist_tag: str = "latest") -> None:
         raise RuntimeError("npm version lookup failed before publication")
     found = npm("view", package, "version", "--json")
     if found.returncode == 0 and dist_tag == "latest":
-        published = npm("publish", tarball, "--provenance", "--access", "public", "--tag", dist_tag)
+        publish_arguments = ("publish", tarball, "--provenance", "--access", "public", "--tag", dist_tag)
+        verify_npm_dry_run(publish_arguments, package, expected_version)
+        published = npm(*publish_arguments)
         if published.returncode == 0:
             return
         print_npm_failure(published)
@@ -116,6 +127,7 @@ def publish(package: str, tarball: str, dist_tag: str = "latest") -> None:
         report_token_issue("the CI token is missing")
         raise RuntimeError("NPM_TOKEN is required for the first publish or trusted publisher fallback")
     publish_arguments = ("publish", tarball, "--provenance", "--access", "public", "--tag", dist_tag) if dist_tag == "latest" else ("publish", tarball, "--access", "public", "--tag", dist_tag)
+    verify_npm_dry_run(publish_arguments, package, expected_version)
     published = npm(*publish_arguments, token=token)
     if published.returncode != 0:
         print_npm_failure(published)
@@ -126,14 +138,25 @@ def publish(package: str, tarball: str, dist_tag: str = "latest") -> None:
 
 
 def package_identity_from_tarball(tarball: Path) -> tuple[str, str]:
-    import tarfile
+    try:
+        return npm_tarball_identity(tarball)
+    except (ValueError, OSError, tarfile.TarError) as error:
+        raise RuntimeError(f"invalid npm tarball: {error}") from error
 
-    with tarfile.open(tarball, "r:gz") as archive:
-        member = archive.extractfile("package/package.json")
-        if member is None:
-            raise RuntimeError("npm tarball has no package/package.json")
-        identity = json.load(member)
-        return str(identity["name"]), str(identity["version"])
+
+def verify_npm_dry_run(publish_arguments: tuple[str, ...], package: str, version: str) -> None:
+    result = npm(*publish_arguments, "--dry-run", "--json")
+    if result.returncode != 0:
+        print_npm_failure(result)
+        raise RuntimeError("npm dry-run failed before publication")
+    try:
+        reported = json.loads(result.stdout)
+    except json.JSONDecodeError as error:
+        raise RuntimeError("npm dry-run returned invalid JSON") from error
+    if isinstance(reported, dict) and len(reported) == 1 and package in reported:
+        reported = reported[package]
+    if not isinstance(reported, dict) or reported.get("name") != package or reported.get("version") != version:
+        raise RuntimeError("npm dry-run package identity differs from the release plan")
 
 
 def check_token() -> None:
@@ -201,13 +224,14 @@ def main() -> int:
     subparsers = parser.add_subparsers(dest="command", required=True)
     publish_parser = subparsers.add_parser("publish")
     publish_parser.add_argument("--package", required=True)
+    publish_parser.add_argument("--version", required=True)
     publish_parser.add_argument("--tarball", required=True)
     publish_parser.add_argument("--dist-tag", default="latest")
     subparsers.add_parser("check-token")
     arguments = parser.parse_args()
     try:
         if arguments.command == "publish":
-            publish(arguments.package, arguments.tarball, arguments.dist_tag)
+            publish(arguments.package, arguments.tarball, arguments.version, arguments.dist_tag)
         else:
             check_token()
     except RuntimeError as error:

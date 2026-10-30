@@ -160,19 +160,23 @@ reproducible; they do not cap the versions an application selects.
 Publish a language SDK first, then update a connector's dependency on its
 released version in a later PR. `release-sdk-python.yml` and
 `release-sdk-ts.yml` accept a semantic bump, an existing `repair_version`
-tag to republish after an interrupted run, and a `dry_run` input. The source
+tag to repair an interrupted release, and a `dry_run` input. A repair builds
+from the tag, including when a newer SDK version is on `main`. The source
 package version must already match the planned bump. Connector language
 releases compare each language's manifest version with its own reachable tags.
-They build a wheel and source distribution or npm tarball, upload those files,
-SHA-256 digests, and `language-release.json` to GitHub Releases, then publish
-to PyPI or npm. `dry_run` builds and tests without creating a tag, release,
+They build a wheel and source distribution or npm tarball, publish the archives
+to PyPI or npm, then upload those same files, SHA-256 digests, and
+`language-release.json` to GitHub Releases. `dry_run` builds and tests without creating a tag, release,
 registry upload, or catalog deployment.
 
 Language builds run with read-only repository access. A separate publish job
 checks each package archive's embedded name and version against the release
-plan before GitHub or registry upload. Python uses PyPI's existing-file check
-on rerun; npm accepts an existing version only when its registry integrity
-matches the tarball. Connector language packages require a released SDK, with
+plan before registry upload. The publish job regenerates digests, release
+metadata, and notes using trusted tooling. On rerun, Python compares PyPI's
+SHA-256 digests with local archives before replacing GitHub assets; npm accepts
+an existing version only when its registry integrity matches the tarball. npm
+also confirms the package name and version reported by its publish dry run.
+Connector language packages require a released SDK, with
 no local path, Git, file, workspace, or uv source override. CI and release
 builds verify the SDK tag and GitHub release before building the connector.
 
@@ -242,7 +246,9 @@ the original push commit, retaining its release matrix. The workflow:
 10. runs Released compatibility against the new component tag;
 11. publishes the directory site, `catalog.yaml`, and `card.png` to GitHub
     Pages when connector releases succeed or none are pending. A failed Go
-    or language release blocks the whole catalog publish, including Go entries.
+    or language build or release blocks the whole catalog publish, including Go entries.
+    When no language release is pending, skipped language jobs allow Go-only
+    catalog deployment.
     The site is
     `https://superdurable.github.io/dex-connectors-library/` and the README
     preview is `card.png` beside `catalog.yaml`.

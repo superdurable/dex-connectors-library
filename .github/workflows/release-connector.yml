@@ -90,6 +90,7 @@ jobs:
       TAG_PREFIX: ${{ matrix.tag_prefix }}
       RELEASE_VERSION: ${{ matrix.version }}
       RELEASE_DISPLAY_NAME: ${{ matrix.display_name }}
+      RELEASE_DRY_RUN: ${{ inputs.dry_run }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -133,7 +134,7 @@ jobs:
               fi
             done
           fi
-          if [ '${{ inputs.dry_run }}' = true ]; then release_required=true; fi
+          if [ "${RELEASE_DRY_RUN}" = true ]; then release_required=true; fi
           {
             echo "release_required=${release_required}"
             echo "source_sha=${source_sha}"
@@ -350,11 +351,12 @@ jobs:
         if: steps.state.outputs.release_required == 'true' && matrix.language == 'python'
         run: |
           test -f "${COMPONENT_PATH}/uv.lock" || { echo 'Python lockfile is missing' >&2; exit 1; }
-          uv sync --project "${COMPONENT_PATH}"
+          uv sync --locked --project "${COMPONENT_PATH}"
           uv run --project "${COMPONENT_PATH}" ruff check "${COMPONENT_PATH}"
           uv run --project "${COMPONENT_PATH}" mypy --strict "${COMPONENT_PATH}/src"
           uv run --project "${COMPONENT_PATH}" pytest "${COMPONENT_PATH}/tests"
           uv build "${COMPONENT_PATH}" --out-dir "${RUNNER_TEMP}/language-work/dist"
+          rm -f "${RUNNER_TEMP}/language-work/dist/.gitignore"
       - name: Test and build TypeScript package
         if: steps.state.outputs.release_required == 'true' && matrix.language == 'typescript'
         run: |
@@ -406,6 +408,7 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJSON(needs.plan.outputs.language_matrix) }}
     env:
+      COMPONENT_PATH: ${{ matrix.directory }}/${{ matrix.language }}
       TAG_PREFIX: ${{ matrix.tag_prefix }}
       RELEASE_VERSION: ${{ matrix.version }}
       PACKAGE_NAME: ${{ matrix.package }}
@@ -453,6 +456,58 @@ jobs:
           for asset in "${assets[@]}"; do arguments+=(--asset "${asset}"); done
           python3 script/release/component_release.py verify-language-artifacts \
             --language "${LANGUAGE}" --package "${PACKAGE_NAME}" --version "${RELEASE_VERSION}" "${arguments[@]}"
+      - name: Regenerate trusted release metadata
+        if: steps.state.outputs.release_required == 'true'
+        run: |
+          tag="${TAG_PREFIX}${RELEASE_VERSION}"
+          cp script/release/component_release.py "${RUNNER_TEMP}/component_release.py"
+          cp script/release/npm_publish.py "${RUNNER_TEMP}/npm_publish.py"
+          if git show-ref --verify --quiet "refs/tags/${tag}"; then
+            git merge-base --is-ancestor "${tag}" HEAD || { echo "Language tag is not reachable from main: ${tag}" >&2; exit 1; }
+            git checkout --detach "$(git rev-parse "${tag}^{commit}")"
+          fi
+          python3 "${RUNNER_TEMP}/component_release.py" plan \
+            --component-path "${COMPONENT_PATH}" --tag-prefix "${TAG_PREFIX}" \
+            --version "${RELEASE_VERSION}" --ref "${GITHUB_REF}" \
+            --json-output "${RUNNER_TEMP}/trusted-language-plan.json" \
+            --github-output "${RUNNER_TEMP}/trusted-language-output"
+          python3 "${RUNNER_TEMP}/component_release.py" notes \
+            --plan "${RUNNER_TEMP}/trusted-language-plan.json" --repository "${GITHUB_REPOSITORY}" \
+            --output "${RUNNER_TEMP}/language-work/notes.md"
+          rm -f "${RUNNER_TEMP}"/language-work/dist/*.sha256 "${RUNNER_TEMP}/language-work/dist/language-release.json"
+          if [ "${LANGUAGE}" = python ]; then
+            assets=("${RUNNER_TEMP}"/language-work/dist/*.whl "${RUNNER_TEMP}"/language-work/dist/*.tar.gz)
+          else
+            assets=("${RUNNER_TEMP}"/language-work/dist/*.tgz)
+          fi
+          arguments=()
+          for asset in "${assets[@]}"; do arguments+=(--asset "${asset}"); done
+          python3 "${RUNNER_TEMP}/component_release.py" language-manifest \
+            --output "${RUNNER_TEMP}/language-work/dist/language-release.json" \
+            --language "${LANGUAGE}" --package "${PACKAGE_NAME}" --version "${RELEASE_VERSION}" \
+            --tag "${tag}" --source-sha "$(git rev-parse HEAD)" "${arguments[@]}"
+      - name: Publish Python package
+        if: steps.state.outputs.release_required == 'true' && matrix.language == 'python'
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
+        run: |
+          test -n "${UV_PUBLISH_TOKEN}" || { echo 'PYPI_TOKEN is required' >&2; exit 1; }
+          assets=("${RUNNER_TEMP}"/language-work/dist/*.whl "${RUNNER_TEMP}"/language-work/dist/*.tar.gz)
+          arguments=()
+          for asset in "${assets[@]}"; do arguments+=(--asset "${asset}"); done
+          python3 "${RUNNER_TEMP}/component_release.py" verify-pypi-artifacts \
+            --package "${PACKAGE_NAME}" --version "${RELEASE_VERSION}" "${arguments[@]}"
+          uv publish --check-url https://pypi.org/simple/ "${RUNNER_TEMP}"/language-work/dist/*.whl "${RUNNER_TEMP}"/language-work/dist/*.tar.gz
+          python3 "${RUNNER_TEMP}/component_release.py" verify-pypi-artifacts \
+            --package "${PACKAGE_NAME}" --version "${RELEASE_VERSION}" --require-all "${arguments[@]}"
+      - name: Publish npm package
+        if: steps.state.outputs.release_required == 'true' && matrix.language == 'typescript'
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          package_tarball=("${RUNNER_TEMP}"/language-work/dist/*.tgz)
+          python3 "${RUNNER_TEMP}/npm_publish.py" publish --package "${PACKAGE_NAME}" \
+            --version "${RELEASE_VERSION}" --tarball "${package_tarball[0]}"
       - name: Create or repair language release
         if: steps.state.outputs.release_required == 'true'
         env:
@@ -466,20 +521,6 @@ jobs:
               --title "${RELEASE_DISPLAY_NAME} ${LANGUAGE} ${RELEASE_VERSION}" \
               --notes-file "${RUNNER_TEMP}/language-work/notes.md" "${RUNNER_TEMP}"/language-work/dist/*
           fi
-      - name: Publish Python package
-        if: steps.state.outputs.release_required == 'true' && matrix.language == 'python'
-        env:
-          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
-        run: |
-          test -n "${UV_PUBLISH_TOKEN}" || { echo 'PYPI_TOKEN is required' >&2; exit 1; }
-          uv publish --check-url https://pypi.org/simple/ "${RUNNER_TEMP}"/language-work/dist/*.whl "${RUNNER_TEMP}"/language-work/dist/*.tar.gz
-      - name: Publish npm package
-        if: steps.state.outputs.release_required == 'true' && matrix.language == 'typescript'
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          package_tarball=("${RUNNER_TEMP}"/language-work/dist/*.tgz)
-          python3 script/release/npm_publish.py publish --package "${PACKAGE_NAME}" --tarball "${package_tarball[0]}"
       - name: Mark language release complete
         if: steps.state.outputs.release_required == 'true'
         run: |
@@ -487,9 +528,12 @@ jobs:
           gh release upload "${TAG_PREFIX}${RELEASE_VERSION}" --clobber "${RUNNER_TEMP}/language-release.complete"
 
   build-catalog:
-    needs: [plan, release, publish-language]
-    if: always() && needs.plan.result == 'success' && (needs.release.result == 'success' || needs.release.result == 'skipped') && (needs.publish-language.result == 'success' || needs.publish-language.result == 'skipped') && inputs.dry_run != true
+    needs: [plan, release, build-language, publish-language]
+    if: always() && needs.plan.result == 'success' && (needs.release.result == 'success' || needs.release.result == 'skipped') && (needs.build-language.result == 'success' || needs.build-language.result == 'skipped') && (needs.publish-language.result == 'success' || (needs.plan.outputs.language_count == '0' && needs.publish-language.result == 'skipped')) && inputs.dry_run != true
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: read
     steps:
       - uses: actions/checkout@v6
         with:
