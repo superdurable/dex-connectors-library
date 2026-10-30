@@ -30,7 +30,6 @@ export class TokenResponse {
 
   /** Capture validated provider response fields. */
   constructor(fields: { accessToken: SecretString; refreshToken: SecretString; expiresInMs: number; refreshTokenExpiresInMs: number; scope: string; tokenType: string; retainedFields: Record<string, unknown> }) {
-    Object.assign(this, fields);
     this.accessToken = fields.accessToken;
     this.refreshToken = fields.refreshToken;
     this.expiresInMs = fields.expiresInMs;
@@ -149,9 +148,9 @@ export class TokenEndpoint {
     const accessToken = decoded.access_token;
     const expiresIn = decoded.expires_in;
     const tokenType = decoded.token_type;
-    const hasAcceptedExpiry = Number.isSafeInteger(expiresIn) && (expiresIn as number) > 0 || (expiresIn === undefined && options.acceptsMissingExpiresIn === true);
+    const hasAcceptedExpiry = Number.isSafeInteger(expiresIn) && (expiresIn as number) > 0 || ((expiresIn === undefined || expiresIn === 0) && options.acceptsMissingExpiresIn === true);
     const acceptedTypes = options.acceptedTokenTypes?.length ? options.acceptedTokenTypes : ['Bearer'];
-    const hasAcceptedType = typeof tokenType === 'string' && acceptedTypes.some(accepted => accepted.toLowerCase() === tokenType.toLowerCase()) || (tokenType === undefined && options.acceptsMissingTokenType === true);
+    const hasAcceptedType = typeof tokenType === 'string' && acceptedTypes.some(accepted => accepted.toLowerCase() === tokenType.toLowerCase()) || ((tokenType === undefined || tokenType === '') && options.acceptsMissingTokenType === true);
     if (typeof accessToken !== 'string' || !accessToken || !hasAcceptedExpiry || !hasAcceptedType) throw new Error(`${options.providerName} token response omitted required fields`);
     const retainedFields: Record<string, unknown> = {};
     for (const field of options.retainedResponseFields ?? []) if (Object.hasOwn(decoded, field)) retainedFields[field] = decoded[field];
@@ -203,15 +202,20 @@ export function isRefreshRequired(hasAccessToken: boolean, expiresAt: Date | und
   return expiresAt.getTime() <= now.getTime() + proportionalRefreshSkewMs(issuedAt, expiresAt);
 }
 
+/** Decide with issue time so short-lived tokens use proportional skew. */
+export function isRefreshRequiredWithIssueTime(hasAccessToken: boolean, issuedAt: Date | undefined, expiresAt: Date | undefined, now: Date, missingExpiryRule: 'refresh' | 'keep'): boolean {
+  return isRefreshRequired(hasAccessToken, expiresAt, now, missingExpiryRule, issuedAt);
+}
+
 /** Check whether all required scopes appear in a returned space- or comma-separated set. */
 export function hasAllScopes(returnedScope: string, requiredScopes: readonly string[]): boolean {
-  const granted = new Set(returnedScope.split(/[\s,]+/).filter(Boolean));
+  const granted = new Set(returnedScope.split(/[ ,]+/).filter(Boolean));
   return requiredScopes.every(scope => granted.has(scope));
 }
 
 /** Check set equality of returned and required scopes. */
 export function hasExactScopes(returnedScope: string, requiredScopes: readonly string[]): boolean {
-  const granted = new Set(returnedScope.split(/[\s,]+/).filter(Boolean));
+  const granted = new Set(returnedScope.split(/[ ,]+/).filter(Boolean));
   return granted.size === new Set(requiredScopes).size && hasAllScopes(returnedScope, requiredScopes);
 }
 
