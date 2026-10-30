@@ -124,7 +124,9 @@ highest stable version with a published, non-prerelease GitHub release carrying
 `connector-release.complete`. Tags under both `connectors/<directory>/vX.Y.Z`
 and `connectors/<directory>/go/vX.Y.Z` belong to the same history. An explicit
 `CONNECTOR_RELEASE_TAG` checks that tag directly; release publication uses it
-before uploading the completion marker.
+before uploading the completion marker. Logs name every skipped tag and every
+connector without a completed release. Release metadata for either tag prefix
+is placed under `connectors/<directory>/`.
 
 ## Dex Go SDK compatibility
 
