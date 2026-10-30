@@ -3,7 +3,9 @@
 """Durable project credential refresh admission and recovery tests."""
 
 import asyncio
+import json
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -25,12 +27,14 @@ from dex_connectors.sdk.projectconfig import (
     CredentialMaterial,
     InMemoryObjectStore,
     Scope,
+    load_dex_web_project,
 )
 from dex_connectors.sdk.projectconfig.provider import (
     RefreshFailedError,
     RefreshingCredentialProvider,
     RejectedCredentialNotRefreshedError,
 )
+from dex_connectors.sdk.projectconfig.storage import ObjectConflictError
 
 KEY = ConnectionKey("sample", "main")
 CALL = Call(
@@ -150,3 +154,56 @@ async def test_rejection_requires_authoritative_expiry() -> None:
     with pytest.raises(RejectedCredentialNotRefreshedError):
         await resolve_credential_after_rejection(provider, CALL, driver)
     assert driver.calls == 0
+
+
+def _write_local_connections(path: Path, access: str, expires_at: datetime) -> None:
+    """Write one owner-only Dex Web connection without exposing real credentials."""
+    path.write_text(json.dumps({
+        "schemaVersion": "connectors.dex.dev/local-connections/v1alpha1",
+        "connections": [{
+            "connectorId": "sample", "connectionName": "main", "modulePath": "example",
+            "provider": "sample", "configuration": {},
+            "credentials": {"access": access, "refresh": "kept"},
+            "credentialExpiresAt": expires_at.isoformat(),
+        }],
+        "triggerBindings": [],
+    }))
+    path.chmod(0o600)
+
+
+@pytest.mark.asyncio
+async def test_local_dex_web_refresh_writes_back_and_restart_reads_it(tmp_path: Path) -> None:
+    """Persist a rotated access token in Dex Web's owner-only file."""
+    path = tmp_path / "connections.json"
+    _write_local_connections(path, "old", datetime.now(UTC) - timedelta(minutes=1))
+    project = await load_dex_web_project(path)
+    provider = RefreshingCredentialProvider(project.connections, KEY, decode, encode)
+    driver = RefreshDriver()
+    driver.release.set()
+    assert (await resolve_credential(provider, CALL, driver))["access"] == "new"
+    assert json.loads(path.read_text())["connections"][0]["credentials"] == {
+        "access": "new", "refresh": "kept"
+    }
+    assert path.stat().st_mode & 0o777 == 0o600
+    restarted = await load_dex_web_project(path)
+    material, _ = await restarted.connections.read_credential_material(KEY)
+    assert material.credentials["access"] == "new"
+
+
+@pytest.mark.asyncio
+async def test_local_dex_web_newer_authorization_wins_refresh(tmp_path: Path) -> None:
+    """A Dex Web update supersedes an in-flight refresh admission."""
+    path = tmp_path / "connections.json"
+    _write_local_connections(path, "old", datetime.now(UTC) - timedelta(minutes=1))
+    project = await load_dex_web_project(path)
+    provider = RefreshingCredentialProvider(project.connections, KEY, decode, encode)
+    driver = RefreshDriver()
+    pending = asyncio.create_task(resolve_credential(provider, CALL, driver))
+    await asyncio.wait_for(driver.started.wait(), 2)
+    _write_local_connections(path, "dex-web-new", datetime.now(UTC) + timedelta(hours=1))
+    driver.release.set()
+    with pytest.raises(ObjectConflictError):
+        await pending
+    assert json.loads(path.read_text())["connections"][0]["credentials"]["access"] == "dex-web-new"
+    current, _ = await project.connections.read_credential_material(KEY)
+    assert current.credentials["access"] == "dex-web-new"

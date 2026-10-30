@@ -159,8 +159,10 @@ result, then publishes it through a revision CAS. Concurrent callers recover
 the result without another provider request. A retryable refresh failure
 restores the prior credential; a terminal grant failure fences it for
 reauthorization. A generic provider 401 can force refresh only after the
-authoritative stored expiry has elapsed. This hosted store path does not yet
-write refreshed material back to local Dex Web `connections.json`.
+authoritative stored expiry has elapsed. Under `dexcli dev`, the same provider
+uses process-local connection heads and writes refreshed material back to the
+owner-only `connections.json` file only while it still holds the prior
+credential. A newer Dex Web authorization wins the race.
 
 From [the runnable project example](examples/credentials_and_project.py):
 

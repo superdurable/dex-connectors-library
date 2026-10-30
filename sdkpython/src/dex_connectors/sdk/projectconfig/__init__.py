@@ -17,6 +17,7 @@ import httpx
 
 from .broker import CredentialBrokerClient, SharedConnection
 from .connections import ConnectionKey, ConnectionStore, CredentialMaterial
+from .dexweb_store import DexWebObjectStore
 from .models import (
     CONFIGURATION_SCHEMA_VERSION,
     LOCAL_CONNECTIONS_SCHEMA_VERSION,
@@ -89,12 +90,14 @@ class LoadedProject:
 
 
 async def load_project_from_object_store(
-    objects: ObjectStore, scope: Scope, reference: SnapshotRef, broker_client: httpx.AsyncClient | None = None
+    objects: ObjectStore, scope: Scope, reference: SnapshotRef,
+    broker_client: httpx.AsyncClient | None = None,
+    connection_store: ConnectionStore | None = None,
 ) -> LoadedProject:
     """Read a pinned snapshot from a trusted object store without fetching credentials."""
     configurations = ConfigurationStore(objects, scope)
     configuration = await configurations.read_snapshot(reference)
-    connections = ConnectionStore(objects, scope)
+    connections = connection_store if connection_store is not None else ConnectionStore(objects, scope)
     project = LoadedProject(configuration, reference, connections, configurations)
     if configuration.credential_broker is not None:
 
@@ -194,7 +197,6 @@ async def load_dex_web_project(path: str | Path) -> LoadedProject:
     if not isinstance(raw_connections, list):
         raise ValueError("connections.json requires connections")
     entries: list[ConnectionConfiguration] = []
-    credentials = _decode_local_credentials(source)
     for index, raw in enumerate(raw_connections):
         record = require_object(raw, f"connection {index}")
         entry = ConnectionConfiguration.from_wire(
@@ -231,10 +233,11 @@ async def load_dex_web_project(path: str | Path) -> LoadedProject:
     )
     written, _ = await configurations.write_configuration(0, document)
     reference = await configurations.freeze_configuration(written.revision)
-    project = await load_project_from_object_store(store, scope, reference)
-    project.local_credentials = credentials
-    project.local_connections_path = connections_path
-    return project
+    local_objects = DexWebObjectStore(connections_path, scope)
+    await local_objects.initialize()
+    return await load_project_from_object_store(
+        store, scope, reference, connection_store=ConnectionStore(local_objects, scope)
+    )
 
 
 async def load_from_environment(
