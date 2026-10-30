@@ -154,11 +154,12 @@ try {
   await worker.waitPullRegistered({ timeoutMs: 10_000 });
   for (const scenario of scenarios) {
     const flowId = `sdkts-${randomUUID()}`;
-    await client.startFlow(scenario.flow, flowId, { id: 'item-1' });
+    const runId = await client.startFlow(scenario.flow, flowId, { id: 'item-1' });
     const result = await client.waitForFlow(flowId, 30_000);
     assert.equal(result.status, scenario.status, `${scenario.flow.getFlowType()}: ${result.errorMessage ?? 'wrong status'}`);
     if (scenario.branch) assert.equal(result.singleOutput().branch, scenario.branch);
     await scenario.verify?.({ client, flowId, result });
+    process.stdout.write(`Dex Run ${runId} (${flowId}): ${result.status}${scenario.branch ? `, branch ${scenario.branch}` : ''}\n`);
   }
 } finally {
   await client.close();
