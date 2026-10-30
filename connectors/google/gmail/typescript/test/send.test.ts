@@ -358,6 +358,31 @@ describe('Gmail send and reply classification', () => {
     expect(searches).toBe(1);
   });
 
+  it('read-backs an ambiguous reply on retry without repeating source lookup or POST', async () => {
+    const checkpoint: { value?: unknown } = {};
+    let sourceReads = 0;
+    let posts = 0;
+    let searches = 0;
+    const operation = sender(async request => {
+      if (request.url.includes('/source-1?')) {
+        sourceReads++;
+        return response(200, { id: 'source-1', threadId: 'thread-1', internalDate: '1767312000000', payload: { headers: [
+          { name: 'Message-ID', value: '<source@example.com>' }, { name: 'From', value: 'ada@example.com' },
+        ] } });
+      }
+      if (request.method === 'POST') { posts++; throw new ProviderTransportError(false); }
+      searches++;
+      return response(200, { messages: searches >= 5 ? [{ id: 'confirmed-reply', threadId: 'thread-1' }] : [] });
+    });
+    expect((await operation.replyToMessage(operationCall('replyToMessage', 1, checkpoint), replyInput, new Date(Date.now() + 30_000))).kind).toBe('retry');
+    expect(checkpoint.value).toMatchObject({ state: 'claimed', attempt: 1 });
+    expect(await operation.replyToMessage(operationCall('replyToMessage', 2, checkpoint), replyInput, new Date(Date.now() + 30_000)))
+      .toMatchObject({ branch: 'sent', value: { messageId: 'confirmed-reply', threadId: 'thread-1' } });
+    expect(sourceReads).toBe(1);
+    expect(posts).toBe(1);
+    expect(searches).toBe(5);
+  });
+
   it('classifies missing, malformed, and oversized source responses before sending', async () => {
     const missing = sender(async () => response(404, {}));
     expect(await missing.replyToMessage(operationCall('replyToMessage'), replyInput, new Date(Date.now() + 30_000))).toMatchObject({ branch: 'providerRejected', failure: { kind: 'NOT_FOUND' } });
