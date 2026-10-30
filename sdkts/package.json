@@ -1,0 +1,28 @@
+{
+  "name": "@superdurable/connectors-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Provider-neutral TypeScript contracts for Dex connectors",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": { "import": { "types": "./dist/index.d.ts", "default": "./dist/index.js" }, "require": { "types": "./dist/index.d.cts", "default": "./dist/index.cjs" } },
+    "./providerhttp": { "import": { "types": "./dist/providerhttp/index.d.ts", "default": "./dist/providerhttp/index.js" }, "require": { "types": "./dist/providerhttp/index.d.cts", "default": "./dist/providerhttp/index.cjs" } },
+    "./projectconfig": { "import": { "types": "./dist/projectconfig/index.d.ts", "default": "./dist/projectconfig/index.js" }, "require": { "types": "./dist/projectconfig/index.d.cts", "default": "./dist/projectconfig/index.cjs" } },
+    "./connectormock": { "import": { "types": "./dist/connectormock/index.d.ts", "default": "./dist/connectormock/index.js" }, "require": { "types": "./dist/connectormock/index.d.cts", "default": "./dist/connectormock/index.cjs" } }
+  },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsup src/index.ts src/providerhttp/index.ts src/projectconfig/index.ts src/connectormock/index.ts --format esm,cjs --dts --clean",
+    "typecheck": "tsc --noEmit",
+    "typecheck:cjs": "tsc --noEmit --strict --skipLibCheck --module Node16 --moduleResolution Node16 --target ES2022 test/cjs-smoke.cts",
+    "lint": "eslint src test",
+    "test": "vitest run",
+    "check": "npm run typecheck && npm run lint && npm test && npm run build && npm run typecheck:cjs"
+  },
+  "dependencies": { "@aws-sdk/client-s3": "^3.900.0", "zod": "^4.1.0" },
+  "devDependencies": { "@eslint/js": "^9.0.0", "@types/node": "^22.0.0", "eslint": "^9.0.0", "typescript": "^5.9.0", "typescript-eslint": "^8.0.0", "tsup": "^8.0.0", "vitest": "^3.0.0" }
+}
