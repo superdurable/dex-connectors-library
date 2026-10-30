@@ -10,6 +10,8 @@ from datetime import datetime, timedelta
 from typing import Generic, Literal, TypeVar, cast
 from uuid import NAMESPACE_URL, UUID, uuid5
 
+from dex import AsyncContext
+
 from .errors import Failure
 from .retry_policy import RetryPolicy
 from .timestamps import RFC3339NanoTimestamp, format_rfc3339_nano
@@ -102,12 +104,17 @@ class OperationRef:
 
 @dataclass(frozen=True, slots=True)
 class Call:
-    """Provider-safe metadata for one invocation; Dex context stays outside JSON."""
+    """Provider-safe metadata and ephemeral async Dex Context for one invocation.
+
+    The live context is available only during a Step handler and is never
+    serialized, compared, or included in Flow state.
+    """
 
     id: CallID
     connection: ConnectionRef
     operation: OperationRef
     idempotency_key: IdempotencyKey = IdempotencyKey("")
+    context: AsyncContext | None = field(default=None, repr=False, compare=False)
 
     def to_wire(self) -> dict[str, object]:
         """Encode the Go Call's persisted identity fields."""

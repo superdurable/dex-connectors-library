@@ -49,7 +49,9 @@ def test_go_identity_and_results_round_trip(conformance_dir: Path) -> None:
         OperationRef(source["connectorId"], source["operationId"]),
     )
     assert derived == identity["derivedCall"]["id"]
-    assert Call.from_wire(identity["derivedCall"]).to_wire() == identity["derivedCall"]
+    decoded_call = Call.from_wire(identity["derivedCall"])
+    assert decoded_call.to_wire() == identity["derivedCall"]
+    assert decoded_call.context is None
     assert derive_call_id(source["flowId"], "other", OperationRef("sample", "createItem")) != derived
     CallID(derived).validate()
     assert identity["callIDNamespace"] == "63281a42-70ad-5bc3-a289-728819af723f"

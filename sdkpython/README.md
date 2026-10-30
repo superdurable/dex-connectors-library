@@ -2,23 +2,26 @@
 
 `dex-connectors-sdk` is the Python core for Dex-native provider connectors. It
 uses the PEP 420 `dex_connectors` namespace and imports as `dex_connectors.sdk`.
-Version `0.1.0` is unreleased. Phase 1a supplies the models and protocols below;
-Step factories, Triggers, singledispatch, text generation, and OAuth refresh
-drivers wait for the Dex SDK R1–R4 gaps described in the repository's design.
+Version `0.1.0` is unreleased. The package supplies the models, provider
+operation contracts, credential helpers, OAuth token exchanges, and
+single-dispatch checkpoint values below. Dex Step factories and the
+single-dispatch heartbeat fence require the upstream R1–R3 Dex SDK release.
+Dex Web FDG 2.0 connector metadata for Python requires upstream R4.
 
 Python 3.11 or newer and `dex-python-sdk>=1.26.0` are required. APIs are
 async-first where they perform I/O. The package has no Dex Worker dependency in
 its current execution path and never places credentials in Flow state.
 
-The runnable examples are [`examples/core.py`](examples/core.py) and
-[`examples/credentials_and_project.py`](examples/credentials_and_project.py).
-Run them with `uv run python examples/core.py` and
-`uv run python examples/credentials_and_project.py`.
+Runnable examples are [`examples/core.py`](examples/core.py),
+[`examples/credentials_and_project.py`](examples/credentials_and_project.py),
+and [`examples/operations_and_oauth.py`](examples/operations_and_oauth.py).
+Run each with `uv run python examples/<name>.py`.
 
 ## Core values, failures, and retry policy
 
 `CallID` is a UUID string stable across retries. `Call` binds that identity to
-the logical `ConnectionRef` and `OperationRef` without a Dex context in JSON. `QueryResult`,
+the logical `ConnectionRef` and `OperationRef`. Its `AsyncContext` field is live
+only during a Step handler and never enters JSON or Flow state. `QueryResult`,
 `MutationResult`, `QueryDefinition`, and `MutationDefinition` encode the same
 camel-case JSON as `sdkgo`, including optional
 failure omission and RFC 3339 receipt timestamps. `FailureKind` describes a
@@ -48,7 +51,73 @@ rendering and rejects serialization; call `reveal()` only when building a
 provider request. The examples implement both credential Protocols and show
 safe rendering. A connector
 should return `ReauthorizationRequiredError` only when interactive provider
-authorization is required.
+authorization is required. `StaticCredentialProvider` resolves an in-memory
+connection map for examples and tests. `resolve_credential` delegates to
+coordinated refresh when a provider supports it;
+`resolve_credential_after_rejection` requires that support and should be called
+at most once after a provider authentication rejection. Refreshing providers
+serialize per connection, reload after taking that lock, and persist complete
+replacement credentials atomically.
+
+From the runnable [operation example](examples/operations_and_oauth.py):
+
+```python
+credentials = StaticCredentialProvider({connection: SecretString("INERT_SECRET")})
+credential = await resolve_credential(credentials, call, ExampleRefreshDriver())
+assert credential.reveal() == "INERT_SECRET"
+```
+
+## Provider operations
+
+`Query` and `Mutation` are async provider contracts independent of Dex.
+Each has `definition()` and `invoke(call, input)`; a Mutation also derives a
+stable `idempotency_key(call_id, input)`. `run_query` and `run_mutation` validate
+the attempt against declared branches, complete the safe receipt, and raise
+`RetryError` for a safe-to-repeat failure. A returned unknown branch or foreign
+receipt selects `defect`. An `uncertain` Mutation requires a declared route and
+the narrow unconfirmable-write conditions in the repository rules. Retry
+exhaustion is handled by Dex and fails the Flow.
+
+From the same runnable example:
+
+```python
+result = await run_mutation(CreateExampleItem(), call, "item-1")
+assert result.branch == "created" and result.receipt.idempotency_key == str(call_id)
+```
+
+## OAuth token refresh
+
+`oauthtoken.TokenEndpoint` performs bounded, redirect-disabled refresh-token,
+client-credentials, and JWT-bearer exchanges. The connector owns its endpoint,
+terminal error codes, scopes, and credential type. A declared terminal grant
+error below HTTP 500 raises `ReauthorizationRequiredError`; server outages and
+other failures stay retryable. `TokenResponse.next_refresh_token` retains the
+prior refresh token when a provider does not rotate it. The package also has
+RS256 JWT assertion signing, scope checks, and proportional expiry skew.
+
+From the runnable example:
+
+```python
+endpoint = TokenEndpoint("Example", "https://oauth.example/token", http_client)
+oauth_client = ClientCredentials(
+    "example-client", SecretString("INERT_CLIENT_SECRET"),
+    ClientAuthenticationMethod.CLIENT_SECRET_POST,
+)
+token = await endpoint.exchange_refresh_token(oauth_client, SecretString("INERT_REFRESH"))
+assert token.access_token.reveal() == "INERT_ACCESS"
+```
+
+## Single dispatch checkpoints
+
+`singledispatch.Marker` uses the Go heartbeat JSON shape. `decide_dispatch`
+allows an initial send or a resend only after the immediately prior attempt
+recorded `notSent` or `canResend` without a provider ID. A claimed, missing,
+stale, or accepted checkpoint requires read-back; malformed or foreign data
+fails closed. The Dex heartbeat fence will use these values after R1 lands.
+
+```python
+assert decide_dispatch(call_id, 1, None).kind == DecisionKind.SEND_ALLOWED
+```
 
 ## Provider HTTP
 
@@ -95,8 +164,16 @@ answers a Query with a declared branch.
 ## Verification
 
 Run `uv sync`, `uv run pytest`, `uv run mypy --strict src tests examples`, and
-`uv run ruff check src tests examples`. Real Dex Worker integration belongs to
-Phase 1b after the upstream SDK gaps are addressed and runs in CI.
+`uv run ruff check src tests examples`. Real Dex Worker integration for Step
+factories and the heartbeat fence waits for the upstream R1–R3 release.
 
-`StaticCredentialProvider`, the Go credential resolution helpers, provider
-address-policy client, and SSE reader are deferred to Phase 1b.
+The provider address-policy client and SSE reader are outside this release.
+
+## 0.1.0 release notes
+
+First Python release of the provider-neutral Connector SDK: Go-compatible
+identities, failures, results, retry defaults, project configuration,
+credential resolution, provider HTTP, connector mocks, async operation
+contracts, OAuth token exchange, and single-dispatch checkpoint values.
+Dex Step registration, live Flow verification, and Python FDG metadata remain
+pending the upstream Dex SDK and CLI releases described above.

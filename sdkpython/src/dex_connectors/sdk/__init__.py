@@ -22,7 +22,7 @@ from .credentials import (
     resolve_credential_after_rejection,
 )
 from .errors import Failure, FailureKind, RetryError
-from .operations import Mutation, Query
+from .operations import Mutation, Query, run_mutation, run_query
 from .retry_policy import RetryPolicy, default_connector_step_execute_retry_policy
 from .timestamps import RFC3339NanoTimestamp, format_rfc3339_nano
 from .types import (
@@ -83,4 +83,6 @@ __all__ = [
     "format_rfc3339_nano",
     "resolve_credential",
     "resolve_credential_after_rejection",
+    "run_mutation",
+    "run_query",
 ]

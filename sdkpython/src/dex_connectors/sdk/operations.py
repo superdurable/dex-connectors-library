@@ -2,16 +2,22 @@
 # SPDX-License-Identifier: MIT
 """Async provider operation contracts independent of Dex Worker registration."""
 
-from typing import Protocol, TypeVar
+from dataclasses import replace
+from datetime import UTC, datetime
+from typing import NoReturn, Protocol, TypeVar, cast
 
+from .errors import Failure, FailureKind, RetryError
 from .types import (
     Call,
     CallID,
     IdempotencyKey,
     MutationAttempt,
     MutationDefinition,
+    MutationResult,
     QueryAttempt,
     QueryDefinition,
+    QueryResult,
+    Receipt,
 )
 
 Input = TypeVar("Input", contravariant=True)
@@ -55,3 +61,104 @@ class Mutation(Protocol[Input, Output]):
     async def invoke(self, call: Call, input: Input) -> MutationAttempt[Output]:
         """Perform one provider write and classify its attempt."""
         ...
+
+
+async def run_query(operation: Query[Input, Output], call: Call, input: Input) -> QueryResult[Output]:
+    """Invoke a Query once and validate its declared terminal branch and receipt.
+
+    A retry raises RetryError for the Dex-facing Step to schedule. Invalid
+    operation output selects the declared defect route with a safe local failure.
+    """
+    definition = operation.definition()
+    try:
+        definition.validate()
+        _validate_call(call, definition.operation)
+    except ValueError as error:
+        return _query_defect(call, str(error))
+    attempt = await operation.invoke(call, input)
+    if attempt.kind == "retry":
+        _raise_retry(attempt.failure, attempt.retry_after_seconds)
+    if attempt.branch not in {branch.id for branch in definition.branches or ()}:
+        return _query_defect(call, "query returned an unknown branch")
+    try:
+        receipt = _complete_receipt(attempt.receipt, call)
+    except ValueError as error:
+        return _query_defect(call, str(error))
+    return QueryResult(attempt.branch, cast(Output, attempt.value), receipt, attempt.failure)
+
+
+async def run_mutation(
+    operation: Mutation[Input, Output], call: Call, input: Input
+) -> MutationResult[Output]:
+    """Invoke a Mutation once with stable idempotency and validate its outcome.
+
+    The returned Call ID is the fallback key. A retry raises RetryError; only a
+    declared uncertain route may represent an unconfirmable, non-repeatable write.
+    """
+    definition = operation.definition()
+    try:
+        definition.validate()
+        _validate_call(call, definition.operation)
+    except ValueError as error:
+        return _mutation_defect(call, str(error))
+    idempotency_key = operation.idempotency_key(call.id, input) or IdempotencyKey(call.id)
+    if not idempotency_key.strip():
+        return _mutation_defect(call, "mutation returned an invalid idempotency key")
+    call = replace(call, idempotency_key=IdempotencyKey(idempotency_key))
+    attempt = await operation.invoke(call, input)
+    if attempt.kind == "retry":
+        _raise_retry(attempt.failure, attempt.retry_after_seconds)
+    if attempt.branch not in {branch.id for branch in definition.branches or ()}:
+        return _mutation_defect(call, "mutation returned an unknown branch")
+    if attempt.kind == "uncertain" and attempt.branch != "uncertain":
+        return _mutation_defect(call, "mutation returned invalid uncertainty")
+    try:
+        receipt = _complete_receipt(attempt.receipt, call)
+    except ValueError as error:
+        return _mutation_defect(call, str(error))
+    return MutationResult(attempt.branch, cast(Output, attempt.value), receipt, attempt.failure)
+
+
+def _validate_call(call: Call, operation: object) -> None:
+    call.id.validate()
+    call.connection.validate()
+    if call.operation != operation:
+        raise ValueError("call operation does not match the definition")
+
+
+def _complete_receipt(receipt: Receipt | None, call: Call) -> Receipt:
+    if receipt is None:
+        raise ValueError("operation returned no receipt")
+    if receipt.call_id != call.id:
+        raise ValueError("operation returned a receipt for another call")
+    if receipt.idempotency_key and receipt.idempotency_key != call.idempotency_key:
+        raise ValueError("operation returned a receipt with another idempotency key")
+    return replace(
+        receipt,
+        provider=receipt.provider or call.operation.connector_id,
+        idempotency_key=call.idempotency_key,
+    )
+
+
+def _raise_retry(failure: Failure | None, delay_seconds: float) -> NoReturn:
+    if failure is None:
+        raise ValueError("retry attempt requires a failure")
+    raise RetryError(failure, delay_seconds)
+
+
+def _failure(call: Call, message: str) -> Failure:
+    return Failure(
+        FailureKind.LOCAL_DEFECT, call.operation.connector_id, call.operation.operation_id, message
+    )
+
+
+def _defect_receipt(call: Call) -> Receipt:
+    return Receipt(call.id, call.operation.connector_id, datetime.now(UTC), call.idempotency_key)
+
+
+def _query_defect(call: Call, message: str) -> QueryResult[Output]:
+    return QueryResult("defect", cast(Output, None), _defect_receipt(call), _failure(call, message))
+
+
+def _mutation_defect(call: Call, message: str) -> MutationResult[Output]:
+    return MutationResult("defect", cast(Output, None), _defect_receipt(call), _failure(call, message))
