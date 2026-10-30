@@ -10,6 +10,15 @@ The connector ID is `newsapi`.
 The Python package is [`dex-connector-newsapi`](python/README.md), imported as
 `dex_connectors.newsapi`.
 
+## TypeScript
+
+Install `@superdurable/connector-newsapi@0.1.0` for the typed
+`newSearchArticlesStep` Query factory, provider client, and scripted mock.
+The runnable [TypeScript company-news Flow](typescript/examples/company-news/README.md)
+uses the static `newsapi` connection and tests the Step through a real Dex
+Worker and Client. See the [TypeScript package README](typescript/README.md)
+for setup, provider behavior, and the Worker snippet.
+
 ## Operation
 
 | Factory | Input | Required branch | Optional branches |
