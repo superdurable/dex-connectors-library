@@ -2,8 +2,6 @@
 # SPDX-License-Identifier: MIT
 """Operation-specific Gmail Step registration through the public Dex registry."""
 
-from dataclasses import replace
-
 import dex
 import pytest
 from dex_connectors.sdk import MutationResult, StepAnnotations
@@ -11,7 +9,6 @@ from dex_connectors.sdk import MutationResult, StepAnnotations
 from dex_connectors.google_gmail import (
     SendMessageInput,
     SendMessageOutput,
-    SendMessageStepConfig,
     new_send_message_step,
 )
 from dex_connectors.google_gmail.gmailmock import Mock
@@ -43,36 +40,38 @@ def test_send_step_factory_registers_and_checks_static_connection_name() -> None
     """The send factory binds the mock operation and rejects a mismatched name."""
     mock = Mock("support")
     sent = Sent()
-    config = SendMessageStepConfig(
+    annotations = StepAnnotations("gmail", "Gmail", "Send one Gmail message.")
+    send = new_send_message_step(
         step_type="SendEmail",
         step_input_type=SendMessageInput,
-        annotations=StepAnnotations("gmail", "Gmail", "Send one Gmail message."),
+        annotations=annotations,
         connection=mock.connection,
         connection_name="support",
         map_to_operation_input=lambda value: value,
         sent=sent,
     )
-    send = new_send_message_step(config)
     dex.Registry([SendFlow(send, sent)], allow_async_handlers=True)
     assert send.get_step_type() == "SendEmail"
     assert send.get_step_options().execute_retry is not None
     assert send.get_step_options().execute_durability == dex.StepDurability.SYNC
     with pytest.raises(ValueError, match="single-dispatch heartbeat"):
         new_send_message_step(
-            replace(
-                config,
-                step_options_override=dex.StepOptions(execute_durability=dex.StepDurability.ASYNC),
-            )
+            step_type="SendEmail",
+            step_input_type=SendMessageInput,
+            annotations=annotations,
+            connection=mock.connection,
+            connection_name="support",
+            map_to_operation_input=lambda value: value,
+            sent=sent,
+            step_options_override=dex.StepOptions(execute_durability=dex.StepDurability.ASYNC),
         )
     with pytest.raises(ValueError, match="ConnectionName"):
         new_send_message_step(
-            SendMessageStepConfig(
-                step_type="SendEmail",
-                step_input_type=SendMessageInput,
-                annotations=config.annotations,
-                connection=mock.connection,
-                connection_name="another-name",
-                map_to_operation_input=lambda value: value,
-                sent=sent,
-            )
+            step_type="SendEmail",
+            step_input_type=SendMessageInput,
+            annotations=annotations,
+            connection=mock.connection,
+            connection_name="another-name",
+            map_to_operation_input=lambda value: value,
+            sent=sent,
         )

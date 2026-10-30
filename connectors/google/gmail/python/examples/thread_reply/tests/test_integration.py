@@ -29,7 +29,6 @@ from dex_connectors.google_gmail import (
     GmailProvider,
     SendMessageInput,
     SendMessageOutput,
-    SendMessageStepConfig,
     new_connection,
     new_send_message_step,
 )
@@ -172,15 +171,15 @@ class SendMessageFlow(dex.Flow[SendMessageInput]):
     def __init__(self, connection: Connection) -> None:
         self.confirmed = SendConfirmed()
         self.send = new_send_message_step(
-            SendMessageStepConfig(
-                step_type="SendOneEmail",
-                step_input_type=SendMessageInput,
-                annotations=StepAnnotations("gmail", "Gmail", "Send one message after read-back."),
-                connection=connection,
-                connection_name=CONNECTION_NAME,
-                map_to_operation_input=lambda value: value,
-                sent=self.confirmed,
-            )
+            step_type="SendOneEmail",
+            step_input_type=SendMessageInput,
+            annotations=StepAnnotations(
+                group_id="gmail", group_label="Gmail", explanation="Send one message after read-back."
+            ),
+            connection=connection,
+            connection_name=CONNECTION_NAME,
+            map_to_operation_input=lambda value: value,
+            sent=self.confirmed,
         )
 
     def get_steps(self) -> dex.StepList[SendMessageInput]:

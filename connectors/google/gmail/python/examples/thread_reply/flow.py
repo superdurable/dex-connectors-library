@@ -8,10 +8,8 @@ from dex_connectors.sdk import MutationResult, QueryResult, QueryStep, StepAnnot
 from dex_connectors.google_gmail import (
     Connection,
     GetMessageInput,
-    GetMessageStepConfig,
     Message,
     ReplyToMessageInput,
-    ReplyToMessageStepConfig,
     SendMessageOutput,
     new_get_message_step,
     new_reply_to_message_step,
@@ -76,27 +74,29 @@ class ThreadReplyFlow(dex.Flow[ThreadReplyInput]):
             raise ValueError("Gmail Flow requires the static gmail-inbox connection")
         self.reply_sent = ReplySent()
         self.reply = new_reply_to_message_step(
-            ReplyToMessageStepConfig(
-                step_type="ReplyToReceivedEmail",
-                step_input_type=ReplyToMessageInput,
-                annotations=StepAnnotations("gmail", "Gmail", "Reply in the received message's thread."),
-                connection=connection,
-                connection_name=CONNECTION_NAME,
-                map_to_operation_input=lambda value: value,
-                sent=self.reply_sent,
-            )
+            step_type="ReplyToReceivedEmail",
+            step_input_type=ReplyToMessageInput,
+            annotations=StepAnnotations(
+                group_id="gmail", group_label="Gmail",
+                explanation="Reply in the received message's thread.",
+            ),
+            connection=connection,
+            connection_name=CONNECTION_NAME,
+            map_to_operation_input=lambda value: value,
+            sent=self.reply_sent,
         )
         self.message_read = MessageRead(self.reply)
         self.read: QueryStep[ThreadReplyInput, GetMessageInput, Message] = new_get_message_step(
-            GetMessageStepConfig(
-                step_type="ReadReceivedEmail",
-                step_input_type=ThreadReplyInput,
-                annotations=StepAnnotations("gmail", "Gmail", "Read the source Gmail message."),
-                connection=connection,
-                connection_name=CONNECTION_NAME,
-                map_to_operation_input=lambda value: GetMessageInput(value.message_id),
-                read=self.message_read,
-            )
+            step_type="ReadReceivedEmail",
+            step_input_type=ThreadReplyInput,
+            annotations=StepAnnotations(
+                group_id="gmail", group_label="Gmail",
+                explanation="Read the source Gmail message.",
+            ),
+            connection=connection,
+            connection_name=CONNECTION_NAME,
+            map_to_operation_input=lambda value: GetMessageInput(value.message_id),
+            read=self.message_read,
         )
         self.prepare = PrepareReply(self.read)
 

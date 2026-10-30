@@ -25,9 +25,6 @@ from .project_credentials import decode_credentials, encode_credentials
 from .provider import GmailProvider
 from .refresh import CredentialRefreshDriver
 from .steps import (
-    GetMessageStepConfig,
-    ReplyToMessageStepConfig,
-    SendMessageStepConfig,
     new_get_message_step,
     new_reply_to_message_step,
     new_send_message_step,
@@ -42,15 +39,12 @@ __all__ = [
     "CredentialRefreshDriver",
     "GetMessageInput",
     "GetMessageOperation",
-    "GetMessageStepConfig",
     "GmailProvider",
     "Message",
     "ReplyToMessageInput",
     "ReplyToMessageOperation",
-    "ReplyToMessageStepConfig",
     "SendMessageInput",
     "SendMessageOperation",
-    "SendMessageStepConfig",
     "SendMessageOutput",
     "GET_MESSAGE_DEFINITION",
     "SEND_MESSAGE_DEFINITION",
