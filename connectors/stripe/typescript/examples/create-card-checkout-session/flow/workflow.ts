@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { Attribute, StepList, StepRef, forceFail, goTo, gracefulComplete, jsonCodec, type Context, type Flow, type PersistenceSchema, type Step, type StepDecision } from '@superdurable/dex';
-import { goToBranch, type MutationResult } from '@superdurable/connectors-sdk';
+import type { MutationResult } from '@superdurable/connectors-sdk';
 import { newCreateCardCheckoutSessionStep } from '../../../src/steps.js';
 import type { StripeConnection } from '../../../src/connection.js';
 import type { CheckoutSession, CreateCardCheckoutSessionInput } from '../../../src/models.js';
@@ -34,8 +34,9 @@ export class CardCheckoutFlow implements Flow<CardCheckoutInput> {
       stepType: 'CreateCardCheckout',
       annotations: { groupId: 'card-checkout', groupLabel: 'Card Checkout', explanation: 'Create one hosted card Checkout Session.' },
       connection,
+      connectionName: ConnectionName,
       mapToOperationInput: input => input,
-      branches: [goToBranch('created', this.completeStep)],
+      created: this.completeStep,
     });
   }
 
