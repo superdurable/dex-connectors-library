@@ -259,8 +259,9 @@ installation, the static `gmail-inbox` Dex Web connection, OAuth refresh,
 and the [runnable read-and-reply Flow](python/examples/thread_reply/main.py).
 The Python operation factories expose the same `getMessage`, `sendMessage`,
 and `replyToMessage` branches and retry policy as this connector manifest.
-Python Flow identity discovery in Dex Web awaits FDG 2.0 support (R4); the
-example's Worker and real Dex integration test run without that discovery.
+Dex CLI/Web 1.28.0 supports Python FDG 2.0 analysis, while Dex Web connection
+discovery awaits this package's generated `dex-connector.json`. The example's
+Worker and real Dex integration test run without that discovery.
 
 ## Verification
 

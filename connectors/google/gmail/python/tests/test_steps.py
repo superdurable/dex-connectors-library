@@ -53,18 +53,7 @@ def test_send_step_factory_registers_and_checks_static_connection_name() -> None
     dex.Registry([SendFlow(send, sent)], allow_async_handlers=True)
     assert send.get_step_type() == "SendEmail"
     assert send.get_step_options().execute_retry is not None
-    assert send.get_step_options().execute_durability == dex.StepDurability.SYNC
-    with pytest.raises(ValueError, match="single-dispatch heartbeat"):
-        new_send_message_step(
-            step_type="SendEmail",
-            step_input_type=SendMessageInput,
-            annotations=annotations,
-            connection=mock.connection,
-            connection_name="support",
-            map_to_operation_input=lambda value: value,
-            sent=sent,
-            step_options_override=dex.StepOptions(execute_durability=dex.StepDurability.ASYNC),
-        )
+    assert send.get_step_options().execute_durability == dex.StepDurability.ASYNC
     with pytest.raises(ValueError, match="ConnectionName"):
         new_send_message_step(
             step_type="SendEmail",

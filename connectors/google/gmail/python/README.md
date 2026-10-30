@@ -2,6 +2,8 @@
 
 `dex-connector-google-gmail` provides typed Gmail reads, sends, and replies for
 Dex Python Flows. The package imports as `dex_connectors.google_gmail`.
+Version 0.1.0 includes `getMessage`, `sendMessage`, and `replyToMessage` only;
+the Go `messageReceived` and `replyReceived` Triggers are not available in Python.
 
 ## Install
 
@@ -23,8 +25,9 @@ coordinates token refresh and persists rotated refresh tokens. A service-account
 key with Workspace domain-wide delegation is the administrator-only alternative.
 
 The Python connector uses the same manifest authorization guide and safe
-defaults as the Go connector. Dex CLI 1.28.0 and later can analyze its Python
-Flow and generated connector metadata for Dex Web Connections. Dex Web
+defaults as the Go connector. Dex CLI/Web 1.28.0 supports Python Flow
+analysis; Dex Web connection discovery also requires this package's generated
+`dex-connector.json`, which is pending the connector tooling update. Dex Web
 authorization has not been live-verified with this package. Do not put access
 tokens, refresh tokens, or service-account keys in Flow input, results,
 Attributes, Streams, logs, or mock reports.
@@ -57,17 +60,18 @@ boundary and manifest mocks.
 
 Gmail does not deduplicate messages by `Message-ID`. The connector derives a
 stable run-specific RFC Message-ID from the Dex Call key, run ID, and Flow start
-second. Its Python Mutation Steps use synchronous Execute durability so Dex
-persists the single-dispatch heartbeat before a POST. On a numbered retry it
-searches Sent Mail first. A prior claimed send can only be read back; a second
-POST requires a persisted `notSent` or `canResend` marker. After a possibly
-accepted POST loses its answer or returns 5xx, the connector polls Sent Mail
-before returning Retry. A successful 2xx is already accepted even if its response is
-malformed, oversized, or unreadable; a Sent Mail miss then returns `sent` with
-an empty message ID. A search miss after a claimed POST remains Retry without
-another dispatch; the Flow fails when its retry budget is exhausted. A definite
-429 refusal and a transport failure proven to precede dispatch permit a later
-send. The manifest limits sends and replies to five attempts within two minutes.
+second. Its Python Mutation Steps use the manifest's asynchronous Execute
+durability and persist the single-dispatch heartbeat before a POST. On a
+numbered retry it searches Sent Mail first. A prior claimed send can only be
+read back; a second POST requires a persisted `notSent` or `canResend` marker.
+After a possibly accepted POST loses its answer or returns 5xx, the connector
+polls Sent Mail before returning Retry. A successful 2xx is already accepted
+even if its response is malformed, oversized, or unreadable; a Sent Mail miss
+then returns `sent` with an empty message ID. A search miss after a claimed
+POST remains Retry without another dispatch; the Flow fails when its retry
+budget is exhausted. A definite 429 or 503 refusal, or a transport failure
+proven to precede dispatch, permits a later send. The manifest limits sends
+and replies to five attempts within two minutes.
 
 Live provider authorization and these Gmail behaviors remain unverified without
 a user-controlled account: retention of the client-set Message-ID header,

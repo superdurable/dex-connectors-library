@@ -112,7 +112,7 @@ def test_python_version_configuration_and_authorization_match_manifest() -> None
 
 
 def test_python_operation_definitions_match_manifest() -> None:
-    """Operation routes and retries match; Python sends use sync for heartbeat persistence."""
+    """Every operation route, optional flag, and Execute default matches its manifest entry."""
     operations = {operation["name"]: operation for operation in _manifest()["spec"]["operations"]}
     assert set(operations) == set(_DEFINITIONS)
     for name, operation in operations.items():
@@ -129,10 +129,9 @@ def test_python_operation_definitions_match_manifest() -> None:
         ]
         execution = operation["execution"]
         assert definition.step_defaults.execute_method_timeout == _seconds(execution["executeMethodTimeout"])
-        # Dex persists the Python send fence heartbeat with synchronous Execute.
-        expected_durability = 1 if name in {"sendMessage", "replyToMessage"} else 2
-        assert definition.step_defaults.execute_durability == expected_durability
-        assert execution["durability"] == "async"
+        assert definition.step_defaults.execute_durability == {"async": 2, "sync": 1}[
+            execution["durability"]
+        ]
         retry = definition.step_defaults.execute_retry
         assert retry is not None
         configured_retry = execution.get("retry")

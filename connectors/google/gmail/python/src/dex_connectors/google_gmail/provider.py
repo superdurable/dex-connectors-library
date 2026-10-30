@@ -457,7 +457,7 @@ class GmailProvider:
                 or not isinstance(match.get("threadId", ""), str)
             ):
                 raise ValueError("Gmail sent-message lookup returned an invalid response")
-            if match["id"]:
+            if match.get("id"):
                 return {"id": match["id"], "threadId": match.get("threadId", "")}, credential
         return None, credential
 

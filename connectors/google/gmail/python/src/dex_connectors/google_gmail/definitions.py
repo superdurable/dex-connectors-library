@@ -46,7 +46,7 @@ SEND_MESSAGE_DEFINITION = MutationDefinition(
             "defect", "Local input, connection configuration, or connector definition is invalid.", True
         ),
     ),
-    StepDefaults(timedelta(seconds=30), 1, execute_retry=_SEND_RETRY),
+    StepDefaults(timedelta(seconds=30), 2, execute_retry=_SEND_RETRY),
 )
 
 REPLY_TO_MESSAGE_DEFINITION = MutationDefinition(
@@ -67,5 +67,5 @@ REPLY_TO_MESSAGE_DEFINITION = MutationDefinition(
             "defect", "Local input, connection configuration, or connector definition is invalid.", True
         ),
     ),
-    StepDefaults(timedelta(seconds=30), 1, execute_retry=_SEND_RETRY),
+    StepDefaults(timedelta(seconds=30), 2, execute_retry=_SEND_RETRY),
 )

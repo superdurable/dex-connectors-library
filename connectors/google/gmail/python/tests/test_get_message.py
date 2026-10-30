@@ -195,6 +195,13 @@ async def test_get_message_invalid_payload(call: Call, body: bytes) -> None:
     )
     assert result.kind == "branch" and result.branch == "invalidResponse"
     assert result.failure is not None and result.failure.kind == FailureKind.PROTOCOL
+    assert result.receipt is not None
+    if body == b"not json":
+        assert result.failure.message == "Gmail returned an invalid or oversized message response"
+        assert result.receipt.provider == ""
+    else:
+        assert result.failure.message == "Gmail returned an invalid message"
+        assert result.receipt.provider == "gmail"
 
 
 @pytest.mark.asyncio

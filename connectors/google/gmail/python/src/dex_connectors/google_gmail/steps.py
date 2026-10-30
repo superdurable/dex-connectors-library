@@ -27,13 +27,6 @@ def _validate_connection(connection: Connection, connection_name: str) -> None:
         raise ValueError("Gmail Step ConnectionName must equal its connection name")
 
 
-def _validate_send_durability(options: dex.StepOptions | None) -> None:
-    if options is not None and options.execute_durability not in (
-        dex.StepDurability.DEFAULT, dex.StepDurability.SYNC
-    ):
-        raise ValueError("Gmail sends require synchronous Execute for the single-dispatch heartbeat")
-
-
 def new_get_message_step(
     *,
     step_type: str,
@@ -88,9 +81,8 @@ def new_send_message_step(
     result_attribute: dex.Attribute[MutationResult[SendMessageOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
 ) -> MutationStep[StepInput, SendMessageInput, SendMessageOutput]:
-    """Create sendMessage with sync Execute and the bounded duplicate-risk retry policy."""
+    """Create sendMessage with the manifest's bounded duplicate-risk retry policy."""
     _validate_connection(connection, connection_name)
-    _validate_send_durability(step_options_override)
     branches: dict[str, dex.StepTarget[MutationResult[SendMessageOutput]]] = {"sent": sent}
     for branch_id, target in (("providerRejected", provider_rejected), ("defect", defect)):
         if target is not None:
@@ -123,9 +115,8 @@ def new_reply_to_message_step(
     result_attribute: dex.Attribute[MutationResult[SendMessageOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
 ) -> MutationStep[StepInput, ReplyToMessageInput, SendMessageOutput]:
-    """Create replyToMessage with sync Execute and its source response route."""
+    """Create replyToMessage with the manifest's source response route."""
     _validate_connection(connection, connection_name)
-    _validate_send_durability(step_options_override)
     branches: dict[str, dex.StepTarget[MutationResult[SendMessageOutput]]] = {"sent": sent}
     for branch_id, target in (
         ("providerRejected", provider_rejected),

@@ -34,6 +34,7 @@ def execution(operation_id: str = "sendMessage", attempt: int = 1) -> SendExecut
         "run-1",
         datetime(2026, 3, 4, 9, 15, tzinfo=UTC),
         datetime.now(UTC) + timedelta(seconds=30),
+        timedelta(seconds=30),
     )
 
 
@@ -244,6 +245,23 @@ async def test_second_send_attempt_searches_before_post() -> None:
     result = await service(run, httpx.MockTransport(answer)).send_message(run, send_input())
     assert result.branch == "sent" and result.value is not None and result.value.message_id == "prior-1"
     assert methods == ["GET"]
+
+
+@pytest.mark.asyncio
+async def test_missing_id_in_sent_search_does_not_escape_4xx_classification() -> None:
+    """A no-ID Sent match is ignored before a definite provider rejection."""
+    run = execution(attempt=2)
+    methods: list[str] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        methods.append(request.method)
+        if request.method == "GET":
+            return httpx.Response(200, json={"messages": [{"threadId": "thread-1"}]})
+        return httpx.Response(400)
+
+    result = await service(run, httpx.MockTransport(answer)).send_message(run, send_input())
+    assert result.branch == "providerRejected"
+    assert methods == ["GET", "POST", "GET"]
 
 
 @pytest.mark.asyncio
@@ -471,6 +489,18 @@ async def test_reply_source_classification(response: httpx.Response, branch: str
     )
     assert result.branch == branch and result.failure is not None and result.failure.kind == kind
     assert methods == ["GET"]
+
+
+@pytest.mark.asyncio
+async def test_reply_invalid_json_matches_go_source_protocol_failure() -> None:
+    """A malformed source JSON selects invalidResponse before any reply POST."""
+    run = execution("replyToMessage")
+    result = await service(
+        run, httpx.MockTransport(lambda _: httpx.Response(200, content=b"not json"))
+    ).reply_to_message(run, ReplyToMessageInput("source-1", "Answer"))
+    assert result.branch == "invalidResponse" and result.failure is not None
+    assert result.failure.message == "Gmail returned an invalid source message response"
+    assert result.receipt is not None and result.receipt.provider_object_id == "source-1"
 
 
 @pytest.mark.asyncio

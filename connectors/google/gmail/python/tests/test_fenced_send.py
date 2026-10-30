@@ -126,6 +126,24 @@ async def test_rate_limit_records_positive_can_resend_proof() -> None:
 
 
 @pytest.mark.asyncio
+async def test_service_unavailable_records_can_resend_after_sent_mail_miss() -> None:
+    """A 503 and absent Sent Mail match permit Go's next-attempt resend."""
+    context = HeartbeatContext()
+    requests: list[str] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        requests.append(request.method)
+        if request.method == "POST":
+            return httpx.Response(503)
+        return httpx.Response(200, json={"messages": []})
+
+    attempt, _ = await _invoke(_call(context), httpx.MockTransport(answer))
+    assert attempt.kind == "retry"
+    assert requests == ["POST", "GET", "GET", "GET", "GET"]
+    assert context.heartbeats[-1].state == State.CAN_RESEND
+
+
+@pytest.mark.asyncio
 async def test_foreign_checkpoint_fails_before_any_provider_request() -> None:
     """A foreign heartbeat fails closed and cannot reach Gmail."""
     context = HeartbeatContext(2)

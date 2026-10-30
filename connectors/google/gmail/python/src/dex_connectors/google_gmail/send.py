@@ -7,7 +7,7 @@ import base64
 import json
 import re
 from dataclasses import dataclass, replace
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from functools import partial
 
 import httpx
@@ -48,6 +48,8 @@ class SendExecution:
     flow_started_at: datetime
     # Actual Dex attempt deadline, which can precede the configured method timeout.
     deadline: datetime
+    # This operation's manifest Execute timeout.
+    execute_timeout: timedelta
     # Persisted Dex heartbeat fence; direct classification tests may omit it.
     fence: Fence | None = None
 
@@ -74,7 +76,9 @@ _REPLY = _SendOutcome("replyToMessage", "reply", "Gmail rejected the reply")
 class _SendBudget:
     def __init__(self, execution: SendExecution) -> None:
         now = datetime.now(UTC)
-        available = min(30.0, (execution.deadline - now).total_seconds())
+        available = min(
+            execution.execute_timeout.total_seconds(), (execution.deadline - now).total_seconds()
+        )
         loop_now = asyncio.get_running_loop().time()
         self.attempt_end = loop_now + available * 5 / 6
         self.send_end = loop_now + available * 7 / 12
@@ -312,7 +316,16 @@ class SendService:
                 _receipt(execution, headers, input.message_id),
             )
         try:
-            message = decode_message(json.loads(source_response.body))
+            source_resource = json.loads(source_response.body)
+        except (ValueError, UnicodeDecodeError):
+            await self._record_not_sent(execution)
+            return _branch(
+                execution, _REPLY, "invalidResponse", FailureKind.PROTOCOL,
+                "Gmail returned an invalid source message response",
+                _receipt(execution, headers, input.message_id),
+            )
+        try:
+            message = decode_message(source_resource)
         except (ValueError, UnicodeDecodeError, KeyError, TypeError):
             await self._record_not_sent(execution)
             return _branch(
@@ -525,6 +538,8 @@ class SendService:
                 if execution.fence is not None and found.get("id"):
                     await execution.fence.record_provider_id(found["id"])
                 return await self._sent(execution, budget, credential, outcome, message, found, receipt)
+            if execution.fence is not None:
+                await execution.fence.record_can_resend()
             return _retry_after(
                 headers,
                 outcome,

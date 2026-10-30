@@ -212,6 +212,7 @@ async def test_real_dex_send_retry_reads_back_before_duplicate_post(tmp_path: Pa
             Config(endpoint="http://localhost/gmail/v1"), credentials, http_client=http_client
         )
         flow = SendMessageFlow(new_connection(provider, ConnectionRef("google", CONNECTION_NAME)))
+        assert flow.send.get_step_options().execute_durability == dex.StepDurability.ASYNC
         result = await _run_registered_flow(
             flow,
             SendMessageInput(["ada@example.com"], "Progress", "Processing complete."),
@@ -220,3 +221,34 @@ async def test_real_dex_send_retry_reads_back_before_duplicate_post(tmp_path: Pa
     assert result.status == dex.FlowStatus.COMPLETED, (result.error_message, methods)
     assert result.single_output(str) == "sent-1"
     assert methods == ["POST", "GET", "GET", "GET", "GET", "GET"]
+
+
+@pytest.mark.asyncio
+async def test_real_dex_503_resends_after_sent_mail_miss(tmp_path: Path) -> None:
+    """A definite 503 retries with one pre-send search before the second POST."""
+    methods: list[str] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        methods.append(request.method)
+        if request.method == "GET":
+            return httpx.Response(200, json={"messages": []})
+        if methods.count("POST") == 1:
+            return httpx.Response(503)
+        return httpx.Response(200, json={"id": "sent-after-503", "threadId": "thread-1"})
+
+    credential = Credentials(SecretString("inert-access"), "owner@example.org")
+    credentials = StaticCredentialProvider({ConnectionRef("google", CONNECTION_NAME): credential})
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as http_client:
+        provider = GmailProvider(
+            Config(endpoint="http://localhost/gmail/v1"), credentials, http_client=http_client
+        )
+        flow = SendMessageFlow(new_connection(provider, ConnectionRef("google", CONNECTION_NAME)))
+        assert flow.send.get_step_options().execute_durability == dex.StepDurability.ASYNC
+        result = await _run_registered_flow(
+            flow,
+            SendMessageInput(["ada@example.com"], "Progress", "Processing complete."),
+            tmp_path / "cache",
+        )
+    assert result.status == dex.FlowStatus.COMPLETED, (result.error_message, methods)
+    assert result.single_output(str) == "sent-after-503"
+    assert methods == ["POST", "GET", "GET", "GET", "GET", "GET", "POST"]
