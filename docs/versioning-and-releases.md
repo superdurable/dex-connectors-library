@@ -1,19 +1,31 @@
-# Go Module Versioning and Releases
+# Connector Package Versioning and Releases
 
 The repository publishes the Connector Go SDK and each connector as a separate
 Go module, and versions and releases each module on its own. A Dex application
 depends only on the connector modules it uses, and a change to one connector
 releases only that connector.
 
+Python and TypeScript SDKs and connector packages have independent versions.
+`sdkpython/` publishes `dex-connectors-sdk` on PyPI; `sdkts/` publishes
+`@superdurable/connectors-sdk` on npm. A connector's `python/` and
+`typescript/` directories publish `dex-connector-<slug>` and
+`@superdurable/connector-<slug>`, where the slug replaces directory separators
+below `connectors/` with hyphens. A manifest package override may change the
+distribution name.
+
 ## Module and tag identity
 
 The module directory determines the Git tag prefix:
 
 - `sdkgo` uses `sdkgo/vMAJOR.MINOR.PATCH`.
+- `sdkpython` uses `sdkpython/vMAJOR.MINOR.PATCH`.
+- `sdkts` uses `sdkts/vMAJOR.MINOR.PATCH`.
 - `connectors/linkedin` uses `connectors/linkedin/vMAJOR.MINOR.PATCH`.
 - `connectors/openai` uses `connectors/openai/vMAJOR.MINOR.PATCH`.
 - Company-owned families keep independent modules below one directory, such as
   `connectors/google/gmail` and `connectors/google/spreadsheet`.
+- Python and TypeScript packages append `/python/vMAJOR.MINOR.PATCH` or
+  `/typescript/vMAJOR.MINOR.PATCH` to their connector directory.
 
 Each connector manifest declares that connector's own `metadata.version`. It
 is independent of every other connector's version and of the Connector SDK
@@ -21,6 +33,13 @@ version. Changing it requests an automatic release of that connector after
 merge. Leaving it unchanged explicitly defers release, even when connector code
 changes. Directory-prefixed Git tags record completed releases. Generated Go
 application APIs do not expose the release version.
+
+`spec.languages.python.version` and `spec.languages.typescript.version` are
+separate release sources. Each must match its `pyproject.toml` or `package.json`
+version without the leading `v`. A change to one language version releases only
+that language. The same patch, minor, major, and `(breaking)` rules apply to
+each language independently. Use `sdkpython:` and `sdkts:` commit and PR subjects
+for their SDKs; connector changes in any language use `connector(<slug>):`.
 
 GitHub Release titles are human-readable labels. SDK releases use
 `Go SDK vMAJOR.MINOR.PATCH`. Connector releases use the manifest
@@ -138,6 +157,25 @@ reproducible; they do not cap the versions an application selects.
 
 ## Release order
 
+Publish a language SDK first, then update a connector's dependency on its
+released version in a later PR. `release-sdk-python.yml` and
+`release-sdk-ts.yml` accept a semantic bump, an existing `repair_version`
+tag to republish after an interrupted run, and a `dry_run` input. The source
+package version must already match the planned bump. Connector language
+releases compare each language's manifest version with its own reachable tags.
+They build a wheel and source distribution or npm tarball, upload those files,
+SHA-256 digests, and `language-release.json` to GitHub Releases, then publish
+to PyPI or npm. `dry_run` builds and tests without creating a tag, release,
+registry upload, or catalog deployment.
+
+Language builds run with read-only repository access. A separate publish job
+checks each package archive's embedded name and version against the release
+plan before GitHub or registry upload. Python uses PyPI's existing-file check
+on rerun; npm accepts an existing version only when its registry integrity
+matches the tarball. Connector language packages require a released SDK, with
+no local path, Git, file, workspace, or uv source override. CI and release
+builds verify the SDK tag and GitHub release before building the connector.
+
 An SDK API change is merged and released before any connector consumes it. A
 later connector pull request requires that exact published SDK version in its
 `go.mod` and, when the connector should release, moves its own
@@ -170,11 +208,14 @@ levels. The first directory under `connectors/` is the company. Its name is
 character removed, and that directory must contain `logo.svg`. CI rejects
 missing, unregistered, duplicate, unsafe, or symlinked paths, a missing
 company logo, and a company that does not match its directory. It generates
-the public catalog from the registered manifests. Each catalog entry lists UI
-units and Triggers by name and description, and operations by name, kind, and
+the public catalog from the registered manifests. Entries declaring
+`spec.languages` list Go and declared language versions; Go-only entries keep
+their earlier format. Each entry lists UI units and Triggers by name and
+description, and operations by name, kind, and
 description, so the directory can show and search supported configuration and
 actions without reading provider code. A connector with mocks also lists them
-under `mocks` with the import path of its generated `mockPackage`.
+under `mocks` with the import path of its generated `mockPackage`. The workflow
+publishes matching `catalog.yaml` and `catalog.json` documents.
 
 The `Release Connectors and Catalog` workflow runs automatically after a push
 to `main`. It compares every declared manifest version with reachable tags and
@@ -200,8 +241,9 @@ the original push commit, retaining its release matrix. The workflow:
 9. verifies the published Go module is downloadable;
 10. runs Released compatibility against the new component tag;
 11. publishes the directory site, `catalog.yaml`, and `card.png` to GitHub
-    Pages when connector releases succeed or none are pending. A failed
-    release skips that publish. The site is
+    Pages when connector releases succeed or none are pending. A failed Go
+    or language release blocks the whole catalog publish, including Go entries.
+    The site is
     `https://superdurable.github.io/dex-connectors-library/` and the README
     preview is `card.png` beside `catalog.yaml`.
 
@@ -243,6 +285,14 @@ module path must be migrated before publishing v2 or later.
 
 ## Release candidates
 
+Python and TypeScript candidates use their language tag prefixes. Their
+packages use PyPI `X.Y.ZrcN` and npm `X.Y.Z-rc.N`, published to npm with the
+`next` dist-tag. The candidate workflow accepts optional `language` and
+`dry_run` inputs. A dry run builds and verifies without publishing. An npm
+candidate requires an existing placeholder or stable release, so it cannot
+become that package's first `latest` version. Candidates use `NPM_TOKEN`
+because trusted publishing is configured for the stable workflow.
+
 A release candidate lets an application use a connector change before review.
 It publishes one connector from a commit that is not on `main` yet, tagged
 `<connector directory>/vX.Y.Z-rc.N`, where `vX.Y.Z` is the version the
@@ -277,6 +327,29 @@ change it. It:
 A candidate never enters the public catalog, and no connector may require a
 candidate: connector dependencies stay exact releases reachable from `main`.
 The Released compatibility canary ignores pre-releases.
+
+## npm token rotation
+
+CI uses npm trusted publishing through GitHub OIDC for packages with a trusted
+publisher configured. The first release of a new package uses the repository's
+granular `NPM_TOKEN`, with read/write access to `@superdurable`. An existing
+package uses the token only when its trusted publisher rejects the workflow.
+The token has a 90-day maximum lifetime. The weekly `Check npm publishing
+token` workflow runs `npm whoami` and reads repository variable
+`NPM_TOKEN_EXPIRES_AT` first. If absent, it matches the current token prefix
+in `npm token list`. Unknown expiry produces a warning and a rotation issue.
+It fails within 14 days of known expiry or when the token is invalid, and opens or comments on a deduplicated issue mentioning
+`@longquanzheng`. npm authentication failures during release do the same.
+
+To rotate the token, create a new granular npm token with read/write access to
+the `@superdurable` scope using the owner's account and 2FA. Replace the
+repository Actions secret `NPM_TOKEN` and set repository Actions variable
+`NPM_TOKEN_EXPIRES_AT` to the new token's ISO expiry date (`YYYY-MM-DD`), then run the `Check npm publishing
+token` workflow manually. Do not print or commit the token. After a package's
+first publish, the owner may run
+`script/npm-configure-trusted-publishers.sh` locally to preview missing
+trusted publishers, then add `--apply` with npm account 2FA to configure them.
+The script covers this repository's connector packages and TypeScript SDK.
 
 ## Latest Dex Go SDK check
 

@@ -36,6 +36,7 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
 ## Repository Boundaries
 
 - Keep the Go SDK in `sdkgo` and every connector in its own Go module.
+- Keep Python SDK packages in `sdkpython/`, TypeScript SDK packages in `sdkts/`, and connector packages in their `python/` and `typescript/` directories.
 - Group one company's connectors below one directory. The first directory under
   `connectors/` is the company, must match `metadata.company`, and must contain
   `logo.svg`.
@@ -180,6 +181,7 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
   `metadata.version` is the release source of truth and is independent of
   other connectors and of the SDK version. Leaving it unchanged explicitly
   defers release.
+- `spec.languages.python.version` and `spec.languages.typescript.version` release their packages independently of Go and each other. Their package metadata must match the manifest.
 - A connector PR that should release moves only that connector's version one
   step from its latest tag: patch for a fix, minor for an addition such as an
   operation or mocks, and for a breaking change `(breaking)` with a minor bump
@@ -189,6 +191,8 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
   step or another first version, so review checks both.
 - Core SDK tags use `sdkgo/vX.Y.Z`. Connector tags use the module directory,
   such as `connectors/openai/vX.Y.Z`.
+- Python and TypeScript SDK tags use `sdkpython/vX.Y.Z` and `sdkts/vX.Y.Z`. Their connector tags append `/python/vX.Y.Z` and `/typescript/vX.Y.Z` to the connector directory.
+- Release each language SDK before connectors that require it. New npm packages use the CI token for first publish; existing packages use trusted publishing when configured.
 - Connector modules require an exact published Connector Go SDK release.
 - Dex Server is backward compatible with every earlier Dex SDK release. Pin no
   Dex Server, Dex Go SDK, or Dex CLI version; record minimums instead. A
@@ -228,7 +232,7 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
 
 - Use one released module per PR unless a repository-wide mechanical change
   requires several.
-- Use `sdkgo:`, `connector(<slug>):`, `tooling:`, or `docs:` subjects.
+- Use `sdkgo:`, `sdkpython:`, `sdkts:`, `connector(<slug>):`, `tooling:`, or `docs:` subjects.
 - Put the exact lowercase token `(breaking)` in the PR title or body and final
   commit message for every public breaking change.
 - Fetch and branch from the latest `origin/main`. See

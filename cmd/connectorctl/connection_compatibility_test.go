@@ -35,6 +35,48 @@ func TestReleaseMatrixRequiresANewMajorVersionToBreakConnections(t *testing.T) {
 	require.Equal(t, "v1.0.0", readReleaseMatrixOutput(t, githubOutput).Include[0].Version)
 }
 
+func TestLanguageReleaseMatrixChecksSharedConnectionCompatibility(t *testing.T) {
+	repositoryRoot := releaseCandidateMainRepository(t)
+	manifestPath := filepath.Join(repositoryRoot, releaseCandidateChat, "connector.yaml")
+	packageDirectory := filepath.Join(repositoryRoot, releaseCandidateChat, "python")
+	require.NoError(t, os.MkdirAll(packageDirectory, 0o755))
+	packageName := languagePackageName(releaseCandidateChat, "python", "")
+	require.NoError(t, os.WriteFile(filepath.Join(packageDirectory, "pyproject.toml"),
+		[]byte("[project]\nname = \""+packageName+"\"\nversion = \"0.1.0\"\n"), 0o600))
+	replaceInFile(t, manifestPath, "spec:\n", "spec:\n  languages:\n    python: {version: v0.1.0}\n")
+	runReleaseCandidateGit(t, repositoryRoot, "add", ".")
+	runReleaseCandidateGit(t, repositoryRoot, "commit", "-m", "connector(acme): add Python package")
+	runReleaseCandidateGit(t, repositoryRoot, "tag", releaseCandidateChat+"/python/v0.1.0")
+	replaceInFile(t, manifestPath, "python: {version: v0.1.0}", "python: {version: v0.2.0}")
+	replaceInFile(t, filepath.Join(packageDirectory, "pyproject.toml"), "0.1.0", "0.2.0")
+	replaceInFile(t, manifestPath, releasedScopes, addedScope)
+	err := releaseMatrixCommand([]string{"--catalog", filepath.Join(repositoryRoot, "catalog.yaml")})
+	require.ErrorContains(t, err, releaseCandidateChat+" v0.2.0 breaks connections made with v0.1.0")
+}
+
+func TestLanguageReleaseCandidateChecksSharedConnectionCompatibility(t *testing.T) {
+	repositoryRoot := releaseCandidateMainRepository(t)
+	manifestPath := filepath.Join(repositoryRoot, releaseCandidateChat, "connector.yaml")
+	packageDirectory := filepath.Join(repositoryRoot, releaseCandidateChat, "python")
+	require.NoError(t, os.MkdirAll(packageDirectory, 0o755))
+	packageName := languagePackageName(releaseCandidateChat, "python", "")
+	require.NoError(t, os.WriteFile(filepath.Join(packageDirectory, "pyproject.toml"),
+		[]byte("[project]\nname = \""+packageName+"\"\nversion = \"0.1.0\"\n"), 0o600))
+	replaceInFile(t, manifestPath, "spec:\n", "spec:\n  languages:\n    python: {version: v0.1.0}\n")
+	runReleaseCandidateGit(t, repositoryRoot, "add", ".")
+	runReleaseCandidateGit(t, repositoryRoot, "commit", "-m", "connector(acme): add Python package")
+	runReleaseCandidateGit(t, repositoryRoot, "tag", releaseCandidateChat+"/python/v0.1.0")
+	commit, candidateRoot := releaseCandidateCommit(t, repositoryRoot, func(candidateRoot string) {
+		candidateManifest := filepath.Join(candidateRoot, releaseCandidateChat, "connector.yaml")
+		replaceInFile(t, candidateManifest, "python: {version: v0.1.0}", "python: {version: v0.2.0}")
+		replaceInFile(t, candidateManifest, releasedScopes, addedScope)
+		replaceInFile(t, filepath.Join(candidateRoot, releaseCandidateChat, "python", "pyproject.toml"), "0.1.0", "0.2.0")
+	})
+	_, err := planConnectorReleaseCandidateLanguage(filepath.Join(repositoryRoot, "catalog.yaml"),
+		candidateRoot, releaseCandidateChat, commit, "v0.2.0-rc.1", "python")
+	require.ErrorContains(t, err, releaseCandidateChat+" v0.2.0 breaks connections made with v0.1.0")
+}
+
 func TestReleaseMatrixAcceptsAMinorReleaseThatKeepsConnections(t *testing.T) {
 	repositoryRoot := releaseCandidateMainRepository(t)
 	manifestPath := filepath.Join(repositoryRoot, releaseCandidateChat, "connector.yaml")

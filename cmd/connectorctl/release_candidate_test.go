@@ -39,6 +39,22 @@ func TestReleaseCandidateAcceptsAConnectorChangeAboveItsLatestRelease(t *testing
 	require.ErrorContains(t, err, "already names")
 }
 
+func TestReleaseCandidateRejectsControlCharactersInGitHubOutput(t *testing.T) {
+	repositoryRoot := releaseCandidateMainRepository(t)
+	commit, candidateRoot := releaseCandidateCommit(t, repositoryRoot, func(candidateRoot string) {
+		manifestPath := filepath.Join(candidateRoot, releaseCandidateChat, "connector.yaml")
+		replaceInFile(t, manifestPath, "version: v0.1.0", "version: v0.2.0")
+		replaceInFile(t, manifestPath, "displayName: Google Sheets Fixture", "displayName: \"Bad\\npackage=other\"")
+	})
+	outputPath := filepath.Join(t.TempDir(), "github-output")
+	err := releaseCandidateCommand([]string{"--catalog", filepath.Join(repositoryRoot, "catalog.yaml"),
+		"--candidate-root", candidateRoot, "--directory", releaseCandidateChat,
+		"--commit", commit, "--version", "v0.2.0-rc.1", "--github-output", outputPath})
+	require.ErrorContains(t, err, "control character")
+	_, statErr := os.Stat(outputPath)
+	require.True(t, os.IsNotExist(statErr))
+}
+
 func TestReleaseCandidateRejectsChangesOutsideTheConnector(t *testing.T) {
 	for _, outside := range []string{"sdkgo/sdk.go", ".github/workflows/release-candidate.yml", "catalog.yaml"} {
 		repositoryRoot := releaseCandidateMainRepository(t)

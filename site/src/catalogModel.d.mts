@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+
 export const rawRepositoryRoot: string;
 
 export type CatalogConnector = {
@@ -6,6 +9,7 @@ export type CatalogConnector = {
   name: string;
   description: string;
   version: string;
+  languages: Partial<Record<"go" | "python" | "typescript", string>>;
   directory: string;
   companyDirectory: string;
   uiUnits: CatalogCapability[];

@@ -4,12 +4,17 @@
 from __future__ import annotations
 
 import importlib.util
+import io
+import hashlib
+import json
 import os
 import re
 import subprocess
 import sys
 import tempfile
+import tarfile
 import unittest
+import zipfile
 from pathlib import Path
 from unittest import mock
 
@@ -157,6 +162,129 @@ class ComponentReleaseTest(unittest.TestCase):
         plan = self.plan("minor")
         self.assertEqual(plan.version, "v0.1.0")
         self.assertEqual(plan.tag, "sdkgo/v0.1.0")
+
+    def test_python_and_typescript_release_plans_are_independent(self) -> None:
+        python_package = self.repository / "connectors/newsapi/python"
+        python_package.mkdir(parents=True)
+        (python_package / "pyproject.toml").write_text(
+            '[project]\nname = "dex-connector-newsapi"\nversion = "0.2.0"\n', encoding="utf-8"
+        )
+        type_script_package = self.repository / "connectors/newsapi/typescript"
+        type_script_package.mkdir(parents=True)
+        (type_script_package / "package.json").write_text(
+            '{"name":"@superdurable/connector-newsapi","version":"0.1.0"}\n', encoding="utf-8"
+        )
+        self.commit("connector(newsapi): add language packages")
+        self.enter_repository()
+        python_plan = release.create_plan("connectors/newsapi/python", "connectors/newsapi/python/", target_version="v0.2.0")
+        type_script_plan = release.create_plan("connectors/newsapi/typescript", "connectors/newsapi/typescript/", target_version="v0.1.0")
+        self.assertEqual(python_plan.module_path, "dex-connector-newsapi")
+        self.assertEqual(type_script_plan.module_path, "@superdurable/connector-newsapi")
+        self.assertNotEqual(python_plan.tag, type_script_plan.tag)
+
+    def test_plan_does_not_create_a_tag(self) -> None:
+        python_package = self.repository / "sdkpython"
+        python_package.mkdir()
+        (python_package / "pyproject.toml").write_text(
+            '[project]\nname = "dex-connectors-sdk"\nversion = "0.1.0"\n', encoding="utf-8"
+        )
+        self.commit("sdkpython: add SDK")
+        json_output = self.repository / "plan.json"
+        github_output = self.repository / "github-output"
+        result = subprocess.run(
+            (sys.executable, str(SCRIPT), "plan", "--component-path", "sdkpython", "--tag-prefix", "sdkpython/",
+             "--bump", "minor", "--ref", "refs/heads/main", "--json-output", str(json_output),
+             "--github-output", str(github_output)), cwd=self.repository, capture_output=True, text=True, check=False
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("version=v0.1.0", github_output.read_text(encoding="utf-8"))
+        self.assertEqual(self.git("tag", "--list", "sdkpython/*"), "")
+
+    def test_language_release_manifest_records_artifact_digest(self) -> None:
+        artifact = self.repository / "package.tgz"
+        with tarfile.open(artifact, "w:gz") as archive:
+            package_json = b'{"name":"@superdurable/connector-newsapi","version":"0.1.0"}'
+            member = tarfile.TarInfo("package/package.json")
+            member.size = len(package_json)
+            archive.addfile(member, io.BytesIO(package_json))
+        output = self.repository / "language-release.json"
+        release.write_language_release_manifest(
+            output, "typescript", "@superdurable/connector-newsapi", "v0.1.0",
+            "connectors/newsapi/typescript/v0.1.0", "abc123", [artifact]
+        )
+        document = json.loads(output.read_text(encoding="utf-8"))
+        self.assertEqual(document["artifacts"]["package.tgz"],
+                         hashlib.sha256(artifact.read_bytes()).hexdigest())
+        self.assertTrue((self.repository / "package.tgz.sha256").is_file())
+
+    def test_language_artifacts_reject_wrong_tarball_identity_and_extra_files(self) -> None:
+        artifact = self.repository / "package.tgz"
+        for name, version in (("@superdurable/connectors-sdk", "0.1.0"),
+                              ("@superdurable/connector-newsapi", "1.0.0")):
+            with tarfile.open(artifact, "w:gz") as archive:
+                package_json = json.dumps({"name": name, "version": version}).encode("utf-8")
+                member = tarfile.TarInfo("package/package.json")
+                member.size = len(package_json)
+                archive.addfile(member, io.BytesIO(package_json))
+            with self.assertRaisesRegex(ValueError, "differs from planned"):
+                release.verify_language_artifacts("typescript", "@superdurable/connector-newsapi", "v0.1.0", [artifact])
+        (self.repository / "extra.tgz").write_bytes(b"extra")
+        with self.assertRaisesRegex(ValueError, "unexpected files"):
+            release.verify_language_artifacts("typescript", "@superdurable/connector-newsapi", "v0.1.0", [artifact])
+
+    def test_python_artifacts_reject_wrong_version(self) -> None:
+        wheel = self.repository / "package.whl"
+        with zipfile.ZipFile(wheel, "w") as archive:
+            archive.writestr("package-0.1.0.dist-info/METADATA", "Name: dex-connector-newsapi\nVersion: 9.9.9\n")
+        sdist = self.repository / "package.tar.gz"
+        with tarfile.open(sdist, "w:gz") as archive:
+            metadata = b"Name: dex-connector-newsapi\nVersion: 0.1.0\n"
+            member = tarfile.TarInfo("package-0.1.0/PKG-INFO")
+            member.size = len(metadata)
+            archive.addfile(member, io.BytesIO(metadata))
+        with self.assertRaisesRegex(ValueError, "differs from planned"):
+            release.verify_language_artifacts("python", "dex-connector-newsapi", "v0.1.0", [wheel, sdist])
+
+    def test_language_package_requires_released_registry_sdk_without_local_overrides(self) -> None:
+        python_package = self.repository / "connectors/newsapi/python"
+        python_package.mkdir(parents=True)
+        pyproject = python_package / "pyproject.toml"
+        pyproject.write_text('[project]\nname = "dex-connector-newsapi"\nversion = "0.1.0"\ndependencies = ["dex-connectors-sdk>=0.1.0"]\n', encoding="utf-8")
+        lookup = mock.Mock(spec=release.DependencyReleaseLookup)
+        lookup.has_tag.return_value = True
+        lookup.is_tag_reachable_from_main.return_value = True
+        lookup.release_asset_names.return_value = frozenset({"language-release.json"})
+        lookup.is_language_sdk_published.return_value = True
+        self.assertEqual(release.validate_language_package(str(python_package), "python", lookup), "sdkpython/v0.1.0")
+        lookup.is_language_sdk_published.return_value = False
+        with self.assertRaisesRegex(ValueError, "not published in the registry"):
+            release.validate_language_package(str(python_package), "python", lookup)
+        pyproject.write_text(pyproject.read_text(encoding="utf-8") + '[tool.uv.sources]\ndex-connectors-sdk = { path = "../../../sdkpython" }\n', encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "sources overrides"):
+            release.validate_language_package(str(python_package), "python", lookup)
+
+    def test_typescript_package_rejects_file_and_workspace_dependencies(self) -> None:
+        typescript_package = self.repository / "connectors/newsapi/typescript"
+        typescript_package.mkdir(parents=True)
+        package_json = typescript_package / "package.json"
+        for dependency in ("file:../../../sdkts", "workspace:*"):
+            package_json.write_text(json.dumps({"dependencies": {"@superdurable/connectors-sdk": dependency}}), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "path, file, git, or workspace"):
+                release.validate_language_package(str(typescript_package), "typescript", mock.Mock())
+
+    def test_language_commits_include_shared_manifest_changes(self) -> None:
+        package = self.repository / "connectors/newsapi/python"
+        package.mkdir(parents=True)
+        manifest = package.parent / "connector.yaml"
+        manifest.write_text("version: v0.1.0\n", encoding="utf-8")
+        (package / "pyproject.toml").write_text('[project]\nname = "dex-connector-newsapi"\nversion = "0.1.0"\n', encoding="utf-8")
+        self.commit("connector(newsapi): add Python package")
+        self.git("tag", "connectors/newsapi/python/v0.1.0")
+        manifest.write_text("version: v0.2.0\n", encoding="utf-8")
+        self.commit("connector(newsapi): change shared manifest (breaking)")
+        self.enter_repository()
+        commits = release.component_commits("connectors/newsapi/python", "connectors/newsapi/python/v0.1.0")
+        self.assertEqual(commits, (self.git("rev-parse", "HEAD"),))
 
     def test_minor_and_patch_follow_latest_component_tag(self) -> None:
         self.git("tag", "sdkgo/v0.1.0")

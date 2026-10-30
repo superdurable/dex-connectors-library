@@ -58,6 +58,58 @@ func TestConnectorVersionTransitions(t *testing.T) {
 	}
 }
 
+func TestLanguageReleaseMatrixUsesIndependentVersions(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	directory := "connectors/acme/chat"
+	writeConnectorFixture(t, repositoryRoot, directory, "example.com/connectors/acme/chat")
+	manifestPath := filepath.Join(repositoryRoot, directory, "connector.yaml")
+	replaceInFile(t, manifestPath, "spec:\n", "spec:\n  languages:\n    python: {version: v0.1.0}\n    typescript: {version: v0.1.0}\n")
+	require.NoError(t, os.MkdirAll(filepath.Join(repositoryRoot, directory, "python"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(repositoryRoot, directory, "typescript"), 0o755))
+	pythonPackage := filepath.Join(repositoryRoot, directory, "python", "pyproject.toml")
+	typeScriptPackage := filepath.Join(repositoryRoot, directory, "typescript", "package.json")
+	require.NoError(t, os.WriteFile(pythonPackage, []byte("[project]\nname = \"dex-connector-acme-chat\"\nversion = \"0.1.0\"\n"), 0o600))
+	require.NoError(t, os.WriteFile(typeScriptPackage, []byte(`{"name":"@superdurable/connector-acme-chat","version":"0.1.0"}`), 0o600))
+	catalogPath := filepath.Join(repositoryRoot, "catalog.yaml")
+	require.NoError(t, os.WriteFile(catalogPath, []byte("apiVersion: connectors.dex.dev/catalog-source/v1alpha1\nkind: ConnectorCatalogSource\ndirectories:\n  - connectors/acme/chat\n"), 0o600))
+	initializeConnectorReleaseRepository(t, repositoryRoot, directory+"/v0.1.0")
+	for _, language := range []string{"python", "typescript"} {
+		command := exec.Command("git", "tag", directory+"/"+language+"/v0.1.0")
+		command.Dir = repositoryRoot
+		output, err := command.CombinedOutput()
+		require.NoError(t, err, "%s", output)
+	}
+	replaceInFile(t, manifestPath, "python: {version: v0.1.0}", "python: {version: v0.2.0}")
+	replaceInFile(t, pythonPackage, "0.1.0", "0.2.0")
+	outputPath := filepath.Join(t.TempDir(), "output")
+	require.NoError(t, releaseMatrixCommand([]string{"--catalog", catalogPath, "--github-output", outputPath}))
+	output, err := os.ReadFile(outputPath)
+	require.NoError(t, err)
+	var languageMatrix connectorReleaseMatrix
+	for _, line := range strings.Split(string(output), "\n") {
+		if strings.HasPrefix(line, "language_matrix=") {
+			require.NoError(t, json.Unmarshal([]byte(strings.TrimPrefix(line, "language_matrix=")), &languageMatrix))
+		}
+	}
+	require.Equal(t, []connectorReleaseMatrixItem{{
+		Directory: directory, ManifestPath: directory + "/connector.yaml", TagPrefix: directory + "/python/",
+		Version: "v0.2.0", DisplayName: "Google Sheets Fixture", Language: "python", Package: "dex-connector-acme-chat",
+	}}, languageMatrix.Include)
+	replaceInFile(t, manifestPath, "typescript: {version: v0.1.0}", "typescript: {version: v0.2.0}")
+	replaceInFile(t, typeScriptPackage, "0.1.0", "0.2.0")
+	require.NoError(t, releaseMatrixCommand([]string{"--catalog", catalogPath, "--github-output", outputPath}))
+	output, err = os.ReadFile(outputPath)
+	require.NoError(t, err)
+	for _, line := range strings.Split(string(output), "\n") {
+		if strings.HasPrefix(line, "language_matrix=") {
+			require.NoError(t, json.Unmarshal([]byte(strings.TrimPrefix(line, "language_matrix=")), &languageMatrix))
+		}
+	}
+	require.Len(t, languageMatrix.Include, 2)
+	require.Equal(t, "typescript", languageMatrix.Include[1].Language)
+	require.Equal(t, "@superdurable/connector-acme-chat", languageMatrix.Include[1].Package)
+}
+
 func TestCatalogSourceRejectsUnregisteredManifest(t *testing.T) {
 	repositoryRoot := t.TempDir()
 	writeConnectorFixture(t, repositoryRoot, "connectors/company/product", "example.com/connectors/company/product")
@@ -382,6 +434,30 @@ func TestCatalogIncludesUIUnitsOperationsAndTriggers(t *testing.T) {
 	require.Contains(t, catalog, "name: getMessage")
 	require.Contains(t, catalog, "kind: query")
 	require.Contains(t, catalog, "kind: mutation")
+}
+
+func TestCatalogJSONListsLanguageVersions(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	directory := "connectors/acme/chat"
+	writeConnectorFixture(t, repositoryRoot, directory, "example.com/connectors/acme/chat")
+	manifestPath := filepath.Join(repositoryRoot, directory, "connector.yaml")
+	replaceInFile(t, manifestPath, "spec:\n", "spec:\n  languages:\n    python: {version: v0.1.0}\n")
+	require.NoError(t, os.MkdirAll(filepath.Join(repositoryRoot, directory, "python"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(repositoryRoot, directory, "python", "pyproject.toml"), []byte("[project]\nname = \"dex-connector-acme-chat\"\nversion = \"0.1.0\"\n"), 0o600))
+	catalogPath := filepath.Join(repositoryRoot, "catalog.yaml")
+	require.NoError(t, os.WriteFile(catalogPath, []byte("apiVersion: connectors.dex.dev/catalog-source/v1alpha1\nkind: ConnectorCatalogSource\ndirectories:\n  - connectors/acme/chat\n"), 0o600))
+	outputDirectory := t.TempDir()
+	jsonPath := filepath.Join(outputDirectory, "catalog.json")
+	require.NoError(t, catalogCommand([]string{"--catalog", catalogPath, "--output", filepath.Join(outputDirectory, "catalog.yaml"), "--json-output", jsonPath}))
+	contents, err := os.ReadFile(jsonPath)
+	require.NoError(t, err)
+	var document struct {
+		Connectors []struct {
+			Languages map[string]string `json:"languages"`
+		} `json:"connectors"`
+	}
+	require.NoError(t, json.Unmarshal(contents, &document))
+	require.Equal(t, map[string]string{"go": "v0.1.0", "python": "v0.1.0"}, document.Connectors[0].Languages)
 }
 
 func writeConnectorFixture(t *testing.T, repositoryRoot, directory, modulePath string) {

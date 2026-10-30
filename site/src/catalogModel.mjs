@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+
 import { parse } from "yaml";
 
 export const rawRepositoryRoot =
@@ -46,6 +49,7 @@ export function readCatalog(text) {
       name: requiredText(connector.name, "name"),
       description: requiredText(connector.description, "description"),
       version: requiredText(connector.version, "version"),
+      languages: readLanguages(connector.languages, connector.version),
       directory,
       companyDirectory: companyDirectory(directory),
       uiUnits: readCapabilities(connector.uiUnits, "ui-unit"),
@@ -53,6 +57,19 @@ export function readCatalog(text) {
       operations: readCapabilities(connector.operations, ""),
     };
   });
+}
+
+function readLanguages(value, goVersion) {
+  const languages = value ?? { go: goVersion };
+  if (typeof languages !== "object" || Array.isArray(languages)) {
+    throw new Error("catalog languages must be an object");
+  }
+  for (const [language, version] of Object.entries(languages)) {
+    if (!["go", "python", "typescript"].includes(language) || !/^v\d+\.\d+\.\d+$/.test(version)) {
+      throw new Error(`invalid catalog language: ${language}`);
+    }
+  }
+  return languages;
 }
 
 export function connectorMatchesQuery(connector, query) {

@@ -12,6 +12,11 @@ on:
           - minor
           - patch
           - major
+      dry_run:
+        description: Test and plan without creating a release
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -90,6 +95,7 @@ jobs:
             --repository "${GITHUB_REPOSITORY}" \
             --output /tmp/connector-sdk-release-notes.md
       - name: Create SDK release
+        if: inputs.dry_run != true
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.plan.outputs.tag }}
@@ -100,6 +106,7 @@ jobs:
             --title "Go SDK ${RELEASE_VERSION}" \
             --notes-file /tmp/connector-sdk-release-notes.md
       - name: Verify published module
+        if: inputs.dry_run != true
         env:
           MODULE_PATH: ${{ steps.plan.outputs.module_path }}
           RELEASE_VERSION: ${{ steps.plan.outputs.version }}
