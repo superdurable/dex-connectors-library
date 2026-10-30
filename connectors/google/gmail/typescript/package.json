@@ -1,0 +1,72 @@
+{
+  "name": "@superdurable/connector-google-gmail",
+  "version": "0.1.0",
+  "license": "MIT",
+  "description": "Dex Gmail connector for TypeScript",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/superdurable/dex-connectors-library.git",
+    "directory": "connectors/google/gmail/typescript"
+  },
+  "type": "module",
+  "engines": {
+    "node": "^22.0.0 || ^24.0.0"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./mock": {
+      "import": {
+        "types": "./dist/mock/index.d.ts",
+        "default": "./dist/mock/index.js"
+      },
+      "require": {
+        "types": "./dist/mock/index.d.cts",
+        "default": "./dist/mock/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "dex-connector.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts src/mock/index.ts --format esm,cjs --dts --clean",
+    "typecheck": "npm run build && tsc --noEmit",
+    "lint": "eslint src test examples",
+    "test": "npm run build && vitest run test/*.test.ts",
+    "test:integration": "npm run build && vitest run examples/gmail-flow/integration.test.ts",
+    "example:worker": "tsx examples/gmail-flow/main.ts",
+    "example:start": "tsx examples/gmail-flow/start.ts",
+    "check": "npm run typecheck && npm run lint && npm test"
+  },
+  "dependencies": {
+    "@superdurable/connectors-sdk": "0.1.0",
+    "@superdurable/dex": ">=1.28.0",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@types/node": "^22.0.0",
+    "eslint": "^9.0.0",
+    "tsup": "^8.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^3.0.0",
+    "yaml": "^2.9.1"
+  }
+}

@@ -11,6 +11,8 @@ spec:
   languages:
     python:
       version: v0.1.0
+    typescript:
+      version: v0.1.0
   codegen:
     go:
       package: gmail
