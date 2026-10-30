@@ -26,18 +26,22 @@ key with Workspace domain-wide delegation is the administrator-only alternative.
 
 The Python connector uses the same manifest authorization guide and safe
 defaults as the Go connector. Dex CLI/Web 1.28.0 supports Python Flow
-analysis; Dex Web connection discovery also requires this package's generated
-`dex-connector.json`, which is pending the connector tooling update. Dex Web
-authorization has not been live-verified with this package. Do not put access
-tokens, refresh tokens, or service-account keys in Flow input, results,
-Attributes, Streams, logs, or mock reports.
+analysis, and the package includes generated `dex-connector.json` for Dex Web
+connection discovery. Dex Web authorization has not been live-verified with
+this package. Do not put access tokens, refresh tokens, or service-account
+keys in Flow input, results, Attributes, Streams, logs, or mock reports.
 
 ## Run the example
 
 [`examples/thread_reply`](examples/thread_reply/main.py) reads one received
 message, replies in its existing thread, and completes with the accepted reply
 IDs. Its Worker loads the `gmail-inbox` connection from the Dex Web project
-configuration. The entrypoint uses the public connection and Step APIs:
+configuration. Factory calls keep their connection name and annotation fields
+inline so Dex CLI can read the Flow definition; the factories also accept
+`StepAnnotations` for programmatic construction. Dex CLI 1.28.1 is needed for
+strict FDG analysis of this example's local Steps routing into connector Steps
+(tracked in Dex issue #362). The entrypoint uses the public connection and Step
+APIs:
 
 ```python
 connection = new_project_connection(project, CONNECTION_NAME)

@@ -3,7 +3,7 @@
 """Read one Gmail message and reply in its existing thread with Dex Steps."""
 
 import dex
-from dex_connectors.sdk import MutationResult, QueryResult, QueryStep, StepAnnotations
+from dex_connectors.sdk import MutationResult, QueryResult, QueryStep
 
 from dex_connectors.google_gmail import (
     Connection,
@@ -39,17 +39,12 @@ class ReplySent(dex.Step[MutationResult[SendMessageOutput]]):
 class MessageRead(dex.Step[QueryResult[Message]]):
     """Send the reply after a successful source-message read."""
 
-    def __init__(
-        self, reply_step: dex.StepTarget[ReplyToMessageInput]
-    ) -> None:
-        self._reply_step = reply_step
-
     async def execute(  # type: ignore[override]
         self, context: dex.AsyncContext, input: QueryResult[Message]
     ) -> dex.StepDecision:
         """Reuse the source ID and the reply text stored at Flow admission."""
         return dex.go_to(
-            self._reply_step,
+            dex.StepRef("ReplyToReceivedEmail"),
             ReplyToMessageInput(input.value.message_id, _REPLY_TEXT.get(context)),
         )
 
@@ -59,9 +54,6 @@ class MessageRead(dex.Step[QueryResult[Message]]):
 class PrepareReply(dex.Step[ThreadReplyInput]):
     """Persist the reply text before the Gmail query Step starts."""
 
-    def __init__(self, read_step: dex.StepTarget[ThreadReplyInput]) -> None:
-        self._read_step = read_step
-
     async def execute(  # type: ignore[override]
         self, context: dex.AsyncContext, input: ThreadReplyInput
     ) -> dex.StepDecision:
@@ -69,7 +61,7 @@ class PrepareReply(dex.Step[ThreadReplyInput]):
         if not input.message_id.strip() or not input.reply_text.strip():
             return dex.force_fail("Gmail message ID and reply text are required")
         _REPLY_TEXT.set(context, input.reply_text)
-        return dex.go_to(self._read_step, input)
+        return dex.go_to(dex.StepRef("ReadReceivedEmail"), input)
 
 
 class ThreadReplyFlow(dex.Flow[ThreadReplyInput]):
@@ -82,29 +74,31 @@ class ThreadReplyFlow(dex.Flow[ThreadReplyInput]):
         self.reply = new_reply_to_message_step(
             step_type="ReplyToReceivedEmail",
             step_input_type=ReplyToMessageInput,
-            annotations=StepAnnotations(
-                group_id="gmail", group_label="Gmail",
-                explanation="Reply in the received message's thread.",
-            ),
+            annotations={
+                "groupId": "gmail",
+                "groupLabel": "Gmail",
+                "explanation": "Reply in the received message's thread.",
+            },
             connection=connection,
-            connection_name=CONNECTION_NAME,
+            connection_name="gmail-inbox",
             map_to_operation_input=lambda value: value,
             sent=self.reply_sent,
         )
-        self.message_read = MessageRead(self.reply)
+        self.message_read = MessageRead()
         self.read: QueryStep[ThreadReplyInput, GetMessageInput, Message] = new_get_message_step(
             step_type="ReadReceivedEmail",
             step_input_type=ThreadReplyInput,
-            annotations=StepAnnotations(
-                group_id="gmail", group_label="Gmail",
-                explanation="Read the source Gmail message.",
-            ),
+            annotations={
+                "groupId": "gmail",
+                "groupLabel": "Gmail",
+                "explanation": "Read the source Gmail message.",
+            },
             connection=connection,
-            connection_name=CONNECTION_NAME,
+            connection_name="gmail-inbox",
             map_to_operation_input=lambda value: GetMessageInput(value.message_id),
             read=self.message_read,
         )
-        self.prepare = PrepareReply(self.read)
+        self.prepare = PrepareReply()
 
     def get_steps(self) -> dex.StepList[ThreadReplyInput]:
         """Register each Step instance once under its stable Dex identity."""

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Operation-specific Gmail Step factories with static Dex connection identity."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import TypeVar
 
 import dex
@@ -27,11 +27,26 @@ def _validate_connection(connection: Connection, connection_name: str) -> None:
         raise ValueError("Gmail Step ConnectionName must equal its connection name")
 
 
+def _step_annotations(value: StepAnnotations | Mapping[str, str]) -> StepAnnotations:
+    if isinstance(value, StepAnnotations):
+        annotations = value
+    else:
+        if set(value) != {"groupId", "groupLabel", "explanation"} or any(
+            not isinstance(field_value, str) for field_value in value.values()
+        ):
+            raise ValueError("Gmail Step annotations require groupId, groupLabel, and explanation")
+        annotations = StepAnnotations(
+            value["groupId"], value["groupLabel"], value["explanation"]
+        )
+    annotations.validate()
+    return annotations
+
+
 def new_get_message_step(
     *,
     step_type: str,
     step_input_type: object,
-    annotations: StepAnnotations,
+    annotations: StepAnnotations | Mapping[str, str],
     connection: Connection,
     connection_name: str,
     map_to_operation_input: Callable[[StepInput], GetMessageInput],
@@ -43,7 +58,11 @@ def new_get_message_step(
     result_attribute: dex.Attribute[QueryResult[Message]] | None = None,
     step_options_override: dex.StepOptions | None = None,
 ) -> QueryStep[StepInput, GetMessageInput, Message]:
-    """Create getMessage with one required read route and optional failure routes."""
+    """Create getMessage with one required read route and optional failure routes.
+
+    Pass inline ``groupId``, ``groupLabel``, and ``explanation`` annotations
+    for Dex source analysis, or a ``StepAnnotations`` instance at runtime.
+    """
     _validate_connection(connection, connection_name)
     branches: dict[str, dex.StepTarget[QueryResult[Message]]] = {"read": read}
     for branch_id, target in (
@@ -57,7 +76,7 @@ def new_get_message_step(
     return QueryStep(QueryStepConfig(
         step_type=step_type,
         step_input_type=step_input_type,
-        annotations=annotations,
+        annotations=_step_annotations(annotations),
         operation=connection.get_message,
         connection=connection.reference,
         map_to_operation_input=map_to_operation_input,
@@ -71,7 +90,7 @@ def new_send_message_step(
     *,
     step_type: str,
     step_input_type: object,
-    annotations: StepAnnotations,
+    annotations: StepAnnotations | Mapping[str, str],
     connection: Connection,
     connection_name: str,
     map_to_operation_input: Callable[[StepInput], SendMessageInput],
@@ -81,7 +100,11 @@ def new_send_message_step(
     result_attribute: dex.Attribute[MutationResult[SendMessageOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
 ) -> MutationStep[StepInput, SendMessageInput, SendMessageOutput]:
-    """Create sendMessage with the manifest's bounded duplicate-risk retry policy."""
+    """Create sendMessage with the manifest's bounded duplicate-risk retry policy.
+
+    Pass inline ``groupId``, ``groupLabel``, and ``explanation`` annotations
+    for Dex source analysis, or a ``StepAnnotations`` instance at runtime.
+    """
     _validate_connection(connection, connection_name)
     branches: dict[str, dex.StepTarget[MutationResult[SendMessageOutput]]] = {"sent": sent}
     for branch_id, target in (("providerRejected", provider_rejected), ("defect", defect)):
@@ -90,7 +113,7 @@ def new_send_message_step(
     return MutationStep(MutationStepConfig(
         step_type=step_type,
         step_input_type=step_input_type,
-        annotations=annotations,
+        annotations=_step_annotations(annotations),
         operation=connection.send_message,
         connection=connection.reference,
         map_to_operation_input=map_to_operation_input,
@@ -104,7 +127,7 @@ def new_reply_to_message_step(
     *,
     step_type: str,
     step_input_type: object,
-    annotations: StepAnnotations,
+    annotations: StepAnnotations | Mapping[str, str],
     connection: Connection,
     connection_name: str,
     map_to_operation_input: Callable[[StepInput], ReplyToMessageInput],
@@ -115,7 +138,11 @@ def new_reply_to_message_step(
     result_attribute: dex.Attribute[MutationResult[SendMessageOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
 ) -> MutationStep[StepInput, ReplyToMessageInput, SendMessageOutput]:
-    """Create replyToMessage with the manifest's source response route."""
+    """Create replyToMessage with the manifest's source response route.
+
+    Pass inline ``groupId``, ``groupLabel``, and ``explanation`` annotations
+    for Dex source analysis, or a ``StepAnnotations`` instance at runtime.
+    """
     _validate_connection(connection, connection_name)
     branches: dict[str, dex.StepTarget[MutationResult[SendMessageOutput]]] = {"sent": sent}
     for branch_id, target in (
@@ -128,7 +155,7 @@ def new_reply_to_message_step(
     return MutationStep(MutationStepConfig(
         step_type=step_type,
         step_input_type=step_input_type,
-        annotations=annotations,
+        annotations=_step_annotations(annotations),
         operation=connection.reply_to_message,
         connection=connection.reference,
         map_to_operation_input=map_to_operation_input,

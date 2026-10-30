@@ -64,3 +64,48 @@ def test_send_step_factory_registers_and_checks_static_connection_name() -> None
             map_to_operation_input=lambda value: value,
             sent=sent,
         )
+
+
+def test_send_step_factory_accepts_inline_annotation_fields() -> None:
+    """Static annotation fields become the SDK's validated Step metadata."""
+    mock = Mock("support")
+    sent = Sent()
+    send = new_send_message_step(
+        step_type="SendEmail",
+        step_input_type=SendMessageInput,
+        annotations={
+            "groupId": "gmail",
+            "groupLabel": "Gmail",
+            "explanation": "Send one Gmail message.",
+        },
+        connection=mock.connection,
+        connection_name="support",
+        map_to_operation_input=lambda value: value,
+        sent=sent,
+    )
+    dex.Registry([SendFlow(send, sent)], allow_async_handlers=True)
+
+
+@pytest.mark.parametrize(
+    "annotations",
+    [
+        {"groupId": "gmail", "groupLabel": "Gmail"},
+        {"groupId": "gmail", "groupLabel": "Gmail", "explanation": "Send", "extra": "field"},
+        {"groupId": "gmail", "groupLabel": "Gmail", "explanation": " "},
+    ],
+)
+def test_send_step_factory_rejects_invalid_inline_annotation_fields(
+    annotations: dict[str, str],
+) -> None:
+    """Missing, unknown, and blank inline annotation fields fail validation."""
+    mock = Mock("support")
+    with pytest.raises(ValueError):
+        new_send_message_step(
+            step_type="SendEmail",
+            step_input_type=SendMessageInput,
+            annotations=annotations,
+            connection=mock.connection,
+            connection_name="support",
+            map_to_operation_input=lambda value: value,
+            sent=Sent(),
+        )
