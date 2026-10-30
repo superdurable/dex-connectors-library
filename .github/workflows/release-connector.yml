@@ -32,6 +32,9 @@ jobs:
       count: ${{ steps.matrix.outputs.count }}
       language_matrix: ${{ steps.matrix.outputs.language_matrix }}
       language_count: ${{ steps.matrix.outputs.language_count }}
+      dex_cli_tag: ${{ steps.dex-versions.outputs.cli_tag }}
+      dex_cli_asset_url: ${{ steps.dex-versions.outputs.cli_asset_url }}
+      dex_cli_sha256: ${{ steps.dex-versions.outputs.cli_sha256 }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -73,6 +76,12 @@ jobs:
             arguments+=(--include-published-at "${SOURCE_SHA}")
           fi
           GOWORK=off go run ./cmd/connectorctl release-matrix "${arguments[@]}"
+      - name: Resolve Dex CLI once for release shards
+        id: dex-versions
+        if: steps.matrix.outputs.count != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 script/dex_compatibility.py plan --github-output "${GITHUB_OUTPUT}"
 
   release:
     permissions:
@@ -85,6 +94,9 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     env:
+      DEX_CLI_RELEASE_TAG: ${{ needs.plan.outputs.dex_cli_tag }}
+      DEX_CLI_ASSET_URL: ${{ needs.plan.outputs.dex_cli_asset_url }}
+      DEX_CLI_SHA256: ${{ needs.plan.outputs.dex_cli_sha256 }}
       COMPONENT_PATH: ${{ matrix.directory }}
       MANIFEST_PATH: ${{ matrix.manifest_path }}
       TAG_PREFIX: ${{ matrix.tag_prefix }}
