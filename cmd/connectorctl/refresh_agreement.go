@@ -21,7 +21,7 @@ func generatedRefreshAgreementFiles(manifestPath string, manifest schema.Manifes
 	if !codegen.HasDeclaredTokenGrants(manifest) {
 		return map[string][]byte{}, nil
 	}
-	directory := filepath.Dir(manifestPath)
+	directory := filepath.Join(filepath.Dir(manifestPath), "go")
 	modulePath, err := readModulePath(filepath.Join(directory, "go.mod"))
 	if err != nil {
 		return nil, err
@@ -39,7 +39,7 @@ func generatedRefreshAgreementFiles(manifestPath string, manifest schema.Manifes
 
 // staleRefreshAgreementFiles lists the agreement test that a manifest without token grants must not keep.
 func staleRefreshAgreementFiles(manifestPath string, manifest schema.Manifest) []string {
-	path := filepath.Join(filepath.Dir(manifestPath), codegen.RefreshAgreementTestOutputFile)
+	path := filepath.Join(filepath.Dir(manifestPath), "go", codegen.RefreshAgreementTestOutputFile)
 	if _, err := os.Lstat(path); err != nil || codegen.HasDeclaredTokenGrants(manifest) {
 		return nil
 	}

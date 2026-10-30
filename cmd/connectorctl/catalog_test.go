@@ -286,7 +286,7 @@ directories:
 	require.NoError(t, readErr)
 	require.NoError(t, os.WriteFile(manifestPath, []byte(strings.Replace(string(manifest), "company: Google", "company: other", 1)), 0o600))
 	require.NoError(t, os.WriteFile(
-		filepath.Join(repositoryRoot, "connectors", "other", "mail", "go.mod"),
+		filepath.Join(repositoryRoot, "connectors", "other", "mail", "go", "go.mod"),
 		[]byte("module example.com/wrong\n\ngo 1.24\n"),
 		0o600,
 	))
@@ -507,7 +507,11 @@ func writeConnectorFixture(t *testing.T, repositoryRoot, directory, modulePath s
 		require.NoError(t, os.WriteFile(filepath.Join(logoDirectory, "logo.svg"), []byte(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"></svg>`), 0o600))
 	}
 	require.NoError(t, os.WriteFile(filepath.Join(connectorDirectory, "connector.yaml"), []byte(contents), 0o600))
-	require.NoError(t, os.WriteFile(filepath.Join(connectorDirectory, "go.mod"), []byte("module "+modulePath+"\n\ngo 1.24\n"), 0o600))
+	require.NoError(t, os.MkdirAll(filepath.Join(connectorDirectory, "go"), 0o755))
+	if modulePath == "example.com/"+directory {
+		modulePath += "/go"
+	}
+	require.NoError(t, os.WriteFile(filepath.Join(connectorDirectory, "go", "go.mod"), []byte("module "+modulePath+"\n\ngo 1.24\n"), 0o600))
 }
 
 func readFixtureManifest(t *testing.T) string {

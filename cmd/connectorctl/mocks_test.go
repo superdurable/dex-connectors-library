@@ -121,7 +121,7 @@ func TestScaffoldRejectsStringEncodedCursorWithoutEditingManifest(t *testing.T) 
 func TestScaffoldUsesOnlyTheCurrentPlatformCursorType(t *testing.T) {
 	manifestPath := writeMockFixtureConnector(t, t.TempDir())
 	directory := filepath.Dir(manifestPath)
-	require.NoError(t, os.Remove(filepath.Join(directory, "widget_page.go")))
+	require.NoError(t, os.Remove(filepath.Join(directory, "go", "widget_page.go")))
 	otherPlatform := "linux"
 	if runtime.GOOS == "linux" {
 		otherPlatform = "darwin"
@@ -165,7 +165,7 @@ func TestScaffoldReportsACursorWhoseTypeItCannotRead(t *testing.T) {
 	for name, source := range testCases {
 		t.Run(name, func(t *testing.T) {
 			manifestPath := writeMockFixtureConnector(t, t.TempDir())
-			require.NoError(t, os.Remove(filepath.Join(filepath.Dir(manifestPath), "widget_page.go")))
+			require.NoError(t, os.Remove(filepath.Join(filepath.Dir(manifestPath), "go", "widget_page.go")))
 			if source != "" {
 				writeWidgetPageSource(t, manifestPath, source)
 			}
@@ -216,9 +216,9 @@ func TestGenerateWritesAndChecksTheMockPackage(t *testing.T) {
 
 	require.NoError(t, generate([]string{manifestPath}))
 	require.NoError(t, generate([]string{"--check", manifestPath}))
-	mockSource := filepath.Join(directory, "mockfixturemock", "zz_generated_mock.go")
+	mockSource := filepath.Join(directory, "go", "mockfixturemock", "zz_generated_mock.go")
 	require.FileExists(t, mockSource)
-	require.FileExists(t, filepath.Join(directory, "mockfixturemock", "zz_generated_mock_test.go"))
+	require.FileExists(t, filepath.Join(directory, "go", "mockfixturemock", "zz_generated_mock_test.go"))
 	require.NoError(t, os.WriteFile(mockSource, []byte("stale"), 0o600))
 	require.ErrorContains(t, generate([]string{"--check", manifestPath}), "generated file is stale")
 
@@ -268,7 +268,8 @@ func writeMockFixtureConnector(t *testing.T, directory string) string {
 	require.NoError(t, err)
 	manifestPath := filepath.Join(directory, "connector.yaml")
 	require.NoError(t, os.WriteFile(manifestPath, source, 0o600))
-	require.NoError(t, os.WriteFile(filepath.Join(directory, "go.mod"), []byte("module example.com/mockfixture\n\ngo 1.24\n"), 0o600))
+	require.NoError(t, os.MkdirAll(filepath.Join(directory, "go"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(directory, "go", "go.mod"), []byte("module example.com/mockfixture\n\ngo 1.24\n"), 0o600))
 	writeWidgetPageSource(t, manifestPath, "type WidgetPage struct {\n\tNextPage int `json:\"nextPage\"`\n}\n")
 	return manifestPath
 }
@@ -277,7 +278,7 @@ func writeMockFixtureConnector(t *testing.T, directory string) string {
 func writeWidgetPageSource(t *testing.T, manifestPath, declarations string) {
 	t.Helper()
 	source := "package mockfixture\n\n" + declarations
-	require.NoError(t, os.WriteFile(filepath.Join(filepath.Dir(manifestPath), "widget_page.go"), []byte(source), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(filepath.Dir(manifestPath), "go", "widget_page.go"), []byte(source), 0o600))
 }
 
 func pageJSON(mock schema.OperationMock) []string {

@@ -388,7 +388,7 @@ func generate(args []string) error {
 	if err != nil {
 		return err
 	}
-	output := filepath.Join(filepath.Dir(args[0]), codegen.OutputFile)
+	output := filepath.Join(filepath.Dir(args[0]), "go", codegen.OutputFile)
 	mockFiles, err := generatedMockFiles(args[0], manifest)
 	if err != nil {
 		return err

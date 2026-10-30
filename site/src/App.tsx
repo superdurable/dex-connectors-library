@@ -241,6 +241,7 @@ function ConnectorPage({ catalog }: { catalog: LoadState<CatalogConnector[]> }) 
         </div>
       </div>
       <p className="description detail-description">{connector.description}</p>
+      <p className="install-command"><code>go get github.com/superdurable/dex-connectors-library/{connector.directory}/go@{connector.languages.go}</code></p>
       <CapabilityList title="UI units" capabilities={connector.uiUnits} versions={connector.languages} showLanguages={false} />
       <CapabilityList title="Triggers" capabilities={connector.triggers} versions={connector.languages} />
       <CapabilityList title="Operations" capabilities={connector.operations} versions={connector.languages} />

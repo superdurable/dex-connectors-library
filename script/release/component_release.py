@@ -219,20 +219,24 @@ def validate_npm_publish_manifest(package_json: Path, manifest: dict[str, object
 
 
 def reachable_tags(tag_prefix: str) -> list[tuple[tuple[int, int, int], str, str]]:
-    result = git(
-        "for-each-ref",
-        "--merged=HEAD",
-        "--format=%(refname:short)",
-        f"refs/tags/{tag_prefix}*",
-    )
+    prefixes = [tag_prefix]
+    if tag_prefix.startswith("connectors/") and tag_prefix.endswith("/go/"):
+        prefixes.append(tag_prefix.removesuffix("go/"))
     candidates: list[tuple[tuple[int, int, int], str, str]] = []
-    for tag in result.stdout.splitlines():
-        version = tag.removeprefix(tag_prefix)
-        try:
-            key = parse_version(version)
-        except ValueError:
-            continue
-        candidates.append((key, tag, version))
+    for prefix in prefixes:
+        result = git(
+            "for-each-ref",
+            "--merged=HEAD",
+            "--format=%(refname:short)",
+            f"refs/tags/{prefix}*",
+        )
+        for tag in result.stdout.splitlines():
+            version = tag.removeprefix(prefix)
+            try:
+                key = parse_version(version)
+            except ValueError:
+                continue
+            candidates.append((key, tag, version))
     return sorted(candidates)
 
 
@@ -247,6 +251,8 @@ def latest_reachable_tag(tag_prefix: str) -> tuple[str, str]:
 def component_commits(component_path: str, baseline_tag: str, release_ref: str = "HEAD") -> tuple[str, ...]:
     revision = f"{baseline_tag}..{release_ref}" if baseline_tag else release_ref
     paths = [component_path]
+    if component_path.startswith("connectors/") and component_path.endswith("/go"):
+        paths.append(str(Path(component_path).parent))
     if component_path.startswith("connectors/") and component_path.endswith(("/python", "/typescript")):
         paths.append(str(Path(component_path).parent / "connector.yaml"))
     result = git(
@@ -372,6 +378,10 @@ def release_notes(plan: ReleasePlan, repository: str) -> tuple[str, bool]:
         clean_title = title.replace("(breaking)", "").strip()
         entry = f"- [{clean_title}]({url}){author}"
         (breaking if is_breaking else changes).append(entry)
+    if (plan.component_path.startswith("connectors/") and plan.component_path.endswith("/go")
+            and plan.baseline_tag == str(Path(plan.component_path).parent) + "/" + plan.baseline_version):
+        previous_module = f"{LIBRARY_MODULE_PATH}/{Path(plan.component_path).parent.as_posix()}"
+        breaking.insert(0, f"- Moved from `{previous_module}` to `{plan.module_path}`.")
     sections = ["## Breaking Changes", "", *(breaking or ["None."]), "", "## Changes", "", *(changes or ["None."]), ""]
     return "\n".join(sections), bool(breaking)
 
@@ -382,7 +392,14 @@ def validate_breaking_bump(plan: ReleasePlan, has_breaking_changes: bool) -> Non
     baseline_major = parse_version(plan.baseline_version)[0] if plan.baseline_version else 0
     if baseline_major == 0 and plan.bump == "patch":
         raise ValueError("a v0 breaking release cannot use a patch bump")
-    if baseline_major >= 1 and plan.bump != "major":
+    is_go_module_migration = (
+        plan.component_path.startswith("connectors/")
+        and plan.component_path.endswith("/go")
+        and plan.baseline_tag == str(Path(plan.component_path).parent) + "/" + plan.baseline_version
+        and plan.bump == "minor"
+        and plan.version == next_version(plan.baseline_version, "minor")
+    )
+    if baseline_major >= 1 and plan.bump != "major" and not is_go_module_migration:
         raise ValueError("a v1+ breaking release requires a major bump")
 
 
@@ -546,7 +563,7 @@ def verify_packaged_connector_manifest(contents: bytes, language: str, package: 
             identity.get("name") != package or identity.get("version") != version:
         raise ValueError(f"dex-connector.json package identity must equal {expected_ecosystem}:{package}@{version}")
     release_tag = document.get("releaseTag")
-    match = re.fullmatch(r"connectors/([a-z0-9-]+(?:/[a-z0-9-]+)*)/v[0-9]+\.[0-9]+\.[0-9]+", release_tag) \
+    match = re.fullmatch(r"connectors/([a-z0-9-]+(?:/[a-z0-9-]+)*)/go/v[0-9]+\.[0-9]+\.[0-9]+", release_tag) \
         if isinstance(release_tag, str) else None
     if match is None:
         raise ValueError("dex-connector.json releaseTag must name a stable Go connector release")
@@ -701,7 +718,7 @@ def validate_language_connector_release(
     release_tag = document.get("releaseTag") if isinstance(document, dict) else None
     connector_path = "/".join(path.parts[path.parts.index("connectors") + 1:-1])
     if not isinstance(release_tag, str) or not re.fullmatch(
-        r"connectors/" + re.escape(connector_path) + r"/v[0-9]+\.[0-9]+\.[0-9]+", release_tag
+        r"connectors/" + re.escape(connector_path) + r"/go/v[0-9]+\.[0-9]+\.[0-9]+", release_tag
     ):
         raise ValueError(f"{connector_manifest_path} releaseTag must name its Go connector release")
     source_manifest = path.parent / "connector.yaml"

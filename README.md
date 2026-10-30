@@ -207,11 +207,11 @@ exposing credentials to those controls.
 
 ### End-to-end Slack example
 
-Follow the [Slack thread approval walkthrough](connectors/slack/examples/thread-approval/README.md)
+Follow the [Slack thread approval walkthrough](connectors/slack/go/examples/thread-approval/README.md)
 to configure Slack and Dex Web, run the example Worker, and verify the complete
 path: a top-level Slack message starts a Flow, the Flow reads the thread, an
 allowed reply invokes its typed RPC, and the Connector posts the completion
-reply. The [complete Flow source](connectors/slack/examples/thread-approval/flow/workflow.go)
+reply. The [complete Flow source](connectors/slack/go/examples/thread-approval/flow/workflow.go)
 shows how the Steps, triggers, and RPC are wired together.
 
 In Dex Web, open **Connections**, select `slack / slack-workspace`, and choose
@@ -302,8 +302,10 @@ The first folder under `connectors/` is the company name, matches
 are grouped below that folder, such as `connectors/google/gmail` and
 `connectors/google/spreadsheet`.
 
-Each connector is its own Go module. Release tags use the module directory,
-such as `connectors/github/vX.Y.Z` and `connectors/google/gmail/vX.Y.Z`.
+Each connector's Go module lives in its `go/` subdirectory. Release tags use
+that module directory, such as `connectors/github/go/vX.Y.Z` and
+`connectors/google/gmail/go/vX.Y.Z`. Manifests, READMEs, UI, Python, and
+TypeScript packages stay in the connector directory.
 The manifest `metadata.version` is that connector's own release version, and
 moving it releases only that connector. The root `catalog.yaml`
 is the sorted membership allowlist used to generate the public catalog. Adding

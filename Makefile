@@ -29,9 +29,9 @@ test-conformance:
 test-connectors:
 	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))"; \
 	for module in $$directories; do \
-		python3 script/release/component_release.py validate-connector --component-path "$$module" \
+		python3 script/release/component_release.py validate-connector --component-path "$$module/go" \
 			--sdk-module github.com/superdurable/dex-connectors-library/sdkgo || exit 1; \
-		(cd "$$module" && GOWORK=off go test -race ./... && GOWORK=off go vet ./...) || exit 1; \
+		(cd "$$module/go" && GOWORK=off go test -race ./... && GOWORK=off go vet ./...) || exit 1; \
 		GOWORK=off go run ./cmd/connectorctl validate "$$module/connector.yaml" || exit 1; \
 		GOWORK=off go run ./cmd/connectorctl generate --check "$$module/connector.yaml" || exit 1; \
 	done
@@ -81,7 +81,7 @@ test-sdk-integration:
 test-connector-integration:
 	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))"; \
 	for module in $$directories; do \
-		(cd "$$module" && GOWORK=off go test -p 1 -tags=integration ./... -count=1 -v) || exit 1; \
+		(cd "$$module/go" && GOWORK=off go test -p 1 -tags=integration ./... -count=1 -v) || exit 1; \
 	done
 
 test-dex-compat-current:

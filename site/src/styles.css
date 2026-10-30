@@ -308,6 +308,7 @@ h2, h3 {
 }
 
 .detail-description { max-width: 42rem; font-size: 18px; }
+.install-command { overflow-wrap: anywhere; }
 
 .back { margin: 0 0 18px; }
 
