@@ -1,0 +1,59 @@
+{
+  "name": "@superdurable/connector-newsapi",
+  "version": "0.1.0",
+  "license": "MIT",
+  "description": "NewsAPI connector for Dex TypeScript applications",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/superdurable/dex-connectors-library.git",
+    "directory": "connectors/newsapi/typescript"
+  },
+  "type": "module",
+  "engines": {
+    "node": "^22.0.0 || ^24.0.0"
+  },
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./newsapimock": {
+      "types": "./dist/newsapimock.d.ts",
+      "import": "./dist/newsapimock.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "dex-connector.json"
+  ],
+  "scripts": {
+    "prepack": "npm run build",
+    "build": "tsup src/index.ts src/newsapimock.ts --format esm --dts --clean",
+    "example:company-news": "tsx examples/company-news/main.ts",
+    "integration:company-news": "tsx examples/company-news/integration.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src test examples",
+    "test": "vitest run",
+    "check": "npm run typecheck && npm run lint && npm test && npm run build"
+  },
+  "dependencies": {
+    "@superdurable/connectors-sdk": "0.1.0",
+    "@superdurable/dex": ">=1.28.0",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@types/node": "^22.0.0",
+    "eslint": "^9.0.0",
+    "tsup": "^8.0.0",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^3.0.0",
+    "yaml": "^2.9.1"
+  }
+}
