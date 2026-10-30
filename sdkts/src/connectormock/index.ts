@@ -6,6 +6,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { z } from 'zod';
 import { FailureSchema, type Failure } from '../errors.js';
 import { type BranchID, type CallID, UncertainBranchID } from '../types.js';
+export { FlowScript, MockQuery, MockMutation, newQuery, newMutation, type MockCall, type MockOptions } from './scripted.js';
 
 /** Environment variable that enables the test harness call report. */
 export const ReportDirectoryEnvironment = 'DEX_CONNECTOR_MOCK_REPORT_DIR';

@@ -6,7 +6,7 @@ import { RetryError } from '../src/errors.js';
 import { StaticCredentialProvider, resolveCredential, resolveCredentialAfterRejection, type Call, type CredentialRefreshDriver } from '../src/credentials.js';
 import { validateMutationDefinition, validateQueryDefinition, type MutationDefinition, type QueryDefinition } from '../src/operation.js';
 import { runMutation, runQuery } from '../src/run_operation.js';
-import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry } from '../src/types.js';
+import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, zeroReceipt } from '../src/types.js';
 import type { AsyncContext } from '@superdurable/dex';
 
 const context = { attempt: 1, flowId: 'flow-1', stepExecutionId: 'step-1' } as AsyncContext;
@@ -25,6 +25,14 @@ describe('operation execution', () => {
     } }, call, 'item-1');
     expect(result).toMatchObject({ branch: 'created', value: 'item-1', receipt: { callId: call.id, idempotencyKey: `sample/${call.id}`, provider: 'sample', providerObjectId: 'item-1' } });
     expect(new Date(result.receipt.observedAt).getTime()).toBeGreaterThan(0);
+  });
+
+  it('encodes the Go zero-value receipt and completes it at the call boundary', async () => {
+    expect(JSON.stringify(zeroReceipt())).toBe('{"callId":"","provider":"","observedAt":"0001-01-01T00:00:00Z"}');
+    const result = await runQuery({ definition: () => queryDefinition, invoke: () => newQueryBranch('created', '', zeroReceipt()) }, call, undefined);
+    expect(result.receipt.callId).toBe(call.id);
+    expect(result.receipt.provider).toBe('sample');
+    expect(result.receipt.observedAt).not.toBe('0001-01-01T00:00:00Z');
   });
 
   it('routes a declared query branch and rejects an undeclared one as defect', async () => {

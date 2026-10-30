@@ -59,7 +59,7 @@ function resultFromAttempt<Output>(definition: QueryDefinition | MutationDefinit
 function completeReceipt(draft: ReceiptDraft, call: Call): Receipt {
   if (draft.callId && draft.callId !== call.id) throw new TypeError('operation returned a receipt for another call');
   if (draft.idempotencyKey && draft.idempotencyKey !== call.idempotencyKey) throw new TypeError('operation returned a receipt with another idempotency key');
-  return ReceiptSchema.parse({ ...draft, callId: call.id, ...(call.idempotencyKey ? { idempotencyKey: call.idempotencyKey } : {}), provider: draft.provider || call.operation.connectorId, observedAt: draft.observedAt || new Date().toISOString() });
+  return ReceiptSchema.parse({ ...draft, callId: call.id, ...(call.idempotencyKey ? { idempotencyKey: call.idempotencyKey } : {}), provider: draft.provider || call.operation.connectorId, observedAt: draft.observedAt && draft.observedAt !== '0001-01-01T00:00:00Z' ? draft.observedAt : new Date().toISOString() });
 }
 
 function validateCall(call: Call, operation: QueryDefinition['operation']): string | undefined {

@@ -93,6 +93,8 @@ export const ReceiptSchema = z.strictObject({
 export type Receipt = z.infer<typeof ReceiptSchema>;
 /** Receipt fields an operation may supply before the SDK fills call metadata. */
 export type ReceiptDraft = Partial<Receipt>;
+/** Go-compatible JSON representation of sdkgo.Receipt{} before call completion. */
+export function zeroReceipt(): ReceiptDraft { return { callId: '', provider: '', observedAt: '0001-01-01T00:00:00Z' }; }
 
 /** Validated terminal query result with Go-compatible JSON field names. */
 export const QueryResultSchema = <T>(valueSchema: z.ZodType<T>) => z.strictObject({ branch: z.string().min(1), value: valueSchema, receipt: ReceiptSchema, failure: FailureSchema.optional() });
