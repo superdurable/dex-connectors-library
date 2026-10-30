@@ -36,9 +36,14 @@ from dex_connectors.sdk.projectconfig import (
     load_project_from_object_store,
 )
 from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError
-from dex_connectors.sdk.projectconfig.models import CredentialBrokerConfiguration
+from dex_connectors.sdk.projectconfig.connections import _connection_record_wire, _credential_envelope_wire
+from dex_connectors.sdk.projectconfig.models import (
+    CredentialBrokerConfiguration,
+    go_canonical_json_bytes,
+)
 from dex_connectors.sdk.projectconfig.provider import (
     CredentialProvider,
+    ExchangePendingError,
     RefreshFailedError,
     RefreshingCredentialProvider,
     RejectedCredentialNotRefreshedError,
@@ -117,6 +122,89 @@ async def test_refresh_admission_across_replicas() -> None:
     assert driver.calls == 1
     assert (await first_store.read_connection(KEY)).status == "READY"
     assert (await first_store.read_credential_material(KEY))[0].credentials["refresh"] == "kept"
+
+
+async def _authorize_record(store: ConnectionStore, deadline: datetime) -> str:
+    """Seed a valid admitted OAuth authorization without calling a provider."""
+    path = KEY.path(store.scope)
+    result_key = f"{path}/exchange-results/authorization-1"
+    mutation: dict[str, object] = {
+        "kind": "AUTHORIZING", "invocationId": "invocation-1", "id": "authorization-1",
+        "fence": 1, "baseRevision": 0, "deadline": deadline.isoformat(), "resultKey": result_key,
+    }
+    record = _connection_record_wire(
+        store.scope, KEY, 1, 1, "AUTHORIZING", None, "oauth2", None, mutation
+    )
+    await store.objects.create_object(f"{path}/head", go_canonical_json_bytes(record))
+    return result_key
+
+
+@pytest.mark.asyncio
+async def test_expired_authorization_recovers_result_or_fences_reauthorization() -> None:
+    """An abandoned OAuth admission publishes its result or requires reauthorization."""
+    scope = Scope("test-project", "preview")
+    pending_store = ConnectionStore(InMemoryObjectStore(), scope)
+    await _authorize_record(pending_store, datetime.now(UTC) + timedelta(minutes=1))
+    pending_provider = RefreshingCredentialProvider(pending_store, KEY, decode, encode)
+    with pytest.raises(ExchangePendingError):
+        await resolve_credential(pending_provider, CALL, RefreshDriver())
+
+    expired_store = ConnectionStore(InMemoryObjectStore(), scope)
+    await _authorize_record(expired_store, datetime.now(UTC) - timedelta(minutes=1))
+    expired_provider = RefreshingCredentialProvider(expired_store, KEY, decode, encode)
+    with pytest.raises(ReauthorizationRequiredError):
+        await resolve_credential(expired_provider, CALL, RefreshDriver())
+    assert (await expired_store.read_connection(KEY)).status == "REAUTHORIZATION_REQUIRED"
+
+    completed_store = ConnectionStore(InMemoryObjectStore(), scope)
+    result_key = await _authorize_record(completed_store, datetime.now(UTC) - timedelta(minutes=1))
+    envelope = _credential_envelope_wire(
+        scope, KEY, 1, {"access": "authorized", "refresh": "kept"},
+        datetime.now(UTC) + timedelta(hours=1), "oauth2", "authorization-1",
+    )
+    await completed_store.objects.create_object(result_key, go_canonical_json_bytes(envelope))
+    completed_provider = RefreshingCredentialProvider(completed_store, KEY, decode, encode)
+    assert (await resolve_credential(completed_provider, CALL, RefreshDriver()))["access"] == "authorized"
+    assert (await completed_store.read_connection(KEY)).status == "READY"
+
+
+@pytest.mark.asyncio
+async def test_expired_refresh_observers_reload_after_recovery_conflict(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Both observers resolve current material when one restores the stale admission."""
+    objects = InMemoryObjectStore()
+    scope = Scope("test-project", "preview")
+    first_store = ConnectionStore(objects, scope)
+    second_store = ConnectionStore(objects, scope)
+    await first_store.replace_credential(
+        KEY, 0, CredentialMaterial(
+            {"access": "current", "refresh": "kept"}, datetime.now(UTC) + timedelta(hours=1),
+            "oauth2",
+        ),
+    )
+    first = RefreshingCredentialProvider(first_store, KEY, decode, encode)
+    second = RefreshingCredentialProvider(second_store, KEY, decode, encode)
+    record, _ = await first_store._read_record(KEY)
+    await first._admit_refresh(record, datetime.now(UTC) - timedelta(minutes=2))
+    second_observing = asyncio.Event()
+    release_second = asyncio.Event()
+    original_recover = second._recover_or_wait
+
+    async def recover_after_first(record: dict[str, Any]) -> None:
+        second_observing.set()
+        await release_second.wait()
+        await original_recover(record)
+
+    monkeypatch.setattr(second, "_recover_or_wait", recover_after_first)
+    driver = RefreshDriver()
+    second_task = asyncio.create_task(resolve_credential(second, CALL, driver))
+    await asyncio.wait_for(second_observing.wait(), 2)
+    first_result = await asyncio.wait_for(resolve_credential(first, CALL, driver), 2)
+    release_second.set()
+    second_result = await asyncio.wait_for(second_task, 2)
+    assert first_result == second_result == {"access": "current", "refresh": "kept"}
+    assert driver.calls == 0
 
 
 @pytest.mark.asyncio

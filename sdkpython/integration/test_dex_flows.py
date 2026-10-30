@@ -40,7 +40,7 @@ from dex_connectors.sdk import (
 )
 from dex_connectors.sdk.connectormock import Case
 from dex_connectors.sdk.connectormock import Mutation as MockMutation
-from dex_connectors.sdk.singledispatch import DecisionKind, Fence
+from dex_connectors.sdk.singledispatch import DecisionKind, Fence, Marker, State
 
 SERVER_ADDRESS = os.environ.get("DEX_SERVER_ADDRESS", "127.0.0.1:19881")
 OPERATION = OperationRef("sample", "getItem")
@@ -78,6 +78,18 @@ class ScriptedQuery:
                 Failure(FailureKind.AVAILABILITY, "sample", "getItem", "provider unavailable")
             )
         return QueryAttempt.branch_result(outcome, input, Receipt())
+
+
+class InvalidAttemptQuery(ScriptedQuery):
+    """Return an invalid classification from one provider invocation."""
+
+    def __init__(self) -> None:
+        super().__init__(["success"])
+
+    async def invoke(self, call: Call, input: str) -> QueryAttempt[str]:
+        """Construct a malformed attempt that the SDK routes to defect."""
+        self.calls += 1
+        return QueryAttempt.retry(None)  # type: ignore[arg-type]
 
 
 class QueryTerminal(dex.Step[QueryResult[str]]):
@@ -254,6 +266,22 @@ async def test_unwired_optional_branch_fails_flow() -> None:
 
 
 @pytest.mark.asyncio
+async def test_invalid_attempt_fails_flow_without_provider_retry() -> None:
+    """A malformed operation attempt chooses defect on its first Dex Execute."""
+    operation = InvalidAttemptQuery()
+    retry = dex.RetryPolicy(
+        initial_interval=timedelta(seconds=1), backoff_coefficient=1,
+        maximum_interval=timedelta(seconds=1), maximum_attempts=2,
+        total_duration=timedelta(seconds=10),
+    )
+    flow, _ = query_flow("QueryInvalidAttempt", operation, retry=retry)
+    result = await run_flow(flow)
+    assert result.status == dex.FlowStatus.FAILED
+    assert "selected branch defect with no target" in (result.error_message or "")
+    assert operation.calls == 1
+
+
+@pytest.mark.asyncio
 async def test_result_attribute_and_progress_streams() -> None:
     """Real Dex persists the typed result and both configured Stream outputs."""
     operation = ScriptedQuery(["success"], emit_progress=True)
@@ -323,6 +351,7 @@ class FencedMutation(ScriptedMutation):
         self.lose_response = lose_response
         self.provider_sends = 0
         self.read_backs = 0
+        self.retry_marker: Marker | None = None
 
     async def invoke(self, call: Call, input: str) -> MutationAttempt[str]:
         """Fence the request before credentials and keep an ambiguous send closed."""
@@ -331,6 +360,7 @@ class FencedMutation(ScriptedMutation):
         decision = await fence.decide()
         if decision.kind == DecisionKind.READ_BACK_REQUIRED:
             self.read_backs += 1
+            self.retry_marker = decision.marker
             return MutationAttempt.uncertain(input, UNCERTAIN_FAILURE, Receipt())
         if decision.kind != DecisionKind.SEND_ALLOWED:
             raise RuntimeError("single-dispatch checkpoint is untrusted")
@@ -341,6 +371,44 @@ class FencedMutation(ScriptedMutation):
                 await asyncio.sleep(self.request_seconds)
             if self.lose_response:
                 raise OSError("provider response was lost")
+            return "provider-item"
+
+        provider_id = await fence.dispatch(send)
+        await fence.record_provider_id(provider_id)
+        return MutationAttempt.branch_result("success", input, Receipt())
+
+
+class CanResendMutation(ScriptedMutation):
+    """Prove one pre-send failure permits the next Dex attempt to dispatch."""
+
+    def __init__(self) -> None:
+        super().__init__("success")
+        self.retry_marker: Marker | None = None
+        self.provider_sends = 0
+
+    async def invoke(self, call: Call, input: str) -> MutationAttempt[str]:
+        """Record canResend after a proven pre-send failure, then send once."""
+        self.calls += 1
+        fence = Fence(call, timedelta(seconds=30))
+        decision = await fence.decide()
+        if decision.kind != DecisionKind.SEND_ALLOWED:
+            raise RuntimeError("safe resend was not admitted")
+        if self.calls == 1:
+            async def fail_before_send(deadline: object) -> str:
+                raise OSError("inert request never left the process")
+
+            try:
+                await fence.dispatch(fail_before_send)
+            except OSError:
+                await fence.record_can_resend()
+                return MutationAttempt.retry(Failure(
+                    FailureKind.TRANSPORT, "sample", "createItem", "request was not sent"
+                ))
+            raise AssertionError("pre-send failure was expected")
+        self.retry_marker = decision.marker
+
+        async def send(deadline: object) -> str:
+            self.provider_sends += 1
             return "provider-item"
 
         provider_id = await fence.dispatch(send)
@@ -443,7 +511,24 @@ async def test_uncertain_route_and_single_dispatch_after_lost_response() -> None
     assert lost_result.status == dex.FlowStatus.COMPLETED
     assert lost.provider_sends == 1
     assert lost.read_backs == 1
+    assert lost.retry_marker is not None
+    assert lost.retry_marker.state == State.CLAIMED
+    assert lost.retry_marker.attempt == 1
     assert lost_sink.observed[0].branch == "uncertain"
+
+
+@pytest.mark.asyncio
+async def test_can_resend_checkpoint_allows_one_provider_send_on_retry() -> None:
+    """Dex reads canResend from attempt one before permitting a safe retry send."""
+    operation = CanResendMutation()
+    flow, _ = mutation_flow("MutationCanResend", operation)
+    result = await run_flow(flow)
+    assert result.status == dex.FlowStatus.COMPLETED
+    assert operation.calls == 2
+    assert operation.provider_sends == 1
+    assert operation.retry_marker is not None
+    assert operation.retry_marker.state == State.CAN_RESEND
+    assert operation.retry_marker.attempt == 1
 
 
 @pytest.mark.asyncio

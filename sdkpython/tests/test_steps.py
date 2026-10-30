@@ -12,6 +12,8 @@ from dex_connectors.sdk import (
     Call,
     CallID,
     ConnectionRef,
+    Failure,
+    FailureKind,
     IdempotencyKey,
     MutationAttempt,
     MutationDefinition,
@@ -25,9 +27,11 @@ from dex_connectors.sdk import (
     QueryStep,
     QueryStepConfig,
     Receipt,
+    RetryError,
     StepAnnotations,
     StepDefaults,
 )
+from dex_connectors.sdk.steps import _raise_dex_retry
 
 OPERATION = OperationRef("sample", "createItem")
 CONNECTION = ConnectionRef("sample", "main")
@@ -140,3 +144,24 @@ def test_step_factory_rejects_missing_required_branch_and_wait_options() -> None
             lambda value: value, {"success": MutationSink()},
             step_options_override=dex.StepOptions(wait_for_method_timeout=timedelta(seconds=1)),
         ))
+
+
+@pytest.mark.parametrize(
+    ("delay", "expected_whole_seconds"),
+    [(0.5, 0), (1.9, 1), (2.0, 2)],
+)
+def test_step_factory_truncates_retry_after_to_dex_seconds(
+    delay: float, expected_whole_seconds: int
+) -> None:
+    """Dex receives a positive whole-second hint only after truncation."""
+    failure = Failure(FailureKind.AVAILABILITY, "sample", "createItem", "unavailable")
+    retry = RetryError(failure, delay)
+    if expected_whole_seconds == 0:
+        with pytest.raises(RetryError) as raised_retry:
+            _raise_dex_retry(retry)
+        assert raised_retry.value is retry
+    else:
+        with pytest.raises(dex.RetryAfterError) as raised_after:
+            _raise_dex_retry(retry)
+        assert raised_after.value.after_seconds == expected_whole_seconds
+        assert raised_after.value.cause is retry

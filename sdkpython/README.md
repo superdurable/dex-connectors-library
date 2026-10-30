@@ -2,7 +2,7 @@
 
 `dex-connectors-sdk` is the Python core for Dex-native provider connectors. It
 uses the PEP 420 `dex_connectors` namespace and imports as `dex_connectors.sdk`.
-Version `0.1.0` is unreleased. The package supplies the models, provider
+Version `0.1.0` supplies the models, provider
 operation contracts, credential helpers, OAuth token exchanges, and
 single-dispatch checkpoint values below. Query and Mutation Step factories
 use the released Dex SDK's instance-addressed async Steps.
@@ -74,8 +74,8 @@ assert credential.reveal() == "INERT_SECRET"
 Each has `definition()` and `invoke(call, input)`; a Mutation also derives a
 stable `idempotency_key(call_id, input)`. `run_query` and `run_mutation` validate
 the attempt against declared branches, complete the safe receipt, and raise
-`RetryError` for a safe-to-repeat failure. A returned unknown branch or foreign
-receipt selects `defect`. An `uncertain` Mutation requires a declared route and
+`RetryError` for a safe-to-repeat failure. A returned unknown branch, foreign
+receipt, or invalid attempt selects `defect`. An `uncertain` Mutation requires a declared route and
 the narrow unconfirmable-write conditions in the repository rules. Retry
 exhaustion is handled by Dex and fails the Flow.
 `RetryError.retry_after_whole_seconds` truncates positive fractional delays to
@@ -275,10 +275,15 @@ Run `uv sync`, `uv run pytest`, `uv run mypy --strict src tests examples
 integration`, and `uv run ruff check src tests examples integration`. For real
 Dex Flow tests, install the latest stable CLI with
 `python3 ../script/dex_compatibility.py install-dexcli --output ../.bin/dexcli`,
-start `../.bin/dexcli dev` locally, and run
-`uv run pytest integration/test_dex_flows.py`. The integration suite checks
+then from `sdkpython/` run `mkdir -p .dexcli-data/logs` and start
+`../.bin/dexcli dev -dex-port 19881 -web-port 19882 -open=false
+-zd-data-dir .dexcli-data/zd -server-log-folder .dexcli-data/logs`. Run
+`make test-sdkpython-integration` from the repository root. CI runs this suite
+for Python SDK changes against the Dex CLI selected once for the workflow run.
+The integration suite checks
 branch routing, retry and exhaustion, uncertainty, the lost-response fence,
-heartbeat cadence, mock replay, result Attribute, and progress/text Streams.
+safe resend from a persisted checkpoint, heartbeat cadence, mock replay,
+result Attribute, and progress/text Streams.
 
 The provider address-policy client and SSE reader are outside this release.
 

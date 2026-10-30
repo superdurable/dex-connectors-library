@@ -43,6 +43,7 @@ class ExchangePendingError(OSError):
 @dataclass(frozen=True, slots=True)
 class _Admission:
     key: ConnectionKey
+    kind: str
     attempt_id: str
     fence: int
     deadline: datetime
@@ -138,9 +139,20 @@ class RefreshingCredentialProvider(CredentialProvider[Credential]):
             if status in ("REVOKED", "REAUTHORIZATION_REQUIRED"):
                 raise ReauthorizationRequiredError()
             if status == "AUTHORIZING":
-                raise ExchangePendingError("credential authorization exchange is pending")
+                mutation = require_object(record.get("mutation"), "credential mutation")
+                deadline = _as_datetime(_parse_expiry(mutation["deadline"]))
+                if deadline is not None and datetime.now(UTC) < deadline:
+                    raise ExchangePendingError("credential authorization exchange is pending")
+                try:
+                    await self._recover_or_wait(record)
+                except ObjectConflictError:
+                    continue
+                continue
             if status == "REFRESHING":
-                await self._recover_or_wait(record)
+                try:
+                    await self._recover_or_wait(record)
+                except ObjectConflictError:
+                    continue
                 continue
             if status != "READY":
                 raise ValueError("project credential status is invalid")
@@ -210,7 +222,7 @@ class RefreshingCredentialProvider(CredentialProvider[Credential]):
             require_object(record["credential"], "credential reference"), mutation,
         )
         await self._write_head(record, updated)
-        return _Admission(self._key, attempt_id, record["fence"] + 1, deadline,
+        return _Admission(self._key, "REFRESHING", attempt_id, record["fence"] + 1, deadline,
                           str(mutation["resultKey"]), True)
 
     async def _refresh_admitted(
@@ -220,22 +232,22 @@ class RefreshingCredentialProvider(CredentialProvider[Credential]):
         try:
             result = await asyncio.wait_for(driver.refresh(state), _REFRESH_TIMEOUT.total_seconds())
         except ReauthorizationRequiredError:
-            await self._finish_refresh(admission, "REAUTHORIZATION_REQUIRED")
+            await self._finish_exchange(admission, "REAUTHORIZATION_REQUIRED")
             raise
         except Exception:
-            await self._finish_refresh(admission, "READY")
+            await self._finish_exchange(admission, "READY")
             raise RefreshFailedError(
                 "project credential refresh failed; current authorization is kept"
             ) from None
         if result.expires_at <= datetime.now(UTC):
-            await self._finish_refresh(admission, "READY")
+            await self._finish_exchange(admission, "READY")
             raise RefreshFailedError("refreshed credential has no future expiry")
         try:
             encoded = self._encode(result.credentials)
             if not isinstance(encoded, dict) or not encoded:
                 raise ValueError("invalid private credential material")
         except (ValueError, TypeError):
-            await self._finish_refresh(admission, "READY")
+            await self._finish_exchange(admission, "READY")
             raise RefreshFailedError("refreshed credential encoding failed") from None
         await self._commit_refresh(
             admission, CredentialMaterial(encoded, result.expires_at, prior.auth_method)
@@ -245,7 +257,7 @@ class RefreshingCredentialProvider(CredentialProvider[Credential]):
     async def _recover_or_wait(self, record: dict[str, Any]) -> None:
         mutation = require_object(record.get("mutation"), "credential mutation")
         admission = _Admission(
-            self._key, str(mutation["id"]), record["fence"],
+            self._key, str(record["status"]), str(mutation["id"]), record["fence"],
             _as_datetime(_parse_expiry(mutation["deadline"])) or datetime.min.replace(tzinfo=UTC),
             str(mutation["resultKey"]), False,
         )
@@ -255,7 +267,10 @@ class RefreshingCredentialProvider(CredentialProvider[Credential]):
             if datetime.now(UTC) < admission.deadline:
                 await asyncio.sleep(0.1)
                 return
-            await self._finish_refresh(admission, "READY")
+            await self._finish_exchange(
+                admission,
+                "REAUTHORIZATION_REQUIRED" if admission.kind == "AUTHORIZING" else "READY",
+            )
             return
         await self._publish_result(admission, result)
 
@@ -303,13 +318,14 @@ class RefreshingCredentialProvider(CredentialProvider[Credential]):
             if observed["status"] != "READY" or observed.get("credential", {}).get("key") != result.key:
                 raise
 
-    async def _finish_refresh(self, admission: _Admission, status: str) -> None:
+    async def _finish_exchange(self, admission: _Admission, status: str) -> None:
         record, _ = await self._store._read_record(self._key)
         _require_admission(record, admission)
         updated = _connection_record_wire(
             self._store.scope, self._key, record["revision"] + 1, record["fence"] + 1,
             status, _parse_expiry(record.get("expiresAt")), str(record["authMethod"]),
-            require_object(record["credential"], "credential reference"),
+            require_object(record["credential"], "credential reference")
+            if record.get("credential") is not None else None,
         )
         await self._write_head(record, updated)
 
@@ -330,10 +346,11 @@ class RefreshingCredentialProvider(CredentialProvider[Credential]):
 def _require_admission(record: dict[str, Any], admission: _Admission) -> None:
     mutation = record.get("mutation")
     if (
-        record["status"] != "REFRESHING" or record["fence"] != admission.fence
+        record["status"] != admission.kind or record["fence"] != admission.fence
         or not isinstance(mutation, dict) or mutation.get("id") != admission.attempt_id
+        or mutation.get("kind") != admission.kind
     ):
-        raise ObjectConflictError("credential refresh admission was superseded")
+        raise ObjectConflictError("credential exchange admission was superseded")
 
 
 def _parse_expiry(value: object) -> datetime | None:

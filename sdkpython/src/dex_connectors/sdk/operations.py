@@ -76,7 +76,12 @@ async def run_query(operation: Query[Input, Output], call: Call, input: Input) -
         _validate_call(call, definition.operation)
     except ValueError as error:
         return _query_defect(call, str(error))
-    attempt = await operation.invoke(call, input)
+    try:
+        attempt = await operation.invoke(call, input)
+    except ValueError:
+        return _query_defect(call, "query returned an invalid attempt")
+    if not isinstance(attempt, QueryAttempt):
+        return _query_defect(call, "query returned an invalid attempt")
     if attempt.kind == "retry":
         _raise_retry(attempt.failure, attempt.retry_after_seconds)
     if attempt.branch not in {branch.id for branch in definition.branches or ()}:
@@ -106,7 +111,12 @@ async def run_mutation(
     if not idempotency_key.strip():
         return _mutation_defect(call, "mutation returned an invalid idempotency key")
     call = replace(call, idempotency_key=IdempotencyKey(idempotency_key))
-    attempt = await operation.invoke(call, input)
+    try:
+        attempt = await operation.invoke(call, input)
+    except ValueError:
+        return _mutation_defect(call, "mutation returned an invalid attempt")
+    if not isinstance(attempt, MutationAttempt):
+        return _mutation_defect(call, "mutation returned an invalid attempt")
     if attempt.kind == "retry":
         _raise_retry(attempt.failure, attempt.retry_after_seconds)
     if attempt.branch not in {branch.id for branch in definition.branches or ()}:

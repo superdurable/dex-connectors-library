@@ -145,6 +145,31 @@ async def test_query_and_mutation_outcomes() -> None:
 
 
 @pytest.mark.asyncio
+async def test_invalid_operation_attempts_select_defect_without_retry() -> None:
+    """Construction failures in provider classifications fail the Flow through defect."""
+    class InvalidQuery(ExampleQuery):
+        async def invoke(self, call: Call, input: str) -> QueryAttempt[str]:
+            """Return an invalid failure from inside the provider operation."""
+            return QueryAttempt.branch_result(
+                "success", input, RECEIPT,
+                Failure(FailureKind.LOCAL_DEFECT, "sample", "createItem", ""),
+            )
+
+    class InvalidMutation(ExampleMutation):
+        async def invoke(self, call: Call, input: str) -> MutationAttempt[str]:
+            """Return a retry classification missing its required failure."""
+            return MutationAttempt.retry(None)  # type: ignore[arg-type]
+
+    query = await run_query(InvalidQuery(QueryAttempt.branch_result("success", "ok", RECEIPT)), CALL, "x")
+    mutation = await run_mutation(
+        InvalidMutation(MutationAttempt.branch_result("success", "ok", RECEIPT)), CALL, "x"
+    )
+    assert query.branch == mutation.branch == "defect"
+    assert query.failure is not None and query.failure.kind == FailureKind.LOCAL_DEFECT
+    assert mutation.failure is not None and mutation.failure.kind == FailureKind.LOCAL_DEFECT
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("retry_after_seconds", "whole_seconds"),
     [(0.5, 0), (1.9, 1), (2.0, 2)],
