@@ -55,7 +55,10 @@ To bring earlier connector releases to this format, a maintainer runs
 It prints each connector release with its current and new title, reading the
 display name from the manifest on `origin/main`; a legacy tag without a
 language directory, such as `connectors/zoom/v0.24.0`, is a Go release, and a
-connector no longer on `main` keeps the display name of its current title.
+connector whose `connector.yaml` is missing from `main` keeps the display name
+of its current title and is listed in a separate section. An unresolvable main
+ref, a Git error, or an unreadable or invalid manifest stops the script before
+any edit.
 Add `--apply` to edit only the titles that differ; it pauses
 `--delay-seconds` (default 1) between edits and stops at the first error.
 

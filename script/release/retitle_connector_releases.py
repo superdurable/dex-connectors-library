@@ -4,7 +4,8 @@
 """Renames connector GitHub releases to `<displayName> <Language> <version>`.
 
 Prints a dry-run table by default; `--apply` edits only releases whose title differs.
-A connector removed from main keeps the display name of its current `<displayName> <version>` title.
+A connector whose manifest is missing from main keeps the display name of its current
+`<displayName> <version>` title. Any other Git or manifest failure stops before an edit.
 """
 
 from __future__ import annotations
@@ -24,6 +25,8 @@ CONNECTOR_RELEASE_TAG_PATTERN = re.compile(
     r"(?:-rc\.[1-9][0-9]*)?)$"
 )
 MANIFEST_DISPLAY_NAME_PATTERN = re.compile(r"^  displayName:\s*(?P<value>.+?)\s*$")
+DISPLAY_NAME_SOURCE_MANIFEST = "manifest"
+DISPLAY_NAME_SOURCE_CURRENT_TITLE = "current title"
 
 
 @dataclass(frozen=True)
@@ -40,6 +43,7 @@ class ReleaseRetitle:
     current_title: str
     new_title: str
     skip_reason: str
+    display_name_source: str = DISPLAY_NAME_SOURCE_MANIFEST
 
     @property
     def is_change_required(self) -> bool:
@@ -74,21 +78,27 @@ def read_manifest_display_name(manifest: str) -> str:
 
 
 def plan_release_retitles(releases: list[dict[str, str]], display_names: dict[str, str | None]) -> list[ReleaseRetitle]:
-    """Plans one retitle per connector release; `display_names` maps a directory to its name or None."""
+    """Plans one retitle per connector release.
+
+    `display_names` maps a directory to its main manifest display name, or None when main has no manifest.
+    """
     retitles: list[ReleaseRetitle] = []
     for release in releases:
         parsed = parse_connector_release_tag(release["tag_name"])
         if parsed is None:
             continue
         current_title = release.get("name") or ""
-        display_name = display_names.get(parsed.directory)
+        display_name = display_names[parsed.directory]
+        display_name_source = DISPLAY_NAME_SOURCE_MANIFEST
         if display_name is None:
             display_name = read_legacy_title_display_name(current_title, parsed.version)
+            display_name_source = DISPLAY_NAME_SOURCE_CURRENT_TITLE
         if display_name is None:
-            retitles.append(ReleaseRetitle(parsed.tag, current_title, "", f"no manifest at {parsed.directory}"))
+            retitles.append(ReleaseRetitle(parsed.tag, current_title, "", f"no manifest at {parsed.directory}",
+                                           display_name_source))
             continue
         new_title = connector_release_title(display_name, parsed.language, parsed.version)
-        retitles.append(ReleaseRetitle(parsed.tag, current_title, new_title, ""))
+        retitles.append(ReleaseRetitle(parsed.tag, current_title, new_title, "", display_name_source))
     return sorted(retitles, key=lambda retitle: retitle.tag)
 
 
@@ -113,16 +123,42 @@ def list_releases(repository: str) -> list[dict[str, str]]:
     return [json.loads(line) for line in output.splitlines() if line.strip()]
 
 
+def verify_main_ref(main_ref: str) -> None:
+    run_git(["rev-parse", "--verify", "--end-of-options", f"{main_ref}^{{commit}}"],
+            f"main ref {main_ref!r} does not resolve to a commit")
+
+
 def read_main_display_name(main_ref: str, directory: str) -> str | None:
-    result = subprocess.run(
-        ["git", "show", f"{main_ref}:{directory}/connector.yaml"], capture_output=True, text=True,
-    )
-    if result.returncode != 0:
+    """Returns the display name of the manifest on `main_ref`, or None only when that path is missing."""
+    manifest_path = f"{directory}/connector.yaml"
+    listing = run_git(["ls-tree", "--name-only", main_ref, "--", manifest_path],
+                      f"cannot list {manifest_path} on {main_ref}")
+    if not listing.strip():
         return None
-    return read_manifest_display_name(result.stdout)
+    manifest = run_git(["show", f"{main_ref}:{manifest_path}"], f"cannot read {manifest_path} on {main_ref}")
+    try:
+        return read_manifest_display_name(manifest)
+    except ValueError as error:
+        raise ValueError(f"invalid {manifest_path} on {main_ref}: {error}") from error
 
 
-def print_retitle_table(retitles: list[ReleaseRetitle]) -> None:
+def run_git(arguments: list[str], failure_message: str) -> str:
+    result = subprocess.run(["git", *arguments], capture_output=True, text=True)
+    if result.returncode != 0:
+        raise ValueError(f"{failure_message}: {result.stderr.strip()}")
+    return result.stdout
+
+
+def print_retitle_table(retitles: list[ReleaseRetitle], main_ref: str) -> None:
+    from_manifest = [retitle for retitle in retitles if retitle.display_name_source == DISPLAY_NAME_SOURCE_MANIFEST]
+    from_current_title = [retitle for retitle in retitles if retitle.display_name_source != DISPLAY_NAME_SOURCE_MANIFEST]
+    print_retitle_rows(from_manifest)
+    if from_current_title:
+        print(f"\n# No connector.yaml on {main_ref}; display name taken from the current title")
+        print_retitle_rows(from_current_title)
+
+
+def print_retitle_rows(retitles: list[ReleaseRetitle]) -> None:
     for retitle in retitles:
         if retitle.skip_reason:
             status = f"skip ({retitle.skip_reason})"
@@ -141,6 +177,7 @@ def main() -> int:
     parser.add_argument("--delay-seconds", type=float, default=1.0, help="pause between release edits")
     arguments = parser.parse_args()
     try:
+        verify_main_ref(arguments.main_ref)
         releases = list_releases(arguments.repository)
         directories = {parsed.directory for release in releases
                        if (parsed := parse_connector_release_tag(release["tag_name"])) is not None}
@@ -150,7 +187,7 @@ def main() -> int:
     except (OSError, ValueError, subprocess.CalledProcessError, json.JSONDecodeError) as error:
         print(error, file=sys.stderr)
         return 1
-    print_retitle_table(retitles)
+    print_retitle_table(retitles, arguments.main_ref)
     pending = [retitle for retitle in retitles if retitle.is_change_required]
     print(f"{len(pending)} of {len(retitles)} connector releases need a new title", file=sys.stderr)
     if not arguments.apply:
