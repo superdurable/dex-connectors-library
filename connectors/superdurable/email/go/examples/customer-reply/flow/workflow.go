@@ -13,7 +13,7 @@ import (
 	"net/mail"
 	"strings"
 
-	"github.com/superdurable/dex-connectors-library/connectors/superdurable/email"
+	"github.com/superdurable/dex-connectors-library/connectors/superdurable/email/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

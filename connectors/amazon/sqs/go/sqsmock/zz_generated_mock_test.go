@@ -7,7 +7,7 @@ package sqsmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/amazon/sqs"
+	"github.com/superdurable/dex-connectors-library/connectors/amazon/sqs/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

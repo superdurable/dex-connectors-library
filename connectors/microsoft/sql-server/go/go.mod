@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/microsoft/sql-server
+module github.com/superdurable/dex-connectors-library/connectors/microsoft/sql-server/go
 
 go 1.24.0
 

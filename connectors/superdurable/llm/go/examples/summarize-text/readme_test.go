@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	summarizetext "github.com/superdurable/dex-connectors-library/connectors/superdurable/llm/examples/summarize-text/flow"
+	summarizetext "github.com/superdurable/dex-connectors-library/connectors/superdurable/llm/go/examples/summarize-text/flow"
 )
 
 // TestREADMECommandsRunFromTheirWorkingDirectory resolves README paths after each cd and requires the dexcli dev release override.

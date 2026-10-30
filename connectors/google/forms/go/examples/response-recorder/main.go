@@ -15,8 +15,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/google/forms"
-	responserecorder "github.com/superdurable/dex-connectors-library/connectors/google/forms/examples/response-recorder/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/google/forms/go"
+	responserecorder "github.com/superdurable/dex-connectors-library/connectors/google/forms/go/examples/response-recorder/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"

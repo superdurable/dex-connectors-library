@@ -18,7 +18,7 @@ The command must report `valid: true`. A local module may also report `connector
 mkdir -p /tmp/harvest-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/harvest/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/harvest \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/harvest/go \
   --version v0.1.0 --tag connectors/harvest/v0.1.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/harvest-release/connector-release.json \

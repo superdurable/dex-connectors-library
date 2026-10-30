@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/google/drive
+module github.com/superdurable/dex-connectors-library/connectors/google/drive/go
 
 go 1.24.0
 

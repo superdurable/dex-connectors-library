@@ -15,8 +15,8 @@ import (
 	"syscall"
 	"time"
 
-	outlookmail "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail"
-	supportreply "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail/examples/support-reply/flow"
+	outlookmail "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail/go"
+	supportreply "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail/go/examples/support-reply/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"

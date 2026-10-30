@@ -15,8 +15,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/freshworks/freshdesk"
-	triageissue "github.com/superdurable/dex-connectors-library/connectors/freshworks/freshdesk/examples/triage-issue/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/freshworks/freshdesk/go"
+	triageissue "github.com/superdurable/dex-connectors-library/connectors/freshworks/freshdesk/go/examples/triage-issue/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"

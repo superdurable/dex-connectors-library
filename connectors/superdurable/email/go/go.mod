@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/superdurable/email
+module github.com/superdurable/dex-connectors-library/connectors/superdurable/email/go
 
 go 1.24.0
 

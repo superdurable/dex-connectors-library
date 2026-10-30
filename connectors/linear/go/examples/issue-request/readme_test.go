@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	issuerequest "github.com/superdurable/dex-connectors-library/connectors/linear/examples/issue-request/flow"
+	issuerequest "github.com/superdurable/dex-connectors-library/connectors/linear/go/examples/issue-request/flow"
 )
 
 // TestREADMEStartFlowSampleIsAValidRequest decodes the Start Flow sample strictly and validates it.
@@ -29,7 +29,7 @@ func TestREADMEStartFlowSampleIsAValidRequest(t *testing.T) {
 
 // TestConnectorREADMESnippetIsTheExampleCode keeps the connector README's Go snippets in runnable sources.
 func TestConnectorREADMESnippetIsTheExampleCode(t *testing.T) {
-	snippets := fencedBlocks(readFile(t, filepath.Join("..", "..", "README.md")), "go")
+	snippets := fencedBlocks(readFile(t, filepath.Join("..", "..", "..", "README.md")), "go")
 	require.Len(t, snippets, 3)
 	require.Contains(t, readFile(t, "main.go"), snippets[0])
 	mockTest := readFile(t, filepath.Join("flow", "workflow_mock_integration_test.go"))

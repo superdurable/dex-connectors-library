@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/front
+module github.com/superdurable/dex-connectors-library/connectors/front/go
 
 go 1.24.0
 

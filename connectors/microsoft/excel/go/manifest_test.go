@@ -64,7 +64,7 @@ type excelManifest struct {
 
 func loadExcelManifest(t *testing.T) excelManifest {
 	t.Helper()
-	contents, err := os.ReadFile("connector.yaml")
+	contents, err := os.ReadFile("../connector.yaml")
 	require.NoError(t, err)
 	var manifest excelManifest
 	require.NoError(t, yaml.Unmarshal(contents, &manifest))

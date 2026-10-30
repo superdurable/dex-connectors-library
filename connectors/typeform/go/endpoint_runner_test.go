@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/typeform"
+	"github.com/superdurable/dex-connectors-library/connectors/typeform/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
@@ -23,7 +23,7 @@ import (
 func projectConfiguration(bindings map[string]string) projectconfig.Configuration {
 	configuration := projectconfig.Configuration{Connections: []projectconfig.ConnectionConfiguration{{
 		ConnectorID: typeform.ConnectorID, ConnectionName: testConnection.Name,
-		ModulePath: "github.com/superdurable/dex-connectors-library/connectors/typeform", Provider: "typeform",
+		ModulePath: "github.com/superdurable/dex-connectors-library/connectors/typeform/go", Provider: "typeform",
 		AuthMethodID: typeform.PersonalAccessTokenAuthMethodID, Configuration: json.RawMessage(`{}`),
 	}}}
 	for bindingName, bindingConfiguration := range bindings {

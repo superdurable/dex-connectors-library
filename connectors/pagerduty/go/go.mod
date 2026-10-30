@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/pagerduty
+module github.com/superdurable/dex-connectors-library/connectors/pagerduty/go
 
 go 1.24.0
 

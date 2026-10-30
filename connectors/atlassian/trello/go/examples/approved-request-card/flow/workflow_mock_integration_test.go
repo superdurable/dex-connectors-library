@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/atlassian/trello"
-	"github.com/superdurable/dex-connectors-library/connectors/atlassian/trello/trellomock"
+	"github.com/superdurable/dex-connectors-library/connectors/atlassian/trello/go"
+	"github.com/superdurable/dex-connectors-library/connectors/atlassian/trello/go/trellomock"
 )
 
 func TestApprovedRequestUsesTrelloMockWithRealDex(t *testing.T) {

@@ -14,8 +14,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/close"
-	closelookup "github.com/superdurable/dex-connectors-library/connectors/close/examples/close-lookup/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/close/go"
+	closelookup "github.com/superdurable/dex-connectors-library/connectors/close/go/examples/close-lookup/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"

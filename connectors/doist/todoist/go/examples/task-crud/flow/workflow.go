@@ -8,7 +8,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/superdurable/dex-connectors-library/connectors/doist/todoist"
+	"github.com/superdurable/dex-connectors-library/connectors/doist/todoist/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

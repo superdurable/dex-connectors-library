@@ -6,7 +6,7 @@ package resourceread
 
 import (
 	"errors"
-	"github.com/superdurable/dex-connectors-library/connectors/woocommerce"
+	"github.com/superdurable/dex-connectors-library/connectors/woocommerce/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

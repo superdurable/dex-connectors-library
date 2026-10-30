@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/zoho/desk"
-	"github.com/superdurable/dex-connectors-library/connectors/zoho/desk/deskmock"
+	"github.com/superdurable/dex-connectors-library/connectors/zoho/desk/go"
+	"github.com/superdurable/dex-connectors-library/connectors/zoho/desk/go/deskmock"
 )
 
 func TestNewIssueUsesZohoDeskMocksWithRealDex(t *testing.T) {

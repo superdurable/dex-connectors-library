@@ -8,7 +8,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/superdurable/dex-connectors-library/connectors/unsplash"
+	"github.com/superdurable/dex-connectors-library/connectors/unsplash/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/calendly
+module github.com/superdurable/dex-connectors-library/connectors/calendly/go
 
 go 1.24.0
 

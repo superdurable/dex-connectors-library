@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/unsplash
+module github.com/superdurable/dex-connectors-library/connectors/unsplash/go
 
 go 1.24.0
 

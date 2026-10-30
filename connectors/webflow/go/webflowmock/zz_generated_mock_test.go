@@ -7,7 +7,7 @@ package webflowmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/webflow"
+	"github.com/superdurable/dex-connectors-library/connectors/webflow/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

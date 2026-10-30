@@ -15,8 +15,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/resend"
-	example "github.com/superdurable/dex-connectors-library/connectors/resend/examples/welcome-email/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/resend/go"
+	example "github.com/superdurable/dex-connectors-library/connectors/resend/go/examples/welcome-email/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"

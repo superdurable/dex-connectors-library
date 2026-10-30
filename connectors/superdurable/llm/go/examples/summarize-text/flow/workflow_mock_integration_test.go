@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/superdurable/llm"
-	"github.com/superdurable/dex-connectors-library/connectors/superdurable/llm/examples/summarize-text/structuredoutput"
-	"github.com/superdurable/dex-connectors-library/connectors/superdurable/llm/llmmock"
+	"github.com/superdurable/dex-connectors-library/connectors/superdurable/llm/go"
+	"github.com/superdurable/dex-connectors-library/connectors/superdurable/llm/go/examples/summarize-text/structuredoutput"
+	"github.com/superdurable/dex-connectors-library/connectors/superdurable/llm/go/llmmock"
 	"github.com/superdurable/dex-connectors-library/sdkgo/textgen"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

@@ -126,11 +126,11 @@ func TestScaffoldUsesOnlyTheCurrentPlatformCursorType(t *testing.T) {
 	if runtime.GOOS == "linux" {
 		otherPlatform = "darwin"
 	}
-	require.NoError(t, os.WriteFile(filepath.Join(directory, "widget_page_"+runtime.GOOS+".go"),
+	require.NoError(t, os.WriteFile(filepath.Join(directory, "go", "widget_page_"+runtime.GOOS+".go"),
 		[]byte("package mockfixture\n\ntype WidgetPage struct { NextPage int `json:\"nextPage\"` }\n"), 0o600))
-	require.NoError(t, os.WriteFile(filepath.Join(directory, "widget_page_"+otherPlatform+".go"),
+	require.NoError(t, os.WriteFile(filepath.Join(directory, "go", "widget_page_"+otherPlatform+".go"),
 		[]byte("package mockfixture\n\ntype WidgetPage struct { NextPage string `json:\"nextPage\"` }\n"), 0o600))
-	require.NoError(t, os.WriteFile(filepath.Join(directory, "widget_page_ignored.go"),
+	require.NoError(t, os.WriteFile(filepath.Join(directory, "go", "widget_page_ignored.go"),
 		[]byte("//go:build ignore\n\npackage mockfixture\n\ntype WidgetPage struct { NextPage string `json:\"nextPage\"` }\n"), 0o600))
 	require.NoError(t, os.WriteFile(manifestPath, []byte(removeAllMocks(t, manifestPath)), 0o600))
 
@@ -144,7 +144,7 @@ func TestScaffoldUsesOnlyTheCurrentPlatformCursorType(t *testing.T) {
 func TestScaffoldRejectsDuplicateActiveTypeDeclarations(t *testing.T) {
 	manifestPath := writeMockFixtureConnector(t, t.TempDir())
 	directory := filepath.Dir(manifestPath)
-	require.NoError(t, os.WriteFile(filepath.Join(directory, "duplicate.go"),
+	require.NoError(t, os.WriteFile(filepath.Join(directory, "go", "duplicate.go"),
 		[]byte("package mockfixture\n\ntype WidgetPage struct { NextPage string `json:\"nextPage\"` }\n"), 0o600))
 	stripped := removeAllMocks(t, manifestPath)
 	require.NoError(t, os.WriteFile(manifestPath, []byte(stripped), 0o600))

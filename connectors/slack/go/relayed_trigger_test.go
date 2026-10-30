@@ -21,8 +21,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/slack/internal/testlog"
-	"github.com/superdurable/dex-connectors-library/connectors/slack/internal/testsupport"
+	"github.com/superdurable/dex-connectors-library/connectors/slack/go/internal/testlog"
+	"github.com/superdurable/dex-connectors-library/connectors/slack/go/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/projectconfigtest"
@@ -235,7 +235,7 @@ func (host *relayHost) newRunner(t *testing.T, config ProjectMessageTriggerRunne
 	require.NoError(t, err)
 	_, _, err = configurations.WriteConfiguration(ctx, 0, projectconfig.Configuration{
 		Connections: []projectconfig.ConnectionConfiguration{{
-			ConnectorID: ConnectorID, ConnectionName: "workspace", ModulePath: "github.com/superdurable/dex-connectors-library/connectors/slack",
+			ConnectorID: ConnectorID, ConnectionName: "workspace", ModulePath: "github.com/superdurable/dex-connectors-library/connectors/slack/go",
 			Provider: "slack", SharedConnectionID: relaySharedConnectionID, Configuration: settings,
 		}},
 		TriggerBindings:  newProjectSlackFixture(t).configuration.TriggerBindings,

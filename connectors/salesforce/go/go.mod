@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/salesforce
+module github.com/superdurable/dex-connectors-library/connectors/salesforce/go
 
 go 1.24.0
 

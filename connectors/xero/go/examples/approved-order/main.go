@@ -15,8 +15,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/xero"
-	approvedorder "github.com/superdurable/dex-connectors-library/connectors/xero/examples/approved-order/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/xero/go"
+	approvedorder "github.com/superdurable/dex-connectors-library/connectors/xero/go/examples/approved-order/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"

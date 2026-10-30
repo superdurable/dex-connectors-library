@@ -21,7 +21,7 @@ From the repository root, create release metadata for the local source:
 mkdir -p /tmp/cloudflare-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/cloudflare/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/cloudflare \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/cloudflare/go \
   --version v0.1.0 --tag connectors/cloudflare/v0.1.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/cloudflare-release/connector-release.json \

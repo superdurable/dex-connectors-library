@@ -28,7 +28,7 @@ and pass it to the Dex CLI. From the repository root:
 mkdir -p /tmp/tmdb-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/tmdb/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/tmdb \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/tmdb/go \
   --version v0.1.0 --tag connectors/tmdb/v0.1.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/tmdb-release/connector-release.json \

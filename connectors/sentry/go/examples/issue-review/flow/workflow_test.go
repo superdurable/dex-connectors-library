@@ -5,7 +5,7 @@ package issuereview
 
 import (
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/sentry"
+	"github.com/superdurable/dex-connectors-library/connectors/sentry/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 	"testing"

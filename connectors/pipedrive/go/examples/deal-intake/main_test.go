@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	dealintake "github.com/superdurable/dex-connectors-library/connectors/pipedrive/examples/deal-intake/flow"
+	dealintake "github.com/superdurable/dex-connectors-library/connectors/pipedrive/go/examples/deal-intake/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )

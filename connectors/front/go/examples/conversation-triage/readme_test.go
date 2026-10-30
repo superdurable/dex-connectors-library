@@ -13,8 +13,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/front"
-	conversationtriage "github.com/superdurable/dex-connectors-library/connectors/front/examples/conversation-triage/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/front/go"
+	conversationtriage "github.com/superdurable/dex-connectors-library/connectors/front/go/examples/conversation-triage/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
@@ -54,7 +54,7 @@ func TestREADMESamplesMatchTheExample(t *testing.T) {
 
 // TestConnectorREADMESamplesAreTheExampleCode keeps the connector README's record and Go snippet runnable.
 func TestConnectorREADMESamplesAreTheExampleCode(t *testing.T) {
-	readme := readFile(t, filepath.Join("..", "..", "README.md"))
+	readme := readFile(t, filepath.Join("..", "..", "..", "README.md"))
 	snippets := fencedBlocks(readme, "go")
 	require.Len(t, snippets, 2)
 	require.Contains(t, readFile(t, "main.go"), snippets[0])
@@ -66,7 +66,7 @@ func TestConnectorREADMESamplesAreTheExampleCode(t *testing.T) {
 	requireStrictJSON(t, records[0], &record)
 	require.Equal(t, front.ConnectorID, record.ConnectorID)
 	require.Equal(t, conversationtriage.ConnectionName, record.ConnectionName)
-	require.Equal(t, "github.com/superdurable/dex-connectors-library/connectors/front", record.ModulePath)
+	require.Equal(t, "github.com/superdurable/dex-connectors-library/connectors/front/go", record.ModulePath)
 	require.Equal(t, "front", record.Provider)
 	var configuration front.Config
 	requireStrictJSON(t, string(record.Configuration), &configuration)

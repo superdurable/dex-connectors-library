@@ -10,12 +10,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/notion"
+	"github.com/superdurable/dex-connectors-library/connectors/notion/go"
 )
 
 // TestREADMEGoSnippetsComeFromTheRunnableExample keeps documentation snippets copied from runnable example code.
 func TestREADMEGoSnippetsComeFromTheRunnableExample(t *testing.T) {
-	readme, err := os.ReadFile("README.md")
+	readme, err := os.ReadFile("../README.md")
 	require.NoError(t, err)
 	require.Contains(t, string(readme), "`Notion-Version: "+notion.NotionVersion+"`")
 	require.Contains(t, string(readme), "| `endpoint` | `"+notion.DefaultConfig().Endpoint+"` |")

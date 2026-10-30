@@ -28,7 +28,7 @@ and pass it to the Dex CLI. From the repository root:
 mkdir -p /tmp/sentry-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/sentry/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/sentry \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/sentry/go \
   --version v0.1.0 --tag connectors/sentry/v0.1.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/sentry-release/connector-release.json \

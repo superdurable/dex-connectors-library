@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/helpscout"
+	"github.com/superdurable/dex-connectors-library/connectors/helpscout/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"gopkg.in/yaml.v3"
 )
@@ -73,7 +73,7 @@ type helpScoutManifest struct {
 
 func readHelpScoutManifest(t *testing.T) helpScoutManifest {
 	t.Helper()
-	contents, err := os.ReadFile("connector.yaml")
+	contents, err := os.ReadFile("../connector.yaml")
 	require.NoError(t, err)
 	var manifest helpScoutManifest
 	require.NoError(t, yaml.Unmarshal(contents, &manifest))

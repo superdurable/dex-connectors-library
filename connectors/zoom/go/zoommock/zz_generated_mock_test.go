@@ -7,7 +7,7 @@ package zoommock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/zoom"
+	"github.com/superdurable/dex-connectors-library/connectors/zoom/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

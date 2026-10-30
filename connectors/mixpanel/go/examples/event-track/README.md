@@ -21,7 +21,7 @@ From the repository root, create a release override and run Dex:
 mkdir -p /tmp/mixpanel-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/mixpanel/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/mixpanel \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/mixpanel/go \
   --version v0.1.0 --tag connectors/mixpanel/v0.1.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/mixpanel-release/connector-release.json \

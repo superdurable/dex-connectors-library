@@ -7,7 +7,7 @@ package codamock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/coda"
+	"github.com/superdurable/dex-connectors-library/connectors/coda/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

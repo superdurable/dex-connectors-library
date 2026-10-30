@@ -5,8 +5,8 @@ package coheresearch
 
 import (
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/cohere"
-	"github.com/superdurable/dex-connectors-library/connectors/cohere/coheremock"
+	"github.com/superdurable/dex-connectors-library/connectors/cohere/go"
+	"github.com/superdurable/dex-connectors-library/connectors/cohere/go/coheremock"
 	"github.com/superdurable/dex/sdk-go/dex"
 	"testing"
 )

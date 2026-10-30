@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/figma
+module github.com/superdurable/dex-connectors-library/connectors/figma/go
 
 go 1.24.0
 

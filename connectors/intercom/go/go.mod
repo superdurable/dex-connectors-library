@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/intercom
+module github.com/superdurable/dex-connectors-library/connectors/intercom/go
 
 go 1.24.0
 

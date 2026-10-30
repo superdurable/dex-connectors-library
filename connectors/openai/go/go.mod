@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/openai
+module github.com/superdurable/dex-connectors-library/connectors/openai/go
 
 go 1.24.0
 

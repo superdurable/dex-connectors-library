@@ -12,7 +12,7 @@ import (
 	"mime"
 	"strings"
 
-	"github.com/superdurable/dex-connectors-library/connectors/microsoft/onedrive"
+	"github.com/superdurable/dex-connectors-library/connectors/microsoft/onedrive/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

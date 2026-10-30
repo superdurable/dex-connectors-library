@@ -24,7 +24,7 @@ publish a release or modify the Go module cache:
 ```sh
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/hackernews/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/hackernews \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/hackernews/go \
   --version v0.22.0 --tag connectors/hackernews/v0.22.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/hn-daily/release/connector-release.json \

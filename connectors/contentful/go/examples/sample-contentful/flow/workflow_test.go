@@ -5,7 +5,7 @@ package flow
 
 import (
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/contentful/contentfulmock"
+	"github.com/superdurable/dex-connectors-library/connectors/contentful/go/contentfulmock"
 	"github.com/superdurable/dex/sdk-go/dex"
 	"testing"
 )

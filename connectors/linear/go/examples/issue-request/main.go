@@ -15,8 +15,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/linear"
-	issuerequest "github.com/superdurable/dex-connectors-library/connectors/linear/examples/issue-request/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/linear/go"
+	issuerequest "github.com/superdurable/dex-connectors-library/connectors/linear/go/examples/issue-request/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"

@@ -15,8 +15,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/microsoft/excel"
-	approvaldecision "github.com/superdurable/dex-connectors-library/connectors/microsoft/excel/examples/approval-decision/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/microsoft/excel/go"
+	approvaldecision "github.com/superdurable/dex-connectors-library/connectors/microsoft/excel/go/examples/approval-decision/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"

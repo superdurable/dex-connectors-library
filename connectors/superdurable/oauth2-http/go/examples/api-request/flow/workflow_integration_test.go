@@ -21,8 +21,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	oauth2http "github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http"
-	"github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http/internal/testsupport"
+	oauth2http "github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http/go"
+	"github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http/go/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"

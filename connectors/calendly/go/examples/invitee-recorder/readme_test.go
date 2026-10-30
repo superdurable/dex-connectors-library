@@ -12,8 +12,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/calendly"
-	inviteerecorder "github.com/superdurable/dex-connectors-library/connectors/calendly/examples/invitee-recorder/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/calendly/go"
+	inviteerecorder "github.com/superdurable/dex-connectors-library/connectors/calendly/go/examples/invitee-recorder/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
@@ -65,7 +65,7 @@ func TestREADMESamplesMatchTheExample(t *testing.T) {
 
 // TestConnectorREADMESnippetIsTheExampleCode keeps the connector README's Go snippet runnable.
 func TestConnectorREADMESnippetIsTheExampleCode(t *testing.T) {
-	snippets := fencedBlocks(readFile(t, filepath.Join("..", "..", "README.md")), "go")
+	snippets := fencedBlocks(readFile(t, filepath.Join("..", "..", "..", "README.md")), "go")
 	require.Len(t, snippets, 2)
 	require.Contains(t, readFile(t, "workflow_mock_integration_test.go"), "\t"+strings.ReplaceAll(snippets[0], "\n", "\n\t"))
 	require.Contains(t, readFile(t, "main.go"), snippets[1])

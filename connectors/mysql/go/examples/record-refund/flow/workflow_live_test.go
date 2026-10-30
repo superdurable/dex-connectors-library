@@ -17,9 +17,9 @@ import (
 
 	mysqldriver "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/mysql"
-	"github.com/superdurable/dex-connectors-library/connectors/mysql/internal/commitfaultproxy"
-	"github.com/superdurable/dex-connectors-library/connectors/mysql/internal/testsupport"
+	"github.com/superdurable/dex-connectors-library/connectors/mysql/go"
+	"github.com/superdurable/dex-connectors-library/connectors/mysql/go/internal/commitfaultproxy"
+	"github.com/superdurable/dex-connectors-library/connectors/mysql/go/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

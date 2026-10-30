@@ -28,7 +28,7 @@ and pass it to the Dex CLI. From the repository root:
 mkdir -p /tmp/postmark-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/postmark/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/postmark \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/postmark/go \
   --version v0.1.0 --tag connectors/postmark/v0.1.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/postmark-release/connector-release.json \

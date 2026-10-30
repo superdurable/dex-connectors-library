@@ -66,7 +66,7 @@ func TestREADMEDescribesEveryServedProviderAndRegion(t *testing.T) {
 
 // TestREADMEInstallsTheManifestVersion keeps the go get command on the version this module releases.
 func TestREADMEInstallsTheManifestVersion(t *testing.T) {
-	contents, err := os.ReadFile("connector.yaml")
+	contents, err := os.ReadFile("../connector.yaml")
 	require.NoError(t, err)
 	var manifest struct {
 		Metadata struct {
@@ -75,12 +75,12 @@ func TestREADMEInstallsTheManifestVersion(t *testing.T) {
 	}
 	require.NoError(t, yaml.Unmarshal(contents, &manifest))
 	require.Contains(t, readREADME(t),
-		"go get github.com/superdurable/dex-connectors-library/connectors/superdurable/llm@"+manifest.Metadata.Version+"\n")
+		"go get github.com/superdurable/dex-connectors-library/connectors/superdurable/llm/go@"+manifest.Metadata.Version+"\n")
 }
 
 func readREADME(t *testing.T) string {
 	t.Helper()
-	readme, err := os.ReadFile("README.md")
+	readme, err := os.ReadFile("../README.md")
 	require.NoError(t, err)
 	return string(readme)
 }

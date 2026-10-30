@@ -5,7 +5,7 @@ package outboundlookup
 
 import (
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/postmark"
+	"github.com/superdurable/dex-connectors-library/connectors/postmark/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 	"testing"

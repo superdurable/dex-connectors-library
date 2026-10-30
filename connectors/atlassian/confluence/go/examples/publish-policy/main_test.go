@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	publishpolicy "github.com/superdurable/dex-connectors-library/connectors/atlassian/confluence/examples/publish-policy/flow"
+	publishpolicy "github.com/superdurable/dex-connectors-library/connectors/atlassian/confluence/go/examples/publish-policy/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 

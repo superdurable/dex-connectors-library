@@ -21,7 +21,7 @@ Create the release override from the repository root:
 mkdir -p /tmp/brevo-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/brevo/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/brevo \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/brevo/go \
   --version v0.1.0 --tag connectors/brevo/v0.1.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/brevo-release/connector-release.json \

@@ -14,8 +14,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/smartsheet"
-	smartsheetlookup "github.com/superdurable/dex-connectors-library/connectors/smartsheet/examples/smartsheet-lookup/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/smartsheet/go"
+	smartsheetlookup "github.com/superdurable/dex-connectors-library/connectors/smartsheet/go/examples/smartsheet-lookup/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"

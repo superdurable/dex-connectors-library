@@ -6,7 +6,7 @@ package vercellookup
 
 import (
 	"errors"
-	"github.com/superdurable/dex-connectors-library/connectors/vercel"
+	"github.com/superdurable/dex-connectors-library/connectors/vercel/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

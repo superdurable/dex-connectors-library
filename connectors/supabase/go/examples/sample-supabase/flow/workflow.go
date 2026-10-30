@@ -6,7 +6,7 @@ package flow
 
 import (
 	"errors"
-	"github.com/superdurable/dex-connectors-library/connectors/supabase"
+	"github.com/superdurable/dex-connectors-library/connectors/supabase/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

@@ -13,8 +13,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/clickup"
-	escalateblocked "github.com/superdurable/dex-connectors-library/connectors/clickup/examples/escalate-blocked-task/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/clickup/go"
+	escalateblocked "github.com/superdurable/dex-connectors-library/connectors/clickup/go/examples/escalate-blocked-task/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
@@ -53,7 +53,7 @@ func TestREADMESamplesMatchTheExample(t *testing.T) {
 
 // TestConnectorREADMESamplesAreTheExampleCode keeps the connector README's record and Go snippets runnable.
 func TestConnectorREADMESamplesAreTheExampleCode(t *testing.T) {
-	readme := readFile(t, filepath.Join("..", "..", "README.md"))
+	readme := readFile(t, filepath.Join("..", "..", "..", "README.md"))
 	snippets := fencedBlocks(readme, "go")
 	require.Len(t, snippets, 2)
 	require.Contains(t, readFile(t, "workflow_mock_integration_test.go"), snippets[0])
@@ -65,7 +65,7 @@ func TestConnectorREADMESamplesAreTheExampleCode(t *testing.T) {
 	requireStrictJSON(t, records[0], &record)
 	require.Equal(t, clickup.ConnectorID, record.ConnectorID)
 	require.Equal(t, escalateblocked.ConnectionName, record.ConnectionName)
-	require.Equal(t, "github.com/superdurable/dex-connectors-library/connectors/clickup", record.ModulePath)
+	require.Equal(t, "github.com/superdurable/dex-connectors-library/connectors/clickup/go", record.ModulePath)
 	require.Equal(t, "clickup", record.Provider)
 	var configuration clickup.Config
 	requireStrictJSON(t, string(record.Configuration), &configuration)

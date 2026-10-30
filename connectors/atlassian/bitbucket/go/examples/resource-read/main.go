@@ -14,8 +14,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/atlassian/bitbucket"
-	resourceread "github.com/superdurable/dex-connectors-library/connectors/atlassian/bitbucket/examples/resource-read/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/atlassian/bitbucket/go"
+	resourceread "github.com/superdurable/dex-connectors-library/connectors/atlassian/bitbucket/go/examples/resource-read/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"

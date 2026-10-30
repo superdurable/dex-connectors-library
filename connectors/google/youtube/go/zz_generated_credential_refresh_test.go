@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/google/youtube"
+	"github.com/superdurable/dex-connectors-library/connectors/google/youtube/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 

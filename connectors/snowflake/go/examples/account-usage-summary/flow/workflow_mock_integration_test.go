@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/snowflake"
-	"github.com/superdurable/dex-connectors-library/connectors/snowflake/snowflakemock"
+	"github.com/superdurable/dex-connectors-library/connectors/snowflake/go"
+	"github.com/superdurable/dex-connectors-library/connectors/snowflake/go/snowflakemock"
 )
 
 func TestAccountUsageSummaryUsesMockWithRealDex(t *testing.T) {

@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/atlassian/confluence"
+	"github.com/superdurable/dex-connectors-library/connectors/atlassian/confluence/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 

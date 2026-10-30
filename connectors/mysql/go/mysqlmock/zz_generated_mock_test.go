@@ -7,7 +7,7 @@ package mysqlmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/mysql"
+	"github.com/superdurable/dex-connectors-library/connectors/mysql/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

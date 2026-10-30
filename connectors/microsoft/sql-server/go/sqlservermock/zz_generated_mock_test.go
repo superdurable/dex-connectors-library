@@ -7,7 +7,7 @@ package sqlservermock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/microsoft/sql-server"
+	"github.com/superdurable/dex-connectors-library/connectors/microsoft/sql-server/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

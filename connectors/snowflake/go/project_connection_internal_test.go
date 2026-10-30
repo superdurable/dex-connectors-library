@@ -34,7 +34,7 @@ func TestProjectConnectionReadsEachAuthenticationMethod(t *testing.T) {
 	for _, record := range records {
 		configuration.Connections = append(configuration.Connections, projectconfig.ConnectionConfiguration{
 			ConnectorID: ConnectorID, ConnectionName: record.connectionName,
-			ModulePath: "github.com/superdurable/dex-connectors-library/connectors/snowflake", Provider: "snowflake",
+			ModulePath: "github.com/superdurable/dex-connectors-library/connectors/snowflake/go", Provider: "snowflake",
 			Configuration: json.RawMessage(record.settings),
 		})
 	}

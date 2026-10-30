@@ -31,7 +31,7 @@ type gmailOAuthManifest struct {
 
 // Google reports alias grants such as email under canonical URIs, and Dex Web matches granted scopes literally.
 func TestOAuthScopesUseCanonicalGoogleNames(t *testing.T) {
-	contents, err := os.ReadFile("connector.yaml")
+	contents, err := os.ReadFile("../connector.yaml")
 	require.NoError(t, err)
 	var manifest gmailOAuthManifest
 	require.NoError(t, yaml.Unmarshal(contents, &manifest))

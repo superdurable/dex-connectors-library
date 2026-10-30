@@ -5,7 +5,7 @@
 package harvestlookup
 
 import (
-	"github.com/superdurable/dex-connectors-library/connectors/harvest"
+	"github.com/superdurable/dex-connectors-library/connectors/harvest/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

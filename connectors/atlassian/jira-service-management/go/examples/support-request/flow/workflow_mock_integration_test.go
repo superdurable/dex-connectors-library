@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	jiraservicemanagement "github.com/superdurable/dex-connectors-library/connectors/atlassian/jira-service-management"
-	"github.com/superdurable/dex-connectors-library/connectors/atlassian/jira-service-management/jiraservicemanagementmock"
+	jiraservicemanagement "github.com/superdurable/dex-connectors-library/connectors/atlassian/jira-service-management/go"
+	"github.com/superdurable/dex-connectors-library/connectors/atlassian/jira-service-management/go/jiraservicemanagementmock"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 

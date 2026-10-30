@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/cohere
+module github.com/superdurable/dex-connectors-library/connectors/cohere/go
 
 go 1.24.0
 

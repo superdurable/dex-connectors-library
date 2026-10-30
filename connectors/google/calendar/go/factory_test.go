@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	calendar "github.com/superdurable/dex-connectors-library/connectors/google/calendar"
+	calendar "github.com/superdurable/dex-connectors-library/connectors/google/calendar/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 	"gopkg.in/yaml.v3"
@@ -106,7 +106,7 @@ type calendarOAuthManifest struct {
 
 // Google reports alias grants under canonical URIs, and Dex Web matches granted scopes literally.
 func TestOAuthScopesAreCanonicalNarrowAndDelegatedIdentically(t *testing.T) {
-	contents, err := os.ReadFile("connector.yaml")
+	contents, err := os.ReadFile("../connector.yaml")
 	require.NoError(t, err)
 	var manifest calendarOAuthManifest
 	require.NoError(t, yaml.Unmarshal(contents, &manifest))

@@ -63,7 +63,7 @@ type docsManifest struct {
 
 func loadDocsManifest(t *testing.T) docsManifest {
 	t.Helper()
-	contents, err := os.ReadFile("connector.yaml")
+	contents, err := os.ReadFile("../connector.yaml")
 	require.NoError(t, err)
 	var manifest docsManifest
 	require.NoError(t, yaml.Unmarshal(contents, &manifest))

@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/airtable"
-	"github.com/superdurable/dex-connectors-library/connectors/airtable/airtablemock"
+	"github.com/superdurable/dex-connectors-library/connectors/airtable/go"
+	"github.com/superdurable/dex-connectors-library/connectors/airtable/go/airtablemock"
 )
 
 func TestRefundDecisionUsesMockDefaultsWithRealDex(t *testing.T) {

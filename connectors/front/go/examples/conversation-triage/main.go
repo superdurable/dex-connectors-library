@@ -17,8 +17,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/front"
-	conversationtriage "github.com/superdurable/dex-connectors-library/connectors/front/examples/conversation-triage/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/front/go"
+	conversationtriage "github.com/superdurable/dex-connectors-library/connectors/front/go/examples/conversation-triage/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"

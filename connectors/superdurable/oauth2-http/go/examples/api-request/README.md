@@ -50,7 +50,7 @@ curl -fsSL \
 
 go mod init example.com/oauth2-http-api-request-e2e
 go mod edit -go=1.24.0
-go get github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http@v0.1.1
+go get github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http/go@v0.1.1
 go mod tidy
 ```
 
@@ -108,7 +108,7 @@ connection.
 export DEX_FLOW_SERVICE_ADDRESS="127.0.0.1:8801"
 
 GOWORK=off go run \
-  github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http/examples/api-request@v0.1.1
+  github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http/go/examples/api-request@v0.1.1
 ```
 
 Set

@@ -7,7 +7,7 @@ package datadogmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/datadog"
+	"github.com/superdurable/dex-connectors-library/connectors/datadog/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

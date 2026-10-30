@@ -6,7 +6,7 @@ package gitlablookup
 
 import (
 	"errors"
-	"github.com/superdurable/dex-connectors-library/connectors/gitlab"
+	"github.com/superdurable/dex-connectors-library/connectors/gitlab/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

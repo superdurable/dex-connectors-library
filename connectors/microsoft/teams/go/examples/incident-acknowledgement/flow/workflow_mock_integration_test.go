@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/microsoft/teams"
-	"github.com/superdurable/dex-connectors-library/connectors/microsoft/teams/teamsmock"
+	"github.com/superdurable/dex-connectors-library/connectors/microsoft/teams/go"
+	"github.com/superdurable/dex-connectors-library/connectors/microsoft/teams/go/teamsmock"
 )
 
 func TestIncidentAcknowledgementUsesTeamsMockDefaultsWithRealDex(t *testing.T) {

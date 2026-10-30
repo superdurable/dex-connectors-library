@@ -15,8 +15,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/zoho/desk"
-	triageissue "github.com/superdurable/dex-connectors-library/connectors/zoho/desk/examples/triage-issue/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/zoho/desk/go"
+	triageissue "github.com/superdurable/dex-connectors-library/connectors/zoho/desk/go/examples/triage-issue/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"

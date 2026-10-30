@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/supabase
+module github.com/superdurable/dex-connectors-library/connectors/supabase/go
 
 go 1.24.0
 

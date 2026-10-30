@@ -14,8 +14,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/klaviyo"
-	profileevent "github.com/superdurable/dex-connectors-library/connectors/klaviyo/examples/profile-event/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/klaviyo/go"
+	profileevent "github.com/superdurable/dex-connectors-library/connectors/klaviyo/go/examples/profile-event/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"

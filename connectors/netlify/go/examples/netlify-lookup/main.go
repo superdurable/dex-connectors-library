@@ -14,8 +14,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/netlify"
-	lookupflow "github.com/superdurable/dex-connectors-library/connectors/netlify/examples/netlify-lookup/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/netlify/go"
+	lookupflow "github.com/superdurable/dex-connectors-library/connectors/netlify/go/examples/netlify-lookup/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"

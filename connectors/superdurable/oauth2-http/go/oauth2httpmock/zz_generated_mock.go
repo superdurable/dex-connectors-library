@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http"
+	"github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )

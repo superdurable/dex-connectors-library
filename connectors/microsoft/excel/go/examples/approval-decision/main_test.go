@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	approvaldecision "github.com/superdurable/dex-connectors-library/connectors/microsoft/excel/examples/approval-decision/flow"
+	approvaldecision "github.com/superdurable/dex-connectors-library/connectors/microsoft/excel/go/examples/approval-decision/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 

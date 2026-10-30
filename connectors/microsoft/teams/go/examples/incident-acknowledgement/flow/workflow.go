@@ -14,7 +14,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/superdurable/dex-connectors-library/connectors/microsoft/teams"
+	"github.com/superdurable/dex-connectors-library/connectors/microsoft/teams/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

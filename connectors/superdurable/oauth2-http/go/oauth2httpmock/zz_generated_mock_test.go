@@ -7,7 +7,7 @@ package oauth2httpmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http"
+	"github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/microsoft/onedrive
+module github.com/superdurable/dex-connectors-library/connectors/microsoft/onedrive/go
 
 go 1.24.0
 

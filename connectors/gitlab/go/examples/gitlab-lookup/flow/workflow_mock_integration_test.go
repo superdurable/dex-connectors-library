@@ -15,8 +15,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/gitlab"
-	"github.com/superdurable/dex-connectors-library/connectors/gitlab/gitlabmock"
+	"github.com/superdurable/dex-connectors-library/connectors/gitlab/go"
+	"github.com/superdurable/dex-connectors-library/connectors/gitlab/go/gitlabmock"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

@@ -14,7 +14,7 @@ import (
 
 // TestREADMEGoSnippetsComeFromTheRunnableExample keeps documentation snippets copied from runnable example code.
 func TestREADMEGoSnippetsComeFromTheRunnableExample(t *testing.T) {
-	readme, err := os.ReadFile("README.md")
+	readme, err := os.ReadFile("../README.md")
 	require.NoError(t, err)
 	var exampleSources []string
 	for _, path := range []string{

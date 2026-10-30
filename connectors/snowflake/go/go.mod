@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/snowflake
+module github.com/superdurable/dex-connectors-library/connectors/snowflake/go
 
 go 1.24.0
 

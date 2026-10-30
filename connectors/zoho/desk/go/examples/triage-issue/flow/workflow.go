@@ -13,7 +13,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/superdurable/dex-connectors-library/connectors/zoho/desk"
+	"github.com/superdurable/dex-connectors-library/connectors/zoho/desk/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

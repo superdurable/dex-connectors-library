@@ -7,7 +7,7 @@ package onedrivemock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/microsoft/onedrive"
+	"github.com/superdurable/dex-connectors-library/connectors/microsoft/onedrive/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

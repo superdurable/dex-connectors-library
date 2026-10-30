@@ -7,7 +7,7 @@ package sentrymock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/sentry"
+	"github.com/superdurable/dex-connectors-library/connectors/sentry/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/reamaze
+module github.com/superdurable/dex-connectors-library/connectors/reamaze/go
 
 go 1.24.0
 

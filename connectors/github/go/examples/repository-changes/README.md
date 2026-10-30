@@ -53,7 +53,7 @@ curl -fsSL \
 
 go mod init example.com/github-repository-changes-e2e
 go mod edit -go=1.24.0
-go get github.com/superdurable/dex-connectors-library/connectors/github@v0.23.1
+go get github.com/superdurable/dex-connectors-library/connectors/github/go@v0.23.1
 go mod tidy
 ```
 
@@ -117,7 +117,7 @@ connection.
 export DEX_FLOW_SERVICE_ADDRESS="127.0.0.1:8801"
 
 GOWORK=off go run \
-  github.com/superdurable/dex-connectors-library/connectors/github/examples/repository-changes@v0.23.1
+  github.com/superdurable/dex-connectors-library/connectors/github/go/examples/repository-changes@v0.23.1
 ```
 
 Set

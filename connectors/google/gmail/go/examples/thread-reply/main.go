@@ -16,8 +16,8 @@ import (
 	"syscall"
 	"time"
 
-	gmail "github.com/superdurable/dex-connectors-library/connectors/google/gmail"
-	threadreply "github.com/superdurable/dex-connectors-library/connectors/google/gmail/examples/thread-reply/flow"
+	gmail "github.com/superdurable/dex-connectors-library/connectors/google/gmail/go"
+	threadreply "github.com/superdurable/dex-connectors-library/connectors/google/gmail/go/examples/thread-reply/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"

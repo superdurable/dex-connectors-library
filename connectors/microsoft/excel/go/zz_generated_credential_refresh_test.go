@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/microsoft/excel"
+	"github.com/superdurable/dex-connectors-library/connectors/microsoft/excel/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 

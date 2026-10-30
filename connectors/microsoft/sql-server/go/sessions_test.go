@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/microsoft/sql-server"
-	"github.com/superdurable/dex-connectors-library/connectors/microsoft/sql-server/internal/scriptedtds"
+	"github.com/superdurable/dex-connectors-library/connectors/microsoft/sql-server/go"
+	"github.com/superdurable/dex-connectors-library/connectors/microsoft/sql-server/go/internal/scriptedtds"
 )
 
 // TestSessionsLeaveNoDriverGoroutinesBehind covers results the connector abandons mid-stream.

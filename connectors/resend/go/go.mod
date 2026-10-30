@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/resend
+module github.com/superdurable/dex-connectors-library/connectors/resend/go
 
 go 1.24.0
 

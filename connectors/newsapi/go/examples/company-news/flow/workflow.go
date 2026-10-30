@@ -12,7 +12,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/superdurable/dex-connectors-library/connectors/newsapi"
+	"github.com/superdurable/dex-connectors-library/connectors/newsapi/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

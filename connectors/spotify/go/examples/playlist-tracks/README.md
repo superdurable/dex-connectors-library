@@ -40,7 +40,7 @@ cd "$(git rev-parse --show-toplevel)"
 mkdir -p /tmp/spotify-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/spotify/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/spotify \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/spotify/go \
   --version v0.23.0 \
   --tag connectors/spotify/v0.23.0 \
   --source-sha "$(git rev-parse HEAD)" \

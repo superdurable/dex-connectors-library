@@ -18,7 +18,7 @@ The command must report `valid: true`. A local module may also report `connector
 mkdir -p /tmp/smartsheet-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/smartsheet/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/smartsheet \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/smartsheet/go \
   --version v0.1.0 --tag connectors/smartsheet/v0.1.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/smartsheet-release/connector-release.json \

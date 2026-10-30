@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/brevo"
+	"github.com/superdurable/dex-connectors-library/connectors/brevo/go"
 )
 
 func TestMapToCreateOrUpdateContactInput(t *testing.T) {

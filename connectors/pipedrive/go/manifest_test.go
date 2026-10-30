@@ -68,7 +68,7 @@ type pipedriveManifest struct {
 
 func loadPipedriveManifest(t *testing.T) pipedriveManifest {
 	t.Helper()
-	contents, err := os.ReadFile("connector.yaml")
+	contents, err := os.ReadFile("../connector.yaml")
 	require.NoError(t, err)
 	var manifest pipedriveManifest
 	require.NoError(t, yaml.Unmarshal(contents, &manifest))

@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	recordsync "github.com/superdurable/dex-connectors-library/connectors/salesforce/examples/record-sync/flow"
+	recordsync "github.com/superdurable/dex-connectors-library/connectors/salesforce/go/examples/record-sync/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 

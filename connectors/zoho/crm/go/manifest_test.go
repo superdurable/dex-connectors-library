@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/zoho/crm"
+	"github.com/superdurable/dex-connectors-library/connectors/zoho/crm/go"
 	"gopkg.in/yaml.v3"
 )
 
@@ -134,7 +134,7 @@ func TestEveryDataCenterMethodAuthorizesAtItsOwnZohoAccountsServer(t *testing.T)
 
 func readGuidanceManifest(t *testing.T) guidanceManifest {
 	t.Helper()
-	contents, err := os.ReadFile("connector.yaml")
+	contents, err := os.ReadFile("../connector.yaml")
 	require.NoError(t, err)
 	var manifest guidanceManifest
 	require.NoError(t, yaml.Unmarshal(contents, &manifest))

@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/postmark
+module github.com/superdurable/dex-connectors-library/connectors/postmark/go
 
 go 1.24.0
 

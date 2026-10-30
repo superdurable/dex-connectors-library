@@ -9,9 +9,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/clickup"
-	"github.com/superdurable/dex-connectors-library/connectors/clickup/clickupmock"
-	escalateblocked "github.com/superdurable/dex-connectors-library/connectors/clickup/examples/escalate-blocked-task/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/clickup/go"
+	"github.com/superdurable/dex-connectors-library/connectors/clickup/go/clickupmock"
+	escalateblocked "github.com/superdurable/dex-connectors-library/connectors/clickup/go/examples/escalate-blocked-task/flow"
 )
 
 func TestBlockedTaskUsesMockDefaultsWithRealDex(t *testing.T) {

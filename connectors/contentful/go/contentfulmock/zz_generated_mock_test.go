@@ -7,7 +7,7 @@ package contentfulmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/contentful"
+	"github.com/superdurable/dex-connectors-library/connectors/contentful/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

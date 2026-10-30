@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	leadqualification "github.com/superdurable/dex-connectors-library/connectors/hubspot/examples/lead-qualification/flow"
+	leadqualification "github.com/superdurable/dex-connectors-library/connectors/hubspot/go/examples/lead-qualification/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )

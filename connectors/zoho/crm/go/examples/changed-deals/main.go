@@ -15,8 +15,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/zoho/crm"
-	changeddeals "github.com/superdurable/dex-connectors-library/connectors/zoho/crm/examples/changed-deals/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/zoho/crm/go"
+	changeddeals "github.com/superdurable/dex-connectors-library/connectors/zoho/crm/go/examples/changed-deals/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"

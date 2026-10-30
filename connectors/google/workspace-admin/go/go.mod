@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/google/workspace-admin
+module github.com/superdurable/dex-connectors-library/connectors/google/workspace-admin/go
 
 go 1.24.0
 

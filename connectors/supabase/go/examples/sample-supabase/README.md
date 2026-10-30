@@ -13,7 +13,7 @@ The command must report `valid: true`. From the repository root, build the local
 
 ```bash
 mkdir -p /tmp/supabase-release
-go run ./cmd/connectorctl release-artifact --manifest connectors/supabase/connector.yaml --module-path github.com/superdurable/dex-connectors-library/connectors/supabase --version v0.1.0 --tag connectors/supabase/v0.1.0 --source-sha "$(git rev-parse HEAD)" --output /tmp/supabase-release/connector-release.json --digest-output /tmp/supabase-release/connector-release.json.sha256
+go run ./cmd/connectorctl release-artifact --manifest connectors/supabase/connector.yaml --module-path github.com/superdurable/dex-connectors-library/connectors/supabase/go --version v0.1.0 --tag connectors/supabase/v0.1.0 --source-sha "$(git rev-parse HEAD)" --output /tmp/supabase-release/connector-release.json --digest-output /tmp/supabase-release/connector-release.json.sha256
 dexcli dev --flow-rendering-dir "$PWD/connectors/supabase/build" --connector-release-override supabase=/tmp/supabase-release
 ```
 

@@ -15,8 +15,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/reamaze"
-	triageconversation "github.com/superdurable/dex-connectors-library/connectors/reamaze/examples/triage-conversation/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/reamaze/go"
+	triageconversation "github.com/superdurable/dex-connectors-library/connectors/reamaze/go/examples/triage-conversation/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"

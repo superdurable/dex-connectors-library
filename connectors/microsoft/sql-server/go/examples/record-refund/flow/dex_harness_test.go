@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	sqlserver "github.com/superdurable/dex-connectors-library/connectors/microsoft/sql-server"
+	sqlserver "github.com/superdurable/dex-connectors-library/connectors/microsoft/sql-server/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"

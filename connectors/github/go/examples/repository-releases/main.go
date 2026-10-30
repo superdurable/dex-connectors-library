@@ -16,8 +16,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/github"
-	repositoryreleases "github.com/superdurable/dex-connectors-library/connectors/github/examples/repository-releases/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/github/go"
+	repositoryreleases "github.com/superdurable/dex-connectors-library/connectors/github/go/examples/repository-releases/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"

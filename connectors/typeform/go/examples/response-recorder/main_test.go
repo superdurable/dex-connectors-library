@@ -16,8 +16,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/typeform"
-	responserecorder "github.com/superdurable/dex-connectors-library/connectors/typeform/examples/response-recorder/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/typeform/go"
+	responserecorder "github.com/superdurable/dex-connectors-library/connectors/typeform/go/examples/response-recorder/flow"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

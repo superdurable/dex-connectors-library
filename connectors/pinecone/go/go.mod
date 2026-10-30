@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/pinecone
+module github.com/superdurable/dex-connectors-library/connectors/pinecone/go
 
 go 1.24.0
 

@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/atlassian/confluence"
-	"github.com/superdurable/dex-connectors-library/connectors/atlassian/confluence/confluencemock"
+	"github.com/superdurable/dex-connectors-library/connectors/atlassian/confluence/go"
+	"github.com/superdurable/dex-connectors-library/connectors/atlassian/confluence/go/confluencemock"
 )
 
 func TestPolicyPublicationUsesMockDefaultsWithRealDex(t *testing.T) {

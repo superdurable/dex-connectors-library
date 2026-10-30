@@ -7,7 +7,7 @@ package gitlabmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/gitlab"
+	"github.com/superdurable/dex-connectors-library/connectors/gitlab/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

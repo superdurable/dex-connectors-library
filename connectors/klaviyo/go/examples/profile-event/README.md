@@ -21,7 +21,7 @@ From the repository root, create a release override and run Dex:
 mkdir -p /tmp/klaviyo-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/klaviyo/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/klaviyo \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/klaviyo/go \
   --version v0.1.0 --tag connectors/klaviyo/v0.1.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/klaviyo-release/connector-release.json \

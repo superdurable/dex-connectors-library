@@ -59,7 +59,7 @@ cd "$(git rev-parse --show-toplevel)"
 mkdir -p /tmp/webhook-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/superdurable/webhook/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook/go \
   --version v0.23.0 --tag connectors/superdurable/webhook/v0.23.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/webhook-release/connector-release.json \

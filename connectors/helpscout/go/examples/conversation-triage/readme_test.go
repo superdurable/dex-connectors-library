@@ -12,8 +12,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/helpscout"
-	conversationtriage "github.com/superdurable/dex-connectors-library/connectors/helpscout/examples/conversation-triage/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/helpscout/go"
+	conversationtriage "github.com/superdurable/dex-connectors-library/connectors/helpscout/go/examples/conversation-triage/flow"
 )
 
 // TestREADMESamplesMatchTheExample decodes every JSON sample strictly and checks the curl delivery.
@@ -68,7 +68,7 @@ func TestREADMESamplesMatchTheExample(t *testing.T) {
 
 // TestConnectorREADMESnippetIsTheExampleCode keeps the connector README's Go snippet runnable.
 func TestConnectorREADMESnippetsAreExampleCode(t *testing.T) {
-	snippets := fencedBlocks(readFile(t, filepath.Join("..", "..", "README.md")), "go")
+	snippets := fencedBlocks(readFile(t, filepath.Join("..", "..", "..", "README.md")), "go")
 	require.Len(t, snippets, 2)
 	require.Contains(t, readFile(t, "workflow_mock_integration_test.go"), snippets[0])
 	require.Contains(t, readFile(t, "main.go"), snippets[1])

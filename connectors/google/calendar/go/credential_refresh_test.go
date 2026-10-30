@@ -174,7 +174,7 @@ func TestCredentialRefreshDriverRefreshesMissingOrExpiringTokens(t *testing.T) {
 }
 
 func TestRefreshScopesMatchTheManifestScopes(t *testing.T) {
-	contents, err := os.ReadFile("connector.yaml")
+	contents, err := os.ReadFile("../connector.yaml")
 	require.NoError(t, err)
 	var manifest struct {
 		Spec struct {

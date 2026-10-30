@@ -6,7 +6,7 @@ package cloudflarelookup
 
 import (
 	"errors"
-	"github.com/superdurable/dex-connectors-library/connectors/cloudflare"
+	"github.com/superdurable/dex-connectors-library/connectors/cloudflare/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

@@ -16,7 +16,7 @@ import (
 	"regexp"
 	"strings"
 
-	entraid "github.com/superdurable/dex-connectors-library/connectors/microsoft/entra-id"
+	entraid "github.com/superdurable/dex-connectors-library/connectors/microsoft/entra-id/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/amazon/s3
+module github.com/superdurable/dex-connectors-library/connectors/amazon/s3/go
 
 go 1.24.0
 

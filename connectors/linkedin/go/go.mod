@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/linkedin
+module github.com/superdurable/dex-connectors-library/connectors/linkedin/go
 
 go 1.24.0
 

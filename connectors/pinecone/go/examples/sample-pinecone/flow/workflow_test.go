@@ -5,7 +5,7 @@ package flow
 
 import (
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/pinecone/pineconemock"
+	"github.com/superdurable/dex-connectors-library/connectors/pinecone/go/pineconemock"
 	"github.com/superdurable/dex/sdk-go/dex"
 	"testing"
 )

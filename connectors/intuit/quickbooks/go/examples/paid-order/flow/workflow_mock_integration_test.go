@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/intuit/quickbooks"
-	"github.com/superdurable/dex-connectors-library/connectors/intuit/quickbooks/quickbooksmock"
+	"github.com/superdurable/dex-connectors-library/connectors/intuit/quickbooks/go"
+	"github.com/superdurable/dex-connectors-library/connectors/intuit/quickbooks/go/quickbooksmock"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 

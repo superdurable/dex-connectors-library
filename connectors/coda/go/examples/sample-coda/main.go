@@ -14,8 +14,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/coda"
-	sampleflow "github.com/superdurable/dex-connectors-library/connectors/coda/examples/sample-coda/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/coda/go"
+	sampleflow "github.com/superdurable/dex-connectors-library/connectors/coda/go/examples/sample-coda/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"

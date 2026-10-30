@@ -7,7 +7,7 @@ package frontmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/front"
+	"github.com/superdurable/dex-connectors-library/connectors/front/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

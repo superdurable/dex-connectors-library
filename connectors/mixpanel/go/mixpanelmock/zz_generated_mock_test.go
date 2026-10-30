@@ -7,7 +7,7 @@ package mixpanelmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/mixpanel"
+	"github.com/superdurable/dex-connectors-library/connectors/mixpanel/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

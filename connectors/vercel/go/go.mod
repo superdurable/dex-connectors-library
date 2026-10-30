@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/vercel
+module github.com/superdurable/dex-connectors-library/connectors/vercel/go
 
 go 1.24.0
 

@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/postgresql"
+	"github.com/superdurable/dex-connectors-library/connectors/postgresql/go"
 	"gopkg.in/yaml.v3"
 )
 
@@ -43,7 +43,7 @@ type connectionManifestField struct {
 
 func readConnectionManifest(t *testing.T) connectionManifest {
 	t.Helper()
-	contents, err := os.ReadFile("connector.yaml")
+	contents, err := os.ReadFile("../connector.yaml")
 	require.NoError(t, err)
 	var manifest connectionManifest
 	require.NoError(t, yaml.Unmarshal(contents, &manifest))

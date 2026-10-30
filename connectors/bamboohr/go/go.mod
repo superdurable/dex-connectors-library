@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/bamboohr
+module github.com/superdurable/dex-connectors-library/connectors/bamboohr/go
 
 go 1.24.0
 

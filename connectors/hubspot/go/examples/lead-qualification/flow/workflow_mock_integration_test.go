@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/hubspot"
-	"github.com/superdurable/dex-connectors-library/connectors/hubspot/hubspotmock"
+	"github.com/superdurable/dex-connectors-library/connectors/hubspot/go"
+	"github.com/superdurable/dex-connectors-library/connectors/hubspot/go/hubspotmock"
 )
 
 func TestLeadQualificationUsesMockDefaultsWithRealDex(t *testing.T) {

@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/paypal
+module github.com/superdurable/dex-connectors-library/connectors/paypal/go
 
 go 1.24.0
 

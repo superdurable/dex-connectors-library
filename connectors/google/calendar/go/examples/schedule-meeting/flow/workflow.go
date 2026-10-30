@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	calendar "github.com/superdurable/dex-connectors-library/connectors/google/calendar"
+	calendar "github.com/superdurable/dex-connectors-library/connectors/google/calendar/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

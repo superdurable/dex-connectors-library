@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/google/docs"
-	"github.com/superdurable/dex-connectors-library/connectors/google/docs/docsmock"
+	"github.com/superdurable/dex-connectors-library/connectors/google/docs/go"
+	"github.com/superdurable/dex-connectors-library/connectors/google/docs/go/docsmock"
 )
 
 func TestPolicyPublishUsesMockedGoogleDocsWithRealDex(t *testing.T) {

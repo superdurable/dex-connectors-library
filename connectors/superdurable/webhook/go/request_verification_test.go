@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook"
+	"github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook/go"
 )
 
 const submissionBody = `{"event_id":"evt_1","event_type":"form_response","email":"ada@example.com"}`

@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/stripe"
+	"github.com/superdurable/dex-connectors-library/connectors/stripe/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/webhooktrigger"
@@ -22,7 +22,7 @@ import (
 func stripeProjectConfiguration(bindings map[string]string) projectconfig.Configuration {
 	configuration := projectconfig.Configuration{Connections: []projectconfig.ConnectionConfiguration{{
 		ConnectorID: stripe.ConnectorID, ConnectionName: stripeConnection.Name,
-		ModulePath: "github.com/superdurable/dex-connectors-library/connectors/stripe", Provider: "stripe",
+		ModulePath: "github.com/superdurable/dex-connectors-library/connectors/stripe/go", Provider: "stripe",
 		Configuration: json.RawMessage(`{}`),
 	}}}
 	for bindingName, bindingConfiguration := range bindings {

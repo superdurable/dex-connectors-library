@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/google/gemini
+module github.com/superdurable/dex-connectors-library/connectors/google/gemini/go
 
 go 1.24.0
 

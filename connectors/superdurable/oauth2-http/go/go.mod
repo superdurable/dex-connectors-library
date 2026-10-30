@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http
+module github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http/go
 
 go 1.24.0
 

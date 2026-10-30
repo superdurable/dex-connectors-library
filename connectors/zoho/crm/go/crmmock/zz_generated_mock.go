@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/zoho/crm"
+	"github.com/superdurable/dex-connectors-library/connectors/zoho/crm/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )

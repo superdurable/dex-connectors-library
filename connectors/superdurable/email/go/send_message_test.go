@@ -12,8 +12,8 @@ import (
 	gomessage "github.com/emersion/go-message"
 	"github.com/emersion/go-message/mail"
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/superdurable/email"
-	"github.com/superdurable/dex-connectors-library/connectors/superdurable/email/internal/mailtest"
+	"github.com/superdurable/dex-connectors-library/connectors/superdurable/email/go"
+	"github.com/superdurable/dex-connectors-library/connectors/superdurable/email/go/internal/mailtest"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 

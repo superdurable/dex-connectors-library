@@ -10,7 +10,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/front"
+	"github.com/superdurable/dex-connectors-library/connectors/front/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 

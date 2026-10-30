@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/webflow
+module github.com/superdurable/dex-connectors-library/connectors/webflow/go
 
 go 1.24.0
 

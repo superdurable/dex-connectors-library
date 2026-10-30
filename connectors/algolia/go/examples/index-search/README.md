@@ -21,7 +21,7 @@ From the repository root, create a release override and run Dex:
 mkdir -p /tmp/algolia-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/algolia/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/algolia \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/algolia/go \
   --version v0.1.0 --tag connectors/algolia/v0.1.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/algolia-release/connector-release.json \

@@ -7,7 +7,7 @@ package openweathermapmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/openweathermap"
+	"github.com/superdurable/dex-connectors-library/connectors/openweathermap/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

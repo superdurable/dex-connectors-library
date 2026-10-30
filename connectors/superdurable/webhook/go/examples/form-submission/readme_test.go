@@ -12,8 +12,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook"
-	formsubmission "github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook/examples/form-submission/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook/go"
+	formsubmission "github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook/go/examples/form-submission/flow"
 )
 
 // TestREADMESamplesMatchTheExample decodes every JSON sample strictly and checks the curl body.
@@ -34,7 +34,7 @@ func TestREADMESamplesMatchTheExample(t *testing.T) {
 	require.Equal(t, webhook.RequestReceivedTriggerDefinition.Trigger.TriggerName, binding.TriggerName)
 	require.Equal(t, formsubmission.SubmissionTriggerBinding, binding.BindingName)
 	require.NoError(t, binding.Configuration.Validate())
-	require.Contains(t, readFile(t, filepath.Join("..", "..", "README.md")), samples[0], "both READMEs show the same binding")
+	require.Contains(t, readFile(t, filepath.Join("..", "..", "..", "README.md")), samples[0], "both READMEs show the same binding")
 	var outcome formsubmission.ForwardingOutcome
 	requireStrictJSON(t, samples[1], &outcome)
 	require.Equal(t, webhook.SendEventBranchDelivered, outcome.Branch)
@@ -53,7 +53,7 @@ func TestREADMESamplesMatchTheExample(t *testing.T) {
 
 // TestConnectorREADMESnippetIsTheExampleCode keeps the connector README's Go snippet runnable.
 func TestConnectorREADMESnippetIsTheExampleCode(t *testing.T) {
-	snippets := fencedBlocks(readFile(t, filepath.Join("..", "..", "README.md")), "go")
+	snippets := fencedBlocks(readFile(t, filepath.Join("..", "..", "..", "README.md")), "go")
 	require.Len(t, snippets, 2)
 	require.Contains(t, readFile(t, "main.go"), snippets[0])
 	require.Contains(t, readFile(t, filepath.Join("flow", "workflow_mock_integration_test.go")), "\t"+strings.ReplaceAll(snippets[1], "\n", "\n\t"))

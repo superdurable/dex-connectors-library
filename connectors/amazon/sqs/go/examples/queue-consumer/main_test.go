@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/amazon/sqs"
-	queueconsumer "github.com/superdurable/dex-connectors-library/connectors/amazon/sqs/examples/queue-consumer/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/amazon/sqs/go"
+	queueconsumer "github.com/superdurable/dex-connectors-library/connectors/amazon/sqs/go/examples/queue-consumer/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
@@ -24,7 +24,7 @@ func TestEnvironmentOr(t *testing.T) {
 func TestTheDexWebConnectionSettingsLoad(t *testing.T) {
 	configuration := projectconfig.Configuration{Connections: []projectconfig.ConnectionConfiguration{{
 		ConnectorID: "amazon-sqs", ConnectionName: queueconsumer.ConnectionName,
-		ModulePath: "github.com/superdurable/dex-connectors-library/connectors/amazon/sqs", Provider: "amazon-sqs",
+		ModulePath: "github.com/superdurable/dex-connectors-library/connectors/amazon/sqs/go", Provider: "amazon-sqs",
 		Configuration: json.RawMessage(`{"region": "eu-west-1", "defaultQueueUrl": "https://sqs.eu-west-1.amazonaws.com/123456789012/orders", "receiveWaitSeconds": 10}`),
 	}}}
 	var config sqs.Config

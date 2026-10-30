@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/zoho/crm
+module github.com/superdurable/dex-connectors-library/connectors/zoho/crm/go
 
 go 1.24.0
 

@@ -12,7 +12,7 @@ import (
 	"net/mail"
 	"strings"
 
-	outlookmail "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail"
+	outlookmail "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

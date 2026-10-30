@@ -13,8 +13,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/intercom"
-	answerduplicate "github.com/superdurable/dex-connectors-library/connectors/intercom/examples/answer-duplicate-conversation/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/intercom/go"
+	answerduplicate "github.com/superdurable/dex-connectors-library/connectors/intercom/go/examples/answer-duplicate-conversation/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
@@ -64,7 +64,7 @@ func TestREADMESamplesMatchTheExample(t *testing.T) {
 
 // TestConnectorREADMESamplesAreTheExampleCode keeps the connector README's record and Go snippets runnable.
 func TestConnectorREADMESamplesAreTheExampleCode(t *testing.T) {
-	readme := readFile(t, filepath.Join("..", "..", "README.md"))
+	readme := readFile(t, filepath.Join("..", "..", "..", "README.md"))
 	snippets := fencedBlocks(readme, "go")
 	require.Len(t, snippets, 2)
 	require.Contains(t, readFile(t, "main.go"), snippets[0])
@@ -76,7 +76,7 @@ func TestConnectorREADMESamplesAreTheExampleCode(t *testing.T) {
 	requireStrictJSON(t, records[0], &record)
 	require.Equal(t, intercom.ConnectorID, record.ConnectorID)
 	require.Equal(t, answerduplicate.ConnectionName, record.ConnectionName)
-	require.Equal(t, "github.com/superdurable/dex-connectors-library/connectors/intercom", record.ModulePath)
+	require.Equal(t, "github.com/superdurable/dex-connectors-library/connectors/intercom/go", record.ModulePath)
 	require.Equal(t, "intercom", record.Provider)
 	var configuration intercom.Config
 	requireStrictJSON(t, string(record.Configuration), &configuration)

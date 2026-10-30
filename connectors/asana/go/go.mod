@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/asana
+module github.com/superdurable/dex-connectors-library/connectors/asana/go
 
 go 1.24.0
 

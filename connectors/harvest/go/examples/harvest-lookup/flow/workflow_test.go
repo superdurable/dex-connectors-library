@@ -5,8 +5,8 @@ package harvestlookup
 
 import (
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/harvest"
-	"github.com/superdurable/dex-connectors-library/connectors/harvest/harvestmock"
+	"github.com/superdurable/dex-connectors-library/connectors/harvest/go"
+	"github.com/superdurable/dex-connectors-library/connectors/harvest/go/harvestmock"
 	"github.com/superdurable/dex/sdk-go/dex"
 	"testing"
 )

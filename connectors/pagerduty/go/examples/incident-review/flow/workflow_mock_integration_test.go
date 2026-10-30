@@ -16,8 +16,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/pagerduty"
-	"github.com/superdurable/dex-connectors-library/connectors/pagerduty/pagerdutymock"
+	"github.com/superdurable/dex-connectors-library/connectors/pagerduty/go"
+	"github.com/superdurable/dex-connectors-library/connectors/pagerduty/go/pagerdutymock"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

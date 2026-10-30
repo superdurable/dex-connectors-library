@@ -73,7 +73,7 @@ go run ./cmd/connectorctl ui-artifact \
   --digest-output /tmp/outlook-calendar-release/connector-ui.tgz.sha256
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/microsoft/outlook-calendar/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-calendar \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-calendar/go \
   --version v0.23.0 --tag connectors/microsoft/outlook-calendar/v0.23.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/outlook-calendar-release/connector-ui.tgz \

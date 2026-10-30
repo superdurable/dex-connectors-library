@@ -197,7 +197,7 @@ func TestReleaseMatrixDefaultsToPendingVersions(t *testing.T) {
 	expectedDirectories := []string{}
 	for _, entry := range entries {
 		isPending, transitionErr := validateConnectorVersionTransition(
-			latestReleases[entry.Directory].Version,
+			latestReleases[entry.Directory+"/go"].Version,
 			entry.Manifest.Metadata.Version,
 		)
 		require.NoError(t, transitionErr)
@@ -370,7 +370,7 @@ directories:
 	githubOutput := filepath.Join(t.TempDir(), "github-output")
 	require.NoError(t, releaseMatrixCommand([]string{"--catalog", catalogPath, "--github-output", githubOutput}))
 	require.Equal(t, []connectorReleaseMatrixItem{{
-		Directory: "connectors/acme/chat", ManifestPath: "connectors/acme/chat/connector.yaml", TagPrefix: "connectors/acme/chat/",
+		Directory: "connectors/acme/chat", ManifestPath: "connectors/acme/chat/connector.yaml", TagPrefix: "connectors/acme/chat/go/",
 		Version: "v0.2.0", DisplayName: "Google Sheets Fixture",
 	}}, readReleaseMatrixOutput(t, githubOutput).Include, "only the connector whose version moved releases")
 }

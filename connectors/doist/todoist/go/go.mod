@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/doist/todoist
+module github.com/superdurable/dex-connectors-library/connectors/doist/todoist/go
 
 go 1.24.0
 

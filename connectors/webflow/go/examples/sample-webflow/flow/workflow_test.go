@@ -5,7 +5,7 @@ package flow
 
 import (
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/webflow/webflowmock"
+	"github.com/superdurable/dex-connectors-library/connectors/webflow/go/webflowmock"
 	"github.com/superdurable/dex/sdk-go/dex"
 	"testing"
 )

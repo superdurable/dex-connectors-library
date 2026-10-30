@@ -14,7 +14,7 @@ import (
 	"net/mail"
 	"strings"
 
-	workspaceadmin "github.com/superdurable/dex-connectors-library/connectors/google/workspace-admin"
+	workspaceadmin "github.com/superdurable/dex-connectors-library/connectors/google/workspace-admin/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

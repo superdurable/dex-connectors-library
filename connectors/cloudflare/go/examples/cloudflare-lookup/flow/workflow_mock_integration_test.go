@@ -15,8 +15,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/cloudflare"
-	"github.com/superdurable/dex-connectors-library/connectors/cloudflare/cloudflaremock"
+	"github.com/superdurable/dex-connectors-library/connectors/cloudflare/go"
+	"github.com/superdurable/dex-connectors-library/connectors/cloudflare/go/cloudflaremock"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

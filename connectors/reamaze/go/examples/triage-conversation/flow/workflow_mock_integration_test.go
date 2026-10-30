@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/reamaze"
-	"github.com/superdurable/dex-connectors-library/connectors/reamaze/reamazemock"
+	"github.com/superdurable/dex-connectors-library/connectors/reamaze/go"
+	"github.com/superdurable/dex-connectors-library/connectors/reamaze/go/reamazemock"
 )
 
 func TestNewIssueUsesMockDefaultsWithRealDex(t *testing.T) {

@@ -22,9 +22,9 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/slack"
-	"github.com/superdurable/dex-connectors-library/connectors/slack/internal/testlog"
-	"github.com/superdurable/dex-connectors-library/connectors/slack/internal/testsupport"
+	"github.com/superdurable/dex-connectors-library/connectors/slack/go"
+	"github.com/superdurable/dex-connectors-library/connectors/slack/go/internal/testlog"
+	"github.com/superdurable/dex-connectors-library/connectors/slack/go/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/projectconfigtest"
@@ -185,7 +185,7 @@ func (host *relayingHost) loadProject(t *testing.T, slackEndpoint string) *proje
 	require.NoError(t, err)
 	_, _, err = configurations.WriteConfiguration(ctx, 0, projectconfig.Configuration{
 		Connections: []projectconfig.ConnectionConfiguration{{
-			ConnectorID: slack.ConnectorID, ConnectionName: ConnectionName, ModulePath: "github.com/superdurable/dex-connectors-library/connectors/slack",
+			ConnectorID: slack.ConnectorID, ConnectionName: ConnectionName, ModulePath: "github.com/superdurable/dex-connectors-library/connectors/slack/go",
 			Provider: "slack", SharedConnectionID: "conn-slack", Configuration: settings,
 		}},
 		TriggerBindings:  newThreadApprovalBindings(),

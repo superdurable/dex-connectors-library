@@ -16,8 +16,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook"
-	"github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook/webhookmock"
+	"github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook/go"
+	"github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook/go/webhookmock"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

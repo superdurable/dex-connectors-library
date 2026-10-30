@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/microsoft/entra-id
+module github.com/superdurable/dex-connectors-library/connectors/microsoft/entra-id/go
 
 go 1.24.0
 

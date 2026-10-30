@@ -11,12 +11,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/airtable"
+	"github.com/superdurable/dex-connectors-library/connectors/airtable/go"
 )
 
 // TestREADMEGoSnippetsComeFromTheRunnableExample keeps documentation snippets copied from runnable example code.
 func TestREADMEGoSnippetsComeFromTheRunnableExample(t *testing.T) {
-	readme, err := os.ReadFile("README.md")
+	readme, err := os.ReadFile("../README.md")
 	require.NoError(t, err)
 	defaults := airtable.DefaultConfig()
 	require.Contains(t, string(readme), "| `endpoint` | `"+defaults.Endpoint+"` |")

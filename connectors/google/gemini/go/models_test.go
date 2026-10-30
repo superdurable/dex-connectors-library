@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	gemini "github.com/superdurable/dex-connectors-library/connectors/google/gemini"
+	gemini "github.com/superdurable/dex-connectors-library/connectors/google/gemini/go"
 )
 
 // liveDefaultModel is the model TestLiveGenerateContent calls when GEMINI_CONNECTOR_TEST_MODEL is unset.
@@ -24,7 +24,7 @@ func TestDocumentedModelsAreOpenToNewProjects(t *testing.T) {
 		require.NotContains(t, liveDefaultModel, prefix)
 	}
 	for _, path := range []string{
-		"README.md", filepath.Join("examples", "generate-summary", "README.md"),
+		"../README.md", filepath.Join("examples", "generate-summary", "README.md"),
 	} {
 		contents, err := os.ReadFile(path)
 		require.NoError(t, err)
@@ -36,7 +36,7 @@ func TestDocumentedModelsAreOpenToNewProjects(t *testing.T) {
 
 // TestREADMEGoSnippetsComeFromTheRunnableExample keeps documentation snippets copied from runnable example code.
 func TestREADMEGoSnippetsComeFromTheRunnableExample(t *testing.T) {
-	readme, err := os.ReadFile("README.md")
+	readme, err := os.ReadFile("../README.md")
 	require.NoError(t, err)
 	require.Contains(t, string(readme), "| `model` | `"+gemini.DefaultConfig().Model+"` |", "the README names the manifest's default model")
 	var exampleSources []string

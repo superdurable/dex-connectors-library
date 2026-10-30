@@ -16,8 +16,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/monday"
-	"github.com/superdurable/dex-connectors-library/connectors/monday/internal/testsupport"
+	"github.com/superdurable/dex-connectors-library/connectors/monday/go"
+	"github.com/superdurable/dex-connectors-library/connectors/monday/go/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 

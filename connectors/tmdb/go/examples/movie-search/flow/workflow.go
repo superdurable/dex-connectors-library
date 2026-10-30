@@ -6,7 +6,7 @@ package moviesearch
 
 import (
 	"errors"
-	"github.com/superdurable/dex-connectors-library/connectors/tmdb"
+	"github.com/superdurable/dex-connectors-library/connectors/tmdb/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

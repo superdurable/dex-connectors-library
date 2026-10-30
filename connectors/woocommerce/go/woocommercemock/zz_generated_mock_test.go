@@ -7,7 +7,7 @@ package woocommercemock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/woocommerce"
+	"github.com/superdurable/dex-connectors-library/connectors/woocommerce/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail
+module github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail/go
 
 go 1.24.0
 

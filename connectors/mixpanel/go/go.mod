@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/mixpanel
+module github.com/superdurable/dex-connectors-library/connectors/mixpanel/go
 
 go 1.24.0
 

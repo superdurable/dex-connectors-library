@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/microsoft/teams
+module github.com/superdurable/dex-connectors-library/connectors/microsoft/teams/go
 
 go 1.24.0
 

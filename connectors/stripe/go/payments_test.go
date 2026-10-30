@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/stripe"
+	"github.com/superdurable/dex-connectors-library/connectors/stripe/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 

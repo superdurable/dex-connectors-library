@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	escalateblocked "github.com/superdurable/dex-connectors-library/connectors/clickup/examples/escalate-blocked-task/flow"
+	escalateblocked "github.com/superdurable/dex-connectors-library/connectors/clickup/go/examples/escalate-blocked-task/flow"
 )
 
 func TestNewLoggerUsesLogLevelAndWarnsAboutAnInvalidOne(t *testing.T) {

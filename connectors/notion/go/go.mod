@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/notion
+module github.com/superdurable/dex-connectors-library/connectors/notion/go
 
 go 1.24.0
 

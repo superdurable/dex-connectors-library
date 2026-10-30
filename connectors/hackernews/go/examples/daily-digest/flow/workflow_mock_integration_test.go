@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/hackernews"
-	"github.com/superdurable/dex-connectors-library/connectors/hackernews/hackernewsmock"
+	"github.com/superdurable/dex-connectors-library/connectors/hackernews/go"
+	"github.com/superdurable/dex-connectors-library/connectors/hackernews/go/hackernewsmock"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 

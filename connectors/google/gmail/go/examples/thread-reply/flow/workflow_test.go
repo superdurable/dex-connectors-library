@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	gmail "github.com/superdurable/dex-connectors-library/connectors/google/gmail"
+	gmail "github.com/superdurable/dex-connectors-library/connectors/google/gmail/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 

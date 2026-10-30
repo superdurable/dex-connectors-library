@@ -14,8 +14,8 @@ import (
 	"syscall"
 	"time"
 
-	youtube "github.com/superdurable/dex-connectors-library/connectors/google/youtube"
-	playlistcurator "github.com/superdurable/dex-connectors-library/connectors/google/youtube/examples/playlist-curator/flow"
+	youtube "github.com/superdurable/dex-connectors-library/connectors/google/youtube/go"
+	playlistcurator "github.com/superdurable/dex-connectors-library/connectors/google/youtube/go/examples/playlist-curator/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"

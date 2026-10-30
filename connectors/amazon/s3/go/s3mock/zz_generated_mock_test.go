@@ -7,7 +7,7 @@ package s3mock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/amazon/s3"
+	"github.com/superdurable/dex-connectors-library/connectors/amazon/s3/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

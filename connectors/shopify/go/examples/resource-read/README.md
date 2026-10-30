@@ -19,7 +19,7 @@ From the repository root, build a local release override, then start a Dex stack
 
 ```sh
 mkdir -p /tmp/shopify-release
-go run ./cmd/connectorctl release-artifact --manifest connectors/shopify/connector.yaml --module-path github.com/superdurable/dex-connectors-library/connectors/shopify --version v0.1.0 --tag connectors/shopify/v0.1.0 --source-sha "$(git rev-parse HEAD)" --output /tmp/shopify-release/connector-release.json --digest-output /tmp/shopify-release/connector-release.json.sha256
+go run ./cmd/connectorctl release-artifact --manifest connectors/shopify/connector.yaml --module-path github.com/superdurable/dex-connectors-library/connectors/shopify/go --version v0.1.0 --tag connectors/shopify/v0.1.0 --source-sha "$(git rev-parse HEAD)" --output /tmp/shopify-release/connector-release.json --digest-output /tmp/shopify-release/connector-release.json.sha256
 dexcli dev --flow-rendering-dir "$PWD/connectors/shopify/build" --connector-release-override shopify=/tmp/shopify-release
 ```
 

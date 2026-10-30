@@ -7,7 +7,7 @@ package airtablemock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/airtable"
+	"github.com/superdurable/dex-connectors-library/connectors/airtable/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

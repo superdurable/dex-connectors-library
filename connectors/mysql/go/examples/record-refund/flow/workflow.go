@@ -15,7 +15,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/superdurable/dex-connectors-library/connectors/mysql"
+	"github.com/superdurable/dex-connectors-library/connectors/mysql/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

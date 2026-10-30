@@ -7,7 +7,7 @@ package postgresqlmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/postgresql"
+	"github.com/superdurable/dex-connectors-library/connectors/postgresql/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

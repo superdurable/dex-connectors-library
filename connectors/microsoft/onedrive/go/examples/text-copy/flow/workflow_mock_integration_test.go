@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/microsoft/onedrive"
-	"github.com/superdurable/dex-connectors-library/connectors/microsoft/onedrive/onedrivemock"
+	"github.com/superdurable/dex-connectors-library/connectors/microsoft/onedrive/go"
+	"github.com/superdurable/dex-connectors-library/connectors/microsoft/onedrive/go/onedrivemock"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 

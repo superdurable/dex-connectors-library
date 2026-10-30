@@ -45,7 +45,7 @@ curl -fsSL \
 
 go mod init example.com/pipedrive-deal-intake-e2e
 go mod edit -go=1.24.0
-go get github.com/superdurable/dex-connectors-library/connectors/pipedrive@v0.23.0
+go get github.com/superdurable/dex-connectors-library/connectors/pipedrive/go@v0.23.0
 go mod tidy
 
 dexcli visualize ./flow/workflow.go \

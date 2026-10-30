@@ -6,7 +6,7 @@ package oauth2http_test
 import (
 	"net/http"
 
-	"github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http"
+	"github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http/go"
 )
 
 // newCredentialRefreshDriverWithSettings builds the driver from the token endpoint and client authentication

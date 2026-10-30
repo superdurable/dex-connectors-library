@@ -15,7 +15,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/superdurable/dex-connectors-library/connectors/zoom"
+	"github.com/superdurable/dex-connectors-library/connectors/zoom/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

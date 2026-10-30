@@ -7,7 +7,7 @@ package deskmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/zoho/desk"
+	"github.com/superdurable/dex-connectors-library/connectors/zoho/desk/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

@@ -80,7 +80,7 @@ curl -fsSL \
 
 go mod init example.com/notion-submission-intake-e2e
 go mod edit -go=1.24.0
-go get github.com/superdurable/dex-connectors-library/connectors/notion@v0.23.0
+go get github.com/superdurable/dex-connectors-library/connectors/notion/go@v0.23.0
 go mod tidy
 ```
 
@@ -131,7 +131,7 @@ describes:
 export DEX_FLOW_SERVICE_ADDRESS="127.0.0.1:8801"
 
 GOWORK=off go run \
-  github.com/superdurable/dex-connectors-library/connectors/notion/examples/submission-intake@v0.23.0
+  github.com/superdurable/dex-connectors-library/connectors/notion/go/examples/submission-intake@v0.23.0
 ```
 
 Set

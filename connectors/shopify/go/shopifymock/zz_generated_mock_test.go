@@ -7,7 +7,7 @@ package shopifymock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/shopify"
+	"github.com/superdurable/dex-connectors-library/connectors/shopify/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

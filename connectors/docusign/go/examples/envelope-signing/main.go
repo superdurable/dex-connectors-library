@@ -21,8 +21,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/docusign"
-	envelopesigning "github.com/superdurable/dex-connectors-library/connectors/docusign/examples/envelope-signing/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/docusign/go"
+	envelopesigning "github.com/superdurable/dex-connectors-library/connectors/docusign/go/examples/envelope-signing/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"

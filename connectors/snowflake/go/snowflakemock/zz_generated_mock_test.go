@@ -7,7 +7,7 @@ package snowflakemock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/snowflake"
+	"github.com/superdurable/dex-connectors-library/connectors/snowflake/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

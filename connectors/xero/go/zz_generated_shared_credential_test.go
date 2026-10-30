@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/xero"
+	"github.com/superdurable/dex-connectors-library/connectors/xero/go"
 )
 
 // sharedCredentialMethod is one authentication method's complete sample credential and what a shared one keeps.
@@ -366,7 +366,7 @@ func dereference(typ types.Type) types.Type {
 }
 
 // sharedCredentialModulePath is the connector's module, whose root package declares Credentials.
-const sharedCredentialModulePath = "github.com/superdurable/dex-connectors-library/connectors/xero"
+const sharedCredentialModulePath = "github.com/superdurable/dex-connectors-library/connectors/xero/go"
 
 // hostKeptCredentialFields are the Credentials fields that a host keeps in some authentication method.
 var hostKeptCredentialFields = []string{"ClientSecret", "RefreshToken"}

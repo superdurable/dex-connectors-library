@@ -11,8 +11,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/amazon/s3"
-	"github.com/superdurable/dex-connectors-library/connectors/amazon/s3/internal/s3fake"
+	"github.com/superdurable/dex-connectors-library/connectors/amazon/s3/go"
+	"github.com/superdurable/dex-connectors-library/connectors/amazon/s3/go/internal/s3fake"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 

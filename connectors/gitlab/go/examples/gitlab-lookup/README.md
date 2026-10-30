@@ -21,7 +21,7 @@ From the repository root, create release metadata for the local source:
 mkdir -p /tmp/gitlab-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/gitlab/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/gitlab \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/gitlab/go \
   --version v0.1.0 --tag connectors/gitlab/v0.1.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/gitlab-release/connector-release.json \

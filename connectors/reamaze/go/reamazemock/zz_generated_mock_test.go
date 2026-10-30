@@ -7,7 +7,7 @@ package reamazemock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/reamaze"
+	"github.com/superdurable/dex-connectors-library/connectors/reamaze/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

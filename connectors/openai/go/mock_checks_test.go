@@ -12,9 +12,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	openai "github.com/superdurable/dex-connectors-library/connectors/openai"
-	"github.com/superdurable/dex-connectors-library/connectors/openai/internal/testsupport"
-	"github.com/superdurable/dex-connectors-library/connectors/openai/openaimock"
+	openai "github.com/superdurable/dex-connectors-library/connectors/openai/go"
+	"github.com/superdurable/dex-connectors-library/connectors/openai/go/internal/testsupport"
+	"github.com/superdurable/dex-connectors-library/connectors/openai/go/openaimock"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )

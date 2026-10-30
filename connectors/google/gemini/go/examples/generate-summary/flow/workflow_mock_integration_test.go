@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/google/gemini"
-	"github.com/superdurable/dex-connectors-library/connectors/google/gemini/geminimock"
+	"github.com/superdurable/dex-connectors-library/connectors/google/gemini/go"
+	"github.com/superdurable/dex-connectors-library/connectors/google/gemini/go/geminimock"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 

@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	oauth2http "github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http"
+	oauth2http "github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"gopkg.in/yaml.v3"
 )
@@ -61,7 +61,7 @@ type oauth2Manifest struct {
 
 func readOAuth2Manifest(t *testing.T) oauth2Manifest {
 	t.Helper()
-	contents, err := os.ReadFile("connector.yaml")
+	contents, err := os.ReadFile("../connector.yaml")
 	require.NoError(t, err)
 	var manifest oauth2Manifest
 	require.NoError(t, yaml.Unmarshal(contents, &manifest))
@@ -159,7 +159,7 @@ func TestAuthorizationGuideStartsAtTheServerSetupSection(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "https", startURL.Scheme)
 	require.Equal(t, "authorization-server-setup", startURL.Fragment)
-	readme, err := os.ReadFile("README.md")
+	readme, err := os.ReadFile("../README.md")
 	require.NoError(t, err)
 	require.Contains(t, string(readme), "\n## Authorization server setup\n")
 	require.Len(t, guide.Steps, 4)

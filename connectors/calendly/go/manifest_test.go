@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/calendly"
+	"github.com/superdurable/dex-connectors-library/connectors/calendly/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"gopkg.in/yaml.v3"
 )
@@ -76,7 +76,7 @@ type calendlyManifest struct {
 
 func readCalendlyManifest(t *testing.T) calendlyManifest {
 	t.Helper()
-	contents, err := os.ReadFile("connector.yaml")
+	contents, err := os.ReadFile("../connector.yaml")
 	require.NoError(t, err)
 	var manifest calendlyManifest
 	require.NoError(t, yaml.Unmarshal(contents, &manifest))

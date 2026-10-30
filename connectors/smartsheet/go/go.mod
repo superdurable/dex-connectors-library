@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/smartsheet
+module github.com/superdurable/dex-connectors-library/connectors/smartsheet/go
 
 go 1.24.0
 

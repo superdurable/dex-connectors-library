@@ -18,7 +18,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	spreadsheet "github.com/superdurable/dex-connectors-library/connectors/google/spreadsheet"
+	spreadsheet "github.com/superdurable/dex-connectors-library/connectors/google/spreadsheet/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"

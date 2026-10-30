@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/amazon/sqs
+module github.com/superdurable/dex-connectors-library/connectors/amazon/sqs/go
 
 go 1.24.0
 

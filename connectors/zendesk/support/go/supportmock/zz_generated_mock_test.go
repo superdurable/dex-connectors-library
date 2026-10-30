@@ -7,7 +7,7 @@ package supportmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/zendesk/support"
+	"github.com/superdurable/dex-connectors-library/connectors/zendesk/support/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

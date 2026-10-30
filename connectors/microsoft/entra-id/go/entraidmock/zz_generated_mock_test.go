@@ -7,7 +7,7 @@ package entraidmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/microsoft/entra-id"
+	"github.com/superdurable/dex-connectors-library/connectors/microsoft/entra-id/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

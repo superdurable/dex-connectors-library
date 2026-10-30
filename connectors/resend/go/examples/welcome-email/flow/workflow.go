@@ -6,7 +6,7 @@ package welcomeemail
 
 import (
 	"errors"
-	"github.com/superdurable/dex-connectors-library/connectors/resend"
+	"github.com/superdurable/dex-connectors-library/connectors/resend/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

@@ -14,8 +14,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/mixpanel"
-	eventtrack "github.com/superdurable/dex-connectors-library/connectors/mixpanel/examples/event-track/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/mixpanel/go"
+	eventtrack "github.com/superdurable/dex-connectors-library/connectors/mixpanel/go/examples/event-track/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"

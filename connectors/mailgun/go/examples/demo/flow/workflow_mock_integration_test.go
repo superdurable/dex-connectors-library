@@ -15,8 +15,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/mailgun"
-	"github.com/superdurable/dex-connectors-library/connectors/mailgun/mailgunmock"
+	"github.com/superdurable/dex-connectors-library/connectors/mailgun/go"
+	"github.com/superdurable/dex-connectors-library/connectors/mailgun/go/mailgunmock"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

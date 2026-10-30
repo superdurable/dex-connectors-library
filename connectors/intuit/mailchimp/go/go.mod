@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/intuit/mailchimp
+module github.com/superdurable/dex-connectors-library/connectors/intuit/mailchimp/go
 
 go 1.24.0
 

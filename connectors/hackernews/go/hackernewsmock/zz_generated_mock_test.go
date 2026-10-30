@@ -7,7 +7,7 @@ package hackernewsmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/hackernews"
+	"github.com/superdurable/dex-connectors-library/connectors/hackernews/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

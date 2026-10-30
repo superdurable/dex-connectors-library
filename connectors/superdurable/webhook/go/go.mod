@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook
+module github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook/go
 
 go 1.24.0
 

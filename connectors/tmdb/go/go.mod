@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/tmdb
+module github.com/superdurable/dex-connectors-library/connectors/tmdb/go
 
 go 1.24.0
 

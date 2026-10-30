@@ -7,7 +7,7 @@ package docsmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/google/docs"
+	"github.com/superdurable/dex-connectors-library/connectors/google/docs/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

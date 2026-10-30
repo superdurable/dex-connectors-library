@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/freshworks/freshdesk"
+	"github.com/superdurable/dex-connectors-library/connectors/freshworks/freshdesk/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 

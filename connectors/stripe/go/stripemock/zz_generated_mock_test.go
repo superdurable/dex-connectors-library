@@ -7,7 +7,7 @@ package stripemock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/stripe"
+	"github.com/superdurable/dex-connectors-library/connectors/stripe/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

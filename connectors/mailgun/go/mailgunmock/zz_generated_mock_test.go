@@ -7,7 +7,7 @@ package mailgunmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/mailgun"
+	"github.com/superdurable/dex-connectors-library/connectors/mailgun/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

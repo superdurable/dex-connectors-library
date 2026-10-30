@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/zoom
+module github.com/superdurable/dex-connectors-library/connectors/zoom/go
 
 go 1.24.0
 

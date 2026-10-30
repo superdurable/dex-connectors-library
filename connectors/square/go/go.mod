@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/square
+module github.com/superdurable/dex-connectors-library/connectors/square/go
 
 go 1.24.0
 

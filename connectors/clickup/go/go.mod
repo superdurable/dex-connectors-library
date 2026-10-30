@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/clickup
+module github.com/superdurable/dex-connectors-library/connectors/clickup/go
 
 go 1.24.0
 

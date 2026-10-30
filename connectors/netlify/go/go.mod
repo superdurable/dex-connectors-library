@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/netlify
+module github.com/superdurable/dex-connectors-library/connectors/netlify/go
 
 go 1.24.0
 

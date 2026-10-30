@@ -15,8 +15,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/atlassian/jira"
-	triageissue "github.com/superdurable/dex-connectors-library/connectors/atlassian/jira/examples/triage-issue/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/atlassian/jira/go"
+	triageissue "github.com/superdurable/dex-connectors-library/connectors/atlassian/jira/go/examples/triage-issue/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"

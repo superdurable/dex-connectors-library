@@ -5,7 +5,7 @@ package indexsearch
 
 import (
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/algolia"
+	"github.com/superdurable/dex-connectors-library/connectors/algolia/go"
 	"testing"
 )
 

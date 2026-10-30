@@ -6,7 +6,7 @@ package incidentreview
 
 import (
 	"errors"
-	"github.com/superdurable/dex-connectors-library/connectors/pagerduty"
+	"github.com/superdurable/dex-connectors-library/connectors/pagerduty/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

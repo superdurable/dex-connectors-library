@@ -17,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/bamboohr"
+	"github.com/superdurable/dex-connectors-library/connectors/bamboohr/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

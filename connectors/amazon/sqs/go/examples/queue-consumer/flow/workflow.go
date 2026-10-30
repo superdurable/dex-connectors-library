@@ -12,7 +12,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/amazon/sqs"
+	"github.com/superdurable/dex-connectors-library/connectors/amazon/sqs/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

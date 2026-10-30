@@ -7,7 +7,7 @@ package confluencemock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/atlassian/confluence"
+	"github.com/superdurable/dex-connectors-library/connectors/atlassian/confluence/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

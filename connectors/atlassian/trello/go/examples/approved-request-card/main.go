@@ -15,8 +15,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/atlassian/trello"
-	approvedrequestcard "github.com/superdurable/dex-connectors-library/connectors/atlassian/trello/examples/approved-request-card/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/atlassian/trello/go"
+	approvedrequestcard "github.com/superdurable/dex-connectors-library/connectors/atlassian/trello/go/examples/approved-request-card/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"

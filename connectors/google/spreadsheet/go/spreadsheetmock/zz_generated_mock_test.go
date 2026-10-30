@@ -7,7 +7,7 @@ package spreadsheetmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/google/spreadsheet"
+	"github.com/superdurable/dex-connectors-library/connectors/google/spreadsheet/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

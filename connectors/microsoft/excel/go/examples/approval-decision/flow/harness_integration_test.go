@@ -16,8 +16,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/microsoft/excel"
-	"github.com/superdurable/dex-connectors-library/connectors/microsoft/excel/internal/fakeexcel"
+	"github.com/superdurable/dex-connectors-library/connectors/microsoft/excel/go"
+	"github.com/superdurable/dex-connectors-library/connectors/microsoft/excel/go/internal/fakeexcel"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"

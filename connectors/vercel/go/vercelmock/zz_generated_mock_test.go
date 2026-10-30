@@ -7,7 +7,7 @@ package vercelmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/vercel"
+	"github.com/superdurable/dex-connectors-library/connectors/vercel/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

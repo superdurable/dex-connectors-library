@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/doist/todoist"
-	"github.com/superdurable/dex-connectors-library/connectors/doist/todoist/todoistmock"
+	"github.com/superdurable/dex-connectors-library/connectors/doist/todoist/go"
+	"github.com/superdurable/dex-connectors-library/connectors/doist/todoist/go/todoistmock"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
