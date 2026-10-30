@@ -297,13 +297,24 @@ class Receipt:
     Go's sdkgo.Receipt{} for a local or uncorrelated provider outcome.
     """
 
-    call_id: CallID = CallID("")
+    call_id: CallID = field(default=CallID(""), metadata={"dex_json_name": "callId"})
     provider: str = ""
-    observed_at: RFC3339NanoTimestamp | datetime = datetime.min.replace(tzinfo=UTC)
-    idempotency_key: IdempotencyKey = IdempotencyKey("")
-    provider_object_id: str = ""
-    provider_request_id: str = ""
-    metadata: dict[str, str] = field(default_factory=dict)
+    observed_at: RFC3339NanoTimestamp | datetime = field(
+        default=datetime.min.replace(tzinfo=UTC), metadata={"dex_json_name": "observedAt"}
+    )
+    idempotency_key: IdempotencyKey = field(
+        default=IdempotencyKey(""),
+        metadata={"dex_json_name": "idempotencyKey", "dex_json_omit_default": True},
+    )
+    provider_object_id: str = field(
+        default="", metadata={"dex_json_name": "providerObjectId", "dex_json_omit_default": True}
+    )
+    provider_request_id: str = field(
+        default="", metadata={"dex_json_name": "providerRequestId", "dex_json_omit_default": True}
+    )
+    metadata: dict[str, str] = field(
+        default_factory=dict, metadata={"dex_json_omit_default": True}
+    )
 
     def to_wire(self) -> dict[str, object]:
         """Encode Go's camel-case receipt and RFC 3339 timestamp."""
@@ -359,7 +370,7 @@ class QueryResult(Generic[T]):
     branch: str
     value: T
     receipt: Receipt
-    failure: Failure | None = None
+    failure: Failure | None = field(default=None, metadata={"dex_json_omit_default": True})
 
     def __post_init__(self) -> None:
         """Reject malformed Query routes before they enter Flow state."""
@@ -395,7 +406,7 @@ class MutationResult(Generic[T]):
     branch: str
     value: T
     receipt: Receipt
-    failure: Failure | None = None
+    failure: Failure | None = field(default=None, metadata={"dex_json_omit_default": True})
 
     def __post_init__(self) -> None:
         """Require failure context for an uncertain write route."""

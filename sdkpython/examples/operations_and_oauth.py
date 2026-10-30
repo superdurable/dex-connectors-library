@@ -5,6 +5,7 @@
 import asyncio
 from datetime import UTC, datetime, timedelta
 
+import dex
 import httpx
 
 from dex_connectors.sdk import (
@@ -17,9 +18,13 @@ from dex_connectors.sdk import (
     IdempotencyKey,
     MutationAttempt,
     MutationDefinition,
+    MutationResult,
+    MutationStep,
+    MutationStepConfig,
     OperationRef,
     Receipt,
     StaticCredentialProvider,
+    StepAnnotations,
     StepDefaults,
     resolve_credential,
     run_mutation,
@@ -72,6 +77,28 @@ class CreateExampleItem:
         )
 
 
+class CreatedItem(dex.Step[MutationResult[str]]):
+    """Consume the connector's typed happy-path result."""
+
+    async def execute(  # type: ignore[override]
+        self, context: dex.AsyncContext, input: MutationResult[str]
+    ) -> dex.StepDecision:
+        """Finish the example Flow after a definite provider outcome."""
+        return dex.graceful_complete()
+
+
+class CreateItemFlow(dex.Flow[str]):
+    """Register one operation-specific connector Step instance."""
+
+    def __init__(self, create: MutationStep[str, str, str], created: CreatedItem) -> None:
+        self.create = create
+        self.created = created
+
+    def get_steps(self) -> dex.StepList[str]:
+        """Start with the provider operation and then consume its result."""
+        return dex.StepList.start_step(self.create).other_steps(self.created)
+
+
 async def main() -> None:
     """Run the public APIs without a Dex Worker or real provider credentials."""
     call_id = CallID("5af8fafa-06ff-5b2d-bb13-04693809fabf")
@@ -83,6 +110,13 @@ async def main() -> None:
     result = await run_mutation(CreateExampleItem(), call, "item-1")
     assert result.branch == "created" and result.receipt.idempotency_key == str(call_id)
     assert decide_dispatch(call_id, 1, None).kind == DecisionKind.SEND_ALLOWED
+    created = CreatedItem()
+    create = MutationStep(MutationStepConfig(
+        "CreateItem", str, StepAnnotations("sample", "Sample", "Create one sample item."),
+        CreateExampleItem(), connection, lambda value: value,
+        {"created": created},
+    ))
+    dex.Registry([CreateItemFlow(create, created)], allow_async_handlers=True)
 
     def token_response(request: httpx.Request) -> httpx.Response:
         return httpx.Response(

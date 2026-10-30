@@ -4,13 +4,13 @@
 uses the PEP 420 `dex_connectors` namespace and imports as `dex_connectors.sdk`.
 Version `0.1.0` is unreleased. The package supplies the models, provider
 operation contracts, credential helpers, OAuth token exchanges, and
-single-dispatch checkpoint values below. Dex Step factories and the
-single-dispatch heartbeat fence require the upstream R1–R3 Dex SDK release.
+single-dispatch checkpoint values below. Query and Mutation Step factories
+use the released Dex SDK's instance-addressed async Steps.
 Dex Web FDG 2.0 connector metadata for Python requires upstream R4.
 
-Python 3.11 or newer and `dex-python-sdk>=1.26.0` are required. APIs are
-async-first where they perform I/O. The package has no Dex Worker dependency in
-its current execution path and never places credentials in Flow state.
+Python 3.11 or newer and `dex-python-sdk>=1.28.0` are required. APIs are
+async-first where they perform I/O. Connector Steps run in `AsyncWorker` and
+never place credentials in Flow state.
 
 Runnable examples are [`examples/core.py`](examples/core.py),
 [`examples/credentials_and_project.py`](examples/credentials_and_project.py),
@@ -85,6 +85,30 @@ From the same runnable example:
 ```python
 result = await run_mutation(CreateExampleItem(), call, "item-1")
 assert result.branch == "created" and result.receipt.idempotency_key == str(call_id)
+```
+
+## Connector Steps
+
+`QueryStep` and `MutationStep` are async Dex `Step` instances configured with
+their corresponding `QueryStepConfig` or `MutationStepConfig`. The instance's
+stable `step_type` and concrete `step_input_type` let Dex register multiple
+instances of one generic class. A required branch needs a target; an unwired
+optional branch fails the Flow with a bounded, secret-safe reason. `StepOptions`
+overrides may change Execute settings but cannot add WaitFor behavior. The
+factory maps a connector `RetryError` to Dex retry, truncating RetryAfter to
+whole seconds; retry exhaustion remains a failed Flow. A configured result
+Attribute is written before routing and belongs in the Flow persistence schema.
+
+From [the runnable operation example](examples/operations_and_oauth.py):
+
+```python
+created = CreatedItem()
+create = MutationStep(MutationStepConfig(
+    "CreateItem", str, StepAnnotations("sample", "Sample", "Create one sample item."),
+    CreateExampleItem(), connection, lambda value: value,
+    {"created": created},
+))
+dex.Registry([CreateItemFlow(create, created)], allow_async_handlers=True)
 ```
 
 ## OAuth token refresh
@@ -209,13 +233,13 @@ answers a Query with a declared branch.
 `connectormock.Query` and `connectormock.Mutation` wrap that script as real
 async operation implementations using the connector's actual definition.
 Their `invoke` requires the live `Call.context` so Flow-scoped scripts use
-Dex's Flow ID. Step factory integration tests will exercise them after R1–R3.
+Dex's Flow ID. Step factory integration tests will exercise them with Dex.
 
 ## Verification
 
 Run `uv sync`, `uv run pytest`, `uv run mypy --strict src tests examples`, and
 `uv run ruff check src tests examples`. Real Dex Worker integration for Step
-factories and the heartbeat fence waits for the upstream R1–R3 release.
+factories and the heartbeat fence is still in progress.
 
 The provider address-policy client and SSE reader are outside this release.
 
@@ -224,6 +248,6 @@ The provider address-policy client and SSE reader are outside this release.
 First Python release of the provider-neutral Connector SDK: Go-compatible
 identities, failures, results, retry defaults, project configuration,
 credential resolution, provider HTTP, connector mocks, async operation
-contracts, OAuth token exchange, and single-dispatch checkpoint values.
-Dex Step registration, live Flow verification, and Python FDG metadata remain
-pending the upstream Dex SDK and CLI releases described above.
+contracts, OAuth token exchange, Query and Mutation Step registration, and
+single-dispatch checkpoint values. Live Flow verification and Python FDG
+metadata are in progress.

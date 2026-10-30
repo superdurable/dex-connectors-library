@@ -24,6 +24,7 @@ from .credentials import (
 from .errors import Failure, FailureKind, RetryError
 from .operations import Mutation, Query, run_mutation, run_query
 from .retry_policy import RetryPolicy, default_connector_step_execute_retry_policy
+from .steps import MutationStep, MutationStepConfig, QueryStep, QueryStepConfig, StepAnnotations
 from .timestamps import RFC3339NanoTimestamp, format_rfc3339_nano
 from .types import (
     BranchDefinition,
@@ -63,14 +64,19 @@ __all__ = [
     "Mutation",
     "MutationDefinition",
     "MutationResult",
+    "MutationStep",
+    "MutationStepConfig",
     "OperationRef",
     "QueryAttempt",
     "Query",
     "QueryDefinition",
     "QueryResult",
+    "QueryStep",
+    "QueryStepConfig",
     "RFC3339NanoTimestamp",
     "Receipt",
     "StepDefaults",
+    "StepAnnotations",
     "ReauthorizationRequiredError",
     "RejectedCredentialRefreshingProvider",
     "RefreshingCredentialProvider",
