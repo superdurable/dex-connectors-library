@@ -159,7 +159,7 @@ func (store *ConfigurationStore) createSecretObject(ctx context.Context, name, v
 	if err != nil {
 		return ApplicationSecretRef{}, err
 	}
-	key := prefix + "/app-secrets/" + name + "/" + hex.EncodeToString(identifier)
+	key := applicationSecretPath(prefix, name, hex.EncodeToString(identifier))
 	contents, err := json.Marshal(applicationSecret{Scope: store.scope, Name: name, Value: value})
 	if err != nil {
 		return ApplicationSecretRef{}, errors.New("application secret encoding failed")
@@ -300,6 +300,15 @@ type applicationSecret struct {
 func validEnvironmentValue(value string) bool {
 	return len(value) <= 32768 && utf8.ValidString(value) && !strings.ContainsRune(value, '\x00')
 }
+
+func applicationSecretPrefix(prefix, name string) string {
+	return prefix + "/app-secrets/" + name + "/"
+}
+
+func applicationSecretPath(prefix, name, identifier string) string {
+	return applicationSecretPrefix(prefix, name) + identifier
+}
+
 func validateEnvironmentReferences(configuration Configuration) error {
 	if len(configuration.Environment) > 128 {
 		return errors.New("application environment exceeds field limit")
@@ -319,7 +328,7 @@ func validateEnvironmentReferences(configuration Configuration) error {
 			continue
 		}
 		reference := entry.SecretRef
-		secretPrefix := prefix + "/app-secrets/" + name + "/"
+		secretPrefix := applicationSecretPrefix(prefix, name)
 		if !strings.HasPrefix(reference.Key, secretPrefix) || !applicationSecretID.MatchString(strings.TrimPrefix(reference.Key, secretPrefix)) || reference.Version == "" || reference.Version == "null" || strings.ContainsAny(reference.Version, "\x00\r\n") || !applicationSecretDigest.MatchString(reference.Digest) {
 			return errors.New("application secret reference differs from scope")
 		}

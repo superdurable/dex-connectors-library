@@ -1,0 +1,37 @@
+{
+  "callIDNamespace": "63281a42-70ad-5bc3-a289-728819af723f",
+  "derivedCall": {
+    "id": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+    "idempotencyKey": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+    "connection": {
+      "provider": "sample",
+      "name": "main"
+    },
+    "operation": {
+      "connectorId": "sample",
+      "operationId": "createItem"
+    }
+  },
+  "differentOperationCallId": "3eecb553-1a08-5d1d-ba0e-82079db12260",
+  "differentStepCallId": "e18c5cc6-9bd8-56c4-8557-f0cd415e65d4",
+  "fallbackCompletedReceipt": {
+    "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+    "idempotencyKey": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+    "provider": "sample",
+    "observedAt": "2026-10-29T12:30:45.123Z"
+  },
+  "providerKey": "sample/5af8fafa-06ff-5b2d-bb13-04693809fabf",
+  "source": {
+    "connectorId": "sample",
+    "flowId": "flow-42",
+    "operationId": "createItem",
+    "stepExecutionId": "step-execution-7"
+  },
+  "unicodeDerivedCallId": "479cd837-d9ef-5d80-b4a1-af7a1eaf300c",
+  "unicodeSource": {
+    "connectorId": "sample",
+    "flowId": "flow-é-流程",
+    "operationId": "createItem",
+    "stepExecutionId": "step-😀"
+  }
+}

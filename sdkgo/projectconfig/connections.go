@@ -194,7 +194,7 @@ func (store *ConnectionStore) ReplaceCredential(ctx context.Context, key Connect
 	if err != nil {
 		return Connection{}, errors.New("credential encoding failed")
 	}
-	ref, err := store.createImmutable(ctx, path+"/credentials/"+digestBytes(contents), contents)
+	ref, err := store.createImmutable(ctx, credentialObjectPath(path, digestBytes(contents)), contents)
 	if err != nil {
 		return record.Connection, err
 	}
@@ -229,7 +229,7 @@ func (store *ConnectionStore) readRecord(ctx context.Context, key ConnectionKey)
 	if err != nil {
 		return connectionRecord{}, Object{}, err
 	}
-	object, err := store.objects.ReadObject(ctx, path+"/head", "")
+	object, err := store.objects.ReadObject(ctx, connectionHeadPath(path), "")
 	if err != nil {
 		return connectionRecord{}, Object{}, err
 	}
@@ -254,7 +254,7 @@ func (store *ConnectionStore) readRecord(ctx context.Context, key ConnectionKey)
 		return connectionRecord{}, Object{}, errors.New("project credential status is invalid")
 	}
 	if record.Status == CredentialRefreshing || record.Status == CredentialAuthorizing {
-		if record.Mutation == nil || !scopeIdentity.MatchString(record.Mutation.ID) || record.Mutation.InvocationID == "" || record.Mutation.Kind != string(record.Status) || record.Mutation.Fence != record.Fence || record.Mutation.BaseRevision+1 != record.Revision || record.Mutation.Deadline.IsZero() || record.Mutation.ResultKey != path+"/exchange-results/"+record.Mutation.ID {
+		if record.Mutation == nil || !scopeIdentity.MatchString(record.Mutation.ID) || record.Mutation.InvocationID == "" || record.Mutation.Kind != string(record.Status) || record.Mutation.Fence != record.Fence || record.Mutation.BaseRevision+1 != record.Revision || record.Mutation.Deadline.IsZero() || record.Mutation.ResultKey != exchangeResultPath(path, record.Mutation.ID) {
 			return connectionRecord{}, Object{}, errors.New("credential refresh admission is invalid")
 		}
 	} else if record.Mutation != nil {
@@ -274,12 +274,12 @@ func (store *ConnectionStore) writeRecord(ctx context.Context, record connection
 	}
 	var result Object
 	if etag == "" {
-		result, err = store.objects.CreateObject(ctx, path+"/head", contents)
+		result, err = store.objects.CreateObject(ctx, connectionHeadPath(path), contents)
 	} else {
-		result, err = store.objects.CompareAndSwapObject(ctx, path+"/head", etag, contents)
+		result, err = store.objects.CompareAndSwapObject(ctx, connectionHeadPath(path), etag, contents)
 	}
 	if errors.Is(err, ErrOutcomeUnknown) {
-		observed, readErr := store.objects.ReadObject(ctx, path+"/head", "")
+		observed, readErr := store.objects.ReadObject(ctx, connectionHeadPath(path), "")
 		if readErr == nil && bytes.Equal(observed.Contents, contents) {
 			return observed, nil
 		}
@@ -328,6 +328,16 @@ func (store *ConnectionStore) connectionPath(key ConnectionKey) (string, error) 
 		return "", errors.New("invalid project connection key")
 	}
 	return store.prefix + "/connections/" + key.ConnectorID + "/" + base64.RawURLEncoding.EncodeToString([]byte(key.ConnectionName)), nil
+}
+
+func connectionHeadPath(connectionPath string) string { return connectionPath + "/head" }
+
+func credentialObjectPath(connectionPath, digest string) string {
+	return connectionPath + "/credentials/" + digest
+}
+
+func exchangeResultPath(connectionPath, attemptID string) string {
+	return connectionPath + "/exchange-results/" + attemptID
 }
 
 func regexpConnectorID(value string) bool {

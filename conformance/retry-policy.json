@@ -1,0 +1,7 @@
+{
+  "InitialInterval": 1000000000,
+  "BackoffCoefficient": 2,
+  "MaximumInterval": 300000000000,
+  "MaximumAttempts": 0,
+  "TotalDuration": 3600000000000
+}

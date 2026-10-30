@@ -1,0 +1,20 @@
+{
+  "credentialBrokerSecretName": "DEX_CREDENTIAL_BROKER_TOKEN",
+  "hosted": {
+    "DEX_PROJECT_CONFIG_DIGEST": "sha256:cf7d924b5c73c48446e073f52847b38a5da37a35c013ed9883a2983bbea06c58",
+    "DEX_PROJECT_CONFIG_KEY": "projects/sample-project/preview/configuration/head",
+    "DEX_PROJECT_CONFIG_VERSION": "1",
+    "DEX_PROJECT_ID": "sample-project",
+    "DEX_PROJECT_SCOPE": "preview",
+    "DEX_PROJECT_STORAGE_BUCKET": "example-bucket",
+    "DEX_PROJECT_STORAGE_KMS_KEY_ARN": "arn:aws:kms:us-west-2:123456789012:key/example-key",
+    "DEX_PROJECT_STORAGE_PREFIX": "fixtures/"
+  },
+  "localDexWeb": {
+    "DEX_CONNECTOR_CONFIG_FILE": "./connections.json"
+  },
+  "localObjectStoreOverrides": {
+    "DEX_PROJECT_ALLOW_LOCAL_STORAGE": "true",
+    "DEX_PROJECT_STORAGE_ENDPOINT": "http://127.0.0.1:9000"
+  }
+}

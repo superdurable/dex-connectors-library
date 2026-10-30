@@ -180,7 +180,7 @@ func (store *ConnectionStore) beginExchange(ctx context.Context, key ConnectionK
 	if err != nil {
 		return ExchangeAdmission{}, err
 	}
-	record.Mutation = &credentialMutation{Kind: string(status), InvocationID: invocationID, ID: attemptID, Fence: record.Fence + 1, BaseRevision: record.Revision, Deadline: deadline, ResultKey: path + "/exchange-results/" + attemptID}
+	record.Mutation = &credentialMutation{Kind: string(status), InvocationID: invocationID, ID: attemptID, Fence: record.Fence + 1, BaseRevision: record.Revision, Deadline: deadline, ResultKey: exchangeResultPath(path, attemptID)}
 	record.Revision++
 	record.Fence++
 	record.Status = status
@@ -240,7 +240,7 @@ func (store *ConnectionStore) isCompletedExchange(ctx context.Context, record co
 	if err != nil {
 		return false, err
 	}
-	if record.Credential.Key != path+"/exchange-results/"+attemptID {
+	if record.Credential.Key != exchangeResultPath(path, attemptID) {
 		return false, nil
 	}
 	object, err := store.objects.ReadObject(ctx, record.Credential.Key, record.Credential.Version)

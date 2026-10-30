@@ -1,0 +1,87 @@
+{
+  "schemaVersion": "connectors.dex.dev/local-connections/v1alpha1",
+  "connections": [
+    {
+      "connectorId": "sample",
+      "authMethodId": "apiKey",
+      "authMethodIds": [
+        "apiKey"
+      ],
+      "modulePath": "github.com/superdurable/dex-connectors-library/connectors/sample",
+      "provider": "sample",
+      "connectionName": "api",
+      "configuration": {
+        "region": "west"
+      },
+      "credentials": {
+        "apiKey": "REDACTED_API_KEY"
+      },
+      "credentialExpiresAt": null
+    },
+    {
+      "connectorId": "sample",
+      "authMethodId": "oauth2",
+      "authMethodIds": [
+        "oauth2",
+        "apiKey"
+      ],
+      "modulePath": "github.com/superdurable/dex-connectors-library/connectors/sample",
+      "provider": "sample",
+      "connectionName": "oauth",
+      "configuration": {
+        "workspace": "example"
+      },
+      "credentials": {
+        "accessToken": "REDACTED_ACCESS_TOKEN",
+        "refreshToken": "REDACTED_REFRESH_TOKEN"
+      },
+      "credentialExpiresAt": "2026-10-29T12:30:45.123456789+08:00"
+    },
+    {
+      "connectorId": "sample",
+      "authMethodId": "multipleSecrets",
+      "authMethodIds": [
+        "multipleSecrets"
+      ],
+      "modulePath": "github.com/superdurable/dex-connectors-library/connectors/sample",
+      "provider": "sample",
+      "connectionName": "multi",
+      "configuration": {},
+      "credentials": {
+        "clientId": "REDACTED_CLIENT_ID",
+        "clientSecret": "REDACTED_CLIENT_SECRET",
+        "signingSecret": "REDACTED_SIGNING_SECRET"
+      },
+      "credentialExpiresAt": null
+    },
+    {
+      "connectorId": "sample",
+      "authMethodId": "apiKey",
+      "authMethodIds": [],
+      "modulePath": "github.com/superdurable/dex-connectors-library/connectors/sample",
+      "provider": "sample",
+      "connectionName": "élément \u003c\u0026\u003e 😀",
+      "configuration": {
+        "label": "ligne\u2028nouvelle"
+      },
+      "credentials": {
+        "apiKey": "REDACTED_UNICODE_KEY"
+      },
+      "credentialExpiresAt": null
+    },
+    {
+      "connectorId": "sample",
+      "authMethodId": "apiKey",
+      "authMethodIds": null,
+      "modulePath": "github.com/superdurable/dex-connectors-library/connectors/sample",
+      "provider": "sample",
+      "connectionName": "null-methods",
+      "configuration": {},
+      "credentials": {
+        "apiKey": "REDACTED_NULL_METHODS_KEY"
+      },
+      "credentialExpiresAt": null
+    }
+  ],
+  "triggerBindings": []
+}
