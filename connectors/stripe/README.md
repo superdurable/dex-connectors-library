@@ -1,5 +1,7 @@
 # Stripe Connector
 
+The Python package is documented in [python/README.md](python/README.md).
+
 This module creates and reconciles Stripe-hosted Checkout Sessions that accept
 card or US bank account (ACH Direct Debit) payments. It also receives signed Checkout
 Session webhooks through one shared HTTP endpoint.
