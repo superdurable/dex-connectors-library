@@ -152,7 +152,10 @@ describe('project credential refresh', () => {
     const store = await seededStore(objects, future());
     const { record, object } = await store.readRecord(key);
     const mutation = { kind: 'REFRESHING', invocationId: 'invocation-1', id: 'refresh-1', fence: record.fence + 1, baseRevision: record.revision, deadline: expired().toISOString(), resultKey: `${connectionPath(scope, key)}/exchange-results/refresh-1` };
-    const refreshing = connectionRecord(scope, key, record.revision + 1, record.fence + 1, 'REFRESHING', future(), record.authMethod, record.credential, mutation);
+    // A refresh admission retains the referenced credential's expiry until a replacement is published.
+    const retainedExpiry = record.expiresAt ? new Date(record.expiresAt) : undefined;
+    const refreshing = connectionRecord(scope, key, record.revision + 1, record.fence + 1, 'REFRESHING', retainedExpiry, record.authMethod, record.credential, mutation);
+    expect(Date.parse(refreshing.expiresAt!)).toBe(Date.parse(record.expiresAt!));
     await store.writeHead(key, object, refreshing);
     shouldSynchronizeRecovery = true;
     const neverRefresh = { ...driver(async () => { throw new Error('must not dispatch'); }), refreshRequired: () => false };
