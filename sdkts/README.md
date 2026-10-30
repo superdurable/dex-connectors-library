@@ -1,6 +1,6 @@
 # Connector TypeScript SDK
 
-`@superdurable/connectors-sdk` is the provider-neutral TypeScript SDK for Dex connectors. Phase 1a provides stable value contracts, credential interfaces, HTTP safety helpers, project configuration loading, and mock fixture data. It does not define Dex Steps or Trigger runners yet. The package is unreleased at version `0.1.0` and requires Node 20 or later.
+`@superdurable/connectors-sdk` is the provider-neutral TypeScript SDK for Dex connectors. It provides stable value contracts, typed Query and Mutation operations, credential refresh, OAuth token exchanges, HTTP safety helpers, project configuration loading, scripted mocks, and single-dispatch marker decisions. Dex Step factories and the live single-dispatch fence are being completed against the Dex SDK's public Context deadline and instance-addressed Step APIs. The package is at version `0.1.0` and requires Node 22 or 24.
 
 Install dependencies and verify the package from this directory:
 
@@ -8,12 +8,35 @@ Install dependencies and verify the package from this directory:
 npm ci
 npm run check
 node examples/core.mjs
+node examples/operations.mjs
 node examples/providerhttp.mjs
 node examples/projectconfig.mjs
 node examples/connectormock.mjs
+node examples/oauthtoken.mjs
+node examples/singledispatch.mjs
 ```
 
 All durations in this package are milliseconds. Public JSON shapes use the Go SDK's field names. Credential values and project objects stay outside Flow state and cannot be serialized through their wrappers.
+
+## Typed operations and credential resolution
+
+The [runnable operation example](examples/operations.mjs) validates a Query definition, binds a live Step context to stable call identity, resolves credentials at invocation time, and completes a Go-compatible zero receipt. `Mutation` adds an idempotency-key method and may return `newMutationUncertain` only for a dispatched write that cannot be repeated or confirmed by read-back. `runQuery` and `runMutation` throw `RetryError` for a safe retry; a Step factory turns that into Dex retry behavior. The example uses a test context; application Steps receive `AsyncContext` from Dex.
+
+```js
+import { createCall, newQueryBranch, runQuery, StaticCredentialProvider, validateQueryDefinition, zeroReceipt } from '../dist/index.js';
+
+const definition = {
+  operation: { connectorId: 'sample', operationId: 'getItem' },
+  branches: [{ id: 'found', description: 'Item was found' }, { id: 'defect', description: 'Connector defect', optional: true }],
+  stepDefaults: {},
+};
+validateQueryDefinition(definition);
+const context = { flowId: 'example-flow', stepExecutionId: 'getItem:1', attempt: 1 }; // Test context; a real Step receives Dex AsyncContext.
+const call = createCall(context, { provider: 'sample', name: 'default' }, definition.operation);
+const credentials = new StaticCredentialProvider([[call.connection, { apiKey: 'test-only' }]]);
+```
+
+`Call.context` is the live Dex `AsyncContext` object attached as a non-enumerable field by `createCall`; do not put it in Flow input or persisted state. Hosts with coordinated refresh implement `RefreshingCredentialProvider` and optionally `RejectedCredentialRefreshingProvider`. `resolveCredential` selects refresh support when present; `resolveCredentialAfterRejection` forces one coordinated refresh after an explicit authentication rejection.
 
 ## Core contracts, errors, and credentials
 
@@ -33,6 +56,7 @@ if (result.kind !== 'branch' || retryPolicy.totalDurationMs !== 3600000 || crede
 ## Provider HTTP
 
 The [complete runnable HTTP example](examples/providerhttp.mjs) sends one bounded request to a local server. `sendProviderRequest` resolves every address before connecting, pins the chosen address, and returns redirects without following them. `ProviderTransportError.isProvablyNotSent` is true only when no socket was assigned. A failure after socket assignment has an unknown dispatch outcome.
+`BodyTooLargeError` preserves the response `status` and `headers`, so a caller can classify a 429 or 503 and its `Retry-After` even when the response body exceeds its limit.
 
 ```js
 import { createServer } from 'node:http';
@@ -83,13 +107,64 @@ try {
 
 ## Connector mocks
 
-The [complete runnable mock example](examples/connectormock.mjs) validates a JSON fixture before building a scripted branch. `retryCase` and `uncertainCase` model the other provider outcomes; `decodeCallReport` reads the Go-compatible test harness report.
+The [complete runnable mock example](examples/connectormock.mjs) validates a JSON fixture, builds a scripted mutation from the real operation definition, and invokes it through the same result validator as a provider operation. `retryCase` and `uncertainCase` model the other provider outcomes; `decodeCallReport` reads the Go-compatible test harness report. Scripts support `respond`, `when`, `default`, `strict`, and `forFlow`. Mutation terminal outcomes replay by stable idempotency key; retries consume the next case. After a real Dex Flow completes, call `assertNoFailures()` to surface unscripted calls or invalid cases.
 
 ```js
 import { z } from 'zod';
-import { branchCase, decodeOutput } from '../dist/connectormock/index.js';
+import { branchCase, decodeOutput, newMutation } from '../dist/connectormock/index.js';
+import { createCall, runMutation } from '../dist/index.js';
 
 const output = decodeOutput('{"id":"item-1"}', z.strictObject({ id: z.string() }));
 const response = branchCase('created', output);
 if (response.kind !== 'branch' || response.value.id !== 'item-1') throw new Error('mock example failed');
+
+const definition = { operation: { connectorId: 'sample', operationId: 'createItem' }, branches: [{ id: 'created', description: 'Created' }, { id: 'defect', description: 'Connector defect', optional: true }], stepDefaults: {} };
+const mutation = newMutation(definition).respond(branchCase('created', output));
+const context = { flowId: 'example-flow', stepExecutionId: 'createItem:1', attempt: 1 }; // Test context; a real Step receives Dex AsyncContext.
+const call = createCall(context, { provider: 'sample', name: 'default' }, definition.operation);
+const result = await runMutation(mutation, call, { id: 'item-1' });
+if (result.branch !== 'created' || mutation.calls().length !== 1) throw new Error('scripted mock example failed');
+mutation.assertNoFailures();
 ```
+
+## OAuth token refresh
+
+The [runnable OAuth exchange example](examples/oauthtoken.mjs) shows a provider-neutral refresh-token grant. The injected `fetch` returns a local fixture; a connector normally uses the provider's fixed HTTPS token endpoint. `TokenEndpoint` also supports client-credentials and JWT-bearer grants, optional Basic authentication, declared response fields, bounded responses, and terminal OAuth error-code classification. A connector-specific `CredentialRefreshDriver` owns the credential shape; the host owns serialized persistence and must keep an old refresh token when the provider omits a replacement.
+
+```js
+import { SecretString } from '../dist/index.js';
+import { TokenEndpoint, isRefreshRequiredWithIssueTime } from '../dist/oauthtoken/index.js';
+
+const endpoint = new TokenEndpoint({
+  providerName: 'Example', url: 'https://auth.example.test/token',
+  terminalErrorCodes: ['invalid_grant'],
+  fetch: async () => Response.json({ access_token: 'new-access', expires_in: 3600, token_type: 'Bearer' }),
+});
+const token = await endpoint.exchangeRefreshToken(
+  { id: 'app-id', secret: new SecretString('test-client-secret'), authenticationMethod: 'client_secret_post' },
+  new SecretString('test-refresh-token'),
+);
+const issuedAt = new Date();
+const expiresAt = new Date(issuedAt.getTime() + token.expiresInMs);
+if (isRefreshRequiredWithIssueTime(true, issuedAt, expiresAt, issuedAt, 'refresh')) throw new Error('fresh token was counted as expired');
+if (token.nextRefreshToken(new SecretString('test-refresh-token')).reveal() !== 'test-refresh-token') throw new Error('refresh token was lost');
+```
+
+## Single-dispatch markers
+
+The [runnable marker example](examples/singledispatch.mjs) demonstrates the Go-compatible heartbeat checkpoint decision. A claimed write requires read-back before another attempt can send. The live fence will use the Dex Step deadline, heartbeat APIs, and the same marker format.
+
+```js
+import { decideDispatch } from '../dist/singledispatch/index.js';
+
+const callId = '5af8fafa-06ff-5b2d-bb13-04693809fabf';
+const first = decideDispatch(callId, 1, undefined);
+const later = decideDispatch(callId, 2, { callId, attempt: 1, state: 'claimed' });
+if (first.kind !== 'sendAllowed' || later.kind !== 'readBackRequired') throw new Error('single-dispatch decision example failed');
+```
+
+## Release notes
+
+### 0.1.0
+
+First public TypeScript Connector SDK release: Go-compatible contracts and conformance fixtures, safe provider HTTP, project configuration, typed operation and credential interfaces, OAuth exchanges, scripted mocks, and single-dispatch markers. Dex Step factories and the live fence require the upcoming public Dex Context deadline and instance-addressed Step APIs; no live provider authorization has been tested.

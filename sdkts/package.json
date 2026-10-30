@@ -4,7 +4,11 @@
   "description": "Provider-neutral TypeScript contracts for Dex connectors",
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": "^22.0.0 || ^24.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
   },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -77,6 +81,7 @@
     "LICENSE"
   ],
   "scripts": {
+    "prepack": "npm run build",
     "build": "tsup src/index.ts src/providerhttp/index.ts src/projectconfig/index.ts src/connectormock/index.ts src/oauthtoken/index.ts src/singledispatch/index.ts --format esm,cjs --dts --clean",
     "typecheck": "tsc --noEmit",
     "typecheck:cjs": "tsc --noEmit --strict --skipLibCheck --module Node16 --moduleResolution Node16 --target ES2022 test/cjs-smoke.cts",
