@@ -6,6 +6,7 @@ import { runMutation, SecretString, type Call, type MutationAttempt, type QueryA
 import { BodyTooLargeError, ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { StripeClient } from '../src/client.js';
 import type { CheckoutSession, CreateACHCheckoutSessionInput, Refund, PaymentIntent } from '../src/models.js';
+import { noProgress } from './call.js';
 
 const stableCallId = '11111111-1111-5111-8111-111111111111';
 const checkoutInput: CreateACHCheckoutSessionInput = {
@@ -18,6 +19,7 @@ const refundBody = { id: 're_123', object: 'refund', status: 'pending', amount: 
 
 function call(operationId: string, keyed = false): Call {
   return {
+    ...noProgress,
     context: { flowId: 'test-flow', cancellationSignal: new AbortController().signal } as Call['context'],
     id: stableCallId, ...(keyed ? { idempotencyKey: stableCallId } : {}),
     connection: { provider: 'stripe', name: 'stripe-payments' }, operation: { connectorId: 'stripe', operationId },

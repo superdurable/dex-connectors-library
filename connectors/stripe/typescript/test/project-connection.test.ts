@@ -5,8 +5,10 @@ import { describe, expect, it } from 'vitest';
 import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
 import type { Call } from '@superdurable/connectors-sdk';
 import { newProjectStripeConnection } from '../src/connection.js';
+import { noProgress } from './call.js';
 
 const call: Call = {
+  ...noProgress,
   id: '11111111-1111-5111-8111-111111111111',
   context: { flowId: 'test-flow', cancellationSignal: new AbortController().signal } as Call['context'],
   connection: { provider: 'stripe', name: 'stripe-payments' },

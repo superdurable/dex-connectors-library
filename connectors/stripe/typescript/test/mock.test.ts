@@ -4,9 +4,11 @@
 import { describe, expect, it } from 'vitest';
 import type { Call } from '@superdurable/connectors-sdk';
 import { newStripeMock, createRefundAlreadyRefunded, createRefundUnconfirmedRefund, createRefundRetry } from '../src/mock.js';
+import { noProgress } from './call.js';
 
 function call(operationId: string, callId: string, flowId: string): Call {
   return {
+    ...noProgress,
     context: { flowId } as Call['context'], id: callId, idempotencyKey: callId,
     connection: { provider: 'stripe', name: 'stripe-payments' }, operation: { connectorId: 'stripe', operationId },
   };

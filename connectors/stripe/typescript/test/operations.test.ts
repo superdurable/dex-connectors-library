@@ -6,6 +6,7 @@ import { SecretString, type Call } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { StripeClient, type StripeRequestSender } from '../src/client.js';
 import type { CreateACHCheckoutSessionInput, CreateRefundInput, Credentials } from '../src/models.js';
+import { noProgress } from './call.js';
 
 const callId = '11111111-1111-5111-8111-111111111111';
 const checkoutInput: CreateACHCheckoutSessionInput = {
@@ -19,7 +20,7 @@ const intentResponse = { object: 'payment_intent', id: 'pi_123', amount: 7500, c
 const refundResponse = { object: 'refund', id: 're_123', status: 'succeeded', amount: 2500, currency: 'usd' };
 
 function call(operationId: string, keyed = false): Call {
-  return { id: callId, context: { flowId: 'test-flow' } as Call['context'], connection: { provider: 'stripe', name: 'stripe-payments' }, operation: { connectorId: 'stripe', operationId }, ...(keyed ? { idempotencyKey: callId } : {}) };
+  return { ...noProgress, id: callId, context: { flowId: 'test-flow' } as Call['context'], connection: { provider: 'stripe', name: 'stripe-payments' }, operation: { connectorId: 'stripe', operationId }, ...(keyed ? { idempotencyKey: callId } : {}) };
 }
 
 function response(status: number, body: unknown = {}, headers: Record<string, string> = {}): ProviderResponse {

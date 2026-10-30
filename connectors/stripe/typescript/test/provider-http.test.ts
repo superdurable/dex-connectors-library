@@ -6,6 +6,7 @@ import { once } from 'node:events';
 import { afterEach, expect, it } from 'vitest';
 import { SecretString, type Call } from '@superdurable/connectors-sdk';
 import { StripeClient } from '../src/client.js';
+import { noProgress } from './call.js';
 
 const servers: Array<ReturnType<typeof createServer>> = [];
 afterEach(async () => { for (const server of servers.splice(0)) { server.close(); await once(server, 'close'); } });
@@ -23,6 +24,7 @@ async function localClient(handle: (request: IncomingMessage, response: ServerRe
 }
 
 const call: Call = {
+  ...noProgress,
   id: '11111111-1111-5111-8111-111111111111', idempotencyKey: '11111111-1111-5111-8111-111111111111',
   context: { flowId: 'test-flow', cancellationSignal: new AbortController().signal } as Call['context'],
   connection: { provider: 'stripe', name: 'stripe-payments' },
