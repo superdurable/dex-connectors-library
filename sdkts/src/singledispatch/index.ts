@@ -36,3 +36,5 @@ export function decideDispatch(callId: CallID, attempt: number, lastHeartbeat: u
   if (marker.attempt === attempt - 1 && (marker.state === 'notSent' || marker.state === 'canResend') && !marker.providerId) return { kind: 'sendAllowed', marker };
   return { kind: 'readBackRequired', marker };
 }
+
+export * from './fence.js';

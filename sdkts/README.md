@@ -17,6 +17,7 @@ node examples/shared_project.mjs
 node examples/connectormock.mjs
 node examples/oauthtoken.mjs
 node examples/singledispatch.mjs
+node examples/fence.mjs
 ```
 
 All durations in this package are milliseconds. Public JSON shapes use the Go SDK's field names. Credential values and project objects stay outside Flow state and cannot be serialized through their wrappers.
@@ -211,7 +212,7 @@ if (token.nextRefreshToken(new SecretString('test-refresh-token')).reveal() !== 
 
 ## Single-dispatch markers
 
-The [runnable marker example](examples/singledispatch.mjs) demonstrates the Go-compatible heartbeat checkpoint decision. A claimed write requires read-back before another attempt can send. The live fence will use the Dex Step deadline, heartbeat APIs, and the same marker format.
+The [runnable marker example](examples/singledispatch.mjs) demonstrates the Go-compatible heartbeat checkpoint decision. The [runnable fence example](examples/fence.mjs) records a claim before one provider write, repeats it every five seconds while the write runs, and checkpoints an accepted provider ID for read-back. Construct one `Fence` per sync-durable Mutation Step attempt, call `decide()` before credentials or provider lookups, and use `recordNotSent()` for a pre-send Retry. `dispatch()` passes an `AbortSignal` bounded by the smaller of the Execute timeout and public `Context.deadline`, preserving time for outcome classification. Use `recordCanResend()` only after positive evidence the provider did not process a request. A failed claim checkpoint prevents the send; an unconfirmed claim on a later attempt permits read-back only.
 
 ```js
 import { decideDispatch } from '../dist/singledispatch/index.js';
@@ -222,8 +223,20 @@ const later = decideDispatch(callId, 2, { callId, attempt: 1, state: 'claimed' }
 if (first.kind !== 'sendAllowed' || later.kind !== 'readBackRequired') throw new Error('single-dispatch decision example failed');
 ```
 
+```js
+import { newFence } from '../dist/singledispatch/index.js';
+
+const fence = newFence(call, 10_000);
+if (fence.decide().kind !== 'sendAllowed') throw new Error('write was unexpectedly fenced');
+const result = await fence.dispatch(async signal => {
+  if (signal.aborted || checkpoints.at(-1)?.state !== 'claimed') throw new Error('claim was not recorded before dispatch');
+  return { providerId: 'item-1' };
+});
+await fence.recordProviderId(result.providerId);
+```
+
 ## Release notes
 
 ### 0.1.0
 
-First public TypeScript Connector SDK release: Go-compatible contracts and conformance fixtures, safe provider HTTP, project configuration with durable credential refresh and guarded local writeback, typed operations and Dex Step factories, OAuth exchanges, scripted mocks, and single-dispatch markers. The live single-dispatch fence is being completed against Dex 1.28.0; no live provider authorization has been tested.
+First public TypeScript Connector SDK release: Go-compatible contracts and conformance fixtures, safe provider HTTP, project configuration with durable credential refresh and guarded local writeback, typed operations and Dex Step factories, OAuth exchanges, scripted mocks, and the live single-dispatch fence. No live provider authorization has been tested.
