@@ -26,17 +26,18 @@
   },
   "files": [
     "dist",
+    "dex-connector.json",
     "README.md"
   ],
   "scripts": {
     "build": "tsup src/index.ts src/mock.ts --format esm --dts --clean",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src test examples",
-    "test": "vitest run --exclude 'test/integration/**'",
-    "test:integration": "vitest run test/integration/*.integration.test.ts",
-    "example:card-checkout": "tsx examples/create-card-checkout-session/main.ts",
-    "example:card-checkout:start": "tsx examples/create-card-checkout-session/start.ts",
-    "check": "npm run typecheck && npm run lint && npm test && npm run build"
+    "test": "npm run build && vitest run --exclude 'test/integration/**'",
+    "test:integration": "npm run build && vitest run test/integration/*.integration.test.ts",
+    "example:card-checkout": "npm run build && tsx examples/create-card-checkout-session/main.ts",
+    "example:card-checkout:start": "npm run build && tsx examples/create-card-checkout-session/start.ts",
+    "check": "npm test && npm run typecheck && npm run lint"
   },
   "dependencies": {
     "@superdurable/connectors-sdk": "file:../../../sdkts",

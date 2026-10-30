@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { loadFromEnvironment } from '@superdurable/connectors-sdk/projectconfig';
-import { newProjectStripeConnection } from '../../src/connection.js';
+import { newProjectStripeConnection } from '@superdurable/connector-stripe';
 import { CardCheckoutFlow, ConnectionName } from './flow/workflow.js';
 import { runCardCheckoutWorker } from './worker-runtime.js';
 

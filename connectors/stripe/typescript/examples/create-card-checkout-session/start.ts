@@ -7,8 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Client, Registry, openBlobCache, type BlobCache } from '@superdurable/dex';
 import { loadFromEnvironment } from '@superdurable/connectors-sdk/projectconfig';
-import { newProjectStripeConnection } from '../../src/connection.js';
-import { CreateCheckoutSessionInputSchema, type CheckoutSession } from '../../src/models.js';
+import { newProjectStripeConnection, CreateCheckoutSessionInputSchema, type CheckoutSession } from '@superdurable/connector-stripe';
 import { CardCheckoutFlow, ConnectionName, type CardCheckoutInput } from './flow/workflow.js';
 
 async function startCardCheckout(): Promise<void> {

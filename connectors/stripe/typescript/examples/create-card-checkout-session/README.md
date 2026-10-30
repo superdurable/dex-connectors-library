@@ -25,3 +25,14 @@ npm run test:integration
 ```
 
 The test verifies the same idempotency key across a lost response and Stripe's key-in-use conflict, one provider object, successful completion, and failure of an unwired `providerRejected` branch. It does not make a live Stripe call.
+
+Generate the strict Flow Definition Graph 2.0 output with Dex CLI 1.28.0 or newer. From `connectors/stripe/typescript`, install this local package into the example so the CLI can read its generated `dex-connector.json`:
+
+```sh
+npm run build
+npm install --prefix examples/create-card-checkout-session --no-save --no-package-lock --ignore-scripts .
+cd examples/create-card-checkout-session
+dexcli visualize flow/workflow.ts --language typescript --schema-version 2.0 --lint app --json --out - --open=false
+```
+
+Dex CLI 1.28.0 recognizes the connector Step and its `created` branch, but reports `unknown_step_target` for the valid `goTo(new StepRef('CreateCardCheckout'), ...)` transition. Strict FDG validation for this routing needs Dex CLI 1.28.1 ([tracking issue #362](https://github.com/superdurable/dex-connectors-library/issues/362)); the real Dex integration above passes.
