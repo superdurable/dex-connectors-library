@@ -3,14 +3,14 @@
 
 import { describe, expect, it } from 'vitest';
 import { RetryError } from '../src/errors.js';
-import { StaticCredentialProvider, resolveCredential, resolveCredentialAfterRejection, type Call, type CredentialRefreshDriver } from '../src/credentials.js';
+import { createCall, StaticCredentialProvider, resolveCredential, resolveCredentialAfterRejection, type CredentialRefreshDriver } from '../src/credentials.js';
 import { validateMutationDefinition, validateQueryDefinition, type MutationDefinition, type QueryDefinition } from '../src/operation.js';
 import { runMutation, runQuery } from '../src/run_operation.js';
 import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, zeroReceipt } from '../src/types.js';
 import type { AsyncContext } from '@superdurable/dex';
 
 const context = { attempt: 1, flowId: 'flow-1', stepExecutionId: 'step-1' } as AsyncContext;
-const call: Call = { context, id: '6750e62f-4d15-4e7e-a9d3-ec90f4f17b35', connection: { provider: 'sample', name: 'default' }, operation: { connectorId: 'sample', operationId: 'createItem' } };
+const call = createCall(context, { provider: 'sample', name: 'default' }, { connectorId: 'sample', operationId: 'createItem' });
 const failure = { kind: 'AVAILABILITY', provider: 'sample', operation: 'createItem', message: 'temporarily unavailable' } as const;
 const mutationDefinition: MutationDefinition = { operation: call.operation, branches: [{ id: 'created', description: 'Created' }, { id: 'defect', description: 'Invalid connector', optional: true }, { id: 'uncertain', description: 'Write may have reached provider', optional: true }], stepDefaults: {} };
 const queryDefinition: QueryDefinition = { ...mutationDefinition, branches: mutationDefinition.branches.filter(branch => branch.id !== 'uncertain') };

@@ -28,6 +28,7 @@ export async function runMutation<Input, Output>(operation: Mutation<Input, Outp
   if (!chosenKey.trim()) return defectResult(definition, call, 'mutation returned an invalid idempotency key');
   const mutationCall: Call = { ...call, context: call.context, idempotencyKey: chosenKey };
   Object.defineProperty(mutationCall, 'context', { value: call.context, enumerable: false });
+  for (const method of ['reportProgress', 'writeText', 'hasProgressStream', 'hasTextStream'] as const) Object.defineProperty(mutationCall, method, { value: call[method], enumerable: false });
   const attempt = await operation.invoke(mutationCall, input);
   return resultFromAttempt(definition, mutationCall, attempt, 'mutation');
 }

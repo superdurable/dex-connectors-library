@@ -10,6 +10,7 @@ npm run check
 node examples/core.mjs
 node examples/operations.mjs
 node examples/steps.mjs
+node examples/progress.mjs
 node examples/providerhttp.mjs
 node examples/projectconfig.mjs
 node examples/refreshing_project.mjs
@@ -22,7 +23,7 @@ node examples/fence.mjs
 
 All durations in this package are milliseconds. Public JSON shapes use the Go SDK's field names. Credential values and project objects stay outside Flow state and cannot be serialized through their wrappers.
 
-The [Dex integration harness](test/integ/step_flows.mjs) exercises the same Step factories through a real Worker and Client. Start `dexcli dev --open=false --dex-port 18891` with a local Dex server, set `DEX_SERVER_ADDRESS` when its gRPC address differs from `127.0.0.1:18891`, and run `npm run test:integration`. It verifies a happy path, optional branch, retry then success, retry exhaustion, uncertain mutation, a lost-response single-dispatch fence, repeated claim heartbeats, and scripted mock replay. It uses fixture operations and no provider credentials.
+The [Dex integration harness](test/integ/step_flows.mjs) exercises the same Step factories through a real Worker and Client. Start `dexcli dev --open=false --dex-port 18891` with a local Dex server, set `DEX_SERVER_ADDRESS` when its gRPC address differs from `127.0.0.1:18891`, and run `npm run test:integration`. It verifies a happy path, optional branch, retry then success, retry exhaustion, uncertain mutation, a lost-response single-dispatch fence, repeated claim heartbeats, result Attribute persistence, progress and text Stream delivery, and scripted mock replay. It uses fixture operations and no provider credentials.
 
 ## Typed operations and credential resolution
 
@@ -59,6 +60,24 @@ const query = newQueryStep({
     invoke: (_call, input) => newQueryBranch('found', { id: input.id }) },
   branches: [goToBranch('found', new StepRef('QueryDone'))],
 });
+```
+
+## Progress and text Streams
+
+The [runnable progress example](examples/progress.mjs) shows `Call.reportProgress` and `Call.writeText` with test Streams. Both methods are no-ops when their Stream is omitted. In a real Flow, pass `progressStream`, `textStream`, and optional `textOptions` to a Query or Mutation Step factory, then register both Streams in that Flow's persistence schema. `reportProgress` adds the stable call ID, Execute attempt, and one-based sequence; `writeText` uses Dex's buffered text writer. The real Worker test in the integration harness verifies delivery and ordering.
+
+```js
+const call = createCall(context, { provider: 'example', name: 'default' }, operation, { progressStream, textStream });
+const query = {
+  definition: () => ({ operation, branches: [{ id: 'found', description: 'Found' }, { id: 'defect', description: 'Defect', optional: true }], stepDefaults: {} }),
+  invoke: (providerCall, input) => {
+    providerCall.reportProgress({ phase: 'reading', percent: 0 });
+    providerCall.writeText('Found ');
+    providerCall.writeText(input.id);
+    providerCall.reportProgress({ phase: 'finished', percent: 1 });
+    return newQueryBranch('found', { id: input.id });
+  },
+};
 ```
 
 ## Core contracts, errors, and credentials

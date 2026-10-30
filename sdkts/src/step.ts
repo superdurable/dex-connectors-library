@@ -1,8 +1,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { StepRef, forceFail, goTo, retryAfter, type AsyncContext, type Attribute, type Codec, type Step, type StepDecision, type StepOptions, type StepTarget } from '@superdurable/dex';
-import { createCall } from './credentials.js';
+import { StepRef, forceFail, goTo, retryAfter, type AsyncContext, type Attribute, type BufferedTextStreamOptions, type Codec, type Step, type StepDecision, type StepOptions, type StepTarget, type Stream } from '@superdurable/dex';
+import { createCall, type ProgressUpdate } from './credentials.js';
 import { RetryError, type Failure } from './errors.js';
 import { validateMutationDefinition, validateQueryDefinition, type Mutation, type Query, type StepDefaults } from './operation.js';
 import { runMutation, runQuery } from './run_operation.js';
@@ -37,6 +37,9 @@ export interface QueryStepConfig<StepInput, OperationInput, Output> {
   /** Map the application's Step input to operation input. */ mapToOperationInput(input: StepInput): OperationInput;
   /** Routes for every required branch and selected optional branches. */ branches: readonly BranchTarget<QueryResult<Output>>[];
   /** Optional terminal result Attribute registered in the Flow schema. */ resultAttribute?: Attribute<QueryResult<Output>>;
+  /** Optional structured progress Stream registered in the Flow schema. */ progressStream?: Stream<ProgressUpdate>;
+  /** Optional buffered text Stream registered in the Flow schema. */ textStream?: Stream<string>;
+  /** Optional text batch sizing and flush interval. */ textOptions?: BufferedTextStreamOptions;
   /** Optional codec for non-object Step input. */ inputCodec?: Codec<StepInput>;
   /** Execute-only Dex options overriding manifest defaults. */ stepOptionsOverride?: StepOptions;
 }
@@ -84,7 +87,11 @@ export class QueryStep<StepInput, OperationInput, Output> implements Step<StepIn
   /** Invoke, persist the optional terminal Attribute, and route the selected branch. */
   async execute(context: AsyncContext, input: StepInput): Promise<StepDecision> {
     const operationInput = this.#configuration.mapToOperationInput(input);
-    const call = createCall(context, this.#identity.connection, this.#identity.operation);
+    const call = createCall(context, this.#identity.connection, this.#identity.operation, {
+      ...(this.#configuration.progressStream ? { progressStream: this.#configuration.progressStream } : {}),
+      ...(this.#configuration.textStream ? { textStream: this.#configuration.textStream } : {}),
+      ...(this.#configuration.textOptions ? { textOptions: this.#configuration.textOptions } : {}),
+    });
     let result: QueryResult<Output>;
     try { result = await runQuery(this.#configuration.operation, call, operationInput); }
     catch (error) { throwDexRetry(error); }
@@ -127,7 +134,11 @@ export class MutationStep<StepInput, OperationInput, Output> implements Step<Ste
   /** Invoke, persist the optional terminal Attribute, and route the selected branch. */
   async execute(context: AsyncContext, input: StepInput): Promise<StepDecision> {
     const operationInput = this.#configuration.mapToOperationInput(input);
-    const call = createCall(context, this.#identity.connection, this.#identity.operation);
+    const call = createCall(context, this.#identity.connection, this.#identity.operation, {
+      ...(this.#configuration.progressStream ? { progressStream: this.#configuration.progressStream } : {}),
+      ...(this.#configuration.textStream ? { textStream: this.#configuration.textStream } : {}),
+      ...(this.#configuration.textOptions ? { textOptions: this.#configuration.textOptions } : {}),
+    });
     let result: MutationResult<Output>;
     try { result = await runMutation(this.#configuration.operation, call, operationInput); }
     catch (error) { throwDexRetry(error); }

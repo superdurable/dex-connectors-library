@@ -2,7 +2,29 @@
 // SPDX-License-Identifier: MIT
 
 import { ConnectionRefSchema, OperationRefSchema, deriveCallID, type CallID, type ConnectionRef, type OperationRef } from './types.js';
-import type { AsyncContext } from '@superdurable/dex';
+import type { AsyncContext, BufferedTextStreamOptions, Stream } from '@superdurable/dex';
+
+/** Provider-safe progress before Dex identity and sequence are added. */
+export interface Progress {
+  /** Provider-specific stable phase. */ phase: string;
+  /** Optional safe progress text. */ message?: string;
+  /** Optional inclusive fraction from zero to one. */ percent?: number;
+  /** Optional provider-owned monotonic sequence. */ providerSequence?: number;
+}
+
+/** Structured best-effort Dex Stream message. */
+export interface ProgressUpdate extends Progress {
+  /** Stable connector call ID. */ callId: CallID;
+  /** One-based Dex Execute attempt. */ attempt: number;
+  /** Connector-assigned monotonic sequence within this attempt. */ sequence: number;
+}
+
+/** Optional application-owned Streams for one connector invocation. */
+export interface CallProgressOptions {
+  /** Registered structured progress Stream. */ progressStream?: Stream<ProgressUpdate>;
+  /** Registered string Stream for ordered buffered text. */ textStream?: Stream<string>;
+  /** Flush interval and soft UTF-8 batch limit for text. */ textOptions?: BufferedTextStreamOptions;
+}
 
 /** Provider-safe call metadata with its live, non-serializable Dex Step context. */
 export interface Call {
@@ -11,16 +33,32 @@ export interface Call {
   /** Provider deduplication key, when available. */ idempotencyKey?: string;
   /** Logical named connection. */ connection: ConnectionRef;
   /** Manifest operation identity. */ operation: OperationRef;
+  /** Append structured progress when a Stream is configured. */ reportProgress(progress: Progress): void;
+  /** Append text in order when a buffered Stream is configured. */ writeText(value: string): void;
+  /** Whether structured progress output is configured. */ hasProgressStream(): boolean;
+  /** Whether buffered text output is configured. */ hasTextStream(): boolean;
 }
 
 /** Bind a live Dex Execute context to a stable, provider-safe call identity. */
-export function createCall(context: AsyncContext, connection: ConnectionRef, operation: OperationRef): Call {
+export function createCall(context: AsyncContext, connection: ConnectionRef, operation: OperationRef, options: CallProgressOptions = {}): Call {
   if (!context?.flowId) throw new TypeError('Dex Flow ID is required');
   if (!context.stepExecutionId) throw new TypeError('connector operations require a Dex Step execution; RPC invocation is not allowed');
   ConnectionRefSchema.parse(connection);
   OperationRefSchema.parse(operation);
-  const call: Call = { context, id: deriveCallID(context.flowId, context.stepExecutionId, operation), connection, operation };
+  const call = { context, id: deriveCallID(context.flowId, context.stepExecutionId, operation), connection, operation } as Call;
+  const textWriter = options.textStream?.bufferedText(context, options.textOptions);
+  let sequence = 0;
   Object.defineProperty(call, 'context', { value: context, enumerable: false });
+  Object.defineProperties(call, {
+    reportProgress: { value: (progress: Progress) => {
+      if (!options.progressStream) return;
+      if (progress.percent !== undefined && (!Number.isFinite(progress.percent) || progress.percent < 0 || progress.percent > 1)) throw new RangeError('connector progress percent must be between 0 and 1');
+      options.progressStream.write(context, { ...progress, callId: call.id, attempt: context.attempt, sequence: ++sequence });
+    }, enumerable: false },
+    writeText: { value: (value: string) => { textWriter?.write(value); }, enumerable: false },
+    hasProgressStream: { value: () => options.progressStream !== undefined, enumerable: false },
+    hasTextStream: { value: () => textWriter !== undefined, enumerable: false },
+  });
   return call;
 }
 

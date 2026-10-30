@@ -6,7 +6,9 @@ import { randomUUID } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { Client, Registry, StepList, Worker, forceComplete, openBlobCache } from '@superdurable/dex';
+import process from 'node:process';
+import { setTimeout } from 'node:timers';
+import { Attribute, Client, Registry, StepList, Stream, Worker, forceComplete, jsonCodec, openBlobCache, stringCodec } from '@superdurable/dex';
 import { RetryError, goToBranch, newMutationBranch, newMutationRetry, newMutationStep, newMutationUncertain, newQueryBranch, newQueryRetry, newQueryStep } from '../../dist/index.js';
 import { branchCase, newMutation } from '../../dist/connectormock/index.js';
 import { newFence } from '../../dist/singledispatch/index.js';
@@ -20,9 +22,12 @@ const flows = [];
 const scenarios = [];
 
 class Done {
-  constructor(stepType) { this.stepType = stepType; }
+  constructor(stepType, resultAttribute) { this.stepType = stepType; this.resultAttribute = resultAttribute; }
   getStepType() { return this.stepType; }
-  execute(_context, result) { return forceComplete(result); }
+  execute(context, result) {
+    if (this.resultAttribute) assert.deepEqual(this.resultAttribute.get(context), result);
+    return forceComplete(result);
+  }
 }
 
 function queryFlow(name, invoke, selected = 'found', branches = [{ id: 'found', description: 'Found' }, { id: 'defect', description: 'Defect', optional: true }], options = {}) {
@@ -51,6 +56,39 @@ scenarios.push({ flow: queryFlow('Happy', (_call, input) => newQueryBranch('foun
 scenarios.push({ flow: queryFlow('Branch', () => newQueryBranch('missing', { id: 'absent' }), 'missing', [
   { id: 'found', description: 'Found' }, { id: 'missing', description: 'Absent', optional: true }, { id: 'defect', description: 'Defect', optional: true },
 ]), status: 'completed', branch: 'missing' }); // Business reaction: report an absent item as a terminal result.
+
+const progressStream = new Stream('fixture-progress', jsonCodec(), 1 << 20);
+const textStream = new Stream('fixture-text', stringCodec, 1 << 20);
+const resultAttribute = new Attribute('fixture-result', jsonCodec());
+const progressDone = new Done('ProgressDone', resultAttribute);
+const progressStep = newQueryStep({ stepType: 'ProgressQuery', annotations, connection,
+  mapToOperationInput: input => input,
+  operation: { definition: () => ({ operation: { connectorId: 'fixture', operationId: 'getItem' },
+    branches: [{ id: 'found', description: 'Found' }, { id: 'defect', description: 'Defect', optional: true }], stepDefaults: {} }),
+    invoke: (call, input) => {
+      assert.equal(call.hasProgressStream(), true);
+      assert.equal(call.hasTextStream(), true);
+      call.reportProgress({ phase: 'started', percent: 0 });
+      call.writeText('first ');
+      call.writeText('second');
+      call.reportProgress({ phase: 'finished', percent: 1 });
+      return newQueryBranch('found', { id: input.id });
+    } },
+  branches: [goToBranch('found', progressDone)], progressStream, textStream, resultAttribute,
+  textOptions: { maxBufferedBytes: 1024, flushIntervalMs: 1000 },
+});
+const progressFlowType = `SdktsProgress${randomUUID().replaceAll('-', '')}`;
+const progressFlow = { getFlowType: () => progressFlowType,
+  getSteps: () => StepList.startStep(progressStep).otherSteps(progressDone),
+  getPersistenceSchema: () => ({ attributes: [resultAttribute], streams: [progressStream, textStream] }) };
+flows.push(progressFlow);
+scenarios.push({ flow: progressFlow, status: 'completed', branch: 'found', verify: async ({ client, flowId }) => {
+  const progress = await waitForStreamMessages(client, flowId, progressStream, 2);
+  assert.deepEqual(progress.map(message => message.value.phase), ['finished', 'started']);
+  assert.deepEqual(progress.map(message => message.value.sequence), [2, 1]);
+  assert.equal(progress[0].value.callId, progress[1].value.callId);
+  assert.deepEqual((await waitForStreamMessages(client, flowId, textStream, 1)).map(message => message.value), ['first second']);
+} });
 
 let retriedCalls = 0;
 scenarios.push({ flow: queryFlow('RetrySuccess', (_call, input) => ++retriedCalls === 1 ? newQueryRetry(failure) : newQueryBranch('found', { id: input.id }), 'found', undefined, retry), status: 'completed', branch: 'found', verify: () => assert.equal(retriedCalls, 2) });
@@ -120,11 +158,21 @@ try {
     const result = await client.waitForFlow(flowId, 30_000);
     assert.equal(result.status, scenario.status, `${scenario.flow.getFlowType()}: ${result.errorMessage ?? 'wrong status'}`);
     if (scenario.branch) assert.equal(result.singleOutput().branch, scenario.branch);
-    scenario.verify?.();
+    await scenario.verify?.({ client, flowId, result });
   }
 } finally {
   await client.close();
   await worker.close();
   cache.close();
   await rm(cacheDirectory, { recursive: true, force: true });
+}
+
+async function waitForStreamMessages(client, flowId, stream, expectedCount) {
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    const page = await client.listStreamMessages(flowId, stream, 10);
+    if (page.messages.length >= expectedCount) return page.messages;
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  throw new Error(`timed out waiting for ${expectedCount} messages on ${stream.name}`);
 }
