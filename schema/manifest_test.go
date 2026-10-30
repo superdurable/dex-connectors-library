@@ -73,6 +73,32 @@ spec:
 	require.Equal(t, "MessageCreatedEvent", manifest.Spec.Triggers[0].EventType)
 }
 
+func TestLanguageManifestVersionAndPackageValidation(t *testing.T) {
+	fixture, err := os.ReadFile("testdata/google-oauth.yaml")
+	require.NoError(t, err)
+	for _, testCase := range []struct {
+		name          string
+		languageBlock string
+		problem       string
+	}{
+		{name: "valid independent versions", languageBlock: "  languages:\n    python: {version: v0.2.0, package: dex-connector-google-sheets}\n    typescript: {version: v1.0.0, package: '@superdurable/connector-google-sheets'}\n"},
+		{name: "invalid Python version", languageBlock: "  languages:\n    python: {version: 0.2.0}\n", problem: "spec.languages.python.version"},
+		{name: "invalid npm name", languageBlock: "  languages:\n    typescript: {version: v0.2.0, package: invalid}\n", problem: "spec.languages.typescript.package"},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			contents := strings.Replace(string(fixture), "spec:\n", "spec:\n"+testCase.languageBlock, 1)
+			manifest, err := schema.Decode(strings.NewReader(contents))
+			if testCase.problem != "" {
+				require.ErrorContains(t, err, testCase.problem)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, "v0.2.0", manifest.Spec.Languages.Python.Version)
+			require.Equal(t, "v1.0.0", manifest.Spec.Languages.TypeScript.Version)
+		})
+	}
+}
+
 func TestExecutionRetryPolicyValidation(t *testing.T) {
 	file, err := os.Open("testdata/api-key-methods.yaml")
 	require.NoError(t, err)

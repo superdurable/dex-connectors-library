@@ -448,5 +448,8 @@ func load(path string) (schema.Manifest, error) {
 	if closeErr != nil {
 		return schema.Manifest{}, fmt.Errorf("close %s: %w", path, closeErr)
 	}
+	if err := validateLanguagePackages(path, manifest); err != nil {
+		return schema.Manifest{}, fmt.Errorf("validate %s: %w", path, err)
+	}
 	return manifest, nil
 }

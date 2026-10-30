@@ -22,6 +22,15 @@ on:
         description: Release candidate version, vX.Y.Z-rc.N, where vX.Y.Z is the manifest version
         required: true
         type: string
+      language:
+        description: python or typescript; leave empty for Go
+        required: false
+        type: string
+      dry_run:
+        description: Build and verify without publishing
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -34,6 +43,8 @@ env:
   CANDIDATE_DIRECTORY: ${{ github.event.client_payload.directory || inputs.directory }}
   CANDIDATE_COMMIT: ${{ github.event.client_payload.commit || inputs.commit }}
   CANDIDATE_VERSION: ${{ github.event.client_payload.version || inputs.version }}
+  CANDIDATE_LANGUAGE: ${{ github.event.client_payload.language || inputs.language }}
+  CANDIDATE_DRY_RUN: ${{ github.event.client_payload.dry_run || inputs.dry_run }}
   GOWORK: "off"
 
 jobs:
@@ -47,9 +58,12 @@ jobs:
       tag: ${{ steps.candidate.outputs.tag }}
       source_sha: ${{ steps.candidate.outputs.source_sha }}
       display_name: ${{ steps.candidate.outputs.display_name }}
+      language: ${{ steps.candidate.outputs.language }}
+      package: ${{ steps.candidate.outputs.package }}
     steps:
       - uses: actions/checkout@v6
         with:
+          persist-credentials: false
           fetch-depth: 0
       - uses: actions/setup-go@v6
         with:
@@ -65,16 +79,19 @@ jobs:
             --directory "${CANDIDATE_DIRECTORY}" \
             --commit "${CANDIDATE_COMMIT}" \
             --version "${CANDIDATE_VERSION}" \
+            --language "${CANDIDATE_LANGUAGE}" \
             --github-output "${GITHUB_OUTPUT}"
 
   verify:
     needs: plan
+    if: needs.plan.outputs.language == ''
     runs-on: ubuntu-latest
     env:
       MANIFEST_PATH: ${{ needs.plan.outputs.manifest_path }}
     steps:
       - uses: actions/checkout@v6
         with:
+          persist-credentials: false
           ref: ${{ needs.plan.outputs.source_sha }}
           fetch-depth: 0
       - uses: actions/setup-go@v6
@@ -132,6 +149,7 @@ jobs:
 
   publish:
     needs: [plan, verify]
+    if: needs.plan.outputs.language == ''
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -145,6 +163,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          persist-credentials: false
           fetch-depth: 0
       - uses: actions/setup-go@v6
         with:
@@ -172,6 +191,7 @@ jobs:
             --digest-output /tmp/connector-release.json.sha256 \
             "${UI_ARGS[@]}"
       - name: Create or repair the pre-release
+        if: env.CANDIDATE_DRY_RUN != 'true'
         env:
           RELEASE_DISPLAY_NAME: ${{ needs.plan.outputs.display_name }}
         run: |
@@ -192,6 +212,7 @@ jobs:
               "${assets[@]}"
           fi
       - name: Verify the published Connector module
+        if: env.CANDIDATE_DRY_RUN != 'true'
         run: |
           deadline=$((SECONDS + 120))
           until GOPROXY=direct GONOSUMDB=github.com/superdurable/dex-connectors-library \
@@ -203,6 +224,180 @@ jobs:
             sleep 2
           done
       - name: Mark the release candidate complete
+        if: env.CANDIDATE_DRY_RUN != 'true'
         run: |
           printf '%s\n' "${RELEASE_TAG}" > /tmp/connector-release.complete
           gh release upload "${RELEASE_TAG}" --clobber /tmp/connector-release.complete
+
+  verify-language:
+    needs: plan
+    if: needs.plan.outputs.language != ''
+    runs-on: ubuntu-latest
+    env:
+      COMPONENT_PATH: ${{ github.event.client_payload.directory || inputs.directory }}/${{ needs.plan.outputs.language }}
+      RELEASE_LANGUAGE: ${{ needs.plan.outputs.language }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.plan.outputs.source_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v7
+        if: needs.plan.outputs.language == 'python'
+      - uses: actions/setup-node@v6
+        if: needs.plan.outputs.language == 'typescript'
+        with:
+          node-version: 24
+      - name: Validate released language SDK dependency
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          git show origin/main:script/release/component_release.py > "${RUNNER_TEMP}/component_release.py"
+          python3 "${RUNNER_TEMP}/component_release.py" validate-language-package \
+            --component-path "${COMPONENT_PATH}" --language "${RELEASE_LANGUAGE}"
+      - name: Test and build Python candidate
+        if: needs.plan.outputs.language == 'python'
+        run: |
+          test -f "${COMPONENT_PATH}/uv.lock" || { echo 'Python candidate lockfile is missing' >&2; exit 1; }
+          uv sync --locked --project "${COMPONENT_PATH}"
+          uv run --project "${COMPONENT_PATH}" ruff check "${COMPONENT_PATH}"
+          uv run --project "${COMPONENT_PATH}" mypy --strict "${COMPONENT_PATH}/src"
+          uv run --project "${COMPONENT_PATH}" pytest "${COMPONENT_PATH}/tests"
+          version="${CANDIDATE_VERSION#v}"
+          uv version --project "${COMPONENT_PATH}" --frozen "${version/-rc./rc}"
+          uv build "${COMPONENT_PATH}" --out-dir "${RUNNER_TEMP}/language-dist"
+          rm -f "${RUNNER_TEMP}/language-dist/.gitignore"
+      - name: Test and build TypeScript candidate
+        if: needs.plan.outputs.language == 'typescript'
+        run: |
+          npm ci --prefix "${COMPONENT_PATH}"
+          npm run typecheck --prefix "${COMPONENT_PATH}"
+          npm run lint --prefix "${COMPONENT_PATH}"
+          npm test --prefix "${COMPONENT_PATH}"
+          npm version --prefix "${COMPONENT_PATH}" --no-git-tag-version "${CANDIDATE_VERSION#v}"
+          npm run build --prefix "${COMPONENT_PATH}"
+          mkdir -p "${RUNNER_TEMP}/language-dist"
+          npm pack "./${COMPONENT_PATH}" --pack-destination "${RUNNER_TEMP}/language-dist"
+      - name: Verify candidate package archives with main's tooling
+        env:
+          RELEASE_PACKAGE: ${{ needs.plan.outputs.package }}
+          RELEASE_LANGUAGE: ${{ needs.plan.outputs.language }}
+        run: |
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          git show origin/main:script/release/component_release.py > "${RUNNER_TEMP}/component_release.py"
+          if [ "${RELEASE_LANGUAGE}" = python ]; then
+            assets=("${RUNNER_TEMP}"/language-dist/*.whl "${RUNNER_TEMP}"/language-dist/*.tar.gz)
+          else
+            assets=("${RUNNER_TEMP}"/language-dist/*.tgz)
+          fi
+          arguments=()
+          for asset in "${assets[@]}"; do arguments+=(--asset "${asset}"); done
+          python3 "${RUNNER_TEMP}/component_release.py" verify-language-artifacts \
+            --language "${RELEASE_LANGUAGE}" --package "${RELEASE_PACKAGE}" --version "${CANDIDATE_VERSION}" "${arguments[@]}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: language-candidate
+          path: ${{ runner.temp }}/language-dist
+          if-no-files-found: error
+
+  publish-language:
+    needs: [plan, verify-language]
+    if: needs.plan.outputs.language != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ needs.plan.outputs.tag }}
+      RELEASE_LANGUAGE: ${{ needs.plan.outputs.language }}
+      RELEASE_PACKAGE: ${{ needs.plan.outputs.package }}
+      RELEASE_SOURCE_SHA: ${{ needs.plan.outputs.source_sha }}
+      RELEASE_DISPLAY_NAME: ${{ needs.plan.outputs.display_name }}
+      RELEASE_VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v7
+        if: needs.plan.outputs.language == 'python'
+      - uses: actions/setup-node@v6
+        if: needs.plan.outputs.language == 'typescript'
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v4
+        with:
+          name: language-candidate
+          path: ${{ runner.temp }}/language-dist
+      - name: Verify package archives before publication
+        run: |
+          if [ "${RELEASE_LANGUAGE}" = python ]; then
+            assets=("${RUNNER_TEMP}"/language-dist/*.whl "${RUNNER_TEMP}"/language-dist/*.tar.gz)
+          else
+            assets=("${RUNNER_TEMP}"/language-dist/*.tgz)
+          fi
+          arguments=()
+          for asset in "${assets[@]}"; do arguments+=(--asset "${asset}"); done
+          python3 script/release/component_release.py verify-language-artifacts \
+            --language "${RELEASE_LANGUAGE}" --package "${RELEASE_PACKAGE}" --version "${CANDIDATE_VERSION}" "${arguments[@]}"
+      - name: Inspect candidate publication state
+        id: state
+        run: |
+          required=true
+          if gh release view "${RELEASE_TAG}" --json assets --jq '.assets[].name' 2>/dev/null | grep -Fxq language-release.complete; then
+            required=false
+          fi
+          if [ "${CANDIDATE_DRY_RUN}" = true ]; then required=true; fi
+          echo "release_required=${required}" >> "${GITHUB_OUTPUT}"
+      - name: Build language release manifest
+        if: steps.state.outputs.release_required == 'true'
+        run: |
+          assets=("${RUNNER_TEMP}"/language-dist/*)
+          manifest_args=()
+          for asset in "${assets[@]}"; do manifest_args+=(--asset "${asset}"); done
+          python3 script/release/component_release.py language-manifest \
+            --output "${RUNNER_TEMP}/language-dist/language-release.json" \
+            --language "${RELEASE_LANGUAGE}" --package "${RELEASE_PACKAGE}" \
+            --version "${CANDIDATE_VERSION}" --tag "${RELEASE_TAG}" \
+            --source-sha "${RELEASE_SOURCE_SHA}" "${manifest_args[@]}"
+      - name: Publish Python pre-release
+        if: steps.state.outputs.release_required == 'true' && needs.plan.outputs.language == 'python' && env.CANDIDATE_DRY_RUN != 'true'
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
+        run: |
+          test -n "${UV_PUBLISH_TOKEN}" || { echo 'PYPI_TOKEN is required' >&2; exit 1; }
+          assets=("${RUNNER_TEMP}"/language-dist/*.whl "${RUNNER_TEMP}"/language-dist/*.tar.gz)
+          arguments=()
+          for asset in "${assets[@]}"; do arguments+=(--asset "${asset}"); done
+          python3 script/release/component_release.py verify-pypi-artifacts \
+            --package "${RELEASE_PACKAGE}" --version "${CANDIDATE_VERSION}" "${arguments[@]}"
+          uv publish --check-url https://pypi.org/simple/ "${RUNNER_TEMP}"/language-dist/*.whl "${RUNNER_TEMP}"/language-dist/*.tar.gz
+          python3 script/release/component_release.py verify-pypi-artifacts \
+            --package "${RELEASE_PACKAGE}" --version "${CANDIDATE_VERSION}" --require-all "${arguments[@]}"
+      - name: Publish npm pre-release
+        if: steps.state.outputs.release_required == 'true' && needs.plan.outputs.language == 'typescript' && env.CANDIDATE_DRY_RUN != 'true'
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          tarball=("${RUNNER_TEMP}"/language-dist/*.tgz)
+          python3 script/release/npm_publish.py publish --package "${RELEASE_PACKAGE}" \
+            --version "${CANDIDATE_VERSION}" --tarball "${tarball[0]}" --dist-tag next
+      - name: Create or repair language pre-release
+        if: steps.state.outputs.release_required == 'true' && env.CANDIDATE_DRY_RUN != 'true'
+        run: |
+          printf 'Release candidate of %s %s from %s.\n' \
+            "${RELEASE_DISPLAY_NAME}" "${CANDIDATE_VERSION}" \
+            "${RELEASE_SOURCE_SHA}" > "${RUNNER_TEMP}/language-notes.md"
+          if gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
+            gh release upload "${RELEASE_TAG}" --clobber "${RUNNER_TEMP}"/language-dist/*
+          else
+            gh release create "${RELEASE_TAG}" --target "${RELEASE_SOURCE_SHA}" \
+              --prerelease --title "${RELEASE_DISPLAY_NAME} ${RELEASE_LANGUAGE} ${RELEASE_VERSION}" \
+              --notes-file "${RUNNER_TEMP}/language-notes.md" "${RUNNER_TEMP}"/language-dist/*
+          fi
+      - name: Mark language candidate complete
+        if: steps.state.outputs.release_required == 'true' && env.CANDIDATE_DRY_RUN != 'true'
+        run: |
+          printf '%s\n' "${RELEASE_TAG}" > "${RUNNER_TEMP}/language-release.complete"
+          gh release upload "${RELEASE_TAG}" --clobber "${RUNNER_TEMP}/language-release.complete"

@@ -1,0 +1,30 @@
+name: Check npm publishing token
+
+on:
+  schedule:
+    - cron: '23 10 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Check npm token identity and expiry
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN_EXPIRES_AT: ${{ vars.NPM_TOKEN_EXPIRES_AT }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 script/release/npm_publish.py check-token

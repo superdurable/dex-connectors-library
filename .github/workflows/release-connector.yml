@@ -9,12 +9,15 @@ on:
         description: Registered Connector directory to repair; leave empty to rebuild only the catalog site
         required: false
         type: string
+      dry_run:
+        description: Build and verify without tags, releases, or registry uploads
+        required: false
+        default: false
+        type: boolean
 
 permissions:
-  contents: write
+  contents: read
   pull-requests: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: release-connectors-and-catalog
@@ -27,9 +30,12 @@ jobs:
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
       count: ${{ steps.matrix.outputs.count }}
+      language_matrix: ${{ steps.matrix.outputs.language_matrix }}
+      language_count: ${{ steps.matrix.outputs.language_count }}
     steps:
       - uses: actions/checkout@v6
         with:
+          persist-credentials: false
           fetch-depth: 0
       - uses: actions/setup-go@v6
         with:
@@ -57,7 +63,7 @@ jobs:
           SOURCE_SHA: ${{ github.sha }}
         run: |
           if [ "${EVENT_NAME}" = workflow_dispatch ] && [ -z "${REPAIR_DIRECTORY}" ]; then
-            printf 'matrix={"include":[]}\ncount=0\n' >> "${GITHUB_OUTPUT}"
+            printf 'matrix={"include":[]}\ncount=0\nlanguage_matrix={"include":[]}\nlanguage_count=0\n' >> "${GITHUB_OUTPUT}"
             exit
           fi
           arguments=(--catalog catalog.yaml --github-output "${GITHUB_OUTPUT}")
@@ -69,6 +75,9 @@ jobs:
           GOWORK=off go run ./cmd/connectorctl release-matrix "${arguments[@]}"
 
   release:
+    permissions:
+      contents: write
+      pull-requests: read
     needs: plan
     if: needs.plan.outputs.count != '0'
     runs-on: ubuntu-latest
@@ -81,9 +90,11 @@ jobs:
       TAG_PREFIX: ${{ matrix.tag_prefix }}
       RELEASE_VERSION: ${{ matrix.version }}
       RELEASE_DISPLAY_NAME: ${{ matrix.display_name }}
+      RELEASE_DRY_RUN: ${{ inputs.dry_run }}
     steps:
       - uses: actions/checkout@v6
         with:
+          persist-credentials: false
           fetch-depth: 0
       - uses: actions/setup-go@v6
         with:
@@ -123,6 +134,7 @@ jobs:
               fi
             done
           fi
+          if [ "${RELEASE_DRY_RUN}" = true ]; then release_required=true; fi
           {
             echo "release_required=${release_required}"
             echo "source_sha=${source_sha}"
@@ -135,7 +147,9 @@ jobs:
         run: python3 script/dex_compatibility.py current --connector-directories "${COMPONENT_PATH}"
       - name: Restore tagged release source for recovery
         if: steps.state.outputs.release_required == 'true' && steps.state.outputs.source_sha != github.sha
-        run: git checkout --detach "${{ steps.state.outputs.source_sha }}"
+        env:
+          SOURCE_SHA: ${{ steps.state.outputs.source_sha }}
+        run: git checkout --detach "${SOURCE_SHA}"
       - name: Check generated Connector code
         if: steps.state.outputs.release_required == 'true'
         env:
@@ -214,7 +228,7 @@ jobs:
             --digest-output /tmp/connector-release.json.sha256 \
             "${UI_ARGS[@]}"
       - name: Create or repair Connector release
-        if: steps.state.outputs.release_required == 'true'
+        if: steps.state.outputs.release_required == 'true' && inputs.dry_run != true
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.state.outputs.tag }}
@@ -243,7 +257,7 @@ jobs:
               "${assets[@]}"
           fi
       - name: Verify published Connector module
-        if: steps.state.outputs.release_required == 'true'
+        if: steps.state.outputs.release_required == 'true' && inputs.dry_run != true
         env:
           MODULE_PATH: ${{ steps.release-plan.outputs.module_path }}
         run: |
@@ -257,13 +271,13 @@ jobs:
             sleep 2
           done
       - name: Verify the published Connector with the latest stable Dex CLI and Web
-        if: steps.state.outputs.release_required == 'true'
+        if: steps.state.outputs.release_required == 'true' && inputs.dry_run != true
         env:
           GH_TOKEN: ${{ github.token }}
           CONNECTOR_RELEASE_TAG: ${{ steps.state.outputs.tag }}
         run: make test-dex-compat-released
       - name: Mark Connector release complete
-        if: steps.state.outputs.release_required == 'true'
+        if: steps.state.outputs.release_required == 'true' && inputs.dry_run != true
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.state.outputs.tag }}
@@ -271,12 +285,259 @@ jobs:
           printf '%s\n' "${RELEASE_TAG}" > /tmp/connector-release.complete
           gh release upload "${RELEASE_TAG}" --clobber /tmp/connector-release.complete
 
-  build-catalog:
-    needs: [plan, release]
-    if: always() && needs.plan.result == 'success' && (needs.release.result == 'success' || needs.release.result == 'skipped')
+  build-language:
+    needs: plan
+    if: needs.plan.outputs.language_count != '0'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.language_matrix) }}
+    env:
+      COMPONENT_PATH: ${{ matrix.directory }}/${{ matrix.language }}
+      TAG_PREFIX: ${{ matrix.tag_prefix }}
+      RELEASE_VERSION: ${{ matrix.version }}
+      PACKAGE_NAME: ${{ matrix.package }}
+      LANGUAGE: ${{ matrix.language }}
+      RELEASE_DRY_RUN: ${{ inputs.dry_run }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v7
+        if: matrix.language == 'python'
+      - uses: actions/setup-node@v6
+        if: matrix.language == 'typescript'
+        with:
+          node-version: 24
+      - name: Inspect language release state
+        id: state
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "${RUNNER_TEMP}/language-work"
+          cp script/release/component_release.py "${RUNNER_TEMP}/component_release.py"
+          tag="${TAG_PREFIX}${RELEASE_VERSION}"
+          source_sha="${GITHUB_SHA}"
+          if git show-ref --verify --quiet "refs/tags/${tag}"; then
+            git merge-base --is-ancestor "${tag}" HEAD || { echo "Release tag is not reachable from main: ${tag}" >&2; exit 1; }
+            source_sha="$(git rev-parse "${tag}^{commit}")"
+          fi
+          required=true
+          if gh release view "${tag}" --json assets --jq '.assets[].name' 2>/dev/null | grep -Fxq language-release.complete; then
+            required=false
+          fi
+          if [ "${RELEASE_DRY_RUN}" = true ]; then required=true; fi
+          if [ "${required}" = false ]; then touch "${RUNNER_TEMP}/language-work/skip"; fi
+          echo "release_required=${required}" >> "${GITHUB_OUTPUT}"
+          echo "source_sha=${source_sha}" >> "${GITHUB_OUTPUT}"
+      - name: Restore tagged language source for repair
+        if: steps.state.outputs.release_required == 'true' && steps.state.outputs.source_sha != github.sha
+        env:
+          SOURCE_SHA: ${{ steps.state.outputs.source_sha }}
+        run: git checkout --detach "${SOURCE_SHA}"
+      - name: Validate released language SDK dependency
+        if: steps.state.outputs.release_required == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          python3 "${RUNNER_TEMP}/component_release.py" validate-language-package \
+            --component-path "${COMPONENT_PATH}" --language "${LANGUAGE}"
+      - name: Test and build Python package
+        if: steps.state.outputs.release_required == 'true' && matrix.language == 'python'
+        run: |
+          test -f "${COMPONENT_PATH}/uv.lock" || { echo 'Python lockfile is missing' >&2; exit 1; }
+          uv sync --locked --project "${COMPONENT_PATH}"
+          uv run --project "${COMPONENT_PATH}" ruff check "${COMPONENT_PATH}"
+          uv run --project "${COMPONENT_PATH}" mypy --strict "${COMPONENT_PATH}/src"
+          uv run --project "${COMPONENT_PATH}" pytest "${COMPONENT_PATH}/tests"
+          uv build "${COMPONENT_PATH}" --out-dir "${RUNNER_TEMP}/language-work/dist"
+          rm -f "${RUNNER_TEMP}/language-work/dist/.gitignore"
+      - name: Test and build TypeScript package
+        if: steps.state.outputs.release_required == 'true' && matrix.language == 'typescript'
+        run: |
+          test -f "${COMPONENT_PATH}/package-lock.json" || { echo 'TypeScript lockfile is missing' >&2; exit 1; }
+          npm ci --prefix "${COMPONENT_PATH}"
+          npm run typecheck --prefix "${COMPONENT_PATH}"
+          npm run lint --prefix "${COMPONENT_PATH}"
+          npm test --prefix "${COMPONENT_PATH}"
+          npm run build --prefix "${COMPONENT_PATH}"
+          mkdir -p "${RUNNER_TEMP}/language-work/dist"
+          npm pack "./${COMPONENT_PATH}" --pack-destination "${RUNNER_TEMP}/language-work/dist"
+      - name: Plan language release and notes
+        if: steps.state.outputs.release_required == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.state.outputs.source_sha }}
+        run: |
+          python3 "${RUNNER_TEMP}/component_release.py" plan \
+            --component-path "${COMPONENT_PATH}" --tag-prefix "${TAG_PREFIX}" \
+            --version "${RELEASE_VERSION}" --ref "${GITHUB_REF}" \
+            --json-output "${RUNNER_TEMP}/language-work/plan.json" --github-output "${RUNNER_TEMP}/language-plan-output"
+          python3 "${RUNNER_TEMP}/component_release.py" notes \
+            --plan "${RUNNER_TEMP}/language-work/plan.json" --repository "${GITHUB_REPOSITORY}" \
+            --output "${RUNNER_TEMP}/language-work/notes.md"
+          assets=("${RUNNER_TEMP}"/language-work/dist/*)
+          manifest_args=()
+          for asset in "${assets[@]}"; do manifest_args+=(--asset "${asset}"); done
+          python3 "${RUNNER_TEMP}/component_release.py" language-manifest \
+            --output "${RUNNER_TEMP}/language-work/dist/language-release.json" \
+            --language "${LANGUAGE}" --package "${PACKAGE_NAME}" \
+            --version "${RELEASE_VERSION}" --tag "${TAG_PREFIX}${RELEASE_VERSION}" \
+            --source-sha "${SOURCE_SHA}" "${manifest_args[@]}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: language-${{ strategy.job-index }}
+          path: ${{ runner.temp }}/language-work
+          if-no-files-found: error
+          retention-days: 1
+
+  publish-language:
+    needs: [plan, build-language]
+    if: needs.plan.outputs.language_count != '0' && inputs.dry_run != true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      issues: write
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.language_matrix) }}
+    env:
+      COMPONENT_PATH: ${{ matrix.directory }}/${{ matrix.language }}
+      TAG_PREFIX: ${{ matrix.tag_prefix }}
+      RELEASE_VERSION: ${{ matrix.version }}
+      PACKAGE_NAME: ${{ matrix.package }}
+      LANGUAGE: ${{ matrix.language }}
+      RELEASE_DISPLAY_NAME: ${{ matrix.display_name }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v7
+        if: matrix.language == 'python'
+      - uses: actions/setup-node@v6
+        if: matrix.language == 'typescript'
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v4
+        with:
+          name: language-${{ strategy.job-index }}
+          path: ${{ runner.temp }}/language-work
+      - name: Inspect build artifact
+        id: state
+        run: |
+          if [ -f "${RUNNER_TEMP}/language-work/skip" ]; then
+            echo 'release_required=false' >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+          echo 'release_required=true' >> "${GITHUB_OUTPUT}"
+          tag="${TAG_PREFIX}${RELEASE_VERSION}"
+          source_sha="${GITHUB_SHA}"
+          if git show-ref --verify --quiet "refs/tags/${tag}"; then
+            source_sha="$(git rev-parse "${tag}^{commit}")"
+          fi
+          echo "source_sha=${source_sha}" >> "${GITHUB_OUTPUT}"
+      - name: Verify package archives before publication
+        if: steps.state.outputs.release_required == 'true'
+        run: |
+          if [ "${LANGUAGE}" = python ]; then
+            assets=("${RUNNER_TEMP}"/language-work/dist/*.whl "${RUNNER_TEMP}"/language-work/dist/*.tar.gz)
+          else
+            assets=("${RUNNER_TEMP}"/language-work/dist/*.tgz)
+          fi
+          arguments=()
+          for asset in "${assets[@]}"; do arguments+=(--asset "${asset}"); done
+          python3 script/release/component_release.py verify-language-artifacts \
+            --language "${LANGUAGE}" --package "${PACKAGE_NAME}" --version "${RELEASE_VERSION}" "${arguments[@]}"
+      - name: Regenerate trusted release metadata
+        if: steps.state.outputs.release_required == 'true'
+        run: |
+          tag="${TAG_PREFIX}${RELEASE_VERSION}"
+          cp script/release/component_release.py "${RUNNER_TEMP}/component_release.py"
+          cp script/release/npm_publish.py "${RUNNER_TEMP}/npm_publish.py"
+          if git show-ref --verify --quiet "refs/tags/${tag}"; then
+            git merge-base --is-ancestor "${tag}" HEAD || { echo "Language tag is not reachable from main: ${tag}" >&2; exit 1; }
+            git checkout --detach "$(git rev-parse "${tag}^{commit}")"
+          fi
+          python3 "${RUNNER_TEMP}/component_release.py" plan \
+            --component-path "${COMPONENT_PATH}" --tag-prefix "${TAG_PREFIX}" \
+            --version "${RELEASE_VERSION}" --ref "${GITHUB_REF}" \
+            --json-output "${RUNNER_TEMP}/trusted-language-plan.json" \
+            --github-output "${RUNNER_TEMP}/trusted-language-output"
+          python3 "${RUNNER_TEMP}/component_release.py" notes \
+            --plan "${RUNNER_TEMP}/trusted-language-plan.json" --repository "${GITHUB_REPOSITORY}" \
+            --output "${RUNNER_TEMP}/language-work/notes.md"
+          rm -f "${RUNNER_TEMP}"/language-work/dist/*.sha256 "${RUNNER_TEMP}/language-work/dist/language-release.json"
+          if [ "${LANGUAGE}" = python ]; then
+            assets=("${RUNNER_TEMP}"/language-work/dist/*.whl "${RUNNER_TEMP}"/language-work/dist/*.tar.gz)
+          else
+            assets=("${RUNNER_TEMP}"/language-work/dist/*.tgz)
+          fi
+          arguments=()
+          for asset in "${assets[@]}"; do arguments+=(--asset "${asset}"); done
+          python3 "${RUNNER_TEMP}/component_release.py" language-manifest \
+            --output "${RUNNER_TEMP}/language-work/dist/language-release.json" \
+            --language "${LANGUAGE}" --package "${PACKAGE_NAME}" --version "${RELEASE_VERSION}" \
+            --tag "${tag}" --source-sha "$(git rev-parse HEAD)" "${arguments[@]}"
+      - name: Publish Python package
+        if: steps.state.outputs.release_required == 'true' && matrix.language == 'python'
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
+        run: |
+          test -n "${UV_PUBLISH_TOKEN}" || { echo 'PYPI_TOKEN is required' >&2; exit 1; }
+          assets=("${RUNNER_TEMP}"/language-work/dist/*.whl "${RUNNER_TEMP}"/language-work/dist/*.tar.gz)
+          arguments=()
+          for asset in "${assets[@]}"; do arguments+=(--asset "${asset}"); done
+          python3 "${RUNNER_TEMP}/component_release.py" verify-pypi-artifacts \
+            --package "${PACKAGE_NAME}" --version "${RELEASE_VERSION}" "${arguments[@]}"
+          uv publish --check-url https://pypi.org/simple/ "${RUNNER_TEMP}"/language-work/dist/*.whl "${RUNNER_TEMP}"/language-work/dist/*.tar.gz
+          python3 "${RUNNER_TEMP}/component_release.py" verify-pypi-artifacts \
+            --package "${PACKAGE_NAME}" --version "${RELEASE_VERSION}" --require-all "${arguments[@]}"
+      - name: Publish npm package
+        if: steps.state.outputs.release_required == 'true' && matrix.language == 'typescript'
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          package_tarball=("${RUNNER_TEMP}"/language-work/dist/*.tgz)
+          python3 "${RUNNER_TEMP}/npm_publish.py" publish --package "${PACKAGE_NAME}" \
+            --version "${RELEASE_VERSION}" --tarball "${package_tarball[0]}"
+      - name: Create or repair language release
+        if: steps.state.outputs.release_required == 'true'
+        env:
+          SOURCE_SHA: ${{ steps.state.outputs.source_sha }}
+        run: |
+          tag="${TAG_PREFIX}${RELEASE_VERSION}"
+          if gh release view "${tag}" >/dev/null 2>&1; then
+            gh release upload "${tag}" --clobber "${RUNNER_TEMP}"/language-work/dist/*
+          else
+            gh release create "${tag}" --target "${SOURCE_SHA}" \
+              --title "${RELEASE_DISPLAY_NAME} ${LANGUAGE} ${RELEASE_VERSION}" \
+              --notes-file "${RUNNER_TEMP}/language-work/notes.md" "${RUNNER_TEMP}"/language-work/dist/*
+          fi
+      - name: Mark language release complete
+        if: steps.state.outputs.release_required == 'true'
+        run: |
+          printf '%s\n' "${TAG_PREFIX}${RELEASE_VERSION}" > "${RUNNER_TEMP}/language-release.complete"
+          gh release upload "${TAG_PREFIX}${RELEASE_VERSION}" --clobber "${RUNNER_TEMP}/language-release.complete"
+
+  build-catalog:
+    needs: [plan, release, build-language, publish-language]
+    if: always() && needs.plan.result == 'success' && (needs.release.result == 'success' || needs.release.result == 'skipped') && (needs.build-language.result == 'success' || needs.build-language.result == 'skipped') && (needs.publish-language.result == 'success' || (needs.plan.outputs.language_count == '0' && needs.publish-language.result == 'skipped')) && inputs.dry_run != true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
@@ -290,7 +551,8 @@ jobs:
           mkdir -p dist/pages
           go run ./cmd/connectorctl catalog \
             --catalog catalog.yaml \
-            --output dist/pages/catalog.yaml
+            --output dist/pages/catalog.yaml \
+            --json-output dist/pages/catalog.json
       - name: Build directory site and preview card
         run: |
           sudo apt-get update
@@ -309,6 +571,9 @@ jobs:
           path: dist/pages
 
   deploy-catalog:
+    permissions:
+      pages: write
+      id-token: write
     needs: build-catalog
     # always() so a skipped release (a push that changes no Connector) does not
     # skip the deploy too: without it the implicit success() fails on that

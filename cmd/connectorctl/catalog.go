@@ -40,39 +40,40 @@ type connectorCatalogSource struct {
 }
 
 type connectorCatalog struct {
-	APIVersion string                 `yaml:"apiVersion"`
-	Kind       string                 `yaml:"kind"`
-	Connectors []connectorCatalogItem `yaml:"connectors"`
+	APIVersion string                 `yaml:"apiVersion" json:"apiVersion"`
+	Kind       string                 `yaml:"kind" json:"kind"`
+	Connectors []connectorCatalogItem `yaml:"connectors" json:"connectors"`
 }
 
 type connectorCatalogItem struct {
-	Company     string              `yaml:"company"`
-	ID          string              `yaml:"id"`
-	Name        string              `yaml:"name"`
-	Description string              `yaml:"description"`
-	Version     string              `yaml:"version"`
-	Directory   string              `yaml:"directory"`
-	UIUnits     []catalogCapability `yaml:"uiUnits"`
-	Triggers    []catalogCapability `yaml:"triggers"`
-	Operations  []catalogCapability `yaml:"operations"`
+	Company     string              `yaml:"company" json:"company"`
+	ID          string              `yaml:"id" json:"id"`
+	Name        string              `yaml:"name" json:"name"`
+	Description string              `yaml:"description" json:"description"`
+	Version     string              `yaml:"version" json:"version"`
+	Languages   map[string]string   `yaml:"languages,omitempty" json:"languages,omitempty"`
+	Directory   string              `yaml:"directory" json:"directory"`
+	UIUnits     []catalogCapability `yaml:"uiUnits" json:"uiUnits"`
+	Triggers    []catalogCapability `yaml:"triggers" json:"triggers"`
+	Operations  []catalogCapability `yaml:"operations" json:"operations"`
 	// MockPackage is the Go import path of the generated mock package, or empty when the connector has no mocks.
-	MockPackage string `yaml:"mockPackage,omitempty"`
+	MockPackage string `yaml:"mockPackage,omitempty" json:"mockPackage,omitempty"`
 	// Mocks lists the maintained mock outcomes that the mock package offers.
-	Mocks []catalogMock `yaml:"mocks,omitempty"`
+	Mocks []catalogMock `yaml:"mocks,omitempty" json:"mocks,omitempty"`
 }
 
 type catalogMock struct {
-	Operation   string `yaml:"operation"`
-	Name        string `yaml:"name"`
-	Branch      string `yaml:"branch,omitempty"`
-	Description string `yaml:"description"`
-	IsDefault   bool   `yaml:"default,omitempty"`
+	Operation   string `yaml:"operation" json:"operation"`
+	Name        string `yaml:"name" json:"name"`
+	Branch      string `yaml:"branch,omitempty" json:"branch,omitempty"`
+	Description string `yaml:"description" json:"description"`
+	IsDefault   bool   `yaml:"default,omitempty" json:"default,omitempty"`
 }
 
 type catalogCapability struct {
-	Name        string `yaml:"name"`
-	Kind        string `yaml:"kind,omitempty"`
-	Description string `yaml:"description"`
+	Name        string `yaml:"name" json:"name"`
+	Kind        string `yaml:"kind,omitempty" json:"kind,omitempty"`
+	Description string `yaml:"description" json:"description"`
 }
 
 type connectorDirectoryEntry struct {
@@ -92,6 +93,8 @@ type connectorReleaseMatrixItem struct {
 	TagPrefix    string `json:"tag_prefix"`
 	Version      string `json:"version"`
 	DisplayName  string `json:"display_name"`
+	Language     string `json:"language,omitempty"`
+	Package      string `json:"package,omitempty"`
 }
 
 type reachableConnectorRelease struct {
@@ -104,11 +107,12 @@ func catalogCommand(args []string) error {
 	check := flags.Bool("check", false, "validate without writing a catalog")
 	catalogPath := flags.String("catalog", "", "connector catalog source")
 	outputPath := flags.String("output", "", "generated catalog path")
+	jsonOutputPath := flags.String("json-output", "", "generated JSON catalog path")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
-	if flags.NArg() != 0 || *catalogPath == "" || (*check && *outputPath != "") || (!*check && *outputPath == "") {
-		return errors.New("usage: connectorctl catalog --catalog PATH (--check | --output PATH)")
+	if flags.NArg() != 0 || *catalogPath == "" || (*check && (*outputPath != "" || *jsonOutputPath != "")) || (!*check && *outputPath == "") {
+		return errors.New("usage: connectorctl catalog --catalog PATH (--check | --output PATH [--json-output PATH])")
 	}
 	entries, err := loadConnectorDirectoryEntries(*catalogPath)
 	if err != nil {
@@ -126,6 +130,19 @@ func catalogCommand(args []string) error {
 	}
 	if err := os.WriteFile(*outputPath, generated, 0o644); err != nil {
 		return fmt.Errorf("write connector catalog: %w", err)
+	}
+	if *jsonOutputPath != "" {
+		catalog := connectorCatalog{}
+		if err := yaml.Unmarshal(generated, &catalog); err != nil {
+			return fmt.Errorf("decode generated catalog: %w", err)
+		}
+		jsonCatalog, err := json.MarshalIndent(catalog, "", "  ")
+		if err != nil {
+			return fmt.Errorf("encode JSON catalog: %w", err)
+		}
+		if err := os.WriteFile(*jsonOutputPath, append(jsonCatalog, '\n'), 0o644); err != nil {
+			return fmt.Errorf("write JSON catalog: %w", err)
+		}
 	}
 	return nil
 }
@@ -176,6 +193,7 @@ func releaseMatrixCommand(args []string) error {
 		}
 	}
 	matrix := connectorReleaseMatrix{Include: make([]connectorReleaseMatrixItem, 0, len(entries))}
+	languageMatrix := connectorReleaseMatrix{Include: make([]connectorReleaseMatrixItem, 0)}
 	for _, entry := range entries {
 		latestRelease := latestReleases[entry.Directory]
 		isPending, transitionErr := validateConnectorVersionTransition(latestRelease.Version, entry.Manifest.Metadata.Version)
@@ -196,7 +214,47 @@ func releaseMatrixCommand(args []string) error {
 			Version: entry.Manifest.Metadata.Version, DisplayName: entry.Manifest.Metadata.DisplayName,
 		})
 	}
+	for _, entry := range entries {
+		if entry.Manifest.Spec.Languages == nil {
+			continue
+		}
+		languages := []struct {
+			name               string
+			packageDeclaration *schema.LanguagePackage
+		}{
+			{name: "python", packageDeclaration: entry.Manifest.Spec.Languages.Python},
+			{name: "typescript", packageDeclaration: entry.Manifest.Spec.Languages.TypeScript},
+		}
+		for _, language := range languages {
+			if language.packageDeclaration == nil {
+				continue
+			}
+			componentPath := entry.Directory + "/" + language.name
+			latestRelease := latestReleases[componentPath]
+			isPending, transitionErr := validateConnectorVersionTransition(latestRelease.Version, language.packageDeclaration.Version)
+			if transitionErr != nil {
+				return fmt.Errorf("%s: %w", componentPath, transitionErr)
+			}
+			if isPending {
+				if err := validateConnectionCompatibility(repositoryRoot, entry, latestRelease, language.packageDeclaration.Version); err != nil {
+					return err
+				}
+			}
+			isPublishedAtIncludedSource := includedSourceCommit != "" && latestRelease.SourceCommit == includedSourceCommit
+			if !isPending && !*includePublished && !isPublishedAtIncludedSource {
+				continue
+			}
+			languageMatrix.Include = append(languageMatrix.Include, connectorReleaseMatrixItem{
+				Directory: entry.Directory, ManifestPath: entry.ManifestPath, TagPrefix: componentPath + "/",
+				Version: language.packageDeclaration.Version, DisplayName: entry.Manifest.Metadata.DisplayName,
+				Language: language.name, Package: languagePackageName(entry.Directory, language.name, language.packageDeclaration.Package),
+			})
+		}
+	}
 	if err := validateConnectorReleaseMatrixSize(matrix); err != nil {
+		return err
+	}
+	if err := validateConnectorReleaseMatrixSize(languageMatrix); err != nil {
 		return err
 	}
 	encoded, err := json.Marshal(matrix)
@@ -207,7 +265,11 @@ func releaseMatrixCommand(args []string) error {
 		_, err = fmt.Fprintln(os.Stdout, string(encoded))
 		return err
 	}
-	contents := fmt.Sprintf("matrix=%s\ncount=%d\n", encoded, len(matrix.Include))
+	languageEncoded, err := json.Marshal(languageMatrix)
+	if err != nil {
+		return fmt.Errorf("encode language release matrix: %w", err)
+	}
+	contents := fmt.Sprintf("matrix=%s\ncount=%d\nlanguage_matrix=%s\nlanguage_count=%d\n", encoded, len(matrix.Include), languageEncoded, len(languageMatrix.Include))
 	if err := os.WriteFile(*githubOutputPath, []byte(contents), 0o644); err != nil {
 		return fmt.Errorf("write GitHub output: %w", err)
 	}
@@ -481,6 +543,15 @@ func encodeConnectorCatalog(entries []connectorDirectoryEntry) ([]byte, error) {
 			Company: metadata.Company, ID: metadata.Name, Name: metadata.DisplayName,
 			Description: metadata.Description, Version: metadata.Version, Directory: entry.Directory,
 			UIUnits: uiUnits, Triggers: triggers, Operations: operations,
+		}
+		if entry.Manifest.Spec.Languages != nil {
+			item.Languages = map[string]string{"go": metadata.Version}
+			if python := entry.Manifest.Spec.Languages.Python; python != nil {
+				item.Languages["python"] = python.Version
+			}
+			if typeScript := entry.Manifest.Spec.Languages.TypeScript; typeScript != nil {
+				item.Languages["typescript"] = typeScript.Version
+			}
 		}
 		if entry.Manifest.HasMocks() {
 			item.MockPackage = codegen.MockPackageImportPath(entry.Manifest, entry.ModulePath)

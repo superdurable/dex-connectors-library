@@ -17,6 +17,9 @@ alwaysApply: true
   v0 releases v1.0.0. First releases use v0.1.0. Tooling accepts a skipped
   step or another first version, so review checks both.
 - SDK tags use sdkgo/vX.Y.Z; connector tags use their module directory.
+- Python and TypeScript connector packages use independent `spec.languages.python.version` and `spec.languages.typescript.version` values, with matching package metadata.
+- SDK tags also use sdkpython/vX.Y.Z and sdkts/vX.Y.Z; connector language tags append /python/vX.Y.Z or /typescript/vX.Y.Z.
+- Release each language SDK before connectors that require it. New npm packages use the CI token for first publish; existing packages use trusted publishing when configured.
 - Connector modules depend on an exact published SDK version without replace,
   pseudo-version, branch, or commit SHA.
 - Dex Server is backward compatible with every earlier Dex SDK release. Pin no
@@ -53,6 +56,6 @@ alwaysApply: true
   a major module-path migration.
 - Use one released module per PR unless a repository-wide mechanical change
   requires several.
-- Use sdkgo:, connector(<slug>):, tooling:, or docs: subjects.
+- Use sdkgo:, sdkpython:, sdkts:, connector(<slug>):, tooling:, or docs: subjects.
 - Put exact lowercase (breaking) in the PR and final commit message for public
   breaking changes.

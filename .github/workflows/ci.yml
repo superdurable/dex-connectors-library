@@ -59,6 +59,62 @@ jobs:
             sdkgo/go.sum
       - run: make test-common
 
+  sdkpython:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v7
+      - name: Test Python connector SDK when changed
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+        run: |
+          if [ ! -f sdkpython/pyproject.toml ]; then exit 0; fi
+          if [ -n "${BASE_SHA}" ] && git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null &&
+             ! git diff --name-only "${BASE_SHA}" HEAD | grep -Eq '^sdkpython/'; then exit 0; fi
+          make test-sdkpython
+
+  sdkts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Test TypeScript connector SDK when changed
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+        run: |
+          if [ ! -f sdkts/package.json ]; then exit 0; fi
+          if [ -n "${BASE_SHA}" ] && git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null &&
+             ! git diff --name-only "${BASE_SHA}" HEAD | grep -Eq '^sdkts/'; then exit 0; fi
+          make test-sdkts
+
+  language-connectors:
+    needs: connector-plan
+    if: needs.connector-plan.outputs.count != '0'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      CONNECTOR_SCOPE: ${{ (github.event_name == 'pull_request' || github.event_name == 'push') && 'changed' || 'all' }}
+      CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+      CONNECTOR_HEAD: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - uses: astral-sh/setup-uv@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - run: make test-python-connectors test-typescript-connectors
+
   connectors:
     needs: connector-plan
     if: needs.connector-plan.outputs.count != '0'

@@ -6,6 +6,16 @@ release workflow. A version change requests a release of that connector only
 after merge; leaving it unchanged explicitly defers release. See
 [Choosing a connector version](versioning-and-releases.md#choosing-a-connector-version).
 
+Optional `spec.languages.python` and `spec.languages.typescript` entries each
+require a stable `vX.Y.Z` version and may specify a distribution `package`
+override. Go remains implied by `go.mod` and `metadata.version`. The Python
+package lives in `python/` and declares its matching name and version under
+`[project]` in `pyproject.toml`; the TypeScript package lives in
+`typescript/` and declares them in `package.json`. By default their package
+names are `dex-connector-<slug>` and `@superdurable/connector-<slug>`, with
+`<slug>` formed from the connector path below `connectors/` by replacing `/`
+with `-`. The public catalog records language availability and versions.
+
 An operation declares:
 
 - stable lower-camel `name` and exported `goName`;

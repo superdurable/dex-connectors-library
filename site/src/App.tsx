@@ -18,6 +18,12 @@ import {
 
 const logoOrigin = import.meta.env.DEV ? "local" : "published";
 
+function formatLanguageVersions(languages: CatalogConnector["languages"]): string {
+  return Object.entries(languages)
+    .map(([language, version]) => `${language === "typescript" ? "TS" : language === "python" ? "Python" : "Go"} ${version}`)
+    .join(" · ");
+}
+
 type LoadState<T> =
   | { status: "loading" }
   | { status: "ready"; value: T }
@@ -141,7 +147,7 @@ function CatalogPage({ catalog }: { catalog: LoadState<CatalogConnector[]> }) {
                   />
                   <span>{connector.company}</span>
                 </span>
-                <span className="version">{connector.version}</span>
+                <span className="version">{formatLanguageVersions(connector.languages)}</span>
               </span>
               <span className="card-title">{connector.name}</span>
               <span className="description">{connector.description}</span>
@@ -211,7 +217,7 @@ function ConnectorPage({ catalog }: { catalog: LoadState<CatalogConnector[]> }) 
           <p className="company-name">{connector.company}</p>
           <h2>{connector.name}</h2>
           <p className="version-line">
-            {connector.version}
+            {formatLanguageVersions(connector.languages)}
             <span>{connector.directory}</span>
           </p>
         </div>

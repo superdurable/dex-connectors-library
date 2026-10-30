@@ -1,4 +1,4 @@
-.PHONY: check test test-common test-conformance test-connectors catalog-check test-integration test-sdk-integration test-projectconfig-s3-integration test-connector-integration test-dex-compat-current test-dex-compat-released test-dex-compat-latest-go-sdk studio-bundle-theme react react-sdk react-connectors workspace githooks
+.PHONY: check test test-common test-conformance test-connectors test-sdkpython test-sdkts test-python-connectors test-typescript-connectors catalog-check test-integration test-sdk-integration test-projectconfig-s3-integration test-connector-integration test-dex-compat-current test-dex-compat-released test-dex-compat-latest-go-sdk studio-bundle-theme react react-sdk react-connectors workspace githooks
 
 CONNECTOR_CATALOG ?= catalog.yaml
 CONNECTOR_SCOPE ?= all
@@ -19,7 +19,7 @@ test: test-common test-connectors catalog-check
 test-common:
 	cd sdkgo && GOWORK=off go test -race -count=1 ./...
 	cd sdkgo && GOWORK=off go vet ./...
-	python3 -m unittest script/release/component_release_test.py script/dex_compatibility_test.py script/branch_off_main_policy_test.py script/agent_rules_test.py script/studio_bundle_theme_check_test.py
+	python3 -m unittest script/release/component_release_test.py script/release/npm_publish_test.py script/dex_compatibility_test.py script/branch_off_main_policy_test.py script/agent_rules_test.py script/studio_bundle_theme_check_test.py
 	GOWORK=off go test -race ./...
 	GOWORK=off go vet ./...
 
@@ -34,6 +34,32 @@ test-connectors:
 		(cd "$$module" && GOWORK=off go test -race ./... && GOWORK=off go vet ./...) || exit 1; \
 		GOWORK=off go run ./cmd/connectorctl validate "$$module/connector.yaml" || exit 1; \
 		GOWORK=off go run ./cmd/connectorctl generate --check "$$module/connector.yaml" || exit 1; \
+	done
+
+test-sdkpython:
+	@if [ -f sdkpython/pyproject.toml ]; then test -f sdkpython/uv.lock || { echo 'sdkpython/uv.lock is missing' >&2; exit 1; }; uv sync --locked --project sdkpython && uv run --project sdkpython ruff check sdkpython && uv run --project sdkpython mypy --strict sdkpython/src && uv run --project sdkpython pytest sdkpython/tests; fi
+
+test-sdkts:
+	@if [ -f sdkts/package.json ]; then test -f sdkts/package-lock.json || { echo 'sdkts/package-lock.json is missing' >&2; exit 1; }; npm ci --prefix sdkts && npm run typecheck --prefix sdkts && npm run lint --prefix sdkts && npm test --prefix sdkts; fi
+
+test-python-connectors:
+	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))"; \
+	for module in $$directories; do \
+		if [ ! -f "$$module/python/pyproject.toml" ]; then continue; fi; \
+		test -f "$$module/python/uv.lock" || { echo "$$module/python/uv.lock is missing" >&2; exit 1; }; \
+		python3 script/release/component_release.py validate-language-package --component-path "$$module/python" --language python || exit 1; \
+		uv sync --locked --project "$$module/python" && uv run --project "$$module/python" ruff check "$$module/python" && \
+		uv run --project "$$module/python" mypy --strict "$$module/python/src" && uv run --project "$$module/python" pytest "$$module/python/tests" || exit 1; \
+	done
+
+test-typescript-connectors:
+	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))"; \
+	for module in $$directories; do \
+		if [ ! -f "$$module/typescript/package.json" ]; then continue; fi; \
+		test -f "$$module/typescript/package-lock.json" || { echo "$$module/typescript/package-lock.json is missing" >&2; exit 1; }; \
+		python3 script/release/component_release.py validate-language-package --component-path "$$module/typescript" --language typescript || exit 1; \
+		npm ci --prefix "$$module/typescript" && npm run typecheck --prefix "$$module/typescript" && \
+		npm run lint --prefix "$$module/typescript" && npm test --prefix "$$module/typescript" || exit 1; \
 	done
 
 catalog-check:

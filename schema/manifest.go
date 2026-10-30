@@ -37,13 +37,31 @@ type Metadata struct {
 }
 
 type Spec struct {
-	Provider      string        `yaml:"provider" json:"provider"`
+	Provider string `yaml:"provider" json:"provider"`
+	// Languages declares optional distributions alongside the implied Go package.
+	Languages     *Languages    `yaml:"languages,omitempty" json:"languages,omitempty"`
 	Codegen       Codegen       `yaml:"codegen" json:"codegen"`
 	Configuration Configuration `yaml:"configuration" json:"configuration"`
 	Auth          Auth          `yaml:"auth" json:"auth"`
 	Studio        *Studio       `yaml:"studio,omitempty" json:"studio,omitempty"`
 	Triggers      []Trigger     `yaml:"triggers,omitempty" json:"triggers,omitempty"`
 	Operations    []Operation   `yaml:"operations" json:"operations"`
+}
+
+// Languages declares optional Python and TypeScript distributions with independent versions.
+type Languages struct {
+	// Python declares a PyPI distribution.
+	Python *LanguagePackage `yaml:"python,omitempty" json:"python,omitempty"`
+	// TypeScript declares an npm distribution.
+	TypeScript *LanguagePackage `yaml:"typescript,omitempty" json:"typescript,omitempty"`
+}
+
+// LanguagePackage identifies one language distribution and its release version.
+type LanguagePackage struct {
+	// Version is the independently released stable semantic version with a v prefix.
+	Version string `yaml:"version" json:"version"`
+	// Package overrides the distribution name derived from the connector directory.
+	Package string `yaml:"package,omitempty" json:"package,omitempty"`
 }
 
 type Studio struct {
@@ -307,14 +325,16 @@ type RetryReason struct {
 }
 
 var (
-	namePattern         = regexp.MustCompile(`^[a-z][a-z0-9-]{1,62}$`)
-	operationPattern    = regexp.MustCompile(`^[a-z][A-Za-z0-9]+$`)
-	authMethodIDPattern = regexp.MustCompile(`^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$`)
-	goNamePattern       = regexp.MustCompile(`^[A-Z][A-Za-z0-9]*$`)
-	fieldNamePattern    = regexp.MustCompile(`^[a-z][A-Za-z0-9_]*$`)
-	capabilityPattern   = regexp.MustCompile(`^[a-z][a-z0-9]*(\.[a-z][a-z0-9-]*)+$`)
-	mockScenarioPattern = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
-	versionPattern      = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$`)
+	namePattern              = regexp.MustCompile(`^[a-z][a-z0-9-]{1,62}$`)
+	operationPattern         = regexp.MustCompile(`^[a-z][A-Za-z0-9]+$`)
+	authMethodIDPattern      = regexp.MustCompile(`^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$`)
+	goNamePattern            = regexp.MustCompile(`^[A-Z][A-Za-z0-9]*$`)
+	fieldNamePattern         = regexp.MustCompile(`^[a-z][A-Za-z0-9_]*$`)
+	capabilityPattern        = regexp.MustCompile(`^[a-z][a-z0-9]*(\.[a-z][a-z0-9-]*)+$`)
+	mockScenarioPattern      = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
+	versionPattern           = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$`)
+	pythonPackagePattern     = regexp.MustCompile(`^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$`)
+	typeScriptPackagePattern = regexp.MustCompile(`^@[a-z][a-z0-9-]*/[a-z][a-z0-9-]*$`)
 	// httpHeaderTokenPattern is the RFC 7230 token grammar for header field names.
 	httpHeaderTokenPattern = regexp.MustCompile("^[!#$%&'*+.^_`|~0-9A-Za-z-]+$")
 	// studioCommandHeaderValuePattern is printable ASCII without surrounding spaces.
@@ -445,6 +465,24 @@ func (manifest Manifest) Validate() error {
 	}
 	if !versionPattern.MatchString(manifest.Metadata.Version) {
 		problems = append(problems, "metadata.version must be a stable semantic version with a v prefix")
+	}
+	if manifest.Spec.Languages != nil {
+		if language := manifest.Spec.Languages.Python; language != nil {
+			if !versionPattern.MatchString(language.Version) {
+				problems = append(problems, "spec.languages.python.version must be a stable semantic version with a v prefix")
+			}
+			if language.Package != "" && !pythonPackagePattern.MatchString(language.Package) {
+				problems = append(problems, "spec.languages.python.package must be a normalized PyPI distribution name")
+			}
+		}
+		if language := manifest.Spec.Languages.TypeScript; language != nil {
+			if !versionPattern.MatchString(language.Version) {
+				problems = append(problems, "spec.languages.typescript.version must be a stable semantic version with a v prefix")
+			}
+			if language.Package != "" && !typeScriptPackagePattern.MatchString(language.Package) {
+				problems = append(problems, "spec.languages.typescript.package must be a scoped npm package name")
+			}
+		}
 	}
 	if strings.TrimSpace(manifest.Spec.Provider) == "" {
 		problems = append(problems, "spec.provider is required")

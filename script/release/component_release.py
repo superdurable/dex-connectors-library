@@ -4,15 +4,25 @@
 from __future__ import annotations
 
 import argparse
+import email.parser
+import hashlib
 import json
 import os
 import re
+import stat
 import subprocess
 import sys
+import tarfile
+import tomllib
+import urllib.error
+import urllib.parse
+import urllib.request
+import zipfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
 VERSION_PATTERN = re.compile(r"^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
+RELEASE_ARTIFACT_VERSION_PATTERN = re.compile(r"^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-rc\.[1-9][0-9]*)?$")
 LIBRARY_MODULE_PATH = "github.com/superdurable/dex-connectors-library"
 CONNECTOR_MODULE_PATH_PREFIX = f"{LIBRARY_MODULE_PATH}/connectors/"
 CONNECTOR_RELEASE_COMPLETE_ASSET = "connector-release.complete"
@@ -64,6 +74,26 @@ class DependencyReleaseLookup:
         if result.returncode != 0:
             raise ValueError(f"cannot read the GitHub release for {tag}: {result.stderr.strip()}")
         return frozenset(line for line in result.stdout.splitlines() if line)
+
+    def is_language_sdk_published(self, language: str, version: str) -> bool:
+        if language == "python":
+            try:
+                with urllib.request.urlopen(f"https://pypi.org/pypi/dex-connectors-sdk/{version}/json", timeout=15) as response:
+                    return response.status == 200
+            except urllib.error.HTTPError as error:
+                if error.code == 404:
+                    return False
+                raise ValueError(f"PyPI SDK lookup failed: HTTP {error.code}") from error
+            except urllib.error.URLError as error:
+                raise ValueError(f"PyPI SDK lookup failed: {error.reason}") from error
+        result = subprocess.run(("npm", "view", f"@superdurable/connectors-sdk@{version}", "version", "--json",
+                                 "--registry", "https://registry.npmjs.org"),
+                                capture_output=True, text=True, check=False)
+        if result.returncode == 0:
+            return json.loads(result.stdout) == version
+        if "E404" in result.stderr:
+            return False
+        raise ValueError("npm SDK lookup failed")
 
     def download_module_directly(self, component_path: Path, module: str, version: str) -> None:
         """Runs go mod download in the connector module; Go adds any missing go.sum entry."""
@@ -139,11 +169,30 @@ def validate_release_ref(ref: str) -> None:
 
 
 def module_path(component_path: Path) -> str:
+    if (component_path / "pyproject.toml").is_file():
+        project = tomllib.loads((component_path / "pyproject.toml").read_text(encoding="utf-8")).get("project", {})
+        if not isinstance(project.get("name"), str):
+            raise ValueError(f"{component_path}/pyproject.toml has no project name")
+        return project["name"]
+    if (component_path / "package.json").is_file():
+        return json.loads((component_path / "package.json").read_text(encoding="utf-8"))["name"]
     go_mod = component_path / "go.mod"
     for line in go_mod.read_text(encoding="utf-8").splitlines():
         if line.startswith("module "):
             return line.removeprefix("module ").strip()
     raise ValueError(f"{go_mod} does not declare a module")
+
+
+def declared_package_version(component_path: Path) -> str:
+    if (component_path / "package.json").is_file():
+        return json.loads((component_path / "package.json").read_text(encoding="utf-8"))["version"]
+    project_section = (component_path / "pyproject.toml").read_text(encoding="utf-8").split("[project]", 1)
+    if len(project_section) != 2:
+        raise ValueError(f"{component_path}/pyproject.toml has no [project] section")
+    match = re.search(r'''^version\s*=\s*["']([^"']+)["']\s*(?:#.*)?$''', project_section[1].split("\n[", 1)[0], re.MULTILINE)
+    if match is None:
+        raise ValueError(f"{component_path}/pyproject.toml has no project version")
+    return match.group(1)
 
 
 def reachable_tags(tag_prefix: str) -> list[tuple[tuple[int, int, int], str, str]]:
@@ -174,13 +223,16 @@ def latest_reachable_tag(tag_prefix: str) -> tuple[str, str]:
 
 def component_commits(component_path: str, baseline_tag: str, release_ref: str = "HEAD") -> tuple[str, ...]:
     revision = f"{baseline_tag}..{release_ref}" if baseline_tag else release_ref
+    paths = [component_path]
+    if component_path.startswith("connectors/") and component_path.endswith(("/python", "/typescript")):
+        paths.append(str(Path(component_path).parent / "connector.yaml"))
     result = git(
         "log",
         "--first-parent",
         "--format=%H",
         revision,
         "--",
-        component_path,
+        *paths,
     )
     return tuple(line for line in result.stdout.splitlines() if line)
 
@@ -192,8 +244,8 @@ def create_plan(
     target_version: str = "",
 ) -> ReleasePlan:
     path = Path(component_path)
-    if not path.is_dir() or not (path / "go.mod").is_file():
-        raise ValueError(f"component is not a Go module: {component_path}")
+    if not path.is_dir() or not any((path / name).is_file() for name in ("go.mod", "pyproject.toml", "package.json")):
+        raise ValueError(f"component has no supported package manifest: {component_path}")
     if bool(bump) == bool(target_version):
         raise ValueError("exactly one of bump or target version is required")
     candidates = reachable_tags(tag_prefix)
@@ -201,11 +253,12 @@ def create_plan(
     latest_version = candidates[-1][2] if candidates else ""
     if target_version:
         version = target_version
-        if latest_version and parse_version(version) < parse_version(latest_version):
+        target_key = parse_version(version)
+        target_is_reachable = any(candidate[0] == target_key for candidate in candidates)
+        if latest_version and target_key < parse_version(latest_version) and not target_is_reachable:
             raise ValueError(f"target version {version} is behind latest release {latest_version}")
-        target_is_reachable = latest_version == version
         if target_is_reachable:
-            previous = [candidate for candidate in candidates if candidate[0] < parse_version(version)]
+            previous = [candidate for candidate in candidates if candidate[0] < target_key]
             baseline_tag = previous[-1][1] if previous else ""
             baseline_version = previous[-1][2] if previous else ""
             release_ref = tag_prefix + version
@@ -229,8 +282,10 @@ def create_plan(
         raise ValueError(f"release tag already exists: {tag}")
     source_sha = git("rev-parse", f"{tag}^{{commit}}" if target_is_reachable else "HEAD").stdout.strip()
     module = module_path(path)
+    if not (path / "go.mod").is_file() and declared_package_version(path) != version.removeprefix("v"):
+        raise ValueError(f"{path} package version must equal planned release {version}")
     major = parse_version(version)[0]
-    if major >= 2 and not module.endswith(f"/v{major}"):
+    if (path / "go.mod").is_file() and major >= 2 and not module.endswith(f"/v{major}"):
         raise ValueError(f"module path must end in /v{major} before releasing {version}")
     return ReleasePlan(
         component_path=component_path,
@@ -306,19 +361,207 @@ def validate_breaking_bump(plan: ReleasePlan, has_breaking_changes: bool) -> Non
 
 
 def write_github_output(path: Path, plan: ReleasePlan) -> None:
-    path.write_text(
-        "\n".join(
-            (
-                f"version={plan.version}",
-                f"tag={plan.tag}",
-                f"baseline_tag={plan.baseline_tag}",
-                f"module_path={plan.module_path}",
-                f"source_sha={plan.source_sha}",
-            )
-        )
-        + "\n",
+    values = {"version": plan.version, "tag": plan.tag, "baseline_tag": plan.baseline_tag,
+              "module_path": plan.module_path, "source_sha": plan.source_sha}
+    if any(ord(character) < 32 or ord(character) == 127 for value in values.values() for character in value):
+        raise ValueError("GitHub output values cannot contain control characters")
+    path.write_text("".join(f"{name}={value}\n" for name, value in values.items()), encoding="utf-8")
+
+
+def write_language_release_manifest(
+    output: Path, language: str, package: str, version: str, tag: str, source_sha: str, assets: list[Path]
+) -> None:
+    if language not in {"python", "typescript"}:
+        raise ValueError("language release requires Python or TypeScript")
+    if not RELEASE_ARTIFACT_VERSION_PATTERN.fullmatch(version) or not tag.endswith("/" + version):
+        raise ValueError("language release tag and version disagree")
+    verify_language_artifacts(language, package, version, assets)
+    artifact_digests: dict[str, str] = {}
+    for asset in assets:
+        digest = hashlib.sha256(asset.read_bytes()).hexdigest()
+        artifact_digests[asset.name] = digest
+        asset.with_name(asset.name + ".sha256").write_text(f"{digest}  {asset.name}\n", encoding="utf-8")
+    output.write_text(
+        json.dumps({"language": language, "package": package, "version": version,
+                    "tag": tag, "sourceSha": source_sha, "artifacts": artifact_digests}, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+    output.with_name(output.name + ".sha256").write_text(
+        f"{hashlib.sha256(output.read_bytes()).hexdigest()}  {output.name}\n", encoding="utf-8"
+    )
+
+
+def verify_language_artifacts(language: str, package: str, version: str, assets: list[Path]) -> None:
+    """Reject package builds whose archive identity or file set differs from the release plan."""
+    if len(assets) != (2 if language == "python" else 1) or len({asset.name for asset in assets}) != len(assets):
+        raise ValueError("language release has an unexpected artifact count")
+    expected_version = version.removeprefix("v")
+    if language == "python":
+        expected_version = expected_version.replace("-rc.", "rc")
+    suffixes = sorted(
+        ".whl" if asset.name.endswith(".whl") else
+        ".tar.gz" if asset.name.endswith(".tar.gz") else
+        ".tgz" if asset.name.endswith(".tgz") else "invalid"
+        for asset in assets
+    )
+    if suffixes != ([".tar.gz", ".whl"] if language == "python" else [".tgz"]):
+        raise ValueError("language release has unexpected artifact types")
+    if len({asset.parent.resolve() for asset in assets}) != 1:
+        raise ValueError("language release artifacts must share a directory")
+    expected_names = {asset.name for asset in assets}
+    entries = [path for path in assets[0].parent.iterdir() if path.is_file() or path.is_symlink()]
+    if any(path.is_symlink() for path in entries):
+        raise ValueError("language release directory contains non-regular files")
+    actual_names = {path.name for path in entries}
+    release_names = expected_names | {name + ".sha256" for name in expected_names} | {"language-release.json", "language-release.json.sha256"}
+    if actual_names != expected_names and actual_names != release_names:
+        raise ValueError("language release directory contains unexpected files")
+    for asset in assets:
+        if language == "typescript":
+            actual_name, actual_version = npm_tarball_identity(asset)
+        elif asset.name.endswith(".whl"):
+            expected_distribution = python_distribution_filename(package)
+            if not asset.name.startswith(f"{expected_distribution}-{expected_version}-"):
+                raise ValueError("wheel filename differs from planned package and version")
+            with zipfile.ZipFile(asset) as archive:
+                entries = archive.infolist()
+                names = [entry.filename for entry in entries]
+                if len(set(names)) != len(names) or any(not safe_archive_path(name) for name in names):
+                    raise ValueError("wheel has duplicate or unsafe paths")
+                if any(stat.S_IFMT(entry.external_attr >> 16) == stat.S_IFLNK for entry in entries):
+                    raise ValueError("wheel contains a symbolic link")
+                dist_info = {"/".join(parts[:index + 1]) for name in names
+                             for parts in [name.split("/")] for index, part in enumerate(parts)
+                             if part.endswith(".dist-info")}
+                expected_info = f"{expected_distribution}-{expected_version}.dist-info"
+                if dist_info != {expected_info}:
+                    raise ValueError("wheel dist-info directory differs from planned package and version")
+                metadata_path = f"{expected_info}/METADATA"
+                if names.count(metadata_path) != 1:
+                    raise ValueError("wheel must contain one METADATA file")
+                metadata = email.parser.Parser().parsestr(archive.read(metadata_path).decode("utf-8"))
+                actual_name, actual_version = metadata.get("Name"), metadata.get("Version")
+        else:
+            expected_distribution = python_distribution_filename(package)
+            expected_root = f"{expected_distribution}-{expected_version}"
+            if asset.name != f"{expected_root}.tar.gz":
+                raise ValueError("sdist filename differs from planned package and version")
+            with tarfile.open(asset, "r:gz") as archive:
+                members = archive.getmembers()
+                names = [member.name for member in members]
+                if (len(set(names)) != len(names) or
+                    any(not safe_archive_path(name) or name.split("/")[0] != expected_root or
+                        not (member.isfile() or member.isdir()) for name, member in zip(names, members))):
+                    raise ValueError("sdist has duplicate, unsafe, or unexpected paths")
+                info = [member for member in members if member.name.endswith("/PKG-INFO")]
+                if len(info) != 1 or info[0].name != f"{expected_root}/PKG-INFO" or not info[0].isfile():
+                    raise ValueError("sdist must contain one PKG-INFO file")
+                member = archive.extractfile(info[0])
+                if member is None:
+                    raise ValueError("sdist PKG-INFO is unreadable")
+                metadata = email.parser.Parser().parsestr(member.read().decode("utf-8"))
+                actual_name, actual_version = metadata.get("Name"), metadata.get("Version")
+        if actual_name != package or actual_version != expected_version:
+            raise ValueError(f"{asset.name} identity {actual_name}@{actual_version} differs from planned {package}@{expected_version}")
+
+
+def python_distribution_filename(package: str) -> str:
+    return re.sub(r"[-_.]+", "_", package).lower()
+
+
+def safe_archive_path(name: str) -> bool:
+    parts = name.rstrip("/").split("/")
+    return bool(name) and not name.startswith("/") and "\\" not in name and all(part not in {"", ".", ".."} for part in parts)
+
+
+def npm_tarball_identity(tarball: Path) -> tuple[str, str]:
+    """Read the sole package manifest only after validating every npm archive entry."""
+    with tarfile.open(tarball, "r:gz") as archive:
+        members = archive.getmembers()
+        names = [member.name for member in members]
+        if (len(set(names)) != len(names) or
+            any(not safe_archive_path(name) or (name != "package" and not name.startswith("package/")) or
+                (name == "package" and not member.isdir()) or
+                not (member.isfile() or member.isdir()) for name, member in zip(names, members))):
+            raise ValueError("npm tarball has duplicate, unsafe, or unexpected paths")
+        package_json = [member for member in members if member.name == "package/package.json" and member.isfile()]
+        if len(package_json) != 1:
+            raise ValueError("npm tarball must contain one package/package.json")
+        manifest = archive.extractfile(package_json[0])
+        if manifest is None:
+            raise ValueError("npm package manifest is unreadable")
+        identity = json.load(manifest)
+        if not isinstance(identity, dict) or not isinstance(identity.get("name"), str) or not isinstance(identity.get("version"), str):
+            raise ValueError("npm package manifest has no name or version")
+        return identity["name"], identity["version"]
+
+
+def verify_pypi_artifacts(package: str, version: str, assets: list[Path], require_all: bool = False) -> None:
+    """Compare local distributions with any files already published for this PyPI version."""
+    public_version = version.removeprefix("v").replace("-rc.", "rc")
+    url = f"https://pypi.org/pypi/{urllib.parse.quote(package, safe='')}/{urllib.parse.quote(public_version, safe='')}/json"
+    try:
+        with urllib.request.urlopen(url, timeout=15) as response:
+            release = json.load(response)
+    except urllib.error.HTTPError as error:
+        if error.code == 404 and not require_all:
+            return
+        raise ValueError(f"PyPI release lookup failed: HTTP {error.code}") from error
+    except urllib.error.URLError as error:
+        raise ValueError(f"PyPI release lookup failed: {error.reason}") from error
+    published = {entry["filename"]: entry["digests"]["sha256"] for entry in release["urls"]}
+    for asset in assets:
+        digest = published.get(asset.name)
+        if digest is None:
+            if require_all:
+                raise ValueError(f"PyPI release is missing {asset.name}")
+            continue
+        if digest != hashlib.sha256(asset.read_bytes()).hexdigest():
+            raise ValueError(f"PyPI artifact {asset.name} has different SHA256 from the local release")
+
+
+def validate_language_package(component_path: str, language: str, lookup: DependencyReleaseLookup) -> str:
+    """Require a registry-ready package with an exact, released SDK dependency."""
+    path = Path(component_path)
+    if language == "python":
+        manifest = tomllib.loads((path / "pyproject.toml").read_text(encoding="utf-8"))
+        if manifest.get("tool", {}).get("uv", {}).get("sources"):
+            raise ValueError("Python package cannot use tool.uv.sources overrides")
+        project = manifest.get("project", {})
+        dependencies = list(project.get("dependencies", []))
+        for optional in project.get("optional-dependencies", {}).values():
+            dependencies.extend(optional)
+        for group in manifest.get("dependency-groups", {}).values():
+            dependencies.extend(group)
+        sdk_name = "dex-connectors-sdk"
+        sdk_versions = [match.group(1) for dependency in dependencies if (match := re.fullmatch(r"dex-connectors-sdk(?:==|>=)([0-9]+\.[0-9]+\.[0-9]+)", dependency))]
+        if any(re.search(r"(?:file:|git\+|git@|https?://|ssh://|\.\./|workspace:|path\s*=)", dependency, re.IGNORECASE) for dependency in dependencies):
+            raise ValueError("Python package cannot use path, file, git, or workspace dependencies")
+        tag_prefix = "sdkpython/"
+    elif language == "typescript":
+        manifest = json.loads((path / "package.json").read_text(encoding="utf-8"))
+        dependency_groups = [manifest.get(name, {}) for name in ("dependencies", "optionalDependencies", "peerDependencies", "devDependencies", "overrides")]
+        if any(re.search(r"^(?:file:|link:|git(?:\+|:)|git@|github:|https?://|ssh://|workspace:|\.\.?/)", value, re.IGNORECASE)
+               for group in dependency_groups for value in group.values()):
+            raise ValueError("TypeScript package cannot use path, file, git, or workspace dependencies")
+        dependencies = {name: value for group in dependency_groups[:3] for name, value in group.items()}
+        sdk_name = "@superdurable/connectors-sdk"
+        sdk_version = dependencies.get(sdk_name, "")
+        match = re.fullmatch(r"(?:>=|\^|~)?([0-9]+\.[0-9]+\.[0-9]+)", sdk_version)
+        sdk_versions = [match.group(1)] if match else []
+        tag_prefix = "sdkts/"
+    else:
+        raise ValueError(f"unsupported language: {language}")
+    if len(sdk_versions) != 1:
+        raise ValueError(f"{component_path} must require one exact {sdk_name} release")
+    tag = tag_prefix + "v" + sdk_versions[0]
+    if not lookup.has_tag(tag) or not lookup.is_tag_reachable_from_main(tag):
+        raise ValueError(f"required SDK release tag is missing or not on main: {tag}")
+    if "language-release.json" not in lookup.release_asset_names(tag):
+        raise ValueError(f"required SDK GitHub release is missing: {tag}")
+    if not lookup.is_language_sdk_published(language, sdk_versions[0]):
+        raise ValueError(f"required SDK version is not published in the registry: {tag}")
+    return tag
 
 
 def validate_connector(component_path: str, sdk_module: str, lookup: DependencyReleaseLookup) -> tuple[str, ...]:
@@ -448,6 +691,28 @@ def main() -> int:
     validate_parser.add_argument("--component-path", required=True)
     validate_parser.add_argument("--sdk-module", required=True)
     validate_parser.add_argument("--main-ref", default="origin/main")
+    language_validate_parser = subparsers.add_parser("validate-language-package")
+    language_validate_parser.add_argument("--component-path", required=True)
+    language_validate_parser.add_argument("--language", choices=("python", "typescript"), required=True)
+    language_validate_parser.add_argument("--main-ref", default="origin/main")
+    manifest_parser = subparsers.add_parser("language-manifest")
+    manifest_parser.add_argument("--output", type=Path, required=True)
+    manifest_parser.add_argument("--language", choices=("python", "typescript"), required=True)
+    manifest_parser.add_argument("--package", required=True)
+    manifest_parser.add_argument("--version", required=True)
+    manifest_parser.add_argument("--tag", required=True)
+    manifest_parser.add_argument("--source-sha", required=True)
+    manifest_parser.add_argument("--asset", type=Path, action="append", required=True)
+    verify_parser = subparsers.add_parser("verify-language-artifacts")
+    verify_parser.add_argument("--language", choices=("python", "typescript"), required=True)
+    verify_parser.add_argument("--package", required=True)
+    verify_parser.add_argument("--version", required=True)
+    verify_parser.add_argument("--asset", type=Path, action="append", required=True)
+    registry_parser = subparsers.add_parser("verify-pypi-artifacts")
+    registry_parser.add_argument("--package", required=True)
+    registry_parser.add_argument("--version", required=True)
+    registry_parser.add_argument("--asset", type=Path, action="append", required=True)
+    registry_parser.add_argument("--require-all", action="store_true")
     arguments = parser.parse_args()
     try:
         if arguments.command == "plan":
@@ -468,6 +733,16 @@ def main() -> int:
             notes, has_breaking_changes = release_notes(plan, arguments.repository)
             validate_breaking_bump(plan, has_breaking_changes)
             arguments.output.write_text(notes, encoding="utf-8")
+        elif arguments.command == "language-manifest":
+            write_language_release_manifest(arguments.output, arguments.language, arguments.package,
+                                            arguments.version, arguments.tag, arguments.source_sha, arguments.asset)
+        elif arguments.command == "verify-language-artifacts":
+            verify_language_artifacts(arguments.language, arguments.package, arguments.version, arguments.asset)
+        elif arguments.command == "verify-pypi-artifacts":
+            verify_pypi_artifacts(arguments.package, arguments.version, arguments.asset, arguments.require_all)
+        elif arguments.command == "validate-language-package":
+            print(validate_language_package(arguments.component_path, arguments.language,
+                                            DependencyReleaseLookup(arguments.main_ref)))
         else:
             tags = validate_connector(
                 arguments.component_path,
@@ -475,7 +750,7 @@ def main() -> int:
                 DependencyReleaseLookup(arguments.main_ref),
             )
             print(f"{arguments.component_path}: {', '.join(tags)}")
-    except (OSError, ValueError, subprocess.CalledProcessError, json.JSONDecodeError) as error:
+    except (OSError, ValueError, subprocess.CalledProcessError, json.JSONDecodeError, tarfile.TarError, zipfile.BadZipFile, KeyError) as error:
         print(error, file=sys.stderr)
         return 1
     return 0

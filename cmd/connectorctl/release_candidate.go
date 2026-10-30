@@ -14,6 +14,9 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"unicode"
+
+	"github.com/superdurable/dex-connectors-library/schema"
 )
 
 // connectorReleaseCandidateVersionPattern captures the release version a candidate precedes and its candidate number.
@@ -31,6 +34,8 @@ type connectorReleaseCandidate struct {
 	Tag          string
 	SourceSHA    string
 	DisplayName  string
+	Language     string
+	Package      string
 	// IsTagPublished reports that the tag already names the candidate commit, so publishing repeats safely.
 	IsTagPublished bool
 }
@@ -42,6 +47,7 @@ func releaseCandidateCommand(args []string) error {
 	directory := flags.String("directory", "", "registered connector directory of the candidate")
 	commit := flags.String("commit", "", "candidate commit SHA")
 	version := flags.String("version", "", "release candidate version, vX.Y.Z-rc.N")
+	language := flags.String("language", "", "python or typescript; empty selects Go")
 	githubOutputPath := flags.String("github-output", "", "GitHub Actions output path")
 	if err := flags.Parse(args); err != nil {
 		return err
@@ -49,13 +55,19 @@ func releaseCandidateCommand(args []string) error {
 	if flags.NArg() != 0 || *catalogPath == "" || *candidateRoot == "" || *directory == "" || *commit == "" || *version == "" {
 		return errors.New("usage: connectorctl release-candidate --catalog PATH --candidate-root PATH --directory DIRECTORY --commit SHA --version vX.Y.Z-rc.N [--github-output PATH]")
 	}
-	candidate, err := planConnectorReleaseCandidate(*catalogPath, *candidateRoot, *directory, *commit, *version)
+	candidate, err := planConnectorReleaseCandidateLanguage(*catalogPath, *candidateRoot, *directory, *commit, *version, *language)
 	if err != nil {
 		return err
 	}
-	outputs := fmt.Sprintf("directory=%s\nmanifest_path=%s\nmodule_path=%s\nversion=%s\ntag=%s\nsource_sha=%s\ndisplay_name=%s\ntag_published=%t\n",
+	for _, value := range []string{candidate.Directory, candidate.ManifestPath, candidate.ModulePath, candidate.Version,
+		candidate.Tag, candidate.SourceSHA, candidate.DisplayName, candidate.Language, candidate.Package} {
+		if strings.IndexFunc(value, unicode.IsControl) >= 0 {
+			return fmt.Errorf("release candidate output contains a control character")
+		}
+	}
+	outputs := fmt.Sprintf("directory=%s\nmanifest_path=%s\nmodule_path=%s\nversion=%s\ntag=%s\nsource_sha=%s\ndisplay_name=%s\ntag_published=%t\nlanguage=%s\npackage=%s\n",
 		candidate.Directory, candidate.ManifestPath, candidate.ModulePath, candidate.Version, candidate.Tag,
-		candidate.SourceSHA, candidate.DisplayName, candidate.IsTagPublished)
+		candidate.SourceSHA, candidate.DisplayName, candidate.IsTagPublished, candidate.Language, candidate.Package)
 	if *githubOutputPath == "" {
 		_, err = fmt.Print(outputs)
 		return err
@@ -76,6 +88,13 @@ func releaseCandidateCommand(args []string) error {
 // manifest declares the release the candidate precedes, that release is after the latest one reachable from main
 // and keeps the connections of that major version's latest release, and the tag is free or already names the commit.
 func planConnectorReleaseCandidate(catalogPath, candidateRoot, directory, commit, version string) (connectorReleaseCandidate, error) {
+	return planConnectorReleaseCandidateLanguage(catalogPath, candidateRoot, directory, commit, version, "")
+}
+
+func planConnectorReleaseCandidateLanguage(catalogPath, candidateRoot, directory, commit, version, language string) (connectorReleaseCandidate, error) {
+	if language != "" && language != "python" && language != "typescript" {
+		return connectorReleaseCandidate{}, fmt.Errorf("unsupported candidate language: %s", language)
+	}
 	match := connectorReleaseCandidateVersionPattern.FindStringSubmatch(version)
 	if match == nil {
 		return connectorReleaseCandidate{}, fmt.Errorf("release candidate version %s is not vX.Y.Z-rc.N", version)
@@ -115,32 +134,57 @@ func planConnectorReleaseCandidate(catalogPath, candidateRoot, directory, commit
 	if entry == nil {
 		return connectorReleaseCandidate{}, fmt.Errorf("candidate does not register %s in catalog.yaml", directory)
 	}
-	if entry.Manifest.Metadata.Version != releaseVersion {
+	declaredVersion := entry.Manifest.Metadata.Version
+	componentDirectory := directory
+	packageName := ""
+	if language != "" {
+		componentDirectory += "/" + language
+		if entry.Manifest.Spec.Languages == nil {
+			return connectorReleaseCandidate{}, fmt.Errorf("%s does not declare %s", entry.ManifestPath, language)
+		}
+		var declaration *schema.LanguagePackage
+		if language == "python" {
+			declaration = entry.Manifest.Spec.Languages.Python
+		} else {
+			declaration = entry.Manifest.Spec.Languages.TypeScript
+		}
+		if declaration == nil {
+			return connectorReleaseCandidate{}, fmt.Errorf("%s does not declare %s", entry.ManifestPath, language)
+		}
+		declaredVersion = declaration.Version
+		packageName = languagePackageName(directory, language, declaration.Package)
+	}
+	if declaredVersion != releaseVersion {
 		return connectorReleaseCandidate{}, fmt.Errorf("%s declares %s, but %s is a candidate of %s",
-			entry.ManifestPath, entry.Manifest.Metadata.Version, version, releaseVersion)
+			entry.ManifestPath, declaredVersion, version, releaseVersion)
 	}
 	latestReleases, err := latestReachableConnectorReleases(repositoryRoot)
 	if err != nil {
 		return connectorReleaseCandidate{}, err
 	}
-	isPending, err := validateConnectorVersionTransition(latestReleases[directory].Version, releaseVersion)
+	isPending, err := validateConnectorVersionTransition(latestReleases[componentDirectory].Version, releaseVersion)
 	if err != nil {
-		return connectorReleaseCandidate{}, fmt.Errorf("%s: %w", directory, err)
+		return connectorReleaseCandidate{}, fmt.Errorf("%s: %w", componentDirectory, err)
 	}
 	if !isPending {
-		return connectorReleaseCandidate{}, fmt.Errorf("%s %s is already released", directory, releaseVersion)
+		return connectorReleaseCandidate{}, fmt.Errorf("%s %s is already released", componentDirectory, releaseVersion)
 	}
-	if err := validateConnectionCompatibility(repositoryRoot, *entry, latestReleases[directory], releaseVersion); err != nil {
+	if err := validateConnectionCompatibility(repositoryRoot, *entry, latestReleases[componentDirectory], releaseVersion); err != nil {
 		return connectorReleaseCandidate{}, err
 	}
-	tag := directory + "/" + version
+	tag := componentDirectory + "/" + version
 	isTagPublished, err := isTagAtCommit(repositoryRoot, tag, commit)
 	if err != nil {
 		return connectorReleaseCandidate{}, err
 	}
+	modulePath := entry.ModulePath
+	if language != "" {
+		modulePath = packageName
+	}
 	return connectorReleaseCandidate{
-		Directory: directory, ManifestPath: entry.ManifestPath, ModulePath: entry.ModulePath, Version: version, Tag: tag,
+		Directory: directory, ManifestPath: entry.ManifestPath, ModulePath: modulePath, Version: version, Tag: tag,
 		SourceSHA: commit, DisplayName: entry.Manifest.Metadata.DisplayName, IsTagPublished: isTagPublished,
+		Language: language, Package: packageName,
 	}, nil
 }
 

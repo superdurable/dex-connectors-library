@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -87,6 +90,23 @@ connectors:
     triggers: 1,
     operations: 1,
   });
+});
+
+test("catalog exposes independent language versions", () => {
+  const connectors = readCatalog(`
+connectors:
+  - company: Google
+    id: gmail
+    name: Gmail
+    description: Mail connector.
+    version: v0.2.0
+    languages: {go: v0.2.0, python: v0.1.0, typescript: v0.3.0}
+    directory: connectors/google/gmail
+    uiUnits: []
+    triggers: []
+    operations: []
+`);
+  assert.deepEqual(connectors[0].languages, { go: "v0.2.0", python: "v0.1.0", typescript: "v0.3.0" });
 });
 
 test("connector manifest exposes operation name, kind, and description", () => {
