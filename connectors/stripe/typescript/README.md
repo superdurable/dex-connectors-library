@@ -14,7 +14,9 @@ Use Node.js 22 or 24 and Dex TypeScript SDK 1.28.0 or later. The connector's `sp
 
 Create a restricted `rk_test_` or `rk_live_` key in [Stripe Dashboard > Developers > API keys](https://dashboard.stripe.com/apikeys). For PaymentIntent reads and refunds, grant PaymentIntent, Charge, and Refund read access plus Refund write access. Choose **API key only** in Dex Web Connections if the application uses only these API operations. Choose **API key and webhook** only when a separate webhook receiver is configured, and store the matching `whsec_` signing secret in that connection. Keep test and live modes aligned.
 
-Load the project's connection at Worker startup with `loadFromEnvironment` from `@superdurable/connectors-sdk/projectconfig`, then call `newProjectStripeConnection(project, ConnectionName)` with a static name defined by the application. Ordinary settings are pinned at startup; the private key is resolved immediately before each provider request. Never put the key in Flow input, Attributes, results, Streams, logs, or mock reports. For isolated tests, pass a `StaticCredentialProvider` holding a `SecretString` to `StripeClient` and bind it with `newStripeConnection`.
+This TypeScript package provides the five API operations only. The `checkoutSessionUpdated` Trigger and webhook receiver are currently available in Go; **API key only** is the recommended TypeScript connection method.
+
+Load the project's connection at Worker startup with `loadFromEnvironment` from `@superdurable/connectors-sdk/projectconfig`, then call `newProjectConnection(project, ConnectionName)` with a static name defined by the application. Ordinary settings are pinned at startup; the private key is resolved immediately before each provider request. Never put the key in Flow input, Attributes, results, Streams, logs, or mock reports. For isolated tests, pass a `StaticCredentialProvider` holding a `SecretString` to `StripeClient` and bind it with `newConnection`.
 
 Dex Web release identity and FDG 2.0 recognition for TypeScript depend on Dex CLI/Web R4 support. Until that release is available, a TypeScript Flow can run through Dex, but Dex Web Connections may not discover its operation configuration automatically. Configure the connection through the private project configuration path and verify it at Worker startup; do not put credentials in application code or Flow state.
 
@@ -36,7 +38,7 @@ The Worker entrypoint uses these lines from [`main.ts`](examples/create-card-che
 
 ```ts
 const project = await loadFromEnvironment();
-const connection = newProjectStripeConnection(project, ConnectionName);
+const connection = newProjectConnection(project, ConnectionName);
 await runCardCheckoutWorker(new CardCheckoutFlow(connection), stop.signal);
 ```
 

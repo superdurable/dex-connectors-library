@@ -3,7 +3,7 @@
 
 import { Attribute, StepList, StepRef, forceFail, goTo, gracefulComplete, jsonCodec, type Context, type Flow, type PersistenceSchema, type Step, type StepDecision } from '@superdurable/dex';
 import type { MutationResult } from '@superdurable/connectors-sdk';
-import { newCreateCardCheckoutSessionStep, type StripeConnection, type CheckoutSession, type CreateCardCheckoutSessionInput } from '@superdurable/connector-stripe';
+import { newCreateCardCheckoutSessionStep, type Connection, type CheckoutSession, type CreateCardCheckoutSessionInput } from '@superdurable/connector-stripe';
 
 /** Static Dex Web connection name for this example. */
 export const ConnectionName = 'stripe-payments';
@@ -21,10 +21,10 @@ export const cardCheckoutSession = new Attribute<CheckoutSession>('card-checkout
 export class CardCheckoutFlow implements Flow<CardCheckoutInput> {
   private readonly prepareStep = new PrepareCardCheckout();
   private readonly completeStep = new CompleteCardCheckout();
-  private readonly connection: StripeConnection;
+  private readonly connection: Connection;
 
   /** Bind the operation-specific Stripe Step at Worker registration. */
-  constructor(connection: StripeConnection) {
+  constructor(connection: Connection) {
     if (!connection) throw new TypeError('card Checkout Stripe connection is required');
     this.connection = connection;
   }

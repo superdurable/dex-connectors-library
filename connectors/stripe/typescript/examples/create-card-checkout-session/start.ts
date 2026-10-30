@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Client, Registry, openBlobCache, type BlobCache } from '@superdurable/dex';
 import { loadFromEnvironment } from '@superdurable/connectors-sdk/projectconfig';
-import { newProjectStripeConnection, CreateCheckoutSessionInputSchema, type CheckoutSession } from '@superdurable/connector-stripe';
+import { newProjectConnection, CreateCheckoutSessionInputSchema, type CheckoutSession } from '@superdurable/connector-stripe';
 import { CardCheckoutFlow, ConnectionName, type CardCheckoutInput } from './flow/workflow.js';
 
 async function startCardCheckout(): Promise<void> {
@@ -22,7 +22,7 @@ async function startCardCheckout(): Promise<void> {
     ...(parsed.expiresAt ? { expiresAt: parsed.expiresAt } : {}),
   };
   const project = await loadFromEnvironment();
-  const connection = newProjectStripeConnection(project, ConnectionName);
+  const connection = newProjectConnection(project, ConnectionName);
   const flow = new CardCheckoutFlow(connection);
   const directory = await mkdtemp(join(tmpdir(), 'dex-stripe-card-client-'));
   let cache: BlobCache | undefined;

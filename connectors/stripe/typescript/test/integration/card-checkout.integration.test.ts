@@ -11,7 +11,7 @@ import { Client, Registry, Worker, openBlobCache } from '@superdurable/dex';
 import { SecretString } from '@superdurable/connectors-sdk';
 import { expect, it } from 'vitest';
 import { StripeClient } from '../../src/client.js';
-import { newStripeConnection } from '../../src/connection.js';
+import { newConnection } from '../../src/connection.js';
 import type { CheckoutSession } from '../../src/models.js';
 import { CardCheckoutFlow } from '../../examples/create-card-checkout-session/flow/workflow.js';
 
@@ -58,7 +58,7 @@ it('retries a lost response and a key-in-use conflict with real Dex, then fails 
   const provider = new StripeClient({ endpoint: `http://127.0.0.1:${providerAddress.port}/v1` }, {
     resolve: async () => ({ authMethodId: 'api-key-only', secretKey: new SecretString('rk_test_private') }),
   });
-  const flow = new CardCheckoutFlow(newStripeConnection(provider, { provider: 'stripe', name: 'stripe-payments' }));
+  const flow = new CardCheckoutFlow(newConnection(provider, { provider: 'stripe', name: 'stripe-payments' }));
   const registry = new Registry([flow]);
   const worker = new Worker(registry, cache, { serverAddress: address });
   const client = new Client(registry, cache, { serverAddress: address });

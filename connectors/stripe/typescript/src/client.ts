@@ -64,7 +64,6 @@ export class StripeClient {
     try {
       const credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
       if (credentials.authMethodId !== 'api-key-only' && credentials.authMethodId !== 'api-key-with-webhook') return undefined;
-      if (credentials.authMethodId === 'api-key-with-webhook' && !credentials.webhookSecret?.reveal()) return undefined;
       const key = credentials.secretKey?.reveal();
       if (!key || !isHeaderSafeCredential(key)) return undefined;
       return key;
@@ -191,7 +190,7 @@ export function decodePaymentIntent(body: Uint8Array): PaymentIntent {
   const result = z.object({
     id: z.string(), object: z.string(), amount: z.number().int().nullable().optional(), currency: z.string(), status: z.string(),
     receipt_email: z.string().nullable().optional(),
-    latest_charge: z.union([z.string(), z.object({ id: z.string().nullable().optional(), amount_refunded: z.number().int().nullable().optional(), billing_details: z.object({ email: z.string().nullable().optional() }).optional() }), z.null()]).optional(),
+    latest_charge: z.union([z.string(), z.object({ id: z.string().nullable().optional(), amount_refunded: z.number().int().nullable().optional(), billing_details: z.object({ email: z.string().nullable().optional() }).nullable().optional() }), z.null()]).optional(),
   }).safeParse(parsed);
   if (!result.success || result.data.object !== 'payment_intent' || !result.data.id.startsWith('pi_') || !result.data.currency || !result.data.status) throw new Error('Stripe response is invalid: Stripe returned an invalid PaymentIntent');
   const intent = result.data;

@@ -3,12 +3,12 @@
 
 import type { StepTarget } from '@superdurable/dex';
 import { goToBranch, newMutationStep, newQueryStep, type MutationResult, type MutationStep, type MutationStepConfig, type QueryResult, type QueryStep, type QueryStepConfig } from '@superdurable/connectors-sdk';
-import type { StripeConnection } from './connection.js';
+import type { Connection } from './connection.js';
 import type { CheckoutSession, CreateACHCheckoutSessionInput, CreateCardCheckoutSessionInput, CreateRefundInput, GetCheckoutSessionInput, GetPaymentIntentInput, PaymentIntent, Refund } from './models.js';
 
 /** Card Checkout Step settings with named manifest branches. */
 export interface CreateCardCheckoutSessionStepConfig<StepInput> extends Omit<MutationStepConfig<StepInput, CreateCardCheckoutSessionInput, CheckoutSession>, 'operation' | 'connection' | 'branches'> {
-  /** Bound Stripe connection. */ connection: StripeConnection;
+  /** Bound Stripe connection. */ connection: Connection;
   /** Static connection name; must match the bound connection. */ connectionName: string;
   /** Required success destination. */ created: StepTarget<MutationResult<CheckoutSession>>;
   /** Optional conclusive rejection destination. */ providerRejected?: StepTarget<MutationResult<CheckoutSession>>;
@@ -28,7 +28,7 @@ export function newCreateCardCheckoutSessionStep<StepInput>(configuration: Creat
 
 /** ACH Checkout Step settings with named manifest branches. */
 export interface CreateACHCheckoutSessionStepConfig<StepInput> extends Omit<MutationStepConfig<StepInput, CreateACHCheckoutSessionInput, CheckoutSession>, 'operation' | 'connection' | 'branches'> {
-  /** Bound Stripe connection. */ connection: StripeConnection;
+  /** Bound Stripe connection. */ connection: Connection;
   /** Static connection name; must match the bound connection. */ connectionName: string;
   /** Required success destination. */ created: StepTarget<MutationResult<CheckoutSession>>;
   /** Optional conclusive rejection destination. */ providerRejected?: StepTarget<MutationResult<CheckoutSession>>;
@@ -48,7 +48,7 @@ export function newCreateACHCheckoutSessionStep<StepInput>(configuration: Create
 
 /** Checkout Session query Step settings with named manifest branches. */
 export interface GetCheckoutSessionStepConfig<StepInput> extends Omit<QueryStepConfig<StepInput, GetCheckoutSessionInput, CheckoutSession>, 'operation' | 'connection' | 'branches'> {
-  /** Bound Stripe connection. */ connection: StripeConnection;
+  /** Bound Stripe connection. */ connection: Connection;
   /** Static connection name; must match the bound connection. */ connectionName: string;
   /** Required found destination. */ found: StepTarget<QueryResult<CheckoutSession>>;
   /** Optional missing-session destination. */ notFound?: StepTarget<QueryResult<CheckoutSession>>;
@@ -68,7 +68,7 @@ export function newGetCheckoutSessionStep<StepInput>(configuration: GetCheckoutS
 
 /** PaymentIntent query Step settings with named manifest branches. */
 export interface GetPaymentIntentStepConfig<StepInput> extends Omit<QueryStepConfig<StepInput, GetPaymentIntentInput, PaymentIntent>, 'operation' | 'connection' | 'branches'> {
-  /** Bound Stripe connection. */ connection: StripeConnection;
+  /** Bound Stripe connection. */ connection: Connection;
   /** Static connection name; must match the bound connection. */ connectionName: string;
   /** Required found destination. */ found: StepTarget<QueryResult<PaymentIntent>>;
   /** Optional missing-intent destination. */ notFound?: StepTarget<QueryResult<PaymentIntent>>;
@@ -88,7 +88,7 @@ export function newGetPaymentIntentStep<StepInput>(configuration: GetPaymentInte
 
 /** Refund Step settings with named manifest branches. */
 export interface CreateRefundStepConfig<StepInput> extends Omit<MutationStepConfig<StepInput, CreateRefundInput, Refund>, 'operation' | 'connection' | 'branches'> {
-  /** Bound Stripe connection. */ connection: StripeConnection;
+  /** Bound Stripe connection. */ connection: Connection;
   /** Static connection name; must match the bound connection. */ connectionName: string;
   /** Required refund destination. */ refunded: StepTarget<MutationResult<Refund>>;
   /** Optional conclusive rejection destination. */ providerRejected?: StepTarget<MutationResult<Refund>>;
@@ -106,7 +106,7 @@ export function newCreateRefundStep<StepInput>(configuration: CreateRefundStepCo
     branches: [goToBranch('refunded', refunded), goToBranch('providerRejected', providerRejected), goToBranch('uncertain', uncertain), goToBranch('invalidResponse', invalidResponse), goToBranch('defect', defect)] });
 }
 
-function validateConnectionName(connection: StripeConnection | undefined, connectionName: string | undefined): void {
+function validateConnectionName(connection: Connection | undefined, connectionName: string | undefined): void {
   if (!connection) throw new TypeError('Stripe connection is required');
   if (connectionName !== connection.reference.name) throw new TypeError(`Stripe connector Step connectionName ${JSON.stringify(connectionName)} must equal its connection name ${JSON.stringify(connection.reference.name)}`);
 }

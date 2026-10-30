@@ -9,7 +9,7 @@ import type { Config, Credentials } from './models.js';
 import { StripeClient, type StripeClientOptions } from './client.js';
 
 /** One typed operation accessor per Stripe manifest operation. */
-export interface StripeOperations {
+export interface Operations {
   /** Hosted card Checkout mutation. */ createCardCheckoutSession(): Mutation<CreateCardCheckoutSessionInput, CheckoutSession>;
   /** Hosted ACH Checkout mutation. */ createACHCheckoutSession(): Mutation<CreateACHCheckoutSessionInput, CheckoutSession>;
   /** Checkout Session query. */ getCheckoutSession(): Query<GetCheckoutSessionInput, CheckoutSession>;
@@ -18,14 +18,14 @@ export interface StripeOperations {
 }
 
 /** Named Stripe operation connection; this object must remain outside Flow state. */
-export class StripeConnection {
+export class Connection {
   /** Static provider and connection name used by each Step factory. */
   readonly reference: ConnectionRef;
   /** Bound operation implementations. */
-  readonly operations: StripeOperations;
+  readonly operations: Operations;
 
   /** Validate one static connection name and own its operations. */
-  constructor(reference: ConnectionRef, operations: StripeOperations) {
+  constructor(reference: ConnectionRef, operations: Operations) {
     ConnectionRefSchema.parse(reference);
     if (reference.provider !== 'stripe') throw new TypeError('Stripe connection provider must be stripe');
     if (!operations) throw new TypeError('Stripe connector operations are required');
@@ -38,18 +38,18 @@ export class StripeConnection {
 }
 
 /** Bind a Stripe API client to one static connection reference. */
-export function newStripeConnection(client: StripeClient, reference: ConnectionRef): StripeConnection {
+export function newConnection(client: StripeClient, reference: ConnectionRef): Connection {
   if (!client) throw new TypeError('Stripe connector client is required');
-  return new StripeConnection(reference, client);
+  return new Connection(reference, client);
 }
 
 /** Bind test operations or another implementation to one static connection reference. */
-export function newStripeConnectionWithOperations(operations: StripeOperations, reference: ConnectionRef): StripeConnection {
-  return new StripeConnection(reference, operations);
+export function newConnectionWithOperations(operations: Operations, reference: ConnectionRef): Connection {
+  return new Connection(reference, operations);
 }
 
 /** Open a manifest-declared Stripe connection from a loaded Dex project. */
-export function newProjectStripeConnection(project: LoadedProject, connectionName: string, options: StripeClientOptions = {}): StripeConnection {
+export function newProjectConnection(project: LoadedProject, connectionName: string, options: StripeClientOptions = {}): Connection {
   if (!project) throw new TypeError('Stripe connection requires the loaded project configuration');
   const selected = project.configuration.connections.find(connection => connection.connectorId === 'stripe' && connection.connectionName === connectionName);
   if (!selected) throw new TypeError('Stripe project connection is not configured');
@@ -75,5 +75,5 @@ export function newProjectStripeConnection(project: LoadedProject, connectionNam
       };
     },
   };
-  return newStripeConnection(new StripeClient(config, credentials, options), { provider: 'stripe', name: connectionName });
+  return newConnection(new StripeClient(config, credentials, options), { provider: 'stripe', name: connectionName });
 }

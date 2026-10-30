@@ -230,6 +230,13 @@ describe('Go response normalization mirrors', () => {
     expect(result.value).not.toHaveProperty('latestChargeId');
     expect(result.value).not.toHaveProperty('customerEmail');
   });
+  it('accepts null billing details on an expanded charge', async () => {
+    const stripe = client([response(200, { ...intentResponse, latest_charge: { id: 'ch_123', amount_refunded: 2500, billing_details: null } })]);
+    const result = await stripe.getPaymentIntent().invoke(call('getPaymentIntent'), { paymentIntentId: 'pi_123' });
+    expect(result).toMatchObject({ kind: 'branch', branch: 'found', value: { amountRefunded: 2500, latestChargeId: 'ch_123' } });
+    if (result.kind !== 'branch') throw new Error('PaymentIntent did not return a branch');
+    expect(result.value).not.toHaveProperty('customerEmail');
+  });
 });
 
 describe('refund read-back Go mirrors', () => {

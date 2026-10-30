@@ -57,7 +57,7 @@ export class GetCheckoutSessionOperation implements Query<GetCheckoutSessionInpu
     const sessionId = input.sessionId?.trim();
     if (!sessionId?.startsWith('cs_') || /[/?#]/.test(sessionId)) return newQueryBranch('defect', zeroSession, zeroReceipt(), stripeFailure(operation, 'VALIDATION', 'Stripe Checkout Session ID is required'));
     const secretKey = await this.client.resolveSecretKey(call);
-    if (!secretKey) return credentialDefect(operation, zeroSession);
+    if (!secretKey) return queryCredentialDefect(operation, zeroSession);
     let response: StripeResponse;
     try { response = await this.client.sendStripeRequest(call, secretKey, 'GET', `checkout/sessions/${encodeURIComponent(sessionId)}`); }
     catch { return newQueryRetry(stripeFailure(operation, 'AVAILABILITY', 'Stripe Checkout Session is temporarily unavailable')); }
@@ -89,7 +89,7 @@ export class GetPaymentIntentOperation implements Query<GetPaymentIntentInput, P
     const inputError = validatePaymentIntentID(paymentIntentId);
     if (inputError) return newQueryBranch('defect', zeroIntent, zeroReceipt(), stripeFailure(operation, 'VALIDATION', inputError));
     const secretKey = await this.client.resolveSecretKey(call);
-    if (!secretKey) return credentialDefect(operation, zeroIntent);
+    if (!secretKey) return queryCredentialDefect(operation, zeroIntent);
     const values = new URLSearchParams({ 'expand[]': 'latest_charge' });
     let response: StripeResponse;
     try { response = await this.client.sendStripeRequest(call, secretKey, 'GET', `payment_intents/${encodeURIComponent(paymentIntentId)}`, values); }
@@ -123,7 +123,7 @@ export class CreateRefundOperation implements Mutation<CreateRefundInput, Refund
     const inputError = validateRefundInput(input);
     if (inputError) return newMutationBranch('defect', zeroRefund, zeroReceipt(), stripeFailure(operation, 'VALIDATION', inputError));
     const secretKey = await this.client.resolveSecretKey(call);
-    if (!secretKey) return credentialDefect(operation, zeroRefund);
+    if (!secretKey) return mutationCredentialDefect(operation, zeroRefund);
     const values = new URLSearchParams({ payment_intent: input.paymentIntentId, amount: String(input.amount) });
     if (input.reason) values.set('reason', input.reason);
     for (const [key, value] of Object.entries(input.metadata ?? {})) values.set(`metadata[${key}]`, value);
@@ -191,7 +191,7 @@ async function invokeCheckout(client: StripeClient, call: Call, input: CreateACH
   const inputError = validateCheckoutInput(input);
   if (inputError) return newMutationBranch('defect', zeroSession, zeroReceipt(), stripeFailure(operation, 'VALIDATION', inputError));
   const secretKey = await client.resolveSecretKey(call);
-  if (!secretKey) return credentialDefect(operation, zeroSession);
+  if (!secretKey) return mutationCredentialDefect(operation, zeroSession);
   const values = new URLSearchParams({
     mode: 'payment', 'payment_method_types[0]': paymentMethod, client_reference_id: input.clientReferenceId,
     customer_email: input.customerEmail, success_url: input.successUrl, cancel_url: input.cancelUrl,
@@ -226,6 +226,7 @@ async function invokeCheckout(client: StripeClient, call: Call, input: CreateACH
 function validateCheckoutInput(input: CreateACHCheckoutSessionInput): string | undefined {
   if (!input.clientReferenceId?.trim() || Array.from(input.clientReferenceId).length > 200) return 'client reference ID must be non-empty and at most 200 characters';
   const email = input.customerEmail?.trim();
+  // This simplified check differs from Go's mail.ParseAddress on uncommon quoted and comma-containing local parts.
   if (!email || !/^[^\s@<>]+@[^\s@<>]+$/.test(email) || email !== input.customerEmail) return 'customer email must be one plain email address';
   for (const [field, value] of [['success', input.successUrl], ['cancel', input.cancelUrl]] as const) {
     const redirectError = validateRedirectURL(value, field);
@@ -272,8 +273,12 @@ function validateMetadata(metadata: Record<string, string> | undefined): string 
 
 function stripeFailure(operation: string, kind: FailureKind, message: string): Failure { return { provider: 'stripe', operation, kind, message }; }
 
-function credentialDefect<T>(operation: string, zeroValue: T): QueryAttempt<T> {
+function queryCredentialDefect<T>(operation: string, zeroValue: T): QueryAttempt<T> {
   return newQueryBranch('defect', zeroValue, zeroReceipt(), stripeFailure(operation, 'AUTHENTICATION', 'Stripe connection credentials are unavailable'));
+}
+
+function mutationCredentialDefect<T>(operation: string, zeroValue: T): MutationAttempt<T> {
+  return newMutationBranch('defect', zeroValue, zeroReceipt(), stripeFailure(operation, 'AUTHENTICATION', 'Stripe connection credentials are unavailable'));
 }
 
 function classifyStripeRejection(operation: string, response: StripeResponse): Failure {

@@ -6,7 +6,7 @@ import type { Failure, FailureKind } from '@superdurable/connectors-sdk';
 import type { CheckoutSession, PaymentIntent, Refund } from './models.js';
 import type { CreateACHCheckoutSessionInput, CreateCardCheckoutSessionInput, CreateRefundInput, GetCheckoutSessionInput, GetPaymentIntentInput } from './models.js';
 import { CreateACHCheckoutSessionDefinition, CreateCardCheckoutSessionDefinition, CreateRefundDefinition, GetCheckoutSessionDefinition, GetPaymentIntentDefinition } from './definitions.js';
-import { newStripeConnectionWithOperations, type StripeConnection } from './connection.js';
+import { newConnectionWithOperations, type Connection } from './connection.js';
 
 const emptySession: CheckoutSession = { id: '' };
 const emptyIntent: PaymentIntent = { id: '', amount: 0, currency: '', status: '', amountRefunded: 0 };
@@ -104,7 +104,7 @@ export class StripeMock {
   private readonly checkout: MockQuery<GetCheckoutSessionInput, CheckoutSession>;
   private readonly payment: MockQuery<GetPaymentIntentInput, PaymentIntent>;
   private readonly refund: MockMutation<CreateRefundInput, Refund>;
-  private readonly namedConnection: StripeConnection;
+  private readonly namedConnection: Connection;
 
   /** Construct the same five default scenarios as Go's stripemock.New. */
   constructor(connectionName: string) {
@@ -113,7 +113,7 @@ export class StripeMock {
     this.checkout = newQuery<GetCheckoutSessionInput, CheckoutSession>(GetCheckoutSessionDefinition).default(getCheckoutSessionDefault());
     this.payment = newQuery<GetPaymentIntentInput, PaymentIntent>(GetPaymentIntentDefinition).default(getPaymentIntentDefault());
     this.refund = newMutation<CreateRefundInput, Refund>(CreateRefundDefinition).default(createRefundDefault());
-    this.namedConnection = newStripeConnectionWithOperations({
+    this.namedConnection = newConnectionWithOperations({
       createCardCheckoutSession: () => this.card,
       createACHCheckoutSession: () => this.ach,
       getCheckoutSession: () => this.checkout,
@@ -123,7 +123,7 @@ export class StripeMock {
   }
 
   /** Return the operation connection used by Dex Step factories. */
-  connection(): StripeConnection { return this.namedConnection; }
+  connection(): Connection { return this.namedConnection; }
   /** Script the card Checkout mutation. */ createCardCheckoutSession(): MockMutation<CreateCardCheckoutSessionInput, CheckoutSession> { return this.card; }
   /** Script the ACH Checkout mutation. */ createACHCheckoutSession(): MockMutation<CreateACHCheckoutSessionInput, CheckoutSession> { return this.ach; }
   /** Script the Checkout Session query. */ getCheckoutSession(): MockQuery<GetCheckoutSessionInput, CheckoutSession> { return this.checkout; }
