@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from typing import NoReturn, Protocol, TypeVar, cast
 
 from .errors import Failure, FailureKind, RetryError
+from .timestamps import RFC3339NanoTimestamp
 from .types import (
     Call,
     CallID,
@@ -129,14 +130,21 @@ def _validate_call(call: Call, operation: object) -> None:
 def _complete_receipt(receipt: Receipt | None, call: Call) -> Receipt:
     if receipt is None:
         raise ValueError("operation returned no receipt")
-    if receipt.call_id != call.id:
+    if receipt.call_id and receipt.call_id != call.id:
         raise ValueError("operation returned a receipt for another call")
     if receipt.idempotency_key and receipt.idempotency_key != call.idempotency_key:
         raise ValueError("operation returned a receipt with another idempotency key")
+    is_zero_time = (
+        receipt.observed_at.parsed == datetime.min.replace(tzinfo=UTC)
+        if isinstance(receipt.observed_at, RFC3339NanoTimestamp)
+        else receipt.observed_at == datetime.min.replace(tzinfo=UTC)
+    )
     return replace(
         receipt,
+        call_id=call.id,
         provider=receipt.provider or call.operation.connector_id,
         idempotency_key=call.idempotency_key,
+        observed_at=datetime.now(UTC) if is_zero_time else receipt.observed_at,
     )
 
 

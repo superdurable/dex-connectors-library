@@ -90,6 +90,10 @@ def test_go_identity_and_results_round_trip(conformance_dir: Path) -> None:
     nanosecond_result["receipt"] = dict(nanosecond_result["receipt"])
     nanosecond_result["receipt"]["observedAt"] = "2026-10-29T12:30:45.123456789Z"
     assert QueryResult.from_wire(nanosecond_result).to_wire() == nanosecond_result
+    assert Receipt().to_wire() == {
+        "callId": "", "provider": "", "observedAt": "0001-01-01T00:00:00Z"
+    }
+    assert Receipt.from_wire(Receipt().to_wire()).to_wire() == Receipt().to_wire()
 
 
 def test_failure_and_retry_policy_conformance(conformance_dir: Path) -> None:

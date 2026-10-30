@@ -6,7 +6,7 @@ import hashlib
 import math
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Generic, Literal, Self, TypeVar, cast
 from uuid import NAMESPACE_URL, UUID, uuid5
 
@@ -291,11 +291,15 @@ class MutationDefinition(QueryDefinition):
 
 @dataclass(frozen=True, slots=True)
 class Receipt:
-    """Provider correlation data; callers must exclude secrets before construction."""
+    """Provider correlation data; zero values are completed by the operation runner.
 
-    call_id: CallID
-    provider: str
-    observed_at: RFC3339NanoTimestamp | datetime
+    Callers must exclude secrets before construction. The all-zero shape matches
+    Go's sdkgo.Receipt{} for a local or uncorrelated provider outcome.
+    """
+
+    call_id: CallID = CallID("")
+    provider: str = ""
+    observed_at: RFC3339NanoTimestamp | datetime = datetime.min.replace(tzinfo=UTC)
     idempotency_key: IdempotencyKey = IdempotencyKey("")
     provider_object_id: str = ""
     provider_request_id: str = ""
@@ -335,7 +339,8 @@ class Receipt:
         ):
             raise ValueError("receipt metadata is invalid")
         call_id = CallID(value["callId"])
-        call_id.validate()
+        if call_id:
+            call_id.validate()
         return cls(
             call_id,
             value["provider"],

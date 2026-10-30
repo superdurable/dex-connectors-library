@@ -134,6 +134,12 @@ async def test_query_and_mutation_outcomes() -> None:
         ExampleMutation(MutationAttempt.branch_result("success", "x", wrong_receipt)), CALL, "x"
     )
     assert invalid.branch == "defect"
+    zero_result = await run_mutation(
+        ExampleMutation(MutationAttempt.branch_result("success", "x", Receipt())), CALL, "x"
+    )
+    assert zero_result.receipt.call_id == CALL_ID
+    assert zero_result.receipt.provider == "sample"
+    assert zero_result.receipt.to_wire()["observedAt"] != "0001-01-01T00:00:00Z"
     with pytest.raises(RetryError):
         await run_mutation(ExampleMutation(MutationAttempt.retry(FAILURE)), CALL, "x")
 
