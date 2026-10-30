@@ -160,6 +160,57 @@ jobs:
              ! git diff --name-only "${BASE_SHA}" HEAD | grep -Eq '^sdkts/'; then exit 0; fi
           make test-sdkts
 
+  sdkts-integration:
+    needs: dex-version-plan
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    env:
+      DEX_CLI_RELEASE_TAG: ${{ needs.dex-version-plan.outputs.cli_tag }}
+      DEX_CLI_ASSET_URL: ${{ needs.dex-version-plan.outputs.cli_asset_url }}
+      DEX_CLI_SHA256: ${{ needs.dex-version-plan.outputs.cli_sha256 }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Check TypeScript SDK changes
+        id: sdkts_changes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+        run: |
+          if [ ! -f sdkts/package.json ]; then echo 'run=false' >> "$GITHUB_OUTPUT"; exit 0; fi
+          if [ -n "$BASE_SHA" ] && git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null &&
+             ! git diff --name-only "$BASE_SHA" HEAD | grep -Eq '^sdkts/'; then
+            echo 'run=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'run=true' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Install Dex CLI from the run's resolved release
+        if: steps.sdkts_changes.outputs.run == 'true'
+        run: python3 script/dex_compatibility.py install-dexcli --output .bin/dexcli
+      - name: Run TypeScript SDK against real Dex Flows
+        if: steps.sdkts_changes.outputs.run == 'true'
+        run: |
+          npm ci --prefix sdkts
+          mkdir -p "$RUNNER_TEMP/sdkts-dex/logs"
+          .bin/dexcli dev -dex-port 19891 -web-port 19892 -open=false \
+            -zd-data-dir "$RUNNER_TEMP/sdkts-dex/zd" \
+            -server-log-folder "$RUNNER_TEMP/sdkts-dex/logs" > "$RUNNER_TEMP/sdkts-dex/server.log" 2>&1 &
+          dex_pid=$!
+          trap 'kill "$dex_pid" 2>/dev/null || true; wait "$dex_pid" 2>/dev/null || true' EXIT
+          for _ in $(seq 1 120); do
+            if (echo > /dev/tcp/127.0.0.1/19891) 2>/dev/null; then
+              DEX_SERVER_ADDRESS=127.0.0.1:19891 npm run test:integration --prefix sdkts
+              exit
+            fi
+            if ! kill -0 "$dex_pid" 2>/dev/null; then break; fi
+            sleep 0.25
+          done
+          cat "$RUNNER_TEMP/sdkts-dex/server.log"
+          exit 1
+
   language-connectors:
     needs: connector-plan
     if: needs.connector-plan.outputs.count != '0'

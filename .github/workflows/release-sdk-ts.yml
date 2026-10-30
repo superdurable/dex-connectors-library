@@ -75,6 +75,7 @@ jobs:
           npm run lint --prefix sdkts
           npm test --prefix sdkts
           npm run build --prefix sdkts
+          npm run test:package --prefix sdkts
           mkdir -p "${RUNNER_TEMP}/sdk-dist"
           npm pack ./sdkts --pack-destination "${RUNNER_TEMP}/sdk-dist"
       - name: Build release notes and manifest

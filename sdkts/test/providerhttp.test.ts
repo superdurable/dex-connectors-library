@@ -54,7 +54,7 @@ describe('provider HTTP', () => {
 
   it('bounds the real response body and applies one total deadline', async () => {
     const server = createServer((request, response) => {
-      if (request.url === '/large') { response.end('body exceeds limit'); return; }
+      if (request.url === '/large') { response.writeHead(429, { 'Retry-After': '7' }); response.end('body exceeds limit'); return; }
       response.write('a');
       const interval = setInterval(() => response.write('a'), 10);
       response.on('close', () => clearInterval(interval));
@@ -64,7 +64,7 @@ describe('provider HTTP', () => {
     const address = server.address();
     if (!address || typeof address === 'string') throw new Error('server address unavailable');
     const url = `http://127.0.0.1:${address.port}`;
-    await expect(sendProviderRequest({ url: `${url}/large`, method: 'GET', maxResponseBytes: 4, addressPolicy: 'privateNetworkHTTP' })).rejects.toBeInstanceOf(BodyTooLargeError);
+    await expect(sendProviderRequest({ url: `${url}/large`, method: 'GET', maxResponseBytes: 4, addressPolicy: 'privateNetworkHTTP' })).rejects.toMatchObject({ name: BodyTooLargeError.name, status: 429, headers: { 'retry-after': '7' } });
     await expect(sendProviderRequest({ url: `${url}/drip`, method: 'GET', maxResponseBytes: 10_000, timeoutMs: 40, addressPolicy: 'privateNetworkHTTP' })).rejects.toMatchObject({ name: ProviderTransportError.name, isProvablyNotSent: false });
   });
 

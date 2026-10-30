@@ -148,11 +148,14 @@ describe('project configuration', () => {
       connections: [{ connectorId: 'sample', connectionName: 'main-é-流程 😀', modulePath: 'sample', provider: 'sample', configuration: {} }], triggerBindings: [], operationConfigurations: [],
     }, undefined, objects, undefined, undefined);
     expect(await project.resolveCredential('sample', 'main-é-流程 😀')).toEqual({ accessToken: 'REDACTED_ACCESS_TOKEN' });
-    for (const status of ['REAUTHORIZATION_REQUIRED', 'REVOKED']) {
-      recordBytes = Buffer.from(JSON.stringify({ ...record, status }));
-      await expect(project.resolveCredential('sample', 'main-é-流程 😀')).rejects.toBeInstanceOf(ReauthorizationRequiredError);
-    }
-    recordBytes = Buffer.from(JSON.stringify({ ...record, expiresAt: '2020-01-01T00:00:00Z' }));
+    recordBytes = Buffer.from(JSON.stringify({ ...record, status: 'REAUTHORIZATION_REQUIRED' }));
+    await expect(project.resolveCredential('sample', 'main-é-流程 😀')).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+    recordBytes = Buffer.from(JSON.stringify({ ...record, status: 'REVOKED', credential: undefined }));
+    await expect(project.resolveCredential('sample', 'main-é-流程 😀')).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+    recordBytes = Buffer.from(JSON.stringify({ ...record, status: 'REVOKED' }));
+    await expect(project.resolveCredential('sample', 'main-é-流程 😀')).rejects.toThrow('revoked connection retains active material');
+    envelopeBytes = Buffer.from(JSON.stringify({ ...envelope, expiresAt: '2020-01-01T00:00:00Z' }));
+    recordBytes = Buffer.from(JSON.stringify({ ...record, expiresAt: '2020-01-01T00:00:00Z', credential: { ...record.credential, digest: digestBytes(envelopeBytes).slice(7) } }));
     await expect(project.resolveCredential('sample', 'main-é-流程 😀')).rejects.toThrow('expired project credential');
     recordBytes = Buffer.from(JSON.stringify(record));
     envelopeBytes = Buffer.from(JSON.stringify({ ...envelope, expiresAt: '2035-01-01T12:00:00.000000001+08:00' }));

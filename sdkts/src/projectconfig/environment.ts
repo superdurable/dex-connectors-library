@@ -5,8 +5,12 @@ import { readFile, lstat } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { S3Client } from '@aws-sdk/client-s3';
 import { z } from 'zod';
-import { ConfigurationSchema, LocalConnectionsFileSchema, RFC3339NanoSchema, type Configuration, type LocalConnection, type Scope, type SnapshotRef, scopePrefix } from './model.js';
-import { ConfigurationStore, S3ObjectStore, digestBytes, type ObjectStore } from './storage.js';
+import { ConfigurationSchema, LocalConnectionsFileSchema, type Configuration, type LocalConnection, type Scope, type SnapshotRef, scopePrefix } from './model.js';
+export { ConnectionRecordSchema, CredentialEnvelopeSchema } from './connection_schema.js';
+import { ConnectionStore } from './connections.js';
+import { DexWebObjectStore } from './dexweb_store.js';
+import { SharedConnections } from './shared_connections.js';
+import { ConfigurationStore, InMemoryObjectStore, S3ObjectStore, digestBytes, type ObjectStore } from './storage.js';
 import { CredentialBrokerClient, CredentialBrokerUnavailableError, RejectedCredentialNotRefreshedError, type BrokerCredential } from './broker.js';
 import { isLocalStorageHost } from '../netpolicy.js';
 import { ReauthorizationRequiredError } from '../errors.js';
@@ -17,14 +21,19 @@ export const LocalConnectionsFileEnvironment = 'DEX_CONNECTOR_CONFIG_FILE';
 /** Loaded ordinary configuration and private connection resolver. */
 export class LoadedProject {
   readonly #sharedCredentials = new Map<string, { result: BrokerCredential; readAt: number; notBefore: number }>();
+  /** Versioned private connection store for generated provider adapters. */
+  readonly connections: ConnectionStore;
   /** Bind startup-pinned configuration to exactly one private credential source. */
   constructor(
     /** Startup-pinned ordinary document. */ readonly configuration: Configuration,
     /** Exact immutable document reference. */ readonly snapshot: SnapshotRef | undefined,
-    private readonly objects: ObjectStore | undefined,
-    private readonly localFilePath: string | undefined,
+    objects: ObjectStore | undefined,
+    _localFilePath: string | undefined,
     private readonly broker: CredentialBrokerClient | undefined,
-  ) { ConfigurationSchema.parse(configuration); }
+  ) {
+    ConfigurationSchema.parse(configuration);
+    this.connections = new ConnectionStore(objects ?? new InMemoryObjectStore(), configuration.scope, broker ? new SharedConnections(configuration, broker) : undefined);
+  }
 
   /** Read a current private credential, never returning it through a Flow result. */
   async resolveCredential(connectorId: string, connectionName: string, signal?: AbortSignal): Promise<Record<string, unknown>> {
@@ -46,28 +55,12 @@ export class LoadedProject {
         throw error;
       }
     }
-    if (this.localFilePath) {
-      const localFile = await readLocalConnectionsFile(this.localFilePath);
-      const selected = localFile.connections.find(entry => entry.connectorId === connectorId && entry.connectionName === connectionName);
-      if (!selected) throw new Error('project connection is not configured');
-      if (isExpired(selected.credentialExpiresAt)) throw new Error('expired project credential requires refresh');
-      return selected.credentials;
-    }
-    if (!this.objects) throw new Error('project object store is unavailable');
-    const scope = this.configuration.scope;
-    const connectionPath = `${scopePrefix(scope)}/connections/${connectorId}/${Buffer.from(connectionName).toString('base64url')}`;
-    const head = await this.objects.readObject(`${connectionPath}/head`);
-    const record = ConnectionRecordSchema.safeParse(parsePrivateJSON(head.contents));
-    if (!record.success) throw new Error('project credential record violates its schema');
-    if (record.data.status === 'REAUTHORIZATION_REQUIRED' || record.data.status === 'REVOKED') throw new ReauthorizationRequiredError();
-    if (record.data.connection.connectorId !== connectorId || record.data.connection.connectionName !== connectionName || record.data.scope.projectId !== scope.projectId || record.data.scope.kind !== scope.kind || record.data.status !== 'READY' || !record.data.credential?.key.startsWith(`${connectionPath}/`)) throw new Error('project credential is unavailable');
-    if (isExpired(record.data.expiresAt)) throw new Error('expired project credential requires refresh');
-    const privateObject = await this.objects.readObject(record.data.credential.key, record.data.credential.version);
-    const envelope = CredentialEnvelopeSchema.safeParse(parsePrivateJSON(privateObject.contents));
-    if (!envelope.success) throw new Error('project credential envelope violates its schema');
-    if (digestBytes(privateObject.contents).slice(7) !== record.data.credential.digest || envelope.data.scope.projectId !== scope.projectId || envelope.data.scope.kind !== scope.kind || envelope.data.connection.connectorId !== connectorId || envelope.data.connection.connectionName !== connectionName || envelope.data.fence !== record.data.fence || envelope.data.authMethod !== record.data.authMethod || !sameExpiry(envelope.data.expiresAt, record.data.expiresAt)) throw new Error('project credential identity differs');
-    if (isExpired(envelope.data.expiresAt)) throw new Error('expired project credential requires refresh');
-    return envelope.data.credentials;
+    const key = { connectorId, connectionName };
+    const connectionState = await this.connections.readConnection(key);
+    if (connectionState.status === 'REAUTHORIZATION_REQUIRED' || connectionState.status === 'REVOKED') throw new ReauthorizationRequiredError();
+    const { material } = await this.connections.readCredentialMaterial(key);
+    if (material.expiresAt && material.expiresAt.getTime() <= Date.now()) throw new Error('expired project credential requires refresh');
+    return material.credentials;
   }
 
   /** Resolve a newer shared credential after the provider rejected one revision. */
@@ -96,41 +89,6 @@ function isSharedCredentialFresh(cached: { result: BrokerCredential; readAt: num
   return Date.parse(cached.result.expiresAt) > now + skew;
 }
 
-/** Strict private connection record compatible with sdkgo. */
-export const ConnectionRecordSchema = z.strictObject({
-  schemaVersion: z.literal('connectors.dex.dev/project-connection/v1alpha2'), connection: z.strictObject({ connectorId: z.string(), connectionName: z.string() }),
-  scope: z.strictObject({ projectId: z.string(), kind: z.string() }), revision: z.number().int().positive(),
-  fence: z.number().int().positive(), status: z.enum(['READY', 'AUTHORIZING', 'REFRESHING', 'REAUTHORIZATION_REQUIRED', 'REVOKED']), authMethod: z.string(), expiresAt: RFC3339NanoSchema.nullable().optional(),
-  credential: z.strictObject({ key: z.string(), version: z.string(), digest: z.string() }).optional(),
-  mutation: z.strictObject({ kind: z.string(), invocationId: z.string(), id: z.string(), fence: z.number(), baseRevision: z.number(), deadline: RFC3339NanoSchema, resultKey: z.string() }).optional(),
-});
-/** Strict private credential envelope compatible with sdkgo. */
-export const CredentialEnvelopeSchema = z.strictObject({
-  schemaVersion: z.literal('connectors.dex.dev/project-connection/v1alpha2'),
-  scope: z.strictObject({ projectId: z.string(), kind: z.string() }), connection: z.strictObject({ connectorId: z.string(), connectionName: z.string() }),
-  fence: z.number().int().positive(), attemptId: z.string().optional(), credentials: z.record(z.string(), z.unknown()),
-  expiresAt: RFC3339NanoSchema.nullable().optional(), authMethod: z.string(),
-});
-
-function parsePrivateJSON(contents: Uint8Array): unknown {
-  try { return JSON.parse(Buffer.from(contents).toString('utf8')) as unknown; }
-  catch { throw new Error('project credential is not valid JSON'); }
-}
-
-function isExpired(expiresAt: string | null | undefined): boolean { return Boolean(expiresAt && Date.parse(expiresAt) <= Date.now()); }
-
-function sameExpiry(left: string | null | undefined, right: string | null | undefined): boolean {
-  return left && right ? rfc3339Nanoseconds(left) === rfc3339Nanoseconds(right) : !left && !right;
-}
-
-function rfc3339Nanoseconds(value: string): bigint {
-  const parts = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d{1,9}))?(Z|[+-]\d{2}:\d{2})$/.exec(value);
-  if (!parts) throw new Error('project credential expiry is invalid');
-  const milliseconds = Date.parse(`${parts[1]}${parts[3]}`);
-  if (!Number.isFinite(milliseconds)) throw new Error('project credential expiry is invalid');
-  return BigInt(milliseconds) * 1_000_000n + BigInt((parts[2] ?? '').padEnd(9, '0') || '0');
-}
-
 /** Load trusted DEX_PROJECT_* settings or a local Dex Web file at startup. */
 export async function loadFromEnvironment(environment: NodeJS.ProcessEnv = process.env): Promise<LoadedProject> {
   const localFilePath = environment[LocalConnectionsFileEnvironment];
@@ -152,7 +110,9 @@ export async function loadFromEnvironment(environment: NodeJS.ProcessEnv = proce
       schemaVersion: 'connectors.dex.dev/project-configuration/v1alpha2', scope, revision: 1,
       connections: file.connections.map(localConnectionConfiguration), triggerBindings: file.triggerBindings ?? [], operationConfigurations,
     };
-    return new LoadedProject(configuration, undefined, undefined, localFilePath, undefined);
+    const localObjects = new DexWebObjectStore(localFilePath, scope);
+    await localObjects.initialize();
+    return new LoadedProject(configuration, undefined, localObjects, localFilePath, undefined);
   }
   const scope = { projectId: environment.DEX_PROJECT_ID ?? '', kind: environment.DEX_PROJECT_SCOPE ?? '' } as Scope;
   scopePrefix(scope);
