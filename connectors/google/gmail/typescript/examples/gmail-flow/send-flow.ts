@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { StepList, forceComplete, type Context, type Flow, type Step, type StepDecision } from '@superdurable/dex';
-import { goToBranch, type MutationResult } from '@superdurable/connectors-sdk';
+import type { MutationResult } from '@superdurable/connectors-sdk';
 import { GmailConnection, newSendMessageStep, type SendMessageInput, type SendMessageOutput } from '@superdurable/connector-google-gmail';
 
 const ConnectionName = 'gmail-inbox';
@@ -20,7 +20,7 @@ export class GmailSendFlow implements Flow<SendMessageInput> {
     this.sendStep = newSendMessageStep<SendMessageInput>({
       stepType: 'SendGmailMessage', connectionName: ConnectionName, connection,
       annotations: { groupId: 'gmail', groupLabel: 'Gmail', explanation: 'Send one new Gmail message.' },
-      mapToOperationInput: input => input, branches: [goToBranch('sent', this.doneStep)],
+      mapToOperationInput: input => input, sent: this.doneStep,
     });
   }
 

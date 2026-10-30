@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { StepList, forceComplete, type Context, type Flow, type Step, type StepDecision } from '@superdurable/dex';
-import { goToBranch, type MutationResult } from '@superdurable/connectors-sdk';
+import type { MutationResult } from '@superdurable/connectors-sdk';
 import { GmailConnection, newReplyToMessageStep, type ReplyToMessageInput, type SendMessageOutput } from '@superdurable/connector-google-gmail';
 
 const ConnectionName = 'gmail-inbox';
@@ -20,7 +20,7 @@ export class GmailReplyFlow implements Flow<ReplyToMessageInput> {
     this.replyStep = newReplyToMessageStep<ReplyToMessageInput>({
       stepType: 'ReplyToGmailMessage', connectionName: ConnectionName, connection,
       annotations: { groupId: 'gmail', groupLabel: 'Gmail', explanation: 'Reply in the selected Gmail thread.' },
-      mapToOperationInput: input => input, branches: [goToBranch('sent', this.doneStep)],
+      mapToOperationInput: input => input, sent: this.doneStep,
     });
   }
 

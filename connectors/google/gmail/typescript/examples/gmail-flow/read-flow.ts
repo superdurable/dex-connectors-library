@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { StepList, forceComplete, type Context, type Flow, type Step, type StepDecision } from '@superdurable/dex';
-import { goToBranch, type QueryResult } from '@superdurable/connectors-sdk';
+import type { QueryResult } from '@superdurable/connectors-sdk';
 import { GmailConnection, newGetMessageStep, type GetMessageInput, type Message } from '@superdurable/connector-google-gmail';
 
 /** Static Dex Web connection name shared by the Gmail example Flows. */
@@ -21,7 +21,7 @@ export class GmailReadFlow implements Flow<GetMessageInput> {
     this.readStep = newGetMessageStep<GetMessageInput>({
       stepType: 'ReadGmailMessage', connectionName: ConnectionName, connection,
       annotations: { groupId: 'gmail', groupLabel: 'Gmail', explanation: 'Read the selected Gmail message.' },
-      mapToOperationInput: input => input, branches: [goToBranch('read', this.doneStep)],
+      mapToOperationInput: input => input, read: this.doneStep,
     });
   }
 

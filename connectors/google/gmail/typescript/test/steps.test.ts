@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import type { AsyncContext } from '@superdurable/dex';
-import { goToBranch, stepRef } from '@superdurable/connectors-sdk';
+import { stepRef } from '@superdurable/connectors-sdk';
 import { newGetMessageStep, newReplyToMessageStep, newSendMessageStep } from '../src/index.js';
 import { GmailMock } from '../src/mock/index.js';
 
@@ -20,11 +20,11 @@ describe('Gmail operation-specific Dex Step factories', () => {
     const mock = new GmailMock(ConnectionName);
     const connection = mock.connection();
     const read = newGetMessageStep({ stepType: 'ReadGmailMessage', annotations, connectionName: ConnectionName, connection,
-      mapToOperationInput: (input: { messageId: string }) => input, branches: [goToBranch('read', stepRef('ReadDone'))] });
+      mapToOperationInput: (input: { messageId: string }) => input, read: stepRef('ReadDone') });
     const send = newSendMessageStep({ stepType: 'SendGmailMessage', annotations, connectionName: ConnectionName, connection,
-      mapToOperationInput: (input: { to: string[]; subject: string; textBody: string }) => input, branches: [goToBranch('sent', stepRef('SendDone'))] });
+      mapToOperationInput: (input: { to: string[]; subject: string; textBody: string }) => input, sent: stepRef('SendDone') });
     const reply = newReplyToMessageStep({ stepType: 'ReplyToGmailMessage', annotations, connectionName: ConnectionName, connection,
-      mapToOperationInput: (input: { messageId: string; textBody: string }) => input, branches: [goToBranch('sent', stepRef('ReplyDone'))] });
+      mapToOperationInput: (input: { messageId: string; textBody: string }) => input, sent: stepRef('ReplyDone') });
     expect(read.getStepOptions().executeMethodTimeoutMs).toBe(30_000);
     expect(send.getStepOptions().executeRetry?.maximumAttempts).toBe(5);
     expect(reply.getStepOptions().executeRetry?.totalDurationMs).toBe(120_000);
@@ -44,6 +44,6 @@ describe('Gmail operation-specific Dex Step factories', () => {
   it('rejects a connection name different from the application constant', () => {
     const connection = new GmailMock(ConnectionName).connection();
     expect(() => newGetMessageStep({ stepType: 'ReadGmailMessage', annotations, connectionName: 'other', connection,
-      mapToOperationInput: (input: { messageId: string }) => input, branches: [goToBranch('read', stepRef('Done'))] })).toThrow('connection name');
+      mapToOperationInput: (input: { messageId: string }) => input, read: stepRef('Done') })).toThrow('connection name');
   });
 });
