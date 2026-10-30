@@ -29,8 +29,8 @@ run `connectorctl generate --check <connector.yaml>` to detect drift. The file
 maps the manifest's operation factories, branch IDs and optional status, package
 identity, and fields used by Dex CLI's Python and TypeScript source analyzers.
 Only listed operation factories are generated. Trigger factory mappings await
-language package and `dex-connector.json` contract support; declaring a Trigger
-currently fails language release validation.
+language package and `dex-connector.json` contract support; validation rejects
+nonempty language Trigger lists until then.
 Runtime arguments such as `connection`, `map_to_operation_input`/
 `mapToOperationInput`, and `step_options_override`/`stepOptionsOverride`
 remain factory inputs; the Dex 1.28.0 schema has no mapping keys for them.

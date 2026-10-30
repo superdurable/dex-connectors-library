@@ -83,6 +83,9 @@ func validateLanguageCapabilities(name string, language *LanguagePackage, spec S
 			problems = append(problems, path+" is required (use [] when none are implemented)")
 			continue
 		}
+		if capability.field == "triggers" && len(capability.listed) > 0 {
+			problems = append(problems, path+" must be empty until language Trigger factories are supported")
+		}
 		seen := make(map[string]bool, len(capability.listed))
 		for _, listedName := range capability.listed {
 			if seen[listedName] {

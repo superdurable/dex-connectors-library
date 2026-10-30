@@ -720,24 +720,7 @@ def validate_language_connector_release(
 
 def validate_language_capability_coverage(source_manifest: Path, language: str, document: dict) -> None:
     """Check declared Step coverage before a language package is released."""
-    source = source_manifest.read_text(encoding="utf-8")
-    language_block = re.search(rf"(?m)^    {language}:\s*\n((?:^      .*\n)*)", source)
-    inline_language = re.search(rf"(?m)^    {language}:\s*\{{([^\n]*)\}}\s*$", source)
-    if language_block is None and inline_language is None:
-        raise ValueError(f"{source_manifest} does not declare spec.languages.{language}")
-    declaration = language_block.group(1) if language_block is not None else inline_language.group(1)
-
-    def declared_names(field: str) -> set[str]:
-        inline = re.search(rf"(?:^|[,\s]){field}:\s*\[([^\]]*)\]", declaration, re.M)
-        if inline is not None:
-            return {name.strip().strip("'\"") for name in inline.group(1).split(",") if name.strip()}
-        block = re.search(rf"(?m)^      {field}:\s*\n((?:^        - .*\n)*)", declaration)
-        if block is not None:
-            return {name.strip().strip("'\"") for name in re.findall(r"(?m)^        - (.+)$", block.group(1))}
-        raise ValueError(f"{source_manifest} spec.languages.{language}.{field} is missing")
-
-    operations = declared_names("operations")
-    triggers = declared_names("triggers")
+    operations, triggers = read_declared_language_capabilities(source_manifest, language)
     factories = document.get("factories")
     if not isinstance(factories, list) or any(not isinstance(factory, dict) for factory in factories):
         raise ValueError("dex-connector.json factories must be a list")
@@ -748,6 +731,27 @@ def validate_language_capability_coverage(source_manifest: Path, language: str, 
         raise ValueError(f"{language} declared operations differ from dex-connector.json factories")
     if triggers:
         raise ValueError(f"{language} Trigger factories are not supported by dex-connector.json")
+
+
+def read_declared_language_capabilities(source_manifest: Path, language: str) -> tuple[set[str], set[str]]:
+    repository_root = next((parent for parent in source_manifest.resolve().parents
+                            if (parent / "cmd/connectorctl/main.go").is_file()), None)
+    if repository_root is None:
+        raise ValueError(f"connectorctl is unavailable for {source_manifest}")
+    result = subprocess.run(
+        ["go", "run", "./cmd/connectorctl", "language-capabilities", str(source_manifest.resolve()), language],
+        cwd=repository_root, env={**os.environ, "GOWORK": "off"}, capture_output=True, text=True, check=False,
+    )
+    if result.returncode != 0:
+        raise ValueError(f"connectorctl could not validate language capabilities: {result.stderr.strip()}")
+    try:
+        declared = json.loads(result.stdout)
+    except json.JSONDecodeError as error:
+        raise ValueError("connectorctl returned invalid language capabilities JSON") from error
+    if not isinstance(declared, dict) or not all(isinstance(declared.get(field), list) and
+            all(isinstance(name, str) for name in declared[field]) for field in ("operations", "triggers")):
+        raise ValueError("connectorctl returned invalid language capability lists")
+    return set(declared["operations"]), set(declared["triggers"])
 
 
 def stamp_language_candidate_connector_manifest(path: Path, language: str, candidate_version: str) -> None:

@@ -89,6 +89,7 @@ func TestLanguageManifestVersionAndPackageValidation(t *testing.T) {
 		{name: "unknown operation", languageBlock: "  languages:\n    python: {version: v0.2.0, operations: [missing], triggers: []}\n", problem: "spec.languages.python.operations names unknown missing"},
 		{name: "duplicate operation", languageBlock: "  languages:\n    python: {version: v0.2.0, operations: [appendRows, appendRows], triggers: []}\n", problem: "spec.languages.python.operations has duplicate name appendRows"},
 		{name: "unknown Trigger", languageBlock: "  languages:\n    python: {version: v0.2.0, operations: [], triggers: [missing]}\n", problem: "spec.languages.python.triggers names unknown missing"},
+		{name: "unsupported Trigger", languageBlock: "  languages:\n    typescript: {version: v0.2.0, operations: [], triggers: [messageReceived]}\n", problem: "spec.languages.typescript.triggers must be empty until language Trigger factories are supported"},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			contents := strings.Replace(string(fixture), "spec:\n", "spec:\n"+testCase.languageBlock, 1)
@@ -131,6 +132,9 @@ func TestLanguageCapabilityJSONSchemaRequiresListsWithoutDuplicates(t *testing.T
 	require.ErrorContains(t, validate(), "operations")
 	language.Operations = []string{"appendRows", "appendRows"}
 	require.ErrorContains(t, validate(), "operations")
+	language.Operations = []string{"appendRows"}
+	language.Triggers = []string{"messageReceived"}
+	require.ErrorContains(t, validate(), "triggers")
 }
 
 func TestExecutionRetryPolicyValidation(t *testing.T) {

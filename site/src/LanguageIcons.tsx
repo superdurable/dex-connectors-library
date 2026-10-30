@@ -22,7 +22,11 @@ export function LanguageIcons({ languages, versions }: {
       const label = `${labels[language]}${versions[language] ? ` ${versions[language]}` : ""}`;
       return <span key={language} className={`language-icon language-icon-${language}`}
         role="img" aria-label={label} title={label}>
-        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d={paths[language]} /></svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d={paths[language]} />
+          {language === "python" ? <path d={paths.python} fill="#ffd43b"
+            style={{ clipPath: "inset(50% 0 0 0)" }} /> : null}
+        </svg>
       </span>;
     })}
   </span>;

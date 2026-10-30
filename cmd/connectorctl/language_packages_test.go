@@ -4,6 +4,7 @@
 package main
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,6 +12,15 @@ import (
 
 	"github.com/stretchr/testify/require"
 )
+
+func TestLanguageCapabilitiesCommandUsesValidatedManifest(t *testing.T) {
+	var output bytes.Buffer
+	manifestPath := filepath.Join("..", "..", "connectors", "newsapi", "connector.yaml")
+	require.NoError(t, languageCapabilitiesCommand(manifestPath, "python", &output))
+	require.JSONEq(t, `{"operations":["searchArticles"],"triggers":[]}`, output.String())
+	output.Reset()
+	require.ErrorContains(t, languageCapabilitiesCommand(manifestPath, "ruby", &output), "unsupported language")
+}
 
 func TestValidateLanguagePackageFilesAndVersions(t *testing.T) {
 	repositoryRoot := filepath.Join(t.TempDir(), "connectors", "parent")
