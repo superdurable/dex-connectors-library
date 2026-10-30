@@ -3,7 +3,7 @@
     "kind": "VALIDATION",
     "provider": "sample",
     "operation": "createItem",
-    "message": "safe example of VALIDATION"
+    "message": "entrée invalide: élément \u003c\u0026\u003e \u2028 😀"
   },
   {
     "kind": "AUTHENTICATION",

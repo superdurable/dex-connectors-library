@@ -1,34 +1,192 @@
 {
   "applicationSecret": {
-    "key": "projects/sample-project/preview/app-secrets/WEBHOOK_SECRET/0123456789abcdef0123456789abcdef",
+    "key": "projects/sample-project/preview/app-secrets/DEX_CREDENTIAL_BROKER_TOKEN/0123456789abcdef0123456789abcdef",
     "version": "version-1",
     "digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
   },
-  "connectionHeadKey": "projects/sample-project/preview/connections/sample/bWFpbiAvIHdlc3Q/head",
+  "completedConnectionRecord": {
+    "schemaVersion": "connectors.dex.dev/project-connection/v1alpha2",
+    "connection": {
+      "connectorId": "sample",
+      "connectionName": "main-é-流程 😀"
+    },
+    "scope": {
+      "projectId": "sample-project",
+      "kind": "preview"
+    },
+    "revision": 3,
+    "fence": 2,
+    "status": "READY",
+    "expiresAt": "2026-10-29T12:30:45.123456789+08:00",
+    "authMethod": "oauth2",
+    "credential": {
+      "key": "projects/sample-project/preview/connections/sample/bWFpbi3DqS3mtYHnqIsg8J-YgA/exchange-results/attempt-7",
+      "version": "1",
+      "digest": "93ae1c7291d684aebb3dfe8c2625ff38c3f60c2a1cf9ebfe5d118fc20cad328d"
+    }
+  },
+  "configurationSnapshotCanonicalJSON": "{\"schemaVersion\":\"connectors.dex.dev/project-configuration/v1alpha3\",\"scope\":{\"projectId\":\"sample-project\",\"kind\":\"preview\"},\"revision\":1,\"connections\":[{\"connectorId\":\"sample\",\"connectionName\":\"main-é-流程 😀\",\"modulePath\":\"github.com/superdurable/dex-connectors-library/connectors/sample\",\"provider\":\"sample\",\"authMethodId\":\"oauth2\",\"sharedConnectionId\":\"shared-7\",\"configuration\":{\"region\":\"west\"}}],\"triggerBindings\":[{\"connectorId\":\"sample\",\"connectionName\":\"main-é-流程 😀\",\"triggerName\":\"itemCreated\",\"bindingName\":\"main\",\"configuration\":{\"folder\":\"inbox\"}}],\"operationConfigurations\":[{\"connectorId\":\"sample\",\"connectionName\":\"main-é-流程 😀\",\"operationId\":\"createItem\",\"flowType\":\"sampleFlow\",\"stepType\":\"createItem\",\"configuration\":{\"limit\":3}}],\"environment\":{\"APP_SECRET\":{\"secretRef\":{\"key\":\"projects/sample-project/preview/app-secrets/APP_SECRET/fedcba9876543210fedcba9876543210\",\"version\":\"version-1\",\"digest\":\"sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\"}},\"ORDINARY_LABEL\":{\"value\":\"élément \\u003c\\u0026\\u003e\"}},\"credentialBroker\":{\"endpoint\":\"https://broker.example.test/internal/connection-credentials/read\",\"tokenSecretRef\":{\"key\":\"projects/sample-project/preview/app-secrets/DEX_CREDENTIAL_BROKER_TOKEN/0123456789abcdef0123456789abcdef\",\"version\":\"version-1\",\"digest\":\"sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\"}}}",
+  "configurationSnapshotDocument": {
+    "schemaVersion": "connectors.dex.dev/project-configuration/v1alpha3",
+    "scope": {
+      "projectId": "sample-project",
+      "kind": "preview"
+    },
+    "revision": 1,
+    "connections": [
+      {
+        "connectorId": "sample",
+        "connectionName": "main-é-流程 😀",
+        "modulePath": "github.com/superdurable/dex-connectors-library/connectors/sample",
+        "provider": "sample",
+        "authMethodId": "oauth2",
+        "sharedConnectionId": "shared-7",
+        "configuration": {
+          "region": "west"
+        }
+      }
+    ],
+    "triggerBindings": [
+      {
+        "connectorId": "sample",
+        "connectionName": "main-é-流程 😀",
+        "triggerName": "itemCreated",
+        "bindingName": "main",
+        "configuration": {
+          "folder": "inbox"
+        }
+      }
+    ],
+    "operationConfigurations": [
+      {
+        "connectorId": "sample",
+        "connectionName": "main-é-流程 😀",
+        "operationId": "createItem",
+        "flowType": "sampleFlow",
+        "stepType": "createItem",
+        "configuration": {
+          "limit": 3
+        }
+      }
+    ],
+    "environment": {
+      "APP_SECRET": {
+        "secretRef": {
+          "key": "projects/sample-project/preview/app-secrets/APP_SECRET/fedcba9876543210fedcba9876543210",
+          "version": "version-1",
+          "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+        }
+      },
+      "ORDINARY_LABEL": {
+        "value": "élément \u003c\u0026\u003e"
+      }
+    },
+    "credentialBroker": {
+      "endpoint": "https://broker.example.test/internal/connection-credentials/read",
+      "tokenSecretRef": {
+        "key": "projects/sample-project/preview/app-secrets/DEX_CREDENTIAL_BROKER_TOKEN/0123456789abcdef0123456789abcdef",
+        "version": "version-1",
+        "digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      }
+    }
+  },
+  "connectionHeadKey": "projects/sample-project/preview/connections/sample/bWFpbi3DqS3mtYHnqIsg8J-YgA/head",
   "connectionKey": {
     "connectorId": "sample",
-    "connectionName": "main / west"
+    "connectionName": "main-é-流程 😀"
   },
-  "credentialObjectKey": "projects/sample-project/preview/connections/sample/bWFpbiAvIHdlc3Q/credentials/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-  "exchangeResultKey": "projects/sample-project/preview/connections/sample/bWFpbiAvIHdlc3Q/exchange-results/attempt-7",
+  "connectionRecord": {
+    "schemaVersion": "connectors.dex.dev/project-connection/v1alpha2",
+    "connection": {
+      "connectorId": "sample",
+      "connectionName": "main-é-流程 😀"
+    },
+    "scope": {
+      "projectId": "sample-project",
+      "kind": "preview"
+    },
+    "revision": 2,
+    "fence": 2,
+    "status": "REFRESHING",
+    "expiresAt": "2026-10-29T12:30:45.123456789+08:00",
+    "authMethod": "oauth2",
+    "credential": {
+      "key": "projects/sample-project/preview/connections/sample/bWFpbi3DqS3mtYHnqIsg8J-YgA/credentials/cacf1adc04330799663d72131feb304925407408e2212f14ce11abe617981797",
+      "version": "1",
+      "digest": "cacf1adc04330799663d72131feb304925407408e2212f14ce11abe617981797"
+    },
+    "mutation": {
+      "kind": "REFRESHING",
+      "invocationId": "invocation-7",
+      "id": "attempt-7",
+      "fence": 2,
+      "baseRevision": 1,
+      "deadline": "2026-10-29T12:30:45.123456789+08:00",
+      "resultKey": "projects/sample-project/preview/connections/sample/bWFpbi3DqS3mtYHnqIsg8J-YgA/exchange-results/attempt-7"
+    }
+  },
+  "connectionRecordCanonicalJSON": "{\"schemaVersion\":\"connectors.dex.dev/project-connection/v1alpha2\",\"connection\":{\"connectorId\":\"sample\",\"connectionName\":\"main-é-流程 😀\"},\"scope\":{\"projectId\":\"sample-project\",\"kind\":\"preview\"},\"revision\":2,\"fence\":2,\"status\":\"REFRESHING\",\"expiresAt\":\"2026-10-29T12:30:45.123456789+08:00\",\"authMethod\":\"oauth2\",\"credential\":{\"key\":\"projects/sample-project/preview/connections/sample/bWFpbi3DqS3mtYHnqIsg8J-YgA/credentials/cacf1adc04330799663d72131feb304925407408e2212f14ce11abe617981797\",\"version\":\"1\",\"digest\":\"cacf1adc04330799663d72131feb304925407408e2212f14ce11abe617981797\"},\"mutation\":{\"kind\":\"REFRESHING\",\"invocationId\":\"invocation-7\",\"id\":\"attempt-7\",\"fence\":2,\"baseRevision\":1,\"deadline\":\"2026-10-29T12:30:45.123456789+08:00\",\"resultKey\":\"projects/sample-project/preview/connections/sample/bWFpbi3DqS3mtYHnqIsg8J-YgA/exchange-results/attempt-7\"}}",
+  "credentialEnvelope": {
+    "schemaVersion": "connectors.dex.dev/project-connection/v1alpha2",
+    "scope": {
+      "projectId": "sample-project",
+      "kind": "preview"
+    },
+    "connection": {
+      "connectorId": "sample",
+      "connectionName": "main-é-流程 😀"
+    },
+    "fence": 1,
+    "credentials": {
+      "accessToken": "REDACTED_ACCESS_TOKEN"
+    },
+    "expiresAt": "2026-10-29T12:30:45.123456789+08:00",
+    "authMethod": "oauth2"
+  },
+  "credentialEnvelopeCanonicalJSON": "{\"schemaVersion\":\"connectors.dex.dev/project-connection/v1alpha2\",\"scope\":{\"projectId\":\"sample-project\",\"kind\":\"preview\"},\"connection\":{\"connectorId\":\"sample\",\"connectionName\":\"main-é-流程 😀\"},\"fence\":1,\"credentials\":{\"accessToken\":\"REDACTED_ACCESS_TOKEN\"},\"expiresAt\":\"2026-10-29T12:30:45.123456789+08:00\",\"authMethod\":\"oauth2\"}",
+  "credentialExchangeEnvelope": {
+    "schemaVersion": "connectors.dex.dev/project-connection/v1alpha2",
+    "scope": {
+      "projectId": "sample-project",
+      "kind": "preview"
+    },
+    "connection": {
+      "connectorId": "sample",
+      "connectionName": "main-é-流程 😀"
+    },
+    "fence": 2,
+    "attemptId": "attempt-7",
+    "credentials": {
+      "accessToken": "REDACTED_ACCESS_TOKEN"
+    },
+    "expiresAt": "2026-10-29T12:30:45.123456789+08:00",
+    "authMethod": "oauth2"
+  },
+  "credentialExchangeEnvelopeCanonicalJSON": "{\"schemaVersion\":\"connectors.dex.dev/project-connection/v1alpha2\",\"scope\":{\"projectId\":\"sample-project\",\"kind\":\"preview\"},\"connection\":{\"connectorId\":\"sample\",\"connectionName\":\"main-é-流程 😀\"},\"fence\":2,\"attemptId\":\"attempt-7\",\"credentials\":{\"accessToken\":\"REDACTED_ACCESS_TOKEN\"},\"expiresAt\":\"2026-10-29T12:30:45.123456789+08:00\",\"authMethod\":\"oauth2\"}",
+  "credentialObjectKey": "projects/sample-project/preview/connections/sample/bWFpbi3DqS3mtYHnqIsg8J-YgA/credentials/cacf1adc04330799663d72131feb304925407408e2212f14ce11abe617981797",
+  "emptyTriggerInboxDocument": {
+    "schemaVersion": "connectors.dex.dev/project-trigger-inbox/v1alpha1",
+    "events": []
+  },
+  "exchangeResultKey": "projects/sample-project/preview/connections/sample/bWFpbi3DqS3mtYHnqIsg8J-YgA/exchange-results/attempt-7",
   "mutation": {
     "kind": "REFRESHING",
     "invocationId": "invocation-7",
     "id": "attempt-7",
     "fence": 2,
     "baseRevision": 1,
-    "deadline": "2026-10-29T12:30:45.123Z",
-    "resultKey": "projects/sample-project/preview/connections/sample/bWFpbiAvIHdlc3Q/exchange-results/attempt-7"
+    "deadline": "2026-10-29T12:30:45.123456789+08:00",
+    "resultKey": "projects/sample-project/preview/connections/sample/bWFpbi3DqS3mtYHnqIsg8J-YgA/exchange-results/attempt-7"
   },
   "objectCAS": {
-    "etag": "\"etag-2\"",
-    "key": "projects/sample-project/preview/configuration/head",
-    "version": "version-2"
+    "etag": "08e5e8ba3c0678a959031a4bac7db5d0a42a2afabd867c9c5fdae49b2812214a-2",
+    "key": "projects/sample-project/preview/connections/sample/bWFpbi3DqS3mtYHnqIsg8J-YgA/head",
+    "version": "2"
   },
   "objectReference": {
-    "key": "projects/sample-project/preview/connections/sample/bWFpbiAvIHdlc3Q/credentials/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-    "version": "version-3",
-    "digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    "key": "projects/sample-project/preview/connections/sample/bWFpbi3DqS3mtYHnqIsg8J-YgA/credentials/cacf1adc04330799663d72131feb304925407408e2212f14ce11abe617981797",
+    "version": "1",
+    "digest": "cacf1adc04330799663d72131feb304925407408e2212f14ce11abe617981797"
   },
   "scope": {
     "projectId": "sample-project",
@@ -36,9 +194,20 @@
   },
   "snapshot": {
     "key": "projects/sample-project/preview/configuration/head",
-    "version": "version-2",
-    "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "version": "1",
+    "digest": "sha256:cf7d924b5c73c48446e073f52847b38a5da37a35c013ed9883a2983bbea06c58",
     "mediaType": "application/json"
   },
-  "triggerInboxHeadKey": "projects/sample-project/preview/trigger-inboxes/sample/bWFpbiAvIHdlc3Q/itemCreated/bWFpbiAvIHdlc3Q/head"
+  "triggerInboxDocument": {
+    "schemaVersion": "connectors.dex.dev/project-trigger-inbox/v1alpha1",
+    "events": [
+      {
+        "id": "event-é-1",
+        "event": {
+          "label": "\u003cready\u003e\u0026"
+        }
+      }
+    ]
+  },
+  "triggerInboxHeadKey": "projects/sample-project/preview/trigger-inboxes/sample/bWFpbi3DqS3mtYHnqIsg8J-YgA/itemCreated/bWFpbiAvIHdlc3Q/head"
 }

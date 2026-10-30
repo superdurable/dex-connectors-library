@@ -1,4 +1,5 @@
 {
+  "callIDNamespace": "63281a42-70ad-5bc3-a289-728819af723f",
   "derivedCall": {
     "id": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
     "idempotencyKey": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
@@ -25,5 +26,12 @@
     "flowId": "flow-42",
     "operationId": "createItem",
     "stepExecutionId": "step-execution-7"
+  },
+  "unicodeDerivedCallId": "479cd837-d9ef-5d80-b4a1-af7a1eaf300c",
+  "unicodeSource": {
+    "connectorId": "sample",
+    "flowId": "flow-é-流程",
+    "operationId": "createItem",
+    "stepExecutionId": "step-😀"
   }
 }

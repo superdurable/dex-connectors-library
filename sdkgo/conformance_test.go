@@ -33,18 +33,19 @@ func TestConformanceFixtures(t *testing.T) {
 		"mutationHappy":           MutationResult[string]{Branch: "created", Value: "object-42", Receipt: fullReceipt},
 		"mutationOptionalFailure": MutationResult[string]{Branch: "rejected", Value: "", Receipt: fullReceipt, Failure: &Failure{Kind: FailureConflict, Provider: "sample", Operation: "createItem", Message: "item already exists"}},
 		"mutationUncertain":       MutationResult[string]{Branch: UncertainBranchID, Value: "", Receipt: minimalReceipt, Failure: &unknown},
+		"queryNull":               QueryResult[*string]{Branch: "missing", Value: nil, Receipt: Receipt{CallID: callID, Provider: "sample", ObservedAt: time.Time{}, Metadata: map[string]string{}}},
+		"wholeSecondReceipt":      Receipt{CallID: callID, Provider: "sample", ObservedAt: time.Date(2026, 10, 29, 12, 30, 45, 0, time.UTC)},
+		"nanosecondOffsetReceipt": Receipt{CallID: callID, Provider: "sample", ObservedAt: time.Date(2026, 10, 29, 12, 30, 45, 123456789, time.FixedZone("UTC+8", 8*60*60)), Metadata: map[string]string{"label": "élément <&> \u2028 😀"}},
 	})
-	kinds := []FailureKind{FailureValidation, FailureAuthentication, FailureAuthorization, FailureNotFound,
-		FailureConflict, FailureRateLimit, FailureQuotaExhausted, FailureAvailability, FailureProviderRejection,
-		FailureTransport, FailureResponseTooLarge, FailureProtocol, FailureLocalDefect}
-	failures := make([]Failure, 0, len(kinds))
-	for _, kind := range kinds {
+	failures := make([]Failure, 0, len(allFailureKinds))
+	for _, kind := range allFailureKinds {
 		failure := Failure{Kind: kind, Provider: "sample", Operation: "createItem", Message: "safe example of " + string(kind)}
 		if err := failure.Validate(); err != nil {
 			t.Fatal(err)
 		}
 		failures = append(failures, failure)
 	}
+	failures[0].Message = "entrée invalide: élément <&> \u2028 😀"
 	conformancefixture.Check(t, "failures.json", failures)
 	call := Call{ID: callID, IdempotencyKey: IdempotencyKey(callID), Connection: ConnectionRef{Provider: "sample", Name: "main"}, Operation: OperationRef{ConnectorID: "sample", OperationID: "createItem"}}
 	completedReceipt, err := completeReceipt(Receipt{ObservedAt: observedAt}, call)
@@ -58,6 +59,17 @@ func TestConformanceFixtures(t *testing.T) {
 		"differentOperationCallId": deriveCallID("flow-42", "step-execution-7", OperationRef{ConnectorID: "sample", OperationID: "getItem"}),
 		"fallbackCompletedReceipt": completedReceipt,
 		"providerKey":              IdempotencyKey("sample/" + callID),
+		"callIDNamespace":          string(callIDNamespace.String()),
+		"unicodeSource":            map[string]string{"flowId": "flow-é-流程", "stepExecutionId": "step-😀", "connectorId": "sample", "operationId": "createItem"},
+		"unicodeDerivedCallId":     deriveCallID("flow-é-流程", "step-😀", call.Operation),
 	})
 	conformancefixture.Check(t, "retry-policy.json", DefaultConnectorStepExecuteRetryPolicy())
+}
+
+func TestConformanceFixtureSet(t *testing.T) {
+	conformancefixture.CheckFixtureSet(t, []string{
+		"results.json", "failures.json", "identity.json", "retry-policy.json",
+		"single-dispatch-markers.json", "connections.json", "project-environment.json",
+		"project-storage.json", "credential-broker.json", "connectormock.json",
+	})
 }

@@ -1,4 +1,15 @@
 {
+  "emptyBranches": {
+    "operation": {
+      "connectorId": "sample",
+      "operationId": "getItem"
+    },
+    "branches": [],
+    "stepDefaults": {
+      "executeMethodTimeout": 0,
+      "executeDurability": 0
+    }
+  },
   "mutationDefinition": {
     "operation": {
       "connectorId": "sample",
@@ -37,6 +48,17 @@
       "executeDurability": 2
     }
   },
+  "nullBranches": {
+    "operation": {
+      "connectorId": "sample",
+      "operationId": "getItem"
+    },
+    "branches": null,
+    "stepDefaults": {
+      "executeMethodTimeout": 0,
+      "executeDurability": 0
+    }
+  },
   "queryDefinition": {
     "operation": {
       "connectorId": "sample",
@@ -71,6 +93,14 @@
     "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
     "branch": "created"
   },
+  "replayedRecordedCall": {
+    "connectorId": "sample",
+    "operationId": "createItem",
+    "connectionName": "main",
+    "flowId": "flow-42",
+    "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+    "replay": true
+  },
   "report": {
     "connection": "main",
     "operation": "createItem",
@@ -80,6 +110,28 @@
     "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf"
   },
   "reportDirectoryEnvironment": "DEX_CONNECTOR_MOCK_REPORT_DIR",
+  "reportFile": {
+    "calls": [
+      {
+        "connection": "élément \u003c\u0026\u003e 😀",
+        "operation": "createItem",
+        "branch": "created",
+        "connectorId": "sample",
+        "flowId": "flow-42",
+        "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+        "replay": true
+      },
+      {
+        "connection": "main",
+        "operation": "createItem",
+        "connectorId": "sample",
+        "flowId": "flow-42",
+        "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+        "retry": true,
+        "unscripted": true
+      }
+    ]
+  },
   "reportFileName": "connector-calls.json",
   "retryRecordedCall": {
     "connectorId": "sample",
@@ -88,5 +140,13 @@
     "flowId": "flow-42",
     "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
     "retry": true
+  },
+  "unscriptedRecordedCall": {
+    "connectorId": "sample",
+    "operationId": "createItem",
+    "connectionName": "main",
+    "flowId": "flow-42",
+    "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+    "unscripted": true
   }
 }

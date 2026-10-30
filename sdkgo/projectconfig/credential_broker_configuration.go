@@ -85,7 +85,7 @@ func validateCredentialBroker(scope Scope, broker CredentialBrokerConfiguration)
 		return err
 	}
 	reference := broker.TokenSecretRef
-	tokenPrefix := prefix + "/app-secrets/" + credentialBrokerTokenName + "/"
+	tokenPrefix := applicationSecretPrefix(prefix, credentialBrokerTokenName)
 	if !strings.HasPrefix(reference.Key, tokenPrefix) || !applicationSecretID.MatchString(strings.TrimPrefix(reference.Key, tokenPrefix)) || reference.Version == "" || reference.Version == "null" || strings.ContainsAny(reference.Version, "\x00\r\n") || !applicationSecretDigest.MatchString(reference.Digest) {
 		return errors.New("credential broker token reference differs from scope")
 	}

@@ -50,6 +50,14 @@
       "message": "write outcome cannot be confirmed"
     }
   },
+  "nanosecondOffsetReceipt": {
+    "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+    "provider": "sample",
+    "observedAt": "2026-10-29T12:30:45.123456789+08:00",
+    "metadata": {
+      "label": "élément \u003c\u0026\u003e \u2028 😀"
+    }
+  },
   "queryHappy": {
     "branch": "found",
     "value": "object-42",
@@ -57,6 +65,15 @@
       "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
       "provider": "sample",
       "observedAt": "2026-10-29T12:30:45.123Z"
+    }
+  },
+  "queryNull": {
+    "branch": "missing",
+    "value": null,
+    "receipt": {
+      "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+      "provider": "sample",
+      "observedAt": "0001-01-01T00:00:00Z"
     }
   },
   "queryOptionalFailure": {
@@ -73,5 +90,10 @@
       "operation": "getItem",
       "message": "item was not found"
     }
+  },
+  "wholeSecondReceipt": {
+    "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+    "provider": "sample",
+    "observedAt": "2026-10-29T12:30:45Z"
   }
 }

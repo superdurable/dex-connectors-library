@@ -42,6 +42,13 @@ const (
 	FailureLocalDefect FailureKind = "LOCAL_DEFECT"
 )
 
+var allFailureKinds = []FailureKind{
+	FailureValidation, FailureAuthentication, FailureAuthorization, FailureNotFound,
+	FailureConflict, FailureRateLimit, FailureQuotaExhausted, FailureAvailability,
+	FailureProviderRejection, FailureTransport, FailureResponseTooLarge, FailureProtocol,
+	FailureLocalDefect,
+}
+
 // Failure is safe to persist. It must never contain credentials or provider bodies.
 type Failure struct {
 	// Kind is the kind associated with this failure.
@@ -62,11 +69,14 @@ func (failure Failure) Validate() error {
 }
 
 func (failure Failure) validate() error {
-	switch failure.Kind {
-	case FailureValidation, FailureAuthentication, FailureAuthorization, FailureNotFound,
-		FailureConflict, FailureRateLimit, FailureQuotaExhausted, FailureAvailability, FailureProviderRejection,
-		FailureTransport, FailureResponseTooLarge, FailureProtocol, FailureLocalDefect:
-	default:
+	isKnownKind := false
+	for _, kind := range allFailureKinds {
+		if failure.Kind == kind {
+			isKnownKind = true
+			break
+		}
+	}
+	if !isKnownKind {
 		return fmt.Errorf("failure kind is invalid")
 	}
 	if failure.Provider == "" {

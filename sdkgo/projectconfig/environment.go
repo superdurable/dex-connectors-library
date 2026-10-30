@@ -43,6 +43,19 @@ type LoadedProject struct {
 // connections.json file that Dex Web writes under dexcli dev. Dex Web shows the launch command that sets it.
 const LocalConnectionsFileEnvironment = "DEX_CONNECTOR_CONFIG_FILE"
 
+const (
+	projectIDEnvironment                = "DEX_PROJECT_ID"
+	projectScopeEnvironment             = "DEX_PROJECT_SCOPE"
+	projectConfigKeyEnvironment         = "DEX_PROJECT_CONFIG_KEY"
+	projectConfigVersionEnvironment     = "DEX_PROJECT_CONFIG_VERSION"
+	projectConfigDigestEnvironment      = "DEX_PROJECT_CONFIG_DIGEST"
+	projectStorageBucketEnvironment     = "DEX_PROJECT_STORAGE_BUCKET"
+	projectStoragePrefixEnvironment     = "DEX_PROJECT_STORAGE_PREFIX"
+	projectStorageKMSKeyARNEnvironment  = "DEX_PROJECT_STORAGE_KMS_KEY_ARN"
+	projectStorageEndpointEnvironment   = "DEX_PROJECT_STORAGE_ENDPOINT"
+	projectAllowLocalStorageEnvironment = "DEX_PROJECT_ALLOW_LOCAL_STORAGE"
+)
+
 // LoadFromEnvironment loads the trusted DEX_PROJECT_* deployment contract and AWS default credential chain.
 // When DEX_CONNECTOR_CONFIG_FILE names the connections file of Dex Web under dexcli dev, it instead loads those
 // local connections through the same project protocol; see the README's Local development section.
@@ -52,29 +65,29 @@ const LocalConnectionsFileEnvironment = "DEX_CONNECTOR_CONFIG_FILE"
 // Hosted storage requires an exact KMS key ARN. Local S3 endpoints require explicit local-storage opt-in.
 func LoadFromEnvironment(ctx context.Context) (*LoadedProject, error) {
 	if path := os.Getenv(LocalConnectionsFileEnvironment); path != "" {
-		for _, name := range []string{"DEX_PROJECT_ID", "DEX_PROJECT_SCOPE", "DEX_PROJECT_CONFIG_KEY", "DEX_PROJECT_STORAGE_BUCKET"} {
+		for _, name := range []string{projectIDEnvironment, projectScopeEnvironment, projectConfigKeyEnvironment, projectStorageBucketEnvironment} {
 			if os.Getenv(name) != "" {
 				return nil, errors.New(LocalConnectionsFileEnvironment + " and " + name + " select different project configurations; set only one of them")
 			}
 		}
 		return loadDexWebProject(ctx, path)
 	}
-	scope := Scope{ProjectID: os.Getenv("DEX_PROJECT_ID"), Kind: os.Getenv("DEX_PROJECT_SCOPE")}
+	scope := Scope{ProjectID: os.Getenv(projectIDEnvironment), Kind: os.Getenv(projectScopeEnvironment)}
 	if _, err := scope.Prefix(); err != nil {
 		return nil, err
 	}
-	allowLocal := os.Getenv("DEX_PROJECT_ALLOW_LOCAL_STORAGE")
+	allowLocal := os.Getenv(projectAllowLocalStorageEnvironment)
 	if allowLocal != "" && allowLocal != "false" && allowLocal != "true" {
 		return nil, errors.New("project local storage opt-in must be true or false")
 	}
-	endpoint := os.Getenv("DEX_PROJECT_STORAGE_ENDPOINT")
+	endpoint := os.Getenv(projectStorageEndpointEnvironment)
 	if endpoint != "" && (allowLocal != "true" || !isLocalStorageEndpoint(endpoint)) {
 		return nil, errors.New("custom project storage endpoint requires an explicit local fixture boundary")
 	}
 	if allowLocal == "true" && endpoint == "" {
 		return nil, errors.New("local project storage requires an explicit local endpoint")
 	}
-	bucket, prefix, kmsKey := os.Getenv("DEX_PROJECT_STORAGE_BUCKET"), os.Getenv("DEX_PROJECT_STORAGE_PREFIX"), os.Getenv("DEX_PROJECT_STORAGE_KMS_KEY_ARN")
+	bucket, prefix, kmsKey := os.Getenv(projectStorageBucketEnvironment), os.Getenv(projectStoragePrefixEnvironment), os.Getenv(projectStorageKMSKeyARNEnvironment)
 	if bucket == "" || (allowLocal != "true" && !kmsKeyARN.MatchString(kmsKey)) {
 		return nil, errors.New("project storage bucket and exact hosted KMS key ARN are required")
 	}
@@ -92,7 +105,7 @@ func LoadFromEnvironment(ctx context.Context) (*LoadedProject, error) {
 	if err != nil {
 		return nil, err
 	}
-	reference := SnapshotRef{Key: os.Getenv("DEX_PROJECT_CONFIG_KEY"), Version: os.Getenv("DEX_PROJECT_CONFIG_VERSION"), Digest: os.Getenv("DEX_PROJECT_CONFIG_DIGEST"), MediaType: "application/json"}
+	reference := SnapshotRef{Key: os.Getenv(projectConfigKeyEnvironment), Version: os.Getenv(projectConfigVersionEnvironment), Digest: os.Getenv(projectConfigDigestEnvironment), MediaType: "application/json"}
 	return loadProject(ctx, objects, scope, reference, brokerClientOptions{})
 }
 

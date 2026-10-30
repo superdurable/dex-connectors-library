@@ -9,7 +9,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -24,11 +24,8 @@ func Check(t *testing.T, name string, value any) {
 		t.Fatal(err)
 	}
 	encoded = append(encoded, '\n')
-	_, source, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("locate conformance fixture source")
-	}
-	path := filepath.Join(filepath.Dir(source), "../../../conformance", name)
+	directory := fixtureDirectory(t)
+	path := filepath.Join(directory, name)
 	if os.Getenv("UPDATE_CONFORMANCE_FIXTURES") == "1" {
 		if err := os.WriteFile(path, encoded, 0o644); err != nil {
 			t.Fatal(err)
@@ -41,5 +38,52 @@ func Check(t *testing.T, name string, value any) {
 	}
 	if !bytes.Equal(committed, encoded) {
 		t.Fatalf("%s drifted; run UPDATE_CONFORMANCE_FIXTURES=1 GOWORK=off go test ./... from sdkgo", name)
+	}
+}
+
+// CheckFixtureSet rejects JSON files without a generator.
+func CheckFixtureSet(t *testing.T, expected []string) {
+	t.Helper()
+	wanted := make(map[string]bool, len(expected))
+	for _, name := range expected {
+		wanted[name] = true
+	}
+	entries, err := os.ReadDir(fixtureDirectory(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if strings.HasSuffix(entry.Name(), ".json") && !wanted[entry.Name()] {
+			t.Fatalf("orphan conformance fixture %s", entry.Name())
+		}
+	}
+	for name := range wanted {
+		if _, err := os.Stat(filepath.Join(fixtureDirectory(t), name)); err != nil {
+			t.Fatalf("missing conformance fixture %s: %v", name, err)
+		}
+	}
+}
+
+func fixtureDirectory(t *testing.T) string {
+	t.Helper()
+	directory, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for {
+		moduleFile := filepath.Join(directory, "go.mod")
+		contents, readErr := os.ReadFile(moduleFile)
+		if readErr == nil && strings.Contains(string(contents), "module github.com/superdurable/dex-connectors-library/sdkgo") {
+			fixtures := filepath.Join(filepath.Dir(directory), "conformance")
+			if info, statErr := os.Stat(fixtures); statErr == nil && info.IsDir() {
+				return fixtures
+			}
+			t.Fatalf("conformance fixtures are absent beside sdkgo module at %s; run tests from a repository checkout", fixtures)
+		}
+		parent := filepath.Dir(directory)
+		if parent == directory {
+			t.Fatal("cannot locate sdkgo module root for conformance fixtures")
+		}
+		directory = parent
 	}
 }

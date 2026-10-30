@@ -4,6 +4,9 @@
 package connectormock
 
 import (
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -35,12 +38,29 @@ func TestConformanceMockDefinitions(t *testing.T) {
 	query := NewQuery[string, string](t, queryDefinition)
 	mutation := NewMutation[string, string](t, mutationDefinition)
 	callID := sdkgo.CallID(conformancefixture.ExampleCallID)
+	directory := t.TempDir()
+	t.Setenv(ReportDirectoryEnvironment, directory)
+	if err := appendToReport(RecordedCall{ConnectorID: "sample", OperationID: "createItem", ConnectionName: "élément <&> 😀", FlowID: "flow-42", CallID: callID, Branch: "created", IsReplay: true}); err != nil {
+		t.Fatal(err)
+	}
+	if err := appendToReport(RecordedCall{ConnectorID: "sample", OperationID: "createItem", ConnectionName: "main", FlowID: "flow-42", CallID: callID, IsRetry: true, IsUnscripted: true}); err != nil {
+		t.Fatal(err)
+	}
+	reportFile, err := os.ReadFile(filepath.Join(directory, ReportFileName))
+	if err != nil {
+		t.Fatal(err)
+	}
 	conformancefixture.Check(t, "connectormock.json", map[string]any{
 		"queryDefinition":            query.Definition(),
 		"mutationDefinition":         mutation.Definition(),
+		"emptyBranches":              sdkgo.QueryDefinition{Operation: queryDefinition.Operation, Branches: []sdkgo.BranchDefinition{}},
+		"nullBranches":               sdkgo.QueryDefinition{Operation: queryDefinition.Operation},
 		"recordedCall":               RecordedCall{ConnectorID: "sample", OperationID: "createItem", ConnectionName: "main", FlowID: "flow-42", CallID: callID, Branch: "created"},
 		"retryRecordedCall":          RecordedCall{ConnectorID: "sample", OperationID: "createItem", ConnectionName: "main", FlowID: "flow-42", CallID: callID, IsRetry: true},
+		"replayedRecordedCall":       RecordedCall{ConnectorID: "sample", OperationID: "createItem", ConnectionName: "main", FlowID: "flow-42", CallID: callID, IsReplay: true},
+		"unscriptedRecordedCall":     RecordedCall{ConnectorID: "sample", OperationID: "createItem", ConnectionName: "main", FlowID: "flow-42", CallID: callID, IsUnscripted: true},
 		"report":                     reportedCall{Connection: "main", Operation: "createItem", Branch: "created", ConnectorID: "sample", FlowID: "flow-42", CallID: callID},
+		"reportFile":                 json.RawMessage(reportFile),
 		"reportFileName":             ReportFileName,
 		"reportDirectoryEnvironment": ReportDirectoryEnvironment,
 	})
