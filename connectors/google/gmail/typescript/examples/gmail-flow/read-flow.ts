@@ -16,8 +16,6 @@ export class GmailReadFlow implements Flow<GetMessageInput> {
   /** Bind the Gmail connection before registering the operation Step. */
   constructor(connection: GmailConnection) {
     if (!connection) throw new TypeError('Gmail read connection is required');
-    // dex:group group-id:gmail group-label:"Gmail"
-    // dex:explanation text:"Read the selected Gmail message."
     this.readStep = newGetMessageStep<GetMessageInput>({
       stepType: 'ReadGmailMessage', connectionName: ConnectionName, connection,
       annotations: { groupId: 'gmail', groupLabel: 'Gmail', explanation: 'Read the selected Gmail message.' },

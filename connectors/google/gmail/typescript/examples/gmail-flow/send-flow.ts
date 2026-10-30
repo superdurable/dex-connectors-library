@@ -15,8 +15,6 @@ export class GmailSendFlow implements Flow<SendMessageInput> {
   /** Bind the Gmail connection before registering the operation Step. */
   constructor(connection: GmailConnection) {
     if (!connection) throw new TypeError('Gmail send connection is required');
-    // dex:group group-id:gmail group-label:"Gmail"
-    // dex:explanation text:"Send one new Gmail message."
     this.sendStep = newSendMessageStep<SendMessageInput>({
       stepType: 'SendGmailMessage', connectionName: ConnectionName, connection,
       annotations: { groupId: 'gmail', groupLabel: 'Gmail', explanation: 'Send one new Gmail message.' },

@@ -15,8 +15,6 @@ export class GmailReplyFlow implements Flow<ReplyToMessageInput> {
   /** Bind the Gmail connection before registering the operation Step. */
   constructor(connection: GmailConnection) {
     if (!connection) throw new TypeError('Gmail reply connection is required');
-    // dex:group group-id:gmail group-label:"Gmail"
-    // dex:explanation text:"Reply in the selected Gmail thread."
     this.replyStep = newReplyToMessageStep<ReplyToMessageInput>({
       stepType: 'ReplyToGmailMessage', connectionName: ConnectionName, connection,
       annotations: { groupId: 'gmail', groupLabel: 'Gmail', explanation: 'Reply in the selected Gmail thread.' },
