@@ -251,6 +251,18 @@ operation's manifest mocks cover every branch: for example
 Scripting is described in
 [`sdkgo/connectormock`](../../../sdkgo/README.md#connector-mocks).
 
+## Python
+
+The independently versioned Python package is `dex-connector-google-gmail`
+(`dex_connectors.google_gmail`). Its [README](python/README.md) covers
+installation, the static `gmail-inbox` Dex Web connection, OAuth refresh,
+and the [runnable read-and-reply Flow](python/examples/thread_reply/main.py).
+The Python operation factories expose the same `getMessage`, `sendMessage`,
+and `replyToMessage` branches and retry policy as this connector manifest.
+Dex CLI/Web 1.28.0 supports Python FDG 2.0 analysis and Dex Web connection
+discovery through this package's generated `dex-connector.json`. The example's
+Worker and real Dex integration test cover the connector operations.
+
 ## Verification
 
 ```bash

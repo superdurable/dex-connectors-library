@@ -8,6 +8,9 @@ metadata:
   version: v0.24.1
 spec:
   provider: google
+  languages:
+    python:
+      version: v0.1.0
   codegen:
     go:
       package: gmail
