@@ -1,0 +1,29 @@
+{
+  "derivedCall": {
+    "id": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+    "idempotencyKey": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+    "connection": {
+      "provider": "sample",
+      "name": "main"
+    },
+    "operation": {
+      "connectorId": "sample",
+      "operationId": "createItem"
+    }
+  },
+  "differentOperationCallId": "3eecb553-1a08-5d1d-ba0e-82079db12260",
+  "differentStepCallId": "e18c5cc6-9bd8-56c4-8557-f0cd415e65d4",
+  "fallbackCompletedReceipt": {
+    "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+    "idempotencyKey": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+    "provider": "sample",
+    "observedAt": "2026-10-29T12:30:45.123Z"
+  },
+  "providerKey": "sample/5af8fafa-06ff-5b2d-bb13-04693809fabf",
+  "source": {
+    "connectorId": "sample",
+    "flowId": "flow-42",
+    "operationId": "createItem",
+    "stepExecutionId": "step-execution-7"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "hosted": {
+    "DEX_PROJECT_CONFIG_DIGEST": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "DEX_PROJECT_CONFIG_KEY": "projects/sample-project/preview/configuration/head",
+    "DEX_PROJECT_CONFIG_VERSION": "version-2",
+    "DEX_PROJECT_ID": "sample-project",
+    "DEX_PROJECT_SCOPE": "preview",
+    "DEX_PROJECT_STORAGE_BUCKET": "example-bucket",
+    "DEX_PROJECT_STORAGE_KMS_KEY_ARN": "arn:aws:kms:us-west-2:123456789012:key/example-key",
+    "DEX_PROJECT_STORAGE_PREFIX": "fixtures/"
+  },
+  "localDexWeb": {
+    "DEX_CONNECTOR_CONFIG_FILE": "./connections.json"
+  },
+  "localObjectStoreOverrides": {
+    "DEX_PROJECT_ALLOW_LOCAL_STORAGE": "true",
+    "DEX_PROJECT_STORAGE_ENDPOINT": "http://127.0.0.1:9000"
+  }
+}

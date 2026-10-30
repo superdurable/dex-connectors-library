@@ -1,0 +1,44 @@
+{
+  "applicationSecret": {
+    "key": "projects/sample-project/preview/app-secrets/WEBHOOK_SECRET/0123456789abcdef0123456789abcdef",
+    "version": "version-1",
+    "digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "connectionHeadKey": "projects/sample-project/preview/connections/sample/bWFpbiAvIHdlc3Q/head",
+  "connectionKey": {
+    "connectorId": "sample",
+    "connectionName": "main / west"
+  },
+  "credentialObjectKey": "projects/sample-project/preview/connections/sample/bWFpbiAvIHdlc3Q/credentials/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "exchangeResultKey": "projects/sample-project/preview/connections/sample/bWFpbiAvIHdlc3Q/exchange-results/attempt-7",
+  "mutation": {
+    "kind": "REFRESHING",
+    "invocationId": "invocation-7",
+    "id": "attempt-7",
+    "fence": 2,
+    "baseRevision": 1,
+    "deadline": "2026-10-29T12:30:45.123Z",
+    "resultKey": "projects/sample-project/preview/connections/sample/bWFpbiAvIHdlc3Q/exchange-results/attempt-7"
+  },
+  "objectCAS": {
+    "etag": "\"etag-2\"",
+    "key": "projects/sample-project/preview/configuration/head",
+    "version": "version-2"
+  },
+  "objectReference": {
+    "key": "projects/sample-project/preview/connections/sample/bWFpbiAvIHdlc3Q/credentials/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "version": "version-3",
+    "digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "scope": {
+    "projectId": "sample-project",
+    "kind": "preview"
+  },
+  "snapshot": {
+    "key": "projects/sample-project/preview/configuration/head",
+    "version": "version-2",
+    "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "mediaType": "application/json"
+  },
+  "triggerInboxHeadKey": "projects/sample-project/preview/trigger-inboxes/sample/bWFpbiAvIHdlc3Q/itemCreated/bWFpbiAvIHdlc3Q/head"
+}

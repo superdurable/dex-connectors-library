@@ -1,0 +1,80 @@
+[
+  {
+    "kind": "VALIDATION",
+    "provider": "sample",
+    "operation": "createItem",
+    "message": "safe example of VALIDATION"
+  },
+  {
+    "kind": "AUTHENTICATION",
+    "provider": "sample",
+    "operation": "createItem",
+    "message": "safe example of AUTHENTICATION"
+  },
+  {
+    "kind": "AUTHORIZATION",
+    "provider": "sample",
+    "operation": "createItem",
+    "message": "safe example of AUTHORIZATION"
+  },
+  {
+    "kind": "NOT_FOUND",
+    "provider": "sample",
+    "operation": "createItem",
+    "message": "safe example of NOT_FOUND"
+  },
+  {
+    "kind": "CONFLICT",
+    "provider": "sample",
+    "operation": "createItem",
+    "message": "safe example of CONFLICT"
+  },
+  {
+    "kind": "RATE_LIMIT",
+    "provider": "sample",
+    "operation": "createItem",
+    "message": "safe example of RATE_LIMIT"
+  },
+  {
+    "kind": "QUOTA_EXHAUSTED",
+    "provider": "sample",
+    "operation": "createItem",
+    "message": "safe example of QUOTA_EXHAUSTED"
+  },
+  {
+    "kind": "AVAILABILITY",
+    "provider": "sample",
+    "operation": "createItem",
+    "message": "safe example of AVAILABILITY"
+  },
+  {
+    "kind": "PROVIDER_REJECTION",
+    "provider": "sample",
+    "operation": "createItem",
+    "message": "safe example of PROVIDER_REJECTION"
+  },
+  {
+    "kind": "TRANSPORT",
+    "provider": "sample",
+    "operation": "createItem",
+    "message": "safe example of TRANSPORT"
+  },
+  {
+    "kind": "RESPONSE_TOO_LARGE",
+    "provider": "sample",
+    "operation": "createItem",
+    "message": "safe example of RESPONSE_TOO_LARGE"
+  },
+  {
+    "kind": "PROTOCOL",
+    "provider": "sample",
+    "operation": "createItem",
+    "message": "safe example of PROTOCOL"
+  },
+  {
+    "kind": "LOCAL_DEFECT",
+    "provider": "sample",
+    "operation": "createItem",
+    "message": "safe example of LOCAL_DEFECT"
+  }
+]

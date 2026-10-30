@@ -1,0 +1,23 @@
+[
+  {
+    "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+    "attempt": 1,
+    "state": "notSent"
+  },
+  {
+    "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+    "attempt": 2,
+    "state": "claimed"
+  },
+  {
+    "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+    "attempt": 3,
+    "state": "canResend"
+  },
+  {
+    "callId": "5af8fafa-06ff-5b2d-bb13-04693809fabf",
+    "attempt": 4,
+    "state": "claimed",
+    "providerId": "object-42"
+  }
+]

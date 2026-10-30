@@ -1,4 +1,4 @@
-.PHONY: check test test-common test-connectors catalog-check test-integration test-sdk-integration test-projectconfig-s3-integration test-connector-integration test-dex-compat-current test-dex-compat-released test-dex-compat-latest-go-sdk studio-bundle-theme react react-sdk react-connectors workspace githooks
+.PHONY: check test test-common test-conformance test-connectors catalog-check test-integration test-sdk-integration test-projectconfig-s3-integration test-connector-integration test-dex-compat-current test-dex-compat-released test-dex-compat-latest-go-sdk studio-bundle-theme react react-sdk react-connectors workspace githooks
 
 CONNECTOR_CATALOG ?= catalog.yaml
 CONNECTOR_SCOPE ?= all
@@ -16,12 +16,15 @@ check: test studio-bundle-theme react
 
 test: test-common test-connectors catalog-check
 
-test-common:
+test-common: test-conformance
 	cd sdkgo && GOWORK=off go test -race ./...
 	cd sdkgo && GOWORK=off go vet ./...
 	python3 -m unittest script/release/component_release_test.py script/dex_compatibility_test.py script/branch_off_main_policy_test.py script/agent_rules_test.py script/studio_bundle_theme_check_test.py
 	GOWORK=off go test -race ./...
 	GOWORK=off go vet ./...
+
+test-conformance:
+	cd sdkgo && GOWORK=off go test ./... -run '^TestConformance' -count=1
 
 test-connectors:
 	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))"; \
