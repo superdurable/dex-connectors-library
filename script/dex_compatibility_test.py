@@ -30,6 +30,7 @@ from script.dex_compatibility import (
     dex_web_compatibility_sources,
     dex_web_compatibility_test_names,
     download,
+    download_released_artifacts,
     example_consumer_name,
     fixture_module_path,
     flow_examples,
@@ -37,6 +38,7 @@ from script.dex_compatibility import (
     manifests,
     rate_limit_wait,
     resolve_dex_release,
+    stable_connector_tags,
     stable_cli_tags,
     write_dex_version_plan,
     parse_connector_directories,
@@ -291,15 +293,167 @@ class ConnectorSelectionTest(unittest.TestCase):
                 connector = root / directory
                 connector.mkdir(parents=True)
                 (connector / "connector.yaml").write_text("manifest")
-            releases = [
-                {"tag_name": "connectors/acme/chat/v0.1.0", "draft": False, "prerelease": False},
-                {"tag_name": "connectors/acme/mail/v0.1.0", "draft": False, "prerelease": False},
-            ]
-
-            with patch("script.dex_compatibility.github_releases", return_value=releases):
+            tag = "connectors/acme/mail/v0.1.0"
+            listed = subprocess.CompletedProcess([], 0, stdout=f"abc\trefs/tags/{tag}\n")
+            release = {"tag_name": tag, "assets": [{"name": "connector-release.complete"}]}
+            with patch("script.dex_compatibility.run", return_value=listed) as list_tags, \
+                    patch("script.dex_compatibility.github_json", return_value=release) as lookup:
                 selected = connector_releases(root, None, ["connectors/acme/mail"])
 
+            self.assertEqual([tag], [release["tag_name"] for release in selected])
+            self.assertEqual(1, list_tags.call_count)
+            self.assertIn("refs/tags/connectors/acme/mail/go/v*", list_tags.call_args.args[0])
+            lookup.assert_called_once_with(f"https://api.github.com/repos/superdurable/dex-connectors-library/releases/tags/{tag}")
+
+    def test_latest_completed_release_spans_old_and_go_tag_prefixes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            connector = root / "connectors/acme/mail"
+            connector.mkdir(parents=True)
+            (connector / "connector.yaml").write_text("manifest")
+            tags = [
+                "connectors/acme/mail/v0.5.0",
+                "connectors/acme/mail/go/v0.6.0",
+                "connectors/acme/mail/v0.7.0",
+                "connectors/acme/mail/go/v0.8.0-rc.1",
+                "connectors/acme/mail/python/v0.9.0",
+            ]
+            listed = subprocess.CompletedProcess([], 0, stdout="".join(f"abc\trefs/tags/{tag}\n" for tag in tags))
+            requests: list[str] = []
+
+            def lookup(url: str) -> object:
+                self.assertIn("/releases/tags/", url)
+                requests.append(url)
+                tag = url.split("/releases/tags/", 1)[1]
+                return {"tag_name": tag, "assets": [] if tag.endswith("v0.7.0") else [{"name": "connector-release.complete"}]}
+
+            with patch("script.dex_compatibility.run", return_value=listed), \
+                    patch("script.dex_compatibility.github_json", side_effect=lookup):
+                selected = connector_releases(root, None)
+
+            self.assertEqual(["connectors/acme/mail/go/v0.6.0"], [release["tag_name"] for release in selected])
+            self.assertEqual(2, len(requests))
+            self.assertTrue(all("/releases/tags/" in url for url in requests))
+
+    def test_exact_tag_uses_one_release_lookup_for_pending_publication(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            connector = root / "connectors/acme/mail"
+            connector.mkdir(parents=True)
+            (connector / "connector.yaml").write_text("manifest")
+            tag = "connectors/acme/mail/go/v0.6.0"
+            release = {"tag_name": tag, "assets": []}
+            with patch("script.dex_compatibility.run") as list_tags, \
+                    patch("script.dex_compatibility.github_json", return_value=release) as lookup:
+                selected = connector_releases(root, tag)
+            self.assertEqual([tag], [item["tag_name"] for item in selected])
+            list_tags.assert_not_called()
+            lookup.assert_called_once()
+
+    def test_tag_listing_rejects_other_languages_and_prereleases(self) -> None:
+        listed = subprocess.CompletedProcess([], 0, stdout=(
+            "abc\trefs/tags/connectors/acme/mail/v0.1.0\n"
+            "abc\trefs/tags/connectors/acme/mail/go/v0.2.0\n"
+            "abc\trefs/tags/connectors/acme/mail/python/v0.3.0\n"
+            "abc\trefs/tags/connectors/acme/mail/go/v0.4.0-rc.1\n"
+        ))
+        with patch("script.dex_compatibility.run", return_value=listed):
+            tags = stable_connector_tags(["connectors/acme/mail"])
+        self.assertEqual(["connectors/acme/mail/go/v0.2.0", "connectors/acme/mail/v0.1.0"], tags["connectors/acme/mail"])
+
+
+    def test_tag_listing_keeps_a_connector_directory_named_go(self) -> None:
+        listed = subprocess.CompletedProcess([], 0, stdout=(
+            "abc\trefs/tags/connectors/acme/v0.1.0\n"
+            "abc\trefs/tags/connectors/acme/go/v0.2.0\n"
+            "abc\trefs/tags/connectors/acme/go/go/v0.3.0\n"
+        ))
+        with patch("script.dex_compatibility.run", return_value=listed):
+            tags = stable_connector_tags(["connectors/acme", "connectors/acme/go"])
+        self.assertEqual(["connectors/acme/v0.1.0"], tags["connectors/acme"])
+        self.assertEqual(["connectors/acme/go/go/v0.3.0", "connectors/acme/go/v0.2.0"], tags["connectors/acme/go"])
+
+    def test_missing_latest_release_falls_back_and_logs_each_skip(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for directory in ("connectors/acme/chat", "connectors/acme/mail"):
+                connector = root / directory
+                connector.mkdir(parents=True)
+                (connector / "connector.yaml").write_text("manifest")
+            tags = ["connectors/acme/mail/v0.1.0", "connectors/acme/mail/go/v0.2.0"]
+            listed = subprocess.CompletedProcess([], 0, stdout="".join(f"abc\trefs/tags/{tag}\n" for tag in tags))
+
+            def lookup(url: str) -> object:
+                tag = url.split("/releases/tags/", 1)[1]
+                if tag.endswith("v0.2.0"):
+                    raise urllib.error.HTTPError(url, 404, "Not Found", {}, None)
+                return {"tag_name": tag, "assets": [{"name": "connector-release.complete"}]}
+
+            output = io.StringIO()
+            with patch("script.dex_compatibility.run", return_value=listed), \
+                    patch("script.dex_compatibility.github_json", side_effect=lookup), \
+                    patch("sys.stdout", output):
+                selected = connector_releases(root, None)
+
             self.assertEqual(["connectors/acme/mail/v0.1.0"], [release["tag_name"] for release in selected])
+            self.assertIn("Skipping connectors/acme/mail/go/v0.2.0: no published stable release", output.getvalue())
+            self.assertIn("No completed release for connectors/acme/chat", output.getvalue())
+
+    def test_exact_tag_outside_the_selected_connectors_or_unstable_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            connector = root / "connectors/acme/mail"
+            connector.mkdir(parents=True)
+            (connector / "connector.yaml").write_text("manifest")
+            for tag in (
+                "connectors/acme/chat/go/v0.1.0",
+                "connectors/acme/mail/python/v0.1.0",
+                "connectors/acme/mail/go/v0.1.0-rc.1",
+            ):
+                with self.subTest(tag=tag), patch("script.dex_compatibility.github_json") as lookup:
+                    with self.assertRaisesRegex(RuntimeError, "published connector release not found"):
+                        connector_releases(root, tag)
+                    lookup.assert_not_called()
+
+    def test_exact_tag_without_a_release_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            connector = root / "connectors/acme/mail"
+            connector.mkdir(parents=True)
+            (connector / "connector.yaml").write_text("manifest")
+            missing = urllib.error.HTTPError("https://api.github.com", 404, "Not Found", {}, None)
+            with patch("script.dex_compatibility.github_json", side_effect=missing):
+                with self.assertRaisesRegex(RuntimeError, "published connector release not found: connectors/acme/mail/go/v0.1.0"):
+                    connector_releases(root, "connectors/acme/mail/go/v0.1.0")
+
+
+class ReleasedArtifactLayoutTest(unittest.TestCase):
+    def test_both_tag_prefixes_place_metadata_in_the_connector_directory(self) -> None:
+        for directory in ("connectors/acme/mail", "connectors/airtable"):
+            for tag in (f"{directory}/v0.1.0", f"{directory}/go/v0.2.0"):
+                with self.subTest(tag=tag), tempfile.TemporaryDirectory() as temporary:
+                    output = Path(temporary)
+                    metadata = f'{{"tag": "{tag}", "connectorId": "acme", "sourceSha": "abc"}}'
+                    digest = hashlib.sha256(metadata.encode()).hexdigest()
+                    contents = {
+                        "connector-release.json": metadata,
+                        "connector-release.json.sha256": f"{digest}  connector-release.json\n",
+                    }
+                    release = {
+                        "tag_name": tag,
+                        "assets": [{"name": name, "browser_download_url": name} for name in contents],
+                    }
+
+                    def fake_download(url: str, path: Path) -> None:
+                        path.write_text(contents[url])
+
+                    with patch("script.dex_compatibility.download", side_effect=fake_download):
+                        download_released_artifacts([release], output)
+
+                    self.assertTrue((output / directory / "connector-release.json").is_file())
+                    self.assertFalse((output / directory / "go").exists())
+                    pattern = "connectors/*/connector-release.json" if directory.count("/") == 1 else "connectors/*/*/connector-release.json"
+                    self.assertEqual([output / directory / "connector-release.json"], list(output.glob(pattern)))
 
 
 class DexWebCompatibilityTestSelectionTest(unittest.TestCase):

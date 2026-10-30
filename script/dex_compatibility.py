@@ -312,18 +312,6 @@ def is_secondary_rate_limit_message(error: urllib.error.HTTPError) -> bool:
     return isinstance(message, str) and "secondary rate limit" in message.lower()
 
 
-def github_releases(repository: str) -> list[dict[str, object]]:
-    releases: list[dict[str, object]] = []
-    for page in range(1, 101):
-        batch = github_json(f"https://api.github.com/repos/{repository}/releases?per_page=100&page={page}")
-        if not isinstance(batch, list):
-            raise RuntimeError(f"GitHub returned an invalid release list for {repository}")
-        releases.extend(batch)
-        if len(batch) < 100:
-            return releases
-    raise RuntimeError(f"GitHub release pagination exceeded 100 pages for {repository}")
-
-
 def stable_key(version: str) -> tuple[int, int, int]:
     match = STABLE_VERSION.fullmatch(version)
     if not match:
@@ -675,34 +663,68 @@ def connector_releases(
     only_tag: str | None,
     connector_directories: list[str] | None = None,
 ) -> list[dict[str, object]]:
-    releases = github_releases(REPOSITORY)
-    current_prefixes = {
-        manifest.parent.relative_to(root).as_posix()
-        for manifest in manifests(root, connector_directories)
-    }
-    stable = [
-        release for release in releases
-        if not release.get("draft") and not release.get("prerelease")
-        and re.search(r"/v\d+\.\d+\.\d+$", str(release.get("tag_name", "")))
-        and str(release["tag_name"]).rsplit("/", 1)[0] in current_prefixes
-    ]
+    directories = sorted(manifest.parent.relative_to(root).as_posix() for manifest in manifests(root, connector_directories))
     if only_tag:
-        selected = [release for release in stable if release["tag_name"] == only_tag]
-        if not selected:
+        version = only_tag.rsplit("/", 1)[-1]
+        if not STABLE_VERSION.fullmatch(version) or not any(
+            only_tag in (f"{directory}/{version}", f"{directory}/go/{version}") for directory in directories
+        ):
             raise RuntimeError(f"published connector release not found: {only_tag}")
-        return selected
-    latest: dict[str, dict[str, object]] = {}
-    for release in stable:
-        prefix, version = str(release["tag_name"]).rsplit("/", 1)
-        if prefix not in latest or stable_key(version) > stable_key(str(latest[prefix]["tag_name"]).rsplit("/", 1)[1]):
-            latest[prefix] = release
-    return [latest[prefix] for prefix in sorted(latest)]
+        release = published_release(REPOSITORY, only_tag)
+        if release is None or release.get("tag_name") != only_tag:
+            raise RuntimeError(f"published connector release not found: {only_tag}")
+        return [release]
+    tags = stable_connector_tags(directories)
+    selected: list[dict[str, object]] = []
+    for directory in directories:
+        for tag in tags[directory]:
+            release = published_release(REPOSITORY, tag)
+            if release is None or release.get("tag_name") != tag:
+                print(f"Skipping {tag}: no published stable release", flush=True)
+            elif not any(asset.get("name") == "connector-release.complete" for asset in release.get("assets", [])):
+                print(f"Skipping {tag}: missing connector-release.complete", flush=True)
+            else:
+                selected.append(release)
+                break
+        else:
+            print(f"No completed release for {directory}; skipping its released compatibility", flush=True)
+    return selected
+
+
+def stable_connector_tags(directories: list[str]) -> dict[str, list[str]]:
+    """Lists stable Go tags for each connector, newest first across both tag prefixes."""
+    tags = {directory: [] for directory in directories}
+    if not directories:
+        return tags
+    patterns = [f"refs/tags/{directory}/{prefix}v*" for directory in directories for prefix in ("", "go/")]
+    output = run(
+        ["git", "ls-remote", "--refs", "--tags", f"https://github.com/{REPOSITORY}.git", *patterns],
+        Path.cwd(),
+        should_print_stdout=False,
+    ).stdout
+    for line in output.splitlines():
+        _, _, reference = line.partition("\t")
+        tag = reference.removeprefix("refs/tags/")
+        prefix, _, version = tag.rpartition("/")
+        directory = prefix if prefix in tags else connector_directory_of_tag(tag)
+        if directory in tags and STABLE_VERSION.fullmatch(version) and tag in (f"{directory}/{version}", f"{directory}/go/{version}"):
+            tags[directory].append(tag)
+    print(f"Listed {sum(len(listed) for listed in tags.values())} stable connector tags", flush=True)
+    for directory in directories:
+        tags[directory].sort(key=lambda tag: (stable_key(tag.rsplit("/", 1)[1]), "/go/" in tag), reverse=True)
+    return tags
+
+
+def connector_directory_of_tag(tag: str) -> str:
+    """Returns the connector directory of a legacy or Go-prefixed connector release tag."""
+    return tag.rsplit("/", 1)[0].removesuffix("/go")
 
 
 def download_released_artifacts(releases: list[dict[str, object]], output: Path) -> None:
     for release in releases:
         tag = str(release["tag_name"])
-        destination = output / tag.rsplit("/", 1)[0]
+        # Dex Web compatibility globs connector directories, so both tag prefixes share one layout.
+        destination = output / connector_directory_of_tag(tag)
         destination.mkdir(parents=True)
         assets = {str(asset["name"]): asset for asset in release.get("assets", [])}
         required = ["connector-release.json", "connector-release.json.sha256"]
@@ -829,10 +851,15 @@ def require_dex_web_security_tests_passed(output: str, prefixes: tuple[str, ...]
             raise RuntimeError(f"no Dex Web security test named {prefix}* passed")
 
 
-def run(arguments: list[str], directory: Path, environment: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
+def run(
+    arguments: list[str],
+    directory: Path,
+    environment: dict[str, str] | None = None,
+    should_print_stdout: bool = True,
+) -> subprocess.CompletedProcess[str]:
     print("+ " + " ".join(arguments), flush=True)
     result = subprocess.run(arguments, cwd=directory, env=environment, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if result.stdout:
+    if result.stdout and should_print_stdout:
         print(result.stdout, end="", flush=True)
     if result.stderr:
         print(result.stderr, end="", file=sys.stderr, flush=True)
