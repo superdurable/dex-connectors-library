@@ -9,6 +9,7 @@ import { ConfigurationSchema, LocalConnectionsFileSchema, type Configuration, ty
 export { ConnectionRecordSchema, CredentialEnvelopeSchema } from './connection_schema.js';
 import { ConnectionStore } from './connections.js';
 import { DexWebObjectStore } from './dexweb_store.js';
+import { SharedConnections } from './shared_connections.js';
 import { ConfigurationStore, InMemoryObjectStore, S3ObjectStore, digestBytes, type ObjectStore } from './storage.js';
 import { CredentialBrokerClient, CredentialBrokerUnavailableError, RejectedCredentialNotRefreshedError, type BrokerCredential } from './broker.js';
 import { isLocalStorageHost } from '../netpolicy.js';
@@ -31,7 +32,7 @@ export class LoadedProject {
     private readonly broker: CredentialBrokerClient | undefined,
   ) {
     ConfigurationSchema.parse(configuration);
-    this.connections = new ConnectionStore(objects ?? new InMemoryObjectStore(), configuration.scope);
+    this.connections = new ConnectionStore(objects ?? new InMemoryObjectStore(), configuration.scope, broker ? new SharedConnections(configuration, broker) : undefined);
   }
 
   /** Read a current private credential, never returning it through a Flow result. */

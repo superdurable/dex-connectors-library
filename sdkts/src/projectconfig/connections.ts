@@ -4,6 +4,7 @@
 import { inspect } from 'node:util';
 import { ConnectionRecordSchema, CredentialEnvelopeSchema, type ConnectionRecord } from './connection_schema.js';
 import { type Scope, scopePrefix } from './model.js';
+import type { SharedConnections } from './shared_connections.js';
 import { ConflictError, ObjectNotFoundError, OutcomeUnknownError, type ObjectStore, type ProjectObject, digestBytes, encodeGoCompatibleJSON } from './storage.js';
 
 /** Manifest connector ID and application-selected connection name. */
@@ -40,7 +41,7 @@ export interface Connection {
 /** Versioned connection heads and immutable credential objects. */
 export class ConnectionStore {
   /** Bind one object store and validated project scope. */
-  constructor(readonly objects: ObjectStore, readonly scope: Scope) {
+  constructor(readonly objects: ObjectStore, readonly scope: Scope, readonly shared?: SharedConnections) {
     if (!objects) throw new TypeError('project connection object store is required');
     scopePrefix(scope);
   }

@@ -15,6 +15,8 @@ import { ConflictError, ObjectNotFoundError, OutcomeUnknownError, digestBytes, e
 export type CredentialDecoder<C> = (document: Record<string, unknown>) => C;
 /** Connector-owned encoding of complete replacement material. */
 export type CredentialEncoder<C> = (credentials: C) => Record<string, unknown>;
+/** Decode broker material that omits secrets retained by the shared connection host. */
+export type SharedCredentialDecoder<C> = (document: Record<string, unknown>) => C;
 
 /** Another invocation owns provider dispatch for this credential generation. */
 export class ExchangePendingError extends Error { constructor() { super('credential exchange is pending'); this.name = 'ExchangePendingError'; } }
@@ -32,7 +34,7 @@ interface Admission {
 /** Read a non-refreshing project credential on every connector invocation. */
 export class CredentialProvider<C> implements CredentialProviderContract<C> {
   /** Bind one validated project connection and a credential decoder. */
-  constructor(protected readonly store: ConnectionStore, protected readonly key: ConnectionKey, protected readonly decode: CredentialDecoder<C>) {
+  constructor(protected readonly store: ConnectionStore, protected readonly key: ConnectionKey, protected readonly decode: CredentialDecoder<C>, protected readonly decodeShared?: SharedCredentialDecoder<C>) {
     if (!store || !decode) throw new TypeError('project credential store and decoder are required');
     connectionPath(store.scope, key);
   }
@@ -40,7 +42,9 @@ export class CredentialProvider<C> implements CredentialProviderContract<C> {
   /** Read current private material without refreshing known-expired credentials. */
   async resolve(call: Call, signal?: AbortSignal): Promise<C> {
     this.validateCall(call);
-    throwIfAborted(signal);
+    const effectiveSignal = signal ?? call.context.cancellationSignal;
+    throwIfAborted(effectiveSignal);
+    if (this.store.shared?.has(this.key)) return this.decodeSharedMaterial((await this.store.shared.read(this.key, call.id, effectiveSignal)).credential);
     const { material, connection } = await this.store.readCredentialMaterial(this.key);
     if (connection.expiresAt && connection.expiresAt.getTime() <= Date.now()) throw new Error('expired project credential requires refresh');
     return this.decodeMaterial(material);
@@ -60,6 +64,12 @@ export class CredentialProvider<C> implements CredentialProviderContract<C> {
     try { return this.decode(material.credentials); }
     catch { throw new TypeError('project credential decoding failed'); }
   }
+
+  /** Decode a broker response with the connector's shared credential rules. */
+  protected decodeSharedMaterial(document: Record<string, unknown>): C {
+    try { return (this.decodeShared ?? this.decode)(document); }
+    catch { throw new TypeError(this.decodeShared ? 'shared project credential decoding failed' : 'project credential decoding failed: this connector version does not support shared credentials'); }
+  }
 }
 
 /** Refresh and persist project credentials once per generation across replicas. */
@@ -67,8 +77,8 @@ export class RefreshingCredentialProvider<C> extends CredentialProvider<C> imple
   readonly #encode: CredentialEncoder<C>;
 
   /** Bind a complete replacement encoder in addition to the decoder. */
-  constructor(store: ConnectionStore, key: ConnectionKey, decode: CredentialDecoder<C>, encode: CredentialEncoder<C>) {
-    super(store, key, decode);
+  constructor(store: ConnectionStore, key: ConnectionKey, decode: CredentialDecoder<C>, encode: CredentialEncoder<C>, decodeShared?: SharedCredentialDecoder<C>) {
+    super(store, key, decode, decodeShared);
     if (!encode) throw new TypeError('project credential encoder is required');
     this.#encode = encode;
   }
@@ -78,6 +88,7 @@ export class RefreshingCredentialProvider<C> extends CredentialProvider<C> imple
     this.validateCall(call);
     if (!driver) throw new TypeError('credential refresh driver is required');
     const effectiveSignal = signal ?? call.context.cancellationSignal;
+    if (this.store.shared?.has(this.key)) return this.decodeSharedMaterial((await this.store.shared.read(this.key, call.id, effectiveSignal)).credential);
     for (;;) {
       throwIfAborted(effectiveSignal);
       const { record, object } = await this.store.readRecord(this.key);
@@ -103,6 +114,8 @@ export class RefreshingCredentialProvider<C> extends CredentialProvider<C> imple
   /** Force refresh only when stored expiry proves the rejected token expired. */
   async resolveAfterRejection(call: Call, driver: CredentialRefreshDriver<C>, signal?: AbortSignal): Promise<C> {
     this.validateCall(call);
+    if (!driver) throw new TypeError('credential refresh driver is required');
+    if (this.store.shared?.has(this.key)) return this.decodeSharedMaterial((await this.store.shared.readAfterRejection(this.key, call.id, signal ?? call.context.cancellationSignal)).credential);
     const connection = await this.store.readConnection(this.key);
     if (!connection.expiresAt || connection.expiresAt.getTime() > Date.now()) throw new RejectedCredentialNotRefreshedError();
     return this.resolveWithRefresh(call, driver, signal);
@@ -200,9 +213,9 @@ export class RefreshingCredentialProvider<C> extends CredentialProvider<C> imple
 }
 
 /** Bind an API-key or other non-refreshing credential to one project connection. */
-export function newCredentialProvider<C>(store: ConnectionStore, key: ConnectionKey, decode: CredentialDecoder<C>): CredentialProvider<C> { return new CredentialProvider(store, key, decode); }
+export function newCredentialProvider<C>(store: ConnectionStore, key: ConnectionKey, decode: CredentialDecoder<C>, decodeShared?: SharedCredentialDecoder<C>): CredentialProvider<C> { return new CredentialProvider(store, key, decode, decodeShared); }
 /** Bind a renewable credential and complete replacement encoder to one connection. */
-export function newRefreshingCredentialProvider<C>(store: ConnectionStore, key: ConnectionKey, decode: CredentialDecoder<C>, encode: CredentialEncoder<C>): RefreshingCredentialProvider<C> { return new RefreshingCredentialProvider(store, key, decode, encode); }
+export function newRefreshingCredentialProvider<C>(store: ConnectionStore, key: ConnectionKey, decode: CredentialDecoder<C>, encode: CredentialEncoder<C>, decodeShared?: SharedCredentialDecoder<C>): RefreshingCredentialProvider<C> { return new RefreshingCredentialProvider(store, key, decode, encode, decodeShared); }
 
 function requireAdmission(record: ConnectionRecord, admission: Admission): void {
   if (record.status !== 'REFRESHING' || record.fence !== admission.fence || record.mutation?.id !== admission.attemptId) throw new ConflictError();

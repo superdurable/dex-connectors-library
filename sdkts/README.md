@@ -12,6 +12,7 @@ node examples/operations.mjs
 node examples/providerhttp.mjs
 node examples/projectconfig.mjs
 node examples/refreshing_project.mjs
+node examples/shared_project.mjs
 node examples/connectormock.mjs
 node examples/oauthtoken.mjs
 node examples/singledispatch.mjs
@@ -110,6 +111,8 @@ try {
 
 The [runnable refresh example](examples/refreshing_project.mjs) binds `newRefreshingCredentialProvider` to a named project connection. `newCredentialProvider` reads an API key or another nonrenewable credential on each call. A refresh provider writes a `REFRESHING` head with a monotonic fence before sending one provider request, publishes an immutable result, and lets observers recover a result whose final head write was lost. A terminal provider response fences the connection as `REAUTHORIZATION_REQUIRED`; a transient response restores the prior credential. The local Dex Web projection writes an accepted refresh back to its mode-0600 `connections.json` only while that file still holds the imported credential. The decoder and encoder must cover the complete private credential, including a renewal token omitted by the provider's response.
 
+For a loaded shared connection, the same provider reads the selected host connection through the credential broker. The [runnable shared connection example](examples/shared_project.mjs) passes a fifth `decodeShared` function to handle broker material without host-kept renewal secrets. `resolveWithRefresh` never invokes the local refresh driver for a shared connection. `resolveAfterRejection` asks the broker for a newer revision; broker reauthorization and selection failures stop the call.
+
 ```js
 import { createCall } from '../dist/index.js';
 import { loadFromEnvironment, newRefreshingCredentialProvider } from '../dist/projectconfig/index.js';
@@ -129,6 +132,18 @@ const credentials = await provider.resolveWithRefresh(call, {
     expiresAt: new Date(Date.now() + 3600_000),
   }),
 });
+```
+
+```js
+const provider = newRefreshingCredentialProvider(project.connections, { connectorId: 'example', connectionName: 'shared' },
+  value => {
+    if (typeof value.accessToken !== 'string' || typeof value.refreshToken !== 'string') throw new TypeError();
+    return { accessToken: value.accessToken, refreshToken: value.refreshToken };
+  }, value => ({ ...value }),
+  value => {
+    if (typeof value.accessToken !== 'string') throw new TypeError();
+    return { accessToken: value.accessToken, refreshToken: '' };
+  });
 ```
 
 ## Connector mocks
