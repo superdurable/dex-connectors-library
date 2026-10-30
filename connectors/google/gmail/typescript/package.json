@@ -44,13 +44,13 @@
   ],
   "scripts": {
     "build": "tsup src/index.ts src/mock/index.ts --format esm,cjs --dts --clean",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "npm run build && tsc --noEmit",
     "lint": "eslint src test examples",
-    "test": "vitest run test/*.test.ts",
-    "test:integration": "vitest run examples/gmail-flow/integration.test.ts",
+    "test": "npm run build && vitest run test/*.test.ts",
+    "test:integration": "npm run build && vitest run examples/gmail-flow/integration.test.ts",
     "example:worker": "tsx examples/gmail-flow/main.ts",
     "example:start": "tsx examples/gmail-flow/start.ts",
-    "check": "npm run typecheck && npm run lint && npm test && npm run build"
+    "check": "npm run typecheck && npm run lint && npm test"
   },
   "dependencies": {
     "@superdurable/connectors-sdk": "file:../../../../sdkts",

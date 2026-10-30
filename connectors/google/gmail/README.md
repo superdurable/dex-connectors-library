@@ -2,7 +2,7 @@
 
 ## TypeScript (v0.1.0)
 
-Install `@superdurable/connector-google-gmail` with `@superdurable/dex`. The [TypeScript README](typescript/README.md) covers OAuth and Workspace connection setup, the `gmail-inbox` static connection name, the runnable Worker and Client example, and real Dex tests. The TypeScript package implements `getMessage`, `sendMessage`, and `replyToMessage`; the Go connector owns Gmail Triggers. Dex Web TypeScript FDG and Flow identity rendering (R4) remain pending, so this release does not claim a generated graph.
+Install `@superdurable/connector-google-gmail` with `@superdurable/dex`. The [TypeScript README](typescript/README.md) covers OAuth and Workspace connection setup, the `gmail-inbox` static connection name, the runnable Worker and Client example, and real Dex tests. The TypeScript package implements `getMessage`, `sendMessage`, and `replyToMessage`; the Go connector owns Gmail Triggers. Dex CLI v1.28.0 supports TypeScript FDG 2.0; strict example graph verification awaits the manifest-derived npm marker.
 
 The Gmail Connector receives root messages and replies, reads one message, and
 sends new messages or replies from the verified primary address.

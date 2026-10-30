@@ -20,15 +20,14 @@ For administrator-managed Workspace delegation, use [Google Cloud service accoun
 
 ## Run the example
 
-[The Gmail Flow example](https://github.com/superdurable/dex-connectors-library/tree/main/connectors/google/gmail/typescript/examples/gmail-flow) contains the Worker, a read starter, and a real Dex integration test. Its static connection name is `gmail-inbox`, and its Flow exposes all three operations. The Worker setup below is from the [runnable entrypoint](https://github.com/superdurable/dex-connectors-library/blob/main/connectors/google/gmail/typescript/examples/gmail-flow/main.ts):
+[The Gmail Flow examples](https://github.com/superdurable/dex-connectors-library/tree/main/connectors/google/gmail/typescript/examples/gmail-flow) contain one Flow per operation, one Worker, a read starter, and a real Dex integration test. Their static connection name is `gmail-inbox`. The Worker setup below is from the [runnable entrypoint](https://github.com/superdurable/dex-connectors-library/blob/main/connectors/google/gmail/typescript/examples/gmail-flow/main.ts):
 
 ```ts
 const project = await loadFromEnvironment();
 const connection = newProjectConnection(project, ConnectionName);
-const flow = new GmailExampleFlow(connection);
-const registry = new Registry([flow]);
+const registry = new Registry([new GmailReadFlow(connection), new GmailSendFlow(connection), new GmailReplyFlow(connection)]);
 ```
 
 Run `npm run example:worker` after configuring the named connection, then `npm run example:start -- GMAIL_MESSAGE_ID` to start a read. `npm run test:integration` exercises read, send, reply, retry, optional branch failure, and the send checkpoint with a fake provider on a real Dex server. No live Google authorization or delivery has been tested.
 
-Dex Web's TypeScript Flow identity and FDG 2.0 rendering support (R4) are not yet released. The example declares its Step groups and explanations in source; it does not publish a fabricated graph.
+Dex CLI v1.28.0 supports TypeScript FDG 2.0. Strict graph verification needs the manifest-derived `dex-connector.json` marker in the installed npm package; the repository generator for that marker is pending.

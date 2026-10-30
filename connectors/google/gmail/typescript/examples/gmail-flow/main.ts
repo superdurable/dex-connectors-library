@@ -7,15 +7,16 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { Registry, Worker, openBlobCache } from '@superdurable/dex';
 import { loadFromEnvironment } from '@superdurable/connectors-sdk/projectconfig';
-import { newProjectConnection } from '../../src/index.js';
-import { ConnectionName, GmailExampleFlow } from './flow.js';
+import { newProjectConnection } from '@superdurable/connector-google-gmail';
+import { ConnectionName, GmailReadFlow } from './read-flow.js';
+import { GmailSendFlow } from './send-flow.js';
+import { GmailReplyFlow } from './reply-flow.js';
 
 /** Start one real Dex Worker with the Gmail connection named in the example Flow. */
 export async function runGmailExampleWorker(): Promise<void> {
   const project = await loadFromEnvironment();
   const connection = newProjectConnection(project, ConnectionName);
-  const flow = new GmailExampleFlow(connection);
-  const registry = new Registry([flow]);
+  const registry = new Registry([new GmailReadFlow(connection), new GmailSendFlow(connection), new GmailReplyFlow(connection)]);
   const cacheDirectory = await mkdtemp(join(tmpdir(), 'gmail-example-cache-'));
   const cache = openBlobCache({ directory: cacheDirectory, maxBytes: 64 * 1024 * 1024 });
   try {
