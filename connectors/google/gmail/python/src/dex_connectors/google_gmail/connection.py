@@ -13,7 +13,7 @@ from .provider import GmailProvider
 
 @dataclass(frozen=True, slots=True)
 class Connection:
-    """Logical connection plus all three operation implementations for Step factories."""
+    """Logical connection, provider client, and three operations for Step factories."""
 
     # Stable provider and name used by Dex Web Connections.
     reference: ConnectionRef
@@ -23,6 +23,8 @@ class Connection:
     send_message: Mutation[SendMessageInput, SendMessageOutput]
     # Source-thread reply operation.
     reply_to_message: Mutation[ReplyToMessageInput, SendMessageOutput]
+    # Provider client retained for closing project-owned HTTP resources; mocks omit it.
+    client: GmailProvider | None = None
 
     def __post_init__(self) -> None:
         """Require the Gmail provider and a static nonempty connection name."""
@@ -32,16 +34,22 @@ class Connection:
         if self.get_message is None or self.send_message is None or self.reply_to_message is None:
             raise ValueError("all Gmail operations are required")
 
+    async def close(self) -> None:
+        """Close the provider's owned HTTP client, if this connection has one."""
+        if self.client is not None:
+            await self.client.close()
 
-def new_connection(provider: GmailProvider, connection_name: str) -> Connection:
-    """Bind all Gmail operations to one static Dex Web connection name."""
-    if provider is None or not connection_name.strip():
-        raise ValueError("Gmail provider and static connection name are required")
+
+def new_connection(client: GmailProvider, reference: ConnectionRef) -> Connection:
+    """Bind one provider client and explicit Dex ConnectionRef to all operations."""
+    if client is None or reference is None:
+        raise ValueError("Gmail client and connection reference are required")
     return Connection(
-        ConnectionRef("google", connection_name),
-        GetMessageOperation(provider),
-        SendMessageOperation(provider),
-        ReplyToMessageOperation(provider),
+        reference,
+        GetMessageOperation(client),
+        SendMessageOperation(client),
+        ReplyToMessageOperation(client),
+        client,
     )
 
 

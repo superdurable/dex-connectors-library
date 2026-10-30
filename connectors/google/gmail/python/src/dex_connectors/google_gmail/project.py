@@ -3,10 +3,12 @@
 """Open a Gmail provider from a loaded Dex project connection."""
 
 import httpx
+from dex_connectors.sdk import ConnectionRef
 from dex_connectors.sdk.projectconfig import LoadedProject
 from dex_connectors.sdk.projectconfig.connections import ConnectionKey
 from dex_connectors.sdk.projectconfig.provider import RefreshingCredentialProvider
 
+from .connection import Connection, new_connection
 from .models import Config
 from .project_credentials import decode_credentials, encode_credentials
 from .provider import GmailProvider
@@ -44,4 +46,15 @@ def new_project_provider(
     )
 
 
-__all__ = ["new_project_provider"]
+def new_project_connection(
+    project: LoadedProject,
+    connection_name: str,
+    *,
+    http_client: httpx.AsyncClient | None = None,
+) -> Connection:
+    """Open a named Dex Web Gmail connection with project-backed credentials."""
+    client = new_project_provider(project, connection_name, http_client=http_client)
+    return new_connection(client, ConnectionRef("google", connection_name))
+
+
+__all__ = ["new_project_provider", "new_project_connection"]

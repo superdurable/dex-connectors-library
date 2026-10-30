@@ -21,7 +21,7 @@ from dex_connectors.sdk.projectconfig import (
 )
 from dex_connectors.sdk.projectconfig.models import CredentialBrokerConfiguration
 
-from dex_connectors.google_gmail import new_project_provider
+from dex_connectors.google_gmail import new_project_connection, new_project_provider
 
 
 @pytest.mark.asyncio
@@ -74,11 +74,15 @@ async def test_project_provider_refreshes_and_persists_local_oauth_credentials(t
         )
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(answer)) as http_client:
-        provider = new_project_provider(project, "support", http_client=http_client)
+        connection = new_project_connection(project, "support", http_client=http_client)
+        assert connection.reference == ConnectionRef("google", "support")
+        provider = connection.client
+        assert provider is not None
         call = Call(
             CallID(str(uuid4())), ConnectionRef("google", "support"), OperationRef("gmail", "getMessage")
         )
         credential = await provider.resolve_credentials(call)
+        await connection.close()
     assert provider.max_response_bytes == 2048
     assert credential.access_token.reveal() == "new-access"
     assert credential.refresh_token.reveal() == "new-refresh"

@@ -37,8 +37,7 @@ IDs. Its Worker loads the `gmail-inbox` connection from the Dex Web project
 configuration. The entrypoint uses the public connection and Step APIs:
 
 ```python
-provider = new_project_provider(project, CONNECTION_NAME)
-connection = new_connection(provider, CONNECTION_NAME)
+connection = new_project_connection(project, CONNECTION_NAME)
 await run_thread_reply_worker(
     ThreadReplyFlow(connection),
     os.environ.get("DEX_BLOB_CACHE_DIRECTORY", "/tmp/dex-gmail-thread-reply-cache"),

@@ -20,6 +20,8 @@ from .models import CONNECTION_NAME, ThreadReplyInput, ThreadReplyOutput
 _REPLY_TEXT = dex.Attribute("gmail-thread-reply-text", str)
 
 
+# dex:group group-id:gmail group-label:"Gmail"
+# dex:explanation text:"Complete after Gmail confirms the threaded reply was sent."
 class ReplySent(dex.Step[MutationResult[SendMessageOutput]]):
     """Complete after Gmail definitely accepts the threaded reply."""
 
@@ -32,6 +34,8 @@ class ReplySent(dex.Step[MutationResult[SendMessageOutput]]):
         )
 
 
+# dex:group group-id:gmail group-label:"Gmail"
+# dex:explanation text:"Route a successful source message read to the threaded reply."
 class MessageRead(dex.Step[QueryResult[Message]]):
     """Send the reply after a successful source-message read."""
 
@@ -50,6 +54,8 @@ class MessageRead(dex.Step[QueryResult[Message]]):
         )
 
 
+# dex:group group-id:gmail group-label:"Gmail"
+# dex:explanation text:"Validate the request and retain reply text before reading Gmail."
 class PrepareReply(dex.Step[ThreadReplyInput]):
     """Persist the reply text before the Gmail query Step starts."""
 

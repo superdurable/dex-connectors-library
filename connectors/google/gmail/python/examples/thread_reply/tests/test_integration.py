@@ -100,7 +100,10 @@ async def _provider_flow(
         provider = GmailProvider(
             Config(endpoint="http://localhost/gmail/v1"), credentials, http_client=http_client
         )
-        return await _run_flow(new_connection(provider, CONNECTION_NAME), input_value, cache_directory)
+        return await _run_flow(
+            new_connection(provider, ConnectionRef("google", CONNECTION_NAME)), input_value,
+            cache_directory,
+        )
 
 
 @pytest.mark.asyncio
@@ -155,6 +158,8 @@ async def test_real_dex_manifest_mocks_run_the_same_flow(tmp_path: Path) -> None
     assert len(mock.reply_to_message.calls()) == 1
 
 
+# dex:group group-id:gmail group-label:"Gmail"
+# dex:explanation text:"Complete after Gmail confirms one new message was sent."
 class SendConfirmed(dex.Step[MutationResult[SendMessageOutput]]):
     """Complete after the connector proves a send was accepted."""
 
@@ -206,7 +211,7 @@ async def test_real_dex_send_retry_reads_back_before_duplicate_post(tmp_path: Pa
         provider = GmailProvider(
             Config(endpoint="http://localhost/gmail/v1"), credentials, http_client=http_client
         )
-        flow = SendMessageFlow(new_connection(provider, CONNECTION_NAME))
+        flow = SendMessageFlow(new_connection(provider, ConnectionRef("google", CONNECTION_NAME)))
         result = await _run_registered_flow(
             flow,
             SendMessageInput(["ada@example.com"], "Progress", "Processing complete."),
