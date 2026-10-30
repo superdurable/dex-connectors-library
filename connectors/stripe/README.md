@@ -231,6 +231,15 @@ No live Stripe credentials are required by the deterministic test suite. The
 suite uses a fake provider and signed webhook fixtures; a live Stripe account
 and public HTTPS callback remain an operator-owned end-to-end check.
 
+## TypeScript
+
+The [TypeScript package](typescript/README.md) provides the same five Stripe API
+operations and manifest mock scenarios as this Go module. It is released as
+`@superdurable/connector-stripe` with its own version from
+`spec.languages.typescript.version`. The package README covers installation,
+Dex project connections, keyed retry and uncertainty, and its TypeScript Flow
+example.
+
 ## Verification
 
 ```bash
