@@ -5,5 +5,5 @@
     "noFallthroughCasesInSwitch": true, "noUnusedLocals": true, "noUnusedParameters": true,
     "skipLibCheck": true, "esModuleInterop": true, "declaration": true, "outDir": "dist", "rootDir": "."
   },
-  "include": ["src", "test", "eslint.config.js"]
+  "include": ["src", "test", "examples", "eslint.config.js"]
 }

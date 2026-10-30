@@ -10,7 +10,7 @@
   },
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": "^22.0.0 || ^24.0.0"
   },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -44,7 +44,7 @@
   "scripts": {
     "build": "tsup src/index.ts src/mock.ts --format esm,cjs --dts --clean",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src test",
+    "lint": "eslint src test examples",
     "test": "vitest run",
     "check": "npm run typecheck && npm run lint && npm test && npm run build"
   },
@@ -54,6 +54,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
+    "@superdurable/dex": "1.28.0",
     "@types/node": "^22.0.0",
     "eslint": "^9.0.0",
     "tsup": "^8.0.0",
