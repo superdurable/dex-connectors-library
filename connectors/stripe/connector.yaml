@@ -11,8 +11,12 @@ spec:
   languages:
     python:
       version: v0.1.0
+      operations: [createCardCheckoutSession, createACHCheckoutSession, getCheckoutSession, getPaymentIntent, createRefund]
+      triggers: []
     typescript:
       version: v0.1.0
+      operations: [createCardCheckoutSession, createACHCheckoutSession, getCheckoutSession, getPaymentIntent, createRefund]
+      triggers: []
   codegen:
     go:
       package: stripe

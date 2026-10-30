@@ -182,6 +182,7 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
   other connectors and of the SDK version. Leaving it unchanged explicitly
   defers release.
 - `spec.languages.python.version` and `spec.languages.typescript.version` release their packages independently of Go and each other. Their package metadata must match the manifest.
+- A Python or TypeScript package lists exactly the operations and Triggers it implements in `spec.languages.<language>`; the catalog and site show per-capability language support.
 - A connector PR that should release moves only that connector's version one
   step from its latest tag: patch for a fix, minor for an addition such as an
   operation or mocks, and for a breaking change `(breaking)` with a minor bump

@@ -469,11 +469,13 @@ class ComponentReleaseTest(unittest.TestCase):
     def test_language_package_requires_released_registry_sdk_without_local_overrides(self) -> None:
         python_package = self.repository / "connectors/newsapi/python"
         python_package.mkdir(parents=True)
+        (python_package.parent / "connector.yaml").write_text("apiVersion: connectors.dex.dev/v1alpha1\nspec:\n  languages:\n    python: {version: v0.1.0, operations: [], triggers: []}\n", encoding="utf-8")
         manifest_directory = python_package / "src/dex_connectors/newsapi"
         manifest_directory.mkdir(parents=True)
         (manifest_directory / "dex-connector.json").write_text(json.dumps({
             "releaseTag": "connectors/newsapi/v0.1.0",
             "package": {"ecosystem": "pypi", "name": "dex-connector-newsapi", "version": "0.1.0"},
+            "factories": [],
         }), encoding="utf-8")
         pyproject = python_package / "pyproject.toml"
         pyproject.write_text('[project]\nname = "dex-connector-newsapi"\nversion = "0.1.0"\ndependencies = ["dex-connectors-sdk>=0.1.0"]\n', encoding="utf-8")
@@ -501,12 +503,14 @@ class ComponentReleaseTest(unittest.TestCase):
     def test_language_connector_requires_completed_go_release(self) -> None:
         package = self.repository / "connectors/newsapi/typescript"
         package.mkdir(parents=True)
+        (package.parent / "connector.yaml").write_text("apiVersion: connectors.dex.dev/v1alpha1\nspec:\n  languages:\n    typescript: {version: v0.1.0, operations: [], triggers: []}\n", encoding="utf-8")
         (package / "package.json").write_text(json.dumps({
             "name": "@superdurable/connector-newsapi", "version": "0.1.0",
         }), encoding="utf-8")
         (package / "dex-connector.json").write_text(json.dumps({
             "releaseTag": "connectors/newsapi/v0.20.0",
             "package": {"ecosystem": "npm", "name": "@superdurable/connector-newsapi", "version": "0.1.0"},
+            "factories": [],
         }), encoding="utf-8")
         lookup = mock.Mock(spec=release.DependencyReleaseLookup)
         lookup.has_tag.return_value = False
@@ -523,6 +527,28 @@ class ComponentReleaseTest(unittest.TestCase):
             release.validate_language_connector_release(package, "typescript", lookup)
         lookup.release_asset_names.return_value = frozenset({"connector-release.complete"})
         release.validate_language_connector_release(package, "typescript", lookup)
+        (package.parent / "connector.yaml").write_text("apiVersion: connectors.dex.dev/v1alpha1\nspec:\n  languages:\n    typescript: {version: v0.1.0, operations: [getMessage], triggers: []}\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "declared operations differ"):
+            release.validate_language_connector_release(package, "typescript", lookup)
+
+    def test_language_capability_coverage_rejects_missing_factories_and_triggers(self) -> None:
+        source_manifest = self.repository / "connector.yaml"
+        source_manifest.write_text("""apiVersion: connectors.dex.dev/v1alpha1
+spec:
+  languages:
+    python:
+      version: v0.1.0
+      operations: [getMessage]
+      triggers: []
+""", encoding="utf-8")
+        document = {"factories": []}
+        with self.assertRaisesRegex(ValueError, "declared operations differ"):
+            release.validate_language_capability_coverage(source_manifest, "python", document)
+        document["factories"] = [{"operationId": "getMessage"}]
+        release.validate_language_capability_coverage(source_manifest, "python", document)
+        source_manifest.write_text(source_manifest.read_text(encoding="utf-8").replace("triggers: []", "triggers: [messageReceived]"), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "Trigger factories are not supported"):
+            release.validate_language_capability_coverage(source_manifest, "python", document)
 
     def test_connector_archives_require_matching_dex_manifest(self) -> None:
         npm_asset = self.repository / "package.tgz"

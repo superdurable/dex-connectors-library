@@ -704,6 +704,10 @@ def validate_language_connector_release(
         r"connectors/" + re.escape(connector_path) + r"/v[0-9]+\.[0-9]+\.[0-9]+", release_tag
     ):
         raise ValueError(f"{connector_manifest_path} releaseTag must name its Go connector release")
+    source_manifest = path.parent / "connector.yaml"
+    if not source_manifest.is_file():
+        raise ValueError(f"{path} requires {source_manifest}")
+    validate_language_capability_coverage(source_manifest, language, document)
     if not require_completed_release:
         return
     if not lookup.has_tag(release_tag):
@@ -712,6 +716,38 @@ def validate_language_connector_release(
         raise ValueError(f"required Go connector release is not reachable from main: {release_tag}")
     if CONNECTOR_RELEASE_COMPLETE_ASSET not in lookup.release_asset_names(release_tag):
         raise ValueError(f"required Go connector release is incomplete: {release_tag} has no {CONNECTOR_RELEASE_COMPLETE_ASSET} asset")
+
+
+def validate_language_capability_coverage(source_manifest: Path, language: str, document: dict) -> None:
+    """Check declared Step coverage before a language package is released."""
+    source = source_manifest.read_text(encoding="utf-8")
+    language_block = re.search(rf"(?m)^    {language}:\s*\n((?:^      .*\n)*)", source)
+    inline_language = re.search(rf"(?m)^    {language}:\s*\{{([^\n]*)\}}\s*$", source)
+    if language_block is None and inline_language is None:
+        raise ValueError(f"{source_manifest} does not declare spec.languages.{language}")
+    declaration = language_block.group(1) if language_block is not None else inline_language.group(1)
+
+    def declared_names(field: str) -> set[str]:
+        inline = re.search(rf"(?:^|[,\s]){field}:\s*\[([^\]]*)\]", declaration, re.M)
+        if inline is not None:
+            return {name.strip().strip("'\"") for name in inline.group(1).split(",") if name.strip()}
+        block = re.search(rf"(?m)^      {field}:\s*\n((?:^        - .*\n)*)", declaration)
+        if block is not None:
+            return {name.strip().strip("'\"") for name in re.findall(r"(?m)^        - (.+)$", block.group(1))}
+        raise ValueError(f"{source_manifest} spec.languages.{language}.{field} is missing")
+
+    operations = declared_names("operations")
+    triggers = declared_names("triggers")
+    factories = document.get("factories")
+    if not isinstance(factories, list) or any(not isinstance(factory, dict) for factory in factories):
+        raise ValueError("dex-connector.json factories must be a list")
+    factory_operations = [factory.get("operationId") for factory in factories]
+    if any(not isinstance(operation, str) for operation in factory_operations):
+        raise ValueError("dex-connector.json factories must name operation IDs")
+    if len(set(factory_operations)) != len(factory_operations) or set(factory_operations) != operations:
+        raise ValueError(f"{language} declared operations differ from dex-connector.json factories")
+    if triggers:
+        raise ValueError(f"{language} Trigger factories are not supported by dex-connector.json")
 
 
 def stamp_language_candidate_connector_manifest(path: Path, language: str, candidate_version: str) -> None:

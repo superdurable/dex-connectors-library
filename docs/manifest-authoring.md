@@ -7,7 +7,8 @@ after merge; leaving it unchanged explicitly defers release. See
 [Choosing a connector version](versioning-and-releases.md#choosing-a-connector-version).
 
 Optional `spec.languages.python` and `spec.languages.typescript` entries each
-require a stable `vX.Y.Z` version and may specify a distribution `package`
+require a stable `vX.Y.Z` version and explicit `operations` and `triggers`
+name lists; they may specify a distribution `package`
 override. Go remains implied by `go.mod` and `metadata.version`. The Python
 package lives in `python/` and declares its matching name and version under
 `[project]` in `pyproject.toml`; the TypeScript package lives in
@@ -15,6 +16,11 @@ package lives in `python/` and declares its matching name and version under
 names are `dex-connector-<slug>` and `@superdurable/connector-<slug>`, with
 `<slug>` formed from the connector path below `connectors/` by replacing `/`
 with `-`. The public catalog records language availability and versions.
+Each list names exactly the operations or Triggers implemented by that language
+package; use `[]` when none are implemented. Go supports all declared operations
+and Triggers. For example, `python: {version: v0.1.0, operations: [getMessage],
+triggers: []}` advertises only the Python `getMessage` Step. The catalog records
+the languages for each operation and Trigger; Go-only entries omit that field.
 
 `connectorctl generate` also writes `dex-connector.json` for each declared
 language. Python places it in `python/src/dex_connectors/<slug_with_underscores>/`;
@@ -22,6 +28,9 @@ npm places it beside `typescript/package.json`. Check in the generated file and
 run `connectorctl generate --check <connector.yaml>` to detect drift. The file
 maps the manifest's operation factories, branch IDs and optional status, package
 identity, and fields used by Dex CLI's Python and TypeScript source analyzers.
+Only listed operation factories are generated. Trigger factory mappings await
+language package and `dex-connector.json` contract support; declaring a Trigger
+currently fails language release validation.
 Runtime arguments such as `connection`, `map_to_operation_input`/
 `mapToOperationInput`, and `step_options_override`/`stepOptionsOverride`
 remain factory inputs; the Dex 1.28.0 schema has no mapping keys for them.

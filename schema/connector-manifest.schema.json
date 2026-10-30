@@ -173,17 +173,21 @@
   },
   "$defs": {
     "pythonLanguage": {
-      "type": "object", "additionalProperties": false, "required": ["version"],
+      "type": "object", "additionalProperties": false, "required": ["version", "operations", "triggers"],
       "properties": {
         "version": { "type": "string", "pattern": "^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$" },
-        "package": { "type": "string", "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$" }
+        "package": { "type": "string", "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$" },
+        "operations": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "triggers": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
       }
     },
     "typescriptLanguage": {
-      "type": "object", "additionalProperties": false, "required": ["version"],
+      "type": "object", "additionalProperties": false, "required": ["version", "operations", "triggers"],
       "properties": {
         "version": { "type": "string", "pattern": "^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$" },
-        "package": { "type": "string", "pattern": "^@[a-z][a-z0-9-]*/[a-z][a-z0-9-]*$" }
+        "package": { "type": "string", "pattern": "^@[a-z][a-z0-9-]*/[a-z][a-z0-9-]*$" },
+        "operations": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "triggers": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
       }
     },
     "studioCommand": {

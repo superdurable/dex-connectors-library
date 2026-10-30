@@ -63,7 +63,7 @@ func TestLanguageReleaseMatrixUsesIndependentVersions(t *testing.T) {
 	directory := "connectors/acme/chat"
 	writeConnectorFixture(t, repositoryRoot, directory, "example.com/connectors/acme/chat")
 	manifestPath := filepath.Join(repositoryRoot, directory, "connector.yaml")
-	replaceInFile(t, manifestPath, "spec:\n", "spec:\n  languages:\n    python: {version: v0.1.0}\n    typescript: {version: v0.1.0}\n")
+	replaceInFile(t, manifestPath, "spec:\n", "spec:\n  languages:\n    python: {version: v0.1.0, operations: [appendRows], triggers: []}\n    typescript: {version: v0.1.0, operations: [appendRows], triggers: []}\n")
 	require.NoError(t, os.MkdirAll(filepath.Join(repositoryRoot, directory, "python"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(repositoryRoot, directory, "typescript"), 0o755))
 	pythonPackage := filepath.Join(repositoryRoot, directory, "python", "pyproject.toml")
@@ -79,7 +79,7 @@ func TestLanguageReleaseMatrixUsesIndependentVersions(t *testing.T) {
 		output, err := command.CombinedOutput()
 		require.NoError(t, err, "%s", output)
 	}
-	replaceInFile(t, manifestPath, "python: {version: v0.1.0}", "python: {version: v0.2.0}")
+	replaceInFile(t, manifestPath, "python: {version: v0.1.0, operations: [appendRows], triggers: []}", "python: {version: v0.2.0, operations: [appendRows], triggers: []}")
 	replaceInFile(t, pythonPackage, "0.1.0", "0.2.0")
 	outputPath := filepath.Join(t.TempDir(), "output")
 	require.NoError(t, releaseMatrixCommand([]string{"--catalog", catalogPath, "--github-output", outputPath}))
@@ -95,7 +95,7 @@ func TestLanguageReleaseMatrixUsesIndependentVersions(t *testing.T) {
 		Directory: directory, ManifestPath: directory + "/connector.yaml", TagPrefix: directory + "/python/",
 		Version: "v0.2.0", DisplayName: "Google Sheets Fixture", Language: "python", Package: "dex-connector-acme-chat",
 	}}, languageMatrix.Include)
-	replaceInFile(t, manifestPath, "typescript: {version: v0.1.0}", "typescript: {version: v0.2.0}")
+	replaceInFile(t, manifestPath, "typescript: {version: v0.1.0, operations: [appendRows], triggers: []}", "typescript: {version: v0.2.0, operations: [appendRows], triggers: []}")
 	replaceInFile(t, typeScriptPackage, "0.1.0", "0.2.0")
 	require.NoError(t, releaseMatrixCommand([]string{"--catalog", catalogPath, "--github-output", outputPath}))
 	output, err = os.ReadFile(outputPath)
@@ -441,7 +441,7 @@ func TestCatalogJSONListsLanguageVersions(t *testing.T) {
 	directory := "connectors/acme/chat"
 	writeConnectorFixture(t, repositoryRoot, directory, "example.com/connectors/acme/chat")
 	manifestPath := filepath.Join(repositoryRoot, directory, "connector.yaml")
-	replaceInFile(t, manifestPath, "spec:\n", "spec:\n  languages:\n    python: {version: v0.1.0}\n")
+	replaceInFile(t, manifestPath, "spec:\n", "spec:\n  languages:\n    python: {version: v0.1.0, operations: [appendRows], triggers: []}\n")
 	require.NoError(t, os.MkdirAll(filepath.Join(repositoryRoot, directory, "python"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(repositoryRoot, directory, "python", "pyproject.toml"), []byte("[project]\nname = \"dex-connector-acme-chat\"\nversion = \"0.1.0\"\n"), 0o600))
 	catalogPath := filepath.Join(repositoryRoot, "catalog.yaml")
@@ -453,11 +453,45 @@ func TestCatalogJSONListsLanguageVersions(t *testing.T) {
 	require.NoError(t, err)
 	var document struct {
 		Connectors []struct {
-			Languages map[string]string `json:"languages"`
+			Languages  map[string]string `json:"languages"`
+			Operations []struct {
+				Languages []string `json:"languages"`
+			} `json:"operations"`
 		} `json:"connectors"`
 	}
 	require.NoError(t, json.Unmarshal(contents, &document))
 	require.Equal(t, map[string]string{"go": "v0.1.0", "python": "v0.1.0"}, document.Connectors[0].Languages)
+	require.Equal(t, []string{"go", "python"}, document.Connectors[0].Operations[0].Languages)
+}
+
+func TestGoOnlyCatalogCapabilityBytesStayUnchanged(t *testing.T) {
+	entry := connectorDirectoryEntry{Directory: "connectors/example", Manifest: schema.Manifest{
+		Metadata: schema.Metadata{Name: "example", DisplayName: "Example", Description: "Example.", Company: "Example", Version: "v0.1.0"},
+		Spec:     schema.Spec{Operations: []schema.Operation{{Name: "getThing", Kind: "query", Description: "Get a thing."}}},
+	}}
+	baseline, err := encodeConnectorCatalog([]connectorDirectoryEntry{entry})
+	require.NoError(t, err)
+	require.Equal(t, `apiVersion: connectors.dex.dev/catalog/v1alpha1
+kind: ConnectorCatalog
+connectors:
+    - company: Example
+      id: example
+      name: Example
+      description: Example.
+      version: v0.1.0
+      directory: connectors/example
+      uiUnits: []
+      triggers: []
+      operations:
+        - name: getThing
+          kind: query
+          description: Get a thing.
+`, string(baseline))
+	entry.Manifest.Spec.Languages = &schema.Languages{}
+	withEmptyLanguages, err := encodeConnectorCatalog([]connectorDirectoryEntry{entry})
+	require.NoError(t, err)
+	require.Equal(t, baseline, withEmptyLanguages)
+	require.NotContains(t, string(baseline), "languages:")
 }
 
 func writeConnectorFixture(t *testing.T, repositoryRoot, directory, modulePath string) {

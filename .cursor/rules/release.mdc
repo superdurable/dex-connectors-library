@@ -18,6 +18,7 @@ alwaysApply: true
   step or another first version, so review checks both.
 - SDK tags use sdkgo/vX.Y.Z; connector tags use their module directory.
 - Python and TypeScript connector packages use independent `spec.languages.python.version` and `spec.languages.typescript.version` values, with matching package metadata.
+- A Python or TypeScript package lists exactly the operations and Triggers it implements in `spec.languages.<language>`; the catalog and site show per-capability language support.
 - SDK tags also use sdkpython/vX.Y.Z and sdkts/vX.Y.Z; connector language tags append /python/vX.Y.Z or /typescript/vX.Y.Z.
 - Release each language SDK before connectors that require it. New npm packages use the CI token for first publish; existing packages use trusted publishing when configured.
 - Connector modules depend on an exact published SDK version without replace,

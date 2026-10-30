@@ -11,6 +11,7 @@ import {
   connectorManifestUrl,
   catalogTotals,
   connectorMatchesQuery,
+  connectorMatchesLanguage,
   readCatalog,
   readOperations,
 } from "./catalogModel.mjs";
@@ -71,13 +72,13 @@ connectors:
   assert.equal(connectors[0].description, "Send and read Gmail messages.");
   assert.equal(connectors[0].companyDirectory, "google");
   assert.deepEqual(connectors[0].uiUnits, [
-    { name: "searchQueryInput", kind: "ui-unit", description: "Enter a Gmail search query." },
+    { name: "searchQueryInput", kind: "ui-unit", description: "Enter a Gmail search query.", languages: ["go"] },
   ]);
   assert.deepEqual(connectors[0].triggers, [
-    { name: "messageReceived", kind: "trigger", description: "Receive a matching message." },
+    { name: "messageReceived", kind: "trigger", description: "Receive a matching message.", languages: ["go"] },
   ]);
   assert.deepEqual(connectors[0].operations, [
-    { name: "sendMessage", kind: "mutation", description: "Send a Gmail message." },
+    { name: "sendMessage", kind: "mutation", description: "Send a Gmail message.", languages: ["go"] },
   ]);
   assert.equal(connectorMatchesQuery(connectors[0], "messageReceived"), true);
   assert.equal(connectorMatchesQuery(connectors[0], "send mutation"), true);
@@ -107,6 +108,32 @@ connectors:
     operations: []
 `);
   assert.deepEqual(connectors[0].languages, { go: "v0.2.0", python: "v0.1.0", typescript: "v0.3.0" });
+  assert.equal(connectorMatchesLanguage(connectors[0], "python"), true);
+  assert.equal(connectorMatchesLanguage(connectors[0], "typescript"), true);
+  assert.equal(connectorMatchesLanguage(connectors[0], "all"), true);
+});
+
+test("catalog reads per-capability support and language filter composes with search", () => {
+  const connectors = readCatalog(`
+connectors:
+  - company: Google
+    id: gmail
+    name: Gmail
+    description: Mail connector.
+    version: v0.2.0
+    languages: {go: v0.2.0, python: v0.1.0, typescript: v0.3.0}
+    directory: connectors/google/gmail
+    uiUnits: []
+    triggers:
+      - {name: messageReceived, description: Receive mail., languages: [go]}
+    operations:
+      - {name: getMessage, kind: query, description: Read mail., languages: [go, python]}
+`);
+  assert.deepEqual(connectors[0].triggers[0].languages, ["go"]);
+  assert.deepEqual(connectors[0].operations[0].languages, ["go", "python"]);
+  assert.equal(connectorMatchesLanguage(connectors[0], "typescript") && connectorMatchesQuery(connectors[0], "mail"), true);
+  assert.equal(connectorMatchesLanguage(connectors[0], "python") && connectorMatchesQuery(connectors[0], "stripe"), false);
+  assert.equal(connectorMatchesLanguage({ ...connectors[0], languages: { go: "v0.2.0" } }, "python"), false);
 });
 
 test("connector manifest exposes operation name, kind, and description", () => {
@@ -124,8 +151,8 @@ spec:
       description: Send a Gmail message.
 `);
   assert.deepEqual(operations, [
-    { name: "messageReceived", kind: "trigger", description: "Receive a matching message." },
-    { name: "getMessage", kind: "query", description: "Read one Gmail message." },
-    { name: "sendMessage", kind: "mutation", description: "Send a Gmail message." },
+    { name: "messageReceived", kind: "trigger", description: "Receive a matching message.", languages: ["go"] },
+    { name: "getMessage", kind: "query", description: "Read one Gmail message.", languages: ["go"] },
+    { name: "sendMessage", kind: "mutation", description: "Send a Gmail message.", languages: ["go"] },
   ]);
 });

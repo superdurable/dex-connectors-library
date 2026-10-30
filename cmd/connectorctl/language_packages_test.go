@@ -20,7 +20,7 @@ func TestValidateLanguagePackageFilesAndVersions(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Join(connectorDirectory, "python"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(connectorDirectory, "typescript"), 0o755))
 	manifestPath := filepath.Join(connectorDirectory, "connector.yaml")
-	manifest := strings.Replace(readFixtureManifest(t), "spec:\n", "spec:\n  languages:\n    python: {version: v0.2.0}\n    typescript: {version: v0.3.0}\n", 1)
+	manifest := strings.Replace(readFixtureManifest(t), "spec:\n", "spec:\n  languages:\n    python: {version: v0.2.0, operations: [appendRows], triggers: []}\n    typescript: {version: v0.3.0, operations: [appendRows], triggers: []}\n", 1)
 	require.NoError(t, os.WriteFile(manifestPath, []byte(manifest), 0o600))
 	pyprojectPath := filepath.Join(connectorDirectory, "python", "pyproject.toml")
 	packagePath := filepath.Join(connectorDirectory, "typescript", "package.json")

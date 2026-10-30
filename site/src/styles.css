@@ -323,13 +323,58 @@ h2, h3 {
 
 .operations li {
   display: grid;
-  grid-template-columns: 108px 1fr;
+  grid-template-columns: 108px minmax(0, 1fr) auto;
   gap: 14px;
   align-items: start;
   padding: 14px 16px;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 14px;
+}
+
+.language-icons { display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; }
+.language-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--panel-light);
+  color: var(--forest);
+}
+.language-icon svg { width: 16px; height: 16px; fill: currentColor; }
+.language-icon-python { color: #346e9e; }
+.language-icon-typescript { color: #286da8; }
+
+.language-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 18px; padding: 0; border: 0; }
+.language-filter legend { float: left; margin-right: 10px; padding: 5px 0; color: var(--muted-strong); font-size: 13px; font-weight: 600; }
+.language-filter label { padding: 5px 11px; border: 1px solid var(--line-strong); border-radius: 999px; color: var(--muted-strong); cursor: pointer; font-size: 13px; }
+.language-filter label.selected { background: var(--panel-light); border-color: var(--forest); color: var(--forest); }
+.language-filter label:focus-within { outline: 2px solid var(--forest); outline-offset: 2px; }
+.language-filter input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --ink: #101d17;
+    --panel: #1b2b22;
+    --panel-light: #28402e;
+    --line: rgba(172, 219, 165, 0.16);
+    --line-strong: rgba(172, 219, 165, 0.33);
+    --text: #e9f5e8;
+    --muted: #a2b7a3;
+    --muted-strong: #c1d3c1;
+    --forest: #a0d79b;
+    --lime-soft: #293d2b;
+    --water-soft: #233b3e;
+  }
+  .site-tabs, .totals div { background: var(--panel); }
+  .site-tab.active { background: var(--panel-light); color: var(--text); }
+  .kind-mutation, .kind-more { background: #31402a; }
+  .kind-ui-unit { background: #382b45; }
+  .language-icon-python { color: #91c5ee; }
+  .language-icon-typescript { color: #87b9ef; }
 }
 
 .operations strong {

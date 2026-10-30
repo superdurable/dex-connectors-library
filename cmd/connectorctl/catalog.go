@@ -15,6 +15,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -71,9 +72,10 @@ type catalogMock struct {
 }
 
 type catalogCapability struct {
-	Name        string `yaml:"name" json:"name"`
-	Kind        string `yaml:"kind,omitempty" json:"kind,omitempty"`
-	Description string `yaml:"description" json:"description"`
+	Name        string   `yaml:"name" json:"name"`
+	Kind        string   `yaml:"kind,omitempty" json:"kind,omitempty"`
+	Description string   `yaml:"description" json:"description"`
+	Languages   []string `yaml:"languages,omitempty" json:"languages,omitempty"`
 }
 
 type connectorDirectoryEntry struct {
@@ -531,12 +533,14 @@ func encodeConnectorCatalog(entries []connectorDirectoryEntry) ([]byte, error) {
 		}
 		triggers := make([]catalogCapability, 0, len(entry.Manifest.Spec.Triggers))
 		for _, trigger := range entry.Manifest.Spec.Triggers {
-			triggers = append(triggers, catalogCapability{Name: trigger.Name, Description: trigger.Description})
+			triggers = append(triggers, catalogCapability{Name: trigger.Name, Description: trigger.Description,
+				Languages: capabilityLanguages(entry.Manifest.Spec.Languages, trigger.Name, true)})
 		}
 		operations := make([]catalogCapability, 0, len(entry.Manifest.Spec.Operations))
 		for _, operation := range entry.Manifest.Spec.Operations {
 			operations = append(operations, catalogCapability{
 				Name: operation.Name, Kind: operation.Kind, Description: operation.Description,
+				Languages: capabilityLanguages(entry.Manifest.Spec.Languages, operation.Name, false),
 			})
 		}
 		item := connectorCatalogItem{
@@ -544,7 +548,7 @@ func encodeConnectorCatalog(entries []connectorDirectoryEntry) ([]byte, error) {
 			Description: metadata.Description, Version: metadata.Version, Directory: entry.Directory,
 			UIUnits: uiUnits, Triggers: triggers, Operations: operations,
 		}
-		if entry.Manifest.Spec.Languages != nil {
+		if entry.Manifest.Spec.Languages != nil && (entry.Manifest.Spec.Languages.Python != nil || entry.Manifest.Spec.Languages.TypeScript != nil) {
 			item.Languages = map[string]string{"go": metadata.Version}
 			if python := entry.Manifest.Spec.Languages.Python; python != nil {
 				item.Languages["python"] = python.Version
@@ -564,6 +568,32 @@ func encodeConnectorCatalog(entries []connectorDirectoryEntry) ([]byte, error) {
 		return nil, fmt.Errorf("encode connector catalog: %w", err)
 	}
 	return encoded, nil
+}
+
+func capabilityLanguages(languages *schema.Languages, capabilityName string, isTrigger bool) []string {
+	if languages == nil || (languages.Python == nil && languages.TypeScript == nil) {
+		return nil
+	}
+	supported := []string{"go"}
+	for _, language := range []struct {
+		name        string
+		declaration *schema.LanguagePackage
+	}{
+		{name: "python", declaration: languages.Python},
+		{name: "typescript", declaration: languages.TypeScript},
+	} {
+		if language.declaration == nil {
+			continue
+		}
+		names := language.declaration.Operations
+		if isTrigger {
+			names = language.declaration.Triggers
+		}
+		if slices.Contains(names, capabilityName) {
+			supported = append(supported, language.name)
+		}
+	}
+	return supported
 }
 
 func catalogMocks(manifest schema.Manifest) []catalogMock {

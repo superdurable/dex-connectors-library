@@ -5,12 +5,14 @@ import { useEffect, useState } from "react";
 import { Link, Route, Routes, useLocation, useParams } from "react-router-dom";
 
 import { DexMark } from "./DexMark";
+import { LanguageIcons } from "./LanguageIcons";
 import { WhatIsDexConnectors } from "./WhatIsDexConnectors";
 import {
   catalogDocumentUrl,
   catalogTotals,
   companyLogoUrl,
   connectorMatchesQuery,
+  connectorMatchesLanguage,
   readCatalog,
   type CatalogCapability,
   type CatalogConnector,
@@ -113,13 +115,15 @@ function CatalogTotals({ connectors }: { connectors: CatalogConnector[] }) {
 
 function CatalogPage({ catalog }: { catalog: LoadState<CatalogConnector[]> }) {
   const [query, setQuery] = useState("");
+  const [language, setLanguage] = useState<"all" | "go" | "python" | "typescript">("all");
   if (catalog.status === "loading") {
     return <p className="status">Loading catalog…</p>;
   }
   if (catalog.status === "failed") {
     return <p className="status failed">{catalog.message}</p>;
   }
-  const matched = catalog.value.filter((connector) => connectorMatchesQuery(connector, query));
+  const matched = catalog.value.filter((connector) =>
+    connectorMatchesQuery(connector, query) && connectorMatchesLanguage(connector, language));
   return (
     <div className="catalog">
       <form className="search" role="search" onSubmit={(event) => event.preventDefault()}>
@@ -132,6 +136,16 @@ function CatalogPage({ catalog }: { catalog: LoadState<CatalogConnector[]> }) {
           onChange={(event) => setQuery(event.target.value)}
         />
       </form>
+      <fieldset className="language-filter">
+        <legend>Language</legend>
+        {(["all", "go", "python", "typescript"] as const).map((option) => (
+          <label key={option} className={language === option ? "selected" : ""}>
+            <input type="radio" name="language" value={option} checked={language === option}
+              onChange={() => setLanguage(option)} />
+            {option === "all" ? "All" : option === "go" ? "Go" : option === "python" ? "Python" : "TypeScript"}
+          </label>
+        ))}
+      </fieldset>
       {matched.length === 0 ? <p className="status">No connector matches that search.</p> : null}
       <ul className="cards">
         {matched.map((connector) => (
@@ -147,7 +161,7 @@ function CatalogPage({ catalog }: { catalog: LoadState<CatalogConnector[]> }) {
                   />
                   <span>{connector.company}</span>
                 </span>
-                <span className="version">{formatLanguageVersions(connector.languages)}</span>
+                <LanguageIcons languages={connectorLanguageNames(connector.languages)} versions={connector.languages} />
               </span>
               <span className="card-title">{connector.name}</span>
               <span className="description">{connector.description}</span>
@@ -223,14 +237,19 @@ function ConnectorPage({ catalog }: { catalog: LoadState<CatalogConnector[]> }) 
         </div>
       </div>
       <p className="description detail-description">{connector.description}</p>
-      <CapabilityList title="UI units" capabilities={connector.uiUnits} />
-      <CapabilityList title="Triggers" capabilities={connector.triggers} />
-      <CapabilityList title="Operations" capabilities={connector.operations} />
+      <CapabilityList title="UI units" capabilities={connector.uiUnits} versions={connector.languages} showLanguages={false} />
+      <CapabilityList title="Triggers" capabilities={connector.triggers} versions={connector.languages} />
+      <CapabilityList title="Operations" capabilities={connector.operations} versions={connector.languages} />
     </article>
   );
 }
 
-function CapabilityList({ title, capabilities }: { title: string; capabilities: CatalogCapability[] }) {
+function CapabilityList({ title, capabilities, versions, showLanguages = true }: {
+  title: string;
+  capabilities: CatalogCapability[];
+  versions: CatalogConnector["languages"];
+  showLanguages?: boolean;
+}) {
   if (capabilities.length === 0) {
     return null;
   }
@@ -245,11 +264,16 @@ function CapabilityList({ title, capabilities }: { title: string; capabilities: 
               <strong>{capability.name}</strong>
               <span className="description">{capability.description}</span>
             </span>
+            {showLanguages ? <LanguageIcons languages={capability.languages} versions={versions} /> : null}
           </li>
         ))}
       </ul>
     </section>
   );
+}
+
+function connectorLanguageNames(versions: CatalogConnector["languages"]): Array<"go" | "python" | "typescript"> {
+  return (["go", "python", "typescript"] as const).filter((language) => Boolean(versions[language]));
 }
 
 function capabilityKindLabel(kind: string): string {
