@@ -5,8 +5,6 @@ import { StepList, forceComplete, type Context, type Flow, type Step, type StepD
 import type { MutationResult } from '@superdurable/connectors-sdk';
 import { GmailConnection, newSendMessageStep, type SendMessageInput, type SendMessageOutput } from '@superdurable/connector-google-gmail';
 
-const ConnectionName = 'gmail-inbox';
-
 /** Runnable Flow that sends one new Gmail message. */
 export class GmailSendFlow implements Flow<SendMessageInput> {
   private readonly doneStep = new SendCompletedStep();
@@ -16,7 +14,7 @@ export class GmailSendFlow implements Flow<SendMessageInput> {
   constructor(connection: GmailConnection) {
     if (!connection) throw new TypeError('Gmail send connection is required');
     this.sendStep = newSendMessageStep<SendMessageInput>({
-      stepType: 'SendGmailMessage', connectionName: ConnectionName, connection,
+      stepType: 'SendGmailMessage', connectionName: 'gmail-inbox', connection,
       annotations: { groupId: 'gmail', groupLabel: 'Gmail', explanation: 'Send one new Gmail message.' },
       mapToOperationInput: input => input, sent: this.doneStep,
     });

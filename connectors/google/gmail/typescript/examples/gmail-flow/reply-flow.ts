@@ -5,8 +5,6 @@ import { StepList, forceComplete, type Context, type Flow, type Step, type StepD
 import type { MutationResult } from '@superdurable/connectors-sdk';
 import { GmailConnection, newReplyToMessageStep, type ReplyToMessageInput, type SendMessageOutput } from '@superdurable/connector-google-gmail';
 
-const ConnectionName = 'gmail-inbox';
-
 /** Runnable Flow that replies in one Gmail thread. */
 export class GmailReplyFlow implements Flow<ReplyToMessageInput> {
   private readonly doneStep = new ReplyCompletedStep();
@@ -16,7 +14,7 @@ export class GmailReplyFlow implements Flow<ReplyToMessageInput> {
   constructor(connection: GmailConnection) {
     if (!connection) throw new TypeError('Gmail reply connection is required');
     this.replyStep = newReplyToMessageStep<ReplyToMessageInput>({
-      stepType: 'ReplyToGmailMessage', connectionName: ConnectionName, connection,
+      stepType: 'ReplyToGmailMessage', connectionName: 'gmail-inbox', connection,
       annotations: { groupId: 'gmail', groupLabel: 'Gmail', explanation: 'Reply in the selected Gmail thread.' },
       mapToOperationInput: input => input, sent: this.doneStep,
     });

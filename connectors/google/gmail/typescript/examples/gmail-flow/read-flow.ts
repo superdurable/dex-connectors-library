@@ -17,7 +17,7 @@ export class GmailReadFlow implements Flow<GetMessageInput> {
   constructor(connection: GmailConnection) {
     if (!connection) throw new TypeError('Gmail read connection is required');
     this.readStep = newGetMessageStep<GetMessageInput>({
-      stepType: 'ReadGmailMessage', connectionName: ConnectionName, connection,
+      stepType: 'ReadGmailMessage', connectionName: 'gmail-inbox', connection,
       annotations: { groupId: 'gmail', groupLabel: 'Gmail', explanation: 'Read the selected Gmail message.' },
       mapToOperationInput: input => input, read: this.doneStep,
     });
