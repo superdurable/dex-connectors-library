@@ -1,0 +1,9 @@
+{
+  "clientReferenceId": "registration-42",
+  "customerEmail": "person@example.com",
+  "successUrl": "https://example.com/success",
+  "cancelUrl": "https://example.com/cancel",
+  "currency": "usd",
+  "unitAmount": 7500,
+  "productName": "BBQ ticket"
+}
