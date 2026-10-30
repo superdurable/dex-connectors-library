@@ -8,6 +8,9 @@ metadata:
   version: v0.22.0
 spec:
   provider: newsapi
+  languages:
+    python:
+      version: v0.1.0
   codegen:
     go:
       package: newsapi

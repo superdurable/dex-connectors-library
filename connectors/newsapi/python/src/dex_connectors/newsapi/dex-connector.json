@@ -1,0 +1,44 @@
+{
+  "connectorId": "newsapi",
+  "releaseTag": "connectors/newsapi/v0.22.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-newsapi",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_search_articles_step",
+      "kind": "query",
+      "operationId": "searchArticles",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "searched",
+          "field": "searched",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    }
+  ]
+}
