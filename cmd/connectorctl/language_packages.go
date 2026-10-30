@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/superdurable/dex-connectors-library/schema"
@@ -20,27 +21,11 @@ func validateLanguagePackages(manifestPath string, manifest schema.Manifest) err
 	if manifest.Spec.Languages == nil || (manifest.Spec.Languages.Python == nil && manifest.Spec.Languages.TypeScript == nil) {
 		return nil
 	}
-	connectorDirectory := filepath.Dir(manifestPath)
-	connectorAbsoluteDirectory, err := filepath.Abs(connectorDirectory)
+	connectorRelativeDirectory, err := connectorDirectoryInCatalog(manifestPath)
 	if err != nil {
 		return err
 	}
-	repositoryRoot := connectorAbsoluteDirectory
-	for {
-		if _, err := os.Stat(filepath.Join(repositoryRoot, "catalog.yaml")); err == nil {
-			break
-		}
-		parent := filepath.Dir(repositoryRoot)
-		if parent == repositoryRoot {
-			return fmt.Errorf("language packages require a repository catalog: %s", manifestPath)
-		}
-		repositoryRoot = parent
-	}
-	connectorRelativeDirectory, err := filepath.Rel(repositoryRoot, connectorAbsoluteDirectory)
-	if err != nil || !strings.HasPrefix(filepath.ToSlash(connectorRelativeDirectory), "connectors/") {
-		return fmt.Errorf("language packages require a manifest below connectors/: %s", manifestPath)
-	}
-	connectorRelativeDirectory = filepath.ToSlash(connectorRelativeDirectory)
+	connectorDirectory := filepath.Dir(manifestPath)
 	if python := manifest.Spec.Languages.Python; python != nil {
 		packageName := languagePackageName(connectorRelativeDirectory, "python", python.Package)
 		pyprojectPath := filepath.Join(connectorDirectory, "python", "pyproject.toml")
@@ -73,8 +58,9 @@ func validateLanguagePackages(manifestPath string, manifest schema.Manifest) err
 			return fmt.Errorf("spec.languages.typescript requires %s: %w", packagePath, err)
 		}
 		var declaration struct {
-			Name    string `json:"name"`
-			Version string `json:"version"`
+			Name    string    `json:"name"`
+			Version string    `json:"version"`
+			Files   *[]string `json:"files"`
 		}
 		if err := json.Unmarshal(contents, &declaration); err != nil {
 			return fmt.Errorf("parse %s: %w", packagePath, err)
@@ -82,8 +68,34 @@ func validateLanguagePackages(manifestPath string, manifest schema.Manifest) err
 		if declaration.Name != packageName || declaration.Version != strings.TrimPrefix(typeScript.Version, "v") {
 			return fmt.Errorf("%s name and version must match spec.languages.typescript (%s %s)", packagePath, packageName, typeScript.Version)
 		}
+		if declaration.Files != nil && !slices.Contains(*declaration.Files, "dex-connector.json") && !slices.Contains(*declaration.Files, "./dex-connector.json") {
+			return fmt.Errorf("%s files must include dex-connector.json", packagePath)
+		}
 	}
 	return nil
+}
+
+func connectorDirectoryInCatalog(manifestPath string) (string, error) {
+	connectorAbsoluteDirectory, err := filepath.Abs(filepath.Dir(manifestPath))
+	if err != nil {
+		return "", err
+	}
+	repositoryRoot := connectorAbsoluteDirectory
+	for {
+		if _, err := os.Stat(filepath.Join(repositoryRoot, "catalog.yaml")); err == nil {
+			break
+		}
+		parent := filepath.Dir(repositoryRoot)
+		if parent == repositoryRoot {
+			return "", fmt.Errorf("language packages require a repository catalog: %s", manifestPath)
+		}
+		repositoryRoot = parent
+	}
+	connectorRelativeDirectory, err := filepath.Rel(repositoryRoot, connectorAbsoluteDirectory)
+	if err != nil || !strings.HasPrefix(filepath.ToSlash(connectorRelativeDirectory), "connectors/") {
+		return "", fmt.Errorf("language packages require a manifest below connectors/: %s", manifestPath)
+	}
+	return filepath.ToSlash(connectorRelativeDirectory), nil
 }
 
 func languagePackageName(directory, language, override string) string {

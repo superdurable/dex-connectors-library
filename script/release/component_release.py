@@ -443,8 +443,15 @@ def verify_language_artifacts(language: str, package: str, version: str, assets:
     if actual_names != expected_names and actual_names != release_names:
         raise ValueError("language release directory contains unexpected files")
     for asset in assets:
+        connector_manifest_bytes: bytes | None = None
+        connector_manifest_path = ""
         if language == "typescript":
             actual_name, actual_version = npm_tarball_identity(asset)
+            if package != "@superdurable/connectors-sdk" and (actual_name, actual_version) == (package, expected_version):
+                with tarfile.open(asset, "r:gz") as archive:
+                    connector_manifest_path, connector_manifest_bytes = read_archive_connector_manifest(
+                        archive, ["package/dex-connector.json"]
+                    )
         elif asset.name.endswith(".whl"):
             expected_distribution = python_distribution_filename(package)
             if not asset.name.startswith(f"{expected_distribution}-{expected_version}-"):
@@ -467,6 +474,8 @@ def verify_language_artifacts(language: str, package: str, version: str, assets:
                     raise ValueError("wheel must contain one METADATA file")
                 metadata = email.parser.Parser().parsestr(archive.read(metadata_path).decode("utf-8"))
                 actual_name, actual_version = metadata.get("Name"), metadata.get("Version")
+                if package != "dex-connectors-sdk" and (actual_name, actual_version) == (package, expected_version):
+                    connector_manifest_path, connector_manifest_bytes = read_wheel_connector_manifest(archive, names)
         else:
             expected_distribution = python_distribution_filename(package)
             expected_root = f"{expected_distribution}-{expected_version}"
@@ -487,8 +496,61 @@ def verify_language_artifacts(language: str, package: str, version: str, assets:
                     raise ValueError("sdist PKG-INFO is unreadable")
                 metadata = email.parser.Parser().parsestr(member.read().decode("utf-8"))
                 actual_name, actual_version = metadata.get("Name"), metadata.get("Version")
+                if package != "dex-connectors-sdk" and (actual_name, actual_version) == (package, expected_version):
+                    connector_manifest_path, connector_manifest_bytes = read_archive_connector_manifest(
+                        archive, [name for name in names if re.fullmatch(
+                            re.escape(expected_root) + r"/src/dex_connectors/[^/]+/dex-connector\.json", name
+                        )]
+                    )
         if actual_name != package or actual_version != expected_version:
             raise ValueError(f"{asset.name} identity {actual_name}@{actual_version} differs from planned {package}@{expected_version}")
+        if connector_manifest_bytes is not None:
+            import_package = verify_packaged_connector_manifest(connector_manifest_bytes, language, package, expected_version)
+            if language == "python":
+                import_root = "" if asset.name.endswith(".whl") else expected_root + "/src/"
+                expected_path = f"{import_root}dex_connectors/{import_package}/dex-connector.json"
+                if connector_manifest_path != expected_path:
+                    raise ValueError(f"{asset.name} dex-connector.json must be at {expected_path}")
+
+
+def read_wheel_connector_manifest(archive: zipfile.ZipFile, names: list[str]) -> tuple[str, bytes]:
+    matches = [name for name in names if re.fullmatch(r"dex_connectors/[^/]+/dex-connector\.json", name)]
+    if len(matches) != 1:
+        raise ValueError("wheel must contain one dex-connector.json inside its import package")
+    return matches[0], archive.read(matches[0])
+
+
+def read_archive_connector_manifest(archive: tarfile.TarFile, names: list[str]) -> tuple[str, bytes]:
+    if len(names) != 1:
+        raise ValueError("package archive must contain one dex-connector.json")
+    try:
+        member = archive.getmember(names[0])
+    except KeyError as error:
+        raise ValueError("package archive must contain one dex-connector.json") from error
+    if not member.isfile():
+        raise ValueError("dex-connector.json must be a regular file")
+    content = archive.extractfile(member)
+    if content is None:
+        raise ValueError("dex-connector.json is unreadable")
+    return names[0], content.read()
+
+
+def verify_packaged_connector_manifest(contents: bytes, language: str, package: str, version: str) -> str:
+    try:
+        document = json.loads(contents)
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValueError("dex-connector.json is invalid JSON") from error
+    identity = document.get("package") if isinstance(document, dict) else None
+    expected_ecosystem = "pypi" if language == "python" else "npm"
+    if not isinstance(identity, dict) or identity.get("ecosystem") != expected_ecosystem or \
+            identity.get("name") != package or identity.get("version") != version:
+        raise ValueError(f"dex-connector.json package identity must equal {expected_ecosystem}:{package}@{version}")
+    release_tag = document.get("releaseTag")
+    match = re.fullmatch(r"connectors/([a-z0-9-]+(?:/[a-z0-9-]+)*)/v[0-9]+\.[0-9]+\.[0-9]+", release_tag) \
+        if isinstance(release_tag, str) else None
+    if match is None:
+        raise ValueError("dex-connector.json releaseTag must name a stable Go connector release")
+    return re.sub(r"[/\-]", "_", match.group(1))
 
 
 def python_distribution_filename(package: str) -> str:
@@ -574,7 +636,9 @@ def verify_pypi_artifacts_once(
             raise ValueError(f"PyPI artifact {asset.name} has different SHA256 from the local release")
 
 
-def validate_language_package(component_path: str, language: str, lookup: DependencyReleaseLookup) -> str:
+def validate_language_package(
+    component_path: str, language: str, lookup: DependencyReleaseLookup, require_go_release: bool = True
+) -> str:
     """Require a registry-ready package with an exact, released SDK dependency."""
     path = Path(component_path)
     if language == "python":
@@ -617,7 +681,67 @@ def validate_language_package(component_path: str, language: str, lookup: Depend
         raise ValueError(f"required SDK GitHub release is missing: {tag}")
     if not lookup.is_language_sdk_published(language, sdk_versions[0]):
         raise ValueError(f"required SDK version is not published in the registry: {tag}")
+    validate_language_connector_release(path, language, lookup, require_go_release)
     return tag
+
+
+def validate_language_connector_release(
+    path: Path, language: str, lookup: DependencyReleaseLookup, require_completed_release: bool = True
+) -> None:
+    connector_manifest_path = language_connector_manifest_path(path, language)
+    if not connector_manifest_path.is_file():
+        raise ValueError(f"{path} must contain generated {connector_manifest_path}")
+    document = json.loads(connector_manifest_path.read_text(encoding="utf-8"))
+    package_identity = document.get("package") if isinstance(document, dict) else None
+    expected_ecosystem = "pypi" if language == "python" else "npm"
+    if not isinstance(package_identity, dict) or package_identity.get("ecosystem") != expected_ecosystem or \
+            package_identity.get("name") != module_path(path) or \
+            package_identity.get("version") != declared_package_version(path):
+        raise ValueError(f"{connector_manifest_path} package identity differs from {path} package metadata")
+    release_tag = document.get("releaseTag") if isinstance(document, dict) else None
+    connector_path = "/".join(path.parts[path.parts.index("connectors") + 1:-1])
+    if not isinstance(release_tag, str) or not re.fullmatch(
+        r"connectors/" + re.escape(connector_path) + r"/v[0-9]+\.[0-9]+\.[0-9]+", release_tag
+    ):
+        raise ValueError(f"{connector_manifest_path} releaseTag must name its Go connector release")
+    if not require_completed_release:
+        return
+    if not lookup.has_tag(release_tag):
+        raise ValueError(f"required Go connector release tag is missing: {release_tag}")
+    if not lookup.is_tag_reachable_from_main(release_tag):
+        raise ValueError(f"required Go connector release is not reachable from main: {release_tag}")
+    if CONNECTOR_RELEASE_COMPLETE_ASSET not in lookup.release_asset_names(release_tag):
+        raise ValueError(f"required Go connector release is incomplete: {release_tag} has no {CONNECTOR_RELEASE_COMPLETE_ASSET} asset")
+
+
+def stamp_language_candidate_connector_manifest(path: Path, language: str, candidate_version: str) -> None:
+    if not re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+-rc\.[1-9][0-9]*", candidate_version):
+        raise ValueError(f"invalid language candidate version: {candidate_version}")
+    connector_manifest_path = language_connector_manifest_path(path, language)
+    if not connector_manifest_path.is_file():
+        raise ValueError(f"{path} must contain generated {connector_manifest_path}")
+    document = json.loads(connector_manifest_path.read_text(encoding="utf-8"))
+    stable_version = candidate_version.removeprefix("v").split("-rc.", 1)[0]
+    package_identity = document.get("package") if isinstance(document, dict) else None
+    if not isinstance(package_identity, dict) or package_identity.get("version") != stable_version:
+        raise ValueError(f"{connector_manifest_path} package.version must equal {stable_version} before candidate build")
+    package_identity["version"] = (candidate_version.removeprefix("v").replace("-rc.", "rc")
+                                   if language == "python" else candidate_version.removeprefix("v"))
+    connector_manifest_path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
+
+
+def language_connector_manifest_path(path: Path, language: str) -> Path:
+    if "connectors" not in path.parts or path.name != language:
+        raise ValueError(f"language connector package is outside connectors/: {path}")
+    connector_directory = "/".join(path.parts[path.parts.index("connectors") + 1:-1])
+    if not connector_directory:
+        raise ValueError(f"language connector package is outside connectors/: {path}")
+    if language == "python":
+        import_package = re.sub(r"[/\-]", "_", connector_directory)
+        return path / "src" / "dex_connectors" / import_package / "dex-connector.json"
+    if language == "typescript":
+        return path / "dex-connector.json"
+    raise ValueError(f"unsupported language: {language}")
 
 
 def validate_connector(component_path: str, sdk_module: str, lookup: DependencyReleaseLookup) -> tuple[str, ...]:
@@ -751,6 +875,11 @@ def main() -> int:
     language_validate_parser.add_argument("--component-path", required=True)
     language_validate_parser.add_argument("--language", choices=("python", "typescript"), required=True)
     language_validate_parser.add_argument("--main-ref", default="origin/main")
+    language_validate_parser.add_argument("--dry-run", action="store_true")
+    candidate_manifest_parser = subparsers.add_parser("stamp-language-candidate-manifest")
+    candidate_manifest_parser.add_argument("--component-path", type=Path, required=True)
+    candidate_manifest_parser.add_argument("--language", choices=("python", "typescript"), required=True)
+    candidate_manifest_parser.add_argument("--version", required=True)
     manifest_parser = subparsers.add_parser("language-manifest")
     manifest_parser.add_argument("--output", type=Path, required=True)
     manifest_parser.add_argument("--language", choices=("python", "typescript"), required=True)
@@ -800,7 +929,10 @@ def main() -> int:
                                   arguments.wait_seconds)
         elif arguments.command == "validate-language-package":
             print(validate_language_package(arguments.component_path, arguments.language,
-                                            DependencyReleaseLookup(arguments.main_ref)))
+                                            DependencyReleaseLookup(arguments.main_ref), not arguments.dry_run))
+        elif arguments.command == "stamp-language-candidate-manifest":
+            stamp_language_candidate_connector_manifest(arguments.component_path, arguments.language,
+                                                        arguments.version)
         else:
             tags = validate_connector(
                 arguments.component_path,

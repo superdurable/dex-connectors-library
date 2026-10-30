@@ -266,6 +266,8 @@ jobs:
           uv run --project "${COMPONENT_PATH}" pytest "${COMPONENT_PATH}/tests"
           version="${CANDIDATE_VERSION#v}"
           uv version --project "${COMPONENT_PATH}" --frozen "${version/-rc./rc}"
+          python3 script/release/component_release.py stamp-language-candidate-manifest \
+            --component-path "${COMPONENT_PATH}" --language python --version "${CANDIDATE_VERSION}"
           uv build "${COMPONENT_PATH}" --out-dir "${RUNNER_TEMP}/language-dist"
           rm -f "${RUNNER_TEMP}/language-dist/.gitignore"
       - name: Test and build TypeScript candidate
@@ -276,6 +278,8 @@ jobs:
           npm run lint --prefix "${COMPONENT_PATH}"
           npm test --prefix "${COMPONENT_PATH}"
           npm version --prefix "${COMPONENT_PATH}" --no-git-tag-version "${CANDIDATE_VERSION#v}"
+          python3 script/release/component_release.py stamp-language-candidate-manifest \
+            --component-path "${COMPONENT_PATH}" --language typescript --version "${CANDIDATE_VERSION}"
           npm run build --prefix "${COMPONENT_PATH}"
           mkdir -p "${RUNNER_TEMP}/language-dist"
           npm pack "./${COMPONENT_PATH}" --pack-destination "${RUNNER_TEMP}/language-dist"
