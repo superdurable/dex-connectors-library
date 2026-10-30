@@ -164,7 +164,17 @@ tag to repair an interrupted release, and a `dry_run` input. A repair builds
 from the tag, including when a newer SDK version is on `main`. The source
 package version must already match the planned bump. Connector language
 releases compare each language's manifest version with its own reachable tags.
-They build a wheel and source distribution or npm tarball, publish the archives
+The first PyPI upload needs an account-scoped `PYPI_TOKEN` repository secret.
+Keep that scope while new Python packages still need their first upload; a
+project-scoped token cannot create another new package. TypeScript package
+manifests must not set `private: true` when releasing. Their `repository`
+metadata must identify this public Git repository and the package directory
+for npm provenance: `type` is `git`, `url` is
+`git+https://github.com/superdurable/dex-connectors-library.git`, and
+`directory` is its repository-relative package path, such as `sdkts` or
+`connectors/newsapi/typescript`.
+
+The workflows build a wheel and source distribution or npm tarball, publish the archives
 to PyPI or npm, then upload those same files, SHA-256 digests, and
 `language-release.json` to GitHub Releases. `dry_run` builds and tests without creating a tag, release,
 registry upload, or catalog deployment.
@@ -176,6 +186,16 @@ metadata, and notes using trusted tooling. On rerun, Python compares PyPI's
 SHA-256 digests with local archives before replacing GitHub assets; npm accepts
 an existing version only when its registry integrity matches the tarball. npm
 also confirms the package name and version reported by its publish dry run.
+After a PyPI upload, release jobs wait up to 120 seconds for the JSON API to
+show every archive with its expected SHA-256 digest.
+
+If registry publication succeeds but GitHub tag or release creation fails,
+rerun the failed workflow at its original commit. If that run is unavailable,
+create the missing tag at the original source commit, then dispatch the SDK
+workflow with `repair_version` or `Release Connectors and Catalog` with its
+`connector_directory`. Rebuilding that version from a newer commit can
+produce a different archive, which the registry integrity check rejects.
+
 Connector language packages require a released SDK, with
 no local path, Git, file, workspace, or uv source override. CI and release
 builds verify the SDK tag and GitHub release before building the connector.
@@ -335,6 +355,11 @@ candidate: connector dependencies stay exact releases reachable from `main`.
 The Released compatibility canary ignores pre-releases.
 
 ## npm token rotation
+
+The first npm upload needs the `@superdurable` organization and a `NPM_TOKEN`
+that can create public packages in that scope. If publish requires 2FA, the
+token must be allowed to bypass it. CI cannot verify the organization's
+settings or token permissions before the real upload.
 
 CI uses npm trusted publishing through GitHub OIDC for packages with a trusted
 publisher configured. The first release of a new package uses the repository's

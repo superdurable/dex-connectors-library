@@ -13,6 +13,7 @@ import stat
 import subprocess
 import sys
 import tarfile
+import time
 import tomllib
 import urllib.error
 import urllib.parse
@@ -26,6 +27,7 @@ RELEASE_ARTIFACT_VERSION_PATTERN = re.compile(r"^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]
 LIBRARY_MODULE_PATH = "github.com/superdurable/dex-connectors-library"
 CONNECTOR_MODULE_PATH_PREFIX = f"{LIBRARY_MODULE_PATH}/connectors/"
 CONNECTOR_RELEASE_COMPLETE_ASSET = "connector-release.complete"
+NPM_REPOSITORY_URL = "git+https://github.com/superdurable/dex-connectors-library.git"
 
 
 @dataclass(frozen=True)
@@ -195,6 +197,27 @@ def declared_package_version(component_path: Path) -> str:
     return match.group(1)
 
 
+def validate_npm_publish_manifest(package_json: Path, manifest: dict[str, object]) -> None:
+    if not isinstance(manifest, dict):
+        raise ValueError(f"{package_json} must contain a JSON object")
+    if manifest.get("private") is True:
+        raise ValueError(f"{package_json} is private and cannot be published; remove private before release")
+    package_directory = package_json.parent
+    if package_directory.name == "sdkts":
+        expected_directory = "sdkts"
+    elif "connectors" in package_directory.parts:
+        connector_index = package_directory.parts.index("connectors")
+        expected_directory = "/".join(package_directory.parts[connector_index:])
+    else:
+        raise ValueError(f"{package_json} is outside a TypeScript SDK or connector directory")
+    repository = manifest.get("repository")
+    if (not isinstance(repository, dict) or repository.get("type") != "git"
+            or repository.get("url") != NPM_REPOSITORY_URL
+            or repository.get("directory") != expected_directory):
+        raise ValueError(f"{package_json} repository must declare type git, url {NPM_REPOSITORY_URL}, "
+                         f"and directory {expected_directory} for npm provenance")
+
+
 def reachable_tags(tag_prefix: str) -> list[tuple[tuple[int, int, int], str, str]]:
     result = git(
         "for-each-ref",
@@ -246,6 +269,9 @@ def create_plan(
     path = Path(component_path)
     if not path.is_dir() or not any((path / name).is_file() for name in ("go.mod", "pyproject.toml", "package.json")):
         raise ValueError(f"component has no supported package manifest: {component_path}")
+    package_json = path / "package.json"
+    if package_json.is_file():
+        validate_npm_publish_manifest(package_json, json.loads(package_json.read_text(encoding="utf-8")))
     if bool(bump) == bool(target_version):
         raise ValueError("exactly one of bump or target version is required")
     candidates = reachable_tags(tag_prefix)
@@ -496,25 +522,53 @@ def npm_tarball_identity(tarball: Path) -> tuple[str, str]:
         return identity["name"], identity["version"]
 
 
-def verify_pypi_artifacts(package: str, version: str, assets: list[Path], require_all: bool = False) -> None:
-    """Compare local distributions with any files already published for this PyPI version."""
+class PyPIReleasePending(ValueError):
+    """The just-published PyPI release or one of its files is not visible yet."""
+
+
+def verify_pypi_artifacts(
+    package: str, version: str, assets: list[Path], require_all: bool = False, wait_seconds: int = 0
+) -> None:
+    """Compare local distributions with PyPI, waiting only for post-publish visibility when requested."""
+    if wait_seconds < 0 or (wait_seconds and not require_all):
+        raise ValueError("PyPI visibility waiting requires --require-all and nonnegative seconds")
+    deadline = time.monotonic() + wait_seconds
+    while True:
+        try:
+            request_timeout = min(15, max(0.1, deadline - time.monotonic())) if wait_seconds else 15
+            verify_pypi_artifacts_once(package, version, assets, require_all, request_timeout)
+            return
+        except PyPIReleasePending as error:
+            if not wait_seconds:
+                raise
+            remaining_seconds = deadline - time.monotonic()
+            if remaining_seconds <= 0:
+                raise ValueError(f"PyPI release did not become visible within {wait_seconds}s: {error}") from error
+            time.sleep(min(5, remaining_seconds))
+
+
+def verify_pypi_artifacts_once(
+    package: str, version: str, assets: list[Path], require_all: bool, request_timeout: float
+) -> None:
     public_version = version.removeprefix("v").replace("-rc.", "rc")
     url = f"https://pypi.org/pypi/{urllib.parse.quote(package, safe='')}/{urllib.parse.quote(public_version, safe='')}/json"
     try:
-        with urllib.request.urlopen(url, timeout=15) as response:
+        with urllib.request.urlopen(url, timeout=request_timeout) as response:
             release = json.load(response)
     except urllib.error.HTTPError as error:
         if error.code == 404 and not require_all:
             return
+        if error.code == 404 or error.code == 429 or 500 <= error.code <= 599:
+            raise PyPIReleasePending(f"PyPI release lookup failed: HTTP {error.code}") from error
         raise ValueError(f"PyPI release lookup failed: HTTP {error.code}") from error
-    except urllib.error.URLError as error:
-        raise ValueError(f"PyPI release lookup failed: {error.reason}") from error
+    except (urllib.error.URLError, TimeoutError, OSError) as error:
+        raise PyPIReleasePending(f"PyPI release lookup failed: {error}") from error
     published = {entry["filename"]: entry["digests"]["sha256"] for entry in release["urls"]}
     for asset in assets:
         digest = published.get(asset.name)
         if digest is None:
             if require_all:
-                raise ValueError(f"PyPI release is missing {asset.name}")
+                raise PyPIReleasePending(f"PyPI release is missing {asset.name}")
             continue
         if digest != hashlib.sha256(asset.read_bytes()).hexdigest():
             raise ValueError(f"PyPI artifact {asset.name} has different SHA256 from the local release")
@@ -539,7 +593,9 @@ def validate_language_package(component_path: str, language: str, lookup: Depend
             raise ValueError("Python package cannot use path, file, git, or workspace dependencies")
         tag_prefix = "sdkpython/"
     elif language == "typescript":
-        manifest = json.loads((path / "package.json").read_text(encoding="utf-8"))
+        package_json = path / "package.json"
+        manifest = json.loads(package_json.read_text(encoding="utf-8"))
+        validate_npm_publish_manifest(package_json, manifest)
         dependency_groups = [manifest.get(name, {}) for name in ("dependencies", "optionalDependencies", "peerDependencies", "devDependencies", "overrides")]
         if any(re.search(r"^(?:file:|link:|git(?:\+|:)|git@|github:|https?://|ssh://|workspace:|\.\.?/)", value, re.IGNORECASE)
                for group in dependency_groups for value in group.values()):
@@ -713,6 +769,7 @@ def main() -> int:
     registry_parser.add_argument("--version", required=True)
     registry_parser.add_argument("--asset", type=Path, action="append", required=True)
     registry_parser.add_argument("--require-all", action="store_true")
+    registry_parser.add_argument("--wait-seconds", type=int, default=0)
     arguments = parser.parse_args()
     try:
         if arguments.command == "plan":
@@ -739,7 +796,8 @@ def main() -> int:
         elif arguments.command == "verify-language-artifacts":
             verify_language_artifacts(arguments.language, arguments.package, arguments.version, arguments.asset)
         elif arguments.command == "verify-pypi-artifacts":
-            verify_pypi_artifacts(arguments.package, arguments.version, arguments.asset, arguments.require_all)
+            verify_pypi_artifacts(arguments.package, arguments.version, arguments.asset, arguments.require_all,
+                                  arguments.wait_seconds)
         elif arguments.command == "validate-language-package":
             print(validate_language_package(arguments.component_path, arguments.language,
                                             DependencyReleaseLookup(arguments.main_ref)))
