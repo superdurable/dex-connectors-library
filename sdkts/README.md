@@ -49,7 +49,7 @@ const credentials = new StaticCredentialProvider([[call.connection, { apiKey: 't
 
 The [runnable Step factory example](examples/steps.mjs) builds Query and Mutation Steps with instance-addressed branch targets. `newQueryStep` and `newMutationStep` validate required routes at construction; optional unwired routes force-fail the Flow if selected. Their `getStepOptions()` applies the connector's one-hour Execute retry policy and accepts Execute-only overrides. A provider retry becomes a Dex retry; a provider delay of at least one second is floored to whole seconds before `retryAfter` is thrown. Register each Step instance in a Dex `StepList`, along with its target Steps and any result Attribute used by the Flow.
 
-Dex 1.28.0 does not yet provide TypeScript FDG 2.0 analysis or Dex Web connector release identity. `StepAnnotations` and `configurationUI()` expose connector metadata to applications, but the current Dex tooling does not project it into Dex Web.
+Dex CLI 1.28.0 introduces TypeScript Flow analysis for FDG 2.0 and Dex Web connector release identity. A connector package supplies a static `dex-connector.json` manifest, and the consuming Flow source declares `// dex:group` and `// dex:explanation` beside each Step class. The generic SDK factories expose `StepAnnotations` and `configurationUI()` to applications; those values alone do not create a connector manifest. This SDK's integration harness verifies runtime Step behavior but does not verify FDG generation, which requires a consuming connector package and the CLI 1.28.0 binary.
 
 ```js
 import { StepRef } from '@superdurable/dex';
