@@ -1,6 +1,6 @@
 {
   "connectorId": "stripe",
-  "releaseTag": "connectors/stripe/v0.24.2",
+  "releaseTag": "connectors/stripe/go/v0.24.2",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-stripe",

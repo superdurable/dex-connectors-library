@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/slack
+module github.com/superdurable/dex-connectors-library/connectors/slack/go
 
 go 1.24.0
 

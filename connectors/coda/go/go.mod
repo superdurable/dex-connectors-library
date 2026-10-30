@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/coda
+module github.com/superdurable/dex-connectors-library/connectors/coda/go
 
 go 1.24.0
 

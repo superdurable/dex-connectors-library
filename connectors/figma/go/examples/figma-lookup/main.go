@@ -14,8 +14,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/figma"
-	figmalookup "github.com/superdurable/dex-connectors-library/connectors/figma/examples/figma-lookup/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/figma/go"
+	figmalookup "github.com/superdurable/dex-connectors-library/connectors/figma/go/examples/figma-lookup/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"

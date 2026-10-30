@@ -7,7 +7,7 @@ package teamsmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/microsoft/teams"
+	"github.com/superdurable/dex-connectors-library/connectors/microsoft/teams/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

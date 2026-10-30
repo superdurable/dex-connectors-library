@@ -68,7 +68,7 @@ cd "$(git rev-parse --show-toplevel)"
 mkdir -p /tmp/docusign-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/docusign/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/docusign \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/docusign/go \
   --version v0.23.0 --tag connectors/docusign/v0.23.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/docusign-release/connector-release.json \

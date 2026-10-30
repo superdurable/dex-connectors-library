@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/calendly"
-	"github.com/superdurable/dex-connectors-library/connectors/calendly/internal/testsupport"
+	"github.com/superdurable/dex-connectors-library/connectors/calendly/go"
+	"github.com/superdurable/dex-connectors-library/connectors/calendly/go/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 

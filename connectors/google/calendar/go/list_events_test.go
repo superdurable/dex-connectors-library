@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	calendar "github.com/superdurable/dex-connectors-library/connectors/google/calendar"
+	calendar "github.com/superdurable/dex-connectors-library/connectors/google/calendar/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 

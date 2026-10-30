@@ -7,7 +7,7 @@ package brevomock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/brevo"
+	"github.com/superdurable/dex-connectors-library/connectors/brevo/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

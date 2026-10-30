@@ -8,7 +8,7 @@ package recordrefund
 import (
 	"sync"
 
-	"github.com/superdurable/dex-connectors-library/connectors/microsoft/sql-server/internal/scriptedtds"
+	"github.com/superdurable/dex-connectors-library/connectors/microsoft/sql-server/go/internal/scriptedtds"
 )
 
 var refundLedgerColumns = []scriptedtds.Column{

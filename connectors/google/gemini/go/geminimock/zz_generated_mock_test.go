@@ -7,7 +7,7 @@ package geminimock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/google/gemini"
+	"github.com/superdurable/dex-connectors-library/connectors/google/gemini/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

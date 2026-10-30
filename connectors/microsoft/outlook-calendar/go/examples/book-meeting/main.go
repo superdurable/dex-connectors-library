@@ -15,8 +15,8 @@ import (
 	"syscall"
 	"time"
 
-	outlookcalendar "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-calendar"
-	bookmeeting "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-calendar/examples/book-meeting/flow"
+	outlookcalendar "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-calendar/go"
+	bookmeeting "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-calendar/go/examples/book-meeting/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"

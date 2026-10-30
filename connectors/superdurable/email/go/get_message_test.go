@@ -10,7 +10,7 @@ import (
 
 	"github.com/emersion/go-imap/v2"
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/superdurable/email"
+	"github.com/superdurable/dex-connectors-library/connectors/superdurable/email/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 

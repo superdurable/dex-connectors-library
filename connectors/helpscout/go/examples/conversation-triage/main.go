@@ -21,8 +21,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/helpscout"
-	conversationtriage "github.com/superdurable/dex-connectors-library/connectors/helpscout/examples/conversation-triage/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/helpscout/go"
+	conversationtriage "github.com/superdurable/dex-connectors-library/connectors/helpscout/go/examples/conversation-triage/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"

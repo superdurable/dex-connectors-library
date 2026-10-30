@@ -16,8 +16,8 @@ import (
 	"syscall"
 	"time"
 
-	gemini "github.com/superdurable/dex-connectors-library/connectors/google/gemini"
-	generatesummary "github.com/superdurable/dex-connectors-library/connectors/google/gemini/examples/generate-summary/flow"
+	gemini "github.com/superdurable/dex-connectors-library/connectors/google/gemini/go"
+	generatesummary "github.com/superdurable/dex-connectors-library/connectors/google/gemini/go/examples/generate-summary/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"

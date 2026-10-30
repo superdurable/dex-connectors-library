@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	supportrequest "github.com/superdurable/dex-connectors-library/connectors/atlassian/jira-service-management/examples/support-request/flow"
+	supportrequest "github.com/superdurable/dex-connectors-library/connectors/atlassian/jira-service-management/go/examples/support-request/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 

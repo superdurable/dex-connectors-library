@@ -5,7 +5,7 @@
 package structuredoutput
 
 import (
-	"github.com/superdurable/dex-connectors-library/connectors/superdurable/llm"
+	"github.com/superdurable/dex-connectors-library/connectors/superdurable/llm/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/textgen"
 	"github.com/superdurable/dex/sdk-go/dex"

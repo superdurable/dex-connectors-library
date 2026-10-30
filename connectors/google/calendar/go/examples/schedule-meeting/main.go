@@ -15,8 +15,8 @@ import (
 	"syscall"
 	"time"
 
-	calendar "github.com/superdurable/dex-connectors-library/connectors/google/calendar"
-	schedulemeeting "github.com/superdurable/dex-connectors-library/connectors/google/calendar/examples/schedule-meeting/flow"
+	calendar "github.com/superdurable/dex-connectors-library/connectors/google/calendar/go"
+	schedulemeeting "github.com/superdurable/dex-connectors-library/connectors/google/calendar/go/examples/schedule-meeting/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"

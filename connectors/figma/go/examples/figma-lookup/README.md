@@ -18,7 +18,7 @@ The command must report `valid: true`. A local module may also report `connector
 mkdir -p /tmp/figma-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/figma/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/figma \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/figma/go \
   --version v0.1.0 --tag connectors/figma/v0.1.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/figma-release/connector-release.json \

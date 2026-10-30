@@ -59,7 +59,7 @@ type onedriveManifest struct {
 
 func loadManifest(t *testing.T) onedriveManifest {
 	t.Helper()
-	contents, err := os.ReadFile("connector.yaml")
+	contents, err := os.ReadFile("../connector.yaml")
 	require.NoError(t, err)
 	var manifest onedriveManifest
 	require.NoError(t, yaml.Unmarshal(contents, &manifest))

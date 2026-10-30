@@ -54,7 +54,7 @@ cd "$(git rev-parse --show-toplevel)"
 mkdir -p /tmp/monday-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/monday/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/monday \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/monday/go \
   --version v0.23.0 --tag connectors/monday/v0.23.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/monday-release/connector-release.json \

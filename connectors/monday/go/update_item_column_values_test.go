@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/monday"
+	"github.com/superdurable/dex-connectors-library/connectors/monday/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 

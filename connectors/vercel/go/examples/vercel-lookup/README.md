@@ -21,7 +21,7 @@ From the repository root, create release metadata for the local source:
 mkdir -p /tmp/vercel-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/vercel/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/vercel \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/vercel/go \
   --version v0.1.0 --tag connectors/vercel/v0.1.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/vercel-release/connector-release.json \

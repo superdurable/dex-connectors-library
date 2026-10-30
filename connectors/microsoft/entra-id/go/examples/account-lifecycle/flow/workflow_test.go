@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	entraid "github.com/superdurable/dex-connectors-library/connectors/microsoft/entra-id"
+	entraid "github.com/superdurable/dex-connectors-library/connectors/microsoft/entra-id/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 

@@ -7,7 +7,7 @@ package notionmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/notion"
+	"github.com/superdurable/dex-connectors-library/connectors/notion/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

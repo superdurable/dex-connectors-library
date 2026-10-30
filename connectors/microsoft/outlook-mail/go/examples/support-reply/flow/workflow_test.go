@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	outlookmail "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail"
+	outlookmail "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail/go"
 )
 
 func TestBuildReplyRequestValidatesStartFlowInput(t *testing.T) {

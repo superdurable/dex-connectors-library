@@ -7,7 +7,7 @@ package calendarmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/google/calendar"
+	"github.com/superdurable/dex-connectors-library/connectors/google/calendar/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

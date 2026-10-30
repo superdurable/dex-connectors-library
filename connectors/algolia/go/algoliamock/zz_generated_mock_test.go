@@ -7,7 +7,7 @@ package algoliamock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/algolia"
+	"github.com/superdurable/dex-connectors-library/connectors/algolia/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

@@ -7,7 +7,7 @@ package paypalmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/paypal"
+	"github.com/superdurable/dex-connectors-library/connectors/paypal/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

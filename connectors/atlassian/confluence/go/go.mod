@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/atlassian/confluence
+module github.com/superdurable/dex-connectors-library/connectors/atlassian/confluence/go
 
 go 1.24.0
 

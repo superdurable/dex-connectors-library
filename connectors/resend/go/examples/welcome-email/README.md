@@ -28,7 +28,7 @@ and pass it to the Dex CLI. From the repository root:
 mkdir -p /tmp/resend-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/resend/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/resend \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/resend/go \
   --version v0.1.0 --tag connectors/resend/v0.1.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/resend-release/connector-release.json \

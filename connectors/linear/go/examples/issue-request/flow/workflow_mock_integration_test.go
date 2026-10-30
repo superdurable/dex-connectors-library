@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/linear"
-	"github.com/superdurable/dex-connectors-library/connectors/linear/linearmock"
+	"github.com/superdurable/dex-connectors-library/connectors/linear/go"
+	"github.com/superdurable/dex-connectors-library/connectors/linear/go/linearmock"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

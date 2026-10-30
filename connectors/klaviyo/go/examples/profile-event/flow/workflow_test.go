@@ -5,7 +5,7 @@ package profileevent
 
 import (
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/klaviyo"
+	"github.com/superdurable/dex-connectors-library/connectors/klaviyo/go"
 	"testing"
 )
 

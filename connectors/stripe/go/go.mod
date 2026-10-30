@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/stripe
+module github.com/superdurable/dex-connectors-library/connectors/stripe/go
 
 go 1.24.0
 

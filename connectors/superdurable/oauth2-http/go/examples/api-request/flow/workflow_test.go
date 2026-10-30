@@ -6,7 +6,7 @@ package apirequest
 import (
 	"testing"
 
-	oauth2http "github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http"
+	oauth2http "github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http/go"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 

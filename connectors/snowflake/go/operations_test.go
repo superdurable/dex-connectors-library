@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/snowflake"
-	"github.com/superdurable/dex-connectors-library/connectors/snowflake/internal/fakesnowflake"
+	"github.com/superdurable/dex-connectors-library/connectors/snowflake/go"
+	"github.com/superdurable/dex-connectors-library/connectors/snowflake/go/internal/fakesnowflake"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 

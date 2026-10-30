@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/google/workspace-admin"
+	"github.com/superdurable/dex-connectors-library/connectors/google/workspace-admin/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 

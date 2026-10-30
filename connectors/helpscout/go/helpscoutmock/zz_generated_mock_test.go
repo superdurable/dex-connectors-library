@@ -7,7 +7,7 @@ package helpscoutmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/helpscout"
+	"github.com/superdurable/dex-connectors-library/connectors/helpscout/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

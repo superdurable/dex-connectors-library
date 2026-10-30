@@ -10,12 +10,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	openai "github.com/superdurable/dex-connectors-library/connectors/openai"
+	openai "github.com/superdurable/dex-connectors-library/connectors/openai/go"
 )
 
 // TestREADMEGoSnippetsComeFromTheRunnableExample keeps documentation snippets copied from runnable example code.
 func TestREADMEGoSnippetsComeFromTheRunnableExample(t *testing.T) {
-	readme, err := os.ReadFile("README.md")
+	readme, err := os.ReadFile("../README.md")
 	require.NoError(t, err)
 	require.Contains(t, string(readme), "| `model` | `"+openai.DefaultConfig().Model+"` |", "the README names the manifest's default model")
 	var exampleSources []string

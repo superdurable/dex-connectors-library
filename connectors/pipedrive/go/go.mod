@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/pipedrive
+module github.com/superdurable/dex-connectors-library/connectors/pipedrive/go
 
 go 1.24.0
 

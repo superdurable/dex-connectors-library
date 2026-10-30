@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	refunddecision "github.com/superdurable/dex-connectors-library/connectors/airtable/examples/refund-decision/flow"
+	refunddecision "github.com/superdurable/dex-connectors-library/connectors/airtable/go/examples/refund-decision/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
@@ -56,7 +56,7 @@ func projectConfiguration(t *testing.T, policyConfiguration map[string]any, logC
 	t.Helper()
 	configuration := projectconfig.Configuration{Connections: []projectconfig.ConnectionConfiguration{{
 		ConnectorID: "airtable", ConnectionName: refunddecision.ConnectionName,
-		ModulePath: "github.com/superdurable/dex-connectors-library/connectors/airtable", Provider: "airtable",
+		ModulePath: "github.com/superdurable/dex-connectors-library/connectors/airtable/go", Provider: "airtable",
 		Configuration: json.RawMessage(`{}`),
 	}}}
 	for _, entry := range []struct {

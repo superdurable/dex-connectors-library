@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/docusign"
-	"github.com/superdurable/dex-connectors-library/connectors/docusign/internal/testsupport"
+	"github.com/superdurable/dex-connectors-library/connectors/docusign/go"
+	"github.com/superdurable/dex-connectors-library/connectors/docusign/go/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

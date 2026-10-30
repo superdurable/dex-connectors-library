@@ -21,7 +21,7 @@ From the repository root, create release metadata for the local source:
 mkdir -p /tmp/datadog-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/datadog/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/datadog \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/datadog/go \
   --version v0.1.0 --tag connectors/datadog/v0.1.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/datadog-release/connector-release.json \

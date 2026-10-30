@@ -7,7 +7,7 @@ package discordmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/discord"
+	"github.com/superdurable/dex-connectors-library/connectors/discord/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

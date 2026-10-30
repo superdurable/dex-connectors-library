@@ -21,7 +21,7 @@ From the repository root, create release metadata for the local source:
 mkdir -p /tmp/netlify-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/netlify/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/netlify \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/netlify/go \
   --version v0.1.0 --tag connectors/netlify/v0.1.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/netlify-release/connector-release.json \

@@ -21,8 +21,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook"
-	formsubmission "github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook/examples/form-submission/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook/go"
+	formsubmission "github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook/go/examples/form-submission/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"

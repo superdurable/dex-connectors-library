@@ -7,7 +7,7 @@ package formsmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/google/forms"
+	"github.com/superdurable/dex-connectors-library/connectors/google/forms/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

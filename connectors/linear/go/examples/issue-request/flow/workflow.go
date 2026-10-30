@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/superdurable/dex-connectors-library/connectors/linear"
+	"github.com/superdurable/dex-connectors-library/connectors/linear/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

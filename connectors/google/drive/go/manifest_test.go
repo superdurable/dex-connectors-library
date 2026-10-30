@@ -55,7 +55,7 @@ type driveManifest struct {
 
 func loadDriveManifest(t *testing.T) driveManifest {
 	t.Helper()
-	contents, err := os.ReadFile("connector.yaml")
+	contents, err := os.ReadFile("../connector.yaml")
 	require.NoError(t, err)
 	var manifest driveManifest
 	require.NoError(t, yaml.Unmarshal(contents, &manifest))

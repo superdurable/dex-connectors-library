@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/spotify"
-	"github.com/superdurable/dex-connectors-library/connectors/spotify/spotifymock"
+	"github.com/superdurable/dex-connectors-library/connectors/spotify/go"
+	"github.com/superdurable/dex-connectors-library/connectors/spotify/go/spotifymock"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 

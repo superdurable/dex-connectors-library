@@ -25,16 +25,16 @@ func TestReleaseCandidateAcceptsAConnectorChangeAboveItsLatestRelease(t *testing
 	candidate, err := planConnectorReleaseCandidate(catalogPath, candidateRoot, releaseCandidateChat, commit, "v0.2.0-rc.1")
 	require.NoError(t, err)
 	require.Equal(t, connectorReleaseCandidate{
-		Directory: releaseCandidateChat, ManifestPath: releaseCandidateChat + "/connector.yaml", ModulePath: "example.com/" + releaseCandidateChat,
-		Version: "v0.2.0-rc.1", Tag: releaseCandidateChat + "/v0.2.0-rc.1", SourceSHA: commit, DisplayName: "Google Sheets Fixture",
+		Directory: releaseCandidateChat, ManifestPath: releaseCandidateChat + "/connector.yaml", ModulePath: "example.com/" + releaseCandidateChat + "/go",
+		Version: "v0.2.0-rc.1", Tag: releaseCandidateChat + "/go/v0.2.0-rc.1", SourceSHA: commit, DisplayName: "Google Sheets Fixture",
 	}, candidate)
 
-	runReleaseCandidateGit(t, repositoryRoot, "tag", releaseCandidateChat+"/v0.2.0-rc.1", commit)
+	runReleaseCandidateGit(t, repositoryRoot, "tag", releaseCandidateChat+"/go/v0.2.0-rc.1", commit)
 	candidate, err = planConnectorReleaseCandidate(catalogPath, candidateRoot, releaseCandidateChat, commit, "v0.2.0-rc.1")
 	require.NoError(t, err)
 	require.True(t, candidate.IsTagPublished, "publishing the same candidate again repeats safely")
 
-	runReleaseCandidateGit(t, repositoryRoot, "tag", releaseCandidateChat+"/v0.2.0-rc.2", "HEAD")
+	runReleaseCandidateGit(t, repositoryRoot, "tag", releaseCandidateChat+"/go/v0.2.0-rc.2", "HEAD")
 	_, err = planConnectorReleaseCandidate(catalogPath, candidateRoot, releaseCandidateChat, commit, "v0.2.0-rc.2")
 	require.ErrorContains(t, err, "already names")
 }
@@ -101,8 +101,8 @@ func TestReleaseCandidateAcceptsANewConnectorWithItsCatalogEntryAndCompanyLogo(t
 	})
 	candidate, err := planConnectorReleaseCandidate(filepath.Join(repositoryRoot, "catalog.yaml"), candidateRoot, newsDirectory, commit, "v0.1.0-rc.1")
 	require.NoError(t, err)
-	require.Equal(t, newsDirectory+"/v0.1.0-rc.1", candidate.Tag)
-	require.Equal(t, "example.com/"+newsDirectory, candidate.ModulePath)
+	require.Equal(t, newsDirectory+"/go/v0.1.0-rc.1", candidate.Tag)
+	require.Equal(t, "example.com/"+newsDirectory+"/go", candidate.ModulePath)
 }
 
 func TestReleaseArtifactAcceptsACandidateOfTheManifestVersion(t *testing.T) {

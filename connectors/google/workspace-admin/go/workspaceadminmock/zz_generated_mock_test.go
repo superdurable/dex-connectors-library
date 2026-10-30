@@ -7,7 +7,7 @@ package workspaceadminmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/google/workspace-admin"
+	"github.com/superdurable/dex-connectors-library/connectors/google/workspace-admin/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

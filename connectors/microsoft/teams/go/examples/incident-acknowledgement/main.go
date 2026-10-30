@@ -15,8 +15,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/microsoft/teams"
-	incidentacknowledgement "github.com/superdurable/dex-connectors-library/connectors/microsoft/teams/examples/incident-acknowledgement/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/microsoft/teams/go"
+	incidentacknowledgement "github.com/superdurable/dex-connectors-library/connectors/microsoft/teams/go/examples/incident-acknowledgement/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"

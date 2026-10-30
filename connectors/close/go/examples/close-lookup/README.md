@@ -18,7 +18,7 @@ The command must report `valid: true`. A local module may also report `connector
 mkdir -p /tmp/close-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/close/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/close \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/close/go \
   --version v0.1.0 --tag connectors/close/v0.1.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/close-release/connector-release.json \

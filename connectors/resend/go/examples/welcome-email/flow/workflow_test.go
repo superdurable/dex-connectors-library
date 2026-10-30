@@ -5,7 +5,7 @@ package welcomeemail
 
 import (
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/resend"
+	"github.com/superdurable/dex-connectors-library/connectors/resend/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 	"testing"

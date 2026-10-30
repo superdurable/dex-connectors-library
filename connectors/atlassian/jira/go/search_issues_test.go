@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/atlassian/jira"
+	"github.com/superdurable/dex-connectors-library/connectors/atlassian/jira/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 

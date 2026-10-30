@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/sendgrid
+module github.com/superdurable/dex-connectors-library/connectors/sendgrid/go
 
 go 1.24.0
 

@@ -7,7 +7,7 @@ package typeformmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/typeform"
+	"github.com/superdurable/dex-connectors-library/connectors/typeform/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

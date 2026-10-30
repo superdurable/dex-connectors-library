@@ -15,8 +15,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/openai"
-	summarizetext "github.com/superdurable/dex-connectors-library/connectors/openai/examples/summarize-text/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/openai/go"
+	summarizetext "github.com/superdurable/dex-connectors-library/connectors/openai/go/examples/summarize-text/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"

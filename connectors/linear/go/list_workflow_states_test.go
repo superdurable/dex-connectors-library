@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/linear"
+	"github.com/superdurable/dex-connectors-library/connectors/linear/go"
 )
 
 func workflowStateJSON(id string, name string, stateType string, position float64, teamID string) map[string]any {

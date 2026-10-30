@@ -6,7 +6,7 @@ package repositorychanges
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/github"
+	"github.com/superdurable/dex-connectors-library/connectors/github/go"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 

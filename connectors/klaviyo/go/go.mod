@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/klaviyo
+module github.com/superdurable/dex-connectors-library/connectors/klaviyo/go
 
 go 1.24.0
 

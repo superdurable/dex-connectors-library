@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/linear"
+	"github.com/superdurable/dex-connectors-library/connectors/linear/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"gopkg.in/yaml.v3"
 )
@@ -87,7 +87,7 @@ type linearManifest struct {
 
 func readLinearManifest(t *testing.T) linearManifest {
 	t.Helper()
-	contents, err := os.ReadFile("connector.yaml")
+	contents, err := os.ReadFile("../connector.yaml")
 	require.NoError(t, err)
 	var manifest linearManifest
 	require.NoError(t, yaml.Unmarshal(contents, &manifest))

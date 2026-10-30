@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/cloudflare
+module github.com/superdurable/dex-connectors-library/connectors/cloudflare/go
 
 go 1.24.0
 

@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/mysql
+module github.com/superdurable/dex-connectors-library/connectors/mysql/go
 
 go 1.24.0
 

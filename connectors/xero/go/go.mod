@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/xero
+module github.com/superdurable/dex-connectors-library/connectors/xero/go
 
 go 1.24.0
 

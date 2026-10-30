@@ -15,8 +15,8 @@ import (
 	"syscall"
 	"time"
 
-	entraid "github.com/superdurable/dex-connectors-library/connectors/microsoft/entra-id"
-	accountlifecycle "github.com/superdurable/dex-connectors-library/connectors/microsoft/entra-id/examples/account-lifecycle/flow"
+	entraid "github.com/superdurable/dex-connectors-library/connectors/microsoft/entra-id/go"
+	accountlifecycle "github.com/superdurable/dex-connectors-library/connectors/microsoft/entra-id/go/examples/account-lifecycle/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"

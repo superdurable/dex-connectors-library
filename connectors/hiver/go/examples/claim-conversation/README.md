@@ -60,7 +60,7 @@ cd "$(git rev-parse --show-toplevel)"
 mkdir -p /tmp/hiver-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/hiver/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/hiver \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/hiver/go \
   --version v0.22.0 --tag connectors/hiver/v0.22.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/hiver-release/connector-release.json \

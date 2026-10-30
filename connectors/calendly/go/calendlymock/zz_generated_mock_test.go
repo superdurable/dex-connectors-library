@@ -7,7 +7,7 @@ package calendlymock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/calendly"
+	"github.com/superdurable/dex-connectors-library/connectors/calendly/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

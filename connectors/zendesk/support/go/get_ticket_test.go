@@ -12,7 +12,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/zendesk/support"
+	"github.com/superdurable/dex-connectors-library/connectors/zendesk/support/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 

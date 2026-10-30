@@ -65,7 +65,7 @@ go run ./cmd/connectorctl ui-artifact --manifest connectors/front/connector.yaml
   --output /tmp/front-release/connector-ui.tgz --digest-output /tmp/front-release/connector-ui.tgz.sha256
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/front/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/front \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/front/go \
   --version v0.22.0 --tag connectors/front/v0.22.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/front-release/connector-ui.tgz --ui-digest /tmp/front-release/connector-ui.tgz.sha256 \

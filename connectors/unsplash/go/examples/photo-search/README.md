@@ -21,7 +21,7 @@ From the repository root, create a release override and run Dex:
 mkdir -p /tmp/unsplash-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/unsplash/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/unsplash \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/unsplash/go \
   --version v0.1.0 --tag connectors/unsplash/v0.1.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/unsplash-release/connector-release.json \

@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/postgresql"
-	"github.com/superdurable/dex-connectors-library/connectors/postgresql/postgresqlmock"
+	"github.com/superdurable/dex-connectors-library/connectors/postgresql/go"
+	"github.com/superdurable/dex-connectors-library/connectors/postgresql/go/postgresqlmock"
 )
 
 func TestRecordRefundUsesMockWithRealDex(t *testing.T) {

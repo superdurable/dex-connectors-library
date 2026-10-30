@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	textcopy "github.com/superdurable/dex-connectors-library/connectors/google/drive/examples/text-copy/flow"
+	textcopy "github.com/superdurable/dex-connectors-library/connectors/google/drive/go/examples/text-copy/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 

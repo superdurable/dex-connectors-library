@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/shopify
+module github.com/superdurable/dex-connectors-library/connectors/shopify/go
 
 go 1.24.0
 

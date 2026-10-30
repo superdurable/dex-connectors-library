@@ -113,7 +113,7 @@ func NewLoadedProject(
 		}
 		configuration.Connections = append(configuration.Connections, projectconfig.ConnectionConfiguration{
 			ConnectorID: connectorID, ConnectionName: connection.Name,
-			ModulePath: "github.com/superdurable/dex-connectors-library/connectors/openai", Provider: "openai",
+			ModulePath: "github.com/superdurable/dex-connectors-library/connectors/openai/go", Provider: "openai",
 			Configuration: settings,
 		})
 		credentials, err := json.Marshal(connection.Credentials)

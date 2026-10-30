@@ -7,7 +7,7 @@ package postmarkmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/postmark"
+	"github.com/superdurable/dex-connectors-library/connectors/postmark/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

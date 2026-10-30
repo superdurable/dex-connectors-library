@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/zoom"
+	"github.com/superdurable/dex-connectors-library/connectors/zoom/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 

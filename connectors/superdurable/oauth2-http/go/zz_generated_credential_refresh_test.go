@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http"
+	"github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 

@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/monday"
-	"github.com/superdurable/dex-connectors-library/connectors/monday/mondaymock"
+	"github.com/superdurable/dex-connectors-library/connectors/monday/go"
+	"github.com/superdurable/dex-connectors-library/connectors/monday/go/mondaymock"
 )
 
 func TestWorkRequestUsesMockDefaultsWithRealDex(t *testing.T) {

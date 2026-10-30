@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/sentry
+module github.com/superdurable/dex-connectors-library/connectors/sentry/go
 
 go 1.24.0
 

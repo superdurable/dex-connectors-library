@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/amazon/s3"
-	reportarchive "github.com/superdurable/dex-connectors-library/connectors/amazon/s3/examples/report-archive/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/amazon/s3/go"
+	reportarchive "github.com/superdurable/dex-connectors-library/connectors/amazon/s3/go/examples/report-archive/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
@@ -24,7 +24,7 @@ func TestEnvironmentOr(t *testing.T) {
 func TestTheDexWebConnectionSettingsLoad(t *testing.T) {
 	configuration := projectconfig.Configuration{Connections: []projectconfig.ConnectionConfiguration{{
 		ConnectorID: "amazon-s3", ConnectionName: reportarchive.ConnectionName,
-		ModulePath: "github.com/superdurable/dex-connectors-library/connectors/amazon/s3", Provider: "amazon-s3",
+		ModulePath: "github.com/superdurable/dex-connectors-library/connectors/amazon/s3/go", Provider: "amazon-s3",
 		Configuration: json.RawMessage(`{"region": "us-east-1", "endpoint": "http://127.0.0.1:9000", "defaultBucket": "acme-reports"}`),
 	}}}
 	var config s3.Config

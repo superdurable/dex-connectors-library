@@ -7,7 +7,7 @@ package supabasemock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/supabase"
+	"github.com/superdurable/dex-connectors-library/connectors/supabase/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

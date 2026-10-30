@@ -50,7 +50,7 @@ repository root:
 ```bash
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/postgresql/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/postgresql \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/postgresql/go \
   --version v0.22.0 --tag connectors/postgresql/v0.22.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/postgresql-refund/release/connector-release.json \

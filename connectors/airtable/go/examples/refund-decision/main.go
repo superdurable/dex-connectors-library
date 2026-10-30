@@ -17,8 +17,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/airtable"
-	refunddecision "github.com/superdurable/dex-connectors-library/connectors/airtable/examples/refund-decision/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/airtable/go"
+	refunddecision "github.com/superdurable/dex-connectors-library/connectors/airtable/go/examples/refund-decision/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"

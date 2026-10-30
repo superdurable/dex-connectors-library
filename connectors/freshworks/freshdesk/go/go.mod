@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/freshworks/freshdesk
+module github.com/superdurable/dex-connectors-library/connectors/freshworks/freshdesk/go
 
 go 1.24.0
 

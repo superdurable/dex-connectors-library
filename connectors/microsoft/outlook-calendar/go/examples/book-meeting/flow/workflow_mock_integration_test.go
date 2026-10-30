@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	outlookcalendar "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-calendar"
-	"github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-calendar/outlookcalendarmock"
+	outlookcalendar "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-calendar/go"
+	"github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-calendar/go/outlookcalendarmock"
 )
 
 func TestBookMeetingUsesMockDefaultsWithRealDex(t *testing.T) {

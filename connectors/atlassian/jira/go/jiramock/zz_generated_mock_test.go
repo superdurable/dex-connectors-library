@@ -7,7 +7,7 @@ package jiramock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/atlassian/jira"
+	"github.com/superdurable/dex-connectors-library/connectors/atlassian/jira/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

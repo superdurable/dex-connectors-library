@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/woocommerce
+module github.com/superdurable/dex-connectors-library/connectors/woocommerce/go
 
 go 1.24.0
 

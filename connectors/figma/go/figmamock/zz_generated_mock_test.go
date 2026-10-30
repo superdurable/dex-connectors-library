@@ -7,7 +7,7 @@ package figmamock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/figma"
+	"github.com/superdurable/dex-connectors-library/connectors/figma/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

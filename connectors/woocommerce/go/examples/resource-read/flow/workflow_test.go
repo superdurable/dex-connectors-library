@@ -5,7 +5,7 @@ package resourceread
 
 import (
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/woocommerce"
+	"github.com/superdurable/dex-connectors-library/connectors/woocommerce/go"
 	"github.com/superdurable/dex/sdk-go/dex"
 	"testing"
 )

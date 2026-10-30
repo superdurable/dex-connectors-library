@@ -7,7 +7,7 @@ package pineconemock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/pinecone"
+	"github.com/superdurable/dex-connectors-library/connectors/pinecone/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

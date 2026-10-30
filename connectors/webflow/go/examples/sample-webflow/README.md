@@ -13,7 +13,7 @@ The command must report `valid: true`. From the repository root, build the local
 
 ```bash
 mkdir -p /tmp/webflow-release
-go run ./cmd/connectorctl release-artifact --manifest connectors/webflow/connector.yaml --module-path github.com/superdurable/dex-connectors-library/connectors/webflow --version v0.1.0 --tag connectors/webflow/v0.1.0 --source-sha "$(git rev-parse HEAD)" --output /tmp/webflow-release/connector-release.json --digest-output /tmp/webflow-release/connector-release.json.sha256
+go run ./cmd/connectorctl release-artifact --manifest connectors/webflow/connector.yaml --module-path github.com/superdurable/dex-connectors-library/connectors/webflow/go --version v0.1.0 --tag connectors/webflow/v0.1.0 --source-sha "$(git rev-parse HEAD)" --output /tmp/webflow-release/connector-release.json --digest-output /tmp/webflow-release/connector-release.json.sha256
 dexcli dev --flow-rendering-dir "$PWD/connectors/webflow/build" --connector-release-override webflow=/tmp/webflow-release
 ```
 

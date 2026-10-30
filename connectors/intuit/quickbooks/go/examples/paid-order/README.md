@@ -60,7 +60,7 @@ cd "$(git rev-parse --show-toplevel)"
 mkdir -p /tmp/quickbooks-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/intuit/quickbooks/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/intuit/quickbooks \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/intuit/quickbooks/go \
   --version v0.23.0 --tag connectors/intuit/quickbooks/v0.23.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/quickbooks-release/connector-release.json \

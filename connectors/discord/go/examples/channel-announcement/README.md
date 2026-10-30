@@ -48,7 +48,7 @@ cd "$(git rev-parse --show-toplevel)"
 mkdir -p /tmp/discord-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/discord/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/discord \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/discord/go \
   --version v0.2.0 --tag connectors/discord/v0.2.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/discord-release/connector-release.json \

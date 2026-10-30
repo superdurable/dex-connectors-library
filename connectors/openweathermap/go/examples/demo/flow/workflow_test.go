@@ -5,8 +5,8 @@ package demo
 
 import (
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/openweathermap"
-	"github.com/superdurable/dex-connectors-library/connectors/openweathermap/openweathermapmock"
+	"github.com/superdurable/dex-connectors-library/connectors/openweathermap/go"
+	"github.com/superdurable/dex-connectors-library/connectors/openweathermap/go/openweathermapmock"
 	"github.com/superdurable/dex/sdk-go/dex"
 	"testing"
 )

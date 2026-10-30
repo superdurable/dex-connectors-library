@@ -7,7 +7,7 @@ package intercommock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/intercom"
+	"github.com/superdurable/dex-connectors-library/connectors/intercom/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

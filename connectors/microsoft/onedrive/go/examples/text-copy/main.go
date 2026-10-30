@@ -15,8 +15,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/microsoft/onedrive"
-	textcopy "github.com/superdurable/dex-connectors-library/connectors/microsoft/onedrive/examples/text-copy/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/microsoft/onedrive/go"
+	textcopy "github.com/superdurable/dex-connectors-library/connectors/microsoft/onedrive/go/examples/text-copy/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"

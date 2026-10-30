@@ -5,7 +5,7 @@ package flow
 
 import (
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/supabase/supabasemock"
+	"github.com/superdurable/dex-connectors-library/connectors/supabase/go/supabasemock"
 	"github.com/superdurable/dex/sdk-go/dex"
 	"testing"
 )

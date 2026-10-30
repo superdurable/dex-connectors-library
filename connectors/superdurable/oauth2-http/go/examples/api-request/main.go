@@ -16,8 +16,8 @@ import (
 	"syscall"
 	"time"
 
-	oauth2http "github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http"
-	apirequest "github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http/examples/api-request/flow"
+	oauth2http "github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http/go"
+	apirequest "github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http/go/examples/api-request/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"

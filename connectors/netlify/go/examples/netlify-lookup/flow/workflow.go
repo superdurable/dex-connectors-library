@@ -6,7 +6,7 @@ package netlifylookup
 
 import (
 	"errors"
-	"github.com/superdurable/dex-connectors-library/connectors/netlify"
+	"github.com/superdurable/dex-connectors-library/connectors/netlify/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

@@ -15,8 +15,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/twilio/messaging"
-	textmessagedelivery "github.com/superdurable/dex-connectors-library/connectors/twilio/messaging/examples/text-message-delivery/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/twilio/messaging/go"
+	textmessagedelivery "github.com/superdurable/dex-connectors-library/connectors/twilio/messaging/go/examples/text-message-delivery/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"

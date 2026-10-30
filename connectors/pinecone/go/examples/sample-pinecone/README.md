@@ -13,7 +13,7 @@ The command must report `valid: true`. From the repository root, build the local
 
 ```bash
 mkdir -p /tmp/pinecone-release
-go run ./cmd/connectorctl release-artifact --manifest connectors/pinecone/connector.yaml --module-path github.com/superdurable/dex-connectors-library/connectors/pinecone --version v0.1.0 --tag connectors/pinecone/v0.1.0 --source-sha "$(git rev-parse HEAD)" --output /tmp/pinecone-release/connector-release.json --digest-output /tmp/pinecone-release/connector-release.json.sha256
+go run ./cmd/connectorctl release-artifact --manifest connectors/pinecone/connector.yaml --module-path github.com/superdurable/dex-connectors-library/connectors/pinecone/go --version v0.1.0 --tag connectors/pinecone/v0.1.0 --source-sha "$(git rev-parse HEAD)" --output /tmp/pinecone-release/connector-release.json --digest-output /tmp/pinecone-release/connector-release.json.sha256
 dexcli dev --flow-rendering-dir "$PWD/connectors/pinecone/build" --connector-release-override pinecone=/tmp/pinecone-release
 ```
 

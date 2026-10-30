@@ -7,7 +7,7 @@ package elevenlabsmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/elevenlabs"
+	"github.com/superdurable/dex-connectors-library/connectors/elevenlabs/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

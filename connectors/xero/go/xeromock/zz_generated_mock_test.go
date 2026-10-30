@@ -7,7 +7,7 @@ package xeromock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/xero"
+	"github.com/superdurable/dex-connectors-library/connectors/xero/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

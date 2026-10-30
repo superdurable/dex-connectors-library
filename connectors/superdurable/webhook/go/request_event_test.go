@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook"
+	"github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook/go"
 )
 
 func signedHeaders(body string, extra map[string]string) map[string]string {

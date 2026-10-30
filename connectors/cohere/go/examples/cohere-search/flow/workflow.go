@@ -5,7 +5,7 @@
 package coheresearch
 
 import (
-	"github.com/superdurable/dex-connectors-library/connectors/cohere"
+	"github.com/superdurable/dex-connectors-library/connectors/cohere/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 	"strings"

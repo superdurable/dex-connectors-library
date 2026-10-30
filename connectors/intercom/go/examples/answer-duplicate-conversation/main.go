@@ -21,8 +21,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/intercom"
-	answerduplicate "github.com/superdurable/dex-connectors-library/connectors/intercom/examples/answer-duplicate-conversation/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/intercom/go"
+	answerduplicate "github.com/superdurable/dex-connectors-library/connectors/intercom/go/examples/answer-duplicate-conversation/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"

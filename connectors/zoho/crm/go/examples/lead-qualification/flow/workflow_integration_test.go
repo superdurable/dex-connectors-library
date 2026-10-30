@@ -17,9 +17,9 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/zoho/crm"
-	"github.com/superdurable/dex-connectors-library/connectors/zoho/crm/internal/fakecrm"
-	"github.com/superdurable/dex-connectors-library/connectors/zoho/crm/internal/testsupport"
+	"github.com/superdurable/dex-connectors-library/connectors/zoho/crm/go"
+	"github.com/superdurable/dex-connectors-library/connectors/zoho/crm/go/internal/fakecrm"
+	"github.com/superdurable/dex-connectors-library/connectors/zoho/crm/go/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"

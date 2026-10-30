@@ -5,7 +5,7 @@
 package figmalookup
 
 import (
-	"github.com/superdurable/dex-connectors-library/connectors/figma"
+	"github.com/superdurable/dex-connectors-library/connectors/figma/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

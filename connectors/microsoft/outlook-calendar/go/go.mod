@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-calendar
+module github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-calendar/go
 
 go 1.24.0
 

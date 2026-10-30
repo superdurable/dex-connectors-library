@@ -11,7 +11,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/superdurable/dex-connectors-library/connectors/docusign"
+	"github.com/superdurable/dex-connectors-library/connectors/docusign/go"
 )
 
 // directoryDocumentStore writes each signed combined PDF to one file per envelope.

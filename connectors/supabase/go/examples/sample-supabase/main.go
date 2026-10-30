@@ -14,8 +14,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/supabase"
-	sampleflow "github.com/superdurable/dex-connectors-library/connectors/supabase/examples/sample-supabase/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/supabase/go"
+	sampleflow "github.com/superdurable/dex-connectors-library/connectors/supabase/go/examples/sample-supabase/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"

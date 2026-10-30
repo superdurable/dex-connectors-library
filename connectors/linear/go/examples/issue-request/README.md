@@ -52,7 +52,7 @@ go run ./cmd/connectorctl ui-artifact \
   --digest-output /tmp/linear-release/connector-ui.tgz.sha256
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/linear/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/linear \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/linear/go \
   --version v0.23.0 --tag connectors/linear/v0.23.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/linear-release/connector-ui.tgz \

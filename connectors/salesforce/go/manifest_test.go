@@ -61,7 +61,7 @@ type salesforceManifest struct {
 
 func loadSalesforceManifest(t *testing.T) salesforceManifest {
 	t.Helper()
-	contents, err := os.ReadFile("connector.yaml")
+	contents, err := os.ReadFile("../connector.yaml")
 	require.NoError(t, err)
 	var manifest salesforceManifest
 	require.NoError(t, yaml.Unmarshal(contents, &manifest))

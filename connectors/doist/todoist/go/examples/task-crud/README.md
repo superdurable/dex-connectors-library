@@ -47,7 +47,7 @@ local release metadata to make the connector available in Dex Web:
 mkdir -p /tmp/todoist-release
 GOWORK=off go run ./cmd/connectorctl release-artifact \
   --manifest connectors/doist/todoist/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/doist/todoist \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/doist/todoist/go \
   --version v0.3.0 --tag connectors/doist/todoist/v0.3.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/todoist-release/connector-release.json \

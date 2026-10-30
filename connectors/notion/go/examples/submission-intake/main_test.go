@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/notion"
-	submissionintake "github.com/superdurable/dex-connectors-library/connectors/notion/examples/submission-intake/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/notion/go"
+	submissionintake "github.com/superdurable/dex-connectors-library/connectors/notion/go/examples/submission-intake/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
@@ -39,7 +39,7 @@ func TestNewLoggerFallsBackToInfoForAnInvalidLevel(t *testing.T) {
 func TestTheDexWebConnectionSettingsLoadTheExampleConnection(t *testing.T) {
 	configuration := projectconfig.Configuration{Connections: []projectconfig.ConnectionConfiguration{{
 		ConnectorID: notion.ConnectorID, ConnectionName: submissionintake.ConnectionName,
-		ModulePath: "github.com/superdurable/dex-connectors-library/connectors/notion", Provider: "notion",
+		ModulePath: "github.com/superdurable/dex-connectors-library/connectors/notion/go", Provider: "notion",
 		Configuration: json.RawMessage(`{}`),
 	}}}
 	var config notion.Config

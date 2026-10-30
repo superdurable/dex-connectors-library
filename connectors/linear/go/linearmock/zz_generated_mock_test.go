@@ -7,7 +7,7 @@ package linearmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/linear"
+	"github.com/superdurable/dex-connectors-library/connectors/linear/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

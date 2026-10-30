@@ -7,7 +7,7 @@ package smartsheetmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/smartsheet"
+	"github.com/superdurable/dex-connectors-library/connectors/smartsheet/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

@@ -16,8 +16,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	entraid "github.com/superdurable/dex-connectors-library/connectors/microsoft/entra-id"
-	"github.com/superdurable/dex-connectors-library/connectors/microsoft/entra-id/internal/graphfake"
+	entraid "github.com/superdurable/dex-connectors-library/connectors/microsoft/entra-id/go"
+	"github.com/superdurable/dex-connectors-library/connectors/microsoft/entra-id/go/internal/graphfake"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"

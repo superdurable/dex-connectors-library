@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/google/youtube
+module github.com/superdurable/dex-connectors-library/connectors/google/youtube/go
 
 go 1.24.0
 

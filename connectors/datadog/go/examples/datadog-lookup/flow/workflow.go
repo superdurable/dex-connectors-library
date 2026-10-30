@@ -6,7 +6,7 @@ package datadoglookup
 
 import (
 	"errors"
-	"github.com/superdurable/dex-connectors-library/connectors/datadog"
+	"github.com/superdurable/dex-connectors-library/connectors/datadog/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

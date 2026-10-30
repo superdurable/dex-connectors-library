@@ -6,7 +6,7 @@ package outlookcalendar_test
 import (
 	"net/http"
 
-	"github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-calendar"
+	"github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-calendar/go"
 )
 
 // newCredentialRefreshDriverWithSettings passes the app-only tenantId setting, which the driver takes in its

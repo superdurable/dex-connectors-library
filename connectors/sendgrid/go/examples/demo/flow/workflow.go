@@ -6,7 +6,7 @@ package demo
 
 import (
 	"errors"
-	"github.com/superdurable/dex-connectors-library/connectors/sendgrid"
+	"github.com/superdurable/dex-connectors-library/connectors/sendgrid/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

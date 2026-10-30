@@ -7,7 +7,7 @@ package gmailmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/google/gmail"
+	"github.com/superdurable/dex-connectors-library/connectors/google/gmail/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

@@ -7,7 +7,7 @@ package harvestmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/harvest"
+	"github.com/superdurable/dex-connectors-library/connectors/harvest/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

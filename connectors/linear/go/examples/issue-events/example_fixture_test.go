@@ -22,8 +22,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/linear"
-	issueevents "github.com/superdurable/dex-connectors-library/connectors/linear/examples/issue-events/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/linear/go"
+	issueevents "github.com/superdurable/dex-connectors-library/connectors/linear/go/examples/issue-events/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/webhooktrigger"
 )

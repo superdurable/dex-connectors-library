@@ -5,8 +5,8 @@ package closelookup
 
 import (
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/close"
-	"github.com/superdurable/dex-connectors-library/connectors/close/closemock"
+	"github.com/superdurable/dex-connectors-library/connectors/close/go"
+	"github.com/superdurable/dex-connectors-library/connectors/close/go/closemock"
 	"github.com/superdurable/dex/sdk-go/dex"
 	"testing"
 )

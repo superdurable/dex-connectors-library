@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/gorgias
+module github.com/superdurable/dex-connectors-library/connectors/gorgias/go
 
 go 1.24.0
 

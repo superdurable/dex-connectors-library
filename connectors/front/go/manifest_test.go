@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/front"
+	"github.com/superdurable/dex-connectors-library/connectors/front/go"
 	"github.com/superdurable/dex/sdk-go/dex"
 	"gopkg.in/yaml.v3"
 )
@@ -156,7 +156,7 @@ func TestOnlyTheReplyRunsWithSyncDurability(t *testing.T) {
 
 func readGuidanceManifest(t *testing.T) guidanceManifest {
 	t.Helper()
-	contents, err := os.ReadFile("connector.yaml")
+	contents, err := os.ReadFile("../connector.yaml")
 	require.NoError(t, err)
 	var manifest guidanceManifest
 	require.NoError(t, yaml.Unmarshal(contents, &manifest))

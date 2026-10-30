@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/amazon/sqs"
-	"github.com/superdurable/dex-connectors-library/connectors/amazon/sqs/internal/sqsfake"
+	"github.com/superdurable/dex-connectors-library/connectors/amazon/sqs/go"
+	"github.com/superdurable/dex-connectors-library/connectors/amazon/sqs/go/internal/sqsfake"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 

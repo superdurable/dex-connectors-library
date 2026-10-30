@@ -57,7 +57,7 @@ cd "$(git rev-parse --show-toplevel)"
 mkdir -p /tmp/gorgias-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/gorgias/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/gorgias \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/gorgias/go \
   --version v0.22.0 --tag connectors/gorgias/v0.22.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/gorgias-release/connector-release.json \

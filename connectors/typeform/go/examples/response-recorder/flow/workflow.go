@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/typeform"
+	"github.com/superdurable/dex-connectors-library/connectors/typeform/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

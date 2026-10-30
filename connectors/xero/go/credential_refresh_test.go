@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/xero/internal/testsupport"
+	"github.com/superdurable/dex-connectors-library/connectors/xero/go/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 

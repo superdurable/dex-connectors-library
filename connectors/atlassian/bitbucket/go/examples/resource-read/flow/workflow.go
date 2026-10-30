@@ -7,7 +7,7 @@ package resourceread
 import (
 	"errors"
 	"fmt"
-	"github.com/superdurable/dex-connectors-library/connectors/atlassian/bitbucket"
+	"github.com/superdurable/dex-connectors-library/connectors/atlassian/bitbucket/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

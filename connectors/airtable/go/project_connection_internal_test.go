@@ -17,7 +17,7 @@ func TestProjectConnectionReadsTheRecordsDexWebWrites(t *testing.T) {
 	key := projectconfig.ConnectionKey{ConnectorID: ConnectorID, ConnectionName: "airtable-refund-policies"}
 	configuration := projectconfig.Configuration{Connections: []projectconfig.ConnectionConfiguration{{
 		ConnectorID: ConnectorID, ConnectionName: key.ConnectionName,
-		ModulePath: "github.com/superdurable/dex-connectors-library/connectors/airtable", Provider: "airtable",
+		ModulePath: "github.com/superdurable/dex-connectors-library/connectors/airtable/go", Provider: "airtable",
 		Configuration: json.RawMessage(`{}`),
 	}}}
 	var config Config

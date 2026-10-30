@@ -5,8 +5,8 @@ package demo
 
 import (
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/alphavantage"
-	"github.com/superdurable/dex-connectors-library/connectors/alphavantage/alphavantagemock"
+	"github.com/superdurable/dex-connectors-library/connectors/alphavantage/go"
+	"github.com/superdurable/dex-connectors-library/connectors/alphavantage/go/alphavantagemock"
 	"github.com/superdurable/dex/sdk-go/dex"
 	"testing"
 )

@@ -7,7 +7,7 @@ package drivemock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/google/drive"
+	"github.com/superdurable/dex-connectors-library/connectors/google/drive/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

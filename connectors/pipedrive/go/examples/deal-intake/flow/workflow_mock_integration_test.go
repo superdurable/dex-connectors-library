@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/pipedrive"
-	"github.com/superdurable/dex-connectors-library/connectors/pipedrive/pipedrivemock"
+	"github.com/superdurable/dex-connectors-library/connectors/pipedrive/go"
+	"github.com/superdurable/dex-connectors-library/connectors/pipedrive/go/pipedrivemock"
 )
 
 func TestNewLeadCreatesDealWithMockConnectionAndRealDex(t *testing.T) {

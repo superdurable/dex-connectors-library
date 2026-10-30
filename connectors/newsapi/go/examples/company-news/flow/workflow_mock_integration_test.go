@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/newsapi"
-	"github.com/superdurable/dex-connectors-library/connectors/newsapi/newsapimock"
+	"github.com/superdurable/dex-connectors-library/connectors/newsapi/go"
+	"github.com/superdurable/dex-connectors-library/connectors/newsapi/go/newsapimock"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 

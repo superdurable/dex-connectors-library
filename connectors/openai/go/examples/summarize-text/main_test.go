@@ -8,9 +8,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/openai"
-	summarizetext "github.com/superdurable/dex-connectors-library/connectors/openai/examples/summarize-text/flow"
-	"github.com/superdurable/dex-connectors-library/connectors/openai/internal/testsupport"
+	"github.com/superdurable/dex-connectors-library/connectors/openai/go"
+	summarizetext "github.com/superdurable/dex-connectors-library/connectors/openai/go/examples/summarize-text/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/openai/go/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 

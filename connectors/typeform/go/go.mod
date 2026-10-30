@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/typeform
+module github.com/superdurable/dex-connectors-library/connectors/typeform/go
 
 go 1.24.0
 

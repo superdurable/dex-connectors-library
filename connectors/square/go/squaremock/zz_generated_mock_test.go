@@ -7,7 +7,7 @@ package squaremock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/square"
+	"github.com/superdurable/dex-connectors-library/connectors/square/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

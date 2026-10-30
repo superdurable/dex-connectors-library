@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/microsoft/onedrive/internal/graphfake"
+	"github.com/superdurable/dex-connectors-library/connectors/microsoft/onedrive/go/internal/graphfake"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 

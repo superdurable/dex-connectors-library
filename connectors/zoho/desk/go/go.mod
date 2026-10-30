@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/zoho/desk
+module github.com/superdurable/dex-connectors-library/connectors/zoho/desk/go
 
 go 1.24.0
 

@@ -61,7 +61,7 @@ type formsManifest struct {
 
 func loadFormsManifest(t *testing.T) formsManifest {
 	t.Helper()
-	contents, err := os.ReadFile("connector.yaml")
+	contents, err := os.ReadFile("../connector.yaml")
 	require.NoError(t, err)
 	var manifest formsManifest
 	require.NoError(t, yaml.Unmarshal(contents, &manifest))

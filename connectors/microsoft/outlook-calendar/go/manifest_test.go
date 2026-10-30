@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	outlookcalendar "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-calendar"
+	outlookcalendar "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-calendar/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 	"gopkg.in/yaml.v3"
@@ -258,7 +258,7 @@ func findGuidanceField(fields []guidanceField, name string) guidanceField {
 
 func readGuidanceManifest(t *testing.T) guidanceManifest {
 	t.Helper()
-	contents, err := os.ReadFile("connector.yaml")
+	contents, err := os.ReadFile("../connector.yaml")
 	require.NoError(t, err)
 	var manifest guidanceManifest
 	require.NoError(t, yaml.Unmarshal(contents, &manifest))

@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	policypublish "github.com/superdurable/dex-connectors-library/connectors/google/docs/examples/policy-publish/flow"
+	policypublish "github.com/superdurable/dex-connectors-library/connectors/google/docs/go/examples/policy-publish/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 

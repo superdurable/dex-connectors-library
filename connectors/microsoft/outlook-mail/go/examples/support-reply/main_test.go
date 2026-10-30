@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	outlookmail "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail"
-	supportreply "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail/examples/support-reply/flow"
+	outlookmail "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail/go"
+	supportreply "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail/go/examples/support-reply/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 

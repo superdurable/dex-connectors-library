@@ -13,7 +13,7 @@ The command must report `valid: true`. From the repository root, build the local
 
 ```bash
 mkdir -p /tmp/coda-release
-go run ./cmd/connectorctl release-artifact --manifest connectors/coda/connector.yaml --module-path github.com/superdurable/dex-connectors-library/connectors/coda --version v0.1.0 --tag connectors/coda/v0.1.0 --source-sha "$(git rev-parse HEAD)" --output /tmp/coda-release/connector-release.json --digest-output /tmp/coda-release/connector-release.json.sha256
+go run ./cmd/connectorctl release-artifact --manifest connectors/coda/connector.yaml --module-path github.com/superdurable/dex-connectors-library/connectors/coda/go --version v0.1.0 --tag connectors/coda/v0.1.0 --source-sha "$(git rev-parse HEAD)" --output /tmp/coda-release/connector-release.json --digest-output /tmp/coda-release/connector-release.json.sha256
 dexcli dev --flow-rendering-dir "$PWD/connectors/coda/build" --connector-release-override coda=/tmp/coda-release
 ```
 

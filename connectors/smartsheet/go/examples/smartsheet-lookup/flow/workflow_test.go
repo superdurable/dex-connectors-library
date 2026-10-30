@@ -5,8 +5,8 @@ package smartsheetlookup
 
 import (
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/smartsheet"
-	"github.com/superdurable/dex-connectors-library/connectors/smartsheet/smartsheetmock"
+	"github.com/superdurable/dex-connectors-library/connectors/smartsheet/go"
+	"github.com/superdurable/dex-connectors-library/connectors/smartsheet/go/smartsheetmock"
 	"github.com/superdurable/dex/sdk-go/dex"
 	"testing"
 )

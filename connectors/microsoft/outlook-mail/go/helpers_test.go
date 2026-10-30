@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	outlookmail "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail"
-	"github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail/internal/graphtest"
+	outlookmail "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail/go"
+	"github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail/go/internal/graphtest"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

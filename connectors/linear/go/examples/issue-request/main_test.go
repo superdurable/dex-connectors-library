@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/linear"
-	issuerequest "github.com/superdurable/dex-connectors-library/connectors/linear/examples/issue-request/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/linear/go"
+	issuerequest "github.com/superdurable/dex-connectors-library/connectors/linear/go/examples/issue-request/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 

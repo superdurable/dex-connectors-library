@@ -15,8 +15,8 @@ import (
 	"syscall"
 	"time"
 
-	jiraservicemanagement "github.com/superdurable/dex-connectors-library/connectors/atlassian/jira-service-management"
-	supportrequest "github.com/superdurable/dex-connectors-library/connectors/atlassian/jira-service-management/examples/support-request/flow"
+	jiraservicemanagement "github.com/superdurable/dex-connectors-library/connectors/atlassian/jira-service-management/go"
+	supportrequest "github.com/superdurable/dex-connectors-library/connectors/atlassian/jira-service-management/go/examples/support-request/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"

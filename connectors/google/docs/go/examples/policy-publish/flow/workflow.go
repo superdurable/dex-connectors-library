@@ -11,7 +11,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/superdurable/dex-connectors-library/connectors/google/docs"
+	"github.com/superdurable/dex-connectors-library/connectors/google/docs/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

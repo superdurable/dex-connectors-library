@@ -7,7 +7,7 @@ package newsapimock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/newsapi"
+	"github.com/superdurable/dex-connectors-library/connectors/newsapi/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

@@ -7,7 +7,7 @@ package trellomock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/atlassian/trello"
+	"github.com/superdurable/dex-connectors-library/connectors/atlassian/trello/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

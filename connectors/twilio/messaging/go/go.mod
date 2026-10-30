@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/twilio/messaging
+module github.com/superdurable/dex-connectors-library/connectors/twilio/messaging/go
 
 go 1.24.0
 

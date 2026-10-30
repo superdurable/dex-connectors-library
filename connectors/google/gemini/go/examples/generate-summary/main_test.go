@@ -18,9 +18,9 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	gemini "github.com/superdurable/dex-connectors-library/connectors/google/gemini"
-	generatesummary "github.com/superdurable/dex-connectors-library/connectors/google/gemini/examples/generate-summary/flow"
-	"github.com/superdurable/dex-connectors-library/connectors/google/gemini/internal/testsupport"
+	gemini "github.com/superdurable/dex-connectors-library/connectors/google/gemini/go"
+	generatesummary "github.com/superdurable/dex-connectors-library/connectors/google/gemini/go/examples/generate-summary/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/google/gemini/go/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/github/githubmock"
+	"github.com/superdurable/dex-connectors-library/connectors/github/go/githubmock"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 

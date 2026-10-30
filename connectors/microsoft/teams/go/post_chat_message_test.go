@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/microsoft/teams"
+	"github.com/superdurable/dex-connectors-library/connectors/microsoft/teams/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 

@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/hubspot
+module github.com/superdurable/dex-connectors-library/connectors/hubspot/go
 
 go 1.24.0
 

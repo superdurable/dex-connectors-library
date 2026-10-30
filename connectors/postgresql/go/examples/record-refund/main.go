@@ -15,8 +15,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/postgresql"
-	recordrefund "github.com/superdurable/dex-connectors-library/connectors/postgresql/examples/record-refund/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/postgresql/go"
+	recordrefund "github.com/superdurable/dex-connectors-library/connectors/postgresql/go/examples/record-refund/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"

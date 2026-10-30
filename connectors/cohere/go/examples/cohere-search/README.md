@@ -18,7 +18,7 @@ The command must report `valid: true`. A local module may also report `connector
 mkdir -p /tmp/cohere-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/cohere/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/cohere \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/cohere/go \
   --version v0.1.0 --tag connectors/cohere/v0.1.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/cohere-release/connector-release.json \

@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/monday
+module github.com/superdurable/dex-connectors-library/connectors/monday/go
 
 go 1.24.0
 

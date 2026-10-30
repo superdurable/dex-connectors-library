@@ -58,7 +58,7 @@ type workspaceAdminManifest struct {
 
 func loadManifest(t *testing.T) workspaceAdminManifest {
 	t.Helper()
-	contents, err := os.ReadFile("connector.yaml")
+	contents, err := os.ReadFile("../connector.yaml")
 	require.NoError(t, err)
 	var manifest workspaceAdminManifest
 	require.NoError(t, yaml.Unmarshal(contents, &manifest))

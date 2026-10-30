@@ -15,8 +15,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/snowflake"
-	accountusagesummary "github.com/superdurable/dex-connectors-library/connectors/snowflake/examples/account-usage-summary/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/snowflake/go"
+	accountusagesummary "github.com/superdurable/dex-connectors-library/connectors/snowflake/go/examples/account-usage-summary/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"

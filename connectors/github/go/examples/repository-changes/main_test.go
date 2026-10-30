@@ -17,8 +17,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/github"
-	repositorychanges "github.com/superdurable/dex-connectors-library/connectors/github/examples/repository-changes/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/github/go"
+	repositorychanges "github.com/superdurable/dex-connectors-library/connectors/github/go/examples/repository-changes/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

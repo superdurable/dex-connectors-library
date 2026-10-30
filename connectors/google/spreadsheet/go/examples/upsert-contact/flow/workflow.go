@@ -9,7 +9,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/superdurable/dex-connectors-library/connectors/google/spreadsheet"
+	"github.com/superdurable/dex-connectors-library/connectors/google/spreadsheet/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

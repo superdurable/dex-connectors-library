@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/google/gmail/internal/testlog"
+	"github.com/superdurable/dex-connectors-library/connectors/google/gmail/go/internal/testlog"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 

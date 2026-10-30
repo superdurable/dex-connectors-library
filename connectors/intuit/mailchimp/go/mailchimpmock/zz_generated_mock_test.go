@@ -7,7 +7,7 @@ package mailchimpmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/intuit/mailchimp"
+	"github.com/superdurable/dex-connectors-library/connectors/intuit/mailchimp/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

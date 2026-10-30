@@ -19,8 +19,8 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/slack/internal/testlog"
-	"github.com/superdurable/dex-connectors-library/connectors/slack/internal/testsupport"
+	"github.com/superdurable/dex-connectors-library/connectors/slack/go/internal/testlog"
+	"github.com/superdurable/dex-connectors-library/connectors/slack/go/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
@@ -956,7 +956,7 @@ func TestSourceRecordsReportTheirCallerAsSource(t *testing.T) {
 		} `json:"source"`
 	}
 	require.NoError(t, json.Unmarshal([]byte(output.String()), &record))
-	require.Equal(t, "github.com/superdurable/dex-connectors-library/connectors/slack.TestSourceRecordsReportTheirCallerAsSource",
+	require.Equal(t, "github.com/superdurable/dex-connectors-library/connectors/slack/go.TestSourceRecordsReportTheirCallerAsSource",
 		record.Source.Function)
 }
 
@@ -1253,7 +1253,7 @@ func TestProjectConnectionRunnerReadsItsCredentialAndOpensSocketMode(t *testing.
 	require.NoError(t, err)
 	configuration := fixture.configuration
 	configuration.Connections = []projectconfig.ConnectionConfiguration{{
-		ConnectorID: ConnectorID, ConnectionName: "workspace", ModulePath: "github.com/superdurable/dex-connectors-library/connectors/slack",
+		ConnectorID: ConnectorID, ConnectionName: "workspace", ModulePath: "github.com/superdurable/dex-connectors-library/connectors/slack/go",
 		Provider: "slack", Configuration: settings,
 	}}
 	logs := testlog.NewLogRecorder()

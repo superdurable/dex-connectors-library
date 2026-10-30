@@ -7,7 +7,7 @@ package pipedrivemock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/pipedrive"
+	"github.com/superdurable/dex-connectors-library/connectors/pipedrive/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

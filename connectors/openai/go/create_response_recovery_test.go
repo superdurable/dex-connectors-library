@@ -17,8 +17,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	openai "github.com/superdurable/dex-connectors-library/connectors/openai"
-	"github.com/superdurable/dex-connectors-library/connectors/openai/internal/testsupport"
+	openai "github.com/superdurable/dex-connectors-library/connectors/openai/go"
+	"github.com/superdurable/dex-connectors-library/connectors/openai/go/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

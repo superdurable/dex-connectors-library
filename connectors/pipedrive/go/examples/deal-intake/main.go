@@ -16,8 +16,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/pipedrive"
-	dealintake "github.com/superdurable/dex-connectors-library/connectors/pipedrive/examples/deal-intake/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/pipedrive/go"
+	dealintake "github.com/superdurable/dex-connectors-library/connectors/pipedrive/go/examples/deal-intake/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"

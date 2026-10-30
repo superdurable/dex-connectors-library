@@ -13,7 +13,7 @@ The command must report `valid: true`. From the repository root, build the local
 
 ```bash
 mkdir -p /tmp/contentful-release
-go run ./cmd/connectorctl release-artifact --manifest connectors/contentful/connector.yaml --module-path github.com/superdurable/dex-connectors-library/connectors/contentful --version v0.1.0 --tag connectors/contentful/v0.1.0 --source-sha "$(git rev-parse HEAD)" --output /tmp/contentful-release/connector-release.json --digest-output /tmp/contentful-release/connector-release.json.sha256
+go run ./cmd/connectorctl release-artifact --manifest connectors/contentful/connector.yaml --module-path github.com/superdurable/dex-connectors-library/connectors/contentful/go --version v0.1.0 --tag connectors/contentful/v0.1.0 --source-sha "$(git rev-parse HEAD)" --output /tmp/contentful-release/connector-release.json --digest-output /tmp/contentful-release/connector-release.json.sha256
 dexcli dev --flow-rendering-dir "$PWD/connectors/contentful/build" --connector-release-override contentful=/tmp/contentful-release
 ```
 

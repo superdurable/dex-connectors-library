@@ -16,9 +16,9 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/postgresql"
-	"github.com/superdurable/dex-connectors-library/connectors/postgresql/internal/commitfaultproxy"
-	"github.com/superdurable/dex-connectors-library/connectors/postgresql/internal/testsupport"
+	"github.com/superdurable/dex-connectors-library/connectors/postgresql/go"
+	"github.com/superdurable/dex-connectors-library/connectors/postgresql/go/internal/commitfaultproxy"
+	"github.com/superdurable/dex-connectors-library/connectors/postgresql/go/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

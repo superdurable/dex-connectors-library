@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/google/spreadsheet
+module github.com/superdurable/dex-connectors-library/connectors/google/spreadsheet/go
 
 go 1.24.0
 

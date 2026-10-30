@@ -7,7 +7,7 @@ package cloudflaremock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/cloudflare"
+	"github.com/superdurable/dex-connectors-library/connectors/cloudflare/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

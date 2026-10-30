@@ -20,9 +20,9 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	gmail "github.com/superdurable/dex-connectors-library/connectors/google/gmail"
-	"github.com/superdurable/dex-connectors-library/connectors/google/gmail/internal/testlog"
-	"github.com/superdurable/dex-connectors-library/connectors/google/gmail/internal/triggerinboxtest"
+	gmail "github.com/superdurable/dex-connectors-library/connectors/google/gmail/go"
+	"github.com/superdurable/dex-connectors-library/connectors/google/gmail/go/internal/testlog"
+	"github.com/superdurable/dex-connectors-library/connectors/google/gmail/go/internal/triggerinboxtest"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"

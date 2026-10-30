@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/gitlab
+module github.com/superdurable/dex-connectors-library/connectors/gitlab/go
 
 go 1.24.0
 

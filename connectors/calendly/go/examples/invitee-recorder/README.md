@@ -56,7 +56,7 @@ go run ./cmd/connectorctl ui-artifact \
   --digest-output /tmp/calendly-release/connector-ui.tgz.sha256
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/calendly/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/calendly \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/calendly/go \
   --version v0.23.0 --tag connectors/calendly/v0.23.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/calendly-release/connector-ui.tgz \

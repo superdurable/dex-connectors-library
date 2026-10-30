@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	outlookmail "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail"
-	"github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail/outlookmailmock"
+	outlookmail "github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail/go"
+	"github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail/go/outlookmailmock"
 )
 
 // TestSupportReplyUsesMockDefaultsWithRealDex runs the example on outlookmailmock defaults and checks every

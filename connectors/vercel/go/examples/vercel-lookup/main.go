@@ -14,8 +14,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/vercel"
-	lookupflow "github.com/superdurable/dex-connectors-library/connectors/vercel/examples/vercel-lookup/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/vercel/go"
+	lookupflow "github.com/superdurable/dex-connectors-library/connectors/vercel/go/examples/vercel-lookup/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"

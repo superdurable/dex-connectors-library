@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	oauth2http "github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http"
+	oauth2http "github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http/go"
 )
 
 func readTextFile(t *testing.T, path string) string {
@@ -80,7 +80,7 @@ func TestREADMEDescribesEveryFieldBranchAndMock(t *testing.T) {
 
 // TestRelativeLinksResolve keeps the READMEs' links to files and directories valid.
 func TestRelativeLinksResolve(t *testing.T) {
-	for _, readme := range []string{"README.md", filepath.Join("examples", "api-request", "README.md")} {
+	for _, readme := range []string{"../README.md", filepath.Join("examples", "api-request", "README.md")} {
 		for _, link := range regexp.MustCompile(`\]\(([^)#\s]+)(?:#[^)\s]*)?\)`).FindAllStringSubmatch(readTextFile(t, readme), -1) {
 			if strings.Contains(link[1], "://") {
 				continue

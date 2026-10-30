@@ -7,7 +7,7 @@ package coheremock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/cohere"
+	"github.com/superdurable/dex-connectors-library/connectors/cohere/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

@@ -5,8 +5,8 @@ package demo
 
 import (
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/elevenlabs"
-	"github.com/superdurable/dex-connectors-library/connectors/elevenlabs/elevenlabsmock"
+	"github.com/superdurable/dex-connectors-library/connectors/elevenlabs/go"
+	"github.com/superdurable/dex-connectors-library/connectors/elevenlabs/go/elevenlabsmock"
 	"github.com/superdurable/dex/sdk-go/dex"
 	"testing"
 )

@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/atlassian/jira-service-management
+module github.com/superdurable/dex-connectors-library/connectors/atlassian/jira-service-management/go
 
 go 1.24.0
 

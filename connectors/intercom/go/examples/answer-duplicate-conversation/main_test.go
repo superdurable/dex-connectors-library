@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	answerduplicate "github.com/superdurable/dex-connectors-library/connectors/intercom/examples/answer-duplicate-conversation/flow"
+	answerduplicate "github.com/superdurable/dex-connectors-library/connectors/intercom/go/examples/answer-duplicate-conversation/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 

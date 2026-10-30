@@ -270,7 +270,7 @@ func TestEachListCommandSendsTheKeyOnlyToItsProvidersAPIHost(t *testing.T) {
 
 func readManifest(t *testing.T) manifestDocument {
 	t.Helper()
-	contents, err := os.ReadFile("connector.yaml")
+	contents, err := os.ReadFile("../connector.yaml")
 	require.NoError(t, err)
 	var manifest manifestDocument
 	require.NoError(t, yaml.Unmarshal(contents, &manifest))

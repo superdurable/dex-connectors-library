@@ -7,7 +7,7 @@ package docusignmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/docusign"
+	"github.com/superdurable/dex-connectors-library/connectors/docusign/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

@@ -6,7 +6,7 @@ package outboundlookup
 
 import (
 	"errors"
-	"github.com/superdurable/dex-connectors-library/connectors/postmark"
+	"github.com/superdurable/dex-connectors-library/connectors/postmark/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

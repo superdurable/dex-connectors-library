@@ -7,7 +7,7 @@ package clickupmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/clickup"
+	"github.com/superdurable/dex-connectors-library/connectors/clickup/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

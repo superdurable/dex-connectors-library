@@ -17,7 +17,7 @@ func TestProjectConnectionReadsTheRecordsDexWebWrites(t *testing.T) {
 	key := projectconfig.ConnectionKey{ConnectorID: ConnectorID, ConnectionName: "discord"}
 	configuration := projectconfig.Configuration{Connections: []projectconfig.ConnectionConfiguration{{
 		ConnectorID: ConnectorID, ConnectionName: key.ConnectionName,
-		ModulePath: "github.com/superdurable/dex-connectors-library/connectors/discord", Provider: "discord",
+		ModulePath: "github.com/superdurable/dex-connectors-library/connectors/discord/go", Provider: "discord",
 		Configuration: json.RawMessage(`{}`),
 	}}}
 	var config Config

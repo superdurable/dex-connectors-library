@@ -1,6 +1,6 @@
 {
   "connectorId": "newsapi",
-  "releaseTag": "connectors/newsapi/v0.22.0",
+  "releaseTag": "connectors/newsapi/go/v0.22.0",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-newsapi",

@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/microsoft/onedrive/internal/graphfake"
+	"github.com/superdurable/dex-connectors-library/connectors/microsoft/onedrive/go/internal/graphfake"
 )
 
 // quickXorHashVectors come from rclone's backend/onedrive/quickxorhash tests (MIT

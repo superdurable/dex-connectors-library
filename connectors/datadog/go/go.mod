@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/datadog
+module github.com/superdurable/dex-connectors-library/connectors/datadog/go
 
 go 1.24.0
 

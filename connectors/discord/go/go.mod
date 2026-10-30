@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/discord
+module github.com/superdurable/dex-connectors-library/connectors/discord/go
 
 go 1.24.0
 

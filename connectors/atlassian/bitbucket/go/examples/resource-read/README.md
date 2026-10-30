@@ -19,7 +19,7 @@ From the repository root, build a local release override, then start a Dex stack
 
 ```sh
 mkdir -p /tmp/bitbucket-release
-go run ./cmd/connectorctl release-artifact --manifest connectors/atlassian/bitbucket/connector.yaml --module-path github.com/superdurable/dex-connectors-library/connectors/atlassian/bitbucket --version v0.1.0 --tag connectors/atlassian/bitbucket/v0.1.0 --source-sha "$(git rev-parse HEAD)" --output /tmp/bitbucket-release/connector-release.json --digest-output /tmp/bitbucket-release/connector-release.json.sha256
+go run ./cmd/connectorctl release-artifact --manifest connectors/atlassian/bitbucket/connector.yaml --module-path github.com/superdurable/dex-connectors-library/connectors/atlassian/bitbucket/go --version v0.1.0 --tag connectors/atlassian/bitbucket/v0.1.0 --source-sha "$(git rev-parse HEAD)" --output /tmp/bitbucket-release/connector-release.json --digest-output /tmp/bitbucket-release/connector-release.json.sha256
 dexcli dev --flow-rendering-dir "$PWD/connectors/atlassian/bitbucket/build" --connector-release-override bitbucket=/tmp/bitbucket-release
 ```
 

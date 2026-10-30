@@ -15,8 +15,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/atlassian/confluence"
-	publishpolicy "github.com/superdurable/dex-connectors-library/connectors/atlassian/confluence/examples/publish-policy/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/atlassian/confluence/go"
+	publishpolicy "github.com/superdurable/dex-connectors-library/connectors/atlassian/confluence/go/examples/publish-policy/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"

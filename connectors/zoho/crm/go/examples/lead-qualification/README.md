@@ -71,7 +71,7 @@ cd "$(git rev-parse --show-toplevel)"
 mkdir -p /tmp/zoho-crm-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/zoho/crm/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/zoho/crm \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/zoho/crm/go \
   --version v0.23.0 --tag connectors/zoho/crm/v0.23.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/zoho-crm-release/connector-release.json \

@@ -7,7 +7,7 @@ package netlifymock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/netlify"
+	"github.com/superdurable/dex-connectors-library/connectors/netlify/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

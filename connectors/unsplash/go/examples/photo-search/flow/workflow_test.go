@@ -5,7 +5,7 @@ package photosearch
 
 import (
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/unsplash"
+	"github.com/superdurable/dex-connectors-library/connectors/unsplash/go"
 	"testing"
 )
 

@@ -113,7 +113,7 @@ func NewLoadedProject(
 		}
 		configuration.Connections = append(configuration.Connections, projectconfig.ConnectionConfiguration{
 			ConnectorID: connectorID, ConnectionName: connection.Name,
-			ModulePath: "github.com/superdurable/dex-connectors-library/connectors/superdurable/llm", Provider: "llm",
+			ModulePath: "github.com/superdurable/dex-connectors-library/connectors/superdurable/llm/go", Provider: "llm",
 			Configuration: settings,
 		})
 		credentials, err := json.Marshal(connection.Credentials)

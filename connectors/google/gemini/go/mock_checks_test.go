@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/google/gemini"
+	"github.com/superdurable/dex-connectors-library/connectors/google/gemini/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 

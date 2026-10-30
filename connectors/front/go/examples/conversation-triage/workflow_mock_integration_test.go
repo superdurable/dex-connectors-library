@@ -9,9 +9,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/front"
-	conversationtriage "github.com/superdurable/dex-connectors-library/connectors/front/examples/conversation-triage/flow"
-	"github.com/superdurable/dex-connectors-library/connectors/front/frontmock"
+	"github.com/superdurable/dex-connectors-library/connectors/front/go"
+	conversationtriage "github.com/superdurable/dex-connectors-library/connectors/front/go/examples/conversation-triage/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/front/go/frontmock"
 )
 
 func TestConversationTriageUsesFrontMocksWithRealDex(t *testing.T) {

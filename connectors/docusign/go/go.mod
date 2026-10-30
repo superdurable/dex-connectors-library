@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/docusign
+module github.com/superdurable/dex-connectors-library/connectors/docusign/go
 
 go 1.24.0
 

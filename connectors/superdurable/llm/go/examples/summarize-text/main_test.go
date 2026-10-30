@@ -8,9 +8,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/superdurable/llm"
-	summarizetext "github.com/superdurable/dex-connectors-library/connectors/superdurable/llm/examples/summarize-text/flow"
-	"github.com/superdurable/dex-connectors-library/connectors/superdurable/llm/internal/testsupport"
+	"github.com/superdurable/dex-connectors-library/connectors/superdurable/llm/go"
+	summarizetext "github.com/superdurable/dex-connectors-library/connectors/superdurable/llm/go/examples/summarize-text/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/superdurable/llm/go/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 

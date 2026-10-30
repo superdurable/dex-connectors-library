@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/zendesk/support
+module github.com/superdurable/dex-connectors-library/connectors/zendesk/support/go
 
 go 1.24.0
 

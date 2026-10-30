@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/calendly/calendlymock"
-	schedulinglink "github.com/superdurable/dex-connectors-library/connectors/calendly/examples/scheduling-link/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/calendly/go/calendlymock"
+	schedulinglink "github.com/superdurable/dex-connectors-library/connectors/calendly/go/examples/scheduling-link/flow"
 )
 
 func TestSchedulingLinkFlowDeclaresItsStaticConnectionAndViews(t *testing.T) {

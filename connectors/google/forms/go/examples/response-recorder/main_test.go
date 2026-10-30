@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	responserecorder "github.com/superdurable/dex-connectors-library/connectors/google/forms/examples/response-recorder/flow"
+	responserecorder "github.com/superdurable/dex-connectors-library/connectors/google/forms/go/examples/response-recorder/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 

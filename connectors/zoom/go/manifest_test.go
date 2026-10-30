@@ -52,7 +52,7 @@ type zoomManifest struct {
 
 func loadZoomManifest(t *testing.T) zoomManifest {
 	t.Helper()
-	contents, err := os.ReadFile("connector.yaml")
+	contents, err := os.ReadFile("../connector.yaml")
 	require.NoError(t, err)
 	var manifest zoomManifest
 	require.NoError(t, yaml.Unmarshal(contents, &manifest))

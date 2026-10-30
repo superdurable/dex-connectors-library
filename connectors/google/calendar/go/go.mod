@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/google/calendar
+module github.com/superdurable/dex-connectors-library/connectors/google/calendar/go
 
 go 1.24.0
 

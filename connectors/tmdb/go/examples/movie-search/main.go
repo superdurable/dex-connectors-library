@@ -15,8 +15,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/tmdb"
-	example "github.com/superdurable/dex-connectors-library/connectors/tmdb/examples/movie-search/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/tmdb/go"
+	example "github.com/superdurable/dex-connectors-library/connectors/tmdb/go/examples/movie-search/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"

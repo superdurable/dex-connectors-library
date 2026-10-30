@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	calendar "github.com/superdurable/dex-connectors-library/connectors/google/calendar"
-	"github.com/superdurable/dex-connectors-library/connectors/google/calendar/calendarmock"
+	calendar "github.com/superdurable/dex-connectors-library/connectors/google/calendar/go"
+	"github.com/superdurable/dex-connectors-library/connectors/google/calendar/go/calendarmock"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/amazon/sqs"
-	"github.com/superdurable/dex-connectors-library/connectors/amazon/sqs/internal/sqslive"
+	"github.com/superdurable/dex-connectors-library/connectors/amazon/sqs/go"
+	"github.com/superdurable/dex-connectors-library/connectors/amazon/sqs/go/internal/sqslive"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 

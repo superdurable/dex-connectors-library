@@ -15,8 +15,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/amazon/sqs"
-	queueconsumer "github.com/superdurable/dex-connectors-library/connectors/amazon/sqs/examples/queue-consumer/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/amazon/sqs/go"
+	queueconsumer "github.com/superdurable/dex-connectors-library/connectors/amazon/sqs/go/examples/queue-consumer/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"

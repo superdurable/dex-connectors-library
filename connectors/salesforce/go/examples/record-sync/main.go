@@ -15,8 +15,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/salesforce"
-	recordsync "github.com/superdurable/dex-connectors-library/connectors/salesforce/examples/record-sync/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/salesforce/go"
+	recordsync "github.com/superdurable/dex-connectors-library/connectors/salesforce/go/examples/record-sync/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"

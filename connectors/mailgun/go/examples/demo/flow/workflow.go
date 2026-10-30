@@ -6,7 +6,7 @@ package demo
 
 import (
 	"errors"
-	"github.com/superdurable/dex-connectors-library/connectors/mailgun"
+	"github.com/superdurable/dex-connectors-library/connectors/mailgun/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

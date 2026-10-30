@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/algolia
+module github.com/superdurable/dex-connectors-library/connectors/algolia/go
 
 go 1.24.0
 

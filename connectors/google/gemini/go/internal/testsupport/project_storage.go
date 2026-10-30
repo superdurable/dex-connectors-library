@@ -113,7 +113,7 @@ func NewLoadedProject(
 		}
 		configuration.Connections = append(configuration.Connections, projectconfig.ConnectionConfiguration{
 			ConnectorID: connectorID, ConnectionName: connection.Name,
-			ModulePath: "github.com/superdurable/dex-connectors-library/connectors/google/gemini", Provider: "google",
+			ModulePath: "github.com/superdurable/dex-connectors-library/connectors/google/gemini/go", Provider: "google",
 			Configuration: settings,
 		})
 		credentials, err := json.Marshal(connection.Credentials)

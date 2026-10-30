@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/clickup"
+	"github.com/superdurable/dex-connectors-library/connectors/clickup/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
@@ -213,7 +213,7 @@ func TestEndpointRunnerRejectsMissingOrInvalidBindings(t *testing.T) {
 func projectConfiguration(bindings map[string]string) projectconfig.Configuration {
 	configuration := projectconfig.Configuration{Connections: []projectconfig.ConnectionConfiguration{{
 		ConnectorID: clickup.ConnectorID, ConnectionName: clickupConnection.Name,
-		ModulePath: "github.com/superdurable/dex-connectors-library/connectors/clickup", Provider: "clickup",
+		ModulePath: "github.com/superdurable/dex-connectors-library/connectors/clickup/go", Provider: "clickup",
 		Configuration: json.RawMessage(`{}`),
 	}}}
 	for bindingName, bindingConfiguration := range bindings {

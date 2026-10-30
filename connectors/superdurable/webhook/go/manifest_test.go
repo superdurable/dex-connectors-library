@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook"
+	"github.com/superdurable/dex-connectors-library/connectors/superdurable/webhook/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"gopkg.in/yaml.v3"
 )
@@ -43,7 +43,7 @@ type webhookManifest struct {
 
 func readWebhookManifest(t *testing.T) webhookManifest {
 	t.Helper()
-	contents, err := os.ReadFile("connector.yaml")
+	contents, err := os.ReadFile("../connector.yaml")
 	require.NoError(t, err)
 	var manifest webhookManifest
 	require.NoError(t, yaml.Unmarshal(contents, &manifest))
@@ -100,7 +100,7 @@ func TestAuthorizationGuideStartsAtTheSenderSetupSection(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "https", startURL.Scheme)
 	require.Equal(t, "sender-setup", startURL.Fragment)
-	readme, err := os.ReadFile("README.md")
+	readme, err := os.ReadFile("../README.md")
 	require.NoError(t, err)
 	require.Contains(t, string(readme), "\n## Sender setup\n")
 	require.Len(t, guide.Steps, 4)

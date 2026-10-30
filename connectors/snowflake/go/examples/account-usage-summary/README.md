@@ -49,7 +49,7 @@ Until the connector is released, build a local release override from the reposit
 ```bash
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/snowflake/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/snowflake \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/snowflake/go \
   --version v0.22.0 --tag connectors/snowflake/v0.22.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/snowflake-usage/release/connector-release.json \

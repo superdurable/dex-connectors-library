@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/intuit/quickbooks
+module github.com/superdurable/dex-connectors-library/connectors/intuit/quickbooks/go
 
 go 1.24.0
 

@@ -7,7 +7,7 @@ package spotifymock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/spotify"
+	"github.com/superdurable/dex-connectors-library/connectors/spotify/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

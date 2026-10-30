@@ -15,8 +15,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/hiver"
-	claimconversation "github.com/superdurable/dex-connectors-library/connectors/hiver/examples/claim-conversation/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/hiver/go"
+	claimconversation "github.com/superdurable/dex-connectors-library/connectors/hiver/go/examples/claim-conversation/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"

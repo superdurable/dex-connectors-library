@@ -7,7 +7,7 @@ package tmdbmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/tmdb"
+	"github.com/superdurable/dex-connectors-library/connectors/tmdb/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

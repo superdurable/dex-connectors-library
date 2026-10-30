@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/newsapi
+module github.com/superdurable/dex-connectors-library/connectors/newsapi/go
 
 go 1.24.0
 

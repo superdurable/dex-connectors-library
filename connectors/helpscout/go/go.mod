@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/helpscout
+module github.com/superdurable/dex-connectors-library/connectors/helpscout/go
 
 go 1.24.0
 

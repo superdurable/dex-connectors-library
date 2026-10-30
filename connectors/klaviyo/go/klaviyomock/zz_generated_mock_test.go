@@ -7,7 +7,7 @@ package klaviyomock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/klaviyo"
+	"github.com/superdurable/dex-connectors-library/connectors/klaviyo/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

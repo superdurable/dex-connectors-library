@@ -15,8 +15,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/intuit/mailchimp"
-	approvedcampaignsend "github.com/superdurable/dex-connectors-library/connectors/intuit/mailchimp/examples/approved-campaign-send/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/intuit/mailchimp/go"
+	approvedcampaignsend "github.com/superdurable/dex-connectors-library/connectors/intuit/mailchimp/go/examples/approved-campaign-send/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"

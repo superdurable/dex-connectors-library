@@ -1,4 +1,4 @@
-module github.com/superdurable/dex-connectors-library/connectors/google/forms
+module github.com/superdurable/dex-connectors-library/connectors/google/forms/go
 
 go 1.24.0
 

@@ -7,7 +7,7 @@ package resourceread
 import (
 	"errors"
 	"fmt"
-	"github.com/superdurable/dex-connectors-library/connectors/paypal"
+	"github.com/superdurable/dex-connectors-library/connectors/paypal/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

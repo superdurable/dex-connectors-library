@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/intercom"
+	"github.com/superdurable/dex-connectors-library/connectors/intercom/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
@@ -231,7 +231,7 @@ func TestEndpointRunnerRejectsMissingOrInvalidBindings(t *testing.T) {
 func projectConfiguration(bindings map[string]string) projectconfig.Configuration {
 	configuration := projectconfig.Configuration{Connections: []projectconfig.ConnectionConfiguration{{
 		ConnectorID: intercom.ConnectorID, ConnectionName: intercomConnection.Name,
-		ModulePath: "github.com/superdurable/dex-connectors-library/connectors/intercom", Provider: "intercom",
+		ModulePath: "github.com/superdurable/dex-connectors-library/connectors/intercom/go", Provider: "intercom",
 		Configuration: json.RawMessage(`{"region":"eu"}`),
 	}}}
 	for bindingName, bindingConfiguration := range bindings {

@@ -7,7 +7,7 @@ package outlookmailmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail"
+	"github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

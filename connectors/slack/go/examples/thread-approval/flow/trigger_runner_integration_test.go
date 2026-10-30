@@ -20,9 +20,9 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/slack"
-	"github.com/superdurable/dex-connectors-library/connectors/slack/internal/testlog"
-	"github.com/superdurable/dex-connectors-library/connectors/slack/internal/testsupport"
+	"github.com/superdurable/dex-connectors-library/connectors/slack/go"
+	"github.com/superdurable/dex-connectors-library/connectors/slack/go/internal/testlog"
+	"github.com/superdurable/dex-connectors-library/connectors/slack/go/internal/testsupport"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig/provider"

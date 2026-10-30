@@ -5,7 +5,7 @@
 package closelookup
 
 import (
-	"github.com/superdurable/dex-connectors-library/connectors/close"
+	"github.com/superdurable/dex-connectors-library/connectors/close/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

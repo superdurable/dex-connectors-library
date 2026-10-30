@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/microsoft/entra-id/internal/graphfake"
+	"github.com/superdurable/dex-connectors-library/connectors/microsoft/entra-id/go/internal/graphfake"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 

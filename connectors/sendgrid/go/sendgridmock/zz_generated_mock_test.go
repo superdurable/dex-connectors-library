@@ -7,7 +7,7 @@ package sendgridmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/sendgrid"
+	"github.com/superdurable/dex-connectors-library/connectors/sendgrid/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

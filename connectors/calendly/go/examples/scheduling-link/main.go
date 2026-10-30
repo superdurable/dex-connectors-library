@@ -15,8 +15,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/calendly"
-	schedulinglink "github.com/superdurable/dex-connectors-library/connectors/calendly/examples/scheduling-link/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/calendly/go"
+	schedulinglink "github.com/superdurable/dex-connectors-library/connectors/calendly/go/examples/scheduling-link/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"

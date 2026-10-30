@@ -83,7 +83,7 @@ cd "$(git rev-parse --show-toplevel)"
 mkdir -p /tmp/mailchimp-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/intuit/mailchimp/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/intuit/mailchimp \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/intuit/mailchimp/go \
   --version v0.22.0 --tag connectors/intuit/mailchimp/v0.22.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/mailchimp-release/connector-release.json \

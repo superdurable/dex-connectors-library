@@ -57,7 +57,7 @@ built from this source, passed as an override. From the repository root:
 mkdir -p /tmp/entra-id-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/microsoft/entra-id/connector.yaml \
-  --module-path github.com/superdurable/dex-connectors-library/connectors/microsoft/entra-id \
+  --module-path github.com/superdurable/dex-connectors-library/connectors/microsoft/entra-id/go \
   --version v0.23.0 --tag connectors/microsoft/entra-id/v0.23.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/entra-id-release/connector-release.json \

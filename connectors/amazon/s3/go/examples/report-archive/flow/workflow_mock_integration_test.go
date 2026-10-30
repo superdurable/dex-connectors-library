@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/amazon/s3"
-	"github.com/superdurable/dex-connectors-library/connectors/amazon/s3/s3mock"
+	"github.com/superdurable/dex-connectors-library/connectors/amazon/s3/go"
+	"github.com/superdurable/dex-connectors-library/connectors/amazon/s3/go/s3mock"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 

@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	workspaceadmin "github.com/superdurable/dex-connectors-library/connectors/google/workspace-admin"
-	"github.com/superdurable/dex-connectors-library/connectors/google/workspace-admin/workspaceadminmock"
+	workspaceadmin "github.com/superdurable/dex-connectors-library/connectors/google/workspace-admin/go"
+	"github.com/superdurable/dex-connectors-library/connectors/google/workspace-admin/go/workspaceadminmock"
 	"github.com/superdurable/dex/blob-cache-go/blobcache"
 	"github.com/superdurable/dex/sdk-go/dex"
 )

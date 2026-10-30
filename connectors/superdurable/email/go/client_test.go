@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/superdurable/email"
+	"github.com/superdurable/dex-connectors-library/connectors/superdurable/email/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 

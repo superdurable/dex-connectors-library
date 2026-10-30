@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/docusign"
-	"github.com/superdurable/dex-connectors-library/connectors/docusign/docusignmock"
-	envelopesigning "github.com/superdurable/dex-connectors-library/connectors/docusign/examples/envelope-signing/flow"
+	"github.com/superdurable/dex-connectors-library/connectors/docusign/go"
+	"github.com/superdurable/dex-connectors-library/connectors/docusign/go/docusignmock"
+	envelopesigning "github.com/superdurable/dex-connectors-library/connectors/docusign/go/examples/envelope-signing/flow"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 

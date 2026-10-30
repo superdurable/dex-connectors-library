@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	incidentacknowledgement "github.com/superdurable/dex-connectors-library/connectors/microsoft/teams/examples/incident-acknowledgement/flow"
+	incidentacknowledgement "github.com/superdurable/dex-connectors-library/connectors/microsoft/teams/go/examples/incident-acknowledgement/flow"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 

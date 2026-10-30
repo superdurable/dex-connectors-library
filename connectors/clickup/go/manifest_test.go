@@ -107,7 +107,7 @@ func TestStudioDeclaresNoProviderCommands(t *testing.T) {
 
 func readGuidanceManifest(t *testing.T) guidanceManifest {
 	t.Helper()
-	contents, err := os.ReadFile("connector.yaml")
+	contents, err := os.ReadFile("../connector.yaml")
 	require.NoError(t, err)
 	var manifest guidanceManifest
 	require.NoError(t, yaml.Unmarshal(contents, &manifest))

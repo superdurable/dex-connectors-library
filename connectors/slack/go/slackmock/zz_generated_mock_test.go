@@ -7,7 +7,7 @@ package slackmock
 import (
 	"testing"
 
-	"github.com/superdurable/dex-connectors-library/connectors/slack"
+	"github.com/superdurable/dex-connectors-library/connectors/slack/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo/connectormock"
 )
 

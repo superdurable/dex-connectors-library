@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/superdurable/dex-connectors-library/connectors/clickup"
+	"github.com/superdurable/dex-connectors-library/connectors/clickup/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
