@@ -18,7 +18,7 @@ export function companyDirectory(directory) {
 }
 
 export function connectorManifestUrl(directory, version) {
-  return `${rawRepositoryRoot}/${directory}/${version}/${directory}/connector.yaml`;
+  return `${rawRepositoryRoot}/${directory}/go/${version}/${directory}/connector.yaml`;
 }
 
 export function companyLogoUrl(company, origin) {

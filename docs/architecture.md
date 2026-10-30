@@ -16,8 +16,21 @@
   plans releases, and creates release artifacts.
 
 The first directory below `connectors/` is the company, matches
-`metadata.company`, and contains `logo.svg`. Every connector is a separate Go
-module. Adding one changes only its directory and one `catalog.yaml` entry.
+`metadata.company`, and contains `logo.svg`. Every connector has a separate Go
+module in `go/`. Its manifest, README, UI, and language packages stay beside
+`go/`. Adding one changes only its directory and one `catalog.yaml` entry.
+
+```text
+connectors/<company>/<connector>/
+├── connector.yaml
+├── README.md
+├── go/                 # Go module, generated code, tests, examples
+│   ├── go.mod
+│   └── examples/
+├── ui/                 # optional Connector Studio UI
+├── python/             # optional Python package
+└── typescript/         # optional TypeScript package
+```
 
 ## Catalog expansion
 

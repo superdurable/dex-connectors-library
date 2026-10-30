@@ -119,7 +119,7 @@ def verify_latest_dex_go_sdk(root: Path, temporary_root: Path, connector_directo
     failures: list[str] = []
     for manifest in manifests(root, connector_directories):
         connector_directory = manifest.parent.relative_to(root)
-        connector = copy_go_module(manifest.parent, temporary_root / connector_directory)
+        connector = copy_go_module(manifest.parent / "go", temporary_root / connector_directory / "go")
         try:
             run(
                 ["go", "mod", "edit", f"-replace={CONNECTOR_SDK_MODULE}={connector_sdk}"],
@@ -498,11 +498,11 @@ def build_current_artifacts(root: Path, output: Path, connector_directories: lis
         run(["npm", "ci"], root / "sdk" / "react")
         run(["npm", "run", "build"], root / "sdk" / "react")
     for manifest in selected_manifests:
-        connector_root = manifest.parent
-        destination = output / connector_root.relative_to(root)
+        connector_root = manifest.parent / "go"
+        destination = output / manifest.parent.relative_to(root)
         destination.mkdir(parents=True)
         arguments: list[str] = []
-        ui = connector_root / "ui"
+        ui = manifest.parent / "ui"
         if (ui / "package-lock.json").exists():
             run(["npm", "ci"], ui)
             run(["npm", "run", "build"], ui)
@@ -569,7 +569,7 @@ def test_current_examples(
     proxy = temporary_root / "proxy"
     proxies: dict[Path, tuple[str, str]] = {}
     for manifest in manifests(root, connector_directories):
-        proxies[manifest.parent] = create_module_proxy(manifest.parent, proxy)
+        proxies[manifest.parent] = create_module_proxy(manifest.parent / "go", proxy)
     for example in flow_examples(root, connector_directories):
         connector_root = max((path for path in proxies if path in example.parents), key=lambda path: len(path.parts))
         name, version = proxies[connector_root]

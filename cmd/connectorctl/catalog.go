@@ -100,6 +100,7 @@ type connectorReleaseMatrixItem struct {
 }
 
 type reachableConnectorRelease struct {
+	Tag          string
 	Version      string
 	SourceCommit string
 }
@@ -197,10 +198,15 @@ func releaseMatrixCommand(args []string) error {
 	matrix := connectorReleaseMatrix{Include: make([]connectorReleaseMatrixItem, 0, len(entries))}
 	languageMatrix := connectorReleaseMatrix{Include: make([]connectorReleaseMatrixItem, 0)}
 	for _, entry := range entries {
-		latestRelease := latestReleases[entry.Directory]
+		latestRelease := latestReleases[entry.Directory+"/go"]
 		isPending, transitionErr := validateConnectorVersionTransition(latestRelease.Version, entry.Manifest.Metadata.Version)
 		if transitionErr != nil {
 			return fmt.Errorf("%s: %w", entry.Directory, transitionErr)
+		}
+		if isPending {
+			if err := validateGoMigrationVersion(entry.Directory, latestRelease, entry.Manifest.Metadata.Version); err != nil {
+				return err
+			}
 		}
 		if isPending {
 			if err := validateConnectionCompatibility(repositoryRoot, entry, latestRelease, entry.Manifest.Metadata.Version); err != nil {
@@ -212,7 +218,7 @@ func releaseMatrixCommand(args []string) error {
 			continue
 		}
 		matrix.Include = append(matrix.Include, connectorReleaseMatrixItem{
-			Directory: entry.Directory, ManifestPath: entry.ManifestPath, TagPrefix: entry.Directory + "/",
+			Directory: entry.Directory, ManifestPath: entry.ManifestPath, TagPrefix: entry.Directory + "/go/",
 			Version: entry.Manifest.Metadata.Version, DisplayName: entry.Manifest.Metadata.DisplayName,
 		})
 	}
@@ -323,7 +329,7 @@ func loadConnectorDirectoryEntries(catalogPath string) ([]connectorDirectoryEntr
 		if companyDirectorySlug(manifest.Metadata.Company) != companyDir {
 			return nil, fmt.Errorf("%s company %s must match directory %s", directory, manifest.Metadata.Company, companyDir)
 		}
-		goModPath := filepath.Join(repositoryRoot, filepath.FromSlash(directory), "go.mod")
+		goModPath := filepath.Join(repositoryRoot, filepath.FromSlash(directory), "go", "go.mod")
 		if err := requireRegularFile(goModPath, "connector go.mod"); err != nil {
 			return nil, err
 		}
@@ -331,8 +337,8 @@ func loadConnectorDirectoryEntries(catalogPath string) ([]connectorDirectoryEntr
 		if err != nil {
 			return nil, err
 		}
-		if !strings.HasSuffix(modulePath, "/"+directory) {
-			return nil, fmt.Errorf("connector module %s must end in /%s", modulePath, directory)
+		if !strings.HasSuffix(modulePath, "/"+directory+"/go") {
+			return nil, fmt.Errorf("connector module %s must end in /%s/go", modulePath, directory)
 		}
 		entries = append(entries, connectorDirectoryEntry{
 			Directory: directory, ManifestPath: directory + "/connector.yaml", ModulePath: modulePath, Manifest: manifest,
@@ -639,16 +645,31 @@ func latestReachableConnectorReleases(repositoryRoot string) (map[string]reachab
 		if !connectorVersionPattern.MatchString(version) {
 			continue
 		}
+		if !strings.HasSuffix(directory, "/python") && !strings.HasSuffix(directory, "/typescript") && !strings.HasSuffix(directory, "/go") {
+			directory += "/go"
+		}
 		current := latest[directory]
 		if current.Version == "" || compareConnectorVersions(version, current.Version) > 0 {
 			sourceCommit := fields[1]
 			if fields[2] != "" {
 				sourceCommit = fields[2]
 			}
-			latest[directory] = reachableConnectorRelease{Version: version, SourceCommit: sourceCommit}
+			latest[directory] = reachableConnectorRelease{Tag: tag, Version: version, SourceCommit: sourceCommit}
 		}
 	}
 	return latest, nil
+}
+
+func validateGoMigrationVersion(directory string, latestRelease reachableConnectorRelease, target string) error {
+	if latestRelease.Tag == "" || strings.HasPrefix(latestRelease.Tag, directory+"/go/") {
+		return nil
+	}
+	parts := connectorVersionParts(latestRelease.Version)
+	expected := fmt.Sprintf("v%d.%d.0", parts[0], parts[1]+1)
+	if target != expected {
+		return fmt.Errorf("%s Go module migration requires exactly one minor bump from %s to %s, got %s", directory, latestRelease.Version, expected, target)
+	}
+	return nil
 }
 
 func gitRevisionCommit(repositoryRoot string, revision string) (string, error) {

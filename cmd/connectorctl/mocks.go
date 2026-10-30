@@ -18,13 +18,13 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// generatedMockFiles returns the mock package files for a manifest beside its go.mod, keyed by path, or no files
+// generatedMockFiles returns mock package files beneath go/, keyed by path, or no files
 // when the manifest declares no mocks.
 func generatedMockFiles(manifestPath string, manifest schema.Manifest) (map[string][]byte, error) {
 	if !manifest.HasMocks() {
 		return map[string][]byte{}, nil
 	}
-	modulePath, err := readModulePath(filepath.Join(filepath.Dir(manifestPath), "go.mod"))
+	modulePath, err := readModulePath(filepath.Join(filepath.Dir(manifestPath), "go", "go.mod"))
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +32,7 @@ func generatedMockFiles(manifestPath string, manifest schema.Manifest) (map[stri
 	if err != nil {
 		return nil, err
 	}
-	directory := filepath.Join(filepath.Dir(manifestPath), codegen.MockPackageName(manifest))
+	directory := filepath.Join(filepath.Dir(manifestPath), "go", codegen.MockPackageName(manifest))
 	return map[string][]byte{
 		filepath.Join(directory, codegen.MockOutputFile):     source,
 		filepath.Join(directory, codegen.MockTestOutputFile): test,
@@ -44,7 +44,7 @@ func staleMockFiles(manifestPath string, manifest schema.Manifest) []string {
 	if manifest.HasMocks() {
 		return nil
 	}
-	directory := filepath.Join(filepath.Dir(manifestPath), codegen.MockPackageName(manifest))
+	directory := filepath.Join(filepath.Dir(manifestPath), "go", codegen.MockPackageName(manifest))
 	var stale []string
 	for _, name := range []string{codegen.MockOutputFile, codegen.MockTestOutputFile} {
 		if _, err := os.Lstat(filepath.Join(directory, name)); err == nil {
@@ -79,7 +79,7 @@ func scaffoldMocks(manifestPath string, stderr io.Writer) error {
 	for index := len(manifest.Spec.Operations) - 1; index >= 0; index-- {
 		operation := manifest.Spec.Operations[index]
 		insertion := insertions[index]
-		scaffolded, err := scaffoldOperationMocks(filepath.Dir(manifestPath), operation, insertion, stderr)
+		scaffolded, err := scaffoldOperationMocks(filepath.Join(filepath.Dir(manifestPath), "go"), operation, insertion, stderr)
 		if err != nil {
 			return err
 		}

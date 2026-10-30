@@ -9,13 +9,14 @@ alwaysApply: true
   README are the sole connector-authoring authority. Dex Connector Contributor
   may bootstrap the repository but does not own implementation, acceptance,
   or release rules.
-- Keep `sdkgo` and each connector in separate Go modules.
+- Keep `sdkgo` and each connector's `go/` subdirectory in separate Go modules.
+- Keep connector manifests, READMEs, company logos, UI, Python, and TypeScript packages outside `go/`.
 - Keep Python SDK packages in `sdkpython/`, TypeScript SDK packages in `sdkts/`, and connector packages in their `python/` and `typescript/` directories.
 - The first connector directory is its company, matches `metadata.company`, and
   contains `logo.svg`.
 - `connector.yaml` owns generated Config, Credentials, definitions, factories,
   branches, UI metadata, and defaults. Never edit generated connector code.
-- Every connector has a runnable Flow example with a Worker entrypoint, strict
+- Every connector has a runnable Flow example under `go/examples/` with a Worker entrypoint, strict
   FDG 2.0 instructions, deterministic tests, and its static `ConnectionName`.
 - Default fixed provider values, derive verified provider-owned fields, and ask
   users only for values that cannot be produced safely. See

@@ -35,7 +35,8 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
 
 ## Repository Boundaries
 
-- Keep the Go SDK in `sdkgo` and every connector in its own Go module.
+- Keep the Go SDK in `sdkgo` and every connector's Go module in `connectors/<dir>/go/`.
+- Keep `connector.yaml`, `README.md`, company `logo.svg`, `ui/`, `python/`, and `typescript/` outside `go/`.
 - Keep Python SDK packages in `sdkpython/`, TypeScript SDK packages in `sdkts/`, and connector packages in their `python/` and `typescript/` directories.
 - Group one company's connectors below one directory. The first directory under
   `connectors/` is the company, must match `metadata.company`, and must contain
@@ -58,9 +59,9 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
 - Normal application APIs use operation-specific factories such as
   `openai.NewCreateResponseStep`. Generic `sdkgo.NewQueryStep` and
   `sdkgo.NewMutationStep` are advanced escape hatches.
-- Every connector has its own `go.mod`, README, manifest, generated code, and
+- Every connector has `go/go.mod`, README, manifest, generated code under `go/`, and
   provider tests.
-- Every connector has at least one runnable Flow under `examples/` with a
+- Every connector has at least one runnable Flow under `go/examples/` with a
   Worker entrypoint, strict FDG 2.0 generation instructions, deterministic
   tests, and the connector's static `ConnectionName`.
 - Register every connector directory in the sorted root `catalog.yaml` list.
@@ -191,7 +192,10 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
   v0 releases `v1.0.0`. First releases use `v0.1.0`. Tooling accepts a skipped
   step or another first version, so review checks both.
 - Core SDK tags use `sdkgo/vX.Y.Z`. Connector tags use the module directory,
-  such as `connectors/openai/vX.Y.Z`.
+  such as `connectors/openai/go/vX.Y.Z`.
+- For the one-time Go module move, use exactly one minor bump after the latest
+  reachable old-path Go release, including v1 connectors such as Slack. The new
+  import path forces opt-in; old tags remain history and receive no new releases.
 - Python and TypeScript SDK tags use `sdkpython/vX.Y.Z` and `sdkts/vX.Y.Z`. Their connector tags append `/python/vX.Y.Z` and `/typescript/vX.Y.Z` to the connector directory.
 - Release each language SDK before connectors that require it. New npm packages use the CI token for first publish; existing packages use trusted publishing when configured.
 - Connector modules require an exact published Connector Go SDK release.
@@ -219,7 +223,7 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
 - Test every module with `GOWORK=off` before release.
 - Connector releases run automatically after merge to `main`; manual runs only
   repair incomplete releases or catalog deployment.
-- A release candidate `<connector directory>/vX.Y.Z-rc.N` publishes one
+- A Go release candidate `<connector directory>/go/vX.Y.Z-rc.N` publishes one
   connector from a commit that is not on `main` through the `Release Connector
   Candidate` workflow. The commit changes only that connector's directory (a new
   connector also its catalog entry and company logo), and `vX.Y.Z` is its

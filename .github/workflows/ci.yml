@@ -259,7 +259,7 @@ jobs:
           cache: true
           cache-dependency-path: |
             go.sum
-            connectors/**/go.sum
+            connectors/**/go/go.sum
       - uses: actions/setup-node@v6
         with:
           node-version: 24
@@ -284,14 +284,14 @@ jobs:
           cache-dependency-path: |
             go.sum
             sdkgo/go.sum
-            connectors/**/go.sum
+            connectors/**/go/go.sum
       - name: Generate the ignored go.work
         run: make workspace
       - name: Test connectors that require other connectors against workspace source
         run: |
           failed=false
           while IFS= read -r manifest; do
-            module="${manifest%/connector.yaml}"
+            module="${manifest%/connector.yaml}/go"
             if ! go mod edit -json "${module}/go.mod" | jq -e \
               --arg prefix github.com/superdurable/dex-connectors-library/connectors/ \
               'any(.Require[]?; .Path | startswith($prefix))' > /dev/null; then
@@ -370,7 +370,7 @@ jobs:
           cache: true
           cache-dependency-path: |
             go.sum
-            connectors/**/go.sum
+            connectors/**/go/go.sum
       - name: Download Dex CLI
         run: |
           python3 script/dex_compatibility.py install-dexcli --output ./dexcli
@@ -474,7 +474,7 @@ jobs:
           cache-dependency-path: |
             go.sum
             sdkgo/go.sum
-            connectors/**/go.sum
+            connectors/**/go/go.sum
       - name: Build and vet the Connector SDK and affected connectors with the latest stable Dex Go SDK
         run: make test-dex-compat-latest-go-sdk
 

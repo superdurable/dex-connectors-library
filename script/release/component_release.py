@@ -64,7 +64,7 @@ class DependencyReleaseLookup:
             raise ValueError(f"main branch ref is missing: {self.main_ref}; fetch it or pass --main-ref")
         return git("merge-base", "--is-ancestor", tag, self.main_ref, check=False).returncode == 0
 
-    def release_asset_names(self, tag: str) -> frozenset[str]:
+    def release_asset_names(self, tag: str, allow_missing: bool = False) -> frozenset[str]:
         gh_binary = os.environ.get("GH_BIN", "gh")
         result = subprocess.run(
             (gh_binary, "release", "view", tag, "--json", "assets", "--jq", ".assets[].name"),
@@ -74,6 +74,8 @@ class DependencyReleaseLookup:
             stderr=subprocess.PIPE,
         )
         if result.returncode != 0:
+            if allow_missing and result.stderr.strip() == "release not found":
+                return frozenset()
             raise ValueError(f"cannot read the GitHub release for {tag}: {result.stderr.strip()}")
         return frozenset(line for line in result.stdout.splitlines() if line)
 
@@ -219,20 +221,24 @@ def validate_npm_publish_manifest(package_json: Path, manifest: dict[str, object
 
 
 def reachable_tags(tag_prefix: str) -> list[tuple[tuple[int, int, int], str, str]]:
-    result = git(
-        "for-each-ref",
-        "--merged=HEAD",
-        "--format=%(refname:short)",
-        f"refs/tags/{tag_prefix}*",
-    )
+    prefixes = [tag_prefix]
+    if tag_prefix.startswith("connectors/") and tag_prefix.endswith("/go/"):
+        prefixes.append(tag_prefix.removesuffix("go/"))
     candidates: list[tuple[tuple[int, int, int], str, str]] = []
-    for tag in result.stdout.splitlines():
-        version = tag.removeprefix(tag_prefix)
-        try:
-            key = parse_version(version)
-        except ValueError:
-            continue
-        candidates.append((key, tag, version))
+    for prefix in prefixes:
+        result = git(
+            "for-each-ref",
+            "--merged=HEAD",
+            "--format=%(refname:short)",
+            f"refs/tags/{prefix}*",
+        )
+        for tag in result.stdout.splitlines():
+            version = tag.removeprefix(prefix)
+            try:
+                key = parse_version(version)
+            except ValueError:
+                continue
+            candidates.append((key, tag, version))
     return sorted(candidates)
 
 
@@ -247,6 +253,8 @@ def latest_reachable_tag(tag_prefix: str) -> tuple[str, str]:
 def component_commits(component_path: str, baseline_tag: str, release_ref: str = "HEAD") -> tuple[str, ...]:
     revision = f"{baseline_tag}..{release_ref}" if baseline_tag else release_ref
     paths = [component_path]
+    if component_path.startswith("connectors/") and component_path.endswith("/go"):
+        paths.append(str(Path(component_path).parent))
     if component_path.startswith("connectors/") and component_path.endswith(("/python", "/typescript")):
         paths.append(str(Path(component_path).parent / "connector.yaml"))
     result = git(
@@ -354,6 +362,7 @@ def associated_pull_request(repository: str, commit: str) -> dict[str, object] |
 def release_notes(plan: ReleasePlan, repository: str) -> tuple[str, bool]:
     breaking: list[str] = []
     changes: list[str] = []
+    entries: dict[str, tuple[str, bool]] = {}
     for commit in plan.commits:
         message = commit_message(commit)
         pull = associated_pull_request(repository, commit) if repository else None
@@ -371,7 +380,15 @@ def release_notes(plan: ReleasePlan, repository: str) -> tuple[str, bool]:
         is_breaking = "(breaking)" in title or "(breaking)" in body or "(breaking)" in message
         clean_title = title.replace("(breaking)", "").strip()
         entry = f"- [{clean_title}]({url}){author}"
+        key = url if pull is not None and url else commit
+        previous = entries.get(key)
+        entries[key] = (entry, is_breaking or (previous[1] if previous else False))
+    for entry, is_breaking in entries.values():
         (breaking if is_breaking else changes).append(entry)
+    if (plan.component_path.startswith("connectors/") and plan.component_path.endswith("/go")
+            and plan.baseline_tag == str(Path(plan.component_path).parent) + "/" + plan.baseline_version):
+        previous_module = f"{LIBRARY_MODULE_PATH}/{Path(plan.component_path).parent.as_posix()}"
+        breaking.insert(0, f"- Moved from `{previous_module}` to `{plan.module_path}`.")
     sections = ["## Breaking Changes", "", *(breaking or ["None."]), "", "## Changes", "", *(changes or ["None."]), ""]
     return "\n".join(sections), bool(breaking)
 
@@ -382,7 +399,14 @@ def validate_breaking_bump(plan: ReleasePlan, has_breaking_changes: bool) -> Non
     baseline_major = parse_version(plan.baseline_version)[0] if plan.baseline_version else 0
     if baseline_major == 0 and plan.bump == "patch":
         raise ValueError("a v0 breaking release cannot use a patch bump")
-    if baseline_major >= 1 and plan.bump != "major":
+    is_go_module_migration = (
+        plan.component_path.startswith("connectors/")
+        and plan.component_path.endswith("/go")
+        and plan.baseline_tag == str(Path(plan.component_path).parent) + "/" + plan.baseline_version
+        and plan.bump == "minor"
+        and plan.version == next_version(plan.baseline_version, "minor")
+    )
+    if baseline_major >= 1 and plan.bump != "major" and not is_go_module_migration:
         raise ValueError("a v1+ breaking release requires a major bump")
 
 
@@ -546,7 +570,7 @@ def verify_packaged_connector_manifest(contents: bytes, language: str, package: 
             identity.get("name") != package or identity.get("version") != version:
         raise ValueError(f"dex-connector.json package identity must equal {expected_ecosystem}:{package}@{version}")
     release_tag = document.get("releaseTag")
-    match = re.fullmatch(r"connectors/([a-z0-9-]+(?:/[a-z0-9-]+)*)/v[0-9]+\.[0-9]+\.[0-9]+", release_tag) \
+    match = re.fullmatch(r"connectors/([a-z0-9-]+(?:/[a-z0-9-]+)*)/go/v[0-9]+\.[0-9]+\.[0-9]+", release_tag) \
         if isinstance(release_tag, str) else None
     if match is None:
         raise ValueError("dex-connector.json releaseTag must name a stable Go connector release")
@@ -637,7 +661,8 @@ def verify_pypi_artifacts_once(
 
 
 def validate_language_package(
-    component_path: str, language: str, lookup: DependencyReleaseLookup, require_go_release: bool = True
+    component_path: str, language: str, lookup: DependencyReleaseLookup, require_go_release: bool = True,
+    allow_pending_go_release: bool = False,
 ) -> str:
     """Require a registry-ready package with an exact, released SDK dependency."""
     path = Path(component_path)
@@ -681,12 +706,13 @@ def validate_language_package(
         raise ValueError(f"required SDK GitHub release is missing: {tag}")
     if not lookup.is_language_sdk_published(language, sdk_versions[0]):
         raise ValueError(f"required SDK version is not published in the registry: {tag}")
-    validate_language_connector_release(path, language, lookup, require_go_release)
+    validate_language_connector_release(path, language, lookup, require_go_release, allow_pending_go_release)
     return tag
 
 
 def validate_language_connector_release(
-    path: Path, language: str, lookup: DependencyReleaseLookup, require_completed_release: bool = True
+    path: Path, language: str, lookup: DependencyReleaseLookup, require_completed_release: bool = True,
+    allow_pending_go_release: bool = False,
 ) -> None:
     connector_manifest_path = language_connector_manifest_path(path, language)
     if not connector_manifest_path.is_file():
@@ -701,20 +727,31 @@ def validate_language_connector_release(
     release_tag = document.get("releaseTag") if isinstance(document, dict) else None
     connector_path = "/".join(path.parts[path.parts.index("connectors") + 1:-1])
     if not isinstance(release_tag, str) or not re.fullmatch(
-        r"connectors/" + re.escape(connector_path) + r"/v[0-9]+\.[0-9]+\.[0-9]+", release_tag
+        r"connectors/" + re.escape(connector_path) + r"/go/v[0-9]+\.[0-9]+\.[0-9]+", release_tag
     ):
         raise ValueError(f"{connector_manifest_path} releaseTag must name its Go connector release")
     source_manifest = path.parent / "connector.yaml"
     if not source_manifest.is_file():
         raise ValueError(f"{path} requires {source_manifest}")
     validate_language_capability_coverage(source_manifest, language, document)
+    if allow_pending_go_release:
+        version_match = re.search(r"(?m)^  version: (v[0-9]+\.[0-9]+\.[0-9]+)$",
+                                  source_manifest.read_text(encoding="utf-8"))
+        if version_match is None or not VERSION_PATTERN.fullmatch(version_match.group(1)):
+            raise ValueError(f"{source_manifest} has no stable metadata.version")
+        expected_tag = f"connectors/{connector_path}/go/{version_match.group(1)}"
+        if release_tag != expected_tag:
+            raise ValueError(f"{connector_manifest_path} releaseTag must equal current Go connector tag {expected_tag}")
     if not require_completed_release:
         return
     if not lookup.has_tag(release_tag):
+        if allow_pending_go_release:
+            return
         raise ValueError(f"required Go connector release tag is missing: {release_tag}")
     if not lookup.is_tag_reachable_from_main(release_tag):
         raise ValueError(f"required Go connector release is not reachable from main: {release_tag}")
-    if CONNECTOR_RELEASE_COMPLETE_ASSET not in lookup.release_asset_names(release_tag):
+    assets = lookup.release_asset_names(release_tag, allow_missing=True) if allow_pending_go_release else lookup.release_asset_names(release_tag)
+    if CONNECTOR_RELEASE_COMPLETE_ASSET not in assets and not allow_pending_go_release:
         raise ValueError(f"required Go connector release is incomplete: {release_tag} has no {CONNECTOR_RELEASE_COMPLETE_ASSET} asset")
 
 
@@ -915,7 +952,9 @@ def main() -> int:
     language_validate_parser.add_argument("--component-path", required=True)
     language_validate_parser.add_argument("--language", choices=("python", "typescript"), required=True)
     language_validate_parser.add_argument("--main-ref", default="origin/main")
-    language_validate_parser.add_argument("--dry-run", action="store_true")
+    language_validate_mode = language_validate_parser.add_mutually_exclusive_group()
+    language_validate_mode.add_argument("--dry-run", action="store_true")
+    language_validate_mode.add_argument("--allow-pending-go-release", action="store_true")
     candidate_manifest_parser = subparsers.add_parser("stamp-language-candidate-manifest")
     candidate_manifest_parser.add_argument("--component-path", type=Path, required=True)
     candidate_manifest_parser.add_argument("--language", choices=("python", "typescript"), required=True)
@@ -969,7 +1008,8 @@ def main() -> int:
                                   arguments.wait_seconds)
         elif arguments.command == "validate-language-package":
             print(validate_language_package(arguments.component_path, arguments.language,
-                                            DependencyReleaseLookup(arguments.main_ref), not arguments.dry_run))
+                                            DependencyReleaseLookup(arguments.main_ref), not arguments.dry_run,
+                                            arguments.allow_pending_go_release))
         elif arguments.command == "stamp-language-candidate-manifest":
             stamp_language_candidate_connector_manifest(arguments.component_path, arguments.language,
                                                         arguments.version)

@@ -161,7 +161,7 @@ func staleLanguageManifestFiles(manifestPath string, generated map[string][]byte
 }
 
 func connectorReleaseTag(connectorDirectory, version string) string {
-	return connectorDirectory + "/" + version
+	return connectorDirectory + "/go/" + version
 }
 
 func lowerCamelToSnake(name string) string {

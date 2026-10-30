@@ -29,9 +29,9 @@ test-conformance:
 test-connectors:
 	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))"; \
 	for module in $$directories; do \
-		python3 script/release/component_release.py validate-connector --component-path "$$module" \
+		python3 script/release/component_release.py validate-connector --component-path "$$module/go" \
 			--sdk-module github.com/superdurable/dex-connectors-library/sdkgo || exit 1; \
-		(cd "$$module" && GOWORK=off go test -race ./... && GOWORK=off go vet ./...) || exit 1; \
+		(cd "$$module/go" && GOWORK=off go test -race ./... && GOWORK=off go vet ./...) || exit 1; \
 		GOWORK=off go run ./cmd/connectorctl validate "$$module/connector.yaml" || exit 1; \
 		GOWORK=off go run ./cmd/connectorctl generate --check "$$module/connector.yaml" || exit 1; \
 	done
@@ -50,7 +50,7 @@ test-python-connectors:
 	for module in $$directories; do \
 		if [ ! -f "$$module/python/pyproject.toml" ]; then continue; fi; \
 		test -f "$$module/python/uv.lock" || { echo "$$module/python/uv.lock is missing" >&2; exit 1; }; \
-		python3 script/release/component_release.py validate-language-package --component-path "$$module/python" --language python || exit 1; \
+		python3 script/release/component_release.py validate-language-package --component-path "$$module/python" --language python --allow-pending-go-release || exit 1; \
 		uv sync --locked --project "$$module/python" && uv run --project "$$module/python" ruff check "$$module/python" && \
 		uv run --project "$$module/python" mypy --strict "$$module/python/src" && uv run --project "$$module/python" pytest "$$module/python/tests" || exit 1; \
 	done
@@ -60,7 +60,7 @@ test-typescript-connectors:
 	for module in $$directories; do \
 		if [ ! -f "$$module/typescript/package.json" ]; then continue; fi; \
 		test -f "$$module/typescript/package-lock.json" || { echo "$$module/typescript/package-lock.json is missing" >&2; exit 1; }; \
-		python3 script/release/component_release.py validate-language-package --component-path "$$module/typescript" --language typescript || exit 1; \
+		python3 script/release/component_release.py validate-language-package --component-path "$$module/typescript" --language typescript --allow-pending-go-release || exit 1; \
 		npm ci --prefix "$$module/typescript" && npm run typecheck --prefix "$$module/typescript" && \
 		npm run lint --prefix "$$module/typescript" && npm test --prefix "$$module/typescript" || exit 1; \
 	done
@@ -81,7 +81,7 @@ test-sdk-integration:
 test-connector-integration:
 	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))"; \
 	for module in $$directories; do \
-		(cd "$$module" && GOWORK=off go test -p 1 -tags=integration ./... -count=1 -v) || exit 1; \
+		(cd "$$module/go" && GOWORK=off go test -p 1 -tags=integration ./... -count=1 -v) || exit 1; \
 	done
 
 test-dex-compat-current:

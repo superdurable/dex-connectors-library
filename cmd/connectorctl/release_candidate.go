@@ -135,10 +135,10 @@ func planConnectorReleaseCandidateLanguage(catalogPath, candidateRoot, directory
 		return connectorReleaseCandidate{}, fmt.Errorf("candidate does not register %s in catalog.yaml", directory)
 	}
 	declaredVersion := entry.Manifest.Metadata.Version
-	componentDirectory := directory
+	componentDirectory := directory + "/go"
 	packageName := ""
 	if language != "" {
-		componentDirectory += "/" + language
+		componentDirectory = directory + "/" + language
 		if entry.Manifest.Spec.Languages == nil {
 			return connectorReleaseCandidate{}, fmt.Errorf("%s does not declare %s", entry.ManifestPath, language)
 		}
@@ -168,6 +168,11 @@ func planConnectorReleaseCandidateLanguage(catalogPath, candidateRoot, directory
 	}
 	if !isPending {
 		return connectorReleaseCandidate{}, fmt.Errorf("%s %s is already released", componentDirectory, releaseVersion)
+	}
+	if language == "" {
+		if err := validateGoMigrationVersion(directory, latestReleases[componentDirectory], releaseVersion); err != nil {
+			return connectorReleaseCandidate{}, err
+		}
 	}
 	if err := validateConnectionCompatibility(repositoryRoot, *entry, latestReleases[componentDirectory], releaseVersion); err != nil {
 		return connectorReleaseCandidate{}, err

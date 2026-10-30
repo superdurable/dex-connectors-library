@@ -59,9 +59,11 @@ class OfflineDependencyReleaseLookup(release.DependencyReleaseLookup):
         self.release_lookups: list[str] = []
         self.downloads: list[tuple[str, str]] = []
 
-    def release_asset_names(self, tag: str) -> frozenset[str]:
+    def release_asset_names(self, tag: str, allow_missing: bool = False) -> frozenset[str]:
         self.release_lookups.append(tag)
         if tag not in self.assets_by_tag:
+            if allow_missing:
+                return frozenset()
             raise ValueError(f"cannot read the GitHub release for {tag}: release not found")
         return self.assets_by_tag[tag]
 
@@ -274,6 +276,10 @@ class ComponentReleaseTest(unittest.TestCase):
         self.assertIn("validation_args+=(--dry-run)", build_job)
         self.assertIn("needs: [plan, release, build-language]", publish_job)
         self.assertIn("needs.build-language.result == 'success'", publish_job)
+        makefile = (Path(__file__).resolve().parents[2] / "Makefile").read_text(encoding="utf-8")
+        self.assertIn('--language python --allow-pending-go-release', makefile)
+        self.assertIn('--language typescript --allow-pending-go-release', makefile)
+        self.assertNotIn('--allow-pending-go-release', build_job)
 
     def test_publish_language_rejects_build_skip_without_complete_release(self) -> None:
         workflow = (Path(__file__).resolve().parents[2] / ".github/workflows/release-connector.yml").read_text(
@@ -533,6 +539,90 @@ class ComponentReleaseTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "declared operations differ"):
                 release.validate_language_connector_release(package, "typescript", lookup)
 
+    @mock.patch.object(release, "read_declared_language_capabilities", return_value=(set(), set()))
+    def test_language_ci_accepts_only_current_pending_go_release(self, _capabilities: mock.Mock) -> None:
+        for language in ("python", "typescript"):
+            with self.subTest(language=language):
+                package = self.repository / "connectors/newsapi" / language
+                package.mkdir(parents=True, exist_ok=True)
+                (package.parent / "connector.yaml").write_text("metadata:\n  version: v0.23.0\n", encoding="utf-8")
+                if language == "python":
+                    (package / "pyproject.toml").write_text(
+                        '[project]\nname = "dex-connector-newsapi"\nversion = "0.1.0"\n'
+                        'dependencies = ["dex-connectors-sdk>=0.1.0"]\n', encoding="utf-8")
+                    sdk_tag = "sdkpython/v0.1.0"
+                    package_name = "dex-connector-newsapi"
+                    ecosystem = "pypi"
+                else:
+                    (package / "package.json").write_text(json.dumps({
+                        "name": "@superdurable/connector-newsapi", "version": "0.1.0",
+                        "repository": {"type": "git", "url": NPM_REPOSITORY_URL,
+                                       "directory": "connectors/newsapi/typescript"},
+                        "dependencies": {"@superdurable/connectors-sdk": "0.1.0"},
+                    }), encoding="utf-8")
+                    sdk_tag = "sdkts/v0.1.0"
+                    package_name = "@superdurable/connector-newsapi"
+                    ecosystem = "npm"
+                connector_manifest = release.language_connector_manifest_path(package, language)
+                connector_manifest.parent.mkdir(parents=True, exist_ok=True)
+                document = {"releaseTag": "connectors/newsapi/go/v0.23.0",
+                            "package": {"ecosystem": ecosystem, "name": package_name, "version": "0.1.0"},
+                            "factories": []}
+                connector_manifest.write_text(json.dumps(document), encoding="utf-8")
+                lookup = mock.Mock(spec=release.DependencyReleaseLookup)
+                lookup.has_tag.side_effect = lambda tag: tag == sdk_tag
+                lookup.is_tag_reachable_from_main.return_value = True
+                lookup.release_asset_names.side_effect = lambda tag, allow_missing=False: (
+                    frozenset({"language-release.json"}) if tag == sdk_tag else frozenset()
+                )
+                lookup.is_language_sdk_published.return_value = True
+
+                self.assertEqual(release.validate_language_package(str(package), language, lookup,
+                                                                    allow_pending_go_release=True), sdk_tag)
+                with self.assertRaisesRegex(ValueError, "Go connector release tag is missing"):
+                    release.validate_language_package(str(package), language, lookup)
+
+                lookup.has_tag.side_effect = lambda tag: True
+                self.assertEqual(release.validate_language_package(str(package), language, lookup,
+                                                                    allow_pending_go_release=True), sdk_tag)
+                with self.assertRaisesRegex(ValueError, "connector-release.complete"):
+                    release.validate_language_package(str(package), language, lookup)
+
+                lookup.release_asset_names.side_effect = lambda tag, allow_missing=False: (
+                    frozenset({"language-release.json"}) if tag == sdk_tag
+                    else frozenset({"connector-release.complete"})
+                )
+                self.assertEqual(release.validate_language_package(str(package), language, lookup), sdk_tag)
+                lookup.is_tag_reachable_from_main.side_effect = lambda tag: tag == sdk_tag
+                with self.assertRaisesRegex(ValueError, "not reachable from main"):
+                    release.validate_language_package(str(package), language, lookup,
+                                                      allow_pending_go_release=True)
+                lookup.is_tag_reachable_from_main.side_effect = None
+                lookup.is_tag_reachable_from_main.return_value = True
+
+                document["releaseTag"] = "connectors/newsapi/go/v0.22.0"
+                connector_manifest.write_text(json.dumps(document), encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "must equal current Go connector tag"):
+                    release.validate_language_package(str(package), language, lookup,
+                                                      allow_pending_go_release=True)
+                document["releaseTag"] = "connectors/other/go/v0.23.0"
+                connector_manifest.write_text(json.dumps(document), encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "must name its Go connector release"):
+                    release.validate_language_package(str(package), language, lookup,
+                                                      allow_pending_go_release=True)
+
+    def test_missing_release_lookup_is_allowed_only_in_pending_mode(self) -> None:
+        lookup = release.DependencyReleaseLookup("origin/main")
+        missing = subprocess.CompletedProcess([], 1, stdout="", stderr="release not found\n")
+        with mock.patch.object(release.subprocess, "run", return_value=missing):
+            self.assertEqual(lookup.release_asset_names("connectors/newsapi/go/v0.23.0", allow_missing=True), frozenset())
+            with self.assertRaisesRegex(ValueError, "cannot read the GitHub release"):
+                lookup.release_asset_names("connectors/newsapi/go/v0.23.0")
+        denied = subprocess.CompletedProcess([], 1, stdout="", stderr="HTTP 403\n")
+        with mock.patch.object(release.subprocess, "run", return_value=denied):
+            with self.assertRaisesRegex(ValueError, "HTTP 403"):
+                lookup.release_asset_names("connectors/newsapi/go/v0.23.0", allow_missing=True)
+
     def test_language_capability_coverage_rejects_missing_factories_and_triggers(self) -> None:
         source_manifest = self.repository / "connector.yaml"
         source_manifest.write_text("apiVersion: connectors.dex.dev/v1alpha1\n", encoding="utf-8")
@@ -730,6 +820,21 @@ class ComponentReleaseTest(unittest.TestCase):
         self.assertIn("## Breaking Changes", notes)
         with self.assertRaisesRegex(ValueError, "cannot use a patch"):
             release.validate_breaking_bump(plan, breaking)
+
+    def test_release_notes_include_each_pull_request_once(self) -> None:
+        plan = release.ReleasePlan(
+            component_path="sdkgo", module_path=SDK_MODULE, baseline_tag="", baseline_version="",
+            bump="minor", version="v0.2.0", tag="sdkgo/v0.2.0", source_sha="latest",
+            commits=("first", "second", "third"),
+        )
+        pull = {"title": "tooling: move Go connector modules", "body": "", "html_url": "https://github.com/superdurable/dex-connectors-library/pull/369",
+                "user": {"login": "longquanzheng"}}
+        with mock.patch.object(release, "associated_pull_request", return_value=pull), \
+                mock.patch.object(release, "commit_message", side_effect=("first change", "second change", "third change (breaking)")):
+            notes, is_breaking = release.release_notes(plan, "superdurable/dex-connectors-library")
+        self.assertTrue(is_breaking)
+        self.assertEqual(notes.count("/pull/369"), 1)
+        self.assertIn("## Breaking Changes\n\n- [tooling: move Go connector modules]", notes)
 
     def test_release_ref_must_be_main(self) -> None:
         release.validate_release_ref("refs/heads/main")

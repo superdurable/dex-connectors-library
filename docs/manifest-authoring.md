@@ -9,7 +9,7 @@ after merge; leaving it unchanged explicitly defers release. See
 Optional `spec.languages.python` and `spec.languages.typescript` entries each
 require a stable `vX.Y.Z` version and explicit `operations` and `triggers`
 name lists; they may specify a distribution `package`
-override. Go remains implied by `go.mod` and `metadata.version`. The Python
+override. Go remains implied by `go/go.mod` and `metadata.version`. The Python
 package lives in `python/` and declares its matching name and version under
 `[project]` in `pyproject.toml`; the TypeScript package lives in
 `typescript/` and declares them in `package.json`. By default their package
@@ -58,7 +58,7 @@ beside the built code. Inspect both archives before publishing; release
 validation rejects missing or misplaced files.
 
 The manifest's `releaseTag` is the **Go connector release tag**
-`connectors/<connector-directory>/<metadata.version>`. Dex Web reads that
+`connectors/<connector-directory>/go/<metadata.version>`. Dex Web reads that
 release's `connector-release.json` and UI assets for Connections. The `package`
 object separately records the PyPI or npm package name and its own version.
 Before a language package is published, release validation requires that Go tag
@@ -359,7 +359,7 @@ go run ./cmd/connectorctl generate connectors/openai/connector.yaml
 go run ./cmd/connectorctl generate --check connectors/openai/connector.yaml
 ```
 
-Adding a connector also requires its own `go.mod`, README, generated file, and
+Adding a connector also requires its own `go/go.mod`, README, generated file under `go/`, and
 tests. Add its repository-relative directory to the sorted root `catalog.yaml`.
 That membership entry is the only shared inventory change. Its README owns the
 provider architecture, security boundary, runnable examples, and verification.
@@ -373,7 +373,7 @@ go run ./cmd/connectorctl catalog --catalog catalog.yaml --output dist/pages/cat
 ```
 
 CI rejects unregistered, missing, unsafe, or symlinked connector paths.
-Connector `go.mod` files must require an already-published SDK release and
+Connector `go/go.mod` files must require an already-published SDK release and
 cannot contain `replace`, pseudo-version, branch, or commit dependencies. A
 required connector module must use a released, complete tag, and no other
 module from this repository may be required; see
