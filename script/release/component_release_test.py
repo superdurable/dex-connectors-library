@@ -13,7 +13,9 @@ import subprocess
 import sys
 import tempfile
 import tarfile
+import textwrap
 import unittest
+import urllib.error
 import zipfile
 from pathlib import Path
 from unittest import mock
@@ -27,6 +29,7 @@ SPEC.loader.exec_module(release)
 
 LIBRARY = "github.com/superdurable/dex-connectors-library"
 SDK_MODULE = f"{LIBRARY}/sdkgo"
+NPM_REPOSITORY_URL = "git+https://github.com/superdurable/dex-connectors-library.git"
 COMPLETE_RELEASE_ASSETS = frozenset(
     {"connector-release.json", "connector-release.json.sha256", "connector-release.complete"}
 )
@@ -171,9 +174,11 @@ class ComponentReleaseTest(unittest.TestCase):
         )
         type_script_package = self.repository / "connectors/newsapi/typescript"
         type_script_package.mkdir(parents=True)
-        (type_script_package / "package.json").write_text(
-            '{"name":"@superdurable/connector-newsapi","version":"0.1.0"}\n', encoding="utf-8"
-        )
+        (type_script_package / "package.json").write_text(json.dumps({
+            "name": "@superdurable/connector-newsapi", "version": "0.1.0",
+            "repository": {"type": "git", "url": NPM_REPOSITORY_URL,
+                           "directory": "connectors/newsapi/typescript"},
+        }), encoding="utf-8")
         self.commit("connector(newsapi): add language packages")
         self.enter_repository()
         python_plan = release.create_plan("connectors/newsapi/python", "connectors/newsapi/python/", target_version="v0.2.0")
@@ -216,6 +221,81 @@ class ComponentReleaseTest(unittest.TestCase):
         plan = release.create_plan("sdkpython", "sdkpython/", target_version="v0.1.0")
         self.assertEqual(plan.tag, "sdkpython/v0.1.0")
         self.assertEqual(plan.source_sha, original_sha)
+
+    def test_first_typescript_sdk_release_uses_declared_0_1_0(self) -> None:
+        package = self.repository / "sdkts"
+        package.mkdir()
+        (package / "package.json").write_text(json.dumps({
+            "name": "@superdurable/connectors-sdk", "version": "0.1.0",
+            "repository": {"type": "git", "url": NPM_REPOSITORY_URL, "directory": "sdkts"},
+        }), encoding="utf-8")
+        self.commit("sdkts: add SDK")
+        self.enter_repository()
+        plan = release.create_plan("sdkts", "sdkts/", bump="minor")
+        self.assertEqual(plan.version, "v0.1.0")
+        self.assertEqual(plan.tag, "sdkts/v0.1.0")
+        self.assertEqual(plan.module_path, "@superdurable/connectors-sdk")
+        self.assertEqual(self.git("tag", "--list", "sdkts/*"), "")
+
+    def test_typescript_release_rejects_private_package(self) -> None:
+        package = self.repository / "sdkts"
+        package.mkdir()
+        (package / "package.json").write_text(
+            '{"name":"@superdurable/connectors-sdk","version":"0.1.0","private":true}', encoding="utf-8"
+        )
+        self.commit("sdkts: add private SDK")
+        self.enter_repository()
+        with self.assertRaisesRegex(ValueError, "private and cannot be published"):
+            release.create_plan("sdkts", "sdkts/", bump="minor")
+
+    def test_typescript_release_plan_requires_matching_repository_for_provenance(self) -> None:
+        package = self.repository / "sdkts"
+        package.mkdir()
+        package_json = package / "package.json"
+        self.enter_repository()
+        for repository in (None, {"type": "git", "url": "git+https://github.com/other/repo.git",
+                                  "directory": "sdkts"},
+                           {"type": "git", "url": NPM_REPOSITORY_URL, "directory": "other"},
+                           {"type": "hg", "url": NPM_REPOSITORY_URL, "directory": "sdkts"}):
+            with self.subTest(repository=repository):
+                package_json.write_text(json.dumps({"name": "@superdurable/connectors-sdk", "version": "0.1.0",
+                                                    "repository": repository}), encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "repository must declare.*npm provenance"):
+                    release.create_plan("sdkts", "sdkts/", bump="minor")
+
+    def test_publish_language_rejects_build_skip_without_complete_release(self) -> None:
+        workflow = (Path(__file__).resolve().parents[2] / ".github/workflows/release-connector.yml").read_text(
+            encoding="utf-8"
+        )
+        publish_job = workflow.split("  publish-language:\n", 1)[1]
+        state_step = publish_job.split("      - name: Inspect language release state\n", 1)[1].split(
+            "      - name:", 1
+        )[0]
+        state_script = textwrap.dedent(state_step.split("        run: |\n", 1)[1])
+        runner_temp = self.repository / "runner"
+        (runner_temp / "language-work").mkdir(parents=True)
+        (runner_temp / "language-work/skip").touch()
+        fake_bin = self.repository / "bin"
+        fake_bin.mkdir()
+        fake_gh = fake_bin / "gh"
+        fake_gh.write_text("#!/bin/sh\nprintf '%s\\n' \"${RELEASE_ASSETS}\"\n", encoding="utf-8")
+        fake_gh.chmod(0o755)
+        github_output = self.repository / "github-output"
+        environment = dict(os.environ, RUNNER_TEMP=str(runner_temp), GITHUB_OUTPUT=str(github_output),
+                           TAG_PREFIX="connectors/newsapi/python/", RELEASE_VERSION="v0.1.0",
+                           GITHUB_SHA=self.git("rev-parse", "HEAD"))
+        environment["PATH"] = f"{fake_bin}{os.pathsep}{environment['PATH']}"
+        environment["RELEASE_ASSETS"] = "language-release.json"
+        failed = subprocess.run(("bash", "-e", "-o", "pipefail", "-c", state_script), cwd=self.repository,
+                                env=environment, capture_output=True, text=True, check=False)
+        self.assertNotEqual(failed.returncode, 0)
+        self.assertIn("without a completed release", failed.stderr)
+        self.assertFalse(github_output.exists())
+        environment["RELEASE_ASSETS"] = "language-release.complete"
+        complete = subprocess.run(("bash", "-e", "-o", "pipefail", "-c", state_script), cwd=self.repository,
+                                  env=environment, capture_output=True, text=True, check=False)
+        self.assertEqual(complete.returncode, 0, complete.stderr)
+        self.assertIn("release_required=false", github_output.read_text(encoding="utf-8"))
 
     def test_github_output_rejects_control_characters(self) -> None:
         plan = release.ReleasePlan("sdkpython", "dex-connectors-sdk\nunsafe=1", "", "", "minor",
@@ -312,6 +392,51 @@ class ComponentReleaseTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "different SHA256"):
                 release.verify_pypi_artifacts("dex-connector-newsapi", "v0.1.0", [artifact])
 
+    def test_pypi_post_publish_waits_for_404_then_verifies_digest(self) -> None:
+        artifact = self.repository / "dex_connectors_sdk-0.1.0.tar.gz"
+        artifact.write_bytes(b"first SDK release")
+        missing = urllib.error.HTTPError("https://pypi.org", 404, "Not Found", None, None)
+        self.addCleanup(missing.close)
+        published = io.BytesIO(json.dumps({"urls": [{"filename": artifact.name, "digests": {
+            "sha256": hashlib.sha256(artifact.read_bytes()).hexdigest()
+        }}]}).encode("utf-8"))
+        with mock.patch.object(release.urllib.request, "urlopen", side_effect=[missing, published]) as urlopen, \
+             mock.patch.object(release.time, "sleep") as sleep:
+            release.verify_pypi_artifacts("dex-connectors-sdk", "v0.1.0", [artifact], require_all=True,
+                                          wait_seconds=120)
+        self.assertEqual(urlopen.call_count, 2)
+        sleep.assert_called_once()
+
+    def test_pypi_post_publish_stops_at_visibility_deadline(self) -> None:
+        artifact = self.repository / "dex_connectors_sdk-0.1.0.tar.gz"
+        artifact.write_bytes(b"first SDK release")
+        missing = urllib.error.HTTPError("https://pypi.org", 404, "Not Found", None, None)
+        self.addCleanup(missing.close)
+        with mock.patch.object(release.urllib.request, "urlopen", side_effect=missing) as urlopen, \
+             mock.patch.object(release.time, "monotonic", side_effect=[100, 100, 101]), \
+             mock.patch.object(release.time, "sleep") as sleep:
+            with self.assertRaisesRegex(ValueError, "within 1s"):
+                release.verify_pypi_artifacts("dex-connectors-sdk", "v0.1.0", [artifact], require_all=True,
+                                              wait_seconds=1)
+        urlopen.assert_called_once()
+        sleep.assert_not_called()
+
+    def test_pypi_post_publish_retries_transient_lookup_failures(self) -> None:
+        artifact = self.repository / "dex_connectors_sdk-0.1.0.tar.gz"
+        artifact.write_bytes(b"first SDK release")
+        unavailable = urllib.error.HTTPError("https://pypi.org", 503, "Unavailable", None, None)
+        self.addCleanup(unavailable.close)
+        published = io.BytesIO(json.dumps({"urls": [{"filename": artifact.name, "digests": {
+            "sha256": hashlib.sha256(artifact.read_bytes()).hexdigest()
+        }}]}).encode("utf-8"))
+        with mock.patch.object(release.urllib.request, "urlopen", side_effect=[unavailable,
+             urllib.error.URLError("temporary connection failure"), TimeoutError("read timed out"), published]) as urlopen, \
+             mock.patch.object(release.time, "sleep") as sleep:
+            release.verify_pypi_artifacts("dex-connectors-sdk", "v0.1.0", [artifact], require_all=True,
+                                          wait_seconds=120)
+        self.assertEqual(urlopen.call_count, 4)
+        self.assertEqual(sleep.call_count, 3)
+
     def test_python_artifacts_reject_wrong_version(self) -> None:
         wheel = self.repository / "dex_connector_newsapi-0.1.0-py3-none-any.whl"
         with zipfile.ZipFile(wheel, "w") as archive:
@@ -348,9 +473,26 @@ class ComponentReleaseTest(unittest.TestCase):
         typescript_package.mkdir(parents=True)
         package_json = typescript_package / "package.json"
         for dependency in ("file:../../../sdkts", "workspace:*"):
-            package_json.write_text(json.dumps({"dependencies": {"@superdurable/connectors-sdk": dependency}}), encoding="utf-8")
+            package_json.write_text(json.dumps({
+                "repository": {"type": "git", "url": NPM_REPOSITORY_URL,
+                               "directory": "connectors/newsapi/typescript"},
+                "dependencies": {"@superdurable/connectors-sdk": dependency},
+            }), encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "path, file, git, or workspace"):
                 release.validate_language_package(str(typescript_package), "typescript", mock.Mock())
+
+    def test_typescript_connector_validator_requires_matching_repository(self) -> None:
+        package = self.repository / "connectors/newsapi/typescript"
+        package.mkdir(parents=True)
+        package_json = package / "package.json"
+        for repository in (None, {"type": "git", "url": NPM_REPOSITORY_URL, "directory": "sdkts"}):
+            with self.subTest(repository=repository):
+                package_json.write_text(json.dumps({
+                    "repository": repository,
+                    "dependencies": {"@superdurable/connectors-sdk": "0.1.0"},
+                }), encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "repository must declare.*npm provenance"):
+                    release.validate_language_package(str(package), "typescript", mock.Mock())
 
     def test_language_commits_include_shared_manifest_changes(self) -> None:
         package = self.repository / "connectors/newsapi/python"

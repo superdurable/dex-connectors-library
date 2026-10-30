@@ -76,6 +76,23 @@ class NpmPublishTest(unittest.TestCase):
         self.assertEqual(npm.call_args_list[3].kwargs["token"], "secret")
         self.assertIn("--provenance", npm.call_args_list[3].args)
 
+    def test_first_sdk_package_uses_token_after_both_registry_404s(self) -> None:
+        package = "@superdurable/connectors-sdk"
+        with tarfile.open(self.tarball, "w:gz") as archive:
+            package_json = b'{"name":"@superdurable/connectors-sdk","version":"0.1.0"}'
+            member = tarfile.TarInfo("package/package.json")
+            member.size = len(package_json)
+            archive.addfile(member, io.BytesIO(package_json))
+        with mock.patch.dict(os.environ, {"NPM_TOKEN": "secret"}), mock.patch.object(
+            publisher, "npm", side_effect=[npm_result(1, "E404"), npm_result(1, "E404"),
+                                          dry_run_result(package), npm_result(0)]
+        ) as npm:
+            publisher.publish(package, str(self.tarball), "v0.1.0")
+        self.assertEqual(npm.call_args_list[0].args[:3], ("view", f"{package}@0.1.0", "dist.integrity"))
+        self.assertEqual(npm.call_args_list[1].args[:2], ("view", package))
+        self.assertEqual(npm.call_args_list[3].kwargs["token"], "secret")
+        self.assertIn("--provenance", npm.call_args_list[3].args)
+
     def test_existing_package_falls_back_only_on_auth_failure(self) -> None:
         with mock.patch.dict(os.environ, {"NPM_TOKEN": "secret"}), mock.patch.object(
             publisher, "npm", side_effect=[npm_result(1, "E404"), npm_result(0), dry_run_result(), npm_result(1, "E401"), dry_run_result(), npm_result(0)]
@@ -120,6 +137,9 @@ class NpmPublishTest(unittest.TestCase):
 
     def test_unrelated_oidc_error_does_not_report_token_issue(self) -> None:
         self.assertFalse(publisher.is_auth_error(npm_result(1, "E403 provenance OIDC signature validation failed")))
+
+    def test_npm_publish_otp_failure_is_authentication_error(self) -> None:
+        self.assertTrue(publisher.is_auth_error(npm_result(1, "EOTP one-time password required")))
 
     def test_existing_release_label_is_not_modified(self) -> None:
         responses = [npm_result(0, stdout='[{"name":"area:release"}]'),

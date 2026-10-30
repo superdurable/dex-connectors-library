@@ -374,7 +374,7 @@ jobs:
             --package "${RELEASE_PACKAGE}" --version "${CANDIDATE_VERSION}" "${arguments[@]}"
           uv publish --check-url https://pypi.org/simple/ "${RUNNER_TEMP}"/language-dist/*.whl "${RUNNER_TEMP}"/language-dist/*.tar.gz
           python3 script/release/component_release.py verify-pypi-artifacts \
-            --package "${RELEASE_PACKAGE}" --version "${CANDIDATE_VERSION}" --require-all "${arguments[@]}"
+            --package "${RELEASE_PACKAGE}" --version "${CANDIDATE_VERSION}" --require-all --wait-seconds 120 "${arguments[@]}"
       - name: Publish npm pre-release
         if: steps.state.outputs.release_required == 'true' && needs.plan.outputs.language == 'typescript' && env.CANDIDATE_DRY_RUN != 'true'
         env:

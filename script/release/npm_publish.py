@@ -21,7 +21,7 @@ from component_release import npm_tarball_identity
 
 ISSUE_TITLE = "npm: NPM_TOKEN needs rotation"
 ROTATION_URL = "https://github.com/superdurable/dex-connectors-library/blob/main/docs/versioning-and-releases.md#npm-token-rotation"
-AUTH_ERRORS = ("E401", "ENEEDAUTH", "oidc token exchange failed", "failed to exchange oidc token", "invalid npm token", "token expired")
+AUTH_ERRORS = ("E401", "ENEEDAUTH", "EOTP", "invalid npm token", "token expired")
 
 
 def npm(*arguments: str, token: str = "") -> subprocess.CompletedProcess[str]:
