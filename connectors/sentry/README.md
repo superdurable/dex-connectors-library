@@ -1,9 +1,13 @@
 # Sentry connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/sentry/go@v0.2.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/sentry`.
+
 This Dex connector calls the public Sentry JSON API. Its
 manifest version is `v0.1.0`; the Go module requires connector SDK `v0.33.0`
     and Dex Go SDK `v1.5.0` or newer. The runnable
-[`issue-review` example](examples/issue-review/README.md) shows a
+[`issue-review` example](go/examples/issue-review/README.md) shows a
 complete Worker and the generated operation-specific Step factory.
 
 ## Operations
@@ -44,7 +48,7 @@ credentials never enter a Dex result, receipt, Stream, or log.
 
 `sentrymock.New(t, "mock")` binds the default manifest answers and the
 generated `zz_generated_mock_test.go` strictly decodes every fixture. The
-checked-in [`workflow_mock_integration_test.go`](examples/issue-review/flow/workflow_mock_integration_test.go)
+checked-in [`workflow_mock_integration_test.go`](go/examples/issue-review/flow/workflow_mock_integration_test.go)
 uses the same generated mock against a real Dex Worker in CI. Its start looks
 like this runnable source:
 

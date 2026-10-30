@@ -21,6 +21,7 @@ from script.dex_compatibility import (
     GO_VET_BUILD_TAG_SETS,
     GITHUB_REQUEST_ATTEMPTS,
     GITHUB_RATE_LIMIT_MAX_WAIT_SECONDS,
+    build_current_artifacts,
     connector_releases,
     create_module_proxy,
     dexcli_archive_name,
@@ -251,6 +252,37 @@ class ExampleConsumerNameTest(unittest.TestCase):
 
 
 class ConnectorSelectionTest(unittest.TestCase):
+    def test_current_artifact_uses_shared_connector_directory_and_go_module_identity(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            connector = root / "connectors/acme/mail"
+            go_module = connector / "go"
+            go_module.mkdir(parents=True)
+            (connector / "connector.yaml").write_text("metadata:\n  version: v0.2.0\n")
+            (go_module / "go.mod").write_text("module example.com/connectors/acme/mail/go\n")
+            output = root / "artifacts"
+            commands: list[list[str]] = []
+
+            def fake_run(command: list[str], directory: Path) -> subprocess.CompletedProcess[str]:
+                commands.append(command)
+                if command[:2] == ["git", "rev-parse"]:
+                    return subprocess.CompletedProcess(command, 0, stdout="abc\n")
+                artifact = Path(command[command.index("--output") + 1])
+                contents = b'{"connectorId":"acme","tag":"connectors/acme/mail/go/v0.2.0"}'
+                artifact.write_bytes(contents)
+                Path(command[command.index("--digest-output") + 1]).write_text(
+                    f"{hashlib.sha256(contents).hexdigest()}  connector-release.json\n"
+                )
+                return subprocess.CompletedProcess(command, 0, stdout="")
+
+            with patch("script.dex_compatibility.run", side_effect=fake_run):
+                build_current_artifacts(root, output, ["connectors/acme/mail"])
+
+            self.assertTrue((output / "connectors/acme/mail/connector-release.json").is_file())
+            self.assertFalse((output / "connectors/acme/mail/go").exists())
+            self.assertIn("example.com/connectors/acme/mail/go", commands[1])
+            self.assertIn("connectors/acme/mail/go/v0.2.0", commands[1])
+
     def test_selected_manifests_keep_requested_order(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -276,12 +308,12 @@ class ConnectorSelectionTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             for directory in ("connectors/acme/chat", "connectors/acme/mail"):
-                flow = root / directory / "examples" / "example" / "flow"
+                flow = root / directory / "go" / "examples" / "example" / "flow"
                 flow.mkdir(parents=True)
                 (flow / "flow.go").write_text("package flow\n\nfunc GetSteps() {}\n")
 
             self.assertEqual(
-                [root / "connectors/acme/mail/examples/example/flow"],
+                [root / "connectors/acme/mail/go/examples/example/flow"],
                 flow_examples(root, ["connectors/acme/mail"]),
             )
             self.assertEqual([], flow_examples(root, []))

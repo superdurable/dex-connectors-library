@@ -1,5 +1,9 @@
 # Trello Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/atlassian/trello/go@v0.23.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/atlassian/trello`.
+
 > **Verification status: partial live.** Only a dummy-credential request reached Trello, which rejected it; everything else ran on a real Dex stack against a local stand-in. No live Trello account was used. See
 > [verification status](../../../docs/verification-status.md) for what is and
 > is not verified.
@@ -87,7 +91,7 @@ unverified for it. It can be added later as a second method with
 Dex Web or Superverse Studio saves the connection's settings and credentials in
 the project configuration. The application loads that configuration once and
 opens the connection by the name it declares, as
-[`examples/approved-request-card/main.go`](examples/approved-request-card/main.go)
+[`examples/approved-request-card/main.go`](go/examples/approved-request-card/main.go)
 does:
 
 ```go
@@ -251,7 +255,7 @@ with the labels and due date exactly as with one
 request; `TestSlowMoveBackupAttemptLeavesTheSameCardWithRealDex` guards this.
 
 An application handles `uncertain` without creating again automatically; the
-[`approved-request-card`](examples/approved-request-card) example parks the
+[`approved-request-card`](go/examples/approved-request-card) example parks the
 create for an operator, who confirms the card found on the board or approves a
 new create.
 
@@ -302,7 +306,7 @@ exists, poll with `listCards` on the list or board.
 
 ## Example
 
-[`examples/approved-request-card`](examples/approved-request-card) turns an
+[`examples/approved-request-card`](go/examples/approved-request-card) turns an
 approved request into a card in the approved list: it pages through the board's
 open cards for one that already carries the request ID, moves an existing one or
 creates the card once, and comments with the approval. It uses all five
@@ -317,7 +321,7 @@ operation also has mocks for its definite `notFound`, `providerRejected`, or
 `invalidResponse` branches when declared. Retry and `uncertain` are scripted
 test cases rather than default fixtures.
 
-The real-Dex [mock example test](examples/approved-request-card/flow/workflow_mock_integration_test.go)
+The real-Dex [mock example test](go/examples/approved-request-card/flow/workflow_mock_integration_test.go)
 starts with these lines:
 
 ```go

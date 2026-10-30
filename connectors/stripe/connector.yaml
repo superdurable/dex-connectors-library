@@ -5,7 +5,7 @@ metadata:
   displayName: Stripe
   description: Create and reconcile hosted card or ACH Checkout Sessions, read PaymentIntents, refund payments, and receive signed Checkout Session events.
   company: Stripe
-  version: v0.24.2
+  version: v0.25.0
 spec:
   provider: stripe
   languages:

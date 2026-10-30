@@ -1,5 +1,7 @@
 # Microsoft SQL Server Connector
 
+Moved from `github.com/superdurable/dex-connectors-library/connectors/microsoft/sql-server`.
+
 > **Verification status: Dex-integrated, not live.** Verified on a real Dex stack against a
 > scripted TDS server; no live SQL Server, Azure SQL Database, or Azure SQL Managed Instance has
 > been exercised. See [verification status](../../../docs/verification-status.md) for what is and
@@ -88,7 +90,7 @@ driver's `MSSQL_USE_EPA` environment variable is ignored.
 Dex Web **Connections** saves `host`, `database`, `user`, and the other settings as ordinary
 connection configuration and `password` as the private credential. Load the project configuration
 once at application startup and open the connection by the name its operations use, as
-[`examples/record-refund/main.go`](examples/record-refund/main.go) does:
+[`examples/record-refund/main.go`](go/examples/record-refund/main.go) does:
 
 ```go
 project, err := projectconfig.LoadFromEnvironment(ctx)
@@ -295,7 +297,7 @@ because most statements finish in milliseconds, and sync durability would not re
 idempotency: a Worker lost after `COMMIT` still runs the Step execution again.
 
 The runnable example's write, from
-[`examples/record-refund/flow/workflow.go`](examples/record-refund/flow/workflow.go):
+[`examples/record-refund/flow/workflow.go`](go/examples/record-refund/flow/workflow.go):
 
 ```go
 InsertRefundStatement = "INSERT INTO dbo.refund_ledger (order_id, amount_usd, external_reference, idempotency_key)\n" +
@@ -368,7 +370,7 @@ and is treated as an authentication rejection. Any other error is `providerRejec
 
 ## Runnable example
 
-[`examples/record-refund`](examples/record-refund/README.md) records one refund in a ledger at most
+[`examples/record-refund`](go/examples/record-refund/README.md) records one refund in a ledger at most
 once. It uses `query` for the duplicate check and the read-back, and `execute` for the idempotent
 `INSERT ... OUTPUT`, and reconciles an uncertain `COMMIT`.
 
@@ -436,7 +438,7 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=live ./... -cou
 
 ## Mocks
 
-The `sqlservermock` default provides a committed refund row for order `88213` and a successful insert with one `OUTPUT` row. The named `raceLost` case returns six columns with zero rows after another Flow won the race. Named `rowLimit`, `missingTable`, and `duplicateKey` cases cover definite limits and rejections. The [record refund example](examples/record-refund/flow/workflow_mock_integration_test.go) scripts an empty first query with six columns and checks both the race-lost read-back and the default successful insert against a real Dex Worker.
+The `sqlservermock` default provides a committed refund row for order `88213` and a successful insert with one `OUTPUT` row. The named `raceLost` case returns six columns with zero rows after another Flow won the race. Named `rowLimit`, `missingTable`, and `duplicateKey` cases cover definite limits and rejections. The [record refund example](go/examples/record-refund/flow/workflow_mock_integration_test.go) scripts an empty first query with six columns and checks both the race-lost read-back and the default successful insert against a real Dex Worker.
 
 ```go
 mock := sqlservermock.New(t, ConnectionName)
@@ -449,4 +451,4 @@ mock.ExecuteStatement().Respond(sqlservermock.ExecuteStatementRaceLost())
 harness := startTestWorkerWithConnection(t, mock.Connection())
 ```
 
-Install this release with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/sql-server@v0.22.0`.
+Install this release with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/sql-server/go@v0.23.0`.

@@ -5,7 +5,7 @@ metadata:
   displayName: Gorgias
   description: "Search, read, create, and update Gorgias tickets, find customers by email, and add internal notes or public email replies, keeping Gorgias's own open and closed statuses and priorities; a retried create or message first looks for the earlier write by its external ID."
   company: Gorgias
-  version: v0.22.0
+  version: v0.23.0
 spec:
   provider: gorgias
   codegen:

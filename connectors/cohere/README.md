@@ -1,6 +1,10 @@
 # Cohere connector
 
-`github.com/superdurable/dex-connectors-library/connectors/cohere` exposes `embed` and `rerank` as Dex Query Steps using Cohere's public v2 JSON API. Calls use a connection-owned secret API key; the key stays out of URLs, Flow state, results, failures, and receipts.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/cohere/go@v0.2.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/cohere`.
+
+`github.com/superdurable/dex-connectors-library/connectors/cohere/go` exposes `embed` and `rerank` as Dex Query Steps using Cohere's public v2 JSON API. Calls use a connection-owned secret API key; the key stays out of URLs, Flow state, results, failures, and receipts.
 
 ## Connection
 
@@ -19,7 +23,7 @@ The generated `coheremock` package's `embed` default returns one three-dimension
 
 ## Example
 
-The runnable [search example](examples/cohere-search/README.md) registers a Worker and a Flow that calls both operations. CI runs its mock-backed real-Dex integration test; local unit tests verify deterministic mapping.
+The runnable [search example](go/examples/cohere-search/README.md) registers a Worker and a Flow that calls both operations. CI runs its mock-backed real-Dex integration test; local unit tests verify deterministic mapping.
 
 ## Live verification
 

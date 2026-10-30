@@ -5,7 +5,7 @@ metadata:
   displayName: NewsAPI
   description: Search recent news articles from the publishers NewsAPI indexes by keyword, title or body fields, sources, domains, language, and publication window.
   company: NewsAPI
-  version: v0.22.0
+  version: v0.23.0
 spec:
   provider: newsapi
   languages:

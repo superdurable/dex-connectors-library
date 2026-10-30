@@ -5,7 +5,7 @@ metadata:
   displayName: Re:amaze
   description: Search, read, create, and update Re:amaze conversations, add public replies or internal notes, and find contacts by email, keeping Re:amaze's own integer statuses.
   company: Re:amaze
-  version: v0.22.0
+  version: v0.23.0
 spec:
   provider: reamaze
   codegen:

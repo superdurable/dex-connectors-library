@@ -1,6 +1,10 @@
 # Bitbucket connector
 
-Read-only Dex Query Steps for Bitbucket. The module is `github.com/superdurable/dex-connectors-library/connectors/atlassian/bitbucket`. See the [runnable resource-read Flow](examples/resource-read/README.md).
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/atlassian/bitbucket/go@v0.2.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/atlassian/bitbucket`.
+
+Read-only Dex Query Steps for Bitbucket. The module is `github.com/superdurable/dex-connectors-library/connectors/atlassian/bitbucket/go`. See the [runnable resource-read Flow](go/examples/resource-read/README.md).
 
 ## Operations
 
@@ -32,7 +36,7 @@ Provider error text is never copied into a Failure. Responses are bounded and re
 
 ## Mocks
 
-The generated `bitbucketmock` package returns one realistic default per operation from `connector.yaml`. The [mock-backed real Dex test](examples/resource-read/flow/workflow_mock_integration_test.go) executes the example Flow through a Worker and checks its mapped input and branch.
+The generated `bitbucketmock` package returns one realistic default per operation from `connector.yaml`. The [mock-backed real Dex test](go/examples/resource-read/flow/workflow_mock_integration_test.go) executes the example Flow through a Worker and checks its mapped input and branch.
 
 ```go
 mock := bitbucketmock.New(t, resourceread.ConnectionName)

@@ -1,5 +1,9 @@
 # Confluence Cloud Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/atlassian/confluence/go@v0.24.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/atlassian/confluence`.
+
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Confluence; no live Atlassian site was used. See
 > [verification status](../../../docs/verification-status.md) for what is and
 > is not verified.
@@ -31,10 +35,10 @@ cannot subscribe to page events. Poll with `searchPages` instead.
 
 ## Mocks
 
-The generated [`confluencemock`](confluencemock) package models a Remote work
+The generated [`confluencemock`](go/confluencemock) package models a Remote work
 policy in OPS across search, create, read, update, and comment operations.
 Its search default has three cursor pages. Other cases cover missing pages,
-title and version conflicts, and permission denials. The [runnable integration test](examples/publish-policy/flow/workflow_mock_integration_test.go)
+title and version conflicts, and permission denials. The [runnable integration test](go/examples/publish-policy/flow/workflow_mock_integration_test.go)
 uses the example Flow:
 
 ```go
@@ -122,7 +126,7 @@ Worker's next Confluence call refreshes and persists it, and otherwise
 Dex Web or Superverse Studio saves the connection's settings and credentials in
 the project configuration. The application loads that configuration once and
 opens the connection by the name it declares, as
-[`examples/publish-policy/main.go`](examples/publish-policy/main.go) does:
+[`examples/publish-policy/main.go`](go/examples/publish-policy/main.go) does:
 
 ```go
 project, err := projectconfig.LoadFromEnvironment(ctx)

@@ -25,7 +25,7 @@ test("company directory is the first folder under connectors", () => {
 test("manifest URL uses the release tag and repository path", () => {
   assert.equal(
     connectorManifestUrl("connectors/github", "v0.5.0"),
-    "https://raw.githubusercontent.com/superdurable/dex-connectors-library/connectors/github/v0.5.0/connectors/github/connector.yaml",
+    "https://raw.githubusercontent.com/superdurable/dex-connectors-library/connectors/github/go/v0.5.0/connectors/github/connector.yaml",
   );
 });
 

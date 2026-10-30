@@ -5,7 +5,7 @@ metadata:
   displayName: OpenWeatherMap
   description: Read current weather and a five-day forecast by coordinates.
   company: OpenWeatherMap
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: openweathermap
   codegen:

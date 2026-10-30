@@ -5,7 +5,7 @@ metadata:
   displayName: QuickBooks Online
   description: "Find or create QuickBooks Online customers, raise invoices with exact decimal amounts, list and read them page by page, email them, and record payments against them, with every write sent under a QuickBooks requestid derived from the Step."
   company: Intuit
-  version: v0.23.0
+  version: v0.24.0
 spec:
   provider: quickbooks
   codegen:

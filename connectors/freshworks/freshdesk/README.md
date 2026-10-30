@@ -1,5 +1,9 @@
 # Freshdesk Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/freshworks/freshdesk/go@v0.23.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/freshworks/freshdesk`.
+
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Freshdesk; no live Freshdesk account was used. See
 > [verification status](../../../docs/verification-status.md) for what is and
 > is not verified.
@@ -55,7 +59,7 @@ configuration.
 
 Name the factory connection and open the same name from the project
 configuration at application startup, as
-[`examples/triage-issue/main.go`](examples/triage-issue/main.go) does:
+[`examples/triage-issue/main.go`](go/examples/triage-issue/main.go) does:
 
 ```go
 project, err := projectconfig.LoadFromEnvironment(ctx)
@@ -291,7 +295,7 @@ read and the write is overwritten for the fields this Step sets.
 
 ## Example
 
-[`examples/triage-issue`](examples/triage-issue) is a runnable Dex Web
+[`examples/triage-issue`](go/examples/triage-issue) is a runnable Dex Web
 **Start Flow** example that uses all five operations: it finds the customer's
 unresolved ticket about an issue or creates one, sets its priority, and adds
 one private triage note.

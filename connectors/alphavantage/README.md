@@ -1,6 +1,10 @@
 # Alpha Vantage connector
 
-This connector reads stock market data through Alpha Vantage's public REST API. The [demo Flow](examples/demo/README.md) calls `NewGetGlobalQuoteStep` with a static `alphavantage` connection.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/alphavantage/go@v0.2.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/alphavantage`.
+
+This connector reads stock market data through Alpha Vantage's public REST API. The [demo Flow](go/examples/demo/README.md) calls `NewGetGlobalQuoteStep` with a static `alphavantage` connection.
 
 ## Operations and official references
 

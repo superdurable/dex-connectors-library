@@ -5,7 +5,7 @@ metadata:
   displayName: LLM
   description: "The text generation connector for applications: one generateText Step runs a model of the provider that the connection names, including an OpenAI-compatible custom endpoint, with that provider's API key and its own model IDs."
   company: Super Durable
-  version: v0.24.1
+  version: v0.25.0
 spec:
   provider: llm
   codegen:

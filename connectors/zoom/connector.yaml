@@ -5,7 +5,7 @@ metadata:
   displayName: Zoom
   description: List, read, schedule, and reschedule the authorized user's Zoom meetings, and list who joined a past meeting.
   company: Zoom
-  version: v0.23.0
+  version: v0.24.0
 spec:
   provider: zoom
   codegen:

@@ -1,8 +1,12 @@
 # Todoist Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/doist/todoist/go@v0.4.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/doist/todoist`.
+
 List, read, create, update, and delete tasks through typed Dex Steps using the
 [Todoist API v1](https://developer.todoist.com/api/v1/).
-The module is `github.com/superdurable/dex-connectors-library/connectors/doist/todoist`;
+The module is `github.com/superdurable/dex-connectors-library/connectors/doist/todoist/go`;
 the connector ID and provider are `todoist`.
 
 | Factory | Kind | Input | Required branch | Optional branches |
@@ -13,7 +17,7 @@ the connector ID and provider are `todoist`.
 | `NewGetTaskStep` | Query | `GetTaskInput{TaskID}` | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
 | `NewUpdateTaskStep` | Mutation | `UpdateTaskInput{TaskID, Content?, Description?}` | `updated` | `notFound`, `providerRejected`, `defect` |
 
-The [CRUD Flow](examples/task-crud/flow/workflow.go) defaults to read-only listing.
+The [CRUD Flow](go/examples/task-crud/flow/workflow.go) defaults to read-only listing.
 Its explicit lifecycle mode creates its own task, reads it, updates specified fields,
 and reads back the confirmed update.
 Confirmed matching updates continue to paginated list verification, deletion,
@@ -214,7 +218,7 @@ reads between those transitions scripts the corresponding `getTask` answers,
 including the final `notFound`. Optional cases cover missing tasks and
 permission denials. See [connector mocks](../../../sdkgo/README.md#connector-mocks).
 
-The [runnable real-Dex test](examples/task-crud/flow/workflow_mock_integration_test.go)
+The [runnable real-Dex test](go/examples/task-crud/flow/workflow_mock_integration_test.go)
 scripts those reads and verifies that the Flow pages before deleting:
 
 ```go
@@ -247,6 +251,6 @@ after applied/unapplied 503 responses, an unusable update answer whose read-back
 finds no active task or is forbidden, retained Display RPCs,
 rejection, unwired failure branches, pagination, create request identity across
 rate-limit and 503 retries, and delete retry after an applied write. See the
-[CRUD example](examples/task-crud/README.md) and
-[CRUD and recovery example](examples/task-crud/README.md) for strict FDG generation,
+[CRUD example](go/examples/task-crud/README.md) and
+[CRUD and recovery example](go/examples/task-crud/README.md) for strict FDG generation,
 Worker startup, and opt-in live tests of the same checked-in Flows.

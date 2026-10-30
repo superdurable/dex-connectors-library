@@ -1,5 +1,9 @@
 # Microsoft Teams Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/teams/go@v0.24.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/microsoft/teams`.
+
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Microsoft Graph; no Microsoft tenant was used. See
 > [verification status](../../../docs/verification-status.md) for what is and
 > is not verified.
@@ -211,7 +215,7 @@ Dex Web saves the client ID and secret and, after Connect, the access and
 refresh tokens in encrypted project storage. Load the project configuration
 once at application startup and open the connection by the name its operations
 use, as
-[`examples/incident-acknowledgement/main.go`](examples/incident-acknowledgement/main.go)
+[`examples/incident-acknowledgement/main.go`](go/examples/incident-acknowledgement/main.go)
 does:
 
 ```go
@@ -231,7 +235,7 @@ panics at construction.
 
 ## Example
 
-[`examples/incident-acknowledgement`](examples/incident-acknowledgement) posts
+[`examples/incident-acknowledgement`](go/examples/incident-acknowledgement) posts
 an incident update, replies in its thread, reads the replies until a person
 acknowledges, and escalates to a chat when nobody does. It uses every
 operation and all three pickers.

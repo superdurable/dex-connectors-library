@@ -46,7 +46,7 @@ jobs:
           cache-dependency-path: |
             go.sum
             sdkgo/go.sum
-            connectors/**/go.sum
+            connectors/**/go/go.sum
       - uses: actions/setup-node@v6
         with:
           node-version: 24
@@ -97,7 +97,7 @@ jobs:
       DEX_CLI_RELEASE_TAG: ${{ needs.plan.outputs.dex_cli_tag }}
       DEX_CLI_ASSET_URL: ${{ needs.plan.outputs.dex_cli_asset_url }}
       DEX_CLI_SHA256: ${{ needs.plan.outputs.dex_cli_sha256 }}
-      COMPONENT_PATH: ${{ matrix.directory }}
+      COMPONENT_PATH: ${{ matrix.directory }}/go
       MANIFEST_PATH: ${{ matrix.manifest_path }}
       TAG_PREFIX: ${{ matrix.tag_prefix }}
       RELEASE_VERSION: ${{ matrix.version }}
@@ -114,7 +114,7 @@ jobs:
           cache-dependency-path: |
             go.sum
             sdkgo/go.sum
-            ${{ matrix.directory }}/go.sum
+            ${{ matrix.directory }}/go/go.sum
       - uses: actions/setup-node@v6
         with:
           node-version: 24
@@ -156,7 +156,7 @@ jobs:
         if: steps.state.outputs.release_required == 'true' && steps.state.outputs.source_sha == github.sha
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 script/dex_compatibility.py current --connector-directories "${COMPONENT_PATH}"
+        run: python3 script/dex_compatibility.py current --connector-directories "${{ matrix.directory }}"
       - name: Restore tagged release source for recovery
         if: steps.state.outputs.release_required == 'true' && steps.state.outputs.source_sha != github.sha
         env:
@@ -186,15 +186,15 @@ jobs:
       - name: Build and test Connector Studio UI
         if: steps.state.outputs.release_required == 'true'
         run: |
-          if [ -f "${COMPONENT_PATH}/ui/package-lock.json" ]; then
+          if [ -f "${{ matrix.directory }}/ui/package-lock.json" ]; then
             npm ci --prefix sdk/react
             npm run build --prefix sdk/react
-            npm ci --prefix "${COMPONENT_PATH}/ui"
-            npm test --prefix "${COMPONENT_PATH}/ui"
-            npm run build --prefix "${COMPONENT_PATH}/ui"
+            npm ci --prefix "${{ matrix.directory }}/ui"
+            npm test --prefix "${{ matrix.directory }}/ui"
+            npm run build --prefix "${{ matrix.directory }}/ui"
             go run ./cmd/connectorctl ui-artifact \
               --manifest "${MANIFEST_PATH}" \
-              --ui-root "${COMPONENT_PATH}/ui/dist" \
+              --ui-root "${{ matrix.directory }}/ui/dist" \
               --output /tmp/connector-ui.tgz \
               --digest-output /tmp/connector-ui.tgz.sha256
           fi

@@ -5,7 +5,7 @@ metadata:
   displayName: OAuth 2.0 HTTP
   description: "Call any HTTP API that an OAuth 2.0 authorization server protects, such as a Keycloak realm or an internal service: the connection names the server's endpoints and scopes, the host authorizes it with PKCE, and the connector refreshes the access token before it expires."
   company: Super Durable
-  version: v0.1.1
+  version: v0.2.0
 spec:
   provider: oauth2-http
   codegen:

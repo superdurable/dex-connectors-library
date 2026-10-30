@@ -1,5 +1,9 @@
 # Brevo connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/brevo/go@v0.2.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/brevo`.
+
 Brevo contact operations for Dex. The module uses Brevo's public v3 REST API and a secret API key. Its first release is `v0.1.0`.
 
 | Operation | Method | Result |
@@ -24,7 +28,7 @@ Sign in at [Brevo API keys](https://app.brevo.com/settings/keys/api), open **Set
 | Invalid local input or missing credentials | `defect` |
 | Transport failure, 408, 409, 429, or 5xx | Retry with Dex's default one-hour budget |
 
-Only the happy branch is wired in the [contact sync example](examples/contact-sync); selecting an optional branch fails its Flow. No `uncertain` branch is needed because contact creation or update is repeatable by email.
+Only the happy branch is wired in the [contact sync example](go/examples/contact-sync); selecting an optional branch fails its Flow. No `uncertain` branch is needed because contact creation or update is repeatable by email.
 
 ## Mocks
 

@@ -1,5 +1,9 @@
 # PostgreSQL Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/postgresql/go@v0.23.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/postgresql`.
+
 > **Verification status: live.** Verified against local PostgreSQL 17.11 with TLS on a real Dex stack; managed services such as RDS, Supabase, and Neon are not verified. See
 > [verification status](../../docs/verification-status.md) for what is and
 > is not verified.
@@ -27,7 +31,7 @@ existing refund for `order-88213`; its execute default records that order's
 Named cases cover truncation, a missing table, a write limit, and a duplicate
 order. See [`sdkgo/connectormock`](../../sdkgo/README.md#connector-mocks).
 
-The [runnable mock integration test](examples/record-refund/flow/workflow_mock_integration_test.go)
+The [runnable mock integration test](go/examples/record-refund/flow/workflow_mock_integration_test.go)
 uses these defaults on a real Dex Worker:
 
 ```go
@@ -83,7 +87,7 @@ cannot redirect or weaken a connection.
 
 Name the factory connection and open the same name from the project
 configuration at application startup, as
-[`examples/record-refund/main.go`](examples/record-refund/main.go) does:
+[`examples/record-refund/main.go`](go/examples/record-refund/main.go) does:
 
 ```go
 project, err := projectconfig.LoadFromEnvironment(ctx)
@@ -245,7 +249,7 @@ every write idempotent, and treat a statement that is not idempotent as a
 defect in the Flow.
 
 The runnable example's write, from
-[`examples/record-refund/flow/workflow.go`](examples/record-refund/flow/workflow.go):
+[`examples/record-refund/flow/workflow.go`](go/examples/record-refund/flow/workflow.go):
 
 ```go
 InsertRefundStatement = `INSERT INTO refund_ledger (order_id, amount_usd, external_reference, idempotency_key)
@@ -299,7 +303,7 @@ seconds.
 
 ## Runnable example
 
-[`examples/record-refund`](examples/record-refund/README.md) records one
+[`examples/record-refund`](go/examples/record-refund/README.md) records one
 refund in a ledger at most once. It uses `query` for the duplicate check and
 `execute` for the idempotent insert, and reconciles an uncertain `COMMIT`.
 

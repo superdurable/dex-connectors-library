@@ -1,5 +1,9 @@
 # LinkedIn Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/linkedin/go@v0.24.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/linkedin`.
+
 The LinkedIn connector reads the authenticated member's bounded OpenID Connect
 UserInfo claims for Customer Onboarding. It does not scrape LinkedIn pages and
 does not infer employment history, title, company, or a real-world identity.
@@ -40,7 +44,7 @@ UserInfo refusal, revoked authorization, a missing member, and a conclusive
 UserInfo rejection. They describe alternate connections; script a case when a
 test uses one of those conditions.
 
-The [runnable integration test](examples/authenticated-profile/flow/workflow_mock_integration_test.go)
+The [runnable integration test](go/examples/authenticated-profile/flow/workflow_mock_integration_test.go)
 runs the example Flow on a real Dex Worker without LinkedIn:
 
 ```go
@@ -63,10 +67,10 @@ See [`sdkgo/connectormock`](../../sdkgo/README.md#connector-mocks) for scripting
 
 ## Example
 
-[`examples/authenticated-profile`](examples/authenticated-profile) is a
+[`examples/authenticated-profile`](go/examples/authenticated-profile) is a
 runnable Dex Web **Start Flow** example that loads the authorized member's
 verified UserInfo profile. Its
-[`main.go`](examples/authenticated-profile/main.go) loads the project
+[`main.go`](go/examples/authenticated-profile/main.go) loads the project
 configuration that Dex Web or Superverse Studio writes and opens the
 connection by name:
 

@@ -100,7 +100,7 @@ jobs:
           cache-dependency-path: |
             go.sum
             sdkgo/go.sum
-            ${{ env.CANDIDATE_DIRECTORY }}/go.sum
+            ${{ env.CANDIDATE_DIRECTORY }}/go/go.sum
       - uses: actions/setup-node@v6
         with:
           node-version: 24
@@ -112,10 +112,10 @@ jobs:
         run: |
           git fetch --no-tags origin main:refs/remotes/origin/main
           python3 script/release/component_release.py validate-connector \
-            --component-path "${CANDIDATE_DIRECTORY}" \
+            --component-path "${CANDIDATE_DIRECTORY}/go" \
             --sdk-module github.com/superdurable/dex-connectors-library/sdkgo
       - name: Test standalone Connector module
-        working-directory: ${{ env.CANDIDATE_DIRECTORY }}
+        working-directory: ${{ env.CANDIDATE_DIRECTORY }}/go
         run: |
           go test -race ./...
           go vet ./...

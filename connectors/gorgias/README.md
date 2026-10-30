@@ -1,5 +1,9 @@
 # Gorgias Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/gorgias/go@v0.23.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/gorgias`.
+
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Gorgias; no live Gorgias account was used. See
 > [verification status](../../docs/verification-status.md) for what is and
 > is not verified.
@@ -68,7 +72,7 @@ configuration.
 
 Name the factory connection and open the same name from the project
 configuration at application startup, as
-[`examples/triage-issue/main.go`](examples/triage-issue/main.go) does:
+[`examples/triage-issue/main.go`](go/examples/triage-issue/main.go) does:
 
 ```go
 project, err := projectconfig.LoadFromEnvironment(ctx)
@@ -342,7 +346,7 @@ IDs stay operation input.
 The generated `gorgiasmock` package models Ada's open billing ticket, a
 three-page listing with a repeated ticket, an internal follow-up note, and a
 separate new customer's refund ticket. The
-[real-Dex example test](examples/triage-issue/flow/workflow_mock_integration_test.go)
+[real-Dex example test](go/examples/triage-issue/flow/workflow_mock_integration_test.go)
 uses that world to assert both the follow-up and new-ticket routes:
 
 ```go
@@ -356,7 +360,7 @@ other tickets, customers, and notes for different requests.
 
 ## Example
 
-[`examples/triage-issue`](examples/triage-issue) is a runnable Dex Web
+[`examples/triage-issue`](go/examples/triage-issue) is a runnable Dex Web
 **Start Flow** example that uses all six operations: it finds the customer,
 follows up on their open ticket about an issue or creates one, sets its
 priority, adds one internal triage note, and optionally emails the customer

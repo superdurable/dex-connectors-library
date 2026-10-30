@@ -20,8 +20,8 @@ The module directory determines the Git tag prefix:
 - `sdkgo` uses `sdkgo/vMAJOR.MINOR.PATCH`.
 - `sdkpython` uses `sdkpython/vMAJOR.MINOR.PATCH`.
 - `sdkts` uses `sdkts/vMAJOR.MINOR.PATCH`.
-- `connectors/linkedin` uses `connectors/linkedin/vMAJOR.MINOR.PATCH`.
-- `connectors/openai` uses `connectors/openai/vMAJOR.MINOR.PATCH`.
+- `connectors/linkedin` uses `connectors/linkedin/go/vMAJOR.MINOR.PATCH`.
+- `connectors/openai` uses `connectors/openai/go/vMAJOR.MINOR.PATCH`.
 - Company-owned families keep independent modules below one directory, such as
   `connectors/google/gmail` and `connectors/google/spreadsheet`.
 - Python and TypeScript packages append `/python/vMAJOR.MINOR.PATCH` or
@@ -61,6 +61,12 @@ A connector pull request that should release moves only that connector's
   [Connection compatibility](#connection-compatibility).
 
 A new connector declares `v0.1.0` for its first release.
+
+The one-time move from each connector's root Go module to `go/` takes exactly
+one minor step from the latest reachable old-path Go tag. This includes Slack's
+v1 line: its new `go/` path starts at v1.3.0 after v1.2.0. The import path
+change makes adoption explicit, so this migration does not add a `/v2` suffix.
+Old module paths and tags remain as history; no release is published there.
 
 Every version that a connector's README files pin for its own module, such as
 `go get` commands, example tag URLs, and the `release-artifact` command's
@@ -103,8 +109,10 @@ contract, and neither are Go names, though renaming one breaks the Go API.
 
 Any other change to the connection contract is a new major version, also
 before v1: a v0 connector that breaks its connections releases `v1.0.0`, and
-the Go module path changes only from v2. Other breaking changes before v1 keep
-the minor bump. Adding an operation or a Trigger stays a minor release as long
+the Go module path normally changes only from v2. The one-time `go/` migration
+above also changes the import path without a major suffix. Other breaking
+changes before v1 keep the minor bump. Adding an operation or a Trigger stays a
+minor release as long
 as it needs no new OAuth scope. A hosting platform that authorizes connections
 with its own registered OAuth application can use a version that adds a scope
 only after the provider verifies that application again for the new scope.
@@ -199,6 +207,10 @@ produce a different archive, which the registry integrity check rejects.
 Connector language packages require a released SDK, with
 no local path, Git, file, workspace, or uv source override. CI and release
 builds verify the SDK tag and GitHub release before building the connector.
+Local and PR language package checks accept a pending Go `releaseTag` only when
+it exactly matches the connector's current `metadata.version`. The release
+workflow still requires that Go tag to be reachable from `main` with
+`connector-release.complete` before publishing a language package.
 
 An SDK API change is merged and released before any connector consumes it. A
 later connector pull request requires that exact published SDK version in its
@@ -325,7 +337,7 @@ because trusted publishing is configured for the stable workflow.
 
 A release candidate lets an application use a connector change before review.
 It publishes one connector from a commit that is not on `main` yet, tagged
-`<connector directory>/vX.Y.Z-rc.N`, where `vX.Y.Z` is the version the
+`<connector directory>/go/vX.Y.Z-rc.N` for Go, where `vX.Y.Z` is the version the
 commit's manifest declares and `N` counts from 1. Each new commit of the same
 change takes the next `N`. A maintainer still reviews the pull request and the
 release workflow publishes `vX.Y.Z` after merge.
@@ -415,7 +427,7 @@ a connector's `go.mod`, direct or `// indirect`, must:
 
 - be an exact stable version such as `v0.7.0`, never a `replace`,
   pseudo-version, prerelease, branch, or commit SHA;
-- have its tag, such as `connectors/openai/v0.7.0`, reachable from `main`;
+- have its tag, such as `connectors/openai/go/v0.7.0`, reachable from `main`;
 - have a GitHub release that carries `connector-release.complete`, so a
   release that failed before its final check does not count;
 - download with `GOWORK=off GOPROXY=direct`.
@@ -465,7 +477,7 @@ GOWORK=off go vet ./...
 Run each connector the same way:
 
 ```bash
-cd connectors/openai
+cd connectors/openai/go
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
 ```

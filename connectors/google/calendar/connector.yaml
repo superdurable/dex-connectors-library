@@ -5,7 +5,7 @@ metadata:
   displayName: Google Calendar
   description: List and read events in a bounded window, create and update events idempotently, and query free/busy intervals in Google Calendar.
   company: Google
-  version: v0.23.1
+  version: v0.24.0
 spec:
   provider: google
   codegen:

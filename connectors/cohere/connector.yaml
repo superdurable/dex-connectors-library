@@ -5,7 +5,7 @@ metadata:
   displayName: Cohere
   description: Generate text embeddings and relevance rankings through Cohere v2.
   company: Cohere
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: cohere
   codegen:

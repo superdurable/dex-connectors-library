@@ -1,5 +1,9 @@
 # ClickUp Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/clickup/go@v0.23.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/clickup`.
+
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for ClickUp; no live ClickUp Workspace was used. See
 > [verification status](../../docs/verification-status.md) for what is and
 > is not verified.
@@ -23,10 +27,10 @@ their `X-Signature`.
 
 ## Mocks
 
-The generated [`clickupmock`](clickupmock) package models a blocked SSO task,
+The generated [`clickupmock`](go/clickupmock) package models a blocked SSO task,
 its escalation manager, three pages of unrelated escalation tasks, and the
 subsequent create, tag, assignment, and comment. Other cases cover missing
-resources and permission denials. The [runnable integration test](examples/escalate-blocked-task/workflow_mock_integration_test.go)
+resources and permission denials. The [runnable integration test](go/examples/escalate-blocked-task/workflow_mock_integration_test.go)
 uses the same Flow as the webhook example:
 
 ```go
@@ -113,7 +117,7 @@ OAuth would also unlock Studio pickers, because ClickUp sends OAuth tokens as
 Name the factory connection and open the same name from the project
 configuration at application startup. A Trigger application opens it through
 the connector's endpoint runner, as
-[`examples/escalate-blocked-task/main.go`](examples/escalate-blocked-task/main.go)
+[`examples/escalate-blocked-task/main.go`](go/examples/escalate-blocked-task/main.go)
 does:
 
 ```go
@@ -134,7 +138,7 @@ through the `DEX_PROJECT_*` environment described in
 {
   "connectorId": "clickup",
   "connectionName": "clickup-workspace",
-  "modulePath": "github.com/superdurable/dex-connectors-library/connectors/clickup",
+  "modulePath": "github.com/superdurable/dex-connectors-library/connectors/clickup/go",
   "provider": "clickup",
   "configuration": {"maxResponseBytes": 4194304}
 }
@@ -335,7 +339,7 @@ the input field.
 
 ## Example
 
-[`examples/escalate-blocked-task`](examples/escalate-blocked-task) escalates a
+[`examples/escalate-blocked-task`](go/examples/escalate-blocked-task) escalates a
 task that moves to the blocked status: the `taskEvent` Trigger starts the Flow,
 which reads the task, finds the manager by email, reuses or creates the
 escalation task once, tags the blocked task, assigns the manager, and comments

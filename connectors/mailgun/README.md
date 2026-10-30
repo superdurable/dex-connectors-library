@@ -1,6 +1,10 @@
 # Mailgun connector
 
-Read Mailgun domain events and account domains. The manifest is the source of generated Config, Credentials, Connection, operation factories, and mocks. See the [runnable demo](examples/demo/README.md) for Worker and strict FDG 2.0 generation commands.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/mailgun/go@v0.2.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/mailgun`.
+
+Read Mailgun domain events and account domains. The manifest is the source of generated Config, Credentials, Connection, operation factories, and mocks. See the [runnable demo](go/examples/demo/README.md) for Worker and strict FDG 2.0 generation commands.
 
 ## Operations and provider references
 

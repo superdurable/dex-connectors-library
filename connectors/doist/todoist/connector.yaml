@@ -5,7 +5,7 @@ metadata:
   displayName: Todoist
   description: List, read, create, update, and delete Todoist tasks through typed Dex Steps.
   company: Doist
-  version: v0.3.0
+  version: v0.4.0
 spec:
   provider: todoist
   codegen:

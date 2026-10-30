@@ -1,5 +1,9 @@
 # OAuth 2.0 HTTP Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http/go@v0.2.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http`.
+
 > **Verification status: partial live.** The `sendRequest` operation and token
 > refresh ran against a local Keycloak 26.8 with 60-second access tokens and
 > single-use refresh tokens, and the example ran on a real Dex stack against
@@ -188,7 +192,7 @@ of one Step execution, so an API that deduplicates by key can make a retry
 safe: name the header with `idempotencyKeyHeader`.
 
 An unwired optional branch fails the Flow when it is selected. This step from
-[`examples/api-request`](examples/api-request/flow/workflow.go) wires only
+[`examples/api-request`](go/examples/api-request/flow/workflow.go) wires only
 `completed`; a 404 fails the Flow on the unwired `rejected` branch:
 
 ```go
@@ -210,11 +214,11 @@ An unwired optional branch fails the Flow when it is selected. This step from
 The package also has a constructor for each branch and for the manifest mocks
 `notFound`, `authorizationExpired`, `connectionLost`, `invalidPath`, and
 `throttled`. See
-[`workflow_mock_integration_test.go`](examples/api-request/flow/workflow_mock_integration_test.go).
+[`workflow_mock_integration_test.go`](go/examples/api-request/flow/workflow_mock_integration_test.go).
 
 ## Example
 
-[`examples/api-request`](examples/api-request/README.md) is a Worker and a Flow
+[`examples/api-request`](go/examples/api-request/README.md) is a Worker and a Flow
 that read one path of the protected API and record the answer.
 
 ## Verification
@@ -225,7 +229,7 @@ that release is published, run the checks in the repository workspace:
 
 ```bash
 make workspace
-cd connectors/superdurable/oauth2-http
+cd connectors/superdurable/oauth2-http/go
 go test -race ./...
 go vet ./...
 ```
@@ -240,7 +244,7 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 go test -tags=integration ./examples/api
 
 The Keycloak tests need Docker and the `live` build tag. They start
 `quay.io/keycloak/keycloak:26.8.0` (set `KEYCLOAK_IMAGE` for another image),
-import [`testdata/keycloak/realm.json`](testdata/keycloak/realm.json) with
+import [`testdata/keycloak/realm.json`](go/testdata/keycloak/realm.json) with
 random test passwords, and remove the container when they finish. They sign in
 with the authorization code flow and PKCE, call UserInfo through `sendRequest`
 over plain http, check that a replayed refresh token requires reauthorization,

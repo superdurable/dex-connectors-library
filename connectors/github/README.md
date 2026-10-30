@@ -1,5 +1,7 @@
 # GitHub Connector
 
+Moved from `github.com/superdurable/dex-connectors-library/connectors/github`.
+
 The GitHub connector is an independent Go module for signup profile evidence
 and public repository change research. It exposes generated Dex Query Step
 factories for:
@@ -66,7 +68,7 @@ Regular Git tags with no GitHub release are not included. Authentication,
 scope checks, query retries and optional failure branches match the existing
 repository queries; credentials never enter the returned result.
 
-The [release page example](examples/repository-releases/README.md)
+The [release page example](go/examples/repository-releases/README.md)
 uses the generated `NewListReleasesStep` factory and retains a typed result.
 
 Each change query makes one GitHub request for one page. Its happy-path branch
@@ -136,7 +138,7 @@ characters, keeps the beginning, and sets the matching truncation flag:
 GitHub omits the patch for a binary or very large file, which leaves `Patch`
 empty with `PatchTruncated` false.
 
-The [repository changes example](examples/repository-changes/README.md) runs
+The [repository changes example](go/examples/repository-changes/README.md) runs
 all three queries in one Flow from Dex Web **Start Flow**.
 
 ## Test with githubmock
@@ -152,7 +154,7 @@ boundary and, where GitHub documents no order, items out of order and items
 an application usually filters out, such as drafts, prereleases, and forks.
 A test that reads only the first page, or stops one page early, sees a
 `nextPage`. The repository-changes example's
-[mock test](examples/repository-changes/flow/workflow_mock_integration_test.go)
+[mock test](go/examples/repository-changes/flow/workflow_mock_integration_test.go)
 scripts one Flow's search with a scaffolded failure mock:
 
 ```go
@@ -170,7 +172,7 @@ and `<Operation>Retry` build any other outcome. Scripting is described in
 Install the published module:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/github@v0.23.1
+go get github.com/superdurable/dex-connectors-library/connectors/github/go@v0.24.0
 ```
 
 Verify it independently:
@@ -202,7 +204,7 @@ connection configuration uses the standard `defect` branch.
 
 During startup, load the project configuration that Dex Web or Superverse
 Studio writes and open the connection by name, as
-[`examples/repository-changes/main.go`](examples/repository-changes/main.go)
+[`examples/repository-changes/main.go`](go/examples/repository-changes/main.go)
 does:
 
 ```go

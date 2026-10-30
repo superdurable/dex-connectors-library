@@ -5,7 +5,7 @@ metadata:
   displayName: Klaviyo
   description: Retrieve profiles and create deduplicated profile events.
   company: Klaviyo
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: klaviyo
   codegen:

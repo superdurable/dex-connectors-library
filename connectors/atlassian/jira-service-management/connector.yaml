@@ -5,7 +5,7 @@ metadata:
   displayName: Jira Service Management
   description: Raise, read, label, comment on, and move Jira Service Management customer requests as tickets, with public replies and internal notes, SLA cycles, and customers found by email, never sending a request or comment twice.
   company: Atlassian
-  version: v0.23.0
+  version: v0.24.0
 spec:
   provider: atlassian
   codegen:

@@ -1,5 +1,9 @@
 # Google Forms Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/forms/go@v0.24.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/google/forms`.
+
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Google Forms; no live Google account was used. See
 > [verification status](../../../docs/verification-status.md) for what is and
 > is not verified.
@@ -87,7 +91,7 @@ encrypted project storage and never enter a Flow.
 
 Load the project configuration once at application startup and open the
 connection by the name its operations use, as
-[`examples/response-recorder/main.go`](examples/response-recorder/main.go)
+[`examples/response-recorder/main.go`](go/examples/response-recorder/main.go)
 does:
 
 ```go
@@ -186,7 +190,7 @@ The cursor a Forms poller needs, per binding, is:
 5. an event ID that decides edits: `formId:responseId` delivers a response
    once; adding `lastSubmittedAt` delivers every edit.
 
-[`examples/response-recorder`](examples/response-recorder) implements this
+[`examples/response-recorder`](go/examples/response-recorder) implements this
 cursor at the application level: each run returns `nextCursor`, and the next
 run passes it back.
 
@@ -256,7 +260,7 @@ account or a real Google Forms request:
 
 ## Example
 
-[`examples/response-recorder`](examples/response-recorder) is a runnable Dex
+[`examples/response-recorder`](go/examples/response-recorder) is a runnable Dex
 Web **Start Flow** example that uses all three operations. It reads the picked
 form's questions, then records each new response's answers by question title,
 either every response since an earlier run's cursor or one response by ID.
@@ -270,7 +274,7 @@ removal, and cursor construction. Script cases when testing another form or
 response. Optional cases cover missing forms or responses and permission
 denials. See [connector mocks](../../../sdkgo/README.md#connector-mocks).
 
-The [runnable real-Dex test](examples/response-recorder/flow/workflow_mock_integration_test.go)
+The [runnable real-Dex test](go/examples/response-recorder/flow/workflow_mock_integration_test.go)
 uses those defaults:
 
 ```go

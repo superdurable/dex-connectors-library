@@ -5,7 +5,7 @@ metadata:
   displayName: Webhook
   description: "Receive verified webhook requests from any sender, such as a form service, and start or resume Flows with a stable event ID. Send signed Standard Webhooks events to a configured HTTPS receiver."
   company: Super Durable
-  version: v0.23.0
+  version: v0.24.0
 spec:
   provider: webhook
   codegen:

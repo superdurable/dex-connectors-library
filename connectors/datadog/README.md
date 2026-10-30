@@ -1,6 +1,10 @@
 # Datadog connector
 
-The `datadog` Go module exposes typed Dex Steps for Datadog. Its [runnable lookup Flow](examples/datadog-lookup/README.md) uses the static connection name `datadog`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/datadog/go@v0.2.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/datadog`.
+
+The `datadog` Go module exposes typed Dex Steps for Datadog. Its [runnable lookup Flow](go/examples/datadog-lookup/README.md) uses the static connection name `datadog`.
 
 ## Operations
 
@@ -37,7 +41,7 @@ The generated `datadogmock` package installs these default answers:
 - `queryMetrics`: one `system.cpu.user` series with a 0.23 point.
 - `listMonitors`: monitor 12345 named Meridian API latency.
 
-The [mock-backed example test](examples/datadog-lookup/flow/workflow_mock_integration_test.go) runs the first default through a real Dex Worker and Client in CI.
+The [mock-backed example test](go/examples/datadog-lookup/flow/workflow_mock_integration_test.go) runs the first default through a real Dex Worker and Client in CI.
 
 ## Official API references
 

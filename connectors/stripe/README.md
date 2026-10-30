@@ -1,5 +1,9 @@
 # Stripe Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/stripe/go@v0.25.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/stripe`.
+
 The Python package is documented in [python/README.md](python/README.md).
 
 This module creates and reconciles Stripe-hosted Checkout Sessions that accept
@@ -54,7 +58,7 @@ like this:
 {
   "connectorId": "stripe",
   "connectionName": "stripe-payments",
-  "modulePath": "github.com/superdurable/dex-connectors-library/connectors/stripe",
+  "modulePath": "github.com/superdurable/dex-connectors-library/connectors/stripe/go",
   "provider": "stripe",
   "configuration": {}
 }
@@ -87,7 +91,7 @@ Stripe endpoint. The runtime gives every binding its own durable project inbox,
 activates every Trigger, and exposes an `http.Handler`. Each connection has its
 own endpoint, built on `sdkgo/webhooktrigger`, so a request verified with one
 connection's signing secret reaches only that connection's bindings. The
-[webhook receiver example](examples/webhook-receiver/main.go) wires it like
+[webhook receiver example](go/examples/webhook-receiver/main.go) wires it like
 this:
 
 ```go
@@ -215,15 +219,15 @@ operation and branch in application tests without calling Stripe.
 
 ## Example
 
-[`examples/create-checkout-session`](examples/create-checkout-session) is the
-runnable ACH Checkout Flow. [`examples/create-card-checkout-session`](examples/create-card-checkout-session)
+[`examples/create-checkout-session`](go/examples/create-checkout-session) is the
+runnable ACH Checkout Flow. [`examples/create-card-checkout-session`](go/examples/create-card-checkout-session)
 is the runnable card Checkout Flow. Each example has its own Worker and Flow source.
 
-[`examples/refund-payment`](examples/refund-payment) is a runnable Start Flow
+[`examples/refund-payment`](go/examples/refund-payment) is a runnable Start Flow
 that reads a PaymentIntent with `GetPaymentIntent` and refunds the balance that
 is still unrefunded with `CreateRefund`.
 
-[`examples/webhook-receiver`](examples/webhook-receiver) is a runnable local
+[`examples/webhook-receiver`](go/examples/webhook-receiver) is a runnable local
 receiver that loads the project configuration, starts the durable Trigger
 runtime, and exposes `/webhooks/stripe` without logging event payloads.
 

@@ -18,7 +18,7 @@ func generatedSharedCredentialFiles(manifestPath string, manifest schema.Manifes
 	if !codegen.HasHostKeptCredentials(manifest) {
 		return map[string][]byte{}, nil
 	}
-	directory := filepath.Dir(manifestPath)
+	directory := filepath.Join(filepath.Dir(manifestPath), "go")
 	modulePath, err := readModulePath(filepath.Join(directory, "go.mod"))
 	if err != nil {
 		return nil, err
@@ -33,7 +33,7 @@ func generatedSharedCredentialFiles(manifestPath string, manifest schema.Manifes
 // staleSharedCredentialFiles lists the shared credential test that a manifest without host-kept credentials must
 // not keep.
 func staleSharedCredentialFiles(manifestPath string, manifest schema.Manifest) []string {
-	path := filepath.Join(filepath.Dir(manifestPath), codegen.SharedCredentialTestOutputFile)
+	path := filepath.Join(filepath.Dir(manifestPath), "go", codegen.SharedCredentialTestOutputFile)
 	if _, err := os.Lstat(path); err != nil || codegen.HasHostKeptCredentials(manifest) {
 		return nil
 	}

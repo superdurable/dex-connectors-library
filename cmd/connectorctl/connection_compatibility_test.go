@@ -19,6 +19,7 @@ const (
 
 func TestReleaseMatrixRequiresANewMajorVersionToBreakConnections(t *testing.T) {
 	repositoryRoot := releaseCandidateMainRepository(t)
+	runReleaseCandidateGit(t, repositoryRoot, "tag", releaseCandidateChat+"/go/v0.1.0")
 	manifestPath := filepath.Join(repositoryRoot, releaseCandidateChat, "connector.yaml")
 	catalogPath := filepath.Join(repositoryRoot, "catalog.yaml")
 	replaceInFile(t, manifestPath, releasedScopes, addedScope)
@@ -93,6 +94,7 @@ func TestReleaseMatrixAcceptsAMinorReleaseThatKeepsConnections(t *testing.T) {
 
 func TestReleaseCandidateRequiresANewMajorVersionToBreakConnections(t *testing.T) {
 	repositoryRoot := releaseCandidateMainRepository(t)
+	runReleaseCandidateGit(t, repositoryRoot, "tag", releaseCandidateChat+"/go/v0.1.0")
 	catalogPath := filepath.Join(repositoryRoot, "catalog.yaml")
 	commit, candidateRoot := releaseCandidateCommit(t, repositoryRoot, func(candidateRoot string) {
 		manifestPath := filepath.Join(candidateRoot, releaseCandidateChat, "connector.yaml")
@@ -107,7 +109,7 @@ func TestReleaseCandidateRequiresANewMajorVersionToBreakConnections(t *testing.T
 	commit = runReleaseCandidateGit(t, candidateRoot, "rev-parse", "HEAD")
 	candidate, err := planConnectorReleaseCandidate(catalogPath, candidateRoot, releaseCandidateChat, commit, "v1.0.0-rc.1")
 	require.NoError(t, err)
-	require.Equal(t, releaseCandidateChat+"/v1.0.0-rc.1", candidate.Tag)
+	require.Equal(t, releaseCandidateChat+"/go/v1.0.0-rc.1", candidate.Tag)
 
 	replaceInFile(t, filepath.Join(candidateRoot, releaseCandidateChat, "connector.yaml"), addedScope, releasedScopes)
 	runReleaseCandidateGit(t, candidateRoot, "commit", "-am", "connector(acme): settle the v1 scopes")

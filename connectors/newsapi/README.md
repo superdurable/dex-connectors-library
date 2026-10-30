@@ -1,11 +1,13 @@
 # NewsAPI Connector
 
+Moved from `github.com/superdurable/dex-connectors-library/connectors/newsapi`.
+
 Search recent news articles through NewsAPI's
 [everything endpoint](https://newsapi.org/docs/endpoints/everything) with a
-typed Dex Query Step. Use the [company news example](examples/company-news/README.md)
+typed Dex Query Step. Use the [company news example](go/examples/company-news/README.md)
 to collect the newest headlines that name one company.
 
-Its Go module is `github.com/superdurable/dex-connectors-library/connectors/newsapi`.
+Its Go module is `github.com/superdurable/dex-connectors-library/connectors/newsapi/go`.
 The connector ID is `newsapi`.
 The Python package is [`dex-connector-newsapi`](python/README.md), imported as
 `dex_connectors.newsapi`.
@@ -50,7 +52,7 @@ sends null, so an application can tell a missing value from an empty one.
 `[Removed]`; the connector returns them unchanged. `Title`, `Description`, and
 `Content` are untrusted provider text: escape them before rendering HTML.
 
-Use the generated factory in [the runnable Flow](examples/company-news/flow/workflow.go).
+Use the generated factory in [the runnable Flow](go/examples/company-news/flow/workflow.go).
 `NewProjectConnection` opens the connection from the project configuration that
 `projectconfig.LoadFromEnvironment` loads. `New` and `NewConnection` build a
 connection for tests, and `WithHTTPClient` supplies a transport.
@@ -124,11 +126,11 @@ NEWSAPI_CONNECTOR_TEST_API_KEY=... GOWORK=off go test -tags=live -run TestLive .
 
 ## Mocks
 
-`newsapimock` answers an unscripted `searchArticles` call with two Meridian articles dated October 25 and 26, 2026; `invalidKey` selects the provider rejection for an invalid API key. The [company news example](examples/company-news/flow/workflow_mock_integration_test.go) runs the default through a real Dex Worker and checks the mapped search input.
+`newsapimock` answers an unscripted `searchArticles` call with two Meridian articles dated October 25 and 26, 2026; `invalidKey` selects the provider rejection for an invalid API key. The [company news example](go/examples/company-news/flow/workflow_mock_integration_test.go) runs the default through a real Dex Worker and checks the mapped search input.
 
 ```go
 mock := newsapimock.New(t, ConnectionName)
 flow, harness := newCompanyNewsIntegrationHarnessWithConnection(t, mock.Connection())
 ```
 
-Install this release with `go get github.com/superdurable/dex-connectors-library/connectors/newsapi@v0.22.0`.
+Install this release with `go get github.com/superdurable/dex-connectors-library/connectors/newsapi/go@v0.23.0`.

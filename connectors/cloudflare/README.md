@@ -1,6 +1,10 @@
 # Cloudflare connector
 
-The `cloudflare` Go module exposes typed Dex Steps for Cloudflare. Its [runnable lookup Flow](examples/cloudflare-lookup/README.md) uses the static connection name `cloudflare`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/cloudflare/go@v0.2.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/cloudflare`.
+
+The `cloudflare` Go module exposes typed Dex Steps for Cloudflare. Its [runnable lookup Flow](go/examples/cloudflare-lookup/README.md) uses the static connection name `cloudflare`.
 
 ## Operations
 
@@ -38,7 +42,7 @@ The generated `cloudflaremock` package installs these default answers:
 - `listZones`: one active `meridian.example` zone.
 - `purgeCacheByURLs`: a successful purge with ID `purge-meridian`.
 
-The [mock-backed example test](examples/cloudflare-lookup/flow/workflow_mock_integration_test.go) runs the first default through a real Dex Worker and Client in CI.
+The [mock-backed example test](go/examples/cloudflare-lookup/flow/workflow_mock_integration_test.go) runs the first default through a real Dex Worker and Client in CI.
 
 ## Official API references
 

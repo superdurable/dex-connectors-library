@@ -5,7 +5,7 @@ metadata:
   displayName: Linear
   description: "Search and read Linear issues, create issues and comments under client-supplied IDs that every repeated attempt reuses and reads back, move issues through their team's workflow states, assign and label them, find users by email, and receive signed Issue webhooks."
   company: Linear
-  version: v0.23.0
+  version: v0.24.0
 spec:
   provider: linear
   codegen:

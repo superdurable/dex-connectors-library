@@ -16,7 +16,8 @@ alwaysApply: true
   docs/versioning-and-releases.md defines, is a major bump also before v1:
   v0 releases v1.0.0. First releases use v0.1.0. Tooling accepts a skipped
   step or another first version, so review checks both.
-- SDK tags use sdkgo/vX.Y.Z; connector tags use their module directory.
+- SDK tags use sdkgo/vX.Y.Z; connector Go tags use their `go/` module directory.
+- The one-time Go module move uses exactly one minor bump from the latest old-path Go tag, including v1 connectors. The new import path forces opt-in; old tags stay as history.
 - Python and TypeScript connector packages use independent `spec.languages.python.version` and `spec.languages.typescript.version` values, with matching package metadata.
 - A Python or TypeScript package lists exactly the operations and Triggers it implements in `spec.languages.<language>`; the catalog and site show per-capability language support.
 - SDK tags also use sdkpython/vX.Y.Z and sdkts/vX.Y.Z; connector language tags append /python/vX.Y.Z or /typescript/vX.Y.Z.
@@ -47,7 +48,7 @@ alwaysApply: true
 - Run module verification with GOWORK=off. Connector releases run automatically
   after merge to main; manual runs only repair incomplete releases and catalog
   deployment.
-- A release candidate <connector directory>/vX.Y.Z-rc.N publishes one connector
+- A Go release candidate <connector directory>/go/vX.Y.Z-rc.N publishes one connector
   from a commit that is not on main through the Release Connector Candidate
   workflow. The commit changes only that connector's directory (a new connector
   also its catalog entry and company logo), and vX.Y.Z is its manifest version,

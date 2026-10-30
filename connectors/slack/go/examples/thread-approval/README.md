@@ -1,0 +1,576 @@
+# Slack thread approval example
+
+This example exercises the released Slack Connector end to end:
+
+1. a matching top-level channel message starts a Flow;
+2. the Flow reads the first page of that thread with `ListThreadMessages`;
+3. a matching reply invokes the typed `ReceiveThreadReply` RPC; and
+4. the Flow posts `Processing complete.` to the same thread with `PostThreadReply`.
+
+The root and reply Triggers use the same application resolver to build a
+readable Flow ID from Slack team ID, channel ID, and root timestamp. The RPC is
+registered and invoked through the same direct bound `ReceiveThreadReply`
+method. An RPC input mapper passes only the event ID and approver user ID. The
+application RPC locks its thread state and stores the one accepted reply event
+ID, so duplicate delivery cannot schedule another completion reply. A matching
+reply in a thread whose Flow already completed, or that never started a Flow,
+is consumed as undeliverable and logged, so it cannot stop the shared runner.
+
+The completion Mutation configures the optional `ResultAttribute`. The Flow
+registers that typed Attribute explicitly, and its summary/display RPCs read the
+full provider result outside the transition chain for operator inspection. This
+intentionally duplicates the durable target input; applications should omit the
+Attribute when no external reader needs the raw result.
+
+The example runs both message Trigger bindings through one
+`NewProjectMessageTriggerRunner`. Slack distributes events among Socket Mode
+connections, so one shared connection ensures the root and reply routes both
+observe their matching events. Do not run two copies of this example against
+the same Slack app during the test.
+
+Before either Dex call, the application supplies a typed filter. The example
+builds those filters from the binding configuration saved by Dex Web and checks
+the channel, root-or-reply shape, allowed member, and case-insensitive message
+substring again. A filtered event is consumed without resolving a Flow ID or
+calling Dex. The pure filter has no error result.
+
+## Release baseline
+
+After the connector release, this walkthrough uses these versions:
+
+- [Slack Connector v1.2.0](https://github.com/superdurable/dex-connectors-library/releases/tag/connectors%2Fslack%2Fv1.2.0)
+- [dexcli v0.13.7](https://github.com/superdurable/dex/releases/tag/cli-v0.13.7)
+
+Install Go 1.24 or newer and curl. You also need permission to create and
+install an app in the Slack workspace. A workspace administrator may need to
+approve the installation.
+
+On macOS, install dexcli with Homebrew:
+
+```bash
+brew install superdurable/tap/dexcli
+dexcli version
+```
+
+If dexcli is already installed, upgrade it instead:
+
+```bash
+brew upgrade superdurable/tap/dexcli
+dexcli version
+```
+
+The final command must report `dexcli v0.13.7` or newer. For Linux or a manual
+macOS installation, download the matching archive from the
+[cli-v0.13.7 release](https://github.com/superdurable/dex/releases/tag/cli-v0.13.7).
+
+## 1. Prepare a clean local test project
+
+Create a separate directory that consumes the released Connector. The Flow
+source is copied from the immutable v1.2.0 tag so dexcli can analyze it as an
+application dependency rather than as part of the Connector module itself.
+
+```bash
+mkdir slack-thread-approval-e2e
+cd slack-thread-approval-e2e
+mkdir -p flow build
+
+curl -fsSL \
+  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/slack/go/v1.3.0/connectors/slack/go/examples/thread-approval/flow/workflow.go \
+  -o flow/workflow.go
+
+go mod init example.com/slack-thread-approval-e2e
+go get github.com/superdurable/dex-connectors-library/connectors/slack/go@v1.3.0
+go mod tidy
+```
+
+Generate the Flow Definition Graph used by Dex Web:
+
+```bash
+dexcli visualize ./flow/workflow.go \
+  --schema-version 2.0 \
+  --json \
+  --out ./build/slack-thread-approval
+```
+
+The command must finish without blocking diagnostics and create
+`build/slack-thread-approval.json`.
+
+The required compatibility gate repeats this visualization twice in a clean
+consumer module using the latest stable dexcli release, and the scheduled
+canary repeats it for the latest published Slack release. The output must be
+deterministic and retain both connector Steps, both Trigger bindings, all
+branch targets, and the Result Attribute.
+
+## 2. Start Dex and record its addresses
+
+From the test project, start Dex with the generated Flow definition:
+
+```bash
+dexcli dev \
+  --flow-rendering-dir "$PWD/build"
+```
+
+Keep this terminal running. Record the exact Dex Web URL and Dex Server address
+printed by dexcli. With the default ports they are:
+
+```text
+Dex Web:    http://127.0.0.1:8802
+Dex Server: 127.0.0.1:8801
+```
+
+Another local process can force different ports. Always use the addresses that
+the current dexcli process prints. Do not switch between `127.0.0.1` and
+`localhost`, and do not reuse a browser tab from an older dexcli process.
+
+## 3. Create a Slack app from scratch
+
+Open [Your Apps](https://api.slack.com/apps), then:
+
+1. Choose **Create New App**.
+2. Choose **From scratch**.
+3. Enter an app name such as `dex-thread-approval-e2e`.
+4. Select the workspace used for the test.
+5. Choose **Create App**.
+
+Keep the Slack app settings open while completing the following sections.
+
+### Record the OAuth client credentials
+
+Open **Basic Information**. Under **App Credentials**, locate:
+
+- **Client ID**;
+- **Client Secret**.
+
+Dex Web requests these values when starting OAuth. They remain in memory only
+for the ten-minute OAuth session and are not written to the Connector file. Do
+not put either value in source control, screenshots, chat, or shell history.
+
+### Add the OAuth redirect URL
+
+Open **OAuth & Permissions**, find **Redirect URLs**, and add:
+
+```text
+http://127.0.0.1:8802/api/v2/connector-oauth/callback
+```
+
+Replace `8802` with the current Dex Web port when dexcli printed another port.
+The scheme, host, port, and path must exactly match the browser origin used for
+Dex Web. Choose **Save URLs**.
+
+### Add bot token scopes
+
+On **OAuth & Permissions**, under **Scopes > Bot Token Scopes**, add all of:
+
+```text
+channels:history
+groups:history
+channels:read
+groups:read
+users:read
+chat:write
+```
+
+### Add user token scopes
+
+Under **Scopes > User Token Scopes**, add:
+
+```text
+channels:history
+groups:history
+```
+
+The Connector uses the user token for `conversations.replies`. If these scopes
+are missing, OAuth may still create a bot token, but reading a thread will fail.
+
+### Subscribe to message events
+
+Open **Event Subscriptions** and turn on **Enable Events**. Under **Subscribe to
+bot events**, add the [public-channel](https://docs.slack.dev/reference/events/message.channels/)
+and [private-channel](https://docs.slack.dev/reference/events/message.groups/)
+message events:
+
+```text
+message.channels
+message.groups
+```
+
+Socket Mode carries these events, so no public Request URL is required.
+
+### Enable Socket Mode and create the app-level token
+
+Open **Socket Mode** and enable it. Socket Mode receives Events API payloads
+without a public Request URL. When Slack asks for an app-level token, or from
+**Basic Information > App-Level Tokens**, choose **Generate Token and Scopes**:
+
+1. enter a token name such as `dex-local-e2e`;
+2. add the `connections:write` scope;
+3. generate the token;
+4. copy the resulting `xapp-...` value once.
+
+The [`connections:write`](https://docs.slack.dev/reference/scopes/connections.write/)
+scope applies to an app-level token. This is not the bot token or user token.
+Enter the generated value only in the `app_token` secret field in Dex Web.
+
+### Install the app
+
+Open **OAuth & Permissions** and choose **Install to Workspace**. Review the bot
+and user permissions, then allow the installation. If scopes or event
+subscriptions are changed later, choose **Reinstall to Workspace** before
+testing again.
+
+## 4. Create the Slack test channel and invite the app
+
+In the Slack client:
+
+1. create or open a channel such as `connector-test`;
+2. invite the app with `/invite @dex-thread-approval-e2e`;
+3. confirm that the app appears in the channel member list;
+4. choose at least one human workspace member who will post the approval reply.
+
+The app must be a member of the selected public or private channel. Direct
+messages are not supported by this Connector.
+
+Dex Web provides reusable channel, member, and text-input units for each Flow
+use. For the manual fallback:
+
+- open the channel details and choose **Copy channel ID**;
+- open a member profile, open the profile menu, and choose **Copy member ID**.
+
+Use the raw stable IDs, not display names:
+
+- a channel ID normally starts with `C`;
+- a member ID starts with `U`;
+- a workspace/team ID starts with `T`;
+- an ID starting with `D` identifies a direct-message conversation and is not
+  a member ID.
+
+The workspace/team ID is read from incoming events and does not need to be
+entered in Dex Web.
+
+## 5. Configure the connection in Dex Web
+
+Open the exact Dex Web URL printed by the running dexcli process and select
+**Connections**. The generated Flow definition should expose:
+
+- connector: `slack`;
+- connection: `slack-workspace`;
+- `slack-thread-approval-start` for `channelThreadCreated`;
+- `slack-thread-approval-reply` for `threadReplyCreated`.
+
+Select `slack / slack-workspace`. In the host-owned **Slack setup** form:
+
+1. enter the **OAuth client ID** from Slack **Basic Information**;
+2. enter the **OAuth client secret**;
+3. leave `endpoint`, `maxResponseBytes`, and `maxMessageCharacters` at their
+   defaults;
+4. enter the `xapp-...` token in the `app_token` field;
+5. choose **Authorize**.
+
+Slack will ask the signed-in member to approve both bot and user scopes. After
+OAuth, the browser returns to the same Dex Web origin and the connection status
+should be **Ready**. Dex stores the OAuth `xoxb-...` bot token and `xoxp-...`
+user token automatically. Do not copy those tokens into Trigger settings.
+
+## 6. Configure the Flow uses
+
+After the connection becomes **Ready**, Dex Web expands **Flow configuration**.
+The page owns the grouping and persistence; each embedded Slack iframe renders
+only the reusable unit requested by the Flow definition.
+
+For `slack-thread-approval-start`:
+
+1. load and select the approval channel in **Approval channel**;
+2. optionally set **Start message contains**;
+3. optionally select **Members allowed to start**; leaving it empty permits any
+   human member.
+
+For `slack-thread-approval-reply`:
+
+1. select the same channel in **Approval channel**;
+2. set **Approval reply contains** to `approve` or a more distinctive phrase;
+3. select at least one **Member allowed to approve**.
+
+For the `PostSlackCompletion` Step, set **Completion reply** to the message the
+Flow should post, for example `Processing complete.`. Choose **Save** in each
+unit after editing it. Dex Web saves the Trigger and Step-operation
+configuration in the project configuration, which this example Worker reads
+once at startup. Restart the Worker after changing a unit.
+
+The pickers display names for convenience but save stable IDs. If a picker is
+unavailable, enter the copied channel ID and comma-separated member IDs in its
+fallback field.
+
+Matching is a case-insensitive substring check. The default `approve` also
+matches `disapprove`. Use a distinctive phrase or change the application filter
+when exact matching is required.
+
+## 7. Start the released example Worker
+
+Open a second terminal. The Worker reads the `DEX_PROJECT_*` project
+configuration environment described in
+[project configuration](../../../../../sdkgo/projectconfig/README.md); Dex Web or
+a hosting platform writes that configuration when you save the connection. Use
+the Dex Server address printed by the current dexcli process:
+
+```bash
+export DEX_FLOW_SERVICE_ADDRESS="127.0.0.1:8801"
+
+GOWORK=off go run \
+  github.com/superdurable/dex-connectors-library/connectors/slack/go/examples/thread-approval@v1.3.0
+```
+
+Replace `127.0.0.1:8801` when dexcli printed another Dex Server address. The
+The example also listens on `127.0.0.1:8839`, or `TRIGGER_BIND_ADDRESS`, at
+`slack.RelayedTriggerPath("slack-workspace")`, where a host posts the events it
+relays for a shared connection without an `app_token`
+([relayed events](../../../README.md#relayed-events)). This walkthrough's
+connection has an `app_token` and uses Socket Mode, so that path answers `503`.
+
+Keep exactly one example Worker running for this Slack app. Slack distributes
+Socket Mode envelopes among active WebSocket connections rather than
+broadcasting every event to every connection.
+
+Startup fails with a scoped connector/connection/operation/Flow/Step error if
+the project configuration does not contain the `PostSlackCompletion`
+configuration. Return to Dex Web, save **Completion reply**, and restart the
+Worker.
+
+The Worker writes text logs to standard error at INFO: Socket Mode
+connections, skipped events, retries with their backoff delay, and replay
+summaries. Set `LOG_LEVEL=debug` before starting it to also see every Slack
+message a Trigger ignores, with the reason, and every delivery to Dex. The logs
+contain IDs and error messages, never message text or tokens.
+
+## 8. Run the end-to-end test
+
+1. In the configured Slack channel, post a new top-level message as an allowed
+   human member. Do not post it as a reply. The message must satisfy the optional
+   root text filter.
+2. In Dex Web, open the new Flow. Its readable ID has this shape:
+
+   ```text
+   slack-thread-approval-<team-id>-<channel-id>-<root-timestamp>
+   ```
+
+3. Confirm that the Flow read the root message and reached
+   `waitingForReply`.
+4. In Slack, reply inside that same thread as an allowed approver. The reply
+   must contain the configured approval text, for example `approve`.
+5. Confirm that the app posts exactly one reply:
+
+   ```text
+   Processing complete.
+   ```
+
+6. Confirm in Dex Web that the Flow is **Completed**. Its display includes the
+   application-owned thread state and the optional
+   `slack-thread-approval-post-reply-result` provider result.
+
+The RPC accepts only the first valid approval while the Flow is waiting. To
+check this, post a second matching approval, such as `approved, thanks`, in the
+completed thread:
+
+- No second `Processing complete.` reply is posted.
+- The Worker logs one WARN record that it skipped the event as undeliverable:
+
+  ```text
+  time=<timestamp> level=WARN msg="trigger event skipped: undeliverable" connector=slack connection=slack-workspace trigger=threadReplyCreated binding=slack-thread-approval-reply channel=<channel-id> thread_ts=<root-ts> event_id=<event-id> flow_id=<flow-id> error="Trigger event is undeliverable: dex: InvokeRPC flow \"<flow-id>\": NotFound: Flow run is not found for flow ID <flow-id>"
+  ```
+
+- A new top-level message still starts a new Flow.
+
+For CLI inspection, substitute the actual Flow ID:
+
+```bash
+dexcli flow search --server 127.0.0.1:8801 --all --output table
+dexcli flow summary --server 127.0.0.1:8801 <flow-id>
+dexcli flow inspect --server 127.0.0.1:8801 <flow-id>
+```
+
+## 9. Verify restart behavior
+
+After the Flow completes:
+
+1. stop the example Worker with Control-C;
+2. start it again with the same command;
+3. wait for the Socket Mode connection to reopen;
+4. confirm that the completed Slack thread does not receive another completion
+   reply.
+
+The Trigger inbox can replay an unfinished delivery after a crash. Stable event
+IDs, the readable Flow ID, the application RPC state transition, and Slack
+`client_msg_id` prevent replay from duplicating the completed external action.
+Replay runs before the socket opens. It consumes any event that a crash left
+pending for a completed thread, such as an approval that arrived after
+completion, and never exits the Worker because of one event. When replay finds
+pending events, the Worker logs `replaying pending trigger events` with their
+`count`, and then `finished replaying pending trigger events` with the
+`delivered`, `skipped`, and `remaining` counts.
+
+If the Dex Server is unreachable when the Worker starts, the Worker logs
+`dex server unavailable; retrying` with a growing `delay`, up to 30 seconds, and
+starts once the Dex Server answers. If Dex becomes unreachable later, a pending
+delivery logs `trigger delivery failed; retrying` with the same growing
+`delay`, then `trigger delivered after retry` once Dex accepts it.
+
+## Troubleshooting
+
+### Reading the Worker log
+
+Every record about an event names its `binding`, so filter by
+`binding=slack-thread-approval-start` or `binding=slack-thread-approval-reply`,
+by the Slack `event_id`, or by a thread's root timestamp in `thread_ts`.
+Records for events that the inbox replays at startup or before a reconnect
+carry the `event_id`, and `flow_id` for Dex errors, but not `channel` or
+`thread_ts`, so search replay records by `event_id`. A second approval in a completed thread (step 8) is
+skipped once:
+
+```text
+time=2026-09-25T22:41:07.412-07:00 level=WARN msg="trigger event skipped: undeliverable" connector=slack connection=slack-workspace trigger=threadReplyCreated binding=slack-thread-approval-reply channel=C0456EFGH thread_ts=1790400000.000100 event_id=Ev0AB1CD2EF3 flow_id=slack-thread-approval-T0123ABCD-C0456EFGH-1790400000.000100 error="Trigger event is undeliverable: dex: InvokeRPC flow \"slack-thread-approval-T0123ABCD-C0456EFGH-1790400000.000100\": NotFound: Flow run is not found for flow ID slack-thread-approval-T0123ABCD-C0456EFGH-1790400000.000100"
+```
+
+An approval posted while the Dex Server is down retries with a delay that
+doubles from 250 milliseconds to 30 seconds, then reports the recovery:
+
+```text
+time=2026-09-25T22:43:10.101-07:00 level=WARN msg="trigger delivery failed; retrying" connector=slack connection=slack-workspace trigger=threadReplyCreated binding=slack-thread-approval-reply channel=C0456EFGH thread_ts=1790400100.000200 event_id=Ev0AB1CD2EF4 attempt=1 delay=250ms flow_id=slack-thread-approval-T0123ABCD-C0456EFGH-1790400100.000200 error="dex: InvokeRPC flow \"slack-thread-approval-T0123ABCD-C0456EFGH-1790400100.000200\": Unavailable: connection error: desc = \"transport: Error while dialing: dial tcp 127.0.0.1:8801: connect: connection refused\""
+time=2026-09-25T22:43:10.354-07:00 level=WARN msg="trigger delivery failed; retrying" connector=slack connection=slack-workspace trigger=threadReplyCreated binding=slack-thread-approval-reply channel=C0456EFGH thread_ts=1790400100.000200 event_id=Ev0AB1CD2EF4 attempt=2 delay=500ms flow_id=slack-thread-approval-T0123ABCD-C0456EFGH-1790400100.000200 error="dex: InvokeRPC flow \"slack-thread-approval-T0123ABCD-C0456EFGH-1790400100.000200\": Unavailable: connection error: desc = \"transport: Error while dialing: dial tcp 127.0.0.1:8801: connect: connection refused\""
+time=2026-09-25T22:43:10.858-07:00 level=WARN msg="trigger delivery failed; retrying" connector=slack connection=slack-workspace trigger=threadReplyCreated binding=slack-thread-approval-reply channel=C0456EFGH thread_ts=1790400100.000200 event_id=Ev0AB1CD2EF4 attempt=3 delay=1s flow_id=slack-thread-approval-T0123ABCD-C0456EFGH-1790400100.000200 error="dex: InvokeRPC flow \"slack-thread-approval-T0123ABCD-C0456EFGH-1790400100.000200\": Unavailable: connection error: desc = \"transport: Error while dialing: dial tcp 127.0.0.1:8801: connect: connection refused\""
+time=2026-09-25T22:43:11.862-07:00 level=WARN msg="trigger delivery failed; retrying" connector=slack connection=slack-workspace trigger=threadReplyCreated binding=slack-thread-approval-reply channel=C0456EFGH thread_ts=1790400100.000200 event_id=Ev0AB1CD2EF4 attempt=4 delay=2s flow_id=slack-thread-approval-T0123ABCD-C0456EFGH-1790400100.000200 error="dex: InvokeRPC flow \"slack-thread-approval-T0123ABCD-C0456EFGH-1790400100.000200\": Unavailable: connection error: desc = \"transport: Error while dialing: dial tcp 127.0.0.1:8801: connect: connection refused\""
+time=2026-09-25T22:43:13.870-07:00 level=INFO msg="trigger delivered after retry" connector=slack connection=slack-workspace trigger=threadReplyCreated binding=slack-thread-approval-reply channel=C0456EFGH thread_ts=1790400100.000200 event_id=Ev0AB1CD2EF4 attempts=5
+```
+
+An approval that reaches the Flow while it is still reading the thread, for
+example because `conversations.replies` is slow or rate-limited, retries the
+same way. The RPC keeps it pending with `Slack thread is still reading its root
+message`, or Dex reports `one or more attribute keys are locked`, until the
+Flow is waiting for a reply.
+
+While one event retries, the shared runner reads no later message, so fix the
+reported failure: restart the Dex Server or the Worker, or correct
+`DEX_FLOW_SERVICE_ADDRESS`. Slack redelivers an unacknowledged envelope only a
+few times, so messages sent during a long retry are persisted only if Slack
+still redelivers them after the runner resumes; a long outage can drop them.
+Other records to look for:
+
+- A quiet channel logs nothing between messages. Slack pings the socket, and
+  the Worker keeps one connection open for hours, until Slack refreshes it with
+  an INFO `slack socket mode disconnected; reconnecting` record and its
+  `reason`, followed by INFO `slack socket mode connected`.
+- `slack socket mode connection failed; reconnecting` (WARN) means the socket
+  could not open, dropped, or received nothing, not even a ping, for 45
+  seconds. The runner reconnects after `delay`, which doubles from 1 second to
+  30 seconds while attempts keep failing, and `attempt` counts them. The
+  `error` names the cause without the token, such as `Slack rejected the Socket
+  Mode connection: invalid_auth (HTTP 200)` for a revoked or wrong `xapp-...`
+  token. A connection saved without an `app_token` stops the Worker with
+  `Slack connection "slack-workspace" has no app_token for Socket Mode and is
+  not a shared connection whose host relays its events`; save the `xapp-...`
+  token in Dex Web and restart.
+- `trigger event skipped: filtered` (INFO) means the application filter
+  rejected an event that the binding configuration matched.
+- `trigger event ignored` (DEBUG) names the `reason` a route did not match a
+  message, such as `channel_mismatch`, `bot`, `not_a_root`, or
+  `matcher_mismatch`. Every message appears once per route, so a root message
+  also shows `not_a_reply` for the reply binding.
+- `trigger inbox write failed` or another `trigger inbox ... failed` record
+  (ERROR) means the binding's Trigger inbox in project storage cannot be read
+  or written; check that the Worker can reach project storage.
+
+### Connections does not show `slack-workspace`
+
+Confirm that `build/slack-thread-approval.json` exists and that dexcli started
+with the same directory passed to `--flow-rendering-dir`. Re-run visualization
+with dexcli v0.13.7 or newer and resolve every blocking diagnostic.
+
+### Slack reports a redirect URL mismatch
+
+Copy the exact current Dex Web origin into the Slack redirect URL. Preserve
+`http`, `127.0.0.1`, the current Web port, and
+`/api/v2/connector-oauth/callback`. Save the URL before retrying OAuth.
+
+### Dex Web reports an invalid write origin or CSRF token
+
+This usually means the tab belongs to an older dexcli process or a different
+port. Close that tab and open the exact URL printed by the current dexcli
+process. Do not change `127.0.0.1` to `localhost`. Use dexcli v0.13.7 or newer.
+
+### The channel or member picker is empty
+
+Confirm that OAuth completed, then choose **Load joined channels** and **Load
+members** again. Invite the app to the channel. For a private channel, both the
+signed-in member and app must have access. After adding scopes, reinstall the
+Slack app and reconnect OAuth. Use the manual ID fallback when necessary.
+
+### A copied member value starts with `D`
+
+That value is a direct-message conversation ID. Open the person's profile and
+use **Copy member ID** to obtain the required `U...` value.
+
+### A top-level message does not start a Flow
+
+Check all of the following:
+
+- the example Worker is running and connected to the current Dex Server. A
+  Worker that keeps logging `dex server unavailable; retrying` has not started
+  yet; check `DEX_FLOW_SERVICE_ADDRESS`;
+- Socket Mode is enabled and the `xapp-...` token has `connections:write`;
+- `message.channels` and `message.groups` are subscribed;
+- the app was reinstalled after scope changes;
+- the app is a member of the selected channel;
+- the message is top-level, human-authored, and matches the configured channel,
+  poster, and text filters;
+- the Worker log does not repeat `trigger delivery failed; retrying`. While
+  one event retries, the shared runner delivers no later message. Fix the
+  reported Dex or Worker failure. A handler that fails the same way every time
+  must return a result or `sdkgo.MarkTriggerUndeliverable` instead.
+
+Restart the Worker with `LOG_LEVEL=debug` and post the message again. A
+`trigger event ignored` record for its `event_id` on the
+`slack-thread-approval-start` binding names the `reason` it did not match. No
+record at all means Slack did not deliver the event to this Worker.
+
+### The Flow starts but an approval reply does nothing
+
+Make sure the message is a reply in the original thread, the sender's `U...`
+member ID is allowed, and the text matches the approval filter. Run only one
+copy of the released example Worker. The connector uses one shared Socket
+Mode connection for both root and reply routes; separate competing connections
+can consume each other's events.
+
+If the Worker logs `trigger event skipped: undeliverable` for the reply, Dex
+found no active Flow for its thread: the Flow had completed, or the reply
+reached Dex before its root message started a Flow. Post the approval again
+once the Flow is waiting. An approval that arrives while the Flow is still
+reading the thread is not lost: it logs `trigger delivery failed; retrying`
+until the Flow is waiting, then `trigger delivered after retry`. With
+`LOG_LEVEL=debug`, a `trigger event ignored`
+record on the `slack-thread-approval-reply` binding names the `reason` the
+reply did not match, such as `matcher_mismatch` for a sender or text that the
+binding does not allow.
+
+### Reading the thread fails with a scope error
+
+Add `channels:history` and `groups:history` under **User Token Scopes**, reinstall
+the app, and reconnect in Dex Web so OAuth returns a new user token.
+
+### `Processing complete.` is not posted
+
+Confirm that the bot has `chat:write` and is a member of the channel. The example
+wires only the happy-path branches. An unwired optional branch, including a
+provider rejection or an uncertain write, fails the Flow and does not resend
+the reply.
+
+### Configuration changes do not affect the running Worker
+
+Restart the example Worker. Connection and Trigger configuration is read from
+the project configuration during application startup. Refreshed OAuth credentials are loaded
+before provider calls, but structural configuration requires a restart.
+
+## Stop and clean up
+
+Stop the Worker and dexcli with Control-C. Deleting the connection's credentials
+in Dex Web does not revoke the Slack grant. To revoke access, uninstall the test app from
+the workspace or revoke it from Slack's app management page. Remove the local
+test project only after retaining any Flow IDs and non-sensitive results needed
+for the test report.

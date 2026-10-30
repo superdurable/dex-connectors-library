@@ -197,7 +197,7 @@ func TestReleaseMatrixDefaultsToPendingVersions(t *testing.T) {
 	expectedDirectories := []string{}
 	for _, entry := range entries {
 		isPending, transitionErr := validateConnectorVersionTransition(
-			latestReleases[entry.Directory].Version,
+			latestReleases[entry.Directory+"/go"].Version,
 			entry.Manifest.Metadata.Version,
 		)
 		require.NoError(t, transitionErr)
@@ -286,7 +286,7 @@ directories:
 	require.NoError(t, readErr)
 	require.NoError(t, os.WriteFile(manifestPath, []byte(strings.Replace(string(manifest), "company: Google", "company: other", 1)), 0o600))
 	require.NoError(t, os.WriteFile(
-		filepath.Join(repositoryRoot, "connectors", "other", "mail", "go.mod"),
+		filepath.Join(repositoryRoot, "connectors", "other", "mail", "go", "go.mod"),
 		[]byte("module example.com/wrong\n\ngo 1.24\n"),
 		0o600,
 	))
@@ -370,9 +370,32 @@ directories:
 	githubOutput := filepath.Join(t.TempDir(), "github-output")
 	require.NoError(t, releaseMatrixCommand([]string{"--catalog", catalogPath, "--github-output", githubOutput}))
 	require.Equal(t, []connectorReleaseMatrixItem{{
-		Directory: "connectors/acme/chat", ManifestPath: "connectors/acme/chat/connector.yaml", TagPrefix: "connectors/acme/chat/",
+		Directory: "connectors/acme/chat", ManifestPath: "connectors/acme/chat/connector.yaml", TagPrefix: "connectors/acme/chat/go/",
 		Version: "v0.2.0", DisplayName: "Google Sheets Fixture",
 	}}, readReleaseMatrixOutput(t, githubOutput).Include, "only the connector whose version moved releases")
+}
+
+func TestGoMigrationUsesOldTagWithoutConflatingLanguageTags(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	const directory = "connectors/acme/chat"
+	writeConnectorFixture(t, repositoryRoot, directory, "example.com/"+directory)
+	catalogPath := filepath.Join(repositoryRoot, "catalog.yaml")
+	require.NoError(t, os.WriteFile(catalogPath, []byte("apiVersion: connectors.dex.dev/catalog-source/v1alpha1\nkind: ConnectorCatalogSource\ndirectories:\n  - connectors/acme/chat\n"), 0o600))
+	initializeConnectorReleaseRepository(t, repositoryRoot, directory+"/v0.1.0")
+	for _, language := range []string{"python", "typescript"} {
+		command := exec.Command("git", "tag", directory+"/"+language+"/v9.0.0")
+		command.Dir = repositoryRoot
+		output, err := command.CombinedOutput()
+		require.NoError(t, err, "%s", output)
+	}
+	releases, err := latestReachableConnectorReleases(repositoryRoot)
+	require.NoError(t, err)
+	require.Equal(t, "v0.1.0", releases[directory+"/go"].Version)
+	require.Equal(t, directory+"/v0.1.0", releases[directory+"/go"].Tag)
+	require.Equal(t, "v9.0.0", releases[directory+"/python"].Version)
+	require.Equal(t, "v9.0.0", releases[directory+"/typescript"].Version)
+	require.ErrorContains(t, validateGoMigrationVersion(directory, releases[directory+"/go"], "v0.3.0"), "exactly one minor bump")
+	require.NoError(t, validateGoMigrationVersion(directory, releases[directory+"/go"], "v0.2.0"))
 }
 
 func replaceInFile(t *testing.T, path, old, replacement string) {
@@ -507,7 +530,11 @@ func writeConnectorFixture(t *testing.T, repositoryRoot, directory, modulePath s
 		require.NoError(t, os.WriteFile(filepath.Join(logoDirectory, "logo.svg"), []byte(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"></svg>`), 0o600))
 	}
 	require.NoError(t, os.WriteFile(filepath.Join(connectorDirectory, "connector.yaml"), []byte(contents), 0o600))
-	require.NoError(t, os.WriteFile(filepath.Join(connectorDirectory, "go.mod"), []byte("module "+modulePath+"\n\ngo 1.24\n"), 0o600))
+	require.NoError(t, os.MkdirAll(filepath.Join(connectorDirectory, "go"), 0o755))
+	if modulePath == "example.com/"+directory {
+		modulePath += "/go"
+	}
+	require.NoError(t, os.WriteFile(filepath.Join(connectorDirectory, "go", "go.mod"), []byte("module "+modulePath+"\n\ngo 1.24\n"), 0o600))
 }
 
 func readFixtureManifest(t *testing.T) string {

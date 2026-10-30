@@ -1,5 +1,9 @@
 # Microsoft Excel Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/excel/go@v0.24.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/microsoft/excel`.
+
 > **Verification status: partial live.** The example ran on a real Dex stack,
 > through Dex Web Start Flow and 13 real-Dex tests, against a local stand-in for
 > Microsoft Graph. Only invalid-credential probes reached Microsoft. No live
@@ -221,7 +225,7 @@ credential holds `auth_method: microsoft-oauth`, the client ID and secret, and
 the `access_token` and `refresh_token` from consent. Load the project
 configuration once at application startup and open the connection by the name
 its operations use, as
-[`examples/approval-decision/main.go`](examples/approval-decision/main.go) does:
+[`examples/approval-decision/main.go`](go/examples/approval-decision/main.go) does:
 
 ```go
 project, err := projectconfig.LoadFromEnvironment(ctx)
@@ -252,7 +256,7 @@ missing resources, oversized reads, protected writes, and a decision table
 whose key column is absent. Script a different case for another request or
 workbook. No default pretends a timed-out append was safely repeated.
 
-The [runnable integration test](examples/approval-decision/flow/workflow_mock_integration_test.go)
+The [runnable integration test](go/examples/approval-decision/flow/workflow_mock_integration_test.go)
 runs the example on a real Dex Worker without Microsoft Graph:
 
 ```go
@@ -270,7 +274,7 @@ See [`sdkgo/connectormock`](../../../sdkgo/README.md#connector-mocks) for script
 
 ## Example
 
-[`examples/approval-decision`](examples/approval-decision/README.md) uses every
+[`examples/approval-decision`](go/examples/approval-decision/README.md) uses every
 operation in one Flow started from Dex Web: it reads an approval-policy table,
 decides a spending request, appends the decision to a decision log keyed by
 request ID, writes the latest decision to a summary range, and reads it back.

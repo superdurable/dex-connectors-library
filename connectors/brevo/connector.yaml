@@ -5,7 +5,7 @@ metadata:
   displayName: Brevo
   description: Create or update a contact by email and retrieve a contact.
   company: Brevo
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: brevo
   codegen:

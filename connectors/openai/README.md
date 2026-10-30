@@ -1,5 +1,7 @@
 # OpenAI Connector
 
+Moved from `github.com/superdurable/dex-connectors-library/connectors/openai`.
+
 The OpenAI Connector is an independent Go module for stored Responses of the
 [OpenAI Responses API](https://developers.openai.com/api/reference/resources/responses/methods/create).
 It provides:
@@ -19,7 +21,7 @@ connection.
 Install a published component release:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/openai@v0.22.2
+go get github.com/superdurable/dex-connectors-library/connectors/openai/go@v0.23.0
 ```
 
 ## Connection
@@ -33,7 +35,7 @@ An application declares the connection in `dex-app.yaml`, Dex Web
 **Connections** renders the manifest form and saves the settings and the key
 in the project configuration, and the application opens the typed Connection
 once at startup, as
-[`examples/summarize-text/main.go`](examples/summarize-text/main.go) does:
+[`examples/summarize-text/main.go`](go/examples/summarize-text/main.go) does:
 
 ```go
 project, err := projectconfig.LoadFromEnvironment(ctx)
@@ -69,7 +71,7 @@ loopback fake provider, such as `textgentest.FakeProvider`.
 
 ## Create a stored Response
 
-The [summarize-text Flow](examples/summarize-text/flow/workflow.go) wires the
+The [summarize-text Flow](go/examples/summarize-text/flow/workflow.go) wires the
 Step and streams the summary to its text Stream:
 
 ```go
@@ -267,7 +269,7 @@ mock.CreateResponse().ForFlow(flowID).Respond(openaimock.CreateResponseCompleted
 ```
 
 These snippets come from
-[`workflow_mock_integration_test.go`](examples/summarize-text/flow/workflow_mock_integration_test.go).
+[`workflow_mock_integration_test.go`](go/examples/summarize-text/flow/workflow_mock_integration_test.go).
 Named cases cover incomplete stored Responses, missing IDs, and conclusive
 provider refusals.
 
@@ -301,7 +303,7 @@ such as the incomplete summary, carry partial text and are not checked.
 
 ## Example
 
-The [summarize-text example](examples/summarize-text/README.md) runs one Flow
+The [summarize-text example](go/examples/summarize-text/README.md) runs one Flow
 from Dex Web **Start Flow**: it persists the request, stores an OpenAI
 Response that summarizes it while streaming the text. A `completed` Response
 completes the Flow; the unwired `failed` branch fails it.

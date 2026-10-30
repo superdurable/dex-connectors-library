@@ -1,0 +1,108 @@
+# Zoom booked meeting example
+
+This example follows one booked consultation from Dex Web **Start Flow** to
+attendance, using every Zoom operation:
+
+1. `RecordBooking` validates the booked slot, an RFC 3339 start with an
+   explicit offset plus an IANA time zone, and stores it.
+2. `CreateBookedMeeting` runs `createMeeting` once with a waiting room.
+3. On `created`, `RecordScheduledMeeting` records the meeting ID and join URL
+   after confirming Zoom stores the requested instant and length.
+4. `AwaitBookedMeeting` waits durably for the first of: the scheduled end plus
+   15 minutes, a **Reschedule meeting** Action, or a **Check attendance now**
+   Action.
+5. A reschedule runs `MoveBookedMeeting` (`updateMeeting`), reads the meeting
+   back with `ReadBackRescheduledMeeting` (`getMeeting`), confirms the stored
+   slot in `RecordRescheduledMeeting`, and waits again. A meeting deleted in
+   Zoom fails the Flow on the unwired `notFound` branch.
+6. At the attendance time, `ListMeetingParticipants`
+   (`listPastMeetingParticipants`) and `RecordMeetingAttendance` complete as
+   `attended` when anyone other than the host joined, `noShow` when nobody did
+   or Zoom has no ended instance, or `attendanceUnknown` when the first
+   participant page lists only the host and more pages remain. A rejected
+   listing, such as on a free account, fails the Flow.
+
+On `providerRejected`, the unwired branch fails the Flow; nothing was
+created. On `uncertain`, `RecordUncertainMeeting` records the
+connector Call ID, and `FindUncertainMeeting` (`listMeetings`) reads one page
+of upcoming meetings. `EvaluateUncertainMeeting` adopts the one meeting with
+the same topic, start instant, and length that Zoom created after the booking
+was recorded. Otherwise the Flow completes as `needsReconciliation` with a
+note, and it never creates the meeting again on its own. A slot Zoom stores
+differently from the request also completes as `needsReconciliation`.
+
+The `zoom-booked-meeting-phase` and `zoom-booked-meeting` Attributes hold the
+phase and record; both Actions require the `zoom-booked-meeting.manage`
+permission and appear only while the phase is `scheduled`. Unwired optional
+branches, such as `defect`, fail the Flow.
+
+## Run
+
+Generate strict FDG 2.0 from `connectors/zoom` with the latest stable dexcli
+release:
+
+```bash
+mkdir -p build
+dexcli visualize ./examples/booked-meeting/flow/workflow.go \
+  --schema-version 2.0 --json --out ./build/booked-meeting
+```
+
+The graph resolves the five Zoom Steps from the connector module in this checkout.
+
+Run `dexcli dev` with that build directory, open Dex Web at
+`http://127.0.0.1:8802` rather than `localhost`, open **Connections**, and
+authorize `zoom / zoom-scheduler` as described in the
+[connector README](../../../README.md#zoom-setup). Then start the Worker. It reads
+the `DEX_PROJECT_*` project configuration environment described in
+[project configuration](../../../../../sdkgo/projectconfig/README.md); Dex Web or
+Superverse Studio writes that configuration when you save the connection.
+
+```bash
+go run ./examples/booked-meeting
+```
+
+Override
+`DEX_FLOW_SERVICE_ADDRESS` or `DEX_BLOB_CACHE_DIR`
+when needed.
+
+Start `ZoomBookedMeeting` with a unique Flow ID and a future slot:
+
+```json
+{
+  "bookingId": "BK-77",
+  "topic": "Consultation with Priya",
+  "startTime": "2036-02-24T09:00:00-08:00",
+  "timeZone": "America/Los_Angeles",
+  "durationMinutes": 30,
+  "agenda": "Intro call"
+}
+```
+
+A live run creates a real meeting in the authorizing user's Zoom account;
+delete it in Zoom afterwards.
+
+## Test
+
+```bash
+GOWORK=off go test -race ./examples/booked-meeting/...
+```
+
+With a Dex development server running, the integration tests start a real
+Worker and Client against a deterministic Zoom fake:
+
+```bash
+GOWORK=off go test -tags=integration ./examples/booked-meeting/... -count=1 -v
+```
+
+They cover a meeting created once with its UTC start and join URL; a create
+with a delayed answer that is sent once; a create whose response never arrives, adopted from the
+meeting list with one create request; a 5xx create that finds no match and
+stops for an operator with one create request; a `3161` rejection; a
+reschedule read back and followed by attendance; a delayed reschedule that
+completes with one patch; a reschedule of a deleted
+meeting; a no-show; the attendance Timer after a one-minute meeting; and a
+Worker process killed one second into its create request, whose replacement
+reconciles instead of creating again. The Timer test takes about a minute, and
+the Worker-loss test runs the test binary again as the Worker process it
+kills. Set
+`DEX_FLOW_SERVICE_ADDRESS` when the server is not at `127.0.0.1:8801`.

@@ -1,5 +1,9 @@
 # Airtable Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/airtable/go@v0.23.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/airtable`.
+
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Airtable; no live Airtable base was used. See
 > [verification status](../../docs/verification-status.md) for what is and
 > is not verified.
@@ -28,11 +32,11 @@ a field.
 
 ## Mocks
 
-The generated [`airtablemock`](airtablemock) package supplies one refund policy
+The generated [`airtablemock`](go/airtablemock) package supplies one refund policy
 and its approved decision log across listing, upsert, update, and read-back
 operations. The listing default has three cursor pages; the example Flow reads
 only the first. Cases also cover expired offsets, missing rows, and denied
-operations. The [runnable integration test](examples/refund-decision/flow/workflow_mock_integration_test.go)
+operations. The [runnable integration test](go/examples/refund-decision/flow/workflow_mock_integration_test.go)
 uses the example Flow:
 
 ```go
@@ -226,7 +230,7 @@ The `sdkgo` webhook and Trigger packages have no ping-then-pull source today.
 
 ## Example
 
-[`examples/refund-decision`](examples/refund-decision) runs one Flow from Dex
+[`examples/refund-decision`](go/examples/refund-decision) runs one Flow from Dex
 Web **Start Flow** that uses every operation: it reads the refund policy row
 whose key matches the request, decides the refund, upserts the case's decision
 log row with a link to the policy, stamps the policy with the case, and reads

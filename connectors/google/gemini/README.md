@@ -1,5 +1,7 @@
 # Gemini Connector
 
+Moved from `github.com/superdurable/dex-connectors-library/connectors/google/gemini`.
+
 The Gemini Connector is an independent Go module for the Google Gemini API
 [`models.generateContent`](https://ai.google.dev/api/generate-content) method.
 It provides `gemini.NewGenerateContentStep`, the native `generateContent`
@@ -15,7 +17,7 @@ by changing only the connection.
 Install a published component release:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/google/gemini@v0.22.0
+go get github.com/superdurable/dex-connectors-library/connectors/google/gemini/go@v0.23.0
 ```
 
 ## Connection
@@ -34,7 +36,7 @@ can then pick its own model from Gemini's live model list; see
 [Choose a model per Step](#choose-a-model-per-step). Dex Web saves the
 settings and the key in the project configuration, and the application opens
 the typed Connection once at startup, as
-[`examples/generate-summary/main.go`](examples/generate-summary/main.go) does:
+[`examples/generate-summary/main.go`](go/examples/generate-summary/main.go) does:
 
 ```go
 project, err := projectconfig.LoadFromEnvironment(ctx)
@@ -74,7 +76,7 @@ the client sets none.
 
 ## Generate content
 
-The [generate-summary Flow](examples/generate-summary/flow/workflow.go) wires
+The [generate-summary Flow](go/examples/generate-summary/flow/workflow.go) wires
 the native Step and maps its start input to a JSON Schema request:
 
 ```go
@@ -266,7 +268,7 @@ schema adherence because the real generated branch does not; the example Flow
 validates the summary it consumes. Script another answer to test malformed or
 schema-mismatched content. See [connector mocks](../../../sdkgo/README.md#connector-mocks).
 
-The [runnable real-Dex test](examples/generate-summary/flow/workflow_mock_integration_test.go)
+The [runnable real-Dex test](go/examples/generate-summary/flow/workflow_mock_integration_test.go)
 uses the default structured answer:
 
 ```go
@@ -279,7 +281,7 @@ uses the default structured answer:
 
 ## Example
 
-The [generate-summary example](examples/generate-summary/README.md) runs one
+The [generate-summary example](go/examples/generate-summary/README.md) runs one
 Flow that asks Gemini for a JSON Schema summary through `generateContent` and
 completes with the decoded summary. Truncated or blocked output fails the example Flow.
 

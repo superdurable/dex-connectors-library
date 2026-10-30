@@ -5,7 +5,7 @@ metadata:
   displayName: Front
   description: "Search, read, reply to, comment on, and update Front conversations and find contacts by email, keeping Front's own conversation statuses, ticket status IDs, and tag and teammate IDs."
   company: Front
-  version: v0.22.0
+  version: v0.23.0
 spec:
   provider: front
   codegen:

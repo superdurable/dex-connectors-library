@@ -1,5 +1,9 @@
 # Google Calendar Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/calendar/go@v0.24.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/google/calendar`.
+
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Google Calendar; no live Google account was used. See
 > [verification status](../../../docs/verification-status.md) for what is and
 > is not verified.
@@ -165,7 +169,7 @@ metadata requires the artifact whenever `spec.studio` is declared.
 
 Load the project configuration once at application startup and open the
 connection by the name its operations use, as
-[`examples/schedule-meeting/main.go`](examples/schedule-meeting/main.go) does:
+[`examples/schedule-meeting/main.go`](go/examples/schedule-meeting/main.go) does:
 
 ```go
 project, err := projectconfig.LoadFromEnvironment(ctx)
@@ -194,7 +198,7 @@ flow, harness := newScheduleMeetingHarnessWithConnection(t, mock.Connection(), C
 ```
 
 This snippet comes from
-[`workflow_mock_integration_test.go`](examples/schedule-meeting/flow/workflow_mock_integration_test.go).
+[`workflow_mock_integration_test.go`](go/examples/schedule-meeting/flow/workflow_mock_integration_test.go).
 The event-list default has three ordered pages, including a repeated event and
 a transparent event. The example follows every page and schedules the meeting
 after confirming no opaque event blocks the slot. A separate test scripts the
@@ -217,7 +221,7 @@ meeting with `Respond` or `When`, as described in
 
 ## Example
 
-[`examples/schedule-meeting`](examples/schedule-meeting) is a runnable Dex Web
+[`examples/schedule-meeting`](go/examples/schedule-meeting) is a runnable Dex Web
 **Start Flow** example that uses all five operations: it checks free/busy,
 places an uninvited hold, reads it back, lists the window for a double booking,
 and only then invites the attendees.

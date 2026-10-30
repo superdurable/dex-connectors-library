@@ -1,5 +1,9 @@
 # Google Sheets Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/spreadsheet/go@v0.25.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/google/spreadsheet`.
+
 The Google Sheets Connector exposes operation-specific Dex Step factories:
 
 - `spreadsheet.NewGetValuesStep`
@@ -11,7 +15,7 @@ It uses a separate `google-sheets-oauth` Connection with the least-privilege
 manual IDs work only for files already granted to the application. The
 generated `Credentials` keeps the OAuth client, access token, and refresh token
 in the project connection that `NewProjectConnection` opens, as
-[`examples/upsert-contact/main.go`](examples/upsert-contact/main.go) does. That
+[`examples/upsert-contact/main.go`](go/examples/upsert-contact/main.go) does. That
 connection admits one refresh per credential generation across application
 replicas and stores the complete replacement before the call uses it. Google
 refresh-token rotation replaces the previous token only when Google returns a
@@ -73,12 +77,12 @@ flow := NewFlow(mock.Connection())
 ```
 
 This snippet comes from
-[`workflow_mock_integration_test.go`](examples/upsert-contact/flow/workflow_mock_integration_test.go).
+[`workflow_mock_integration_test.go`](go/examples/upsert-contact/flow/workflow_mock_integration_test.go).
 Named cases cover missing ranges or rows, duplicate keys, and provider refusals.
 
 ## Example
 
-[`examples/upsert-contact`](examples/upsert-contact) is a runnable Dex Web
+[`examples/upsert-contact`](go/examples/upsert-contact) is a runnable Dex Web
 **Start Flow** example that upserts one contact row by email address.
 
 ## Verification

@@ -1,5 +1,9 @@
 # Google Drive Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/drive/go@v0.24.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/google/drive`.
+
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Google Drive; no live Google account was used. See
 > [verification status](../../../docs/verification-status.md) for what is and
 > is not verified.
@@ -73,7 +77,7 @@ encrypted project storage and never enter a Flow.
 
 Load the project configuration once at application startup and open the
 connection by the name its operations use, as
-[`examples/text-copy/main.go`](examples/text-copy/main.go) does:
+[`examples/text-copy/main.go`](go/examples/text-copy/main.go) does:
 
 ```go
 project, err := projectconfig.LoadFromEnvironment(ctx)
@@ -206,7 +210,7 @@ is created; this is not yet verified against a live account.
 and `tooLarge` cases where those branches apply. The broad search default
 has three pages with an unordered duplicate; the text-copy example scripts a
 single exact source. This snippet is from
-[`workflow_mock_integration_test.go`](examples/text-copy/flow/workflow_mock_integration_test.go):
+[`workflow_mock_integration_test.go`](go/examples/text-copy/flow/workflow_mock_integration_test.go):
 
 ```go
 mock := drivemock.New(t, ConnectionName)
@@ -257,7 +261,7 @@ exists only to render the connection status and this picker from the shared
 
 ## Example
 
-[`examples/text-copy`](examples/text-copy) is a runnable Dex Web
+[`examples/text-copy`](go/examples/text-copy) is a runnable Dex Web
 **Start Flow** example that resolves a file by exact name, reads its text,
 uploads a text copy, and reads the copy back.
 

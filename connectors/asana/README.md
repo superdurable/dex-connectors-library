@@ -1,5 +1,9 @@
 # Asana Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/asana/go@v0.23.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/asana`.
+
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Asana; no live Asana account was used. See
 > [verification status](../../docs/verification-status.md) for what is and
 > is not verified.
@@ -81,7 +85,7 @@ second method with `sdkgo/oauthtoken`: refresh-token grant, form body,
 
 Name the factory connection and open the same name from the project
 configuration at application startup, as
-[`examples/approved-request-task/main.go`](examples/approved-request-task/main.go)
+[`examples/approved-request-task/main.go`](go/examples/approved-request-task/main.go)
 does:
 
 ```go
@@ -219,7 +223,7 @@ checkpoint was persisted, so an accepted write can still become `uncertain`.
 Under an async override, the local-phase heartbeat is not visible to a later
 attempt, so even a 429 or 503 may become `uncertain` instead of retrying.
 An application handles `uncertain` without creating again automatically; the
-[`approved-request-task`](examples/approved-request-task) example parks the
+[`approved-request-task`](go/examples/approved-request-task) example parks the
 create for an operator, who confirms the task found in the project or approves
 a new create.
 
@@ -245,7 +249,7 @@ require.NoError(t, err)
 ```
 
 The complete runnable test is
-[`workflow_mock_integration_test.go`](examples/approved-request-task/flow/workflow_mock_integration_test.go).
+[`workflow_mock_integration_test.go`](go/examples/approved-request-task/flow/workflow_mock_integration_test.go).
 
 ## Studio pickers
 
@@ -266,7 +270,7 @@ that creates tasks in a workspace without a project.
 
 ## Example
 
-[`examples/approved-request-task`](examples/approved-request-task) turns an
+[`examples/approved-request-task`](go/examples/approved-request-task) turns an
 approved request into a task: it pages through the project's incomplete tasks
 for one that already carries the request ID, creates the task once, assigns it
 and moves it to the picked section, and comments with the approval. It uses all

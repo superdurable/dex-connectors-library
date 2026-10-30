@@ -1,5 +1,9 @@
 # Email (IMAP and SMTP) Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/superdurable/email/go@v0.23.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/superdurable/email`.
+
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against in-process IMAP and SMTP servers; no real mail provider was used. See
 > [verification status](../../../docs/verification-status.md) for what is and
 > is not verified.
@@ -42,7 +46,7 @@ customers, or message contents. Named cases cover missing messages, rejected
 logins or recipients, a missing reply address, and refused archive or flag
 changes. SMTP uncertainty remains a branch without a mock answer.
 
-The [runnable mock integration test](examples/customer-reply/flow/workflow_mock_integration_test.go)
+The [runnable mock integration test](go/examples/customer-reply/flow/workflow_mock_integration_test.go)
 uses the defaults on a real Dex Worker:
 
 ```go
@@ -110,7 +114,7 @@ restart. Hosts, ports, TLS modes, and the sender are startup configuration.
 Dex Web or Superverse Studio writes the connection to the project
 configuration. Load it with `projectconfig.LoadFromEnvironment` and open the
 connection by the name the application uses with `email.NewProjectConnection`,
-as [`examples/customer-reply/main.go`](examples/customer-reply/main.go) does:
+as [`examples/customer-reply/main.go`](go/examples/customer-reply/main.go) does:
 
 ```go
 project, err := projectconfig.LoadFromEnvironment(ctx)
@@ -345,7 +349,7 @@ addresses are not supported.
 
 ## Example
 
-[`examples/customer-reply`](examples/customer-reply) is a runnable Dex Web
+[`examples/customer-reply`](go/examples/customer-reply) is a runnable Dex Web
 **Start Flow** example that uses all six operations: it finds the customer's
 latest message, reads it, sends one threaded reply that quotes it, marks it
 seen and answered, and archives it, or sends a new message to a customer

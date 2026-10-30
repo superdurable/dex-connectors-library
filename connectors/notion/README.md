@@ -1,5 +1,9 @@
 # Notion Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/notion/go@v0.24.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/notion`.
+
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Notion; no live Notion workspace was used. See
 > [verification status](../../docs/verification-status.md) for what is and
 > is not verified.
@@ -282,7 +286,7 @@ again on page 3. Named cases cover definite missing and rejected outcomes; tests
 can script them, and any other pages, when a business reaction needs that
 branch.
 
-The [runnable integration test](examples/submission-intake/flow/workflow_mock_integration_test.go)
+The [runnable integration test](go/examples/submission-intake/flow/workflow_mock_integration_test.go)
 uses the defaults without provider credentials:
 
 ```go
@@ -294,7 +298,7 @@ require.Equal(t, PhaseUpdated, record.Phase)
 
 ## Example
 
-[examples/submission-intake](examples/submission-intake) records a form
+[examples/submission-intake](go/examples/submission-intake) records a form
 submission as a database row and reads it back. It finds the database by
 title, updates the row that already holds the Submission ID or creates one,
 and reconciles an uncertain create by querying again. The Worker loads the

@@ -1,5 +1,9 @@
 # Jira Cloud Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/atlassian/jira/go@v0.24.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/atlassian/jira`.
+
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Jira; no live Atlassian site was used. See
 > [verification status](../../../docs/verification-status.md) for what is and
 > is not verified.
@@ -100,7 +104,7 @@ call refreshes and persists it, and otherwise **Reconnect** issues a new one.
 Dex Web or Superverse Studio saves the connection's settings and credentials in
 the project configuration. The application loads that configuration once and
 opens the connection by the name it declares, as
-[`examples/triage-issue/main.go`](examples/triage-issue/main.go) does:
+[`examples/triage-issue/main.go`](go/examples/triage-issue/main.go) does:
 
 ```go
 project, err := projectconfig.LoadFromEnvironment(ctx)
@@ -265,7 +269,7 @@ A traced DNS, connect, or TLS failure before any connection is obtained, HTTP
 attempt. The fence reserves part of the Execute budget for read-back and
 classification. A 409 reads back before choosing a result.
 An application handles unresolved `uncertain` without creating again; the
-[`triage-issue`](examples/triage-issue) example parks the create for an
+[`triage-issue`](go/examples/triage-issue) example parks the create for an
 operator, who confirms the issue found in the project or approves a new create.
 
 Atlassian documents issue and comment entity properties and their read APIs:

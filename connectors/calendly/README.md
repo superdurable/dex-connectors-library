@@ -1,5 +1,9 @@
 # Calendly Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/calendly/go@v0.24.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/calendly`.
+
 > **Verification status: partial live.** Only picker commands with a placeholder token reached Calendly; everything else ran on a real Dex stack against a local stand-in. No live Calendly account was used. See
 > [verification status](../../docs/verification-status.md) for what is and
 > is not verified.
@@ -155,7 +159,7 @@ The checked-in example loads the project configuration with
 environment described in [project configuration](../../sdkgo/projectconfig/README.md),
 opens the connection with `calendly.NewProjectConnection`, and wires the
 endpoint like this, from
-[`examples/invitee-recorder/main.go`](examples/invitee-recorder/main.go):
+[`examples/invitee-recorder/main.go`](go/examples/invitee-recorder/main.go):
 
 ```go
 func newInviteeEndpointRunner(
@@ -184,7 +188,7 @@ delivers a booking before its cancellation, in arrival order.
 
 Calendly creates subscriptions only through its API. Run
 `createWebhookSubscription` once with the public HTTPS callback URL, or make
-the one call in the [example README](examples/invitee-recorder/README.md#4-register-the-webhook-subscription).
+the one call in the [example README](go/examples/invitee-recorder/README.md#4-register-the-webhook-subscription).
 Calendly retries a failing delivery for 24 hours and then disables the
 subscription; `createWebhookSubscription` reports a disabled one as
 `conflictingSubscription`, to delete and create again. Calendly never returns
@@ -232,7 +236,7 @@ These rely on the documentation fetched on 2026-09-30, not on a live account:
 ## Verification
 
 ```bash
-cd connectors/calendly
+cd connectors/calendly/go
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./... -count=1 -v

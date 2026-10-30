@@ -5,7 +5,7 @@ metadata:
   displayName: Harvest
   description: Read Harvest records with a connection-owned API key.
   company: Harvest
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: harvest
   codegen:

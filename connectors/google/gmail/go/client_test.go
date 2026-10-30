@@ -1,0 +1,266 @@
+// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+
+package gmail_test
+
+import (
+	"context"
+	"encoding/base64"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
+	gmail "github.com/superdurable/dex-connectors-library/connectors/google/gmail/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex/sdk-go/dex"
+)
+
+var gmailConnection = sdkgo.ConnectionRef{Provider: "google", Name: "gmail-send"}
+
+type rejectionRefreshingCredentialProvider struct {
+	forcedRefreshes int
+}
+
+func (*rejectionRefreshingCredentialProvider) Resolve(sdkgo.Call) (gmail.Credentials, error) {
+	return gmail.Credentials{AccessToken: sdkgo.NewSecretString("rejected-token"), PrimaryEmail: "owner@example.com"}, nil
+}
+
+// ResolveWithRefresh returns the stored credential unchanged: its expiry has not passed.
+func (provider *rejectionRefreshingCredentialProvider) ResolveWithRefresh(
+	_ context.Context,
+	call sdkgo.Call,
+	_ sdkgo.CredentialRefreshDriver[gmail.Credentials],
+) (gmail.Credentials, error) {
+	return provider.Resolve(call)
+}
+
+func (provider *rejectionRefreshingCredentialProvider) ResolveAfterRejection(
+	context.Context,
+	sdkgo.Call,
+	sdkgo.CredentialRefreshDriver[gmail.Credentials],
+) (gmail.Credentials, error) {
+	provider.forcedRefreshes++
+	return gmail.Credentials{AccessToken: sdkgo.NewSecretString("replacement-token"), PrimaryEmail: "owner@example.com"}, nil
+}
+
+func TestSendMessageUsesPrimarySenderAndStableMessageID(t *testing.T) {
+	var raw string
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		require.Equal(t, "Bearer gmail-token", request.Header.Get("Authorization"))
+		var payload map[string]string
+		require.NoError(t, json.NewDecoder(request.Body).Decode(&payload))
+		decoded, err := base64.RawURLEncoding.DecodeString(payload["raw"])
+		require.NoError(t, err)
+		raw = string(decoded)
+		response.Header().Set("X-Goog-Request-Id", "gmail-request")
+		_, _ = response.Write([]byte(`{"id":"message-1","threadId":"thread-1"}`))
+	}))
+	defer server.Close()
+	client := newGmailClient(t, server.URL)
+	ctx := newGmailDexContext("send-one")
+	result, err := sdkgo.RunMutation(ctx, client.SendMessage(), gmailConnection, gmail.SendMessageInput{To: []string{"customer@example.com"}, Subject: "Weekly progress", TextBody: "Keep going"})
+	require.NoError(t, err)
+	require.Equal(t, gmail.SendMessageBranchSent, result.Branch)
+	require.Equal(t, "owner@example.com", result.Value.Sender)
+	require.Equal(t, "message-1", result.Value.MessageID)
+	require.Contains(t, raw, "From: owner@example.com")
+	require.Contains(t, raw, "Message-ID: <")
+	require.Contains(t, raw, "@dex.superdurable.dev>")
+	require.NotContains(t, raw, "gmail-token")
+}
+
+func TestSendMessageRefreshesAndRetriesOnceAfterUnauthorized(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		requests++
+		if requests == 1 {
+			require.Equal(t, "Bearer rejected-token", request.Header.Get("Authorization"))
+			response.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		require.Equal(t, "Bearer replacement-token", request.Header.Get("Authorization"))
+		_, _ = response.Write([]byte(`{"id":"message-1","threadId":"thread-1"}`))
+	}))
+	t.Cleanup(server.Close)
+	provider := &rejectionRefreshingCredentialProvider{}
+	client, err := gmail.New(gmail.Config{Endpoint: server.URL}, provider)
+	require.NoError(t, err)
+
+	result, err := sdkgo.RunMutation(newGmailDexContext("refresh-after-401"), client.SendMessage(), gmailConnection, gmail.SendMessageInput{
+		To: []string{"customer@example.com"}, Subject: "Progress", TextBody: "Update",
+	})
+	require.NoError(t, err)
+	require.Equal(t, gmail.SendMessageBranchSent, result.Branch)
+	require.Equal(t, 2, requests)
+	require.Equal(t, 1, provider.forcedRefreshes)
+}
+
+func TestSendMessageDoesNotLoopWhenReplacementCredentialIsUnauthorized(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		requests++
+		response.WriteHeader(http.StatusUnauthorized)
+	}))
+	t.Cleanup(server.Close)
+	provider := &rejectionRefreshingCredentialProvider{}
+	client, err := gmail.New(gmail.Config{Endpoint: server.URL}, provider)
+	require.NoError(t, err)
+
+	result, err := sdkgo.RunMutation(newGmailDexContext("no-refresh-loop"), client.SendMessage(), gmailConnection, gmail.SendMessageInput{
+		To: []string{"customer@example.com"}, Subject: "Progress", TextBody: "Update",
+	})
+	require.NoError(t, err)
+	require.Equal(t, gmail.SendMessageBranchProviderRejected, result.Branch)
+	require.Equal(t, 2, requests)
+	require.Equal(t, 1, provider.forcedRefreshes)
+}
+
+func TestServerFailureRetriesAfterSentMailMiss(t *testing.T) {
+	sends, searches := 0, 0
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if request.Method == http.MethodGet {
+			searches++
+			_, _ = response.Write([]byte(`{"messages":[]}`))
+			return
+		}
+		sends++
+		response.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+	client := newGmailClient(t, server.URL)
+	_, err := sdkgo.RunMutation(newGmailDexContext("send-unknown"), client.SendMessage(), gmailConnection, gmail.SendMessageInput{To: []string{"customer@example.com"}, Subject: "Progress", TextBody: "Update"})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+	require.Equal(t, 1, sends)
+	require.Equal(t, 4, searches)
+}
+
+func TestRateLimitRetries(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		response.Header().Set("Retry-After", "3")
+		response.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer server.Close()
+	client := newGmailClient(t, server.URL)
+	_, err := sdkgo.RunMutation(newGmailDexContext("send-rate-limit"), client.SendMessage(), gmailConnection, gmail.SendMessageInput{To: []string{"customer@example.com"}, Subject: "Progress", TextBody: "Update"})
+	require.Error(t, err)
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, sdkgo.FailureRateLimit, retry.Failure.Kind)
+}
+
+func TestRateLimitRejectsMalformedRetryAfter(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		response.Header().Set("Retry-After", "later")
+		response.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer server.Close()
+	client := newGmailClient(t, server.URL)
+
+	_, err := sdkgo.RunMutation(newGmailDexContext("send-invalid-retry-after"), client.SendMessage(), gmailConnection, gmail.SendMessageInput{To: []string{"customer@example.com"}, Subject: "Progress", TextBody: "Update"})
+
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, sdkgo.FailureProtocol, retry.Failure.Kind)
+}
+
+func TestProviderRejectionIsTerminal(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		response.WriteHeader(http.StatusForbidden)
+	}))
+	defer server.Close()
+	client := newGmailClient(t, server.URL)
+	result, err := sdkgo.RunMutation(newGmailDexContext("send-rejected"), client.SendMessage(), gmailConnection, gmail.SendMessageInput{To: []string{"customer@example.com"}, Subject: "Progress", TextBody: "Update"})
+	require.NoError(t, err)
+	require.Equal(t, gmail.SendMessageBranchProviderRejected, result.Branch)
+	require.NotNil(t, result.Failure)
+	require.Equal(t, sdkgo.FailureAuthorization, result.Failure.Kind)
+}
+
+func TestMalformedSuccessIsSentAfterSentMailMiss(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		_, _ = response.Write([]byte(`{"threadId":"thread-without-message"}`))
+	}))
+	defer server.Close()
+	client := newGmailClient(t, server.URL)
+	result, err := sdkgo.RunMutation(newGmailDexContext("send-malformed"), client.SendMessage(), gmailConnection, gmail.SendMessageInput{To: []string{"customer@example.com"}, Subject: "Progress", TextBody: "Update"})
+	require.NoError(t, err)
+	require.Equal(t, gmail.SendMessageBranchSent, result.Branch)
+	require.Empty(t, result.Value.MessageID)
+	require.Empty(t, result.Value.ThreadID)
+}
+
+func TestRejectsHeaderInjectionBeforeProviderCall(t *testing.T) {
+	client := newGmailClient(t, "http://127.0.0.1:1")
+	result, err := sdkgo.RunMutation(newGmailDexContext("send-defect"), client.SendMessage(), gmailConnection, gmail.SendMessageInput{To: []string{"customer@example.com"}, Subject: "Hello\r\nBcc: victim@example.com", TextBody: "Update"})
+	require.NoError(t, err)
+	require.Equal(t, gmail.SendMessageBranchDefect, result.Branch)
+}
+
+func TestRejectsDisplayNameAsVerifiedPrimaryEmail(t *testing.T) {
+	client, err := gmail.New(gmail.Config{Endpoint: "http://127.0.0.1:1"}, sdkgo.StaticCredentialProvider[gmail.Credentials]{
+		gmailConnection: {AccessToken: sdkgo.NewSecretString("gmail-token"), PrimaryEmail: "Owner <owner@example.com>"},
+	})
+	require.NoError(t, err)
+	result, err := sdkgo.RunMutation(newGmailDexContext("sender-defect"), client.SendMessage(), gmailConnection, gmail.SendMessageInput{To: []string{"customer@example.com"}, Subject: "Progress", TextBody: "Update"})
+	require.NoError(t, err)
+	require.Equal(t, gmail.SendMessageBranchDefect, result.Branch)
+}
+
+func newGmailClient(t *testing.T, endpoint string) *gmail.Client {
+	t.Helper()
+	client, err := gmail.New(gmail.Config{Endpoint: endpoint}, sdkgo.StaticCredentialProvider[gmail.Credentials]{
+		gmailConnection: {AccessToken: sdkgo.NewSecretString("gmail-token"), PrimaryEmail: "owner@example.com"},
+	})
+	require.NoError(t, err)
+	return client
+}
+
+type gmailDexContext struct {
+	context.Context
+	step          string
+	attempt       int32
+	runID         string
+	flowStartedAt time.Time
+}
+
+func newGmailDexContext(step string) *gmailDexContext {
+	return &gmailDexContext{Context: context.Background(), step: step}
+}
+func (*gmailDexContext) FlowID() string { return "follow-up-flow" }
+func (ctx *gmailDexContext) RunID() string {
+	if ctx.runID != "" {
+		return ctx.runID
+	}
+	return "run"
+}
+func (ctx *gmailDexContext) FlowStartedAt() time.Time {
+	if !ctx.flowStartedAt.IsZero() {
+		return ctx.flowStartedAt
+	}
+	return time.Unix(1, 0)
+}
+func (context *gmailDexContext) StepExecutionID() string       { return context.step }
+func (*gmailDexContext) FromStepExecutionID() string           { return "" }
+func (*gmailDexContext) RecoveryError() *dex.RecoveryErrorInfo { return nil }
+func (*gmailDexContext) FirstAttemptAt() time.Time             { return time.Unix(1, 0) }
+func (ctx *gmailDexContext) Attempt() int32 {
+	if ctx.attempt > 0 {
+		return ctx.attempt
+	}
+	return 1
+}
+func (*gmailDexContext) HasTimerFired() bool                             { return false }
+func (*gmailDexContext) HasTimerFiredByIndex(int) bool                   { return false }
+func (*gmailDexContext) WaitForMethodFailed() bool                       { return false }
+func (*gmailDexContext) RecordHeartbeat(any) error                       { return nil }
+func (*gmailDexContext) GetLastHeartbeatValue(any) (bool, error)         { return false, nil }
+func (*gmailDexContext) SetStepExecutionLocal(string, any) error         { return nil }
+func (*gmailDexContext) GetStepExecutionLocal(string, any) (bool, error) { return false, nil }
+func (*gmailDexContext) RecordEvent(string, any) error                   { return nil }
+
+var _ dex.Context = (*gmailDexContext)(nil)

@@ -1,12 +1,16 @@
 # Discord Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/discord/go@v0.3.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/discord`.
+
 Read Discord channels and messages, send bot messages, and add reactions
 through the [Discord HTTP API](https://discord.com/developers/docs/reference)
 with typed Dex Query and Mutation Steps. Use the
-[channel announcement example](examples/channel-announcement/README.md) to post
+[channel announcement example](go/examples/channel-announcement/README.md) to post
 an announcement, react to it, and confirm it with a read-back.
 
-Its Go module is `github.com/superdurable/dex-connectors-library/connectors/discord`.
+Its Go module is `github.com/superdurable/dex-connectors-library/connectors/discord/go`.
 The connector ID is `discord`.
 
 ## Operations
@@ -36,7 +40,7 @@ request path. Message `Content`, channel `Name`, and `Topic` are untrusted
 provider text: escape them before rendering HTML. A bot without the Message
 Content intent reads empty content for server messages that do not mention it.
 
-Use the generated factories in [the runnable Flow](examples/channel-announcement/flow/workflow.go):
+Use the generated factories in [the runnable Flow](go/examples/channel-announcement/flow/workflow.go):
 
 ```go
 		dex.DefineStep(discord.NewCreateMessageStep(discord.CreateMessageStepConfig[AnnouncementRequest]{
@@ -108,7 +112,7 @@ so the runnable Flow confirms its own post. Script a different case when the inp
 names another channel, message, or text. Optional cases cover unknown resources
 and permission denials. See [connector mocks](../../sdkgo/README.md#connector-mocks).
 
-The [runnable real-Dex test](examples/channel-announcement/flow/workflow_mock_integration_test.go)
+The [runnable real-Dex test](go/examples/channel-announcement/flow/workflow_mock_integration_test.go)
 uses the defaults without Discord credentials:
 
 ```go
