@@ -22,6 +22,8 @@ node examples/fence.mjs
 
 All durations in this package are milliseconds. Public JSON shapes use the Go SDK's field names. Credential values and project objects stay outside Flow state and cannot be serialized through their wrappers.
 
+The [Dex integration harness](test/integ/step_flows.mjs) exercises the same Step factories through a real Worker and Client. Start `dexcli dev --open=false --dex-port 18891` with a local Dex server, set `DEX_SERVER_ADDRESS` when its gRPC address differs from `127.0.0.1:18891`, and run `npm run test:integration`. It verifies a happy path, optional branch, retry then success, retry exhaustion, uncertain mutation, a lost-response single-dispatch fence, repeated claim heartbeats, and scripted mock replay. It uses fixture operations and no provider credentials.
+
 ## Typed operations and credential resolution
 
 The [runnable operation example](examples/operations.mjs) validates a Query definition, binds a live Step context to stable call identity, resolves credentials at invocation time, and completes a Go-compatible zero receipt. `Mutation` adds an idempotency-key method and may return `newMutationUncertain` only for a dispatched write that cannot be repeated or confirmed by read-back. `runQuery` and `runMutation` throw `RetryError` for a safe retry; a Step factory turns that into Dex retry behavior. The example uses a test context; application Steps receive `AsyncContext` from Dex.
