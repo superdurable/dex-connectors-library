@@ -165,6 +165,23 @@ authoritative stored expiry has elapsed. Under `dexcli dev`, the same provider
 uses process-local connection heads and writes refreshed material back to the
 owner-only `connections.json` file only while it still holds the prior
 credential. A newer Dex Web authorization wins the race.
+Providers built with `project.connections` route a `sharedConnectionId` to
+the credential broker. They never read a stored connection head or call the
+refresh driver for that entry. Pass `decode_shared` when the broker omits
+host-kept renewal secrets required by the ordinary decoder. Broker
+`REAUTHORIZATION_REQUIRED` and `CONNECTION_NOT_SELECTED` propagate to callers.
+
+From the same runnable example:
+
+```python
+shared_provider = ProjectCredentialProvider(
+    project.connections,
+    ConnectionKey("sample", "main"),
+    lambda value: {"apiKey": str(value["apiKey"]), "privateKey": str(value["privateKey"])},
+    decode_shared=lambda value: {"apiKey": str(value["apiKey"])},
+)
+assert (await shared_provider.resolve(call))["apiKey"] == "REDACTED_SHARED_KEY"
+```
 
 From [the runnable project example](examples/credentials_and_project.py):
 

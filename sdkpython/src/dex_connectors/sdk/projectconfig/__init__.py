@@ -97,12 +97,16 @@ async def load_project_from_object_store(
     """Read a pinned snapshot from a trusted object store without fetching credentials."""
     configurations = ConfigurationStore(objects, scope)
     configuration = await configurations.read_snapshot(reference)
-    connections = connection_store if connection_store is not None else ConnectionStore(objects, scope)
-    project = LoadedProject(configuration, reference, connections, configurations)
+    if connection_store is not None and any(
+        entry.shared_connection_id for entry in configuration.connections
+    ):
+        raise ValueError("an externally supplied connection store cannot bind shared connections")
+    broker: CredentialBrokerClient | None = None
+    shared_connections: dict[ConnectionKey, SharedConnection] = {}
     if configuration.credential_broker is not None:
 
         async def read_token(token_reference: ApplicationSecretRef) -> str:
-            return await project._read_secret(token_reference, "DEX_CREDENTIAL_BROKER_TOKEN")
+            return await configurations.read_secret_value(token_reference, "DEX_CREDENTIAL_BROKER_TOKEN")
 
         async def current_reference() -> ApplicationSecretRef:
             current, _ = await configurations.read_configuration()
@@ -110,17 +114,24 @@ async def load_project_from_object_store(
                 raise ValueError("credential broker token reference is absent")
             return current.credential_broker.token_secret_ref
 
-        project.broker = CredentialBrokerClient(
+        broker = CredentialBrokerClient(
             configuration.credential_broker, read_token, current_reference, broker_client
         )
-        project.shared_connections = {
+        shared_connections = {
             ConnectionKey(entry.connector_id, entry.connection_name): SharedConnection(
-                entry.shared_connection_id, project.broker
+                entry.shared_connection_id, broker
             )
             for entry in configuration.connections
             if entry.shared_connection_id
         }
-    return project
+    connections = (
+        connection_store if connection_store is not None
+        else ConnectionStore(objects, scope, shared_connections)
+    )
+    return LoadedProject(
+        configuration, reference, connections, configurations,
+        broker=broker, shared_connections=shared_connections,
+    )
 
 
 def _read_private_file(path: Path) -> dict[str, Any]:

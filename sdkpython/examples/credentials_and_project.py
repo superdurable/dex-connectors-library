@@ -38,7 +38,12 @@ from dex_connectors.sdk.projectconfig import (
     load_project_from_object_store,
 )
 from dex_connectors.sdk.projectconfig.models import CredentialBrokerConfiguration
-from dex_connectors.sdk.projectconfig.provider import RefreshingCredentialProvider
+from dex_connectors.sdk.projectconfig.provider import (
+    CredentialProvider as ProjectCredentialProvider,
+)
+from dex_connectors.sdk.projectconfig.provider import (
+    RefreshingCredentialProvider,
+)
 
 
 class ExampleCredentialProvider(CredentialProvider[SecretString]):
@@ -148,6 +153,14 @@ async def main() -> None:
         assert (await project.resolve_credential(ConnectionKey("sample", "main"), "call-1"))[
             "apiKey"
         ] == "REDACTED_SHARED_KEY"
+        shared_provider = ProjectCredentialProvider(
+            project.connections,
+            ConnectionKey("sample", "main"),
+            lambda value: {"apiKey": str(value["apiKey"]), "privateKey": str(value["privateKey"])},
+            decode_shared=lambda value: {"apiKey": str(value["apiKey"])},
+        )
+        assert (await shared_provider.resolve(call))["apiKey"] == "REDACTED_SHARED_KEY"
+        await project.close()
 
     with tempfile.TemporaryDirectory() as directory:
         connections_file = Path(directory) / "connections.json"

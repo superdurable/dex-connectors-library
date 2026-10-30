@@ -13,6 +13,7 @@ from typing import Any, Generic, TypeVar
 from ..credentials import CredentialRefreshDriver, CredentialRefreshState, ReauthorizationRequiredError
 from ..timestamps import RFC3339NanoTimestamp, format_rfc3339_nano
 from ..types import Call
+from .broker import RejectedCredentialNotRefreshedError, SharedConnection
 from .connections import (
     CONNECTION_SCHEMA_VERSION,
     ConnectionKey,
@@ -39,10 +40,6 @@ class ExchangePendingError(OSError):
     """Another invocation owns provider dispatch for this credential generation."""
 
 
-class RejectedCredentialNotRefreshedError(ValueError):
-    """A provider rejection did not prove that authoritative expiry elapsed."""
-
-
 @dataclass(frozen=True, slots=True)
 class _Admission:
     key: ConnectionKey
@@ -56,14 +53,16 @@ class _Admission:
 class CredentialProvider(Generic[Credential]):
     """Resolve a non-refreshing project credential for one connector connection.
 
-    The decoder validates private material at the connector boundary. The
-    provider reads current storage on every call and never persists credentials
+    The decoder validates private material at the connector boundary. Ordinary
+    entries read current storage on every call. Shared entries use the loaded
+    project's broker and optional shared decoder, without persisting credentials
     in Dex Flow state.
     """
 
     def __init__(
         self, store: ConnectionStore, key: ConnectionKey,
         decode: CredentialDecoder[Credential],
+        decode_shared: CredentialDecoder[Credential] | None = None,
     ) -> None:
         if store is None or decode is None:
             raise ValueError("project credential store and decoder are required")
@@ -71,10 +70,14 @@ class CredentialProvider(Generic[Credential]):
         self._store = store
         self._key = key
         self._decode = decode
+        self._decode_shared = decode_shared
+        self._shared: SharedConnection | None = store._shared_connection(key)
 
     async def resolve(self, call: Call) -> Credential:
         """Read current material; an expired credential requires refresh support."""
         self._validate_call(call)
+        if self._shared is not None:
+            return self._decode_shared_material(await self._shared.resolve(str(call.id)))
         material, connection = await self._store.read_credential_material(self._key)
         if connection.expires_at is not None and connection.expires_at <= datetime.now(UTC):
             raise ValueError("expired project credential requires refresh")
@@ -94,20 +97,28 @@ class CredentialProvider(Generic[Credential]):
         except (ValueError, KeyError, TypeError):
             raise ValueError("project credential decoding failed") from None
 
+    def _decode_shared_material(self, material: dict[str, object]) -> Credential:
+        decoder = self._decode_shared or self._decode
+        try:
+            return decoder(material)
+        except (ValueError, KeyError, TypeError):
+            raise ValueError("shared project credential decoding failed") from None
+
 
 class RefreshingCredentialProvider(CredentialProvider[Credential]):
     """Refresh project credentials once per generation across replicas.
 
-    A conditional head write grants exactly one caller provider dispatch.
-    Observers recover the immutable result or restore an abandoned admission;
-    expiry never grants another send for the same admission.
+    For ordinary entries, a conditional head write grants one caller provider
+    dispatch. Observers recover the immutable result or restore an abandoned
+    admission. Shared entries use the broker without consulting the driver.
     """
 
     def __init__(
         self, store: ConnectionStore, key: ConnectionKey,
         decode: CredentialDecoder[Credential], encode: CredentialEncoder[Credential],
+        decode_shared: CredentialDecoder[Credential] | None = None,
     ) -> None:
-        super().__init__(store, key, decode)
+        super().__init__(store, key, decode, decode_shared)
         if encode is None:
             raise ValueError("project credential encoder is required")
         self._encode = encode
@@ -119,6 +130,8 @@ class RefreshingCredentialProvider(CredentialProvider[Credential]):
         self._validate_call(call)
         if driver is None:
             raise ValueError("credential refresh driver is required")
+        if self._shared is not None:
+            return self._decode_shared_material(await self._shared.resolve(str(call.id)))
         while True:
             record, _ = await self._store._read_record(self._key)
             status = record["status"]
@@ -149,6 +162,12 @@ class RefreshingCredentialProvider(CredentialProvider[Credential]):
     ) -> Credential:
         """Refresh after provider rejection only when stored expiry has elapsed."""
         self._validate_call(call)
+        if driver is None:
+            raise ValueError("credential refresh driver is required")
+        if self._shared is not None:
+            return self._decode_shared_material(
+                await self._shared.resolve_after_rejection(str(call.id))
+            )
         connection = await self._store.read_connection(self._key)
         if connection.expires_at is None or connection.expires_at > datetime.now(UTC):
             raise RejectedCredentialNotRefreshedError(

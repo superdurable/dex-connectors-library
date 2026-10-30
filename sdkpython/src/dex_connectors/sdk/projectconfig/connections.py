@@ -7,7 +7,10 @@ import json
 import re
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from .broker import SharedConnection
 
 from ..timestamps import RFC3339NanoTimestamp, format_rfc3339_nano
 from .models import Scope, digest_bytes, go_canonical_json_bytes, require_object
@@ -138,13 +141,24 @@ def _connection_record_wire(
 
 
 class ConnectionStore:
-    """Read exact material and conditionally replace connection credentials."""
+    """Read ordinary material and bind loaded shared entries for provider routing.
 
-    def __init__(self, objects: ObjectStore, scope: Scope) -> None:
+    Shared entries are constructor-injected from the pinned project document.
+    Their credentials remain broker-owned and never enter stored connection heads.
+    """
+
+    def __init__(
+        self, objects: ObjectStore, scope: Scope,
+        shared_connections: dict[ConnectionKey, "SharedConnection"] | None = None,
+    ) -> None:
         if objects is None:
             raise ValueError("project connection object store is required")
         self.objects = objects
         self.scope = scope
+        self._shared_connections = dict(shared_connections or {})
+
+    def _shared_connection(self, key: ConnectionKey) -> "SharedConnection | None":
+        return self._shared_connections.get(key)
 
     async def read_connection(self, key: ConnectionKey) -> Connection:
         """Read safe metadata without refreshing credentials."""

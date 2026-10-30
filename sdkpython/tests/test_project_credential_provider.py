@@ -8,6 +8,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+import httpx
 import pytest
 
 from dex_connectors.sdk import (
@@ -22,14 +23,22 @@ from dex_connectors.sdk import (
     resolve_credential_after_rejection,
 )
 from dex_connectors.sdk.projectconfig import (
+    Configuration,
+    ConfigurationStore,
+    ConnectionConfiguration,
     ConnectionKey,
     ConnectionStore,
     CredentialMaterial,
     InMemoryObjectStore,
+    LoadedProject,
     Scope,
     load_dex_web_project,
+    load_project_from_object_store,
 )
+from dex_connectors.sdk.projectconfig.broker import ConnectionNotSelectedError
+from dex_connectors.sdk.projectconfig.models import CredentialBrokerConfiguration
 from dex_connectors.sdk.projectconfig.provider import (
+    CredentialProvider,
     RefreshFailedError,
     RefreshingCredentialProvider,
     RejectedCredentialNotRefreshedError,
@@ -207,3 +216,114 @@ async def test_local_dex_web_newer_authorization_wins_refresh(tmp_path: Path) ->
     assert json.loads(path.read_text())["connections"][0]["credentials"]["access"] == "dex-web-new"
     current, _ = await project.connections.read_credential_material(KEY)
     assert current.credentials["access"] == "dex-web-new"
+
+
+class ForbiddenRefreshDriver:
+    """Fail if a shared broker credential enters the provider refresh path."""
+
+    def refresh_required(self, state: CredentialRefreshState[dict[str, str]]) -> bool:
+        """A shared credential must never consult this driver."""
+        raise AssertionError("shared credential consulted refresh driver")
+
+    async def refresh(
+        self, state: CredentialRefreshState[dict[str, str]]
+    ) -> CredentialRefreshResult[dict[str, str]]:
+        """A shared credential must never dispatch provider refresh."""
+        raise AssertionError("shared credential dispatched refresh")
+
+
+def decode_shared(value: dict[str, Any]) -> dict[str, str]:
+    """Accept the access token a broker serves without host-kept renewal material."""
+    if not isinstance(value.get("access"), str):
+        raise ValueError("shared credential is incomplete")
+    return {"access": value["access"]}
+
+
+async def _load_shared_project(
+    client: httpx.AsyncClient,
+) -> tuple[ConnectionStore, LoadedProject]:
+    """Load one ordinary and one broker-backed entry from a pinned document."""
+    scope = Scope("test-project", "preview")
+    objects = InMemoryObjectStore()
+    configurations = ConfigurationStore(objects, scope)
+    token_reference = await configurations.create_credential_broker_token("scope-token")
+    configuration = Configuration(
+        scope, 1,
+        (
+            ConnectionConfiguration("sample", "main", "example", "sample", {}),
+            ConnectionConfiguration(
+                "sample", "shared", "example", "sample", {}, shared_connection_id="shared-7"
+            ),
+        ),
+        credential_broker=CredentialBrokerConfiguration("https://broker.example/read", token_reference),
+    )
+    written, _ = await configurations.write_configuration(0, configuration)
+    snapshot = await configurations.freeze_configuration(written.revision)
+    project = await load_project_from_object_store(objects, scope, snapshot, client)
+    return project.connections, project
+
+
+@pytest.mark.asyncio
+async def test_shared_provider_routes_broker_without_refresh_or_stored_head() -> None:
+    """Generated-style providers use broker bytes and the shared decoder only."""
+    requests: list[dict[str, object]] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(json.loads(request.content))
+        return httpx.Response(200, json={
+            "status": "READY", "credential": {"access": f"shared-{len(requests)}"},
+            "revision": len(requests),
+            "expiresAt": (datetime.now(UTC) + timedelta(hours=1)).isoformat(),
+        })
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+        store, project = await _load_shared_project(client)
+        await store.replace_credential(
+            KEY, 0, CredentialMaterial({"access": "ordinary", "refresh": "kept"}, None, "oauth2")
+        )
+        ordinary = CredentialProvider(store, KEY, decode)
+        assert (await ordinary.resolve(CALL))["access"] == "ordinary"
+        shared_key = ConnectionKey("sample", "shared")
+        shared_call = Call(CALL.id, ConnectionRef("sample", "shared"), CALL.operation)
+        refreshing = RefreshingCredentialProvider(store, shared_key, decode, encode, decode_shared)
+        driver = ForbiddenRefreshDriver()
+        assert (await resolve_credential(refreshing, shared_call, driver))["access"] == "shared-1"
+        assert (await resolve_credential_after_rejection(
+            refreshing, shared_call, driver
+        ))["access"] == "shared-2"
+        assert requests == [
+            {"sharedConnectionId": "shared-7"},
+            {"sharedConnectionId": "shared-7", "rejectedRevision": 1},
+        ]
+        assert (await CredentialProvider(store, shared_key, decode, decode_shared).resolve(
+            shared_call
+        ))["access"] == "shared-2"
+        with pytest.raises(ValueError, match="shared project credential decoding failed"):
+            await CredentialProvider(store, shared_key, decode).resolve(shared_call)
+        await project.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("status", "expected_error"),
+    [
+        ("REAUTHORIZATION_REQUIRED", ReauthorizationRequiredError),
+        ("CONNECTION_NOT_SELECTED", ConnectionNotSelectedError),
+    ],
+)
+async def test_shared_provider_propagates_broker_status(
+    status: str, expected_error: type[Exception]
+) -> None:
+    """Terminal broker decisions are surfaced without attempting a local refresh."""
+    def respond(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"status": status})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+        store, project = await _load_shared_project(client)
+        shared_call = Call(CALL.id, ConnectionRef("sample", "shared"), CALL.operation)
+        provider = RefreshingCredentialProvider(
+            store, ConnectionKey("sample", "shared"), decode, encode, decode_shared
+        )
+        with pytest.raises(expected_error):
+            await resolve_credential(provider, shared_call, ForbiddenRefreshDriver())
+        await project.close()
