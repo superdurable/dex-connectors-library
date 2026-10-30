@@ -3,7 +3,8 @@
     "target": "ES2022", "module": "NodeNext", "moduleResolution": "NodeNext", "lib": ["ES2022", "DOM"],
     "strict": true, "noUncheckedIndexedAccess": true, "exactOptionalPropertyTypes": true,
     "noFallthroughCasesInSwitch": true, "noUnusedLocals": true, "noUnusedParameters": true,
-    "skipLibCheck": true, "esModuleInterop": true, "declaration": true, "outDir": "dist", "rootDir": "."
+    "skipLibCheck": true, "esModuleInterop": true, "declaration": true, "outDir": "dist", "rootDir": ".",
+    "paths": { "@superdurable/connector-stripe": ["./src/index.ts"] }
   },
   "include": ["src", "test", "examples", "eslint.config.js"]
 }
