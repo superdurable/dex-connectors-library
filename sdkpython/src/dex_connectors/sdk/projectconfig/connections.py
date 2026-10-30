@@ -133,11 +133,11 @@ class ConnectionStore:
             "scope": self.scope.to_wire(),
             "connection": key.to_wire(),
             "fence": fence,
-            "credentials": material.credentials,
-            "authMethod": material.auth_method,
+            "credentials": dict(sorted(material.credentials.items())),
         }
         if expiry is not None:
             envelope["expiresAt"] = expiry
+        envelope["authMethod"] = material.auth_method
         contents = json_bytes(envelope)
         immutable_key = f"{path}/credentials/{digest_bytes(contents)[7:]}"
         try:
@@ -154,11 +154,11 @@ class ConnectionStore:
             "revision": expected_revision + 1,
             "fence": fence,
             "status": "READY",
-            "authMethod": material.auth_method,
-            "credential": reference,
         }
         if expiry is not None:
             new_record["expiresAt"] = expiry
+        new_record["authMethod"] = material.auth_method
+        new_record["credential"] = reference
         head_contents = json_bytes(new_record)
         try:
             if head is None:

@@ -21,6 +21,7 @@ from dex_connectors.sdk import (
     QueryDefinition,
     QueryResult,
     ReauthorizationRequiredError,
+    Receipt,
     RetryError,
     RetryPolicy,
     SecretString,
@@ -44,8 +45,20 @@ def test_go_identity_and_results_round_trip(conformance_dir: Path) -> None:
     assert Call.from_wire(identity["derivedCall"]).to_wire() == identity["derivedCall"]
     assert derive_call_id(source["flowId"], "other", OperationRef("sample", "createItem")) != derived
     CallID(derived).validate()
+    unicode_source = identity["unicodeSource"]
+    assert (
+        derive_call_id(
+            unicode_source["flowId"],
+            unicode_source["stepExecutionId"],
+            OperationRef(unicode_source["connectorId"], unicode_source["operationId"]),
+        )
+        == identity["unicodeDerivedCallId"]
+    )
     results = json.loads((conformance_dir / "results.json").read_text())
     for name, value in results.items():
+        if name.endswith("Receipt"):
+            assert Receipt.from_wire(value).to_wire() == value
+            continue
         decoded: QueryResult[object] = (
             MutationResult if name.startswith("mutation") else QueryResult
         ).from_wire(value)

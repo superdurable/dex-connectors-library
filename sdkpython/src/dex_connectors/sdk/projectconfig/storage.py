@@ -122,7 +122,7 @@ class InMemoryObjectStore:
 
     def _append(self, key: str, contents: bytes) -> Object:
         version = str(len(self._objects.get(key, [])) + 1)
-        item = Object(key, version, digest_bytes(contents), contents)
+        item = Object(key, version, f"{digest_bytes(contents)[7:]}-{version}", contents)
         self._objects.setdefault(key, []).append(item)
         return item
 

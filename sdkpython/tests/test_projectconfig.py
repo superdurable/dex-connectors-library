@@ -34,12 +34,30 @@ from dex_connectors.sdk.projectconfig.broker import (
 from dex_connectors.sdk.projectconfig.models import (
     ApplicationSecretRef,
     CredentialBrokerConfiguration,
+    digest_bytes,
+    json_bytes,
 )
 from dex_connectors.sdk.projectconfig.storage import (
     ObjectConflictError,
     OutcomeUnknownError,
     S3ObjectStore,
 )
+
+
+def test_go_canonical_snapshot_and_credential_bytes(conformance_dir: Path) -> None:
+    """Match Go's Unicode escaping, field order, digest, and local CAS identity."""
+    fixture = json.loads((conformance_dir / "project-storage.json").read_text())
+    configuration = Configuration.from_wire(fixture["configurationSnapshotDocument"])
+    snapshot_bytes = json_bytes(configuration.to_wire())
+    assert snapshot_bytes.decode() == fixture["configurationSnapshotCanonicalJSON"]
+    assert digest_bytes(snapshot_bytes) == fixture["snapshot"]["digest"]
+    credential_bytes = json_bytes(fixture["credentialEnvelope"])
+    assert credential_bytes.decode() == fixture["credentialEnvelopeCanonicalJSON"]
+    assert digest_bytes(credential_bytes)[7:] == fixture["objectReference"]["digest"]
+    connection_record_bytes = json_bytes(fixture["connectionRecord"])
+    assert connection_record_bytes.decode() == fixture["connectionRecordCanonicalJSON"]
+    expected_etag = f"{digest_bytes(connection_record_bytes)[7:]}-{fixture['objectCAS']['version']}"
+    assert expected_etag == fixture["objectCAS"]["etag"]
 
 
 @pytest.mark.asyncio
@@ -103,7 +121,7 @@ async def test_local_connections_file_schema_and_permissions(conformance_dir: Pa
     target.write_bytes(source.read_bytes())
     target.chmod(0o600)
     project = await load_dex_web_project(target)
-    assert len(project.configuration.connections) == 3
+    assert len(project.configuration.connections) == len(json.loads(source.read_text())["connections"])
     assert (await project.resolve_credential(ConnectionKey("sample", "api")))["apiKey"] == "REDACTED_API_KEY"
     updated = json.loads(target.read_text())
     updated["connections"][0]["credentials"]["apiKey"] = "REDACTED_NEW_KEY"

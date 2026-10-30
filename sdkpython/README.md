@@ -68,7 +68,8 @@ development or the trusted `DEX_PROJECT_*` hosted S3 contract. Local
 `connections.json` and `use-configurations.json` must be regular owner-only
 `0600` files. Hosted reads pin an exact version and SHA-256 digest, and
 `ConfigurationStore` uses revision CAS. `S3ObjectStore.create` checks bucket
-versioning and its KMS boundary. `LoadedProject.resolve_credential` reads
+versioning and its KMS boundary. Versioned documents use Go-compatible compact
+JSON bytes so Unicode values produce the same snapshot digests. `LoadedProject.resolve_credential` reads
 credentials at call time; shared connections use the credential broker
 protocol, with a forced revision read after provider rejection. Never log or
 persist the returned credential object. The examples freeze an in-memory

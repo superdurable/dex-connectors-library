@@ -102,8 +102,17 @@ def digest_bytes(contents: bytes) -> str:
 
 
 def json_bytes(value: object) -> bytes:
-    """Encode compact UTF-8 JSON for a versioned object."""
-    return json.dumps(value, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    """Encode Go-compatible compact JSON for versioned object digests."""
+    serialized = json.dumps(value, separators=(",", ":"), ensure_ascii=False)
+    for character, escape in (
+        ("<", "\\u003c"),
+        (">", "\\u003e"),
+        ("&", "\\u0026"),
+        ("\u2028", "\\u2028"),
+        ("\u2029", "\\u2029"),
+    ):
+        serialized = serialized.replace(character, escape)
+    return serialized.encode("utf-8")
 
 
 def require_object(value: object, label: str) -> dict[str, Any]:
@@ -256,12 +265,12 @@ class ConnectionConfiguration:
             "connectionName": self.connection_name,
             "modulePath": self.module_path,
             "provider": self.provider,
-            "configuration": self.configuration,
         }
         if self.auth_method_id:
             result["authMethodId"] = self.auth_method_id
         if self.shared_connection_id:
             result["sharedConnectionId"] = self.shared_connection_id
+        result["configuration"] = self.configuration
         return result
 
     @classmethod
@@ -423,7 +432,7 @@ class Configuration:
             "operationConfigurations": list(self.operation_configurations),
         }
         if self.environment:
-            result["environment"] = {key: value.to_wire() for key, value in self.environment.items()}
+            result["environment"] = {key: self.environment[key].to_wire() for key in sorted(self.environment)}
         if self.credential_broker is not None:
             result["credentialBroker"] = self.credential_broker.to_wire()
         return result
