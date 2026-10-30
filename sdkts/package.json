@@ -15,69 +15,32 @@
     "access": "public",
     "registry": "https://registry.npmjs.org"
   },
-  "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
-      },
-      "require": {
-        "types": "./dist/index.d.cts",
-        "default": "./dist/index.cjs"
-      }
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./providerhttp": {
-      "import": {
-        "types": "./dist/providerhttp/index.d.ts",
-        "default": "./dist/providerhttp/index.js"
-      },
-      "require": {
-        "types": "./dist/providerhttp/index.d.cts",
-        "default": "./dist/providerhttp/index.cjs"
-      }
+      "types": "./dist/providerhttp/index.d.ts",
+      "import": "./dist/providerhttp/index.js"
     },
     "./projectconfig": {
-      "import": {
-        "types": "./dist/projectconfig/index.d.ts",
-        "default": "./dist/projectconfig/index.js"
-      },
-      "require": {
-        "types": "./dist/projectconfig/index.d.cts",
-        "default": "./dist/projectconfig/index.cjs"
-      }
+      "types": "./dist/projectconfig/index.d.ts",
+      "import": "./dist/projectconfig/index.js"
     },
     "./connectormock": {
-      "import": {
-        "types": "./dist/connectormock/index.d.ts",
-        "default": "./dist/connectormock/index.js"
-      },
-      "require": {
-        "types": "./dist/connectormock/index.d.cts",
-        "default": "./dist/connectormock/index.cjs"
-      }
+      "types": "./dist/connectormock/index.d.ts",
+      "import": "./dist/connectormock/index.js"
     },
     "./oauthtoken": {
-      "import": {
-        "types": "./dist/oauthtoken/index.d.ts",
-        "default": "./dist/oauthtoken/index.js"
-      },
-      "require": {
-        "types": "./dist/oauthtoken/index.d.cts",
-        "default": "./dist/oauthtoken/index.cjs"
-      }
+      "types": "./dist/oauthtoken/index.d.ts",
+      "import": "./dist/oauthtoken/index.js"
     },
     "./singledispatch": {
-      "import": {
-        "types": "./dist/singledispatch/index.d.ts",
-        "default": "./dist/singledispatch/index.js"
-      },
-      "require": {
-        "types": "./dist/singledispatch/index.d.cts",
-        "default": "./dist/singledispatch/index.cjs"
-      }
+      "types": "./dist/singledispatch/index.d.ts",
+      "import": "./dist/singledispatch/index.js"
     }
   },
   "files": [
@@ -87,13 +50,13 @@
   ],
   "scripts": {
     "prepack": "npm run build",
-    "build": "tsup src/index.ts src/providerhttp/index.ts src/projectconfig/index.ts src/connectormock/index.ts src/oauthtoken/index.ts src/singledispatch/index.ts --format esm,cjs --dts --clean",
+    "build": "tsup src/index.ts src/providerhttp/index.ts src/projectconfig/index.ts src/connectormock/index.ts src/oauthtoken/index.ts src/singledispatch/index.ts --format esm --dts --clean",
     "typecheck": "tsc --noEmit",
-    "typecheck:cjs": "tsc --noEmit --strict --skipLibCheck --module Node16 --moduleResolution Node16 --target ES2022 test/cjs-smoke.cts",
     "lint": "eslint src test",
     "test": "vitest run",
+    "test:package": "node test/pack_smoke.mjs",
     "test:integration": "npm run build && node test/integ/step_flows.mjs",
-    "check": "npm run typecheck && npm run lint && npm test && npm run build && npm run typecheck:cjs"
+    "check": "npm run typecheck && npm run lint && npm test && npm run build && npm run test:package"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.900.0",

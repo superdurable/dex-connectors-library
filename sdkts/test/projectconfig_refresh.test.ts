@@ -6,12 +6,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { AsyncContext } from '@superdurable/dex';
 import { describe, expect, it } from 'vitest';
-import { createCall, type CredentialRefreshDriver } from '../src/credentials.js';
+import { createCall, SecretString, type CredentialRefreshDriver } from '../src/credentials.js';
 import { ReauthorizationRequiredError } from '../src/errors.js';
-import { ConnectionStore, CredentialMaterial, type ConnectionKey } from '../src/projectconfig/connections.js';
+import { TokenEndpoint } from '../src/oauthtoken/index.js';
+import { ConnectionStore, CredentialMaterial, connectionPath, connectionRecord, credentialEnvelope, type ConnectionKey } from '../src/projectconfig/connections.js';
 import { loadFromEnvironment } from '../src/projectconfig/environment.js';
 import { CredentialProvider, RefreshFailedError, RefreshingCredentialProvider, RejectedCredentialNotRefreshedError } from '../src/projectconfig/index.js';
-import { InMemoryObjectStore, OutcomeUnknownError, type ObjectStore } from '../src/projectconfig/storage.js';
+import { InMemoryObjectStore, OutcomeUnknownError, encodeGoCompatibleJSON, type ObjectStore } from '../src/projectconfig/storage.js';
 
 const scope = { projectId: 'test', kind: 'preview' } as const;
 const key: ConnectionKey = { connectorId: 'sample', connectionName: 'default' };
@@ -30,6 +31,15 @@ async function seededStore(objects: ObjectStore = new InMemoryObjectStore(), exp
   const store = new ConnectionStore(objects, scope);
   await store.replaceCredential(key, 0, new CredentialMaterial({ accessToken: 'old', refreshToken: 'renewal' }, expiry, 'oauth2'));
   return store;
+}
+
+async function authorizationStore(deadline: Date) {
+  const store = new ConnectionStore(new InMemoryObjectStore(), scope);
+  const resultKey = `${connectionPath(scope, key)}/exchange-results/authorization-1`;
+  const mutation = { kind: 'AUTHORIZING', invocationId: 'invocation-1', id: 'authorization-1', fence: 1, baseRevision: 0, deadline: deadline.toISOString(), resultKey };
+  const record = connectionRecord(scope, key, 1, 1, 'AUTHORIZING', undefined, 'oauth2', undefined, mutation);
+  await store.objects.createObject(`${connectionPath(scope, key)}/head`, Buffer.from(encodeGoCompatibleJSON(record)));
+  return { store, resultKey };
 }
 
 describe('project credential refresh', () => {
@@ -89,6 +99,88 @@ describe('project credential refresh', () => {
     const recovered = await provider.resolveWithRefresh(call, { ...driver(async () => { throw new Error('must not dispatch'); }), refreshRequired: state => state.credentials.accessToken !== 'recovered' });
     expect(recovered.accessToken).toBe('recovered');
     expect((await store.readConnection(key)).status).toBe('READY');
+  });
+
+  it('recovers an expired authorization result or fences an abandoned exchange', async () => {
+    const pending = await authorizationStore(future());
+    const neverRefresh = { ...driver(async () => { throw new Error('must not dispatch'); }), refreshRequired: () => false };
+    await expect(new RefreshingCredentialProvider(pending.store, key, decode, encode).resolveWithRefresh(call, neverRefresh)).rejects.toMatchObject({ name: 'ExchangePendingError' });
+
+    const abandoned = await authorizationStore(expired());
+    const abandonedProvider = new RefreshingCredentialProvider(abandoned.store, key, decode, encode);
+    await expect(abandonedProvider.resolveWithRefresh(call, neverRefresh)).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+    expect((await abandoned.store.readConnection(key)).status).toBe('REAUTHORIZATION_REQUIRED');
+
+    const completed = await authorizationStore(expired());
+    const material = new CredentialMaterial({ accessToken: 'authorized', refreshToken: 'kept' }, future(), 'oauth2');
+    const envelope = credentialEnvelope(scope, key, 1, material, 'authorization-1');
+    await completed.store.objects.createObject(completed.resultKey, Buffer.from(encodeGoCompatibleJSON(envelope)));
+    const completedProvider = new RefreshingCredentialProvider(completed.store, key, decode, encode);
+    expect((await completedProvider.resolveWithRefresh(call, neverRefresh)).accessToken).toBe('authorized');
+    expect((await completed.store.readConnection(key)).status).toBe('READY');
+  });
+
+  it('reloads a changed head when two observers recover one expired refresh', async () => {
+    const memory = new InMemoryObjectStore();
+    const headKey = `${connectionPath(scope, key)}/head`;
+    let shouldSynchronizeRecovery = false;
+    let headReads = 0;
+    let readyWrites = 0;
+    let releaseHeadReads!: () => void;
+    let releaseReadyWrites!: () => void;
+    const headReadGate = new Promise<void>(resolve => { releaseHeadReads = resolve; });
+    const readyWriteGate = new Promise<void>(resolve => { releaseReadyWrites = resolve; });
+    const objects: ObjectStore = {
+      async readObject(objectKey, version) {
+        const object = await memory.readObject(objectKey, version);
+        if (shouldSynchronizeRecovery && objectKey === headKey && ++headReads <= 2) {
+          if (headReads === 2) releaseHeadReads();
+          await headReadGate;
+        }
+        return object;
+      },
+      createObject: (objectKey, contents) => memory.createObject(objectKey, contents),
+      async compareAndSwapObject(objectKey, etag, contents) {
+        const document: unknown = JSON.parse(Buffer.from(contents).toString());
+        if (shouldSynchronizeRecovery && objectKey === headKey && document && typeof document === 'object' && 'status' in document && document.status === 'READY' && ++readyWrites <= 2) {
+          if (readyWrites === 2) releaseReadyWrites();
+          await readyWriteGate;
+        }
+        return memory.compareAndSwapObject(objectKey, etag, contents);
+      },
+    };
+    const store = await seededStore(objects, future());
+    const { record, object } = await store.readRecord(key);
+    const mutation = { kind: 'REFRESHING', invocationId: 'invocation-1', id: 'refresh-1', fence: record.fence + 1, baseRevision: record.revision, deadline: expired().toISOString(), resultKey: `${connectionPath(scope, key)}/exchange-results/refresh-1` };
+    const refreshing = connectionRecord(scope, key, record.revision + 1, record.fence + 1, 'REFRESHING', future(), record.authMethod, record.credential, mutation);
+    await store.writeHead(key, object, refreshing);
+    shouldSynchronizeRecovery = true;
+    const neverRefresh = { ...driver(async () => { throw new Error('must not dispatch'); }), refreshRequired: () => false };
+    const first = new RefreshingCredentialProvider(store, key, decode, encode);
+    const second = new RefreshingCredentialProvider(store, key, decode, encode);
+    const [firstResult, secondResult] = await Promise.all([first.resolveWithRefresh(call, neverRefresh), second.resolveWithRefresh(call, neverRefresh)]);
+    expect(firstResult).toEqual(secondResult);
+    expect(firstResult.accessToken).toBe('old');
+    expect(readyWrites).toBe(2);
+    expect((await store.readConnection(key)).status).toBe('READY');
+  });
+
+  it('fences a terminal OAuth invalid_grant with one shared error class', async () => {
+    const store = await seededStore();
+    const provider = new RefreshingCredentialProvider(store, key, decode, encode);
+    let requests = 0;
+    const endpoint = new TokenEndpoint({ providerName: 'fixture', url: 'https://example.test/token', terminalErrorCodes: ['invalid_grant'], fetch: async () => {
+      requests++;
+      return new Response('{"error":"invalid_grant"}', { status: 400, headers: { 'Content-Type': 'application/json' } });
+    } });
+    const refreshDriver = driver(async state => {
+      const response = await endpoint.exchangeRefreshToken({ id: 'client', authenticationMethod: 'none' }, new SecretString(state.credentials.refreshToken));
+      return { credentials: { accessToken: response.accessToken.reveal(), refreshToken: response.nextRefreshToken(new SecretString(state.credentials.refreshToken)).reveal() }, expiresAt: future() };
+    });
+    await expect(provider.resolveWithRefresh(call, refreshDriver)).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+    expect((await store.readConnection(key)).status).toBe('REAUTHORIZATION_REQUIRED');
+    await expect(provider.resolveWithRefresh(call, refreshDriver)).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+    expect(requests).toBe(1);
   });
 
   it('fences terminal reauthorization and restores prior material after a transient failure', async () => {

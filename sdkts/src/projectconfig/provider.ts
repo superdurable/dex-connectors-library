@@ -25,6 +25,7 @@ export class RefreshFailedError extends Error { constructor(message = 'project c
 
 interface Admission {
   key: ConnectionKey;
+  kind: 'AUTHORIZING' | 'REFRESHING';
   attemptId: string;
   fence: number;
   deadline: Date;
@@ -93,9 +94,10 @@ export class RefreshingCredentialProvider<C> extends CredentialProvider<C> imple
       throwIfAborted(effectiveSignal);
       const { record, object } = await this.store.readRecord(this.key);
       if (record.status === 'REAUTHORIZATION_REQUIRED' || record.status === 'REVOKED') throw new ReauthorizationRequiredError();
-      if (record.status === 'AUTHORIZING') throw new ExchangePendingError();
-      if (record.status === 'REFRESHING') {
-        await this.#recoverOrWait(record, effectiveSignal);
+      if (record.status === 'AUTHORIZING' || record.status === 'REFRESHING') {
+        if (record.status === 'AUTHORIZING' && record.mutation && Date.now() < new Date(record.mutation.deadline).getTime()) throw new ExchangePendingError();
+        try { await this.#recoverOrWait(record, effectiveSignal); }
+        catch (error) { if (error instanceof ConflictError) continue; throw error; }
         continue;
       }
       if (record.status !== 'READY') throw new TypeError('project credential status is invalid');
@@ -128,7 +130,7 @@ export class RefreshingCredentialProvider<C> extends CredentialProvider<C> imple
     const mutation = { kind: 'REFRESHING', invocationId: randomUUID().replaceAll('-', ''), id: attemptId, fence: record.fence + 1, baseRevision: record.revision, deadline: deadline.toISOString(), resultKey };
     const updated = connectionRecord(this.store.scope, this.key, record.revision + 1, record.fence + 1, 'REFRESHING', parseExpiry(record.expiresAt), record.authMethod, record.credential, mutation);
     await this.store.writeHead(this.key, object, updated);
-    return { key: this.key, attemptId, fence: updated.fence, deadline, resultKey };
+    return { key: this.key, kind: 'REFRESHING', attemptId, fence: updated.fence, deadline, resultKey };
   }
 
   async #refreshAdmitted(admission: Admission, prior: CredentialMaterial, state: CredentialRefreshState<C>, driver: CredentialRefreshDriver<C>, signal?: AbortSignal): Promise<C> {
@@ -136,14 +138,14 @@ export class RefreshingCredentialProvider<C> extends CredentialProvider<C> imple
     try { result = await refreshWithinTimeout(driver, state, signal); }
     catch (error) {
       if (error instanceof ReauthorizationRequiredError) {
-        await this.#finishRefresh(admission, 'REAUTHORIZATION_REQUIRED');
+        await this.#finishExchange(admission, 'REAUTHORIZATION_REQUIRED');
         throw error;
       }
-      await this.#finishRefresh(admission, 'READY');
+      await this.#finishExchange(admission, 'READY');
       throw new RefreshFailedError();
     }
     if (!(result.expiresAt instanceof Date) || !Number.isFinite(result.expiresAt.getTime()) || result.expiresAt.getTime() <= Date.now()) {
-      await this.#finishRefresh(admission, 'READY');
+      await this.#finishExchange(admission, 'READY');
       throw new RefreshFailedError('refreshed credential has no future expiry');
     }
     let encoded: Record<string, unknown>;
@@ -151,7 +153,7 @@ export class RefreshingCredentialProvider<C> extends CredentialProvider<C> imple
       encoded = this.#encode(result.credentials);
       if (!encoded || typeof encoded !== 'object' || Array.isArray(encoded) || Object.keys(encoded).length === 0) throw new TypeError();
     } catch {
-      await this.#finishRefresh(admission, 'READY');
+      await this.#finishExchange(admission, 'READY');
       throw new RefreshFailedError('refreshed credential encoding failed');
     }
     await this.#commitRefresh(admission, new CredentialMaterial(encoded, result.expiresAt, prior.authMethod));
@@ -161,13 +163,13 @@ export class RefreshingCredentialProvider<C> extends CredentialProvider<C> imple
   async #recoverOrWait(record: ConnectionRecord, signal?: AbortSignal): Promise<void> {
     const mutation = record.mutation;
     if (!mutation) throw new TypeError('credential exchange admission is absent');
-    const admission: Admission = { key: this.key, attemptId: mutation.id, fence: record.fence, deadline: new Date(mutation.deadline), resultKey: mutation.resultKey };
+    const admission: Admission = { key: this.key, kind: record.status === 'AUTHORIZING' ? 'AUTHORIZING' : 'REFRESHING', attemptId: mutation.id, fence: record.fence, deadline: new Date(mutation.deadline), resultKey: mutation.resultKey };
     let result: ProjectObject;
     try { result = await this.store.objects.readObject(admission.resultKey); }
     catch (error) {
       if (!(error instanceof ObjectNotFoundError)) throw error;
       if (Date.now() < admission.deadline.getTime()) { await wait(100, undefined, signal ? { signal } : undefined); return; }
-      await this.#finishRefresh(admission, 'READY');
+      await this.#finishExchange(admission, admission.kind === 'AUTHORIZING' ? 'REAUTHORIZATION_REQUIRED' : 'READY');
       return;
     }
     await this.#publishResult(admission, result);
@@ -204,7 +206,7 @@ export class RefreshingCredentialProvider<C> extends CredentialProvider<C> imple
     }
   }
 
-  async #finishRefresh(admission: Admission, status: 'READY' | 'REAUTHORIZATION_REQUIRED'): Promise<void> {
+  async #finishExchange(admission: Admission, status: 'READY' | 'REAUTHORIZATION_REQUIRED'): Promise<void> {
     const { record, object } = await this.store.readRecord(this.key);
     requireAdmission(record, admission);
     const updated = connectionRecord(this.store.scope, this.key, record.revision + 1, record.fence + 1, status, parseExpiry(record.expiresAt), record.authMethod, record.credential);
@@ -218,7 +220,7 @@ export function newCredentialProvider<C>(store: ConnectionStore, key: Connection
 export function newRefreshingCredentialProvider<C>(store: ConnectionStore, key: ConnectionKey, decode: CredentialDecoder<C>, encode: CredentialEncoder<C>, decodeShared?: SharedCredentialDecoder<C>): RefreshingCredentialProvider<C> { return new RefreshingCredentialProvider(store, key, decode, encode, decodeShared); }
 
 function requireAdmission(record: ConnectionRecord, admission: Admission): void {
-  if (record.status !== 'REFRESHING' || record.fence !== admission.fence || record.mutation?.id !== admission.attemptId) throw new ConflictError();
+  if (record.status !== admission.kind || record.fence !== admission.fence || record.mutation?.id !== admission.attemptId || record.mutation.kind !== admission.kind) throw new ConflictError();
 }
 
 function parsePrivateJSON(contents: Uint8Array): unknown {

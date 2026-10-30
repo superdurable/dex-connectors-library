@@ -100,6 +100,10 @@ scenarios.push({ flow: mutationFlow('Uncertain', () => newMutationUncertain({ id
   { id: 'created', description: 'Created' }, { id: 'uncertain', description: 'Unknown effect', optional: true }, { id: 'defect', description: 'Defect', optional: true },
 ]), status: 'completed', branch: 'uncertain' }); // Business reaction: surface the unconfirmable write for review.
 
+scenarios.push({ flow: mutationFlow('UnwiredUncertain', () => newMutationUncertain({ id: 'item-1' }, failure), 'created', [
+  { id: 'created', description: 'Created' }, { id: 'uncertain', description: 'Unknown effect', optional: true }, { id: 'defect', description: 'Defect', optional: true },
+]), status: 'failed', verify: ({ result }) => assert.match(result.errorMessage ?? '', /selected branch uncertain with no target/) });
+
 let fencedSends = 0;
 let didReadBack = false;
 scenarios.push({ flow: mutationFlow('Fenced', async (call, input) => {
