@@ -73,13 +73,14 @@ describe('Gmail send and reply classification', () => {
       const payload = JSON.parse(Buffer.from(request.body ?? []).toString()) as { raw: string };
       const raw = Buffer.from(payload.raw, 'base64url').toString();
       expect(raw).toContain('From: owner@example.com\r\n');
+      expect(raw).toContain('To: <ada@example.com>\r\n');
       expect(raw).toContain('Message-ID: <');
       expect(raw).not.toContain('access-token');
       return response(200, { id: 'sent-1', threadId: 'thread-1' }, { 'x-goog-request-id': 'request-1' });
     });
     const result = await operation.sendMessage(operationCall('sendMessage'), sendInput, new Date(Date.now() + 30_000));
     expect(postCount).toBe(1);
-    expect(result).toMatchObject({ kind: 'branch', branch: 'sent', value: { sender: 'owner@example.com', recipients: ['ada@example.com'], messageId: 'sent-1', threadId: 'thread-1' }, receipt: { providerRequestId: 'request-1', providerObjectId: 'sent-1' } });
+    expect(result).toMatchObject({ kind: 'branch', branch: 'sent', value: { sender: 'owner@example.com', recipients: ['<ada@example.com>'], messageId: 'sent-1', threadId: 'thread-1' }, receipt: { providerRequestId: 'request-1', providerObjectId: 'sent-1' } });
   });
 
   it('reads a missing thread ID from Gmail minimal metadata', async () => {
@@ -228,6 +229,48 @@ describe('Gmail send and reply classification', () => {
     expect(checkpoint.value).toMatchObject({ state: 'claimed', providerId: 'sent-after-limit', attempt: 2 });
   });
 
+  it('ignores an ID in a 503 body and resends after Sent Mail misses', async () => {
+    const checkpoint: { value?: unknown } = {};
+    let posts = 0;
+    let searches = 0;
+    const operation = sender(async request => {
+      if (request.method === 'GET') { searches++; return response(200, { messages: [] }); }
+      posts++;
+      return posts === 1 ? response(503, { id: 'not-a-message' }) : response(200, { id: 'sent-after-503', threadId: 'thread-1' });
+    });
+    expect(await operation.sendMessage(operationCall('sendMessage', 1, checkpoint), sendInput, new Date(Date.now() + 30_000)))
+      .toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+    expect(checkpoint.value).toMatchObject({ state: 'canResend', attempt: 1 });
+    expect(checkpoint.value).not.toHaveProperty('providerId');
+    expect(await operation.sendMessage(operationCall('sendMessage', 2, checkpoint), sendInput, new Date(Date.now() + 30_000)))
+      .toMatchObject({ branch: 'sent', value: { messageId: 'sent-after-503' } });
+    expect(posts).toBe(2);
+    expect(searches).toBe(5);
+  });
+
+  it('never checkpoints an ID from a 500 or 400 error body', async () => {
+    for (const status of [500, 400]) {
+      const checkpoint: { value?: unknown } = {};
+      let posts = 0;
+      let searches = 0;
+      const operation = sender(async request => {
+        if (request.method === 'GET') { searches++; return response(200, { messages: [] }); }
+        posts++;
+        return response(status, { id: 'not-a-message' });
+      });
+      const first = await operation.sendMessage(operationCall('sendMessage', 1, checkpoint), sendInput, new Date(Date.now() + 30_000));
+      expect(first).toMatchObject(status === 500 ? { kind: 'retry' } : { branch: 'providerRejected' });
+      expect(checkpoint.value).not.toHaveProperty('providerId');
+      if (status === 500) {
+        expect(checkpoint.value).toMatchObject({ state: 'claimed', attempt: 1 });
+        expect(await operation.sendMessage(operationCall('sendMessage', 2, checkpoint), sendInput, new Date(Date.now() + 30_000)))
+          .toMatchObject({ kind: 'retry' });
+        expect(posts).toBe(1);
+        expect(searches).toBe(5);
+      }
+    }
+  });
+
   it('uses a checkpointed provider ID on redispatch without another POST or Sent Mail search', async () => {
     const checkpoint: { value?: unknown } = {};
     let posts = 0;
@@ -316,7 +359,7 @@ describe('Gmail send and reply classification', () => {
       return response(200, { id: 'reply-1', threadId: 'thread-1' });
     });
     const result = await operation.replyToMessage(operationCall('replyToMessage'), replyInput, new Date(Date.now() + 30_000));
-    expect(result).toMatchObject({ branch: 'sent', value: { messageId: 'reply-1', threadId: 'thread-1', recipients: ['reply@example.com'] } });
+    expect(result).toMatchObject({ branch: 'sent', value: { messageId: 'reply-1', threadId: 'thread-1', recipients: ['<reply@example.com>'] } });
     expect(posts).toBe(1);
   });
 
@@ -331,6 +374,28 @@ describe('Gmail send and reply classification', () => {
     });
   });
 
+  it('records canResend after a 503 reply miss and posts again on the next attempt', async () => {
+    const checkpoint: { value?: unknown } = {};
+    let posts = 0;
+    let searches = 0;
+    const operation = sender(async request => {
+      if (request.url.includes('/source-1?')) return response(200, { id: 'source-1', threadId: 'thread-1', internalDate: '1767312000000', payload: { headers: [
+        { name: 'Message-ID', value: '<source@example.com>' }, { name: 'From', value: 'ada@example.com' },
+      ] } });
+      if (request.method === 'GET') { searches++; return response(200, { messages: [] }); }
+      posts++;
+      return posts === 1 ? response(503, { id: 'not-a-reply' }) : response(200, { id: 'reply-after-503', threadId: 'thread-1' });
+    });
+    expect(await operation.replyToMessage(operationCall('replyToMessage', 1, checkpoint), replyInput, new Date(Date.now() + 30_000)))
+      .toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+    expect(checkpoint.value).toMatchObject({ state: 'canResend', attempt: 1 });
+    expect(checkpoint.value).not.toHaveProperty('providerId');
+    expect(await operation.replyToMessage(operationCall('replyToMessage', 2, checkpoint), replyInput, new Date(Date.now() + 30_000)))
+      .toMatchObject({ branch: 'sent', value: { messageId: 'reply-after-503' } });
+    expect(posts).toBe(2);
+    expect(searches).toBe(5);
+  });
+
   it('accepts an oversized 2xx reply response without resending when Sent Mail has no match', async () => {
     let posts = 0;
     const operation = sender(async request => {
@@ -341,7 +406,7 @@ describe('Gmail send and reply classification', () => {
       return response(200, { messages: [] });
     });
     expect(await operation.replyToMessage(operationCall('replyToMessage'), replyInput, new Date(Date.now() + 30_000))).toMatchObject({
-      branch: 'sent', value: { messageId: '', threadId: 'thread-1', recipients: ['ada@example.com'] },
+      branch: 'sent', value: { messageId: '', threadId: 'thread-1', recipients: ['<ada@example.com>'] },
     });
     expect(posts).toBe(1);
   });

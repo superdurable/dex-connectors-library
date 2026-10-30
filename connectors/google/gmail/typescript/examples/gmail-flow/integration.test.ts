@@ -110,3 +110,39 @@ it('preserves the send claim across a real Dex retry and confirms by Sent Mail',
     await providerWorker.close();
   }
 }, 30_000);
+
+it('ignores a 503 error-body ID and safely resends after a real Dex retry', async () => {
+  let postCount = 0;
+  let searchCount = 0;
+  const connectionReference = { provider: 'google', name: ConnectionName };
+  const credentials = { accessToken: new SecretString('integration-test-token'), primaryEmail: 'owner@example.com' };
+  const transport = async (request: ProviderRequest): Promise<ProviderResponse> => {
+    if (request.method === 'GET') {
+      searchCount++;
+      return { status: 200, headers: {}, body: Buffer.from(JSON.stringify({ messages: [] })) };
+    }
+    postCount++;
+    const body = postCount === 1 ? { id: 'not-a-message' } : { id: 'sent-after-503', threadId: 'thread-1' };
+    return { status: postCount === 1 ? 503 : 200, headers: {}, body: Buffer.from(JSON.stringify(body)) };
+  };
+  const providerClient = new GmailClient({ endpoint: 'http://127.0.0.1:8080' },
+    new StaticCredentialProvider([[connectionReference, credentials]]), { transport });
+  const providerFlow = new GmailSendFlow(new GmailConnection(providerClient, connectionReference));
+  const providerRegistry = new Registry([providerFlow]);
+  const providerWorker = new Worker(providerRegistry, cache, { serverAddress: serviceAddress });
+  const providerDexClient = new Client(providerRegistry, cache, { serverAddress: serviceAddress });
+  try {
+    await providerWorker.start();
+    await providerWorker.waitPullRegistered({ timeoutMs: 15_000 });
+    const flowId = `gmail-refused-send-${randomUUID()}`;
+    await providerDexClient.startFlow(providerFlow, flowId, { to: ['ada@example.com'], subject: 'Hello', textBody: 'Update' });
+    const result = await providerDexClient.waitForFlow(flowId, 20_000);
+    expect(result.status).toBe('completed');
+    expect(result.singleOutput()).toMatchObject({ branch: 'sent', value: { messageId: 'sent-after-503' } });
+    expect(postCount).toBe(2);
+    expect(searchCount).toBe(5);
+  } finally {
+    await providerDexClient.close();
+    await providerWorker.close();
+  }
+}, 30_000);

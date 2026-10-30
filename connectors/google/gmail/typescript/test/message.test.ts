@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { buildMIMEMessage, buildReplyMIMEMessage, decodeGmailMessage, GmailMessageResourceSchema, rfcMessageIDAddress, validateSendInput } from '../src/index.js';
+import { buildMIMEMessage, buildReplyMIMEMessage, decodeGmailMessage, GmailMessageResourceSchema, parseMailbox, rfcMessageIDAddress, validateSendInput } from '../src/index.js';
 
 describe('Gmail message conversion', () => {
   it('decodes nested Gmail text and HTML bodies with threading metadata', () => {
@@ -12,6 +12,7 @@ describe('Gmail message conversion', () => {
         mimeType: 'multipart/alternative', headers: [
           { name: 'Message-ID', value: '<question@mail.example.com>' }, { name: 'From', value: 'Ada <ada@example.com>' },
           { name: 'Reply-To', value: 'ada.support@example.com' }, { name: 'Subject', value: 'Re: Order' },
+          { name: 'To', value: '"Doe, John" <j@example.com>, ada@example.com' },
         ],
         parts: [
           { mimeType: 'text/plain', body: { data: Buffer.from('Hello').toString('base64url') } },
@@ -20,7 +21,7 @@ describe('Gmail message conversion', () => {
       },
     });
     const message = decodeGmailMessage(resource);
-    expect(message).toMatchObject({ messageId: 'message-1', threadId: 'thread-1', textBody: 'Hello', htmlBody: '<p>Hello</p>', rfcMessageId: '<question@mail.example.com>', replyTo: 'ada.support@example.com' });
+    expect(message).toMatchObject({ messageId: 'message-1', threadId: 'thread-1', textBody: 'Hello', htmlBody: '<p>Hello</p>', rfcMessageId: '<question@mail.example.com>', replyTo: 'ada.support@example.com', to: ['"Doe, John" <j@example.com>', '<ada@example.com>'] });
     expect(message.receivedAt).toMatch(/Z$/);
   });
 
@@ -34,8 +35,14 @@ describe('Gmail message conversion', () => {
   it('validates sender and recipients before creating a raw message', () => {
     const recipients = ['Ada <ada@example.com>'];
     const validated = validateSendInput({ to: recipients, subject: 'Hello', textBody: 'Body' }, 'owner@example.com');
-    expect(validated).toEqual(recipients);
+    expect(validated).toEqual(['"Ada" <ada@example.com>']);
     expect(validated).not.toBe(recipients);
+    expect(validateSendInput({ to: ['ada@example.com'], subject: 'Hello', textBody: 'Body' }, 'owner@example.com')).toEqual(['<ada@example.com>']);
+    expect(validateSendInput({ to: ['"Doe, John" <j@example.com>'], subject: 'Hello', textBody: 'Body' }, 'owner@example.com')).toEqual(['"Doe, John" <j@example.com>']);
+    expect(validateSendInput({ to: ['José <j@example.com>'], subject: 'Hello', textBody: 'Body' }, 'owner@example.com')).toEqual(['=?utf-8?q?Jos=C3=A9?= <j@example.com>']);
+    expect(parseMailbox('Doe, John <j@example.com>')).toBeUndefined();
+    expect(parseMailbox('John; Doe <j@example.com>')).toBeUndefined();
+    expect(() => validateSendInput({ to: ['Doe, John <j@example.com>'], subject: 'Hello', textBody: 'Body' }, 'owner@example.com')).toThrow('recipient email is invalid');
     expect(() => validateSendInput({ to: ['a@example.com', 'A@example.com'], subject: 'Hello', textBody: 'Body' }, 'owner@example.com')).toThrow('duplicated');
     expect(() => validateSendInput({ to: ['a@example.com'], subject: 'Hi\nInjected', textBody: 'Body' }, 'owner@example.com')).toThrow();
   });
@@ -49,7 +56,7 @@ describe('Gmail message conversion', () => {
     expect(Buffer.from(raw).toString()).toContain('Line 1\r\nLine 2');
     const source = { messageId: 'one', threadId: 'thread', rfcMessageId: '<source@example.com>', from: 'ada@example.com', replyTo: 'reply@example.com', references: '<prior@example.com>', subject: 'Question', receivedAt: '2026-01-02T00:00:00Z' };
     const reply = buildReplyMIMEMessage('call-1', 'idempotency-key', messageID, 'owner@example.com', source, { messageId: 'one', textBody: 'Answer' });
-    expect(Buffer.from(reply).toString()).toContain('To: reply@example.com\r\n');
+    expect(Buffer.from(reply).toString()).toContain('To: <reply@example.com>\r\n');
     expect(Buffer.from(reply).toString()).toContain('Subject: Re: Question\r\n');
     expect(Buffer.from(reply).toString()).toContain('References: <prior@example.com> <source@example.com>\r\n');
   });

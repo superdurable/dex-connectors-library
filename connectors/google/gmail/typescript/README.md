@@ -8,6 +8,8 @@ npm install @superdurable/connector-google-gmail @superdurable/dex
 
 This package provides typed `getMessage`, `sendMessage`, and `replyToMessage` operations. Its operation identities, branches, retry policy, authorization fields, and mock cases mirror [the manifest](https://github.com/superdurable/dex-connectors-library/blob/main/connectors/google/gmail/connector.yaml). Gmail Triggers and the thread-reply Trigger runner currently belong to the Go connector.
 
+Send and reply recipients are validated as mailboxes and returned in canonical header form, such as `<ada@example.com>` or `"Ada" <ada@example.com>`.
+
 ## Configure a connection
 
 In Dex Web **Connections**, create a Google Gmail connection with the static name used by the application's `ConnectionName` constant. The application loads project settings through the Connector SDK and resolves credentials during each Step attempt. Refreshes update encrypted project storage or Dex Web's private local `connections.json`; tokens and service-account keys must never be put in Flow input or persisted state.

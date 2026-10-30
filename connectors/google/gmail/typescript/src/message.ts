@@ -76,24 +76,45 @@ function decodeRFC2047Header(value: string): string {
 function splitAddressHeader(value: string): string[] {
   if (!value || /[\r\n]/.test(value)) return [];
   const addresses = value.split(/,\s*(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(address => address.trim());
-  return addresses.every(address => parseMailbox(address) !== undefined) ? addresses : [];
+  const canonical: string[] = [];
+  for (const address of addresses) {
+    const parsed = parseMailbox(address);
+    if (!parsed) return [];
+    canonical.push(formatMailbox(parsed));
+  }
+  return canonical;
 }
 
-/** Parse one safe mailbox, preserving its display name. */
+/** Parse one safe mailbox, rejecting ambiguous display-name separators. */
 export function parseMailbox(value: string): { display: string; address: string } | undefined {
-  if (/[\r\n]/.test(value)) return undefined;
-  const match = /^(?:(.+?)\s*<)?([^<>\s,;@]+@[^<>\s,;@]+)>?$/.exec(value.trim());
-  if (!match?.[2] || (!match[1] && value.includes('>'))) return undefined;
-  const display = match[1]?.trim() ?? '';
-  if (display.includes('<') || display.includes('>')) return undefined;
-  return { display, address: match[2] };
+  if (Array.from(value).some(character => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127)) return undefined;
+  const trimmed = value.trim();
+  const angle = /^(.*?)<([^<>]+)>$/.exec(trimmed);
+  if (!angle && /[<>]/.test(trimmed)) return undefined;
+  const address = angle?.[2]?.trim() ?? trimmed;
+  if (!/^[^<>\s,;@]+@[^<>\s,;@]+$/.test(address)) return undefined;
+  let display = angle?.[1]?.trim() ?? '';
+  if (display.startsWith('"')) {
+    if (!/^"(?:[^"\\]|\\.)*"$/.test(display)) return undefined;
+    display = display.slice(1, -1).replace(/\\(.)/g, '$1');
+  } else if (/[,:;<>@"\\()[\]]/.test(display)) return undefined;
+  return { display, address };
+}
+
+function formatMailbox(mailbox: { display: string; address: string }): string {
+  if (!mailbox.display) return `<${mailbox.address}>`;
+  const display = /[^\x20-\x7E]/.test(mailbox.display)
+    ? encodeSubject(mailbox.display).replace('=?UTF-8?Q?', '=?utf-8?q?')
+    : `"${mailbox.display.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"`;
+  return `${display} <${mailbox.address}>`;
 }
 
 /** Return the safe reply target, preferring Reply-To. */
 export function replyRecipient(message: Message): string {
   const recipient = message.replyTo || message.from;
-  if (!recipient || !parseMailbox(recipient)) throw new TypeError('Gmail source sender is invalid');
-  return recipient;
+  const parsed = recipient ? parseMailbox(recipient) : undefined;
+  if (!parsed) throw new TypeError('Gmail source sender is invalid');
+  return formatMailbox(parsed);
 }
 
 /** Validate sender, recipients, subject, and body before sending. */
@@ -111,7 +132,7 @@ export function validateSendInput(input: SendMessageInput, sender: string): stri
     const canonical = parsed.address.toLowerCase();
     if (seen.has(canonical)) throw new TypeError('recipient email is duplicated');
     seen.add(canonical);
-    recipients.push(recipient);
+    recipients.push(formatMailbox(parsed));
   }
   return recipients;
 }

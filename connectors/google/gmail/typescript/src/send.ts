@@ -236,7 +236,8 @@ export class GmailSender {
       return this.#confirmPossiblySent(call, budget, credentials, operation, message, 'TRANSPORT', `Gmail ${operation.requestName} outcome is unknown`, this.#receipt(call));
     }
     const receipt = this.#receipt(call, gmailRequestID(response.response.headers));
-    const sentResponse = parseSentResponse(response.response);
+    const isAccepted = response.response.status >= 200 && response.response.status < 300;
+    const sentResponse = isAccepted ? parseSentResponse(response.response) : undefined;
     if (sentResponse?.id) await recordProviderIdentity(fence, sentResponse.id);
     return this.#classifySendStatus(call, fence, budget, response.credentials, operation, message, response.response.status, response.response.headers, sentResponse, receipt);
   }
