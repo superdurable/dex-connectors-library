@@ -118,6 +118,14 @@ catalog. Logs identify the selected Dex tag, connector tag, source commit, and
 artifact digest. Exact tags, such as `DEX_CLI_VERSION=cli-v1.4.2`, can be
 supplied for failure reproduction.
 
+Released Connector compatibility reads Go tags through `git ls-remote`, then
+checks candidate releases by exact tag. For each connector, it selects the
+highest stable version with a published, non-prerelease GitHub release carrying
+`connector-release.complete`. Tags under both `connectors/<directory>/vX.Y.Z`
+and `connectors/<directory>/go/vX.Y.Z` belong to the same history. An explicit
+`CONNECTOR_RELEASE_TAG` checks that tag directly; release publication uses it
+before uploading the completion marker.
+
 ## Dex Go SDK compatibility
 
 The latest Dex Go SDK check requires the latest stable
