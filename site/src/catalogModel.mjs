@@ -95,6 +95,10 @@ export function connectorMatchesLanguage(connector, language) {
   return language === "all" || Object.hasOwn(connector.languages, language);
 }
 
+export function capabilityMatchesLanguage(capability, language) {
+  return language === "all" || capability.languages.includes(language);
+}
+
 export function catalogTotals(connectors) {
   const companies = new Set();
   let uiUnits = 0;

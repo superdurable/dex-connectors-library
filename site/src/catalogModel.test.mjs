@@ -6,6 +6,7 @@ import test from "node:test";
 
 import {
   catalogDocumentUrl,
+  capabilityMatchesLanguage,
   companyDirectory,
   companyLogoUrl,
   connectorManifestUrl,
@@ -134,6 +135,32 @@ connectors:
   assert.equal(connectorMatchesLanguage(connectors[0], "typescript") && connectorMatchesQuery(connectors[0], "mail"), true);
   assert.equal(connectorMatchesLanguage(connectors[0], "python") && connectorMatchesQuery(connectors[0], "stripe"), false);
   assert.equal(connectorMatchesLanguage({ ...connectors[0], languages: { go: "v0.2.0" } }, "python"), false);
+  assert.equal(capabilityMatchesLanguage(connectors[0].triggers[0], "typescript"), false);
+  assert.equal(capabilityMatchesLanguage(connectors[0].operations[0], "python"), true);
+  assert.equal(capabilityMatchesLanguage(connectors[0].triggers[0], "all"), true);
+});
+
+test("TypeScript cards omit Go-only Trigger chips while All keeps them", () => {
+  const [stripe] = readCatalog(`
+connectors:
+  - company: Stripe
+    id: stripe
+    name: Stripe
+    description: Payments.
+    version: v0.2.0
+    languages: {go: v0.2.0, python: v0.1.0, typescript: v0.1.0}
+    directory: connectors/stripe
+    uiUnits: []
+    triggers:
+      - {name: checkoutSessionUpdated, description: Receive an update., languages: [go]}
+    operations:
+      - {name: createCheckoutSession, kind: mutation, description: Create a session., languages: [go, python, typescript]}
+`);
+  const capabilities = [...stripe.uiUnits, ...stripe.triggers, ...stripe.operations];
+  assert.deepEqual(capabilities.filter((capability) => capabilityMatchesLanguage(capability, "all")).map(({ name }) => name),
+    ["checkoutSessionUpdated", "createCheckoutSession"]);
+  assert.deepEqual(capabilities.filter((capability) => capabilityMatchesLanguage(capability, "typescript")).map(({ name }) => name),
+    ["createCheckoutSession"]);
 });
 
 test("connector manifest exposes operation name, kind, and description", () => {

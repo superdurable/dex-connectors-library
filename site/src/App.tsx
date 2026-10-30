@@ -10,6 +10,7 @@ import { WhatIsDexConnectors } from "./WhatIsDexConnectors";
 import {
   catalogDocumentUrl,
   catalogTotals,
+  capabilityMatchesLanguage,
   companyLogoUrl,
   connectorMatchesQuery,
   connectorMatchesLanguage,
@@ -165,7 +166,7 @@ function CatalogPage({ catalog }: { catalog: LoadState<CatalogConnector[]> }) {
               </span>
               <span className="card-title">{connector.name}</span>
               <span className="description">{connector.description}</span>
-              <CapabilityChips connector={connector} />
+              <CapabilityChips connector={connector} language={language} />
             </Link>
           </li>
         ))}
@@ -174,12 +175,15 @@ function CatalogPage({ catalog }: { catalog: LoadState<CatalogConnector[]> }) {
   );
 }
 
-function CapabilityChips({ connector }: { connector: CatalogConnector }) {
+function CapabilityChips({ connector, language }: {
+  connector: CatalogConnector;
+  language: "all" | "go" | "python" | "typescript";
+}) {
   const chips = [
     ...connector.uiUnits.map((capability) => ({ ...capability, key: `ui-unit-${capability.name}` })),
     ...connector.triggers.map((capability) => ({ ...capability, key: `trigger-${capability.name}` })),
     ...connector.operations.map((capability) => ({ ...capability, key: `operation-${capability.name}` })),
-  ];
+  ].filter((capability) => capabilityMatchesLanguage(capability, language));
   if (chips.length === 0) {
     return null;
   }
