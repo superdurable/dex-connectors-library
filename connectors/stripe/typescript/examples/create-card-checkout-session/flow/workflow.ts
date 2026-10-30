@@ -28,8 +28,6 @@ export class CardCheckoutFlow implements Flow<CardCheckoutInput> {
   /** Bind the operation-specific Stripe Step at Worker registration. */
   constructor(connection: StripeConnection) {
     if (!connection) throw new TypeError('card Checkout Stripe connection is required');
-    // dex:group group-id:card-checkout group-label:"Card Checkout"
-    // dex:explanation text:"Create one hosted card Checkout Session."
     this.checkoutStep = newCreateCardCheckoutSessionStep({
       stepType: 'CreateCardCheckout',
       annotations: { groupId: 'card-checkout', groupLabel: 'Card Checkout', explanation: 'Create one hosted card Checkout Session.' },

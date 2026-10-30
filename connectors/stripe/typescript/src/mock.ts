@@ -119,7 +119,7 @@ export class StripeMock {
       getCheckoutSession: () => this.checkout,
       getPaymentIntent: () => this.payment,
       createRefund: () => this.refund,
-    }, connectionName);
+    }, { provider: 'stripe', name: connectionName });
   }
 
   /** Return the operation connection used by Dex Step factories. */

@@ -37,15 +37,15 @@ export class StripeConnection {
   toJSON(): never { throw new TypeError('Stripe connector connections cannot be serialized'); }
 }
 
-/** Bind a Stripe API client to one static named connection. */
-export function newStripeConnection(client: StripeClient, connectionName: string): StripeConnection {
+/** Bind a Stripe API client to one static connection reference. */
+export function newStripeConnection(client: StripeClient, reference: ConnectionRef): StripeConnection {
   if (!client) throw new TypeError('Stripe connector client is required');
-  return new StripeConnection({ provider: 'stripe', name: connectionName }, client);
+  return new StripeConnection(reference, client);
 }
 
-/** Bind test operations or another implementation to one static named connection. */
-export function newStripeConnectionWithOperations(operations: StripeOperations, connectionName: string): StripeConnection {
-  return new StripeConnection({ provider: 'stripe', name: connectionName }, operations);
+/** Bind test operations or another implementation to one static connection reference. */
+export function newStripeConnectionWithOperations(operations: StripeOperations, reference: ConnectionRef): StripeConnection {
+  return new StripeConnection(reference, operations);
 }
 
 /** Open a manifest-declared Stripe connection from a loaded Dex project. */
@@ -75,5 +75,5 @@ export function newProjectStripeConnection(project: LoadedProject, connectionNam
       };
     },
   };
-  return newStripeConnection(new StripeClient(config, credentials, options), connectionName);
+  return newStripeConnection(new StripeClient(config, credentials, options), { provider: 'stripe', name: connectionName });
 }
