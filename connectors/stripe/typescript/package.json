@@ -1,7 +1,6 @@
 {
   "name": "@superdurable/connector-stripe",
   "version": "0.1.0",
-  "private": true,
   "description": "Stripe Checkout, PaymentIntent, and refund operations for Dex",
   "repository": {
     "type": "git",
@@ -9,6 +8,10 @@
     "directory": "connectors/stripe/typescript"
   },
   "type": "module",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
   "engines": {
     "node": "^22.0.0 || ^24.0.0"
   },
@@ -40,12 +43,12 @@
     "check": "npm test && npm run typecheck && npm run lint"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "file:../../../sdkts",
+    "@superdurable/connectors-sdk": "0.1.0",
+    "@superdurable/dex": ">=1.28.0",
     "zod": "^4.1.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
-    "@superdurable/dex": "1.28.0",
     "@types/node": "^22.0.0",
     "eslint": "^9.0.0",
     "tsup": "^8.0.0",
