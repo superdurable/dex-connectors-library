@@ -31,3 +31,5 @@ const registry = new Registry([new GmailReadFlow(connection), new GmailSendFlow(
 Run `npm run example:worker` after configuring the named connection, then `npm run example:start -- GMAIL_MESSAGE_ID` to start a read. `npm run test:integration` exercises read, send, reply, retry, optional branch failure, and the send checkpoint with a fake provider on a real Dex server. No live Google authorization or delivery has been tested.
 
 Dex CLI v1.28.0 rendered all three example Flows as valid FDG 2.0 graphs with no diagnostics. The published package includes the manifest-derived `dex-connector.json` marker, which supplies connector identity, named branches, and Dex Web connection configuration metadata.
+
+Flows that route from a local Step into a connector Step need Dex CLI v1.28.1 for strict FDG visualization ([issue #362](https://github.com/superdurable/dex-connectors-library/issues/362)). The three examples here start at connector Steps and pass with v1.28.0.
