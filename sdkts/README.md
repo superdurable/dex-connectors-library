@@ -11,6 +11,7 @@ node examples/core.mjs
 node examples/operations.mjs
 node examples/providerhttp.mjs
 node examples/projectconfig.mjs
+node examples/refreshing_project.mjs
 node examples/connectormock.mjs
 node examples/oauthtoken.mjs
 node examples/singledispatch.mjs
@@ -105,6 +106,31 @@ try {
 }
 ```
 
+## Project credential providers
+
+The [runnable refresh example](examples/refreshing_project.mjs) binds `newRefreshingCredentialProvider` to a named project connection. `newCredentialProvider` reads an API key or another nonrenewable credential on each call. A refresh provider writes a `REFRESHING` head with a monotonic fence before sending one provider request, publishes an immutable result, and lets observers recover a result whose final head write was lost. A terminal provider response fences the connection as `REAUTHORIZATION_REQUIRED`; a transient response restores the prior credential. The local Dex Web projection writes an accepted refresh back to its mode-0600 `connections.json` only while that file still holds the imported credential. The decoder and encoder must cover the complete private credential, including a renewal token omitted by the provider's response.
+
+```js
+import { createCall } from '../dist/index.js';
+import { loadFromEnvironment, newRefreshingCredentialProvider } from '../dist/projectconfig/index.js';
+
+const project = await loadFromEnvironment({ DEX_CONNECTOR_CONFIG_FILE: path });
+const provider = newRefreshingCredentialProvider(
+  project.connections, { connectorId: 'example', connectionName: 'default' },
+  value => ({ accessToken: String(value.accessToken), refreshToken: String(value.refreshToken) }),
+  value => ({ accessToken: value.accessToken, refreshToken: value.refreshToken }),
+);
+const context = { flowId: 'example-flow', stepExecutionId: 'refresh:1', attempt: 1 };
+const call = createCall(context, { provider: 'example', name: 'default' }, { connectorId: 'example', operationId: 'getItem' });
+const credentials = await provider.resolveWithRefresh(call, {
+  refreshRequired: () => false,
+  refresh: async state => ({
+    credentials: { accessToken: 'new', refreshToken: state.credentials.refreshToken },
+    expiresAt: new Date(Date.now() + 3600_000),
+  }),
+});
+```
+
 ## Connector mocks
 
 The [complete runnable mock example](examples/connectormock.mjs) validates a JSON fixture, builds a scripted mutation from the real operation definition, and invokes it through the same result validator as a provider operation. `retryCase` and `uncertainCase` model the other provider outcomes; `decodeCallReport` reads the Go-compatible test harness report. Scripts support `respond`, `when`, `default`, `strict`, and `forFlow`. Mutation terminal outcomes replay by stable idempotency key; retries consume the next case. After a real Dex Flow completes, call `assertNoFailures()` to surface unscripted calls or invalid cases.
@@ -167,4 +193,4 @@ if (first.kind !== 'sendAllowed' || later.kind !== 'readBackRequired') throw new
 
 ### 0.1.0
 
-First public TypeScript Connector SDK release: Go-compatible contracts and conformance fixtures, safe provider HTTP, project configuration, typed operation and credential interfaces, OAuth exchanges, scripted mocks, and single-dispatch markers. Dex Step factories and the live fence require the upcoming public Dex Context deadline and instance-addressed Step APIs; no live provider authorization has been tested.
+First public TypeScript Connector SDK release: Go-compatible contracts and conformance fixtures, safe provider HTTP, project configuration with durable credential refresh and guarded local writeback, typed operations, OAuth exchanges, scripted mocks, and single-dispatch markers. Dex Step factories and the live fence require the upcoming public Dex Context deadline and instance-addressed Step APIs; no live provider authorization has been tested.

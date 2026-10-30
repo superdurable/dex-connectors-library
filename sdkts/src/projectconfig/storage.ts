@@ -39,6 +39,44 @@ export interface ObjectStore {
   compareAndSwapObject(key: string, expectedETag: string, contents: Uint8Array): Promise<ProjectObject>;
 }
 
+/** Process-local versioned store for Dex Web preview and deterministic tests. */
+export class InMemoryObjectStore implements ObjectStore {
+  readonly #versions = new Map<string, ProjectObject[]>();
+
+  /** Read the latest object or an exact immutable version. */
+  async readObject(key: string, version = ''): Promise<ProjectObject> {
+    validateObjectKey(key);
+    const versions = this.#versions.get(key) ?? [];
+    const found = version ? versions.find(object => object.version === version) : versions.at(-1);
+    if (!found) throw new ObjectNotFoundError();
+    return found;
+  }
+
+  /** Create only when no object exists under this key. */
+  async createObject(key: string, contents: Uint8Array): Promise<ProjectObject> {
+    validateObjectKey(key);
+    validateContents(contents);
+    if (this.#versions.has(key)) throw new ConflictError();
+    return this.#write(key, contents);
+  }
+
+  /** Compare and swap the latest object by ETag. */
+  async compareAndSwapObject(key: string, expectedETag: string, contents: Uint8Array): Promise<ProjectObject> {
+    validateObjectKey(key);
+    validateContents(contents);
+    const current = (this.#versions.get(key) ?? []).at(-1);
+    if (!current || current.etag !== expectedETag) throw new ConflictError();
+    return this.#write(key, contents);
+  }
+
+  #write(key: string, contents: Uint8Array): ProjectObject {
+    const version = String((this.#versions.get(key)?.length ?? 0) + 1);
+    const object = new ProjectObject(key, version, `${digestBytes(contents).slice(7)}-${version}`, new Uint8Array(contents));
+    this.#versions.set(key, [...(this.#versions.get(key) ?? []), object]);
+    return object;
+  }
+}
+
 /** Fixed S3 storage boundary with exact encryption configuration. */
 export interface S3StoreConfig {
   /** Authenticated S3 client owned by the application. */ client: S3Client;
