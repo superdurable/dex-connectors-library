@@ -39,6 +39,7 @@
   },
   "files": [
     "dist",
+    "dex-connector.json",
     "README.md",
     "LICENSE"
   ],
