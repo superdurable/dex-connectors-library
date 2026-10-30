@@ -42,9 +42,22 @@ each language independently. Use `sdkpython:` and `sdkts:` commit and PR subject
 for their SDKs; connector changes in any language use `connector(<slug>):`.
 
 GitHub Release titles are human-readable labels. SDK releases use
-`Go SDK vMAJOR.MINOR.PATCH`. Connector releases use the manifest
-`metadata.displayName`, such as `Slack vMAJOR.MINOR.PATCH` or
-`Google Sheets vMAJOR.MINOR.PATCH`.
+`Go SDK vMAJOR.MINOR.PATCH`, `Python SDK vMAJOR.MINOR.PATCH`, or
+`TypeScript SDK vMAJOR.MINOR.PATCH`. Connector releases and release candidates
+use the manifest `metadata.displayName`, the language (`Go`, `Python`, or
+`TypeScript`), and the version, such as `Zoom Go v0.24.0`,
+`Stripe Python v0.1.0`, `Stripe TypeScript v0.1.0`, or
+`Stripe Go v0.25.0-rc.1`. `script/release/component_release.py release-title`
+is the one place that formats this title for the release workflows.
+
+To bring earlier connector releases to this format, a maintainer runs
+`python3 script/release/retitle_connector_releases.py` after fetching `main`.
+It prints each connector release with its current and new title, reading the
+display name from the manifest on `origin/main`; a legacy tag without a
+language directory, such as `connectors/zoom/v0.24.0`, is a Go release, and a
+connector no longer on `main` keeps the display name of its current title.
+Add `--apply` to edit only the titles that differ; it pauses
+`--delay-seconds` (default 1) between edits and stops at the first error.
 
 ## Choosing a connector version
 
