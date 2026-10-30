@@ -27,7 +27,7 @@ same object.
 
 ## Configure
 
-Follow the [Amazon S3 Connector setup](../../README.md), then configure the
+Follow the [Amazon S3 Connector setup](../../../README.md), then configure the
 `amazon-s3 / amazon-s3-reports` connection in Dex Web **Connections**. Set
 `defaultBucket` to the archive bucket, or name `bucket` in the Start Flow
 input. The example's Steps have no configuration units.
@@ -46,7 +46,7 @@ dexcli visualize ./examples/report-archive/flow/workflow.go \
 Run `dexcli dev` with that build directory. Dex Web or Superverse Studio writes
 the connection to the project configuration; run the Worker with the
 `DEX_PROJECT_*` environment that names it, as
-[project configuration loading](../../../../../sdkgo/projectconfig/README.md#application-loading)
+[project configuration loading](../../../../../../sdkgo/projectconfig/README.md#application-loading)
 describes:
 
 ```bash

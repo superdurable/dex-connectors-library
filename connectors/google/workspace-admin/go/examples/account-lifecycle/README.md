@@ -34,7 +34,7 @@ responses, and local defects fail the Flow.
 
 ## Configure
 
-Follow the [Google Workspace Admin Connector setup](../../README.md), then
+Follow the [Google Workspace Admin Connector setup](../../../README.md), then
 configure the `google-workspace-admin` connection under **Connections** in Dex
 Web. Domain-wide delegation is the default method: paste the service-account
 JSON key and enter the delegated administrator's address. No Step has
@@ -54,7 +54,7 @@ dexcli visualize ./examples/account-lifecycle/flow/workflow.go \
 
 Run `dexcli dev` with that build directory, then run the Worker. It reads the
 `DEX_PROJECT_*` project configuration environment documented in
-[`sdkgo/projectconfig`](../../../../../sdkgo/projectconfig/README.md#application-loading);
+[`sdkgo/projectconfig`](../../../../../../sdkgo/projectconfig/README.md#application-loading);
 Dex Web or Superverse Studio writes that configuration:
 
 ```bash

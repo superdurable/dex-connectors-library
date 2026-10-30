@@ -1,5 +1,7 @@
 # MySQL Connector
 
+Moved from `github.com/superdurable/dex-connectors-library/connectors/mysql`.
+
 > **Verification status: live.** Verified against local MySQL 8.4.11 and MariaDB 13.0.2 on a real Dex stack; managed services such as RDS, Cloud SQL, and Azure are not verified. See
 > [verification status](../../docs/verification-status.md) for what is and
 > is not verified.
@@ -94,7 +96,7 @@ disabled.
 
 Name the factory connection and open the same name from the project
 configuration at application startup, as
-[`examples/record-refund/main.go`](examples/record-refund/main.go) does:
+[`examples/record-refund/main.go`](go/examples/record-refund/main.go) does:
 
 ```go
 project, err := projectconfig.LoadFromEnvironment(ctx)
@@ -319,7 +321,7 @@ every write idempotent, and treat a statement that is not idempotent as a
 defect in the Flow.
 
 The runnable example's write, from
-[`examples/record-refund/flow/workflow.go`](examples/record-refund/flow/workflow.go):
+[`examples/record-refund/flow/workflow.go`](go/examples/record-refund/flow/workflow.go):
 
 ```go
 InsertRefundStatement = `INSERT INTO refund_ledger (order_id, amount_usd, external_reference, idempotency_key)
@@ -379,7 +381,7 @@ sum under the Step's Execute timeout.
 
 ## Runnable example
 
-[`examples/record-refund`](examples/record-refund/README.md) records one
+[`examples/record-refund`](go/examples/record-refund/README.md) records one
 refund in a ledger at most once. It uses `query` for the duplicate check and
 the read-back, and `execute` for the idempotent upsert, and reconciles an
 uncertain `COMMIT`.
@@ -450,7 +452,7 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=live ./... -cou
 
 ## Mocks
 
-`mysqlmock` provides a committed refund row for the order `88213` and a no-op insert after another Flow won the race. Named `rowLimit`, `missingTable`, and `duplicateKey` cases cover definite limits and rejections. The [record refund example](examples/record-refund/flow/workflow_mock_integration_test.go) scripts the first query as empty with six columns, then checks the Flow's write and read-back calls against a real Dex Worker.
+`mysqlmock` provides a committed refund row for the order `88213` and a no-op insert after another Flow won the race. Named `rowLimit`, `missingTable`, and `duplicateKey` cases cover definite limits and rejections. The [record refund example](go/examples/record-refund/flow/workflow_mock_integration_test.go) scripts the first query as empty with six columns, then checks the Flow's write and read-back calls against a real Dex Worker.
 
 ```go
 mock := mysqlmock.New(t, ConnectionName)
@@ -462,4 +464,4 @@ mock.QueryRows().Respond(mysqlmock.QueryRowsCompleted(mysql.RowSet{Columns: []my
 harness := startTestWorkerWithConnection(t, mock.Connection())
 ```
 
-Install this release with `go get github.com/superdurable/dex-connectors-library/connectors/mysql@v0.22.0`.
+Install this release with `go get github.com/superdurable/dex-connectors-library/connectors/mysql/go@v0.23.0`.

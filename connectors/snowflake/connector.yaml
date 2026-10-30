@@ -5,7 +5,7 @@ metadata:
   displayName: Snowflake
   description: Submit one parameterized SQL statement to a Snowflake warehouse through the SQL API, read its status and result partitions, and cancel it.
   company: Snowflake
-  version: v0.22.0
+  version: v0.23.0
 spec:
   provider: snowflake
   codegen:

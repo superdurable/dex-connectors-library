@@ -5,7 +5,7 @@ metadata:
   displayName: Zoho CRM
   description: Find, read, upsert, and update Zoho CRM records such as contacts, accounts, and deals in the connection's Zoho data center, list records changed since a watermark, and read a module's fields and picklist values, keeping Zoho CRM's own field names and stages.
   company: Zoho
-  version: v0.23.0
+  version: v0.24.0
 spec:
   provider: zoho
   codegen:

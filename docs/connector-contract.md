@@ -586,7 +586,7 @@ One connection names one provider and holds that provider's key:
 model ID the provider's rule rejects, and a workspace ID on another provider
 before the Worker starts, without a provider request. Each provider is one row
 of the `providerAPIs` table in
-[`provider_apis.go`](../connectors/superdurable/llm/provider_apis.go): its
+[`provider_apis.go`](../connectors/superdurable/llm/go/provider_apis.go): its
 default model, regional base URLs, request timeout, response limit, and wire
 format. The wire formats live in the llm module: OpenAI Responses, Claude
 Messages, and Gemini `generateContent` natively, and Qwen, DeepSeek, Meta,

@@ -22,17 +22,17 @@ mkdir -p /tmp/algolia-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/algolia/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/algolia/go \
-  --version v0.1.0 --tag connectors/algolia/v0.1.0 \
+  --version v0.2.0 --tag connectors/algolia/go/v0.2.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/algolia-release/connector-release.json \
   --digest-output /tmp/algolia-release/connector-release.json.sha256
-dexcli dev --flow-rendering-dir "$PWD/connectors/algolia/build" --connector-release-override algolia=/tmp/algolia-release
+dexcli dev --flow-rendering-dir "$PWD/connectors/algolia/go/build" --connector-release-override algolia=/tmp/algolia-release
 ```
 
-Set the project environment described by [`projectconfig`](../../../../sdkgo/projectconfig/README.md), then start the Worker:
+Set the project environment described by [`projectconfig`](../../../../../sdkgo/projectconfig/README.md), then start the Worker:
 
 ```bash
-cd connectors/algolia
+cd connectors/algolia/go
 go run ./examples/index-search
 ```
 

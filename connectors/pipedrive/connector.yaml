@@ -5,7 +5,7 @@ metadata:
   displayName: Pipedrive
   description: Search, list, read, create, upsert, and update Pipedrive persons, organizations, and deals, with persons upserted by email and deal stages and owners passed through as Pipedrive IDs.
   company: Pipedrive
-  version: v0.23.0
+  version: v0.24.0
 spec:
   provider: pipedrive
   codegen:

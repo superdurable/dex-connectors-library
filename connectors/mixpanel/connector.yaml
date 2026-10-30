@@ -5,7 +5,7 @@ metadata:
   displayName: Mixpanel
   description: Import a deduplicated event and export a bounded day of raw events.
   company: Mixpanel
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: mixpanel
   codegen:

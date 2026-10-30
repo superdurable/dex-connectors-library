@@ -5,7 +5,7 @@ metadata:
   displayName: DocuSign eSignature
   description: "Send DocuSign eSignature envelopes from templates, guarded against duplicates on retry, read envelope and recipient status, void an envelope as compensation, record the signed combined PDF's digest outside Dex payloads, and receive HMAC-verified Connect envelope-completed, envelope-declined, and envelope-voided events."
   company: DocuSign
-  version: v0.23.0
+  version: v0.24.0
 spec:
   provider: docusign
   codegen:

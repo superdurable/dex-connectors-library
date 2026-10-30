@@ -5,7 +5,7 @@ metadata:
   displayName: Smartsheet
   description: Read Smartsheet records with a connection-owned API key.
   company: Smartsheet
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: smartsheet
   codegen:

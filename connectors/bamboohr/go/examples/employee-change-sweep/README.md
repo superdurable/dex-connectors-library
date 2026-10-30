@@ -46,7 +46,7 @@ example describes, then configure `bamboohr / bamboohr-company` in Dex Web
 Studio writes it to the project configuration. Start the Worker from
 `connectors/bamboohr` with the `DEX_PROJECT_*` environment that names that
 configuration, as
-[project configuration loading](../../../../sdkgo/projectconfig/README.md#application-loading)
+[project configuration loading](../../../../../sdkgo/projectconfig/README.md#application-loading)
 describes:
 
 ```bash

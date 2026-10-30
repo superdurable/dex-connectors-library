@@ -5,7 +5,7 @@ metadata:
   displayName: OpenAI
   description: "OpenAI Responses API stored responses: create a model response with JSON Schema structured output, streamed text and progress, token usage, and explicit uncertainty, and retrieve it by ID for recovery. Text generation Steps use the llm connector."
   company: OpenAI
-  version: v0.22.2
+  version: v0.23.0
 spec:
   provider: openai
   codegen:

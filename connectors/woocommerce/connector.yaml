@@ -5,7 +5,7 @@ metadata:
   displayName: WooCommerce
   description: "Read WooCommerce resources through typed Dex Query Steps."
   company: WooCommerce
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: woocommerce
   codegen:

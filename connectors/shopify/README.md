@@ -1,6 +1,10 @@
 # Shopify connector
 
-Read-only Dex Query Steps for Shopify. The module is `github.com/superdurable/dex-connectors-library/connectors/shopify`. See the [runnable resource-read Flow](examples/resource-read/README.md).
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/shopify/go@v0.2.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/shopify`.
+
+Read-only Dex Query Steps for Shopify. The module is `github.com/superdurable/dex-connectors-library/connectors/shopify/go`. See the [runnable resource-read Flow](go/examples/resource-read/README.md).
 
 ## Operations
 
@@ -34,7 +38,7 @@ Provider error text is never copied into a Failure. Responses are bounded and re
 
 ## Mocks
 
-The generated `shopifymock` package returns one realistic default per operation from `connector.yaml`. The [mock-backed real Dex test](examples/resource-read/flow/workflow_mock_integration_test.go) executes the example Flow through a Worker and checks its mapped input and branch.
+The generated `shopifymock` package returns one realistic default per operation from `connector.yaml`. The [mock-backed real Dex test](go/examples/resource-read/flow/workflow_mock_integration_test.go) executes the example Flow through a Worker and checks its mapped input and branch.
 
 ```go
 mock := shopifymock.New(t, resourceread.ConnectionName)

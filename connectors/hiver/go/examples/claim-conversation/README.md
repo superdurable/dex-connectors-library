@@ -61,16 +61,16 @@ mkdir -p /tmp/hiver-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/hiver/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/hiver/go \
-  --version v0.22.0 --tag connectors/hiver/v0.22.0 \
+  --version v0.23.0 --tag connectors/hiver/go/v0.23.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/hiver-release/connector-release.json \
   --digest-output /tmp/hiver-release/connector-release.json.sha256
 dexcli dev \
-  --flow-rendering-dir "$PWD/connectors/hiver/build" \
+  --flow-rendering-dir "$PWD/connectors/hiver/go/build" \
   --connector-release-override hiver=/tmp/hiver-release
 ```
 
-Follow the [Hiver setup](../../README.md#hiver-setup), then open
+Follow the [Hiver setup](../../../README.md#hiver-setup), then open
 **Connections** in Dex Web and select `hiver / hiver-account`, which all six
 Hiver Steps of `HiverClaimConversation` use. Paste the admin's API key and
 save; the status becomes **Ready**. Leave `maxResponseBytes` and
@@ -80,7 +80,7 @@ Studio writes the connection to the project configuration.
 
 In a second terminal, start the Worker from `connectors/hiver` with the
 `DEX_PROJECT_*` environment that names that configuration, as
-[project configuration loading](../../../../sdkgo/projectconfig/README.md#application-loading)
+[project configuration loading](../../../../../sdkgo/projectconfig/README.md#application-loading)
 describes:
 
 ```bash
@@ -140,7 +140,7 @@ close together:
 - a Worker lost while Hiver holds the draft is replaced, and the new attempt
   finds the dispatch checkpoint, fails the Flow, and sends nothing; a Worker lost before Dex
   stored the checkpoint also fails closed without resending, as
-  [Duplicate safety](../../README.md#duplicate-safety) explains;
+  [Duplicate safety](../../../README.md#duplicate-safety) explains;
 - a mock-backed run pages through three inbox and conversation pages, then
   checks all six connector operation calls and the Flow's claim outcome;
 - an assignee who is not an inbox user fails the Flow through the unwired

@@ -1,6 +1,10 @@
 # Vercel connector
 
-The `vercel` Go module exposes typed Dex Steps for Vercel. Its [runnable lookup Flow](examples/vercel-lookup/README.md) uses the static connection name `vercel`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/vercel/go@v0.2.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/vercel`.
+
+The `vercel` Go module exposes typed Dex Steps for Vercel. Its [runnable lookup Flow](go/examples/vercel-lookup/README.md) uses the static connection name `vercel`.
 
 ## Operations
 
@@ -37,7 +41,7 @@ The generated `vercelmock` package installs these default answers:
 - `listDeployments`: one ready `meridian-web` deployment and no next cursor.
 - `getDeployment`: the same `dpl_meridian1` deployment.
 
-The [mock-backed example test](examples/vercel-lookup/flow/workflow_mock_integration_test.go) runs the first default through a real Dex Worker and Client in CI.
+The [mock-backed example test](go/examples/vercel-lookup/flow/workflow_mock_integration_test.go) runs the first default through a real Dex Worker and Client in CI.
 
 ## Official API references
 

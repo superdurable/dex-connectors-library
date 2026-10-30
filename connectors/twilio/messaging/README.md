@@ -1,5 +1,7 @@
 # Twilio Messaging Connector
 
+Moved from `github.com/superdurable/dex-connectors-library/connectors/twilio/messaging`.
+
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Twilio; no live Twilio account was used. See
 > [verification status](../../../docs/verification-status.md) for what is and
 > is not verified.
@@ -8,7 +10,7 @@ This module sends SMS, MMS, and WhatsApp messages through Twilio Programmable
 Messaging and reads their delivery status:
 
 ```bash
-go get github.com/superdurable/dex-connectors-library/connectors/twilio/messaging@v0.22.0
+go get github.com/superdurable/dex-connectors-library/connectors/twilio/messaging/go@v0.23.0
 ```
 
 | Operation | Kind | Happy branch | Other branches |
@@ -71,7 +73,7 @@ Dex Web or Superverse Studio writes the connection to the project
 configuration. Load it with `projectconfig.LoadFromEnvironment` and open the
 connection by the name the application uses with
 `messaging.NewProjectConnection`, as
-[`examples/text-message-delivery/main.go`](examples/text-message-delivery/main.go)
+[`examples/text-message-delivery/main.go`](go/examples/text-message-delivery/main.go)
 does:
 
 ```go
@@ -163,7 +165,7 @@ visible to those attempts. `getMessage` is a read and keeps the async default.
 Do not override `sendMessage` to async.
 
 An application handles `uncertain` without resending automatically.
-[`examples/text-message-delivery`](examples/text-message-delivery) shows the
+[`examples/text-message-delivery`](go/examples/text-message-delivery) shows the
 pattern:
 
 1. Record the request in an Attribute before the send Step.
@@ -260,7 +262,7 @@ The deterministic provider fakes cover acceptance, conclusive 4xx rejections
 authentication), 429 with `Retry-After`, 503 retry, 500 uncertainty, a timeout after dispatch, a
 refused connection, redirects, oversized and malformed responses, and secret
 reflection. The example's real Dex integration tests are listed in its
-[README](examples/text-message-delivery/README.md).
+[README](go/examples/text-message-delivery/README.md).
 
 No live Twilio credentials were used. The following live behavior is
 unverified: a real Twilio 201 response and message resource shape, delivery

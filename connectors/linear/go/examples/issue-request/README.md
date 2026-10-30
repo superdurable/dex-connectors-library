@@ -53,7 +53,7 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/linear/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/linear/go \
-  --version v0.23.0 --tag connectors/linear/v0.23.0 \
+  --version v0.24.0 --tag connectors/linear/go/v0.24.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/linear-release/connector-ui.tgz \
   --ui-digest /tmp/linear-release/connector-ui.tgz.sha256 \
@@ -64,7 +64,7 @@ dexcli dev \
   --connector-release-override linear=/tmp/linear-release
 ```
 
-Follow the [Linear setup](../../README.md#linear-setup), then open **Connections** in Dex Web and select
+Follow the [Linear setup](../../../README.md#linear-setup), then open **Connections** in Dex Web and select
 `linear / linear-workspace`, which all seven Linear Steps of `LinearIssueRequest` use. Choose **Personal API
 key** and paste the `lin_api_` key, or **Linear OAuth** and authorize, and save; the status becomes **Ready**.
 
@@ -74,7 +74,7 @@ the team > Copy team ID**. Save, and restart the Worker, which reads the pick at
 unsaved makes every request name `teamId` instead.
 
 In a second terminal, start the Worker from `connectors/linear`. It reads the `DEX_PROJECT_*` project
-configuration environment described in [project configuration](../../../../sdkgo/projectconfig/README.md); Dex
+configuration environment described in [project configuration](../../../../../sdkgo/projectconfig/README.md); Dex
 Web or Superverse Studio writes that configuration when you save the connection.
 
 ```bash

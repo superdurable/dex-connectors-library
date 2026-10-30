@@ -5,7 +5,7 @@ metadata:
   displayName: Vercel
   description: "Use the Vercel REST API through typed Dex connector Steps."
   company: Vercel
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: vercel
   codegen:

@@ -58,16 +58,16 @@ mkdir -p /tmp/gorgias-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/gorgias/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/gorgias/go \
-  --version v0.22.0 --tag connectors/gorgias/v0.22.0 \
+  --version v0.23.0 --tag connectors/gorgias/go/v0.23.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/gorgias-release/connector-release.json \
   --digest-output /tmp/gorgias-release/connector-release.json.sha256
 dexcli dev \
-  --flow-rendering-dir "$PWD/connectors/gorgias/build" \
+  --flow-rendering-dir "$PWD/connectors/gorgias/go/build" \
   --connector-release-override gorgias=/tmp/gorgias-release
 ```
 
-Follow the [Gorgias setup](../../README.md#gorgias-setup), then open
+Follow the [Gorgias setup](../../../README.md#gorgias-setup), then open
 **Connections** in Dex Web and select `gorgias / gorgias-helpdesk`, which all
 seven Gorgias Steps of `GorgiasTriageIssue` use. Enter the helpdesk domain,
 the user's email, and the API key and save; the status becomes **Ready**. The
@@ -76,7 +76,7 @@ connection to the project configuration.
 
 In a second terminal, start the Worker from `connectors/gorgias` with the
 `DEX_PROJECT_*` environment that names that configuration, as
-[project configuration loading](../../../../sdkgo/projectconfig/README.md#application-loading)
+[project configuration loading](../../../../../sdkgo/projectconfig/README.md#application-loading)
 describes:
 
 ```bash

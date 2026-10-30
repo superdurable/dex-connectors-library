@@ -1,5 +1,7 @@
 # Jira Service Management Connector
 
+Moved from `github.com/superdurable/dex-connectors-library/connectors/atlassian/jira-service-management`.
+
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Jira Service Management; no live Atlassian site was used. See
 > [verification status](../../../docs/verification-status.md) for what is and
 > is not verified.
@@ -11,7 +13,7 @@ and customer calls use the request API at `/rest/servicedeskapi`; search,
 labels, priority, and workflow transitions use the Jira platform API at
 `/rest/api/3` on the same site, because every customer request is a Jira issue.
 
-Install this connector with `go get github.com/superdurable/dex-connectors-library/connectors/atlassian/jira-service-management@v0.23.0`.
+Install this connector with `go get github.com/superdurable/dex-connectors-library/connectors/atlassian/jira-service-management/go@v0.24.0`.
 
 | Operation | Kind | Durability | Happy branch | Other branches |
 | --- | --- | --- | --- | --- |
@@ -117,7 +119,7 @@ Web does not refresh; the Worker's next call refreshes it.
 
 The application loads the project configuration once and opens the connection
 by the name it declares, as
-[`examples/support-request/main.go`](examples/support-request/main.go) does:
+[`examples/support-request/main.go`](go/examples/support-request/main.go) does:
 
 ```go
 project, err := projectconfig.LoadFromEnvironment(ctx)
@@ -260,7 +262,7 @@ override `createTicket` or `addComment` to async. Recording the checkpoint
 returns before Dex confirms persistence. A lost `canResend` checkpoint therefore
 selects `uncertain` even after a 429 or 503, and a crash before dispatch can
 report uncertainty for a request the provider never received. The
-[`support-request`](examples/support-request) example parks an uncertain create
+[`support-request`](go/examples/support-request) example parks an uncertain create
 for an operator.
 
 ## Mocks
@@ -283,7 +285,7 @@ The real Dex mock integration test scripts one retry before creation:
 	)
 ```
 
-See [`workflow_mock_integration_test.go`](examples/support-request/flow/workflow_mock_integration_test.go)
+See [`workflow_mock_integration_test.go`](go/examples/support-request/flow/workflow_mock_integration_test.go)
 for the full Flow test and its recorded-input and call-count assertions.
 
 ## Errors

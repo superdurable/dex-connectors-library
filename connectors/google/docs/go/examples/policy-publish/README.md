@@ -30,7 +30,7 @@ safe branch reason.
 
 ## Configure
 
-Follow the [Google Docs Connector setup](../../README.md), then configure the
+Follow the [Google Docs Connector setup](../../../README.md), then configure the
 `google-docs / google-docs-policies` connection in Dex Web **Connections**. The
 example exposes two units:
 
@@ -55,7 +55,7 @@ dexcli visualize ./examples/policy-publish/flow/workflow.go \
 
 Run `dexcli dev` with that build directory, then run the Worker. It reads the
 `DEX_PROJECT_*` project configuration environment documented in
-[`sdkgo/projectconfig`](../../../../../sdkgo/projectconfig/README.md#application-loading);
+[`sdkgo/projectconfig`](../../../../../../sdkgo/projectconfig/README.md#application-loading);
 Dex Web or Superverse Studio writes that configuration:
 
 ```bash

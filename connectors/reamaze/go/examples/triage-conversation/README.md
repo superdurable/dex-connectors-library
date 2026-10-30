@@ -64,16 +64,16 @@ mkdir -p /tmp/reamaze-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/reamaze/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/reamaze/go \
-  --version v0.22.0 --tag connectors/reamaze/v0.22.0 \
+  --version v0.23.0 --tag connectors/reamaze/go/v0.23.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/reamaze-release/connector-release.json \
   --digest-output /tmp/reamaze-release/connector-release.json.sha256
 dexcli dev \
-  --flow-rendering-dir "$PWD/connectors/reamaze/build" \
+  --flow-rendering-dir "$PWD/connectors/reamaze/go/build" \
   --connector-release-override reamaze=/tmp/reamaze-release
 ```
 
-Follow the [Re:amaze setup](../../README.md#reamaze-setup), then open
+Follow the [Re:amaze setup](../../../README.md#reamaze-setup), then open
 **Connections** in Dex Web and select `reamaze / reamaze-brand`, which all six
 Re:amaze Steps of `ReamazeTriageConversation` use. Enter the brand subdomain,
 the staff user's login email, and that user's API token and save; the status
@@ -82,7 +82,7 @@ Superverse Studio writes the connection to the project configuration.
 
 In a second terminal, start the Worker from `connectors/reamaze` with the
 `DEX_PROJECT_*` environment that names that configuration, as
-[project configuration loading](../../../../sdkgo/projectconfig/README.md#application-loading)
+[project configuration loading](../../../../../sdkgo/projectconfig/README.md#application-loading)
 describes:
 
 ```bash

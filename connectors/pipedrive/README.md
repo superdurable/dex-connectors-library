@@ -1,5 +1,9 @@
 # Pipedrive Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/pipedrive/go@v0.24.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/pipedrive`.
+
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Pipedrive; no live Pipedrive company was used. See
 > [verification status](../../docs/verification-status.md) for what is and
 > is not verified.
@@ -236,7 +240,7 @@ connections needs a Studio command whose host comes from the connection's
 Dex Web or Superverse Studio saves the connection's settings and credentials in
 the project configuration. The application loads that configuration once and
 opens the connection by the name it declares, as
-[`examples/deal-intake/main.go`](examples/deal-intake/main.go) does:
+[`examples/deal-intake/main.go`](go/examples/deal-intake/main.go) does:
 
 ```go
 project, err := projectconfig.LoadFromEnvironment(ctx)
@@ -277,7 +281,7 @@ func (flow *Flow) MapToUpsertLeadPersonInput(intake DealIntake) pipedrive.Upsert
 
 ## Example
 
-[`examples/deal-intake`](examples/deal-intake) finds the lead's organization
+[`examples/deal-intake`](go/examples/deal-intake) finds the lead's organization
 by exact name, upserts the lead person by email, lists the person's open deal
 in the configured pipeline, moves it to the configured stage and owner or
 creates the deal there with the lead source in a picked custom field, and reads

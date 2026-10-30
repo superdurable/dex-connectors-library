@@ -5,7 +5,7 @@ metadata:
   displayName: Alpha Vantage
   description: Read a global equity quote and compact daily time series.
   company: Alpha Vantage
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: alphavantage
   codegen:

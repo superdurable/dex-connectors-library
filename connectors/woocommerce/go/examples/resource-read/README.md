@@ -19,14 +19,14 @@ From the repository root, build a local release override, then start a Dex stack
 
 ```sh
 mkdir -p /tmp/woocommerce-release
-go run ./cmd/connectorctl release-artifact --manifest connectors/woocommerce/connector.yaml --module-path github.com/superdurable/dex-connectors-library/connectors/woocommerce/go --version v0.1.0 --tag connectors/woocommerce/v0.1.0 --source-sha "$(git rev-parse HEAD)" --output /tmp/woocommerce-release/connector-release.json --digest-output /tmp/woocommerce-release/connector-release.json.sha256
-dexcli dev --flow-rendering-dir "$PWD/connectors/woocommerce/build" --connector-release-override woocommerce=/tmp/woocommerce-release
+go run ./cmd/connectorctl release-artifact --manifest connectors/woocommerce/connector.yaml --module-path github.com/superdurable/dex-connectors-library/connectors/woocommerce/go --version v0.2.0 --tag connectors/woocommerce/go/v0.2.0 --source-sha "$(git rev-parse HEAD)" --output /tmp/woocommerce-release/connector-release.json --digest-output /tmp/woocommerce-release/connector-release.json.sha256
+dexcli dev --flow-rendering-dir "$PWD/connectors/woocommerce/go/build" --connector-release-override woocommerce=/tmp/woocommerce-release
 ```
 
 In Dex Web **Connections**, create the `woocommerce` connection with the manifest's authorization guide. Then start the Worker in another terminal:
 
 ```sh
-cd connectors/woocommerce
+cd connectors/woocommerce/go
 go run ./examples/resource-read
 ```
 

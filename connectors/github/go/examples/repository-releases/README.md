@@ -44,7 +44,7 @@ does not claim complete repository history or implement a business date filter.
 
 From `connectors/github`, run `GOWORK=off go run ./examples/repository-releases`.
 The Worker reads the `DEX_PROJECT_*` project configuration environment
-described in [project configuration](../../../../sdkgo/projectconfig/README.md),
+described in [project configuration](../../../../../sdkgo/projectconfig/README.md),
 which Dex Web or Superverse Studio writes, and the standard
 `DEX_FLOW_SERVICE_ADDRESS` and `DEX_BLOB_CACHE_DIR`
 settings documented by the [repository changes setup](../repository-changes/README.md).
@@ -58,7 +58,7 @@ settings or new form fields. Credentials remain in the private configuration
 store and are resolved by the official adapter on each actual call.
 
 For a strict definition, copy this Flow into a clean consumer module requiring
-`github.com/superdurable/dex-connectors-library/connectors/github/go@v0.23.1`, run
+`github.com/superdurable/dex-connectors-library/connectors/github/go@v0.24.0`, run
 `go mod tidy`, then:
 
 ```sh

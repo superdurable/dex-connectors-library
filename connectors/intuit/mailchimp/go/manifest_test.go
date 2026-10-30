@@ -99,7 +99,7 @@ func TestManifestDeclaresNoStudioBundleAndNoTriggers(t *testing.T) {
 	manifest := readGuidanceManifest(t)
 	require.Nil(t, manifest.Spec.Studio)
 	require.Empty(t, manifest.Spec.Triggers)
-	_, err := os.Stat("ui")
+	_, err := os.Stat("../ui")
 	require.True(t, os.IsNotExist(err))
 }
 

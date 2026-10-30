@@ -1,5 +1,9 @@
 # Zoho Desk Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/zoho/desk/go@v0.24.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/zoho/desk`.
+
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Zoho Desk; no live Zoho Desk account was used. See
 > [verification status](../../../docs/verification-status.md) for what is and
 > is not verified.
@@ -120,7 +124,7 @@ Dex Web does not refresh, so run the picker soon after **Connect** or
 Dex Web or Superverse Studio saves the connection's `orgId`, data center, and
 credentials in the project configuration. The application loads that
 configuration once and opens the connection by the name it declares, as
-[`examples/triage-issue/main.go`](examples/triage-issue/main.go) does:
+[`examples/triage-issue/main.go`](go/examples/triage-issue/main.go) does:
 
 ```go
 project, err := projectconfig.LoadFromEnvironment(ctx)
@@ -390,7 +394,7 @@ Until a Trigger can complete the handshake and bind the payload, poll with
 
 ## Example
 
-[`examples/triage-issue`](examples/triage-issue) is a runnable Dex Web
+[`examples/triage-issue`](go/examples/triage-issue) is a runnable Dex Web
 **Start Flow** example that uses all five operations: it finds the contact's
 open or on-hold ticket in a department or creates one, sets its priority, and
 adds one private triage comment.

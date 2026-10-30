@@ -52,7 +52,7 @@ Until the connector is released, build a local release override from the reposit
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/microsoft/sql-server/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/microsoft/sql-server/go \
-  --version v0.22.0 --tag connectors/microsoft/sql-server/v0.22.0 \
+  --version v0.23.0 --tag connectors/microsoft/sql-server/go/v0.23.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/sql-server-refund/release/connector-release.json \
   --digest-output /tmp/sql-server-refund/release/connector-release.json.sha256
@@ -65,7 +65,7 @@ Open Dex Web at `http://127.0.0.1:8802`. In **Connections**, save
 that received the grant. Keep the defaults unless your server needs another port, `strict`, or
 longer timeouts. The connection must show **Ready**. In another terminal, start the Worker. It reads
 the `DEX_PROJECT_*` project configuration environment documented in
-[`sdkgo/projectconfig`](../../../../../sdkgo/projectconfig/README.md#application-loading); Dex Web
+[`sdkgo/projectconfig`](../../../../../../sdkgo/projectconfig/README.md#application-loading); Dex Web
 or Superverse Studio writes that configuration:
 
 ```bash

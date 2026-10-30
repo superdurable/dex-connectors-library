@@ -50,7 +50,7 @@ Until the connector is released, build a local release override from the reposit
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/snowflake/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/snowflake/go \
-  --version v0.22.0 --tag connectors/snowflake/v0.22.0 \
+  --version v0.23.0 --tag connectors/snowflake/go/v0.23.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/snowflake-usage/release/connector-release.json \
   --digest-output /tmp/snowflake-usage/release/connector-release.json.sha256
@@ -65,7 +65,7 @@ guide, and enter `accountIdentifier`, `warehouse` (`REPORTING_WH`), `role` (`DEX
 show **Ready** and **Local override**. Dex Web or Superverse Studio writes the connection to the
 project configuration. In another terminal, start the Worker with the `DEX_PROJECT_*` environment
 that names that configuration, as
-[project configuration loading](../../../../sdkgo/projectconfig/README.md#application-loading)
+[project configuration loading](../../../../../sdkgo/projectconfig/README.md#application-loading)
 describes:
 
 ```bash

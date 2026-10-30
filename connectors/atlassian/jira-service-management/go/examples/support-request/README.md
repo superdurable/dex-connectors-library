@@ -50,7 +50,7 @@ around that time, then runs one of two Actions, each requiring
 
 ## Configure
 
-Follow the [Jira Service Management connector setup](../../README.md), then
+Follow the [Jira Service Management connector setup](../../../README.md), then
 configure the `jsm-support` connection under **Connections** in Dex Web. Leave
 `cloudId` blank when the authorization covers one site. Two pickers are
 optional:
@@ -78,7 +78,7 @@ dexcli visualize ./examples/support-request/flow/workflow.go \
 
 Run `dexcli dev` with that build directory, then run the Worker. It reads the
 `DEX_PROJECT_*` project configuration environment described in
-[project configuration](../../../../../sdkgo/projectconfig/README.md); Dex Web or
+[project configuration](../../../../../../sdkgo/projectconfig/README.md); Dex Web or
 Superverse Studio writes that configuration when you save the connection.
 
 ```bash

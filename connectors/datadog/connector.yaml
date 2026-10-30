@@ -5,7 +5,7 @@ metadata:
   displayName: Datadog
   description: "Use the Datadog REST API through typed Dex connector Steps."
   company: Datadog
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: datadog
   codegen:

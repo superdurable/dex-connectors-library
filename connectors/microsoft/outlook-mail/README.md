@@ -1,5 +1,9 @@
 # Microsoft Outlook Mail Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail/go@v0.24.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail`.
+
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack, through Dex Web and real-Dex tests, against a local Microsoft Graph stand-in; no Microsoft 365 tenant was used. See
 > [verification status](../../../docs/verification-status.md) for what is and
 > is not verified.
@@ -142,7 +146,7 @@ and the configuration holds `mailbox`.
 
 Load the project configuration once at application startup and open the
 connection by the name its operations use, as
-[`examples/support-reply/main.go`](examples/support-reply/main.go) does:
+[`examples/support-reply/main.go`](go/examples/support-reply/main.go) does:
 
 ```go
 project, err := projectconfig.LoadFromEnvironment(ctx)
@@ -385,7 +389,7 @@ answer the same way whatever the request names, so a test for another
 customer, subject, or message scripts `SearchMessages`, `SendMessage`, or
 `ReplyToMessage`.
 
-The [runnable integration test](examples/support-reply/flow/workflow_mock_integration_test.go)
+The [runnable integration test](go/examples/support-reply/flow/workflow_mock_integration_test.go)
 builds the example Flow on the mock:
 
 ```go
@@ -413,7 +417,7 @@ Scripting is described in
 
 ## Example
 
-[`examples/support-reply`](examples/support-reply) is a runnable Dex Web
+[`examples/support-reply`](go/examples/support-reply) is a runnable Dex Web
 **Start Flow** example that uses all six operations: it finds the customer's
 latest Inbox message, reads it, sends one threaded reply, marks it read, and
 moves it to the folder picked in Dex Web, or sends a new message to a

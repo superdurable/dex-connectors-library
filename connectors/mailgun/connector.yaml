@@ -5,7 +5,7 @@ metadata:
   displayName: Mailgun
   description: Read Mailgun domain events and account domains.
   company: Mailgun
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: mailgun
   codegen:

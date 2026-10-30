@@ -31,7 +31,7 @@ Build the Studio bundle and release metadata and start Dex with the override, ex
 
 ## 3. Configure the connection and the binding
 
-Follow the [Linear setup](../../README.md#linear-setup), open **Connections** in Dex Web, select
+Follow the [Linear setup](../../../README.md#linear-setup), open **Connections** in Dex Web, select
 `linear / linear-workspace`, choose **Personal API key** or **Linear OAuth**, and save. Fill
 `webhook_signing_secret` with the signing secret of the webhook from step 4; until it is saved, the endpoint
 answers 503 and Linear retries.
@@ -60,7 +60,7 @@ team or all public teams and the **Issues** data change event, and save. Copy th
 ## 5. Run the Worker and send a delivery
 
 From `connectors/linear`, start the application. It reads the `DEX_PROJECT_*` project configuration
-environment described in [project configuration](../../../../sdkgo/projectconfig/README.md).
+environment described in [project configuration](../../../../../sdkgo/projectconfig/README.md).
 
 ```bash
 go run ./examples/issue-events

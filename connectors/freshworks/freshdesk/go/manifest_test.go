@@ -105,7 +105,7 @@ func TestAPIKeyGuideCoversWhereTheKeyIsAndHowToRevokeIt(t *testing.T) {
 // Freshdesk host nor send the HTTP Basic credential an API key needs, so there is no picker.
 func TestManifestDeclaresNoStudioBundle(t *testing.T) {
 	require.Nil(t, readGuidanceManifest(t).Spec.Studio)
-	_, err := os.Stat("ui")
+	_, err := os.Stat("../ui")
 	require.True(t, os.IsNotExist(err))
 }
 

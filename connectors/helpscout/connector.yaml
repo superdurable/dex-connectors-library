@@ -5,7 +5,7 @@ metadata:
   displayName: Help Scout
   description: "Search, read, reply to, and update Help Scout Inbox conversations, find customers by email, and receive signed conversation webhooks, keeping Help Scout's own active, pending, closed, and spam statuses."
   company: Help Scout
-  version: v0.23.0
+  version: v0.24.0
 spec:
   provider: helpscout
   codegen:

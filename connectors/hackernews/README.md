@@ -1,12 +1,16 @@
 # Hacker News Daily Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/hackernews/go@v0.23.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/hackernews`.
+
 Read public Hacker News feeds, stories, and comments through typed Dex Query
-Steps. Use the [daily digest example](examples/daily-digest/README.md) to monitor
+Steps. Use the [daily digest example](go/examples/daily-digest/README.md) to monitor
 developer topics and produce summaries with direct source links.
 
 The connector uses the [official Hacker News API](https://github.com/HackerNews/API).
 It requires no API key. Its Go module is
-`github.com/superdurable/dex-connectors-library/connectors/hackernews`.
+`github.com/superdurable/dex-connectors-library/connectors/hackernews/go`.
 The connector ID is `hacker-news-daily`.
 
 ## Operations
@@ -29,7 +33,7 @@ Hacker News does not expose comment scores. A null, deleted, dead, or HTTP 404
 item selects `notFound`. The operation does not fetch children automatically.
 Applications must escape or sanitize provider text before rendering HTML.
 
-Use the generated factories in [the runnable Flow](examples/daily-digest/flow/workflow.go).
+Use the generated factories in [the runnable Flow](go/examples/daily-digest/flow/workflow.go).
 `NewProjectConnection` opens the connection from the project configuration that
 `projectconfig.LoadFromEnvironment` loads. `New` and `NewConnection` build a
 connection for tests. `WithHTTPClient` supplies a transport for tests or
@@ -39,7 +43,7 @@ application networking.
 
 The generated `hackernewsmock` package supplies a public compiler story for
 the feed and item reads. Script another item when the requested ID differs.
-The [real-Dex example test](examples/daily-digest/flow/workflow_mock_integration_test.go)
+The [real-Dex example test](go/examples/daily-digest/flow/workflow_mock_integration_test.go)
 uses the mock connection and checks the five feed inputs and one item read:
 
 ```go

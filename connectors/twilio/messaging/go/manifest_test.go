@@ -117,7 +117,7 @@ func TestAuthenticationMethodsExplainSetupAndRevocation(t *testing.T) {
 // TestManifestDeclaresNoStudioBundle records that Studio commands cannot send the HTTP Basic credential Twilio requires.
 func TestManifestDeclaresNoStudioBundle(t *testing.T) {
 	require.Nil(t, readGuidanceManifest(t).Spec.Studio)
-	_, err := os.Stat("ui")
+	_, err := os.Stat("../ui")
 	require.True(t, os.IsNotExist(err))
 }
 

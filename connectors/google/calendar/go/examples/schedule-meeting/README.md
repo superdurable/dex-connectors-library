@@ -37,7 +37,7 @@ this release has no delete operation, so remove it in Google Calendar.
 
 ## Configure
 
-Follow the [Google Calendar Connector setup](../../README.md), then configure
+Follow the [Google Calendar Connector setup](../../../README.md), then configure
 the `google-calendar-scheduler` connection under **Connections** in Dex Web.
 The **Meeting calendar** picker on the `PlaceMeetingHold` Step lists calendars
 the connection can edit and saves the calendar ID and name. Every other Step
@@ -58,7 +58,7 @@ dexcli visualize ./examples/schedule-meeting/flow/workflow.go \
 
 Run `dexcli dev` with that build directory, then run the Worker. It reads the
 `DEX_PROJECT_*` project configuration environment documented in
-[`sdkgo/projectconfig`](../../../../../sdkgo/projectconfig/README.md#application-loading);
+[`sdkgo/projectconfig`](../../../../../../sdkgo/projectconfig/README.md#application-loading);
 Dex Web or Superverse Studio writes that configuration:
 
 ```bash

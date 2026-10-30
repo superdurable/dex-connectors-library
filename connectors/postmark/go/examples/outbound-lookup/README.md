@@ -29,11 +29,11 @@ mkdir -p /tmp/postmark-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/postmark/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/postmark/go \
-  --version v0.1.0 --tag connectors/postmark/v0.1.0 \
+  --version v0.2.0 --tag connectors/postmark/go/v0.2.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/postmark-release/connector-release.json \
   --digest-output /tmp/postmark-release/connector-release.json.sha256
-dexcli dev --flow-rendering-dir "$PWD/connectors/postmark/build" \
+dexcli dev --flow-rendering-dir "$PWD/connectors/postmark/go/build" \
   --connector-release-override postmark=/tmp/postmark-release
 ```
 

@@ -179,7 +179,7 @@ func TestStudioCommandsListOrganizationsOnlyOnEachDataCentersOwnHost(t *testing.
 	require.GreaterOrEqual(t, len(studio.Units[0].Description), 120)
 	require.Contains(t, studio.Units[0].Description, "own data center")
 
-	bundleProvider, err := os.ReadFile("ui/src/provider.ts")
+	bundleProvider, err := os.ReadFile("../ui/src/provider.ts")
 	require.NoError(t, err)
 	for _, dataCenter := range dataCenters {
 		require.Contains(t, string(bundleProvider), fmt.Sprintf(`%q: %q`, dataCenter.AuthMethodID, dataCenter.StudioOrganizationsCommandID),

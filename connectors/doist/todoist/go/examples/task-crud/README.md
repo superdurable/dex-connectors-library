@@ -48,7 +48,7 @@ mkdir -p /tmp/todoist-release
 GOWORK=off go run ./cmd/connectorctl release-artifact \
   --manifest connectors/doist/todoist/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/doist/todoist/go \
-  --version v0.3.0 --tag connectors/doist/todoist/v0.3.0 \
+  --version v0.4.0 --tag connectors/doist/todoist/go/v0.4.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/todoist-release/connector-release.json \
   --digest-output /tmp/todoist-release/connector-release.json.sha256
@@ -67,7 +67,7 @@ in Flow input or source code.
 No operation/Trigger configuration UI units are introduced.
 
 The [Worker](main.go) uses `NewProjectConnection` and the project's
-[DEX_PROJECT environment](../../../../../sdkgo/projectconfig/README.md#application-loading).
+[DEX_PROJECT environment](../../../../../../sdkgo/projectconfig/README.md#application-loading).
 From the connector module:
 
 ```bash

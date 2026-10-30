@@ -37,7 +37,7 @@ delete operation, so remove it in Outlook.
 
 ## Configure
 
-Follow the [Outlook Calendar Connector setup](../../README.md#authorization),
+Follow the [Outlook Calendar Connector setup](../../../README.md#authorization),
 then configure the `outlook-calendar-scheduler` connection under
 **Connections** in Dex Web, with either delegated Microsoft OAuth (Dex CLI
 1.4.1 or later) or an app-only mailbox. The **Meeting calendar** picker on the
@@ -74,20 +74,20 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/microsoft/outlook-calendar/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-calendar/go \
-  --version v0.23.0 --tag connectors/microsoft/outlook-calendar/v0.23.0 \
+  --version v0.24.0 --tag connectors/microsoft/outlook-calendar/go/v0.24.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/outlook-calendar-release/connector-ui.tgz \
   --ui-digest /tmp/outlook-calendar-release/connector-ui.tgz.sha256 \
   --output /tmp/outlook-calendar-release/connector-release.json \
   --digest-output /tmp/outlook-calendar-release/connector-release.json.sha256
 dexcli dev \
-  --flow-rendering-dir "$PWD/connectors/microsoft/outlook-calendar/build" \
+  --flow-rendering-dir "$PWD/connectors/microsoft/outlook-calendar/go/build" \
   --connector-release-override outlook-calendar=/tmp/outlook-calendar-release
 ```
 
 Then run the Worker from `connectors/microsoft/outlook-calendar`. It reads the
 `DEX_PROJECT_*` project configuration environment documented in
-[`sdkgo/projectconfig`](../../../../../sdkgo/projectconfig/README.md#application-loading);
+[`sdkgo/projectconfig`](../../../../../../sdkgo/projectconfig/README.md#application-loading);
 Dex Web or Superverse Studio writes that configuration:
 
 ```bash

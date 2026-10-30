@@ -138,7 +138,7 @@ func TestPickerCommandsKeepTheTokenOnFrontsAPIHost(t *testing.T) {
 	require.Contains(t, units[front.UIUnitInboxPicker], "stores the stable inbox ID")
 	require.Contains(t, units[front.UIUnitTeammatePicker], "stores the stable teammate ID")
 	require.Contains(t, units[front.UIUnitTagPicker], "stores the stable tag ID")
-	_, err := os.Stat("ui/package-lock.json")
+	_, err := os.Stat("../ui/package-lock.json")
 	require.NoError(t, err, "a manifest that declares Studio units ships a ui bundle")
 }
 

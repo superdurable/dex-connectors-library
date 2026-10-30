@@ -25,7 +25,7 @@ visibility timeout ends.
 
 ## Configure
 
-Follow the [Amazon SQS Connector setup](../../README.md), then configure the
+Follow the [Amazon SQS Connector setup](../../../README.md), then configure the
 `amazon-sqs / amazon-sqs-orders` connection in Dex Web **Connections**. Set
 `defaultQueueUrl` to the orders queue, or name `queueUrl` in the Start Flow
 input. The example's Steps have no configuration units.
@@ -44,7 +44,7 @@ dexcli visualize ./examples/queue-consumer/flow/workflow.go \
 Run `dexcli dev` with that build directory. Dex Web or Superverse Studio writes
 the connection to the project configuration; run the Worker with the
 `DEX_PROJECT_*` environment that names it, as
-[project configuration loading](../../../../../sdkgo/projectconfig/README.md#application-loading)
+[project configuration loading](../../../../../../sdkgo/projectconfig/README.md#application-loading)
 describes:
 
 ```bash

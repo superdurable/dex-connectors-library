@@ -43,7 +43,7 @@ because Dex Web Start Flow invokes `WaitFor` on the start Step.
 
 ## Release baseline
 
-- Notion Connector `v0.23.0`
+- Notion Connector `v0.24.0`
 - dexcli `v1.1.0` or a later stable release
 
 ## 1. Prepare the Notion database
@@ -58,7 +58,7 @@ properties. The names are case-sensitive:
 | `Email` | Email |
 | `Submitted at` | Date |
 
-Create an internal connection as the [connector README](../../README.md#notion-setup)
+Create an internal connection as the [connector README](../../../README.md#notion-setup)
 describes, enable **Read content**, **Update content**, and **Insert
 content**, and share the database with it. The Flow writes the title through
 the property ID `title`, so the title column can have any name.
@@ -75,12 +75,12 @@ cd notion-submission-intake-e2e
 mkdir -p flow build
 
 curl -fsSL \
-  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/notion/v0.23.0/connectors/notion/examples/submission-intake/flow/workflow.go \
+  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/notion/go/v0.24.0/connectors/notion/go/examples/submission-intake/flow/workflow.go \
   -o flow/workflow.go
 
 go mod init example.com/notion-submission-intake-e2e
 go mod edit -go=1.24.0
-go get github.com/superdurable/dex-connectors-library/connectors/notion/go@v0.23.0
+go get github.com/superdurable/dex-connectors-library/connectors/notion/go@v0.24.0
 go mod tidy
 ```
 
@@ -124,14 +124,14 @@ the database is chosen by title in the Start Flow input.
 
 Dex Web or Superverse Studio writes the connection to the project
 configuration. Run the Worker with the `DEX_PROJECT_*` environment that names
-it, as [project configuration loading](../../../../sdkgo/projectconfig/README.md#application-loading)
+it, as [project configuration loading](../../../../../sdkgo/projectconfig/README.md#application-loading)
 describes:
 
 ```bash
 export DEX_FLOW_SERVICE_ADDRESS="127.0.0.1:8801"
 
 GOWORK=off go run \
-  github.com/superdurable/dex-connectors-library/connectors/notion/go/examples/submission-intake@v0.23.0
+  github.com/superdurable/dex-connectors-library/connectors/notion/go/examples/submission-intake@v0.24.0
 ```
 
 Set
@@ -193,8 +193,8 @@ They verify:
 - an unwired optional branch;
 - invalid Start Flow input.
 
-Before `v0.23.0` is published, build a local release artifact with
+Before `v0.24.0` is published, build a local release artifact with
 `go run ./cmd/connectorctl release-artifact` from the repository root and pass
 its directory to `dexcli dev --connector-release-override notion=DIRECTORY`.
-The test project must still resolve `connectors/notion@v0.23.0` without a
+The test project must still resolve `connectors/notion/go@v0.24.0` without a
 `replace`, as the compatibility gate does with a local module proxy.

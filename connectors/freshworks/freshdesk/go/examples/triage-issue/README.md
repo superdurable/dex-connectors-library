@@ -57,16 +57,16 @@ mkdir -p /tmp/freshdesk-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/freshworks/freshdesk/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/freshworks/freshdesk/go \
-  --version v0.22.0 --tag connectors/freshworks/freshdesk/v0.22.0 \
+  --version v0.23.0 --tag connectors/freshworks/freshdesk/go/v0.23.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/freshdesk-release/connector-release.json \
   --digest-output /tmp/freshdesk-release/connector-release.json.sha256
 dexcli dev \
-  --flow-rendering-dir "$PWD/connectors/freshworks/freshdesk/build" \
+  --flow-rendering-dir "$PWD/connectors/freshworks/freshdesk/go/build" \
   --connector-release-override freshdesk=/tmp/freshdesk-release
 ```
 
-Follow the [Freshdesk setup](../../README.md#freshdesk-setup), then open
+Follow the [Freshdesk setup](../../../README.md#freshdesk-setup), then open
 **Connections** in Dex Web and select `freshdesk / freshdesk-helpdesk`, which
 all five Freshdesk Steps of `FreshdeskTriageIssue` use. Enter the helpdesk
 domain and the agent's API key and save; the status becomes **Ready**. The
@@ -75,7 +75,7 @@ connection to the project configuration.
 
 In a second terminal, start the Worker from `connectors/freshworks/freshdesk`
 with the `DEX_PROJECT_*` environment that names that configuration, as
-[project configuration loading](../../../../../sdkgo/projectconfig/README.md#application-loading)
+[project configuration loading](../../../../../../sdkgo/projectconfig/README.md#application-loading)
 describes:
 
 ```bash

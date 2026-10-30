@@ -42,7 +42,7 @@ returns the input cursor unchanged; start again from a later cursor, or raise
 
 ## Configure
 
-Follow the [Google Forms Connector setup](../../README.md), then configure the
+Follow the [Google Forms Connector setup](../../../README.md), then configure the
 `google-forms / google-forms-intake` connection in Dex Web **Connections**.
 Use an account that can edit the form; Google Forms shows responses to a form's
 editors.
@@ -87,24 +87,24 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/google/forms/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/google/forms/go \
-  --version v0.23.0 --tag connectors/google/forms/v0.23.0 \
+  --version v0.24.0 --tag connectors/google/forms/go/v0.24.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/google-forms-release/connector-ui.tgz \
   --ui-digest /tmp/google-forms-release/connector-ui.tgz.sha256 \
   --output /tmp/google-forms-release/connector-release.json \
   --digest-output /tmp/google-forms-release/connector-release.json.sha256
 dexcli dev \
-  --flow-rendering-dir "$PWD/connectors/google/forms/build" \
+  --flow-rendering-dir "$PWD/connectors/google/forms/go/build" \
   --connector-release-override google-forms=/tmp/google-forms-release
 ```
 
 Then run the Worker. It reads the `DEX_PROJECT_*` project configuration
 environment documented in
-[`sdkgo/projectconfig`](../../../../../sdkgo/projectconfig/README.md#application-loading);
+[`sdkgo/projectconfig`](../../../../../../sdkgo/projectconfig/README.md#application-loading);
 Dex Web or Superverse Studio writes that configuration:
 
 ```bash
-cd connectors/google/forms
+cd connectors/google/forms/go
 go run ./examples/response-recorder
 ```
 

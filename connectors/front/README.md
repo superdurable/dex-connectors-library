@@ -1,5 +1,9 @@
 # Front Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/front/go@v0.23.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/front`.
+
 > **Verification status: partial live.** Only placeholder-token requests reached Front, and all returned 401; everything else ran on a real Dex stack against a local stand-in. No live Front account was used. See
 > [verification status](../../docs/verification-status.md) for what is and
 > is not verified.
@@ -104,7 +108,7 @@ configuration for the connection name the application uses:
 {
   "connectorId": "front",
   "connectionName": "front-support",
-  "modulePath": "github.com/superdurable/dex-connectors-library/connectors/front",
+  "modulePath": "github.com/superdurable/dex-connectors-library/connectors/front/go",
   "provider": "front",
   "configuration": {}
 }
@@ -116,7 +120,7 @@ resolved for every call. The application reads the configuration through the
 [project configuration loading](../../sdkgo/projectconfig/README.md#application-loading):
 it loads it with `projectconfig.LoadFromEnvironment`, opens the connection with
 `front.NewProjectConnection`, and loads each Step's picker values once, as
-[`examples/conversation-triage/main.go`](examples/conversation-triage/main.go)
+[`examples/conversation-triage/main.go`](go/examples/conversation-triage/main.go)
 does:
 
 ```go
@@ -244,7 +248,7 @@ attempt 2 or later and never resends, including retries whose old
 failure. Reconcile those Flows manually after this upgrade.
 
 The real-Dex tests in
-[`examples/conversation-triage`](examples/conversation-triage/main_integration_test.go)
+[`examples/conversation-triage`](go/examples/conversation-triage/main_integration_test.go)
 cover a delayed fake Front response, a `503` then acceptance
 with two comment POSTs, and a Worker lost while Front holds the comment: the
 new Worker selects `uncertain` without a second POST.
@@ -256,7 +260,7 @@ Jane's `cnv_100` conversation has an inbound message, `crd_100` is her
 contact, search includes `cnv_200` as another open conversation, the triage
 comment becomes `com_100`, and routing assigns `tea_leela` and adds
 `tag_triaged`. Each optional business branch also has a named mock. The
-[real-Dex mock test](examples/conversation-triage/workflow_mock_integration_test.go)
+[real-Dex mock test](go/examples/conversation-triage/workflow_mock_integration_test.go)
 starts the runnable Flow with this connection:
 
 ```go
@@ -429,7 +433,7 @@ description fetched that day, not on a live account:
 ## Verification
 
 ```bash
-cd connectors/front
+cd connectors/front/go
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./... -count=1 -v

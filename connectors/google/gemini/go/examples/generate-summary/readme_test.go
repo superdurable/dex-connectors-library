@@ -16,12 +16,12 @@ import (
 func TestREADMECommandsRunFromTheirWorkingDirectory(t *testing.T) {
 	moduleRoot, err := filepath.Abs(filepath.Join("..", ".."))
 	require.NoError(t, err)
-	repositoryRoot := filepath.Dir(filepath.Dir(filepath.Dir(moduleRoot)))
+	repositoryRoot := filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(moduleRoot))))
 	require.FileExists(t, filepath.Join(repositoryRoot, "catalog.yaml"))
 	readme, err := os.ReadFile("README.md")
 	require.NoError(t, err)
 
-	// The first block runs from connectors/google/gemini, as the README says.
+	// The first block runs from connectors/google/gemini/go, as the README says.
 	directory := moduleRoot
 	renderingDirectory := ""
 	dexDevCommands, workerCommands := 0, 0

@@ -22,17 +22,17 @@ mkdir -p /tmp/unsplash-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/unsplash/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/unsplash/go \
-  --version v0.1.0 --tag connectors/unsplash/v0.1.0 \
+  --version v0.2.0 --tag connectors/unsplash/go/v0.2.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/unsplash-release/connector-release.json \
   --digest-output /tmp/unsplash-release/connector-release.json.sha256
-dexcli dev --flow-rendering-dir "$PWD/connectors/unsplash/build" --connector-release-override unsplash=/tmp/unsplash-release
+dexcli dev --flow-rendering-dir "$PWD/connectors/unsplash/go/build" --connector-release-override unsplash=/tmp/unsplash-release
 ```
 
-Set the project environment described by [`projectconfig`](../../../../sdkgo/projectconfig/README.md), then start the Worker:
+Set the project environment described by [`projectconfig`](../../../../../sdkgo/projectconfig/README.md), then start the Worker:
 
 ```bash
-cd connectors/unsplash
+cd connectors/unsplash/go
 go run ./examples/photo-search
 ```
 

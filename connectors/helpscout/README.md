@@ -1,5 +1,9 @@
 # Help Scout Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/helpscout/go@v0.24.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/helpscout`.
+
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Help Scout; no live Help Scout account was used. See
 > [verification status](../../docs/verification-status.md) for what is and
 > is not verified.
@@ -81,7 +85,7 @@ authorization-code method that requires it.
 
 Applications open the connection with the generated
 `helpscout.NewProjectConnection` after `projectconfig.LoadFromEnvironment`, as
-[`examples/conversation-triage/main.go`](examples/conversation-triage/main.go)
+[`examples/conversation-triage/main.go`](go/examples/conversation-triage/main.go)
 does; the loader reads the `DEX_PROJECT_*` environment described in
 [project configuration](../../sdkgo/projectconfig/README.md). The manifest
 declares `refreshable: true`, so the connection resolves credentials through a
@@ -250,7 +254,7 @@ Help Scout's `notification` flag, whose body names only a URL and answers
 `400`. Both `V2` and `V3` payload versions decode.
 
 The checked-in example wires the endpoint like this, from
-[`examples/conversation-triage/main.go`](examples/conversation-triage/main.go):
+[`examples/conversation-triage/main.go`](go/examples/conversation-triage/main.go):
 
 ```go
 func newConversationEndpointRunner(
@@ -352,7 +356,7 @@ These rely on Help Scout's documentation fetched on 2026-09-30,
 ## Verification
 
 ```bash
-cd connectors/helpscout
+cd connectors/helpscout/go
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./... -count=1 -v

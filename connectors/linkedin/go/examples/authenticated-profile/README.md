@@ -14,7 +14,7 @@ dexcli visualize ./examples/authenticated-profile/flow/workflow.go \
 Run `dexcli dev` with that build directory, configure
 `linkedin / linkedin-profile` under **Connections**, then start the Worker. It
 reads the `DEX_PROJECT_*` project configuration environment described in
-[project configuration](../../../../sdkgo/projectconfig/README.md); Dex Web or
+[project configuration](../../../../../sdkgo/projectconfig/README.md); Dex Web or
 Superverse Studio writes that configuration when you save the connection.
 
 ```bash

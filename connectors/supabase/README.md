@@ -1,6 +1,10 @@
 # Supabase connector
 
-This Dex connector exposes `selectRows`, `upsertRows`. The runnable [sample Flow](examples/sample-supabase/flow/workflow.go) uses `selectRows` with the static `supabase` connection. Each operation uses the generated typed Step factory.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/supabase/go@v0.2.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/supabase`.
+
+This Dex connector exposes `selectRows`, `upsertRows`. The runnable [sample Flow](go/examples/sample-supabase/flow/workflow.go) uses `selectRows` with the static `supabase` connection. Each operation uses the generated typed Step factory.
 
 ## Provider contract
 
@@ -30,7 +34,7 @@ Provider error bodies are never copied into Failures. A Flow fails when an optio
 
 ## Mocks
 
-The generated `supabasemock` package provides a default response for each operation. The [real-Dex mock test](examples/sample-supabase/flow/workflow_mock_integration_test.go) constructs and runs the first operation this way:
+The generated `supabasemock` package provides a default response for each operation. The [real-Dex mock test](go/examples/sample-supabase/flow/workflow_mock_integration_test.go) constructs and runs the first operation this way:
 
 ```go
 mock := supabasemock.New(t, ConnectionName)

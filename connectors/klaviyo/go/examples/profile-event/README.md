@@ -22,17 +22,17 @@ mkdir -p /tmp/klaviyo-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/klaviyo/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/klaviyo/go \
-  --version v0.1.0 --tag connectors/klaviyo/v0.1.0 \
+  --version v0.2.0 --tag connectors/klaviyo/go/v0.2.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/klaviyo-release/connector-release.json \
   --digest-output /tmp/klaviyo-release/connector-release.json.sha256
-dexcli dev --flow-rendering-dir "$PWD/connectors/klaviyo/build" --connector-release-override klaviyo=/tmp/klaviyo-release
+dexcli dev --flow-rendering-dir "$PWD/connectors/klaviyo/go/build" --connector-release-override klaviyo=/tmp/klaviyo-release
 ```
 
-Set the project environment described by [`projectconfig`](../../../../sdkgo/projectconfig/README.md), then start the Worker:
+Set the project environment described by [`projectconfig`](../../../../../sdkgo/projectconfig/README.md), then start the Worker:
 
 ```bash
-cd connectors/klaviyo
+cd connectors/klaviyo/go
 go run ./examples/profile-event
 ```
 

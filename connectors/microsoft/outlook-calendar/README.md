@@ -1,5 +1,7 @@
 # Microsoft Outlook Calendar Connector
 
+Moved from `github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-calendar`.
+
 > **Verification status: partial live.** Only placeholder-credential probes reached Microsoft, confirming Microsoft Graph's 401 and the identity platform's 400 error shapes; everything else ran on a real Dex stack against a local stand-in. No live Microsoft 365 tenant was used. See
 > [verification status](../../../docs/verification-status.md) for what is and
 > is not verified.
@@ -254,7 +256,7 @@ Until then, poll with `listEvents` from a Timer.
 
 Load the project configuration once at application startup and open the
 connection by the name its operations use, as
-[`examples/book-meeting/main.go`](examples/book-meeting/main.go) does:
+[`examples/book-meeting/main.go`](go/examples/book-meeting/main.go) does:
 
 ```go
 project, err := projectconfig.LoadFromEnvironment(ctx)
@@ -275,7 +277,7 @@ local verification only; production Workers leave it unset.
 
 ## Example
 
-[`examples/book-meeting`](examples/book-meeting) is a runnable Dex Web
+[`examples/book-meeting`](go/examples/book-meeting) is a runnable Dex Web
 **Start Flow** example that uses all five operations: it checks the attendees'
 free/busy, places an uninvited hold, reads it back, lists the window for a
 double booking on the organizer's calendar, and only then invites the
@@ -316,11 +318,11 @@ token.
 
 ## Mocks
 
-`outlookcalendarmock` supplies free availability for Priya and Alice, a Meridian kickoff hold with a Teams meeting, its read-back without a calendar ID, a one-page calendar view with a free decoy event, and the invited event. Named mocks cover missing calendars or events, incomplete availability, and permission denials. The [book meeting example](examples/book-meeting/flow/workflow_mock_integration_test.go) checks every operation call through a real Dex Worker.
+`outlookcalendarmock` supplies free availability for Priya and Alice, a Meridian kickoff hold with a Teams meeting, its read-back without a calendar ID, a one-page calendar view with a free decoy event, and the invited event. Named mocks cover missing calendars or events, incomplete availability, and permission denials. The [book meeting example](go/examples/book-meeting/flow/workflow_mock_integration_test.go) checks every operation call through a real Dex Worker.
 
 ```go
 mock := outlookcalendarmock.New(t, ConnectionName)
 flow, harness := newBookMeetingHarness(t, mock.Connection(), CalendarSelection{CalendarID: "team-calendar", CalendarName: "Ops Team"})
 ```
 
-Install this release with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-calendar@v0.23.0`.
+Install this release with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-calendar/go@v0.24.0`.

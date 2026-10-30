@@ -66,14 +66,14 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/typeform/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/typeform/go \
-  --version v0.22.0 --tag connectors/typeform/v0.22.0 \
+  --version v0.23.0 --tag connectors/typeform/go/v0.23.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/typeform-release/connector-ui.tgz \
   --ui-digest /tmp/typeform-release/connector-ui.tgz.sha256 \
   --output /tmp/typeform-release/connector-release.json \
   --digest-output /tmp/typeform-release/connector-release.json.sha256
 dexcli dev \
-  --flow-rendering-dir "$PWD/connectors/typeform/build" \
+  --flow-rendering-dir "$PWD/connectors/typeform/go/build" \
   --connector-release-override typeform=/tmp/typeform-release
 ```
 
@@ -136,11 +136,11 @@ where **Edit > Secret** must hold the same `webhook_secret`.
 Dex Web or Superverse Studio writes the connection and the binding to the
 project configuration. In a second terminal, from `connectors/typeform`, run
 the Worker with the `DEX_PROJECT_*` environment that names that configuration,
-as [project configuration loading](../../../../sdkgo/projectconfig/README.md#application-loading)
+as [project configuration loading](../../../../../sdkgo/projectconfig/README.md#application-loading)
 describes:
 
 ```bash
-cd "$(git rev-parse --show-toplevel)/connectors/typeform"
+cd "$(git rev-parse --show-toplevel)/connectors/typeform/go"
 go run ./examples/response-recorder
 ```
 

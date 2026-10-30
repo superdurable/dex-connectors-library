@@ -5,7 +5,7 @@ metadata:
   displayName: Contentful
   description: Contentful REST connector with two bounded operations.
   company: Contentful
-  version: v0.1.0
+  version: v0.2.0
 spec:
   provider: contentful
   codegen:

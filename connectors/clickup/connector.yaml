@@ -5,7 +5,7 @@ metadata:
   displayName: ClickUp
   description: "Search a ClickUp Workspace's tasks by List, status, assignee, tag, and update time, read one task with its custom fields, create tasks and comments without silent duplicates, change a task's status, priority, due date, and assignees, add or remove tags, find a member by email, and receive signed task webhooks."
   company: ClickUp
-  version: v0.22.0
+  version: v0.23.0
 spec:
   provider: clickup
   codegen:

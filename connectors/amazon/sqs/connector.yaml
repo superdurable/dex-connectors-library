@@ -5,7 +5,7 @@ metadata:
   displayName: Amazon SQS
   description: Consume messages from an Amazon SQS standard or FIFO queue, or an SQS-compatible queue such as ElasticMQ, with long-polling receive, acknowledgement by delete, and visibility changes that release or extend a message.
   company: Amazon
-  version: v0.2.0
+  version: v0.3.0
 spec:
   provider: amazon-sqs
   codegen:

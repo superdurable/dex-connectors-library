@@ -60,7 +60,7 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/zoho/desk/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/zoho/desk/go \
-  --version v0.23.0 --tag connectors/zoho/desk/v0.23.0 \
+  --version v0.24.0 --tag connectors/zoho/desk/go/v0.24.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/zoho-desk-release/connector-ui.tgz \
   --ui-digest /tmp/zoho-desk-release/connector-ui.tgz.sha256 \
@@ -71,7 +71,7 @@ dexcli dev \
   --connector-release-override zoho-desk=/tmp/zoho-desk-release
 ```
 
-Follow the [Zoho setup](../../README.md#zoho-setup), then open
+Follow the [Zoho setup](../../../README.md#zoho-setup), then open
 **Connections** in Dex Web and select `zoho-desk / zoho-desk-helpdesk`, which
 all five Zoho Desk Steps of `ZohoDeskTriageIssue` use. Choose the
 **Data center** of your Zoho Desk account, enter the client ID and secret, and
@@ -81,7 +81,7 @@ configuration.
 
 In a second terminal, start the Worker from `connectors/zoho/desk`. It reads
 the `DEX_PROJECT_*` project configuration environment described in
-[project configuration](../../../../../sdkgo/projectconfig/README.md); Dex Web
+[project configuration](../../../../../../sdkgo/projectconfig/README.md); Dex Web
 or Superverse Studio writes that configuration when you save the connection.
 
 ```bash

@@ -1,5 +1,9 @@
 # Amazon SQS Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/amazon/sqs/go@v0.3.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/amazon/sqs`.
+
 > **Verification status: partial live.** Verified against ElasticMQ 1.6.14 on a real Dex stack; Amazon SQS itself is not verified. See
 > [verification status](../../../docs/verification-status.md) for what is and
 > is not verified.
@@ -26,9 +30,9 @@ Trigger, and has no Studio pickers; see [Not in this release](#not-in-this-relea
 
 ## Mocks
 
-The generated [`sqsmock`](sqsmock) package supplies a paid order from the
+The generated [`sqsmock`](go/sqsmock) package supplies a paid order from the
 orders queue by default and cases for an empty queue, rejected requests, and
-expired receipt handles. The [runnable integration test](examples/queue-consumer/flow/workflow_mock_integration_test.go)
+expired receipt handles. The [runnable integration test](go/examples/queue-consumer/flow/workflow_mock_integration_test.go)
 uses the same Flow as the live example:
 
 ```go
@@ -72,7 +76,7 @@ ElasticMQ or LocalStack, set `endpoint` to the server's address, such as
 
 Name the factory connection and open the same name from the project
 configuration at application startup, as
-[`examples/queue-consumer/main.go`](examples/queue-consumer/main.go) does:
+[`examples/queue-consumer/main.go`](go/examples/queue-consumer/main.go) does:
 
 ```go
 project, err := projectconfig.LoadFromEnvironment(ctx)
@@ -212,7 +216,7 @@ entering Flow state.
 
 ## Example
 
-[`examples/queue-consumer`](examples/queue-consumer) is a runnable Dex Web
+[`examples/queue-consumer`](go/examples/queue-consumer) is a runnable Dex Web
 **Start Flow** example that receives one order event, acknowledges it with
 `deleteMessage` when it is valid, and releases it with
 `changeMessageVisibility` when it is not.

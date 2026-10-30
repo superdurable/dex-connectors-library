@@ -22,17 +22,17 @@ mkdir -p /tmp/mixpanel-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/mixpanel/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/mixpanel/go \
-  --version v0.1.0 --tag connectors/mixpanel/v0.1.0 \
+  --version v0.2.0 --tag connectors/mixpanel/go/v0.2.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/mixpanel-release/connector-release.json \
   --digest-output /tmp/mixpanel-release/connector-release.json.sha256
-dexcli dev --flow-rendering-dir "$PWD/connectors/mixpanel/build" --connector-release-override mixpanel=/tmp/mixpanel-release
+dexcli dev --flow-rendering-dir "$PWD/connectors/mixpanel/go/build" --connector-release-override mixpanel=/tmp/mixpanel-release
 ```
 
-Set the project environment described by [`projectconfig`](../../../../sdkgo/projectconfig/README.md), then start the Worker:
+Set the project environment described by [`projectconfig`](../../../../../sdkgo/projectconfig/README.md), then start the Worker:
 
 ```bash
-cd connectors/mixpanel
+cd connectors/mixpanel/go
 go run ./examples/event-track
 ```
 

@@ -22,17 +22,17 @@ mkdir -p /tmp/brevo-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/brevo/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/brevo/go \
-  --version v0.1.0 --tag connectors/brevo/v0.1.0 \
+  --version v0.2.0 --tag connectors/brevo/go/v0.2.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/brevo-release/connector-release.json \
   --digest-output /tmp/brevo-release/connector-release.json.sha256
-dexcli dev --flow-rendering-dir "$PWD/connectors/brevo/build" --connector-release-override brevo=/tmp/brevo-release
+dexcli dev --flow-rendering-dir "$PWD/connectors/brevo/go/build" --connector-release-override brevo=/tmp/brevo-release
 ```
 
 In another terminal, configure the project environment described by [`projectconfig`](../../../sdkgo/projectconfig/README.md) and start the Worker:
 
 ```bash
-cd connectors/brevo
+cd connectors/brevo/go
 go run ./examples/contact-sync
 ```
 

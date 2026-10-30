@@ -10,7 +10,7 @@ from unittest import mock
 
 from script import verify_go_subdir_migration as verifier
 from script.verify_go_subdir_migration import connector_file_set_errors, expected_connector_files
-from script.verify_go_subdir_migration import git_blob_hash, rewrite_readme_links, scrub_manifest_version
+from script.verify_go_subdir_migration import git_blob_hash, rewrite_go_commands, rewrite_readme_links, scrub_manifest_version
 
 
 class MigrationVerifierTest(unittest.TestCase):
@@ -61,6 +61,10 @@ class MigrationVerifierTest(unittest.TestCase):
                 self.assertIn("--check", run.call_args.args[0])
             finally:
                 os.chdir(previous_directory)
+    def test_go_command_rewrite(self) -> None:
+        self.assertEqual(rewrite_go_commands("cd connectors/acme\ncd connectors/acme/python\n", "connectors/acme"),
+                         "cd connectors/acme/go\ncd connectors/acme/python\n")
+
 
 if __name__ == "__main__":
     unittest.main()

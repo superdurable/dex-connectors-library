@@ -1,5 +1,9 @@
 # Slack Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/slack/go@v1.3.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/slack`.
+
 This module reads and writes Slack channel threads and receives Slack Events
 API messages through Socket Mode, or from a host that relays them for a shared
 connection (see [Relayed events](#relayed-events)). It supports public and
@@ -70,7 +74,7 @@ If a picker cannot load, copy IDs manually:
 Dex Web or a hosting platform saves the connection, its credentials, and both
 Trigger bindings in the project configuration. The application loads that
 configuration once and opens the connection by name, as
-[`examples/thread-approval/main.go`](examples/thread-approval/main.go) does:
+[`examples/thread-approval/main.go`](go/examples/thread-approval/main.go) does:
 
 ```go
 project, err := projectconfig.LoadFromEnvironment(ctx)
@@ -141,7 +145,7 @@ receives relayed events; on any other connection `Run` returns an error.
 Mount the runner on the application's HTTP server at
 `slack.RelayedTriggerPath(connectionName)`, which is `/triggers/slack/`
 followed by the connection name in unpadded base64url, as
-[`examples/thread-approval/main.go`](examples/thread-approval/main.go) does:
+[`examples/thread-approval/main.go`](go/examples/thread-approval/main.go) does:
 
 ```go
 mux := http.NewServeMux()
@@ -306,13 +310,13 @@ harness.startWorker(t)
 ```
 
 This snippet comes from
-[`workflow_mock_integration_test.go`](examples/thread-approval/flow/workflow_mock_integration_test.go).
+[`workflow_mock_integration_test.go`](go/examples/thread-approval/flow/workflow_mock_integration_test.go).
 The mock also provides named cases for provider refusals, missing replies,
 invalid responses, and uncertain post outcomes.
 
 ## Example
 
-[`examples/thread-approval`](examples/thread-approval) combines both Triggers,
+[`examples/thread-approval`](go/examples/thread-approval) combines both Triggers,
 `ListThreadMessages`, a typed reply RPC, and `PostThreadReply` in one runnable
 Flow.
 

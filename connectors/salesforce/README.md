@@ -1,5 +1,9 @@
 # Salesforce Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/salesforce/go@v0.24.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/salesforce`.
+
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Salesforce; no live Salesforce org was used. See
 > [verification status](../../docs/verification-status.md) for what is and
 > is not verified.
@@ -34,7 +38,7 @@ example scripts its `LIMIT 5` email lookup as one matching Contact. Script
 different contacts or values. Named cases cover missing records, invalid SOQL,
 duplicate external IDs, rejected fields, and denied access.
 
-The [runnable mock integration test](examples/record-sync/flow/workflow_mock_integration_test.go)
+The [runnable mock integration test](go/examples/record-sync/flow/workflow_mock_integration_test.go)
 scripts the one-page lookup and uses the other defaults on a real Dex Worker:
 
 ```go
@@ -124,7 +128,7 @@ each refreshed session replaces them atomically there.
 
 Dex Web or Superverse Studio saves the connection in the project configuration.
 Name the factory connection and open the same name at application startup, as
-[`examples/record-sync/main.go`](examples/record-sync/main.go) does:
+[`examples/record-sync/main.go`](go/examples/record-sync/main.go) does:
 
 ```go
 project, err := projectconfig.LoadFromEnvironment(ctx)
@@ -279,7 +283,7 @@ these units from the shared `@superdurable/dex-connectors-react` components.
 
 ## Example
 
-[`examples/record-sync`](examples/record-sync) is a runnable Dex Web
+[`examples/record-sync`](go/examples/record-sync) is a runnable Dex Web
 **Start Flow** example that matches a record by a field value, links the one
 match to an external ID or creates the record by that ID, and reads it back.
 

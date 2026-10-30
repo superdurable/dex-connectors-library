@@ -1,5 +1,9 @@
 # YouTube Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/youtube/go@v0.3.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/google/youtube`.
+
 The YouTube Connector calls the YouTube Data API v3 and exposes
 operation-specific Dex Step factories:
 
@@ -32,7 +36,7 @@ methods.
 
 The generated `Credentials` keeps the OAuth client, access token, and refresh
 token in the project connection that `NewProjectConnection` opens, as
-[`examples/playlist-curator/main.go`](examples/playlist-curator/main.go) does
+[`examples/playlist-curator/main.go`](go/examples/playlist-curator/main.go) does
 for one connection of each method. Tokens refresh before expiry and once after
 an HTTP 401; terminal `invalid_grant` responses require reauthorization. An
 OAuth app in **Testing** publishing status issues refresh tokens that Google
@@ -65,7 +69,7 @@ provider text.
 The generated `youtubemock` package models one Compiler Lab channel, its
 walkthrough video, and a curated playlist. Search and playlist listings have
 three-page cursor chains with a repeated item. The
-[real-Dex example test](examples/playlist-curator/flow/workflow_mock_integration_test.go)
+[real-Dex example test](go/examples/playlist-curator/flow/workflow_mock_integration_test.go)
 uses separate read and manage connections:
 
 ```go
@@ -81,7 +85,7 @@ inputs.
 
 ## Example
 
-[`examples/playlist-curator`](examples/playlist-curator) is a runnable Dex Web
+[`examples/playlist-curator`](go/examples/playlist-curator) is a runnable Dex Web
 **Start Flow** example that adds a channel's newest matching video to a
 playlist and reads the playlist back to confirm.
 

@@ -45,7 +45,7 @@ change.
 
 ## Release baseline
 
-- HubSpot Connector `v0.23.1`
+- HubSpot Connector `v0.24.0`
 - dexcli `cli-v1.1.0` or a later stable release
 
 ## 1. Prepare a clean local test project
@@ -60,12 +60,12 @@ cd hubspot-lead-qualification-e2e
 mkdir -p flow build
 
 curl -fsSL \
-  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/hubspot/v0.23.1/connectors/hubspot/examples/lead-qualification/flow/workflow.go \
+  https://raw.githubusercontent.com/superdurable/dex-connectors-library/refs/tags/connectors/hubspot/go/v0.24.0/connectors/hubspot/go/examples/lead-qualification/flow/workflow.go \
   -o flow/workflow.go
 
 go mod init example.com/hubspot-lead-qualification-e2e
 go mod edit -go=1.24.0
-go get github.com/superdurable/dex-connectors-library/connectors/hubspot/go@v0.23.1
+go get github.com/superdurable/dex-connectors-library/connectors/hubspot/go@v0.24.0
 go mod tidy
 ```
 
@@ -108,7 +108,7 @@ token**, and copy the `pat-na1-...` or `pat-eu1-...` token.
 
 The HubSpot OAuth method also exists, but Dex Web `cli-v1.1.0` rejects
 HubSpot's OAuth callback because it reads granted scopes only from the RFC 6749
-`scope` string; see the [connector README](../../README.md#authentication).
+`scope` string; see the [connector README](../../../README.md#authentication).
 
 ## 4. Configure the connection in Dex Web
 
@@ -130,7 +130,7 @@ HubSpot **Settings** > **Users & Teams**, and pipeline and stage IDs are in
 ## 5. Run the Worker
 
 The Worker reads the `DEX_PROJECT_*` project configuration environment
-described in [project configuration](../../../../sdkgo/projectconfig/README.md);
+described in [project configuration](../../../../../sdkgo/projectconfig/README.md);
 Dex Web or Superverse Studio writes that configuration when you save the
 connection.
 
@@ -138,7 +138,7 @@ connection.
 export DEX_FLOW_SERVICE_ADDRESS="127.0.0.1:8801"
 
 GOWORK=off go run \
-  github.com/superdurable/dex-connectors-library/connectors/hubspot/go/examples/lead-qualification@v0.23.1
+  github.com/superdurable/dex-connectors-library/connectors/hubspot/go/examples/lead-qualification@v0.24.0
 ```
 
 Set
@@ -189,8 +189,8 @@ expired OAuth connection that refreshes before the first call, and retried
 writes. When HubSpot accepts an upsert or update but its answer is lost,
 Dex retries it; the test proves one contact and the configured stage remain.
 
-Before `v0.23.1` is published, build a local release artifact with
+Before `v0.24.0` is published, build a local release artifact with
 `go run ./cmd/connectorctl release-artifact` from the repository root and pass
 its directory to `dexcli dev --connector-release-override hubspot=DIRECTORY`.
-The test project must still resolve `connectors/hubspot@v0.23.1` without a
+The test project must still resolve `connectors/hubspot/go@v0.24.0` without a
 `replace`, as the compatibility gate does with a local module proxy.

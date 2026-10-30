@@ -41,13 +41,13 @@ mkdir -p /tmp/spotify-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/spotify/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/spotify/go \
-  --version v0.23.0 \
-  --tag connectors/spotify/v0.23.0 \
+  --version v0.24.0 \
+  --tag connectors/spotify/go/v0.24.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/spotify-release/connector-release.json \
   --digest-output /tmp/spotify-release/connector-release.json.sha256
 dexcli dev \
-  --flow-rendering-dir "$PWD/connectors/spotify/build" \
+  --flow-rendering-dir "$PWD/connectors/spotify/go/build" \
   --connector-release-override spotify=/tmp/spotify-release
 ```
 
@@ -58,11 +58,11 @@ or collaborative with the authenticated user.
 
 In a second terminal, start the Worker. It reads the `DEX_PROJECT_*` project
 configuration environment described in
-[project configuration](../../../../sdkgo/projectconfig/README.md); Dex Web or
+[project configuration](../../../../../sdkgo/projectconfig/README.md); Dex Web or
 Superverse Studio writes that configuration when you save the connection.
 
 ```bash
-cd "$(git rev-parse --show-toplevel)/connectors/spotify"
+cd "$(git rev-parse --show-toplevel)/connectors/spotify/go"
 go run ./examples/playlist-tracks
 ```
 

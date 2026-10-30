@@ -59,14 +59,14 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/superdurable/llm/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/superdurable/llm/go \
-  --version v0.24.1 --tag connectors/superdurable/llm/v0.24.1 \
+  --version v0.25.0 --tag connectors/superdurable/llm/go/v0.25.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/llm-release/connector-ui.tgz \
   --ui-digest /tmp/llm-release/connector-ui.tgz.sha256 \
   --output /tmp/llm-release/connector-release.json \
   --digest-output /tmp/llm-release/connector-release.json.sha256
 dexcli dev \
-  --flow-rendering-dir "$PWD/connectors/superdurable/llm/build" \
+  --flow-rendering-dir "$PWD/connectors/superdurable/llm/go/build" \
   --connector-release-override llm=/tmp/llm-release
 ```
 
@@ -100,12 +100,12 @@ Dex Web saves the settings, the Step pick, and the key in the project
 configuration. In a second terminal, start the Worker from
 `connectors/superdurable/llm` with that project's `DEX_PROJECT_*`
 environment, which
-[`sdkgo/projectconfig`](../../../../../sdkgo/projectconfig/README.md#application-loading)
+[`sdkgo/projectconfig`](../../../../../../sdkgo/projectconfig/README.md#application-loading)
 documents, including `DEX_PROJECT_ALLOW_LOCAL_STORAGE=true` and
 `DEX_PROJECT_STORAGE_ENDPOINT` for a local S3-compatible store:
 
 ```bash
-cd "$(git rev-parse --show-toplevel)/connectors/superdurable/llm"
+cd "$(git rev-parse --show-toplevel)/connectors/superdurable/llm/go"
 go run ./examples/summarize-text
 ```
 

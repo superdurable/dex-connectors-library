@@ -1,5 +1,9 @@
 # Xero Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/xero/go@v0.24.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/xero`.
+
 > **Verification status: partial live.** Only invalid-credential probes reached Xero, confirming its 400 and 401 error shapes; everything else ran on a real Dex stack against a local stand-in. No live Xero organisation was used. See
 > [verification status](../../docs/verification-status.md) for what is and
 > is not verified.
@@ -125,7 +129,7 @@ hold `organisation`.
 
 Load the project configuration and open the connection by the name the
 application declares, as
-[`examples/approved-order/main.go`](examples/approved-order/main.go) does:
+[`examples/approved-order/main.go`](go/examples/approved-order/main.go) does:
 
 ```go
 project, err := projectconfig.LoadFromEnvironment(ctx)
@@ -316,7 +320,7 @@ operation input, found in Xero under **Accounting > Chart of accounts**.
 
 ## Example
 
-[`examples/approved-order`](examples/approved-order) is a runnable Dex Web
+[`examples/approved-order`](go/examples/approved-order) is a runnable Dex Web
 **Start Flow** example: for an approved and paid order it finds the
 customer's contact by email, looks for an invoice already raised for the
 order's reference, raises an approved invoice when there is none, records the
@@ -339,7 +343,7 @@ flow := NewFlow(mock.Connection())
 ```
 
 This snippet comes from
-[`workflow_mock_integration_test.go`](examples/approved-order/flow/workflow_mock_integration_test.go).
+[`workflow_mock_integration_test.go`](go/examples/approved-order/flow/workflow_mock_integration_test.go).
 
 ## Verification
 

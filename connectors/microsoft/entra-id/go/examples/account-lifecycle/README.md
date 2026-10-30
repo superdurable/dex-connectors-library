@@ -58,7 +58,7 @@ mkdir -p /tmp/entra-id-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/microsoft/entra-id/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/microsoft/entra-id/go \
-  --version v0.23.0 --tag connectors/microsoft/entra-id/v0.23.0 \
+  --version v0.24.0 --tag connectors/microsoft/entra-id/go/v0.24.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/entra-id-release/connector-release.json \
   --digest-output /tmp/entra-id-release/connector-release.json.sha256
@@ -67,7 +67,7 @@ dexcli dev \
   --connector-release-override microsoft-entra-id=/tmp/entra-id-release
 ```
 
-Follow the [Microsoft Entra ID setup](../../README.md#authorization), then open
+Follow the [Microsoft Entra ID setup](../../../README.md#authorization), then open
 **Connections** in Dex Web and select `microsoft-entra-id / microsoft-entra-id`,
 which all seven connector Steps use. Choose **App-only access** and enter the
 tenant ID, client ID, and client secret, or **Microsoft OAuth as an
@@ -77,7 +77,7 @@ request.
 
 In a second terminal, start the Worker from `connectors/microsoft/entra-id`. It
 reads the `DEX_PROJECT_*` project configuration environment documented in
-[`sdkgo/projectconfig`](../../../../../sdkgo/projectconfig/README.md#application-loading);
+[`sdkgo/projectconfig`](../../../../../../sdkgo/projectconfig/README.md#application-loading);
 Dex Web or Superverse Studio writes that configuration:
 
 ```bash

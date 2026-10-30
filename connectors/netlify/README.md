@@ -1,6 +1,10 @@
 # Netlify connector
 
-The `netlify` Go module exposes typed Dex Steps for Netlify. Its [runnable lookup Flow](examples/netlify-lookup/README.md) uses the static connection name `netlify`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/netlify/go@v0.2.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/netlify`.
+
+The `netlify` Go module exposes typed Dex Steps for Netlify. Its [runnable lookup Flow](go/examples/netlify-lookup/README.md) uses the static connection name `netlify`.
 
 ## Operations
 
@@ -37,7 +41,7 @@ The generated `netlifymock` package installs these default answers:
 - `listSites`: the Meridian Web site.
 - `listDeploys`: one ready deploy for that site.
 
-The [mock-backed example test](examples/netlify-lookup/flow/workflow_mock_integration_test.go) runs the first default through a real Dex Worker and Client in CI.
+The [mock-backed example test](go/examples/netlify-lookup/flow/workflow_mock_integration_test.go) runs the first default through a real Dex Worker and Client in CI.
 
 ## Official API references
 

@@ -56,7 +56,7 @@ mkdir -p /tmp/xero-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/xero/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/xero/go \
-  --version v0.23.0 --tag connectors/xero/v0.23.0 \
+  --version v0.24.0 --tag connectors/xero/go/v0.24.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/xero-release/connector-release.json \
   --digest-output /tmp/xero-release/connector-release.json.sha256
@@ -65,7 +65,7 @@ dexcli dev \
   --connector-release-override xero=/tmp/xero-release
 ```
 
-Follow the [Xero setup](../../README.md#xero-setup), then open
+Follow the [Xero setup](../../../README.md#xero-setup), then open
 **Connections** in Dex Web and select `xero / xero-books`, which all five
 Xero Steps of `XeroApprovedOrderInvoice` use. Choose **Custom Connection**
 and enter the client ID and secret, or **Xero OAuth 2.0 web app** and
@@ -73,7 +73,7 @@ authorize, and save. The example has no Step configuration.
 
 In a second terminal, start the Worker from `connectors/xero`. It reads the
 `DEX_PROJECT_*` project configuration environment described in
-[project configuration](../../../../sdkgo/projectconfig/README.md); Dex Web or
+[project configuration](../../../../../sdkgo/projectconfig/README.md); Dex Web or
 Superverse Studio writes that configuration when you save the connection.
 
 ```bash

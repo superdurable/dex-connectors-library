@@ -45,7 +45,7 @@ name of the person acting and an optional note:
 
 ## Configure
 
-Follow the [Mailchimp setup](../../README.md#mailchimp-setup), then save the
+Follow the [Mailchimp setup](../../../README.md#mailchimp-setup), then save the
 API key for the `mailchimp-audience` connection under **Connections** in Dex
 Web; all five Mailchimp Steps of `MailchimpApprovedCampaignSend` use it. The
 data center comes from the key, so the connection has no other required field.
@@ -84,12 +84,12 @@ mkdir -p /tmp/mailchimp-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/intuit/mailchimp/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/intuit/mailchimp/go \
-  --version v0.22.0 --tag connectors/intuit/mailchimp/v0.22.0 \
+  --version v0.23.0 --tag connectors/intuit/mailchimp/go/v0.23.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/mailchimp-release/connector-release.json \
   --digest-output /tmp/mailchimp-release/connector-release.json.sha256
 dexcli dev \
-  --flow-rendering-dir "$PWD/connectors/intuit/mailchimp/build" \
+  --flow-rendering-dir "$PWD/connectors/intuit/mailchimp/go/build" \
   --connector-release-override mailchimp=/tmp/mailchimp-release
 ```
 
@@ -97,7 +97,7 @@ Dex Web or Superverse Studio writes the connection to the project
 configuration. In a second terminal, start the Worker from
 `connectors/intuit/mailchimp` with the `DEX_PROJECT_*` environment that names
 it, as
-[project configuration loading](../../../../../sdkgo/projectconfig/README.md#application-loading)
+[project configuration loading](../../../../../../sdkgo/projectconfig/README.md#application-loading)
 describes:
 
 ```bash

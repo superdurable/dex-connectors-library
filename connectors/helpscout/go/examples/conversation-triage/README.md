@@ -71,14 +71,14 @@ go run ./cmd/connectorctl ui-artifact \
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/helpscout/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/helpscout/go \
-  --version v0.23.0 --tag connectors/helpscout/v0.23.0 \
+  --version v0.24.0 --tag connectors/helpscout/go/v0.24.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --ui-artifact /tmp/helpscout-release/connector-ui.tgz \
   --ui-digest /tmp/helpscout-release/connector-ui.tgz.sha256 \
   --output /tmp/helpscout-release/connector-release.json \
   --digest-output /tmp/helpscout-release/connector-release.json.sha256
 dexcli dev \
-  --flow-rendering-dir "$PWD/connectors/helpscout/build" \
+  --flow-rendering-dir "$PWD/connectors/helpscout/go/build" \
   --connector-release-override helpscout=/tmp/helpscout-release
 ```
 
@@ -143,12 +143,12 @@ the endpoint answers `400`.
 
 Run the Worker in a second terminal from `connectors/helpscout`. It reads the
 `DEX_PROJECT_*` project configuration environment described in
-[project configuration](../../../../sdkgo/projectconfig/README.md); Dex Web or
+[project configuration](../../../../../sdkgo/projectconfig/README.md); Dex Web or
 Superverse Studio writes that configuration when you save the connection and
 the binding:
 
 ```bash
-cd "$(git rev-parse --show-toplevel)/connectors/helpscout"
+cd "$(git rev-parse --show-toplevel)/connectors/helpscout/go"
 go run ./examples/conversation-triage
 ```
 

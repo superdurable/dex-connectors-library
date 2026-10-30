@@ -1,5 +1,9 @@
 # Google Workspace Admin Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/workspace-admin/go@v0.24.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/google/workspace-admin`.
+
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for the Google Admin SDK; no real Google Workspace tenant was used. See
 > [verification status](../../../docs/verification-status.md) for what is and
 > is not verified.
@@ -84,7 +88,7 @@ encrypted project storage and never enter a Flow.
 
 Load the project configuration once at application startup and open the
 connection by the name its operations use, as
-[`examples/account-lifecycle/main.go`](examples/account-lifecycle/main.go) does:
+[`examples/account-lifecycle/main.go`](go/examples/account-lifecycle/main.go) does:
 
 ```go
 project, err := projectconfig.LoadFromEnvironment(ctx)
@@ -213,7 +217,7 @@ other branch is optional and fails the Flow when unwired.
 The generated `workspaceadminmock` package models Ada's account, its
 Engineering group membership, both sign-in states, and a three-page user
 listing with a repeated account. The
-[real-Dex example test](examples/account-lifecycle/flow/workflow_mock_integration_test.go)
+[real-Dex example test](go/examples/account-lifecycle/flow/workflow_mock_integration_test.go)
 starts onboarding and offboarding with the same mock connection:
 
 ```go
@@ -227,7 +231,7 @@ other accounts, groups, and organizational units explicitly.
 
 ## Example
 
-[`examples/account-lifecycle`](examples/account-lifecycle) is a runnable Dex
+[`examples/account-lifecycle`](go/examples/account-lifecycle) is a runnable Dex
 Web **Start Flow** example. Onboarding creates the account, adds it to a team
 group, reads it back, and records the hand-off; an address that belongs to
 someone else fails the example Flow without creating anything; reinstating restores a

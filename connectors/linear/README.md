@@ -1,5 +1,9 @@
 # Linear Connector
 
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/linear/go@v0.24.0`.
+
+Moved from `github.com/superdurable/dex-connectors-library/connectors/linear`.
+
 > **Verification status: partial live.** Only unauthenticated and invalid-credential probes reached Linear's
 > GraphQL API and OAuth token endpoint; everything else ran on a real Dex stack against a local stand-in.
 > No Linear workspace was used. See [verification status](../../docs/verification-status.md) for what is and
@@ -78,7 +82,7 @@ tokens without a refresh token) and `actor=app` are not declared.
 
 Dex Web or Superverse Studio saves the connection's settings and credentials in the project configuration. The
 application loads that configuration once and opens the connection by the name it declares, as
-[`examples/issue-request/main.go`](examples/issue-request/main.go) does:
+[`examples/issue-request/main.go`](go/examples/issue-request/main.go) does:
 
 ```go
 	project, err := projectconfig.LoadFromEnvironment(ctx)
@@ -286,7 +290,7 @@ duplicate and an archived issue. Named cases cover missing issues, users, and
 teams, plus conclusive provider rejections. A separate empty search case lets
 a test start from the point before the fire drill issue was created.
 
-The [runnable integration test](examples/issue-request/flow/workflow_mock_integration_test.go)
+The [runnable integration test](go/examples/issue-request/flow/workflow_mock_integration_test.go)
 starts the example on a real Dex Worker without Linear:
 
 ```go
@@ -306,11 +310,11 @@ See [`sdkgo/connectormock`](../../sdkgo/README.md#connector-mocks) for scripting
 
 ## Examples
 
-- [`examples/issue-request`](examples/issue-request) is a Dex Web **Start Flow** example that uses all seven
+- [`examples/issue-request`](go/examples/issue-request) is a Dex Web **Start Flow** example that uses all seven
   operations and the `teamPicker` unit: it resolves the assignee by email, reuses the team's open issue with
   the requested title or creates one, moves it to the requested workflow state, adds one comment, and reads it
   back.
-- [`examples/issue-events`](examples/issue-events) serves the webhook endpoint and starts one Flow per created
+- [`examples/issue-events`](go/examples/issue-events) serves the webhook endpoint and starts one Flow per created
   issue, which reads the issue back with `getIssue`.
 
 ## Verification

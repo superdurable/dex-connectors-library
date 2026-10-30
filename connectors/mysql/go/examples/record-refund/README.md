@@ -65,7 +65,7 @@ repository root:
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/mysql/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/mysql/go \
-  --version v0.22.0 --tag connectors/mysql/v0.22.0 \
+  --version v0.23.0 --tag connectors/mysql/go/v0.23.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/mysql-refund/release/connector-release.json \
   --digest-output /tmp/mysql-refund/release/connector-release.json.sha256
@@ -80,7 +80,7 @@ another port, a stricter `sslMode`, or longer timeouts. The connection must
 show **Ready** and **Local override**. Dex Web or Superverse Studio writes the
 connection to the project configuration. In another terminal, start the Worker
 with the `DEX_PROJECT_*` environment that names that configuration, as
-[project configuration loading](../../../../sdkgo/projectconfig/README.md#application-loading)
+[project configuration loading](../../../../../sdkgo/projectconfig/README.md#application-loading)
 describes:
 
 ```bash

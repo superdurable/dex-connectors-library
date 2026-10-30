@@ -19,14 +19,14 @@ From the repository root, build a local release override, then start a Dex stack
 
 ```sh
 mkdir -p /tmp/paypal-release
-go run ./cmd/connectorctl release-artifact --manifest connectors/paypal/connector.yaml --module-path github.com/superdurable/dex-connectors-library/connectors/paypal/go --version v0.1.0 --tag connectors/paypal/v0.1.0 --source-sha "$(git rev-parse HEAD)" --output /tmp/paypal-release/connector-release.json --digest-output /tmp/paypal-release/connector-release.json.sha256
-dexcli dev --flow-rendering-dir "$PWD/connectors/paypal/build" --connector-release-override paypal=/tmp/paypal-release
+go run ./cmd/connectorctl release-artifact --manifest connectors/paypal/connector.yaml --module-path github.com/superdurable/dex-connectors-library/connectors/paypal/go --version v0.2.0 --tag connectors/paypal/go/v0.2.0 --source-sha "$(git rev-parse HEAD)" --output /tmp/paypal-release/connector-release.json --digest-output /tmp/paypal-release/connector-release.json.sha256
+dexcli dev --flow-rendering-dir "$PWD/connectors/paypal/go/build" --connector-release-override paypal=/tmp/paypal-release
 ```
 
 In Dex Web **Connections**, create the `paypal` connection with the manifest's authorization guide. Then start the Worker in another terminal:
 
 ```sh
-cd connectors/paypal
+cd connectors/paypal/go
 go run ./examples/resource-read
 ```
 

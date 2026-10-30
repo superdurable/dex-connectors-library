@@ -49,12 +49,12 @@ mkdir -p /tmp/discord-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/discord/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/discord/go \
-  --version v0.2.0 --tag connectors/discord/v0.2.0 \
+  --version v0.3.0 --tag connectors/discord/go/v0.3.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/discord-release/connector-release.json \
   --digest-output /tmp/discord-release/connector-release.json.sha256
 dexcli dev \
-  --flow-rendering-dir "$PWD/connectors/discord/build" \
+  --flow-rendering-dir "$PWD/connectors/discord/go/build" \
   --connector-release-override discord=/tmp/discord-release
 ```
 
@@ -67,11 +67,11 @@ View Channels, Read Message History, Send Messages, and Add Reactions. Leave
 
 In a second terminal, start the Worker from `connectors/discord` with the
 project's `DEX_PROJECT_*` environment, which
-[`sdkgo/projectconfig`](../../../../sdkgo/projectconfig/README.md#application-loading)
+[`sdkgo/projectconfig`](../../../../../sdkgo/projectconfig/README.md#application-loading)
 documents:
 
 ```bash
-cd "$(git rev-parse --show-toplevel)/connectors/discord"
+cd "$(git rev-parse --show-toplevel)/connectors/discord/go"
 go run ./examples/channel-announcement
 ```
 

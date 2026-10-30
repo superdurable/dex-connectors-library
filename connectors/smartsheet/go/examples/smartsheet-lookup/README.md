@@ -19,7 +19,7 @@ mkdir -p /tmp/smartsheet-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/smartsheet/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/smartsheet/go \
-  --version v0.1.0 --tag connectors/smartsheet/v0.1.0 \
+  --version v0.2.0 --tag connectors/smartsheet/go/v0.2.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/smartsheet-release/connector-release.json \
   --digest-output /tmp/smartsheet-release/connector-release.json.sha256
@@ -28,6 +28,6 @@ dexcli dev \
   --connector-release-override smartsheet=/tmp/smartsheet-release
 ```
 
-Configure the static `smartsheet` connection in Dex Web, then in a second terminal run `GOWORK=off go run ./examples/smartsheet-lookup` from `connectors/smartsheet` with the project environment described in [`sdkgo/projectconfig`](../../../../sdkgo/projectconfig/README.md). Start `SmartsheetLookup` through Dex Web's Start Flow form.
+Configure the static `smartsheet` connection in Dex Web, then in a second terminal run `GOWORK=off go run ./examples/smartsheet-lookup` from `connectors/smartsheet` with the project environment described in [`sdkgo/projectconfig`](../../../../../sdkgo/projectconfig/README.md). Start `SmartsheetLookup` through Dex Web's Start Flow form.
 
 The deterministic mapping unit test runs with `GOWORK=off go test ./examples/smartsheet-lookup/...`. CI runs `flow/workflow_mock_integration_test.go` against a real Dex Worker and Client; local integration is left to CI.

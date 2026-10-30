@@ -22,14 +22,14 @@ mkdir -p /tmp/datadog-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/datadog/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/datadog/go \
-  --version v0.1.0 --tag connectors/datadog/v0.1.0 \
+  --version v0.2.0 --tag connectors/datadog/go/v0.2.0 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/datadog-release/connector-release.json \
   --digest-output /tmp/datadog-release/connector-release.json.sha256
-dexcli dev --flow-rendering-dir "$PWD/connectors/datadog/build" --connector-release-override datadog=/tmp/datadog-release
+dexcli dev --flow-rendering-dir "$PWD/connectors/datadog/go/build" --connector-release-override datadog=/tmp/datadog-release
 ```
 
-In Dex Web **Connections**, select `datadog / datadog`, follow the authorization guide beginning at [https://app.datadoghq.com/organization-settings/api-keys](https://app.datadoghq.com/organization-settings/api-keys), and save the connection. Keep keys in secret fields only. From `connectors/datadog`, run `go run ./examples/datadog-lookup` with the `DEX_PROJECT_*` environment described in [projectconfig](../../../../sdkgo/projectconfig/README.md#application-loading). In Dex Web **Start Flow**, select `DatadogLookup` and enter this JSON request:
+In Dex Web **Connections**, select `datadog / datadog`, follow the authorization guide beginning at [https://app.datadoghq.com/organization-settings/api-keys](https://app.datadoghq.com/organization-settings/api-keys), and save the connection. Keep keys in secret fields only. From `connectors/datadog`, run `go run ./examples/datadog-lookup` with the `DEX_PROJECT_*` environment described in [projectconfig](../../../../../sdkgo/projectconfig/README.md#application-loading). In Dex Web **Start Flow**, select `DatadogLookup` and enter this JSON request:
 
 ```json
 {

@@ -139,7 +139,7 @@ func TestManifestDeclaresNoStudioBundleOrTriggers(t *testing.T) {
 	manifest := loadManifest(t)
 	require.Nil(t, manifest.Spec.Studio)
 	require.Empty(t, manifest.Spec.Triggers)
-	_, err := os.Stat("ui")
+	_, err := os.Stat("../ui")
 	require.True(t, os.IsNotExist(err))
 	require.Len(t, manifest.Spec.Operations, 8)
 	for _, operation := range manifest.Spec.Operations {

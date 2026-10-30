@@ -19,14 +19,14 @@ From the repository root, build a local release override, then start a Dex stack
 
 ```sh
 mkdir -p /tmp/square-release
-go run ./cmd/connectorctl release-artifact --manifest connectors/square/connector.yaml --module-path github.com/superdurable/dex-connectors-library/connectors/square/go --version v0.1.0 --tag connectors/square/v0.1.0 --source-sha "$(git rev-parse HEAD)" --output /tmp/square-release/connector-release.json --digest-output /tmp/square-release/connector-release.json.sha256
-dexcli dev --flow-rendering-dir "$PWD/connectors/square/build" --connector-release-override square=/tmp/square-release
+go run ./cmd/connectorctl release-artifact --manifest connectors/square/connector.yaml --module-path github.com/superdurable/dex-connectors-library/connectors/square/go --version v0.2.0 --tag connectors/square/go/v0.2.0 --source-sha "$(git rev-parse HEAD)" --output /tmp/square-release/connector-release.json --digest-output /tmp/square-release/connector-release.json.sha256
+dexcli dev --flow-rendering-dir "$PWD/connectors/square/go/build" --connector-release-override square=/tmp/square-release
 ```
 
 In Dex Web **Connections**, create the `square` connection with the manifest's authorization guide. Then start the Worker in another terminal:
 
 ```sh
-cd connectors/square
+cd connectors/square/go
 go run ./examples/resource-read
 ```
 

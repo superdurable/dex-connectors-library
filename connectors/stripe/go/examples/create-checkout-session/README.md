@@ -15,7 +15,7 @@ Run `dexcli dev` with that build directory and configure
 `stripe / stripe-payments` under **Connections**. Dex Web or Superverse Studio
 writes the connection to the project configuration; start the Worker with the
 `DEX_PROJECT_*` environment that names it, as
-[project configuration loading](../../../../sdkgo/projectconfig/README.md#application-loading)
+[project configuration loading](../../../../../sdkgo/projectconfig/README.md#application-loading)
 describes:
 
 ```bash
