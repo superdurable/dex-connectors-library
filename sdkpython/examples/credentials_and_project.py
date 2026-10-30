@@ -21,12 +21,15 @@ from dex_connectors.sdk import (
     CredentialRefreshState,
     OperationRef,
     SecretString,
+    resolve_credential,
 )
 from dex_connectors.sdk.projectconfig import (
     Configuration,
     ConfigurationStore,
     ConnectionConfiguration,
     ConnectionKey,
+    ConnectionStore,
+    CredentialMaterial,
     EnvironmentValue,
     InMemoryObjectStore,
     S3ObjectStore,
@@ -35,6 +38,7 @@ from dex_connectors.sdk.projectconfig import (
     load_project_from_object_store,
 )
 from dex_connectors.sdk.projectconfig.models import CredentialBrokerConfiguration
+from dex_connectors.sdk.projectconfig.provider import RefreshingCredentialProvider
 
 
 class ExampleCredentialProvider(CredentialProvider[SecretString]):
@@ -59,6 +63,23 @@ class ExampleRefreshDriver(CredentialRefreshDriver[SecretString]):
     ) -> CredentialRefreshResult[SecretString]:
         """Return inert replacement material for the protocol example."""
         return CredentialRefreshResult(SecretString("REDACTED_REPLACEMENT"), state.now + timedelta(hours=1))
+
+
+class ExampleProjectRefreshDriver(CredentialRefreshDriver[dict[str, str]]):
+    """Replace an expired local fixture credential through durable admission."""
+
+    def refresh_required(self, state: CredentialRefreshState[dict[str, str]]) -> bool:
+        """Refresh a known expired access token."""
+        return state.expires_at is not None and state.expires_at <= state.now
+
+    async def refresh(
+        self, state: CredentialRefreshState[dict[str, str]]
+    ) -> CredentialRefreshResult[dict[str, str]]:
+        """Return complete inert material, retaining the refresh token."""
+        return CredentialRefreshResult(
+            {"access": "INERT_NEW_ACCESS", "refresh": state.credentials["refresh"]},
+            state.now + timedelta(hours=1),
+        )
 
 
 @dataclass
@@ -158,6 +179,22 @@ async def main() -> None:
     s3_store = await S3ObjectStore.create(s3_client, "example-bucket", allow_unencrypted=True)
     await s3_store.create_object("projects/example/preview/configuration/head", b"{}")
     assert s3_client.put_arguments is not None and s3_client.put_arguments["IfNoneMatch"] == "*"
+
+    project_connections = ConnectionStore(InMemoryObjectStore(), scope)
+    key = ConnectionKey("sample", "main")
+    await project_connections.replace_credential(
+        key, 0, CredentialMaterial(
+            {"access": "INERT_OLD_ACCESS", "refresh": "INERT_REFRESH"},
+            datetime.now(UTC) - timedelta(minutes=1), "oauth2",
+        ),
+    )
+    refreshing = RefreshingCredentialProvider(
+        project_connections, key, lambda value: value,
+        lambda value: value,
+    )
+    refreshed = await resolve_credential(refreshing, call, ExampleProjectRefreshDriver())
+    assert refreshed["access"] == "INERT_NEW_ACCESS"
+    assert (await project_connections.read_connection(key)).status == "READY"
 
 
 if __name__ == "__main__":

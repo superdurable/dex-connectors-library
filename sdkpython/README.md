@@ -151,6 +151,29 @@ persist the returned credential object. The examples freeze an in-memory
 snapshot, resolve a private application secret and broker credential, load an
 owner-only Dex Web file, and exercise S3's conditional-write adapter.
 
+`projectconfig.provider.CredentialProvider` binds a non-refreshing connector
+credential decoder to a stored connection. `RefreshingCredentialProvider` also
+takes an encoder for complete replacement material. It conditionally admits one
+refresh request per credential generation across replicas, stores an immutable
+result, then publishes it through a revision CAS. Concurrent callers recover
+the result without another provider request. A retryable refresh failure
+restores the prior credential; a terminal grant failure fences it for
+reauthorization. A generic provider 401 can force refresh only after the
+authoritative stored expiry has elapsed. This hosted store path does not yet
+write refreshed material back to local Dex Web `connections.json`.
+
+From [the runnable project example](examples/credentials_and_project.py):
+
+```python
+refreshing = RefreshingCredentialProvider(
+    project_connections, key, lambda value: value,
+    lambda value: value,
+)
+refreshed = await resolve_credential(refreshing, call, ExampleProjectRefreshDriver())
+assert refreshed["access"] == "INERT_NEW_ACCESS"
+assert (await project_connections.read_connection(key)).status == "READY"
+```
+
 ## Connector mocks
 
 `ScriptedOperation` holds a provider Query or Mutation script without Dex Step

@@ -166,7 +166,6 @@ class ConnectionStore:
             envelope.get("schemaVersion") != CONNECTION_SCHEMA_VERSION
             or envelope.get("scope") != self.scope.to_wire()
             or envelope.get("connection") != key.to_wire()
-            or envelope.get("fence") != connection.fence
             or envelope.get("authMethod") != connection.auth_method
             or envelope.get("expiresAt") != record.get("expiresAt")
         ):
@@ -277,6 +276,25 @@ class ConnectionStore:
                 or not re.fullmatch(r"[0-9a-f]{64}", credential_ref["digest"])
             ):
                 raise ValueError("project credential reference is invalid")
+        mutation = record.get("mutation")
+        if record["status"] in ("REFRESHING", "AUTHORIZING"):
+            if not isinstance(mutation, dict):
+                raise ValueError("credential exchange admission is absent")
+            attempt_id = mutation.get("id")
+            if (
+                not isinstance(attempt_id, str)
+                or not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", attempt_id)
+                or mutation.get("kind") != record["status"]
+                or not isinstance(mutation.get("invocationId"), str)
+                or not mutation["invocationId"]
+                or mutation.get("fence") != record["fence"]
+                or mutation.get("baseRevision") != record["revision"] - 1
+                or mutation.get("resultKey") != f"{path}/exchange-results/{attempt_id}"
+                or self._parse_time(mutation.get("deadline")) is None
+            ):
+                raise ValueError("credential exchange admission is invalid")
+        elif mutation is not None:
+            raise ValueError("inactive credential exchange admission is invalid")
         return record, item
 
     def _connection(self, key: ConnectionKey, record: dict[str, Any]) -> Connection:
