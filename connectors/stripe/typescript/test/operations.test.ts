@@ -94,6 +94,25 @@ describe('hosted Checkout mutations', () => {
   }
 });
 
+it('bounds Stripe HTTP time by the live Dex attempt deadline', async () => {
+  const requests: ProviderRequest[] = [];
+  const stripe = client([response(200, checkoutResponse)], requests);
+  const deadline = new Date(Date.now() + 5_000);
+  const boundedCall: Call = { ...call('createCardCheckoutSession', true), context: {
+    flowId: 'test-flow', cancellationSignal: new AbortController().signal, deadline,
+  } as Call['context'] };
+  expect(await stripe.createCardCheckoutSession().invoke(boundedCall, checkoutInput)).toMatchObject({ kind: 'branch', branch: 'created' });
+  expect(requests[0]?.timeoutMs).toBeGreaterThan(0);
+  expect(requests[0]?.timeoutMs).toBeLessThanOrEqual(5_000);
+
+  const expiredRequests: ProviderRequest[] = [];
+  const expired = client([], expiredRequests);
+  expect(await expired.createCardCheckoutSession().invoke({ ...boundedCall, context: {
+    flowId: 'test-flow', cancellationSignal: new AbortController().signal, deadline: new Date(0),
+  } as Call['context'] }, checkoutInput)).toMatchObject({ kind: 'retry', failure: { kind: 'TRANSPORT' } });
+  expect(expiredRequests).toHaveLength(0);
+});
+
 describe('Checkout Session query', () => {
   it('returns found, notFound, providerRejected, invalidResponse and defect', async () => {
     const invoke = (stripe: StripeClient, sessionId = 'cs_123') => stripe.getCheckoutSession().invoke(call('getCheckoutSession'), { sessionId });

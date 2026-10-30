@@ -73,6 +73,8 @@ export class StripeClient {
 
   /** Make one provider request with Go's sorted form encoding and Stripe headers. */
   async sendStripeRequest(call: Call, secretKey: string, method: 'GET' | 'POST', path: string, values?: URLSearchParams): Promise<StripeResponse> {
+    const remainingMs = call.context.deadline ? call.context.deadline.getTime() - Date.now() : defaultTimeoutMs;
+    if (remainingMs <= 0) throw new Error('Dex Step attempt deadline has expired');
     const encoded = values ? sortedForm(values) : '';
     const url = `${this.endpoint}/${path}${method === 'GET' && encoded ? `?${encoded}` : ''}`;
     const headers: Record<string, string> = {
@@ -86,7 +88,7 @@ export class StripeClient {
     const request: ProviderRequest = {
       url, method, headers, maxResponseBytes: this.maxResponseBytes,
       addressPolicy: this.endpoint === defaultEndpoint ? 'publicHTTPS' : 'privateNetworkHTTP',
-      timeoutMs: defaultTimeoutMs,
+      timeoutMs: Math.min(defaultTimeoutMs, remainingMs),
       signal: call.context.cancellationSignal,
       ...(method === 'POST' && values ? { body: Buffer.from(encoded, 'utf8') } : {}),
     };
