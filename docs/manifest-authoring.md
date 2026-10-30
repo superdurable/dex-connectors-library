@@ -16,6 +16,52 @@ names are `dex-connector-<slug>` and `@superdurable/connector-<slug>`, with
 `<slug>` formed from the connector path below `connectors/` by replacing `/`
 with `-`. The public catalog records language availability and versions.
 
+`connectorctl generate` also writes `dex-connector.json` for each declared
+language. Python places it in `python/src/dex_connectors/<slug_with_underscores>/`;
+npm places it beside `typescript/package.json`. Check in the generated file and
+run `connectorctl generate --check <connector.yaml>` to detect drift. The file
+maps the manifest's operation factories, branch IDs and optional status, package
+identity, and fields used by Dex CLI's Python and TypeScript source analyzers.
+Runtime arguments such as `connection`, `map_to_operation_input`/
+`mapToOperationInput`, and `step_options_override`/`stepOptionsOverride`
+remain factory inputs; the Dex 1.28.0 schema has no mapping keys for them.
+Python factories accept `step_type`, `annotations`, `connection`,
+`connection_name`, `map_to_operation_input`, one keyword per snake-case branch,
+`result_attribute`, and `step_options_override`; they may also accept
+`step_input_type` for the concrete Dex Step input type. TypeScript factories
+accept one config object with `stepType`, `annotations`, `connection`,
+`connectionName`, `mapToOperationInput`, one property per exact branch ID,
+`resultAttribute`, and `stepOptionsOverride`. TypeScript factory names use
+`goName` exactly, including acronyms. `step_input_type`, `connection`, input
+mappers, and Step options are runtime inputs, so the static analyzer does not
+map them. Current language factories do not accept `configurationUI`, progress
+or text Streams, or text options; add those mappings only with matching runtime
+factory support. Trigger factories are not emitted until the language package
+implements them. The vendored
+[`dex-connector.schema.json`](../schema/dex-connector.schema.json) is from Dex
+`cli-v1.28.0` at `cli/internal/flowviz/dex-connector.schema.json`.
+
+The Python build backend must include the JSON as package data: in the source
+and sdist under `src/dex_connectors/<slug_with_underscores>/`, and in the wheel
+under `dex_connectors/<slug_with_underscores>/`. If the npm
+package declares a `files` list, include `dex-connector.json` in that list
+beside the built code. Inspect both archives before publishing; release
+validation rejects missing or misplaced files.
+
+The manifest's `releaseTag` is the **Go connector release tag**
+`connectors/<connector-directory>/<metadata.version>`. Dex Web reads that
+release's `connector-release.json` and UI assets for Connections. The `package`
+object separately records the PyPI or npm package name and its own version.
+Before a language package is published, release validation requires that Go tag
+to be reachable from `main` and its GitHub release to contain
+`connector-release.complete`. The built wheel, sdist, or npm tarball must contain
+the generated JSON with a package version matching the release version. A
+release dry run checks the manifest identity and archives without requiring the
+new Go release to have been published yet.
+Language release candidates have the same completed Go release prerequisite;
+their build stamps only the temporary package copy of the JSON to the candidate
+package version.
+
 An operation declares:
 
 - stable lower-camel `name` and exported `goName`;

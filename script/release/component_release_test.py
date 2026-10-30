@@ -263,6 +263,18 @@ class ComponentReleaseTest(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "repository must declare.*npm provenance"):
                     release.create_plan("sdkts", "sdkts/", bump="minor")
 
+    def test_language_release_waits_for_completed_go_release(self) -> None:
+        workflow = (Path(__file__).resolve().parents[2] / ".github/workflows/release-connector.yml").read_text(
+            encoding="utf-8"
+        )
+        build_job = workflow.split("  build-language:\n", 1)[1].split("  publish-language:\n", 1)[0]
+        publish_job = workflow.split("  publish-language:\n", 1)[1]
+        self.assertIn("needs: [plan, release]", build_job)
+        self.assertIn("needs.release.result == 'success' || needs.release.result == 'skipped'", build_job)
+        self.assertIn("validation_args+=(--dry-run)", build_job)
+        self.assertIn("needs: [plan, release, build-language]", publish_job)
+        self.assertIn("needs.build-language.result == 'success'", publish_job)
+
     def test_publish_language_rejects_build_skip_without_complete_release(self) -> None:
         workflow = (Path(__file__).resolve().parents[2] / ".github/workflows/release-connector.yml").read_text(
             encoding="utf-8"
@@ -310,6 +322,10 @@ class ComponentReleaseTest(unittest.TestCase):
             member = tarfile.TarInfo("package/package.json")
             member.size = len(package_json)
             archive.addfile(member, io.BytesIO(package_json))
+            connector_manifest = b'{"releaseTag":"connectors/newsapi/v0.20.0","package":{"ecosystem":"npm","name":"@superdurable/connector-newsapi","version":"0.1.0"}}'
+            member = tarfile.TarInfo("package/dex-connector.json")
+            member.size = len(connector_manifest)
+            archive.addfile(member, io.BytesIO(connector_manifest))
         output = self.repository / "language-release.json"
         release.write_language_release_manifest(
             output, "typescript", "@superdurable/connector-newsapi", "v0.1.0",
@@ -453,12 +469,21 @@ class ComponentReleaseTest(unittest.TestCase):
     def test_language_package_requires_released_registry_sdk_without_local_overrides(self) -> None:
         python_package = self.repository / "connectors/newsapi/python"
         python_package.mkdir(parents=True)
+        manifest_directory = python_package / "src/dex_connectors/newsapi"
+        manifest_directory.mkdir(parents=True)
+        (manifest_directory / "dex-connector.json").write_text(json.dumps({
+            "releaseTag": "connectors/newsapi/v0.1.0",
+            "package": {"ecosystem": "pypi", "name": "dex-connector-newsapi", "version": "0.1.0"},
+        }), encoding="utf-8")
         pyproject = python_package / "pyproject.toml"
         pyproject.write_text('[project]\nname = "dex-connector-newsapi"\nversion = "0.1.0"\ndependencies = ["dex-connectors-sdk>=0.1.0"]\n', encoding="utf-8")
         lookup = mock.Mock(spec=release.DependencyReleaseLookup)
         lookup.has_tag.return_value = True
         lookup.is_tag_reachable_from_main.return_value = True
-        lookup.release_asset_names.return_value = frozenset({"language-release.json"})
+        lookup.release_asset_names.side_effect = lambda tag: (
+            frozenset({"language-release.json"}) if tag.startswith("sdkpython/") else
+            frozenset({"connector-release.complete"})
+        )
         lookup.is_language_sdk_published.return_value = True
         self.assertEqual(release.validate_language_package(str(python_package), "python", lookup), "sdkpython/v0.1.0")
         lookup.is_language_sdk_published.return_value = False
@@ -467,6 +492,108 @@ class ComponentReleaseTest(unittest.TestCase):
         pyproject.write_text(pyproject.read_text(encoding="utf-8") + '[tool.uv.sources]\ndex-connectors-sdk = { path = "../../../sdkpython" }\n', encoding="utf-8")
         with self.assertRaisesRegex(ValueError, "sources overrides"):
             release.validate_language_package(str(python_package), "python", lookup)
+        wrong_directory = python_package / "src/dex_connectors/wrong_package"
+        wrong_directory.mkdir()
+        (manifest_directory / "dex-connector.json").rename(wrong_directory / "dex-connector.json")
+        with self.assertRaisesRegex(ValueError, "must contain generated"):
+            release.validate_language_connector_release(python_package, "python", lookup)
+
+    def test_language_connector_requires_completed_go_release(self) -> None:
+        package = self.repository / "connectors/newsapi/typescript"
+        package.mkdir(parents=True)
+        (package / "package.json").write_text(json.dumps({
+            "name": "@superdurable/connector-newsapi", "version": "0.1.0",
+        }), encoding="utf-8")
+        (package / "dex-connector.json").write_text(json.dumps({
+            "releaseTag": "connectors/newsapi/v0.20.0",
+            "package": {"ecosystem": "npm", "name": "@superdurable/connector-newsapi", "version": "0.1.0"},
+        }), encoding="utf-8")
+        lookup = mock.Mock(spec=release.DependencyReleaseLookup)
+        lookup.has_tag.return_value = False
+        with self.assertRaisesRegex(ValueError, "Go connector release tag is missing"):
+            release.validate_language_connector_release(package, "typescript", lookup)
+        release.validate_language_connector_release(package, "typescript", lookup, require_completed_release=False)
+        lookup.has_tag.return_value = True
+        lookup.is_tag_reachable_from_main.return_value = False
+        with self.assertRaisesRegex(ValueError, "not reachable from main"):
+            release.validate_language_connector_release(package, "typescript", lookup)
+        lookup.is_tag_reachable_from_main.return_value = True
+        lookup.release_asset_names.return_value = frozenset()
+        with self.assertRaisesRegex(ValueError, "connector-release.complete"):
+            release.validate_language_connector_release(package, "typescript", lookup)
+        lookup.release_asset_names.return_value = frozenset({"connector-release.complete"})
+        release.validate_language_connector_release(package, "typescript", lookup)
+
+    def test_connector_archives_require_matching_dex_manifest(self) -> None:
+        npm_asset = self.repository / "package.tgz"
+        npm_identity = b'{"name":"@superdurable/connector-newsapi","version":"0.1.0"}'
+        def write_npm(connector_version: str | None) -> None:
+            with tarfile.open(npm_asset, "w:gz") as archive:
+                member = tarfile.TarInfo("package/package.json")
+                member.size = len(npm_identity)
+                archive.addfile(member, io.BytesIO(npm_identity))
+                if connector_version is not None:
+                    contents = json.dumps({"releaseTag": "connectors/newsapi/v0.20.0",
+                                           "package": {"ecosystem": "npm", "name": "@superdurable/connector-newsapi",
+                                                       "version": connector_version}}).encode("utf-8")
+                    member = tarfile.TarInfo("package/dex-connector.json")
+                    member.size = len(contents)
+                    archive.addfile(member, io.BytesIO(contents))
+        write_npm(None)
+        with self.assertRaisesRegex(ValueError, "dex-connector.json"):
+            release.verify_language_artifacts("typescript", "@superdurable/connector-newsapi", "v0.1.0", [npm_asset])
+        write_npm("9.9.9")
+        with self.assertRaisesRegex(ValueError, "package identity"):
+            release.verify_language_artifacts("typescript", "@superdurable/connector-newsapi", "v0.1.0", [npm_asset])
+        write_npm("0.1.0")
+        release.verify_language_artifacts("typescript", "@superdurable/connector-newsapi", "v0.1.0", [npm_asset])
+        npm_asset.unlink()
+
+        wheel = self.repository / "dex_connector_newsapi-0.1.0-py3-none-any.whl"
+        sdist = self.repository / "dex_connector_newsapi-0.1.0.tar.gz"
+        metadata = b"Name: dex-connector-newsapi\nVersion: 0.1.0\n"
+        connector_manifest = json.dumps({"releaseTag": "connectors/newsapi/v0.20.0",
+                                         "package": {"ecosystem": "pypi", "name": "dex-connector-newsapi",
+                                                       "version": "0.1.0"}}).encode("utf-8")
+        def write_python(include_wheel: bool, include_sdist: bool, import_package: str = "newsapi") -> None:
+            with zipfile.ZipFile(wheel, "w") as archive:
+                archive.writestr("dex_connector_newsapi-0.1.0.dist-info/METADATA", metadata)
+                if include_wheel:
+                    archive.writestr(f"dex_connectors/{import_package}/dex-connector.json", connector_manifest)
+            with tarfile.open(sdist, "w:gz") as archive:
+                member = tarfile.TarInfo("dex_connector_newsapi-0.1.0/PKG-INFO")
+                member.size = len(metadata)
+                archive.addfile(member, io.BytesIO(metadata))
+                if include_sdist:
+                    member = tarfile.TarInfo(f"dex_connector_newsapi-0.1.0/src/dex_connectors/{import_package}/dex-connector.json")
+                    member.size = len(connector_manifest)
+                    archive.addfile(member, io.BytesIO(connector_manifest))
+        write_python(False, True)
+        with self.assertRaisesRegex(ValueError, "wheel must contain one dex-connector.json"):
+            release.verify_language_artifacts("python", "dex-connector-newsapi", "v0.1.0", [wheel, sdist])
+        write_python(True, False)
+        with self.assertRaisesRegex(ValueError, "package archive must contain one dex-connector.json"):
+            release.verify_language_artifacts("python", "dex-connector-newsapi", "v0.1.0", [wheel, sdist])
+        write_python(True, True)
+        release.verify_language_artifacts("python", "dex-connector-newsapi", "v0.1.0", [wheel, sdist])
+        write_python(True, True, "wrong_package")
+        with self.assertRaisesRegex(ValueError, "dex-connector.json must be at"):
+            release.verify_language_artifacts("python", "dex-connector-newsapi", "v0.1.0", [wheel, sdist])
+
+    def test_candidate_build_stamps_packaged_manifest_version(self) -> None:
+        for language, relative_path, expected in (
+            ("python", "src/dex_connectors/newsapi/dex-connector.json", "0.1.0rc2"),
+            ("typescript", "dex-connector.json", "0.1.0-rc.2"),
+        ):
+            with self.subTest(language=language):
+                package = self.repository / "connectors/newsapi" / language
+                manifest = package / relative_path
+                manifest.parent.mkdir(parents=True, exist_ok=True)
+                manifest.write_text(json.dumps({"package": {"version": "0.1.0"}}), encoding="utf-8")
+                release.stamp_language_candidate_connector_manifest(package, language, "v0.1.0-rc.2")
+                self.assertEqual(json.loads(manifest.read_text(encoding="utf-8"))["package"]["version"], expected)
+                with self.assertRaisesRegex(ValueError, "package.version must equal"):
+                    release.stamp_language_candidate_connector_manifest(package, language, "v0.1.0-rc.2")
 
     def test_typescript_package_rejects_file_and_workspace_dependencies(self) -> None:
         typescript_package = self.repository / "connectors/newsapi/typescript"

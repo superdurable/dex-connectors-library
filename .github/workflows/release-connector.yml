@@ -298,8 +298,8 @@ jobs:
           gh release upload "${RELEASE_TAG}" --clobber /tmp/connector-release.complete
 
   build-language:
-    needs: plan
-    if: needs.plan.outputs.language_count != '0'
+    needs: [plan, release]
+    if: always() && needs.plan.result == 'success' && (needs.release.result == 'success' || needs.release.result == 'skipped') && needs.plan.outputs.language_count != '0'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -358,8 +358,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           git fetch --no-tags origin main:refs/remotes/origin/main
+          validation_args=()
+          if [ "${RELEASE_DRY_RUN}" = true ]; then validation_args+=(--dry-run); fi
           python3 "${RUNNER_TEMP}/component_release.py" validate-language-package \
-            --component-path "${COMPONENT_PATH}" --language "${LANGUAGE}"
+            --component-path "${COMPONENT_PATH}" --language "${LANGUAGE}" "${validation_args[@]}"
       - name: Test and build Python package
         if: steps.state.outputs.release_required == 'true' && matrix.language == 'python'
         run: |
@@ -410,8 +412,8 @@ jobs:
           retention-days: 1
 
   publish-language:
-    needs: [plan, build-language]
-    if: needs.plan.outputs.language_count != '0' && inputs.dry_run != true
+    needs: [plan, release, build-language]
+    if: always() && needs.plan.result == 'success' && (needs.release.result == 'success' || needs.release.result == 'skipped') && needs.build-language.result == 'success' && needs.plan.outputs.language_count != '0' && inputs.dry_run != true
     runs-on: ubuntu-latest
     permissions:
       contents: write

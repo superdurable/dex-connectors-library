@@ -396,10 +396,21 @@ func generate(args []string) error {
 	if err != nil {
 		return err
 	}
+	languageManifestFiles, err := generatedLanguageManifestFiles(args[0], manifest)
+	if err != nil {
+		return err
+	}
+	staleLanguageManifests, err := staleLanguageManifestFiles(args[0], languageManifestFiles)
+	if err != nil {
+		return err
+	}
 	for path, contents := range refreshAgreementFiles {
 		mockFiles[path] = contents
 	}
 	for path, contents := range sharedCredentialFiles {
+		mockFiles[path] = contents
+	}
+	for path, contents := range languageManifestFiles {
 		mockFiles[path] = contents
 	}
 	stale := staleMockFiles(args[0], manifest)
@@ -422,12 +433,15 @@ func generate(args []string) error {
 		if len(staleSharedCredential) > 0 {
 			return fmt.Errorf("generated shared credential test is stale because the manifest keeps no credentials on the host: %s", staleSharedCredential[0])
 		}
+		if len(staleLanguageManifests) > 0 {
+			return fmt.Errorf("generated language package manifest is stale: %s", staleLanguageManifests[0])
+		}
 		return checkGeneratedFiles(mockFiles)
 	}
 	if err := os.WriteFile(output, generated, 0o644); err != nil {
 		return fmt.Errorf("write %s: %w", output, err)
 	}
-	for _, path := range slices.Concat(stale, staleRefreshAgreement, staleSharedCredential) {
+	for _, path := range slices.Concat(stale, staleRefreshAgreement, staleSharedCredential, staleLanguageManifests) {
 		if err := os.Remove(path); err != nil {
 			return fmt.Errorf("remove stale %s: %w", path, err)
 		}
