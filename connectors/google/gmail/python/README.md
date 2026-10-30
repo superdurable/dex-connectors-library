@@ -6,7 +6,7 @@ Dex Python Flows. The package imports as `dex_connectors.google_gmail`.
 ## Install
 
 After release, install `dex-connector-google-gmail==0.1.0`. The package requires
-`dex-connectors-sdk>=0.1.0` and `dex-python-sdk>=1.28.0`; the latter provides
+`dex-connectors-sdk==0.1.0` and `dex-python-sdk>=1.28.0`; the latter provides
 Go-compatible JSON field metadata and the Flow start and attempt deadline
 needed for Gmail's duplicate-send fence.
 
@@ -23,11 +23,11 @@ coordinates token refresh and persists rotated refresh tokens. A service-account
 key with Workspace domain-wide delegation is the administrator-only alternative.
 
 The Python connector uses the same manifest authorization guide and safe
-defaults as the Go connector. Dex CLI's Python FDG 2.0 connector identity (R4)
-must be released before Dex Web can discover the connection from a Python Flow.
-Until that support is available, this package does not claim Dex Web Connections
-verification. Do not put access tokens, refresh tokens, or service-account keys
-in Flow input, results, Attributes, Streams, logs, or mock reports.
+defaults as the Go connector. Dex CLI 1.28.0 and later can analyze its Python
+Flow and generated connector metadata for Dex Web Connections. Dex Web
+authorization has not been live-verified with this package. Do not put access
+tokens, refresh tokens, or service-account keys in Flow input, results,
+Attributes, Streams, logs, or mock reports.
 
 ## Run the example
 
