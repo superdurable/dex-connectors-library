@@ -807,6 +807,20 @@ class ComponentReleaseTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "no changes"):
             self.plan("minor")
 
+    def test_connector_release_title_names_language(self) -> None:
+        self.assertEqual(release.connector_release_title("Zoom", "go", "v0.24.0"), "Zoom Go v0.24.0")
+        self.assertEqual(release.connector_release_title("Stripe", "python", "v0.1.0"), "Stripe Python v0.1.0")
+        self.assertEqual(release.connector_release_title("Stripe", "typescript", "v0.1.0"), "Stripe TypeScript v0.1.0")
+        self.assertEqual(release.connector_release_title("Stripe", "go", "v0.25.0-rc.1"), "Stripe Go v0.25.0-rc.1")
+        self.assertEqual(release.connector_release_title("Google Sheets", "go", "v1.0.0"), "Google Sheets Go v1.0.0")
+
+    def test_connector_release_title_rejects_invalid_input(self) -> None:
+        for display_name, language, version in (("Zoom", "rust", "v0.1.0"), ("Zoom", "Go", "v0.1.0"),
+                                                ("Zoom", "go", "0.1.0"), ("", "go", "v0.1.0"),
+                                                ("Zoom\n", "go", "v0.1.0x"), ("Zo\nom", "go", "v0.1.0")):
+            with self.assertRaises(ValueError, msg=(display_name, language, version)):
+                release.connector_release_title(display_name, language, version)
+
     def test_breaking_notes_reject_v0_patch(self) -> None:
         self.git("tag", "sdkgo/v0.1.0")
         (self.repository / "sdkgo/sdk.go").write_text("package sdkgo\n\nconst Version = 2\n", encoding="utf-8")

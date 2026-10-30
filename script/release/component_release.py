@@ -28,6 +28,7 @@ LIBRARY_MODULE_PATH = "github.com/superdurable/dex-connectors-library"
 CONNECTOR_MODULE_PATH_PREFIX = f"{LIBRARY_MODULE_PATH}/connectors/"
 CONNECTOR_RELEASE_COMPLETE_ASSET = "connector-release.complete"
 NPM_REPOSITORY_URL = "git+https://github.com/superdurable/dex-connectors-library.git"
+LANGUAGE_DISPLAY_NAMES = {"go": "Go", "python": "Python", "typescript": "TypeScript"}
 
 
 @dataclass(frozen=True)
@@ -135,6 +136,18 @@ def parse_version(version: str) -> tuple[int, int, int]:
     if match is None:
         raise ValueError(f"invalid stable semantic version: {version}")
     return tuple(int(part) for part in match.groups())
+
+
+def connector_release_title(display_name: str, language: str, version: str) -> str:
+    """Returns the GitHub release title, such as `Stripe Python v0.1.0`, for one connector language."""
+    if language not in LANGUAGE_DISPLAY_NAMES:
+        raise ValueError(f"unsupported connector release language: {language}")
+    if RELEASE_ARTIFACT_VERSION_PATTERN.fullmatch(version) is None:
+        raise ValueError(f"invalid connector release version: {version}")
+    trimmed_display_name = display_name.strip()
+    if not trimmed_display_name or any(not character.isprintable() for character in trimmed_display_name):
+        raise ValueError(f"invalid connector display name: {display_name!r}")
+    return f"{trimmed_display_name} {LANGUAGE_DISPLAY_NAMES[language]} {version}"
 
 
 def next_version(baseline: str, bump: str) -> str:
@@ -940,6 +953,10 @@ def main() -> int:
     plan_parser.add_argument("--ref", default="")
     plan_parser.add_argument("--json-output", type=Path, required=True)
     plan_parser.add_argument("--github-output", type=Path, required=True)
+    title_parser = subparsers.add_parser("release-title")
+    title_parser.add_argument("--display-name", required=True)
+    title_parser.add_argument("--language", choices=tuple(LANGUAGE_DISPLAY_NAMES), required=True)
+    title_parser.add_argument("--version", required=True)
     notes_parser = subparsers.add_parser("notes")
     notes_parser.add_argument("--plan", type=Path, required=True)
     notes_parser.add_argument("--repository", required=True)
@@ -991,6 +1008,8 @@ def main() -> int:
             )
             arguments.json_output.write_text(json.dumps(asdict(plan), indent=2) + "\n", encoding="utf-8")
             write_github_output(arguments.github_output, plan)
+        elif arguments.command == "release-title":
+            print(connector_release_title(arguments.display_name, arguments.language, arguments.version))
         elif arguments.command == "notes":
             raw = json.loads(arguments.plan.read_text(encoding="utf-8"))
             raw["commits"] = tuple(raw["commits"])

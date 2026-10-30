@@ -147,10 +147,14 @@ jobs:
             done
           fi
           if [ "${RELEASE_DRY_RUN}" = true ]; then release_required=true; fi
+          # Recovery checks out the tagged source, whose release tooling may predate release-title.
+          release_title="$(python3 script/release/component_release.py release-title \
+            --display-name "${RELEASE_DISPLAY_NAME}" --language go --version "${RELEASE_VERSION}")"
           {
             echo "release_required=${release_required}"
             echo "source_sha=${source_sha}"
             echo "tag=${release_tag}"
+            echo "title=${release_title}"
           } >> "${GITHUB_OUTPUT}"
       - name: Verify current Connector with the latest stable Dex CLI and Web
         if: steps.state.outputs.release_required == 'true' && steps.state.outputs.source_sha == github.sha
@@ -244,6 +248,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.state.outputs.tag }}
+          RELEASE_TITLE: ${{ steps.state.outputs.title }}
           SOURCE_SHA: ${{ steps.release-plan.outputs.source_sha }}
         run: |
           assets=(/tmp/connector-release.json /tmp/connector-release.json.sha256)
@@ -252,19 +257,19 @@ jobs:
           fi
           if gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
             gh release edit "${RELEASE_TAG}" \
-              --title "${RELEASE_DISPLAY_NAME} ${RELEASE_VERSION}" \
+              --title "${RELEASE_TITLE}" \
               --notes-file /tmp/connector-release-notes.md
             gh release upload "${RELEASE_TAG}" --clobber "${assets[@]}"
           elif git show-ref --verify --quiet "refs/tags/${RELEASE_TAG}"; then
             gh release create "${RELEASE_TAG}" \
               --verify-tag \
-              --title "${RELEASE_DISPLAY_NAME} ${RELEASE_VERSION}" \
+              --title "${RELEASE_TITLE}" \
               --notes-file /tmp/connector-release-notes.md \
               "${assets[@]}"
           else
             gh release create "${RELEASE_TAG}" \
               --target "${SOURCE_SHA}" \
-              --title "${RELEASE_DISPLAY_NAME} ${RELEASE_VERSION}" \
+              --title "${RELEASE_TITLE}" \
               --notes-file /tmp/connector-release-notes.md \
               "${assets[@]}"
           fi
@@ -541,11 +546,14 @@ jobs:
           SOURCE_SHA: ${{ steps.state.outputs.source_sha }}
         run: |
           tag="${TAG_PREFIX}${RELEASE_VERSION}"
+          title="$(python3 "${RUNNER_TEMP}/component_release.py" release-title \
+            --display-name "${RELEASE_DISPLAY_NAME}" --language "${LANGUAGE}" --version "${RELEASE_VERSION}")"
           if gh release view "${tag}" >/dev/null 2>&1; then
+            gh release edit "${tag}" --title "${title}"
             gh release upload "${tag}" --clobber "${RUNNER_TEMP}"/language-work/dist/*
           else
             gh release create "${tag}" --target "${SOURCE_SHA}" \
-              --title "${RELEASE_DISPLAY_NAME} ${LANGUAGE} ${RELEASE_VERSION}" \
+              --title "${title}" \
               --notes-file "${RUNNER_TEMP}/language-work/notes.md" "${RUNNER_TEMP}"/language-work/dist/*
           fi
       - name: Mark language release complete
