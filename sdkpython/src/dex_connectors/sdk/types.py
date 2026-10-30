@@ -5,12 +5,13 @@
 import hashlib
 import re
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
-from typing import Generic, TypeVar, cast
+from datetime import datetime, timedelta
+from typing import Generic, Literal, TypeVar, cast
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 from .errors import Failure
 from .retry_policy import RetryPolicy
+from .timestamps import RFC3339NanoTimestamp, format_rfc3339_nano
 
 T = TypeVar("T")
 CONNECTOR_ID_PATTERN = re.compile(r"^[a-z][a-z0-9-]{1,62}$")
@@ -221,14 +222,15 @@ class QueryDefinition:
     """Query identity, stable routes, and Execute defaults."""
 
     operation: OperationRef
-    branches: tuple[BranchDefinition, ...]
+    branches: tuple[BranchDefinition, ...] | None
     step_defaults: StepDefaults
 
     def validate(self) -> None:
         """Require distinct routes, a defect branch, and no uncertainty route."""
         self.operation.validate()
-        if not self.branches:
-            raise ValueError("at least one branch is required")
+        if self.branches is None or not self.branches:
+            self.step_defaults.validate()
+            return
         ids = [branch.id for branch in self.branches]
         if len(ids) != len(set(ids)) or DEFECT_BRANCH_ID not in ids or UNCERTAIN_BRANCH_ID in ids:
             raise ValueError("invalid Query branches")
@@ -241,7 +243,7 @@ class QueryDefinition:
         self.validate()
         return {
             "operation": self.operation.to_wire(),
-            "branches": [branch.to_wire() for branch in self.branches],
+            "branches": [branch.to_wire() for branch in self.branches] if self.branches is not None else None,
             "stepDefaults": self.step_defaults.to_wire(),
         }
 
@@ -249,10 +251,12 @@ class QueryDefinition:
     def from_wire(cls, value: dict[str, object]) -> "QueryDefinition":
         """Decode a Go Query definition."""
         operation = cast(dict[str, str], value["operation"])
-        branches = cast(list[dict[str, object]], value["branches"])
+        branches = cast(list[dict[str, object]] | None, value["branches"])
         result = cls(
             OperationRef(operation["connectorId"], operation["operationId"]),
-            tuple(BranchDefinition.from_wire(branch) for branch in branches),
+            tuple(BranchDefinition.from_wire(branch) for branch in branches)
+            if branches is not None
+            else None,
             StepDefaults.from_wire(cast(dict[str, object], value["stepDefaults"])),
         )
         result.validate()
@@ -266,8 +270,9 @@ class MutationDefinition(QueryDefinition):
     def validate(self) -> None:
         """Require distinct routes and a defect branch; uncertainty is optional."""
         self.operation.validate()
-        if not self.branches:
-            raise ValueError("at least one branch is required")
+        if self.branches is None or not self.branches:
+            self.step_defaults.validate()
+            return
         ids = [branch.id for branch in self.branches]
         if len(ids) != len(set(ids)) or DEFECT_BRANCH_ID not in ids:
             raise ValueError("invalid Mutation branches")
@@ -282,25 +287,18 @@ class Receipt:
 
     call_id: CallID
     provider: str
-    observed_at: datetime
+    observed_at: RFC3339NanoTimestamp | datetime
     idempotency_key: IdempotencyKey = IdempotencyKey("")
     provider_object_id: str = ""
     provider_request_id: str = ""
     metadata: dict[str, str] = field(default_factory=dict)
-    _observed_at_wire: str | None = field(default=None, repr=False, compare=False)
 
     def to_wire(self) -> dict[str, object]:
         """Encode Go's camel-case receipt and RFC 3339 timestamp."""
-        timestamp = self.observed_at.astimezone(UTC).isoformat(timespec="microseconds").replace("+00:00", "Z")
-        date_and_time, fraction = timestamp[:-1].split(".")
-        observed_at = (
-            self._observed_at_wire
-            or date_and_time + ("." + fraction.rstrip("0") if fraction.rstrip("0") else "") + "Z"
-        )
         result: dict[str, object] = {
             "callId": str(self.call_id),
             "provider": self.provider,
-            "observedAt": observed_at,
+            "observedAt": format_rfc3339_nano(self.observed_at),
         }
         if self.idempotency_key:
             result["idempotencyKey"] = str(self.idempotency_key)
@@ -333,12 +331,11 @@ class Receipt:
         return cls(
             call_id,
             value["provider"],
-            datetime.fromisoformat(value["observedAt"].replace("Z", "+00:00")),
+            RFC3339NanoTimestamp.from_wire(value["observedAt"]),
             IdempotencyKey(value.get("idempotencyKey", "")),
             value.get("providerObjectId", ""),
             value.get("providerRequestId", ""),
             metadata,
-            value["observedAt"],
         )
 
 
@@ -350,6 +347,13 @@ class QueryResult(Generic[T]):
     value: T
     receipt: Receipt
     failure: Failure | None = None
+
+    def __post_init__(self) -> None:
+        """Reject malformed Query routes before they enter Flow state."""
+        if not self.branch or self.branch == UNCERTAIN_BRANCH_ID or not isinstance(self.receipt, Receipt):
+            raise ValueError("Query result branch is invalid")
+        if self.failure is not None:
+            self.failure.validate()
 
     def to_wire(self) -> dict[str, object]:
         """Encode a Query result with Go's optional failure omission."""
@@ -372,20 +376,79 @@ class QueryResult(Generic[T]):
 
 
 @dataclass(frozen=True, slots=True)
-class MutationResult(QueryResult[T]):
+class MutationResult(Generic[T]):
     """Validated terminal Mutation route with the same wire shape as QueryResult."""
+
+    branch: str
+    value: T
+    receipt: Receipt
+    failure: Failure | None = None
+
+    def __post_init__(self) -> None:
+        """Require failure context for an uncertain write route."""
+        if (
+            not self.branch
+            or not isinstance(self.receipt, Receipt)
+            or (self.branch == UNCERTAIN_BRANCH_ID and self.failure is None)
+        ):
+            raise ValueError("Mutation result branch is invalid")
+        if self.failure is not None:
+            self.failure.validate()
+
+    def to_wire(self) -> dict[str, object]:
+        """Encode a Mutation result with Go's optional failure omission."""
+        result: dict[str, object] = {
+            "branch": self.branch,
+            "value": self.value,
+            "receipt": self.receipt.to_wire(),
+        }
+        if self.failure is not None:
+            result["failure"] = self.failure.to_wire()
+        return result
+
+    @classmethod
+    def from_wire(cls, value: dict[str, object]) -> "MutationResult[T]":
+        """Decode a Mutation result without erasing its typed value."""
+        failure = Failure.from_wire(value["failure"]) if "failure" in value else None
+        return cls(
+            str(value["branch"]), cast(T, value["value"]), Receipt.from_wire(value["receipt"]), failure
+        )
 
 
 @dataclass(frozen=True, slots=True)
 class QueryAttempt(Generic[T]):
     """One provider Query outcome before Step factory validation."""
 
-    kind: str
+    kind: Literal["branch", "retry"]
     branch: str = ""
     value: T | None = None
     receipt: Receipt | None = None
     failure: Failure | None = None
     retry_after_seconds: float = 0
+
+    def __post_init__(self) -> None:
+        """Keep retry and terminal outcomes disjoint."""
+        if self.kind == "retry":
+            if (
+                self.failure is None
+                or self.retry_after_seconds < 0
+                or self.branch
+                or self.receipt is not None
+                or self.value is not None
+            ):
+                raise ValueError("Query retry requires failure and nonnegative delay")
+        elif self.kind == "branch":
+            if (
+                not self.branch
+                or self.branch == UNCERTAIN_BRANCH_ID
+                or self.receipt is None
+                or self.retry_after_seconds != 0
+            ):
+                raise ValueError("Query branch requires route and receipt")
+        else:
+            raise ValueError("Query attempt kind is invalid")
+        if self.failure is not None:
+            self.failure.validate()
 
     @classmethod
     def branch_result(
@@ -401,8 +464,50 @@ class QueryAttempt(Generic[T]):
 
 
 @dataclass(frozen=True, slots=True)
-class MutationAttempt(QueryAttempt[T]):
+class MutationAttempt(Generic[T]):
     """One provider Mutation outcome, including narrowly justified uncertainty."""
+
+    kind: Literal["branch", "retry", "uncertain"]
+    branch: str = ""
+    value: T | None = None
+    receipt: Receipt | None = None
+    failure: Failure | None = None
+    retry_after_seconds: float = 0
+
+    def __post_init__(self) -> None:
+        """Require evidence context for each Mutation outcome category."""
+        if self.kind == "retry":
+            if (
+                self.failure is None
+                or self.retry_after_seconds < 0
+                or self.branch
+                or self.receipt is not None
+                or self.value is not None
+            ):
+                raise ValueError("Mutation retry requires failure and nonnegative delay")
+        elif self.kind in ("branch", "uncertain"):
+            if not self.branch or self.receipt is None or self.retry_after_seconds != 0:
+                raise ValueError("Mutation terminal outcome requires route and receipt")
+            if self.kind == "branch" and self.branch == UNCERTAIN_BRANCH_ID:
+                raise ValueError("uncertainty requires an uncertain Mutation attempt")
+            if self.kind == "uncertain" and (self.branch != UNCERTAIN_BRANCH_ID or self.failure is None):
+                raise ValueError("uncertain Mutation requires failure and uncertainty route")
+        else:
+            raise ValueError("Mutation attempt kind is invalid")
+        if self.failure is not None:
+            self.failure.validate()
+
+    @classmethod
+    def branch_result(
+        cls, branch: str, value: T, receipt: Receipt, failure: Failure | None = None
+    ) -> "MutationAttempt[T]":
+        """Construct a definite Mutation business outcome."""
+        return cls("branch", branch, value, receipt, failure)
+
+    @classmethod
+    def retry(cls, failure: Failure, retry_after_seconds: float = 0) -> "MutationAttempt[T]":
+        """Construct a retryable Mutation failure."""
+        return cls("retry", failure=failure, retry_after_seconds=retry_after_seconds)
 
     @classmethod
     def uncertain(cls, value: T, failure: Failure, receipt: Receipt) -> "MutationAttempt[T]":

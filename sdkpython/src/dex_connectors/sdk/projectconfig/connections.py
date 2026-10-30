@@ -9,7 +9,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from .models import Scope, digest_bytes, json_bytes, require_object
+from ..timestamps import RFC3339NanoTimestamp, format_rfc3339_nano
+from .models import Scope, digest_bytes, go_canonical_json_bytes, require_object
 from .storage import Object, ObjectConflictError, ObjectNotFoundError, ObjectStore, OutcomeUnknownError
 
 CONNECTION_SCHEMA_VERSION = "connectors.dex.dev/project-connection/v1alpha2"
@@ -46,7 +47,7 @@ class CredentialMaterial:
     """Private connector credential object; never serialize into Flow state."""
 
     credentials: dict[str, Any]
-    expires_at: datetime | None
+    expires_at: RFC3339NanoTimestamp | datetime | None
     auth_method: str
 
     def __repr__(self) -> str:
@@ -69,6 +70,71 @@ class Connection:
     status: str
     expires_at: datetime | None
     auth_method: str
+
+
+def _credential_envelope_wire(
+    scope: Scope,
+    key: ConnectionKey,
+    fence: int,
+    credentials: dict[str, Any],
+    expires_at: RFC3339NanoTimestamp | datetime | None,
+    auth_method: str,
+    attempt_id: str = "",
+) -> dict[str, object]:
+    result: dict[str, object] = {
+        "schemaVersion": CONNECTION_SCHEMA_VERSION,
+        "scope": scope.to_wire(),
+        "connection": key.to_wire(),
+        "fence": fence,
+    }
+    if attempt_id:
+        result["attemptId"] = attempt_id
+    result["credentials"] = dict(sorted(credentials.items()))
+    if expires_at is not None:
+        result["expiresAt"] = format_rfc3339_nano(expires_at)
+    result["authMethod"] = auth_method
+    return result
+
+
+def _connection_record_wire(
+    scope: Scope,
+    key: ConnectionKey,
+    revision: int,
+    fence: int,
+    status: str,
+    expires_at: RFC3339NanoTimestamp | datetime | None,
+    auth_method: str,
+    credential_reference: dict[str, str] | None,
+    mutation: dict[str, object] | None = None,
+) -> dict[str, object]:
+    result: dict[str, object] = {
+        "schemaVersion": CONNECTION_SCHEMA_VERSION,
+        "connection": key.to_wire(),
+        "scope": scope.to_wire(),
+        "revision": revision,
+        "fence": fence,
+        "status": status,
+    }
+    if expires_at is not None:
+        result["expiresAt"] = format_rfc3339_nano(expires_at)
+    result["authMethod"] = auth_method
+    if credential_reference is not None:
+        result["credential"] = {
+            "key": credential_reference["key"],
+            "version": credential_reference["version"],
+            "digest": credential_reference["digest"],
+        }
+    if mutation is not None:
+        result["mutation"] = {
+            "kind": mutation["kind"],
+            "invocationId": mutation["invocationId"],
+            "id": mutation["id"],
+            "fence": mutation["fence"],
+            "baseRevision": mutation["baseRevision"],
+            "deadline": format_rfc3339_nano(RFC3339NanoTimestamp.from_wire(str(mutation["deadline"]))),
+            "resultKey": mutation["resultKey"],
+        }
+    return result
 
 
 class ConnectionStore:
@@ -107,7 +173,11 @@ class ConnectionStore:
             raise ValueError("project credential identity differs")
         credentials = require_object(envelope.get("credentials"), "credentials")
         return CredentialMaterial(
-            credentials, self._parse_time(envelope.get("expiresAt")), connection.auth_method
+            credentials,
+            RFC3339NanoTimestamp.from_wire(str(envelope["expiresAt"]))
+            if envelope.get("expiresAt") is not None
+            else None,
+            connection.auth_method,
         ), connection
 
     async def replace_credential(
@@ -127,18 +197,10 @@ class ConnectionStore:
         if record["revision"] != expected_revision:
             raise ObjectConflictError("connection revision conflict")
         fence = int(record["fence"]) + 1
-        expiry = material.expires_at.isoformat().replace("+00:00", "Z") if material.expires_at else None
-        envelope: dict[str, object] = {
-            "schemaVersion": CONNECTION_SCHEMA_VERSION,
-            "scope": self.scope.to_wire(),
-            "connection": key.to_wire(),
-            "fence": fence,
-            "credentials": dict(sorted(material.credentials.items())),
-        }
-        if expiry is not None:
-            envelope["expiresAt"] = expiry
-        envelope["authMethod"] = material.auth_method
-        contents = json_bytes(envelope)
+        envelope = _credential_envelope_wire(
+            self.scope, key, fence, material.credentials, material.expires_at, material.auth_method
+        )
+        contents = go_canonical_json_bytes(envelope)
         immutable_key = f"{path}/credentials/{digest_bytes(contents)[7:]}"
         try:
             candidate = await self.objects.create_object(immutable_key, contents)
@@ -147,19 +209,17 @@ class ConnectionStore:
             if candidate.contents != contents:
                 raise ValueError("immutable credential content differs") from None
         reference = {"key": immutable_key, "version": candidate.version, "digest": digest_bytes(contents)[7:]}
-        new_record: dict[str, object] = {
-            "schemaVersion": CONNECTION_SCHEMA_VERSION,
-            "connection": key.to_wire(),
-            "scope": self.scope.to_wire(),
-            "revision": expected_revision + 1,
-            "fence": fence,
-            "status": "READY",
-        }
-        if expiry is not None:
-            new_record["expiresAt"] = expiry
-        new_record["authMethod"] = material.auth_method
-        new_record["credential"] = reference
-        head_contents = json_bytes(new_record)
+        new_record = _connection_record_wire(
+            self.scope,
+            key,
+            expected_revision + 1,
+            fence,
+            "READY",
+            material.expires_at,
+            material.auth_method,
+            reference,
+        )
+        head_contents = go_canonical_json_bytes(new_record)
         try:
             if head is None:
                 await self.objects.create_object(f"{path}/head", head_contents)

@@ -18,6 +18,7 @@ from .credentials import (
 )
 from .errors import Failure, FailureKind, RetryError
 from .retry_policy import RetryPolicy, default_connector_step_execute_retry_policy
+from .timestamps import RFC3339NanoTimestamp, format_rfc3339_nano
 from .types import (
     BranchDefinition,
     Call,
@@ -59,6 +60,7 @@ __all__ = [
     "QueryAttempt",
     "QueryDefinition",
     "QueryResult",
+    "RFC3339NanoTimestamp",
     "Receipt",
     "StepDefaults",
     "ReauthorizationRequiredError",
@@ -67,4 +69,5 @@ __all__ = [
     "SecretString",
     "default_connector_step_execute_retry_policy",
     "derive_call_id",
+    "format_rfc3339_nano",
 ]

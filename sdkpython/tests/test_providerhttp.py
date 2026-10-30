@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Bounded provider HTTP and positive request-dispatch evidence tests."""
 
+from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
 
 import httpx
@@ -88,3 +89,32 @@ def test_retry_after_and_token_parser_reject_ambiguous_values() -> None:
     assert read_error_tokens(b"not-json", ("/error/code",)) == ()
     assert read_error_tokens(b'{"error":{"code":"SECRET TOKEN WITH SPACES"}}', ("/error/code",)) == ()
     assert read_error_tokens(b'{"errors":[{"code":"busy"}]}', ("/errors/0/code",)) == ("busy",)
+    assert read_error_tokens(b'{"value":1.50,"power":1e3}', ("/value", "/power")) == ("1.50", "1e3")
+
+
+@pytest.mark.asyncio
+async def test_bounded_reader_closes_stream_on_overflow_and_transport_error() -> None:
+    """A failed bounded read releases its streaming connection."""
+
+    class Stream(httpx.AsyncByteStream):
+        def __init__(self, fail: bool) -> None:
+            self.fail = fail
+            self.closed = False
+
+        async def __aiter__(self) -> AsyncIterator[bytes]:
+            if self.fail:
+                raise httpx.ReadError("private provider details")
+            yield b"12345"
+
+        async def aclose(self) -> None:
+            self.closed = True
+
+    overflow = Stream(False)
+    with pytest.raises(BodyTooLargeError):
+        await read_bounded_body(httpx.Response(200, stream=overflow), 4)
+    assert overflow.closed
+    failed = Stream(True)
+    with pytest.raises(ProviderTransportError) as caught:
+        await read_bounded_body(httpx.Response(200, stream=failed), 4)
+    assert failed.closed
+    assert "private provider" not in str(caught.value)

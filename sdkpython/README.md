@@ -59,6 +59,8 @@ only safe machine tokens from bounded JSON error bodies, and
 `parse_retry_after` accepts delta seconds or HTTP dates capped at one hour.
 `send_traced` reports `ProviderTransportError.provably_not_sent` only after a
 traced pre-send connection failure; all other transport failures fail closed.
+The caller closes the streaming response returned by `send_traced`; the bounded
+reader closes it on success and failure.
 The core example sends through an in-process HTTP transport.
 
 ## Project configuration
@@ -69,7 +71,9 @@ development or the trusted `DEX_PROJECT_*` hosted S3 contract. Local
 `0600` files. Hosted reads pin an exact version and SHA-256 digest, and
 `ConfigurationStore` uses revision CAS. `S3ObjectStore.create` checks bucket
 versioning and its KMS boundary. Versioned documents use Go-compatible compact
-JSON bytes so Unicode values produce the same snapshot digests. `LoadedProject.resolve_credential` reads
+JSON bytes so Unicode values produce the same snapshot digests.
+`RFC3339NanoTimestamp` preserves provider offsets and nanoseconds when a
+credential or receipt is decoded. `LoadedProject.resolve_credential` reads
 credentials at call time; shared connections use the credential broker
 protocol, with a forced revision read after provider rejection. Never log or
 persist the returned credential object. The examples freeze an in-memory
@@ -82,10 +86,15 @@ owner-only Dex Web file, and exercise S3's conditional-write adapter.
 registration. `respond`, `when`, `default`, `strict`, and `for_flow` model the Go
 mock's precedence. Keyed terminal Mutation outcomes replay; retries consume
 the next case. `load_fixture` strictly reads JSON fixture objects and rejects
-duplicate fields. The core example answers a Query with a declared branch.
+duplicate fields. `assert_no_failures()` fails a test after an unscripted call
+or invalid page; `DEX_CONNECTOR_MOCK_REPORT_DIR` enables safe call rows in
+`connector-calls.json`. The core example answers a Query with a declared branch.
 
 ## Verification
 
-Run `uv sync --extra dev`, `uv run pytest`, `uv run mypy --strict src tests examples`, and
+Run `uv sync`, `uv run pytest`, `uv run mypy --strict src tests examples`, and
 `uv run ruff check src tests examples`. Real Dex Worker integration belongs to
 Phase 1b after the upstream SDK gaps are addressed and runs in CI.
+
+`StaticCredentialProvider`, the Go credential resolution helpers, provider
+address-policy client, and SSE reader are deferred to Phase 1b.

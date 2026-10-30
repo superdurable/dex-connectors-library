@@ -4,7 +4,9 @@
 
 import json
 import pickle
+from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 
@@ -15,9 +17,12 @@ from dex_connectors.sdk import (
     ConnectorUIBinding,
     ConnectorUIUnit,
     Failure,
+    FailureKind,
+    MutationAttempt,
     MutationDefinition,
     MutationResult,
     OperationRef,
+    QueryAttempt,
     QueryDefinition,
     QueryResult,
     ReauthorizationRequiredError,
@@ -29,7 +34,9 @@ from dex_connectors.sdk import (
     default_connector_step_execute_retry_policy,
     derive_call_id,
 )
+from dex_connectors.sdk.credentials import CredentialRefreshResult, CredentialRefreshState
 from dex_connectors.sdk.projectconfig.models import Scope, SnapshotRef
+from dex_connectors.sdk.timestamps import RFC3339NanoTimestamp
 
 
 def test_go_identity_and_results_round_trip(conformance_dir: Path) -> None:
@@ -45,6 +52,20 @@ def test_go_identity_and_results_round_trip(conformance_dir: Path) -> None:
     assert Call.from_wire(identity["derivedCall"]).to_wire() == identity["derivedCall"]
     assert derive_call_id(source["flowId"], "other", OperationRef("sample", "createItem")) != derived
     CallID(derived).validate()
+    assert identity["callIDNamespace"] == "63281a42-70ad-5bc3-a289-728819af723f"
+    assert (
+        derive_call_id(source["flowId"], "step-execution-8", OperationRef("sample", "createItem"))
+        == identity["differentStepCallId"]
+    )
+    assert (
+        derive_call_id(source["flowId"], source["stepExecutionId"], OperationRef("sample", "getItem"))
+        == identity["differentOperationCallId"]
+    )
+    assert identity["providerKey"] == f"sample/{derived}"
+    assert (
+        Receipt.from_wire(identity["fallbackCompletedReceipt"]).to_wire()
+        == identity["fallbackCompletedReceipt"]
+    )
     unicode_source = identity["unicodeSource"]
     assert (
         derive_call_id(
@@ -59,10 +80,10 @@ def test_go_identity_and_results_round_trip(conformance_dir: Path) -> None:
         if name.endswith("Receipt"):
             assert Receipt.from_wire(value).to_wire() == value
             continue
-        decoded: QueryResult[object] = (
-            MutationResult if name.startswith("mutation") else QueryResult
-        ).from_wire(value)
-        assert decoded.to_wire() == value
+        if name.startswith("mutation"):
+            assert MutationResult.from_wire(value).to_wire() == value
+        else:
+            assert QueryResult.from_wire(value).to_wire() == value
     nanosecond_result = dict(results["queryHappy"])
     nanosecond_result["receipt"] = dict(nanosecond_result["receipt"])
     nanosecond_result["receipt"]["observedAt"] = "2026-10-29T12:30:45.123456789Z"
@@ -93,6 +114,8 @@ def test_operation_definitions_round_trip(conformance_dir: Path) -> None:
     mutation = MutationDefinition.from_wire(fixture["mutationDefinition"])
     assert query.to_wire() == fixture["queryDefinition"]
     assert mutation.to_wire() == fixture["mutationDefinition"]
+    assert QueryDefinition.from_wire(fixture["emptyBranches"]).to_wire() == fixture["emptyBranches"]
+    assert QueryDefinition.from_wire(fixture["nullBranches"]).to_wire() == fixture["nullBranches"]
 
 
 def test_configuration_ui_validation_and_secret_redaction() -> None:
@@ -116,6 +139,33 @@ def test_configuration_ui_validation_and_secret_redaction() -> None:
         pickle.dumps(secret)
     reauthorization = ReauthorizationRequiredError(Exception("inert-provider-detail"))
     assert "inert-provider-detail" not in str(reauthorization) + repr(reauthorization)
+
+
+def test_timestamp_attempt_validation_and_refresh_repr() -> None:
+    """Preserve offsets and hide credentials while rejecting impossible outcomes."""
+    observed = RFC3339NanoTimestamp.from_wire("2026-10-29T12:30:45.123456789+08:00")
+    receipt = Receipt(CallID("5af8fafa-06ff-5b2d-bb13-04693809fabf"), "sample", observed)
+    assert receipt.to_wire()["observedAt"] == str(observed)
+    local = Receipt(
+        receipt.call_id,
+        "sample",
+        datetime(2026, 10, 29, 12, 30, 45, 123000, timezone(timedelta(hours=8))),
+    )
+    assert local.to_wire()["observedAt"] == "2026-10-29T12:30:45.123+08:00"
+    failure = Failure(FailureKind.TRANSPORT, "sample", "createItem", "inert")
+    with pytest.raises(ValueError):
+        QueryAttempt("retry")
+    with pytest.raises(ValueError):
+        QueryAttempt(cast(Any, "uncertain"), "uncertain", receipt=receipt, failure=failure)
+    with pytest.raises(ValueError):
+        MutationAttempt("retry", failure=failure, retry_after_seconds=-1)
+    with pytest.raises(ValueError):
+        MutationResult("uncertain", None, receipt)
+    with pytest.raises(ValueError):
+        QueryResult("uncertain", None, receipt)
+    state = CredentialRefreshState({"refreshToken": "INERT_SECRET"}, None, datetime.now(UTC))
+    result = CredentialRefreshResult({"refreshToken": "INERT_SECRET"}, datetime.now(UTC))
+    assert "INERT_SECRET" not in repr(state) + repr(result)
 
 
 def test_failure_decoding_and_retry_input_reject_invalid_values() -> None:

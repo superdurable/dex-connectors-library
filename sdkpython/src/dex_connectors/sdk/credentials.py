@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Secret-safe async credential lookup and refresh interfaces."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Generic, Protocol, TypeVar
 
@@ -61,7 +61,7 @@ class CredentialProvider(Protocol[CovariantCredential]):
 class CredentialRefreshState(Generic[C]):
     """Current credential material, optional expiry, and decision time."""
 
-    credentials: C
+    credentials: C = field(repr=False)
     expires_at: datetime | None
     now: datetime
 
@@ -70,7 +70,7 @@ class CredentialRefreshState(Generic[C]):
 class CredentialRefreshResult(Generic[C]):
     """Complete replacement credential material and required expiry."""
 
-    credentials: C
+    credentials: C = field(repr=False)
     expires_at: datetime
 
 

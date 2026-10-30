@@ -101,7 +101,7 @@ def digest_bytes(contents: bytes) -> str:
     return "sha256:" + hashlib.sha256(contents).hexdigest()
 
 
-def json_bytes(value: object) -> bytes:
+def go_canonical_json_bytes(value: object) -> bytes:
     """Encode Go-compatible compact JSON for versioned object digests."""
     serialized = json.dumps(value, separators=(",", ":"), ensure_ascii=False)
     for character, escape in (

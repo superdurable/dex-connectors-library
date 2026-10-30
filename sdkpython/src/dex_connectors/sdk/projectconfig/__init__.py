@@ -274,7 +274,12 @@ async def load_from_environment(
         from botocore.config import Config
 
         s3_client = boto3.client(
-            "s3", endpoint_url=endpoint or None, config=Config(retries={"max_attempts": 0})
+            "s3",
+            endpoint_url=endpoint or None,
+            config=Config(
+                retries={"max_attempts": 0},
+                s3={"addressing_style": "path"} if endpoint else None,
+            ),
         )
     objects = await S3ObjectStore.create(
         s3_client, bucket, values.get("DEX_PROJECT_STORAGE_PREFIX", ""), kms_key, allow_local == "true"

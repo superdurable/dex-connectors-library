@@ -15,8 +15,8 @@ from .models import (
     Scope,
     SnapshotRef,
     digest_bytes,
+    go_canonical_json_bytes,
     is_application_environment_name,
-    json_bytes,
     require_object,
     validate_environment_value,
     validate_secret_reference,
@@ -302,7 +302,7 @@ class ConfigurationStore:
             configuration.credential_broker,
             schema_version,
         )
-        contents = json_bytes(updated.to_wire())
+        contents = go_canonical_json_bytes(updated.to_wire())
         try:
             if previous_object is None:
                 item = await self.objects.create_object(self.key, contents)
@@ -362,7 +362,7 @@ class ConfigurationStore:
 
     async def _create_secret(self, name: str, value: str) -> ApplicationSecretRef:
         key = f"{self.scope.prefix}/app-secrets/{name}/{secrets.token_hex(16)}"
-        contents = json_bytes({"scope": self.scope.to_wire(), "name": name, "value": value})
+        contents = go_canonical_json_bytes(_application_secret_wire(self.scope, name, value))
         try:
             item = await self.objects.create_object(key, contents)
         except (ObjectConflictError, OutcomeUnknownError):
@@ -381,3 +381,7 @@ class ConfigurationStore:
         if configuration.scope != self.scope:
             raise ValueError("configuration document scope differs")
         return configuration
+
+
+def _application_secret_wire(scope: Scope, name: str, value: str) -> dict[str, object]:
+    return {"scope": scope.to_wire(), "name": name, "value": value}

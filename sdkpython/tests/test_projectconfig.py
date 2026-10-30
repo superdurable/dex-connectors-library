@@ -10,6 +10,7 @@ from pathlib import Path
 import httpx
 import pytest
 
+from dex_connectors.sdk.credentials import ReauthorizationRequiredError
 from dex_connectors.sdk.projectconfig import (
     Configuration,
     ConfigurationStore,
@@ -25,39 +26,126 @@ from dex_connectors.sdk.projectconfig import (
     load_project_from_object_store,
 )
 from dex_connectors.sdk.projectconfig.broker import (
+    ConnectionNotSelectedError,
     CredentialBrokerClient,
     CredentialBrokerRejectedError,
     CredentialBrokerUnavailableError,
     RejectedCredentialNotRefreshedError,
     SharedConnection,
 )
+from dex_connectors.sdk.projectconfig.connections import (
+    _connection_record_wire,
+    _credential_envelope_wire,
+)
 from dex_connectors.sdk.projectconfig.models import (
     ApplicationSecretRef,
     CredentialBrokerConfiguration,
     digest_bytes,
-    json_bytes,
+    go_canonical_json_bytes,
+    validate_secret_reference,
 )
 from dex_connectors.sdk.projectconfig.storage import (
     ObjectConflictError,
     OutcomeUnknownError,
     S3ObjectStore,
 )
+from dex_connectors.sdk.timestamps import RFC3339NanoTimestamp
 
 
-def test_go_canonical_snapshot_and_credential_bytes(conformance_dir: Path) -> None:
+@pytest.mark.asyncio
+async def test_go_canonical_snapshot_and_credential_bytes(conformance_dir: Path) -> None:
     """Match Go's Unicode escaping, field order, digest, and local CAS identity."""
     fixture = json.loads((conformance_dir / "project-storage.json").read_text())
     configuration = Configuration.from_wire(fixture["configurationSnapshotDocument"])
-    snapshot_bytes = json_bytes(configuration.to_wire())
+    objects = InMemoryObjectStore()
+    configuration_store = ConfigurationStore(objects, configuration.scope)
+    _, written_snapshot = await configuration_store.write_configuration(0, configuration)
+    snapshot_bytes = written_snapshot.contents
     assert snapshot_bytes.decode() == fixture["configurationSnapshotCanonicalJSON"]
     assert digest_bytes(snapshot_bytes) == fixture["snapshot"]["digest"]
-    credential_bytes = json_bytes(fixture["credentialEnvelope"])
+    assert (await configuration_store.freeze_configuration(1)).to_wire() == fixture["snapshot"]
+    connection_key = ConnectionKey(
+        fixture["connectionKey"]["connectorId"], fixture["connectionKey"]["connectionName"]
+    )
+    assert connection_key.path(configuration.scope) + "/head" == fixture["connectionHeadKey"]
+    credential_fixture = fixture["credentialEnvelope"]
+    timestamp = RFC3339NanoTimestamp.from_wire(credential_fixture["expiresAt"])
+    connection_store = ConnectionStore(objects, configuration.scope)
+    await connection_store.replace_credential(
+        connection_key,
+        0,
+        CredentialMaterial(credential_fixture["credentials"], timestamp, credential_fixture["authMethod"]),
+    )
+    credential_key = fixture["credentialObjectKey"]
+    credential_bytes = (await objects.read_object(credential_key)).contents
     assert credential_bytes.decode() == fixture["credentialEnvelopeCanonicalJSON"]
     assert digest_bytes(credential_bytes)[7:] == fixture["objectReference"]["digest"]
-    connection_record_bytes = json_bytes(fixture["connectionRecord"])
+    assert (await objects.read_object(credential_key)).key == fixture["objectReference"]["key"]
+    loaded_credential, _ = await connection_store.read_credential_material(connection_key)
+    assert str(loaded_credential.expires_at) == credential_fixture["expiresAt"]
+    exchange_envelope = _credential_envelope_wire(
+        configuration.scope,
+        connection_key,
+        2,
+        credential_fixture["credentials"],
+        timestamp,
+        credential_fixture["authMethod"],
+        "attempt-7",
+    )
+    assert (
+        go_canonical_json_bytes(exchange_envelope).decode()
+        == fixture["credentialExchangeEnvelopeCanonicalJSON"]
+    )
+    record_fixture = fixture["connectionRecord"]
+    connection_record_bytes = go_canonical_json_bytes(
+        _connection_record_wire(
+            configuration.scope,
+            connection_key,
+            record_fixture["revision"],
+            record_fixture["fence"],
+            record_fixture["status"],
+            timestamp,
+            record_fixture["authMethod"],
+            fixture["objectReference"],
+            fixture["mutation"],
+        )
+    )
     assert connection_record_bytes.decode() == fixture["connectionRecordCanonicalJSON"]
     expected_etag = f"{digest_bytes(connection_record_bytes)[7:]}-{fixture['objectCAS']['version']}"
     assert expected_etag == fixture["objectCAS"]["etag"]
+    assert fixture["objectCAS"]["key"] == fixture["connectionHeadKey"]
+    cas_objects = InMemoryObjectStore()
+    initial = await cas_objects.create_object(fixture["connectionHeadKey"], b"{}")
+    observed_cas = await cas_objects.compare_and_swap_object(
+        fixture["connectionHeadKey"], initial.etag, connection_record_bytes
+    )
+    assert observed_cas.etag == fixture["objectCAS"]["etag"]
+    completed = fixture["completedConnectionRecord"]
+    assert (
+        _connection_record_wire(
+            configuration.scope,
+            connection_key,
+            completed["revision"],
+            completed["fence"],
+            completed["status"],
+            timestamp,
+            completed["authMethod"],
+            completed["credential"],
+        )
+        == completed
+    )
+    assert completed["credential"]["key"] == fixture["exchangeResultKey"]
+    secret_reference = ApplicationSecretRef.from_wire(fixture["applicationSecret"])
+    validate_secret_reference(secret_reference, configuration.scope, "DEX_CREDENTIAL_BROKER_TOKEN")
+    assert fixture["emptyTriggerInboxDocument"] == {
+        "schemaVersion": "connectors.dex.dev/project-trigger-inbox/v1alpha1",
+        "events": [],
+    }
+    assert (
+        json.loads(go_canonical_json_bytes(fixture["triggerInboxDocument"]))
+        == fixture["triggerInboxDocument"]
+    )
+    assert fixture["triggerInboxHeadKey"].startswith(configuration.scope.prefix + "/trigger-inboxes/sample/")
 
 
 @pytest.mark.asyncio
@@ -121,7 +209,16 @@ async def test_local_connections_file_schema_and_permissions(conformance_dir: Pa
     target.write_bytes(source.read_bytes())
     target.chmod(0o600)
     project = await load_dex_web_project(target)
-    assert len(project.configuration.connections) == len(json.loads(source.read_text())["connections"])
+    source_document = json.loads(source.read_text())
+    assert len(project.configuration.connections) == len(source_document["connections"])
+    assert {entry.connection_name for entry in project.configuration.connections} == {
+        entry["connectionName"] for entry in source_document["connections"]
+    }
+    assert project.configuration.trigger_bindings == tuple(source_document["triggerBindings"])
+    assert source_document["connections"][-1]["authMethodIds"] is None
+    assert (await project.resolve_credential(ConnectionKey("sample", "élément <&> 😀")))[
+        "apiKey"
+    ] == "REDACTED_UNICODE_KEY"
     assert (await project.resolve_credential(ConnectionKey("sample", "api")))["apiKey"] == "REDACTED_API_KEY"
     updated = json.loads(target.read_text())
     updated["connections"][0]["credentials"]["apiKey"] = "REDACTED_NEW_KEY"
@@ -171,14 +268,17 @@ async def test_pinned_application_secret_and_reserved_names() -> None:
     scope = Scope("project-1", "preview")
     objects = InMemoryObjectStore()
     store = ConfigurationStore(objects, scope)
-    reference = await store.create_application_secret("WEBHOOK_SECRET", "inert-secret")
+    reference = await store.create_application_secret("WEBHOOK_SECRET", "inert<&>\u2028secret")
     document = Configuration(
         scope, 1, (), environment={"WEBHOOK_SECRET": EnvironmentValue(secret_ref=reference)}
     )
     written, _ = await store.write_configuration(0, document)
     snapshot = await store.freeze_configuration(written.revision)
     project = await load_project_from_object_store(objects, scope, snapshot)
-    assert await project.resolve_application_environment() == {"WEBHOOK_SECRET": "inert-secret"}
+    assert await project.resolve_application_environment() == {"WEBHOOK_SECRET": "inert<&>\u2028secret"}
+    private_object = await objects.read_object(reference.key, reference.version)
+    assert b"\\u003c\\u0026\\u003e\\u2028" in private_object.contents
+    assert digest_bytes(private_object.contents) == reference.digest
     with pytest.raises(ValueError):
         await store.create_application_secret("DEX_CONFIG_KEY", "bad")
     with pytest.raises(ValueError):
@@ -259,10 +359,60 @@ async def test_broker_wire_renewal_and_revision(conformance_dir: Path) -> None:
         )
         shared = SharedConnection("shared-7", broker)
         assert (await shared.resolve("call-1"))["accessToken"] == "REDACTED_ACCESS_TOKEN"
+        assert (await broker.read("shared-7", 3)).revision == 4
         with pytest.raises(RejectedCredentialNotRefreshedError):
             await shared.resolve_after_rejection("call-1")
     assert requests[0] == fixture["firstRequest"]
+    assert fixture["refreshRequest"] in requests
     assert requests[-1] == {"sharedConnectionId": "shared-7", "rejectedRevision": 4}
+    ready_expiry = CredentialBrokerClient._decode(httpx.Response(200, json=fixture["ready"])).expires_at
+    assert ready_expiry is not None and ready_expiry.utcoffset() == timedelta(hours=8)
+    with pytest.raises(ReauthorizationRequiredError):
+        CredentialBrokerClient._decode(httpx.Response(200, json=fixture["reauthorizationRequired"]))
+    with pytest.raises(ConnectionNotSelectedError):
+        CredentialBrokerClient._decode(httpx.Response(200, json=fixture["connectionNotSelected"]))
+    assert fixture["refreshRequest"] == {"sharedConnectionId": "shared-7", "rejectedRevision": 3}
+
+
+@pytest.mark.asyncio
+async def test_go_project_environment_selectors(conformance_dir: Path) -> None:
+    """Load hosted fixture settings and reject mixed or unsafe local overrides."""
+    environment = json.loads((conformance_dir / "project-environment.json").read_text())
+    storage = json.loads((conformance_dir / "project-storage.json").read_text())
+    assert environment["credentialBrokerSecretName"] == "DEX_CREDENTIAL_BROKER_TOKEN"
+
+    class FixtureS3:
+        def get_bucket_versioning(self, **_: object) -> dict[str, str]:
+            return {"Status": "Enabled"}
+
+        def get_object(self, **_: object) -> dict[str, object]:
+            return {
+                "VersionId": storage["snapshot"]["version"],
+                "ETag": '"fixture-etag"',
+                "ServerSideEncryption": "aws:kms",
+                "SSEKMSKeyId": environment["hosted"]["DEX_PROJECT_STORAGE_KMS_KEY_ARN"],
+                "Body": BytesIO(storage["configurationSnapshotCanonicalJSON"].encode()),
+            }
+
+    project = await load_from_environment(environment["hosted"], FixtureS3())
+    assert project.configuration.to_wire() == storage["configurationSnapshotDocument"]
+    await project.close()
+    with pytest.raises(ValueError):
+        await load_from_environment({**environment["hosted"], **environment["localDexWeb"]})
+    local_project = await load_from_environment(
+        {**environment["hosted"], **environment["localObjectStoreOverrides"]}, FixtureS3()
+    )
+    assert local_project.configuration.scope == project.configuration.scope
+    await local_project.close()
+    with pytest.raises(ValueError):
+        await load_from_environment(
+            {
+                **environment["hosted"],
+                "DEX_PROJECT_ALLOW_LOCAL_STORAGE": "true",
+                "DEX_PROJECT_STORAGE_ENDPOINT": "https://public.example",
+            },
+            FixtureS3(),
+        )
 
 
 @pytest.mark.asyncio

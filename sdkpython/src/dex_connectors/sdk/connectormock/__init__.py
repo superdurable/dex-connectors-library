@@ -3,7 +3,9 @@
 """Scriptable provider outcomes and strict JSON fixtures for connector tests."""
 
 import json
+import os
 import threading
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -14,6 +16,9 @@ from ..types import DEFECT_BRANCH_ID, UNCERTAIN_BRANCH_ID, ConnectionRef, Operat
 
 Input = TypeVar("Input")
 Output = TypeVar("Output")
+REPORT_DIRECTORY_ENVIRONMENT = "DEX_CONNECTOR_MOCK_REPORT_DIR"
+REPORT_FILE_NAME = "connector-calls.json"
+_REPORT_LOCK = threading.Lock()
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,6 +89,65 @@ class RecordedCall(Generic[Input]):
             result["unscripted"] = True
         return result
 
+    def to_report_wire(self) -> dict[str, object]:
+        """Encode the Go connector report row without private input values."""
+        result: dict[str, object] = {
+            "connection": self.connection_name,
+            "operation": self.operation_id,
+        }
+        if self.branch:
+            result["branch"] = self.branch
+        result["connectorId"] = self.connector_id
+        if self.flow_id:
+            result["flowId"] = self.flow_id
+        if self.call_id:
+            result["callId"] = self.call_id
+        if self.retry:
+            result["retry"] = True
+        if self.replay:
+            result["replay"] = True
+        if self.unscripted:
+            result["unscripted"] = True
+        return result
+
+
+def _append_to_report(call: RecordedCall[Any]) -> None:
+    directory = os.environ.get(REPORT_DIRECTORY_ENVIRONMENT, "")
+    if not directory:
+        return
+    report_path = Path(directory) / REPORT_FILE_NAME
+    lock_path = report_path.with_name(report_path.name + ".lock")
+    with _REPORT_LOCK:
+        deadline = time.monotonic() + 30
+        while True:
+            try:
+                descriptor = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+                os.close(descriptor)
+                break
+            except FileExistsError:
+                try:
+                    if time.time() - lock_path.stat().st_mtime > 10:
+                        lock_path.unlink(missing_ok=True)
+                        continue
+                except FileNotFoundError:
+                    continue
+                if time.monotonic() >= deadline:
+                    raise OSError("connector call report lock stayed held") from None
+                time.sleep(0.005)
+        try:
+            if report_path.exists():
+                document = json.loads(report_path.read_text())
+                if not isinstance(document, dict) or not isinstance(document.get("calls"), list):
+                    raise ValueError("connector call report is invalid")
+            else:
+                document = {"calls": []}
+            document["calls"].append(call.to_report_wire())
+            descriptor = os.open(report_path, os.O_CREAT | os.O_WRONLY | os.O_TRUNC, 0o600)
+            with os.fdopen(descriptor, "w") as destination:
+                json.dump(document, destination, ensure_ascii=False, separators=(",", ":"))
+        finally:
+            lock_path.unlink(missing_ok=True)
+
 
 @dataclass(slots=True)
 class _Script(Generic[Input, Output]):
@@ -135,7 +199,13 @@ class FlowScript(Generic[Input, Output]):
 class ScriptedOperation(Generic[Input, Output]):
     """Thread-safe Query or Mutation test model without Dex Step registration."""
 
-    def __init__(self, operation: OperationRef, branches: tuple[str, ...], is_mutation: bool = False) -> None:
+    def __init__(
+        self,
+        operation: OperationRef,
+        branches: tuple[str, ...],
+        is_mutation: bool = False,
+        report_failure: Callable[[str], None] | None = None,
+    ) -> None:
         operation.validate()
         if DEFECT_BRANCH_ID not in branches:
             raise ValueError("mock operation must declare defect branch")
@@ -147,7 +217,9 @@ class ScriptedOperation(Generic[Input, Output]):
         self._strict = False
         self._terminal_by_key: dict[str, Case[Output]] = {}
         self._calls: list[RecordedCall[Input]] = []
-        self._lock = threading.Lock()
+        self._failures: list[str] = []
+        self._report_failure_callback = report_failure
+        self._lock = threading.RLock()
 
     def respond(self, *cases: Case[Output]) -> "ScriptedOperation[Input, Output]":
         """Queue cases for unscoped calls."""
@@ -204,19 +276,16 @@ class ScriptedOperation(Generic[Input, Output]):
                 response = self._terminal_by_key[idempotency_key]
             else:
                 scoped = [
-                    script._script
-                    for prefix, script in self._flow_scripts.items()
-                    if flow_id.startswith(prefix)
-                ]
-                scoped.sort(
-                    key=lambda script: (
-                        -next(
-                            len(prefix)
-                            for prefix, item in self._flow_scripts.items()
-                            if item._script is script
-                        )
+                    item._script
+                    for _, item in sorted(
+                        (
+                            (prefix, script)
+                            for prefix, script in self._flow_scripts.items()
+                            if flow_id.startswith(prefix)
+                        ),
+                        key=lambda entry: -len(entry[0]),
                     )
-                )
+                ]
                 scripts = scoped + [self._script]
                 response = next(
                     (answer for script in scripts if (answer := script.answer(input_value)) is not None), None
@@ -227,6 +296,7 @@ class ScriptedOperation(Generic[Input, Output]):
                     )
                 if response is None:
                     unscripted = True
+                    self._report_failure(f"unscripted call for Flow {flow_id!r}")
                     response = Case.branch_result(
                         DEFECT_BRANCH_ID,
                         cast(Output, None),
@@ -239,30 +309,60 @@ class ScriptedOperation(Generic[Input, Output]):
                     )
                 if response.kind == "paged":
                     if page_number < 1 or page_number > len(response.pages):
-                        raise ValueError("requested page is outside the scripted listing")
-                    response = Case.branch_result(response.branch, response.pages[page_number - 1])
+                        self._report_failure("requested page is outside the scripted listing")
+                        response = Case.branch_result(
+                            DEFECT_BRANCH_ID,
+                            cast(Output, None),
+                            Failure(
+                                FailureKind.LOCAL_DEFECT,
+                                self.operation.connector_id,
+                                self.operation.operation_id,
+                                "requested page is outside the scripted listing",
+                            ),
+                        )
+                    else:
+                        response = Case.branch_result(response.branch, response.pages[page_number - 1])
                 if idempotency_key and response.kind != "retry":
                     self._terminal_by_key[idempotency_key] = response
-            self._calls.append(
-                RecordedCall(
-                    self.operation.connector_id,
-                    self.operation.operation_id,
-                    connection.name,
-                    flow_id,
-                    call_id,
-                    input_value,
-                    "" if response.kind == "retry" else response.branch,
-                    response.kind == "retry",
-                    replay,
-                    unscripted,
-                )
+            recorded = RecordedCall(
+                self.operation.connector_id,
+                self.operation.operation_id,
+                connection.name,
+                flow_id,
+                call_id,
+                input_value,
+                "" if response.kind == "retry" else response.branch,
+                response.kind == "retry",
+                replay,
+                unscripted,
             )
+            self._calls.append(recorded)
+            try:
+                _append_to_report(recorded)
+            except (OSError, ValueError) as error:
+                self._report_failure(str(error))
             return response
 
     def calls(self) -> tuple[RecordedCall[Input], ...]:
         """Return answered calls in answer order."""
         with self._lock:
             return tuple(self._calls)
+
+    def failures(self) -> tuple[str, ...]:
+        """Return missing scripts and report failures for test assertions."""
+        with self._lock:
+            return tuple(self._failures)
+
+    def assert_no_failures(self) -> None:
+        """Fail the consuming test when mock calls were unscripted or invalid."""
+        failures = self.failures()
+        if failures:
+            raise AssertionError("; ".join(failures))
+
+    def _report_failure(self, message: str) -> None:
+        self._failures.append(message)
+        if self._report_failure_callback is not None:
+            self._report_failure_callback(message)
 
     def _validate_cases(self, cases: tuple[Case[Output], ...]) -> None:
         for response in cases:

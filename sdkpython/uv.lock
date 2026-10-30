@@ -148,7 +148,7 @@ dependencies = [
     { name = "httpx" },
 ]
 
-[package.optional-dependencies]
+[package.dev-dependencies]
 dev = [
     { name = "mypy" },
     { name = "pytest" },
@@ -162,13 +162,16 @@ requires-dist = [
     { name = "boto3", specifier = ">=1.35" },
     { name = "dex-python-sdk", specifier = ">=1.26.0" },
     { name = "httpx", specifier = ">=0.27" },
-    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.13" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8" },
-    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.7" },
-    { name = "types-boto3", extras = ["s3"], marker = "extra == 'dev'", specifier = ">=1.35" },
 ]
-provides-extras = ["dev"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "mypy", specifier = ">=1.13" },
+    { name = "pytest", specifier = ">=8" },
+    { name = "pytest-asyncio", specifier = ">=0.24" },
+    { name = "ruff", specifier = ">=0.7" },
+    { name = "types-boto3", extras = ["s3"], specifier = ">=1.35" },
+]
 
 [[package]]
 name = "dex-python-sdk"

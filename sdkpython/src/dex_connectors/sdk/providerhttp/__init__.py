@@ -64,7 +64,7 @@ def new_provider_http_client(request_timeout_seconds: float = 30, **options: Any
 async def send_traced(
     client: httpx.AsyncClient, request: httpx.Request
 ) -> tuple[httpx.Response, RequestTrace]:
-    """Send once and expose positive pre-dispatch evidence on transport errors."""
+    """Send once; callers own and must close the returned streaming response."""
     trace = RequestTrace()
     request.extensions["trace"] = trace.observe
     try:
@@ -74,7 +74,7 @@ async def send_traced(
 
 
 async def read_bounded_body(response: httpx.Response, maximum_bytes: int) -> bytes:
-    """Read at most limit plus one byte, then reject an oversized provider body."""
+    """Read bounded bytes and close the owned streaming response on every path."""
     if maximum_bytes < 0:
         maximum_bytes = 0
     chunks: list[bytes] = []
@@ -87,13 +87,15 @@ async def read_bounded_body(response: httpx.Response, maximum_bytes: int) -> byt
             chunks.append(chunk)
     except httpx.HTTPError:
         raise ProviderTransportError(False) from None
+    finally:
+        await response.aclose()
     return b"".join(chunks)
 
 
 def read_error_tokens(body: bytes, pointers: tuple[str, ...]) -> tuple[str, ...]:
     """Read safe scalar tokens at RFC 6901 pointers from a bounded JSON error body."""
     try:
-        document = json.loads(body)
+        document = json.loads(body, parse_float=str, parse_int=str)
     except (UnicodeDecodeError, json.JSONDecodeError):
         return ()
     tokens: list[str] = []
@@ -117,8 +119,6 @@ def read_error_tokens(body: bytes, pointers: tuple[str, ...]) -> tuple[str, ...]
                 break
         if isinstance(current, str):
             token = current
-        elif isinstance(current, (int, float)) and not isinstance(current, bool):
-            token = str(current)
         else:
             continue
         if _ERROR_TOKEN.fullmatch(token):
