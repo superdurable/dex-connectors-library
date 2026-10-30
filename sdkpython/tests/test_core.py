@@ -144,6 +144,12 @@ def test_configuration_ui_validation_and_secret_redaction() -> None:
 def test_timestamp_attempt_validation_and_refresh_repr() -> None:
     """Preserve offsets and hide credentials while rejecting impossible outcomes."""
     observed = RFC3339NanoTimestamp.from_wire("2026-10-29T12:30:45.123456789+08:00")
+    for supplied, canonical in (
+        ("2026-10-29T12:30:45+00:00", "2026-10-29T12:30:45Z"),
+        ("2026-10-29T12:30:45-00:00", "2026-10-29T12:30:45Z"),
+        ("2026-10-29T12:30:45.120+00:00", "2026-10-29T12:30:45.12Z"),
+    ):
+        assert str(RFC3339NanoTimestamp.from_wire(supplied)) == canonical
     receipt = Receipt(CallID("5af8fafa-06ff-5b2d-bb13-04693809fabf"), "sample", observed)
     assert receipt.to_wire()["observedAt"] == str(observed)
     local = Receipt(
@@ -159,6 +165,11 @@ def test_timestamp_attempt_validation_and_refresh_repr() -> None:
         QueryAttempt(cast(Any, "uncertain"), "uncertain", receipt=receipt, failure=failure)
     with pytest.raises(ValueError):
         MutationAttempt("retry", failure=failure, retry_after_seconds=-1)
+    for invalid_delay in (float("nan"), float("inf"), float("-inf")):
+        with pytest.raises(ValueError):
+            QueryAttempt.retry(failure, invalid_delay)
+        with pytest.raises(ValueError):
+            MutationAttempt.retry(failure, invalid_delay)
     with pytest.raises(ValueError):
         MutationResult("uncertain", None, receipt)
     with pytest.raises(ValueError):

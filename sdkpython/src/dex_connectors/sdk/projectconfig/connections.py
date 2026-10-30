@@ -89,7 +89,7 @@ def _credential_envelope_wire(
     }
     if attempt_id:
         result["attemptId"] = attempt_id
-    result["credentials"] = dict(sorted(credentials.items()))
+    result["credentials"] = credentials
     if expires_at is not None:
         result["expiresAt"] = format_rfc3339_nano(expires_at)
     result["authMethod"] = auth_method

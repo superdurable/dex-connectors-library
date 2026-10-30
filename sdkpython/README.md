@@ -88,7 +88,9 @@ mock's precedence. Keyed terminal Mutation outcomes replay; retries consume
 the next case. `load_fixture` strictly reads JSON fixture objects and rejects
 duplicate fields. `assert_no_failures()` fails a test after an unscripted call
 or invalid page; `DEX_CONNECTOR_MOCK_REPORT_DIR` enables safe call rows in
-`connector-calls.json`. The core example answers a Query with a declared branch.
+`connector-calls.json`. In pytest, pass `report_failure=pytest.fail` to
+`ScriptedOperation` so a missing script fails immediately. The core example
+answers a Query with a declared branch.
 
 ## Verification
 

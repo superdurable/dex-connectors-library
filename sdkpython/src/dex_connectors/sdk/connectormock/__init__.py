@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any, Generic, TypeVar, cast
 
 from ..errors import Failure, FailureKind
+from ..projectconfig.models import go_canonical_json_bytes
 from ..types import DEFECT_BRANCH_ID, UNCERTAIN_BRANCH_ID, ConnectionRef, OperationRef
 
 Input = TypeVar("Input")
@@ -117,6 +118,7 @@ def _append_to_report(call: RecordedCall[Any]) -> None:
         return
     report_path = Path(directory) / REPORT_FILE_NAME
     lock_path = report_path.with_name(report_path.name + ".lock")
+    encoded = go_canonical_json_bytes(call.to_report_wire())
     with _REPORT_LOCK:
         deadline = time.monotonic() + 30
         while True:
@@ -135,16 +137,22 @@ def _append_to_report(call: RecordedCall[Any]) -> None:
                     raise OSError("connector call report lock stayed held") from None
                 time.sleep(0.005)
         try:
-            if report_path.exists():
-                document = json.loads(report_path.read_text())
-                if not isinstance(document, dict) or not isinstance(document.get("calls"), list):
-                    raise ValueError("connector call report is invalid")
-            else:
-                document = {"calls": []}
-            document["calls"].append(call.to_report_wire())
-            descriptor = os.open(report_path, os.O_CREAT | os.O_WRONLY | os.O_TRUNC, 0o600)
-            with os.fdopen(descriptor, "w") as destination:
-                json.dump(document, destination, ensure_ascii=False, separators=(",", ":"))
+            descriptor = os.open(report_path, os.O_CREAT | os.O_RDWR, 0o600)
+            with os.fdopen(descriptor, "r+b") as destination:
+                destination.seek(0, os.SEEK_END)
+                size = destination.tell()
+                if size == 0:
+                    entry = b'{"calls":[' + encoded + b"]}"
+                else:
+                    if size < 2:
+                        raise ValueError("connector call report has no closing bracket")
+                    destination.seek(size - 2)
+                    if destination.read(2) != b"]}":
+                        raise ValueError("connector call report has no closing bracket")
+                    destination.seek(size - 2)
+                    entry = b"," + encoded + b"]}"
+                destination.write(entry)
+                destination.truncate()
         finally:
             lock_path.unlink(missing_ok=True)
 

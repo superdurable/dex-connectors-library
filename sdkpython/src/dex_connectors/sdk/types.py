@@ -3,6 +3,7 @@
 """Stable connector identities and wire-compatible result values."""
 
 import hashlib
+import math
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -432,6 +433,7 @@ class QueryAttempt(Generic[T]):
             if (
                 self.failure is None
                 or self.retry_after_seconds < 0
+                or not math.isfinite(self.retry_after_seconds)
                 or self.branch
                 or self.receipt is not None
                 or self.value is not None
@@ -480,6 +482,7 @@ class MutationAttempt(Generic[T]):
             if (
                 self.failure is None
                 or self.retry_after_seconds < 0
+                or not math.isfinite(self.retry_after_seconds)
                 or self.branch
                 or self.receipt is not None
                 or self.value is not None

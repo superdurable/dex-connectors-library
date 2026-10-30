@@ -40,6 +40,7 @@ from dex_connectors.sdk.projectconfig.connections import (
 from dex_connectors.sdk.projectconfig.models import (
     ApplicationSecretRef,
     CredentialBrokerConfiguration,
+    SnapshotRef,
     digest_bytes,
     go_canonical_json_bytes,
     validate_secret_reference,
@@ -64,6 +65,9 @@ async def test_go_canonical_snapshot_and_credential_bytes(conformance_dir: Path)
     assert snapshot_bytes.decode() == fixture["configurationSnapshotCanonicalJSON"]
     assert digest_bytes(snapshot_bytes) == fixture["snapshot"]["digest"]
     assert (await configuration_store.freeze_configuration(1)).to_wire() == fixture["snapshot"]
+    assert go_canonical_json_bytes(SnapshotRef.from_wire(fixture["snapshot"]).to_wire()) == (
+        go_canonical_json_bytes(fixture["snapshot"])
+    )
     connection_key = ConnectionKey(
         fixture["connectionKey"]["connectorId"], fixture["connectionKey"]["connectionName"]
     )
@@ -95,6 +99,17 @@ async def test_go_canonical_snapshot_and_credential_bytes(conformance_dir: Path)
     assert (
         go_canonical_json_bytes(exchange_envelope).decode()
         == fixture["credentialExchangeEnvelopeCanonicalJSON"]
+    )
+    reversed_credentials = _credential_envelope_wire(
+        configuration.scope,
+        connection_key,
+        2,
+        {"refreshToken": "REDACTED_REFRESH_TOKEN", "accessToken": "REDACTED_ACCESS_TOKEN"},
+        timestamp,
+        "oauth2",
+    )
+    assert b'"refreshToken":"REDACTED_REFRESH_TOKEN","accessToken"' in go_canonical_json_bytes(
+        reversed_credentials
     )
     record_fixture = fixture["connectionRecord"]
     connection_record_bytes = go_canonical_json_bytes(
@@ -137,6 +152,9 @@ async def test_go_canonical_snapshot_and_credential_bytes(conformance_dir: Path)
     assert completed["credential"]["key"] == fixture["exchangeResultKey"]
     secret_reference = ApplicationSecretRef.from_wire(fixture["applicationSecret"])
     validate_secret_reference(secret_reference, configuration.scope, "DEX_CREDENTIAL_BROKER_TOKEN")
+    assert go_canonical_json_bytes(secret_reference.to_wire()) == go_canonical_json_bytes(
+        fixture["applicationSecret"]
+    )
     assert fixture["emptyTriggerInboxDocument"] == {
         "schemaVersion": "connectors.dex.dev/project-trigger-inbox/v1alpha1",
         "events": [],
@@ -146,6 +164,26 @@ async def test_go_canonical_snapshot_and_credential_bytes(conformance_dir: Path)
         == fixture["triggerInboxDocument"]
     )
     assert fixture["triggerInboxHeadKey"].startswith(configuration.scope.prefix + "/trigger-inboxes/sample/")
+
+
+@pytest.mark.asyncio
+async def test_zero_offset_credential_write_uses_go_utc_bytes() -> None:
+    """Provider numeric zero offsets produce Go's Z envelope, key, and record."""
+    scope = Scope("project-1", "preview")
+    objects = InMemoryObjectStore()
+    store = ConnectionStore(objects, scope)
+    for name, offset in (("positive", "+00:00"), ("negative", "-00:00")):
+        key = ConnectionKey("sample", name)
+        supplied = RFC3339NanoTimestamp.from_wire(f"2026-10-29T12:30:45.120{offset}")
+        expected = RFC3339NanoTimestamp.from_wire("2026-10-29T12:30:45.12Z")
+        await store.replace_credential(key, 0, CredentialMaterial({"token": "REDACTED"}, supplied, "oauth2"))
+        expected_envelope = go_canonical_json_bytes(
+            _credential_envelope_wire(scope, key, 1, {"token": "REDACTED"}, expected, "oauth2")
+        )
+        credential_key = f"{key.path(scope)}/credentials/{digest_bytes(expected_envelope)[7:]}"
+        assert (await objects.read_object(credential_key)).contents == expected_envelope
+        record = json.loads((await objects.read_object(f"{key.path(scope)}/head")).contents)
+        assert record["expiresAt"] == "2026-10-29T12:30:45.12Z"
 
 
 @pytest.mark.asyncio
@@ -268,16 +306,16 @@ async def test_pinned_application_secret_and_reserved_names() -> None:
     scope = Scope("project-1", "preview")
     objects = InMemoryObjectStore()
     store = ConfigurationStore(objects, scope)
-    reference = await store.create_application_secret("WEBHOOK_SECRET", "inert<&>\u2028secret")
+    reference = await store.create_application_secret("WEBHOOK_SECRET", "inert<&>\u2028\u2029secret")
     document = Configuration(
         scope, 1, (), environment={"WEBHOOK_SECRET": EnvironmentValue(secret_ref=reference)}
     )
     written, _ = await store.write_configuration(0, document)
     snapshot = await store.freeze_configuration(written.revision)
     project = await load_project_from_object_store(objects, scope, snapshot)
-    assert await project.resolve_application_environment() == {"WEBHOOK_SECRET": "inert<&>\u2028secret"}
+    assert await project.resolve_application_environment() == {"WEBHOOK_SECRET": "inert<&>\u2028\u2029secret"}
     private_object = await objects.read_object(reference.key, reference.version)
-    assert b"\\u003c\\u0026\\u003e\\u2028" in private_object.contents
+    assert b"\\u003c\\u0026\\u003e\\u2028\\u2029" in private_object.contents
     assert digest_bytes(private_object.contents) == reference.digest
     with pytest.raises(ValueError):
         await store.create_application_secret("DEX_CONFIG_KEY", "bad")

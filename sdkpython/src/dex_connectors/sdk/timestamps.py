@@ -25,6 +25,8 @@ class RFC3339NanoTimestamp:
         seconds, fraction, offset = match.groups()
         parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
         fractional = (fraction or "").rstrip("0")
+        if offset in ("+00:00", "-00:00"):
+            offset = "Z"
         return cls(seconds + (f".{fractional}" if fractional else "") + offset, parsed)
 
     @classmethod

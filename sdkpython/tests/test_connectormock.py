@@ -120,7 +120,9 @@ def test_go_report_and_recorded_flags(
         )
         assert recorded.to_report_wire() == row
         _append_to_report(recorded)
-    report = json.loads((tmp_path / fixture["reportFileName"]).read_text())
+    report_bytes = (tmp_path / fixture["reportFileName"]).read_bytes()
+    assert b"\\u003c\\u0026\\u003e" in report_bytes
+    report = json.loads(report_bytes)
     assert report == fixture["reportFile"]
     assert (
         fixture["report"]
@@ -128,3 +130,6 @@ def test_go_report_and_recorded_flags(
             "sample", "createItem", "main", "flow-42", rows[0]["callId"], {}, "created"
         ).to_report_wire()
     )
+    (tmp_path / fixture["reportFileName"]).write_bytes(b'{"calls":[]}\n')
+    with pytest.raises(ValueError):
+        _append_to_report(recorded)
