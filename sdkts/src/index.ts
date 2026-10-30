@@ -5,3 +5,4 @@ export * from './types.js';
 export * from './errors.js';
 export * from './credentials.js';
 export * from './operation.js';
+export * from './run_operation.js';

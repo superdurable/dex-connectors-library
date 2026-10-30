@@ -91,6 +91,8 @@ export const ReceiptSchema = z.strictObject({
 });
 /** Safe provider correlation receipt. */
 export type Receipt = z.infer<typeof ReceiptSchema>;
+/** Receipt fields an operation may supply before the SDK fills call metadata. */
+export type ReceiptDraft = Partial<Receipt>;
 
 /** Validated terminal query result with Go-compatible JSON field names. */
 export const QueryResultSchema = <T>(valueSchema: z.ZodType<T>) => z.strictObject({ branch: z.string().min(1), value: valueSchema, receipt: ReceiptSchema, failure: FailureSchema.optional() });
@@ -104,14 +106,14 @@ export type MutationResult<T> = QueryResult<T>;
 
 /** One query invocation outcome; only constructors create valid attempts. */
 export type QueryAttempt<T> =
-  | { readonly kind: 'branch'; readonly branch: BranchID; readonly value: T; readonly receipt: Receipt; readonly failure?: Failure }
+  | { readonly kind: 'branch'; readonly branch: BranchID; readonly value: T; readonly receipt: ReceiptDraft; readonly failure?: Failure }
   | { readonly kind: 'retry'; readonly failure: Failure; readonly retryAfterMs: number };
 
 /** One mutation invocation outcome; uncertainty is reserved for unsafe, unconfirmable writes. */
-export type MutationAttempt<T> = QueryAttempt<T> | { readonly kind: 'uncertain'; readonly value: T; readonly receipt: Receipt; readonly failure: Failure };
+export type MutationAttempt<T> = QueryAttempt<T> | { readonly kind: 'uncertain'; readonly value: T; readonly receipt: ReceiptDraft; readonly failure: Failure };
 
 /** Construct a terminal query branch. */
-export function newQueryBranch<T>(branch: BranchID, value: T, receipt: Receipt, failure?: Failure): QueryAttempt<T> {
+export function newQueryBranch<T>(branch: BranchID, value: T, receipt: ReceiptDraft = {}, failure?: Failure): QueryAttempt<T> {
   return failure === undefined ? { kind: 'branch', branch, value, receipt } : { kind: 'branch', branch, value, receipt, failure };
 }
 
@@ -122,7 +124,7 @@ export function newQueryRetry<T>(failure: Failure, retryAfterMs = 0): QueryAttem
 }
 
 /** Construct a terminal mutation branch. */
-export function newMutationBranch<T>(branch: BranchID, value: T, receipt: Receipt, failure?: Failure): MutationAttempt<T> {
+export function newMutationBranch<T>(branch: BranchID, value: T, receipt: ReceiptDraft = {}, failure?: Failure): MutationAttempt<T> {
   return newQueryBranch(branch, value, receipt, failure);
 }
 
@@ -132,8 +134,8 @@ export function newMutationRetry<T>(failure: Failure, retryAfterMs = 0): Mutatio
 }
 
 /** Construct an uncertain mutation only after proving repeat and read-back are unsafe. */
-export function newMutationUncertain<T>(value: T, failure: Failure, receipt: Receipt): MutationAttempt<T> {
-  return { kind: 'uncertain', value, failure: FailureSchema.parse(failure), receipt: ReceiptSchema.parse(receipt) };
+export function newMutationUncertain<T>(value: T, failure: Failure, receipt: ReceiptDraft = {}): MutationAttempt<T> {
+  return { kind: 'uncertain', value, failure: FailureSchema.parse(failure), receipt };
 }
 
 /** Dex Execute retry policy using millisecond durations. */

@@ -21,12 +21,15 @@ export type Failure = z.infer<typeof FailureSchema>;
 export class RetryError extends Error {
   /** Validated provider fact behind the retry request. */
   readonly failure: Failure;
+  /** Provider-requested retry delay in milliseconds; zero uses the Step policy. */
+  readonly retryAfterMs: number;
 
-  constructor(failure: Failure) {
+  constructor(failure: Failure, retryAfterMs = 0) {
     const validated = FailureSchema.parse(failure);
     super(`connector ${validated.provider} ${validated.operation} retry (${validated.kind}): ${validated.message}`);
     this.name = 'RetryError';
     this.failure = validated;
+    this.retryAfterMs = retryAfterMs;
   }
 }
 

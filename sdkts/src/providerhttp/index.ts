@@ -14,7 +14,15 @@ export const MaxRetryAfterDelayMs = 60 * 60 * 1000;
 
 /** Response exceeded its caller-owned safety limit. */
 export class BodyTooLargeError extends Error {
-  constructor() { super('provider response body exceeds its size limit'); this.name = 'BodyTooLargeError'; }
+  /** HTTP status available when a response body was being read. */ readonly status: number | undefined;
+  /** HTTP headers available when a response body was being read. */ readonly headers: http.IncomingHttpHeaders | undefined;
+
+  constructor(status?: number, headers?: http.IncomingHttpHeaders) {
+    super('provider response body exceeds its size limit');
+    this.name = 'BodyTooLargeError';
+    this.status = status;
+    this.headers = headers;
+  }
 }
 
 /** Address policy refused a request before transmission. */
@@ -149,7 +157,7 @@ export async function sendProviderRequest(request: ProviderRequest): Promise<Pro
           resolve({ status: response.statusCode ?? 0, headers: response.headers, body });
         }).catch((error: unknown) => {
           response.destroy();
-          reject(error instanceof BodyTooLargeError ? error : new ProviderTransportError(false));
+          reject(error instanceof BodyTooLargeError ? new BodyTooLargeError(response.statusCode ?? 0, response.headers) : new ProviderTransportError(false));
         });
       });
     } catch { reject(new ProviderTransportError(true)); return; }

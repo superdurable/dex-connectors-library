@@ -1,14 +1,27 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import type { CallID, ConnectionRef, OperationRef } from './types.js';
+import { ConnectionRefSchema, OperationRefSchema, deriveCallID, type CallID, type ConnectionRef, type OperationRef } from './types.js';
+import type { AsyncContext } from '@superdurable/dex';
 
-/** Provider-safe call metadata; Dex Context and credentials are excluded. */
+/** Provider-safe call metadata with its live, non-serializable Dex Step context. */
 export interface Call {
+  /** Active Dex Execute context; Step factories attach it as a non-enumerable field. */ context: AsyncContext;
   /** Stable identity across retries. */ id: CallID;
   /** Provider deduplication key, when available. */ idempotencyKey?: string;
   /** Logical named connection. */ connection: ConnectionRef;
   /** Manifest operation identity. */ operation: OperationRef;
+}
+
+/** Bind a live Dex Execute context to a stable, provider-safe call identity. */
+export function createCall(context: AsyncContext, connection: ConnectionRef, operation: OperationRef): Call {
+  if (!context?.flowId) throw new TypeError('Dex Flow ID is required');
+  if (!context.stepExecutionId) throw new TypeError('connector operations require a Dex Step execution; RPC invocation is not allowed');
+  ConnectionRefSchema.parse(connection);
+  OperationRefSchema.parse(operation);
+  const call: Call = { context, id: deriveCallID(context.flowId, context.stepExecutionId, operation), connection, operation };
+  Object.defineProperty(call, 'context', { value: context, enumerable: false });
+  return call;
 }
 
 /** Resolve a credential at call time outside durable Flow state. */
