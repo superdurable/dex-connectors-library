@@ -1,0 +1,6 @@
+/.dex-local/dexcli
+/.dex-local/dex-server-zd
+/.dex-local/data/
+/.dex-local/cli.log
+/.dex-local/visualize.json
+/.dex-local/visualize.err

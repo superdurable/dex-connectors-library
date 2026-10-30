@@ -7,6 +7,8 @@ to collect the newest headlines that name one company.
 
 Its Go module is `github.com/superdurable/dex-connectors-library/connectors/newsapi`.
 The connector ID is `newsapi`.
+The Python package is [`dex-connector-newsapi`](python/README.md), imported as
+`dex_connectors.newsapi`.
 
 ## Operation
 
