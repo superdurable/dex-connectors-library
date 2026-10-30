@@ -4,7 +4,7 @@
 
 import asyncio
 from datetime import UTC, datetime, timedelta
-from typing import Any, cast
+from typing import cast
 
 import dex
 
@@ -25,7 +25,7 @@ class ExampleContext:
         """Report that this is the first Execute attempt."""
         return False
 
-    def get_last_heartbeat_value(self, value_type: type[dict[Any, Any]]) -> None:
+    def get_last_heartbeat_value(self, value_type: type[Marker]) -> None:
         """Return no earlier checkpoint for the example's first attempt."""
         return None
 
@@ -52,7 +52,7 @@ async def main() -> None:
 
     provider_id = await fence.dispatch(send)
     await fence.record_provider_id(provider_id)
-    marker = Marker.from_wire(context.heartbeats[-1])
+    marker = cast(Marker, context.heartbeats[-1])
     assert marker.state == State.CLAIMED and marker.provider_id == provider_id
 
 

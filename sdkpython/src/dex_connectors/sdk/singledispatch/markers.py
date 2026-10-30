@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Wire-compatible single-dispatch markers and conservative resend decisions."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import IntEnum, StrEnum
 
 from ..types import CallID
@@ -20,10 +20,12 @@ class State(StrEnum):
 class Marker:
     """Non-secret Dex heartbeat checkpoint for a logical call and attempt."""
 
-    call_id: CallID
+    call_id: CallID = field(metadata={"dex_json_name": "callId"})
     attempt: int
     state: State
-    provider_id: str = ""
+    provider_id: str = field(
+        default="", metadata={"dex_json_name": "providerId", "dex_json_omit_default": True}
+    )
 
     def to_wire(self) -> dict[str, str | int]:
         """Encode Go's camel-case heartbeat marker, omitting empty provider ID."""
@@ -100,7 +102,15 @@ def decide_dispatch(
             return Decision(DecisionKind.SEND_ALLOWED)
         return Decision(DecisionKind.READ_BACK_REQUIRED)
     try:
-        marker = Marker.from_wire(previous_heartbeat)
+        if isinstance(previous_heartbeat, Marker):
+            marker = Marker.from_wire({
+                "callId": str(previous_heartbeat.call_id),
+                "attempt": previous_heartbeat.attempt,
+                "state": str(previous_heartbeat.state),
+                "providerId": previous_heartbeat.provider_id,
+            })
+        else:
+            marker = Marker.from_wire(previous_heartbeat)
     except ValueError:
         return Decision(DecisionKind.FAIL_CLOSED, error="invalid single-dispatch checkpoint")
     if marker.call_id != call_id:

@@ -74,7 +74,7 @@ class Fence:
             try:
                 previous: object | None = None
                 if self._context.has_last_heartbeat_value():
-                    previous = self._context.get_last_heartbeat_value(dict)
+                    previous = self._context.get_last_heartbeat_value(Marker)
                     if previous is None:
                         raise ValueError("present heartbeat has no checkpoint")
                 self._decision = decide_dispatch(self._call.id, self._context.attempt, previous)
@@ -155,7 +155,7 @@ class Fence:
             )
 
     async def _record(self, marker: Marker) -> None:
-        await self._context.heartbeat(marker.to_wire())
+        await self._context.heartbeat(marker)
         self._marker = marker
 
     async def _repeat_claim(self, claim: Marker, stop: asyncio.Event) -> None:
@@ -168,6 +168,6 @@ class Fence:
             async with self._lock:
                 if self._marker == claim:
                     try:
-                        await self._context.heartbeat(claim.to_wire())
+                        await self._context.heartbeat(claim)
                     except Exception:
                         pass

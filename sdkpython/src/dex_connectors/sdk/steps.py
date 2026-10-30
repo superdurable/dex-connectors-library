@@ -5,6 +5,7 @@
 import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
+from datetime import timedelta
 from typing import Generic, TypeVar, cast
 
 import dex
@@ -17,8 +18,10 @@ from .types import (
     Call,
     ConnectionRef,
     MutationResult,
+    ProgressUpdate,
     QueryResult,
     StepDefaults,
+    _ProgressReporter,
     derive_call_id,
 )
 
@@ -66,6 +69,10 @@ class QueryStepConfig(Generic[StepInput, OperationInput, Output]):
         default_factory=lambda: ConnectorConfigurationUI(())
     )
     result_attribute: dex.Attribute[QueryResult[Output]] | None = None
+    progress_stream: dex.Stream[ProgressUpdate] | None = None
+    text_stream: dex.Stream[str] | None = None
+    text_flush_interval: timedelta = timedelta(seconds=1)
+    text_max_buffered_bytes: int = 16 * 1024
     step_options_override: dex.StepOptions | None = None
 
 
@@ -89,6 +96,10 @@ class MutationStepConfig(Generic[StepInput, OperationInput, Output]):
         default_factory=lambda: ConnectorConfigurationUI(())
     )
     result_attribute: dex.Attribute[MutationResult[Output]] | None = None
+    progress_stream: dex.Stream[ProgressUpdate] | None = None
+    text_stream: dex.Stream[str] | None = None
+    text_flush_interval: timedelta = timedelta(seconds=1)
+    text_max_buffered_bytes: int = 16 * 1024
     step_options_override: dex.StepOptions | None = None
 
 
@@ -136,7 +147,11 @@ class QueryStep(dex.Step[StepInput], Generic[StepInput, OperationInput, Output])
         self, context: dex.AsyncContext, input: StepInput
     ) -> dex.StepDecision:
         """Invoke the Query, persist its result if configured, and route its branch."""
-        call = _call(context, self._operation_ref, self._config.connection)
+        call = _call(
+            context, self._operation_ref, self._config.connection,
+            self._config.progress_stream, self._config.text_stream,
+            self._config.text_flush_interval, self._config.text_max_buffered_bytes,
+        )
         try:
             result = await run_query(
                 self._config.operation, call, self._config.map_to_operation_input(input)
@@ -195,7 +210,11 @@ class MutationStep(dex.Step[StepInput], Generic[StepInput, OperationInput, Outpu
         self, context: dex.AsyncContext, input: StepInput
     ) -> dex.StepDecision:
         """Invoke the Mutation, persist its result if configured, and route its branch."""
-        call = _call(context, self._operation_ref, self._config.connection)
+        call = _call(
+            context, self._operation_ref, self._config.connection,
+            self._config.progress_stream, self._config.text_stream,
+            self._config.text_flush_interval, self._config.text_max_buffered_bytes,
+        )
         try:
             result = await run_mutation(
                 self._config.operation, call, self._config.map_to_operation_input(input)
@@ -288,15 +307,32 @@ def _step_options(defaults: StepDefaults, override: dex.StepOptions | None) -> d
     )
 
 
-def _call(context: dex.AsyncContext, operation: object, connection: ConnectionRef) -> Call:
+def _call(
+    context: dex.AsyncContext, operation: object, connection: ConnectionRef,
+    progress_stream: dex.Stream[ProgressUpdate] | None,
+    text_stream: dex.Stream[str] | None, text_flush_interval: timedelta,
+    text_max_buffered_bytes: int,
+) -> Call:
     from .types import OperationRef
 
     operation_ref = cast(OperationRef, operation)
     if not context.flow_id or not context.step_execution_id:
         raise ValueError("connector operations require a Dex Flow and Step execution")
+    call_id = derive_call_id(context.flow_id, context.step_execution_id, operation_ref)
+    progress_reporter = (
+        _ProgressReporter(progress_stream, context, call_id)
+        if progress_stream is not None else None
+    )
+    text_writer = (
+        text_stream.buffered_text(
+            context, flush_interval=text_flush_interval,
+            max_buffered_bytes=text_max_buffered_bytes,
+        )
+        if text_stream is not None else None
+    )
     return Call(
-        derive_call_id(context.flow_id, context.step_execution_id, operation_ref),
-        connection, operation_ref, context=context,
+        call_id, connection, operation_ref, context=context,
+        _progress_reporter=progress_reporter, _text_writer=text_writer,
     )
 
 

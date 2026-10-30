@@ -22,6 +22,8 @@ from dex_connectors.sdk import (
     MutationStep,
     MutationStepConfig,
     OperationRef,
+    Progress,
+    ProgressUpdate,
     Receipt,
     StaticCredentialProvider,
     StepAnnotations,
@@ -72,6 +74,8 @@ class CreateExampleItem:
 
     async def invoke(self, call: Call, input: str) -> MutationAttempt[str]:
         """Return one definite, repeatable provider outcome."""
+        call.report_progress(Progress("create", "Creating the sample item", 0.5))
+        call.write_text("sample item created")
         return MutationAttempt.branch_result(
             "created", input, Receipt(call.id, "sample", datetime.now(UTC))
         )
@@ -90,13 +94,26 @@ class CreatedItem(dex.Step[MutationResult[str]]):
 class CreateItemFlow(dex.Flow[str]):
     """Register one operation-specific connector Step instance."""
 
-    def __init__(self, create: MutationStep[str, str, str], created: CreatedItem) -> None:
+    def __init__(
+        self, create: MutationStep[str, str, str], created: CreatedItem,
+        result_attribute: dex.Attribute[MutationResult[str]],
+        progress_stream: dex.Stream[ProgressUpdate], text_stream: dex.Stream[str],
+    ) -> None:
         self.create = create
         self.created = created
+        self.result_attribute = result_attribute
+        self.progress_stream = progress_stream
+        self.text_stream = text_stream
 
     def get_steps(self) -> dex.StepList[str]:
         """Start with the provider operation and then consume its result."""
         return dex.StepList.start_step(self.create).other_steps(self.created)
+
+    def get_persistence_schema(self) -> dex.PersistenceSchema:
+        """Register the result Attribute and both application-owned Streams."""
+        return dex.PersistenceSchema.of(
+            self.result_attribute, self.progress_stream, self.text_stream
+        )
 
 
 async def main() -> None:
@@ -111,12 +128,19 @@ async def main() -> None:
     assert result.branch == "created" and result.receipt.idempotency_key == str(call_id)
     assert decide_dispatch(call_id, 1, None).kind == DecisionKind.SEND_ALLOWED
     created = CreatedItem()
+    result_attribute = dex.Attribute("createdItem", MutationResult[str])
+    progress_stream = dex.Stream("createProgress", ProgressUpdate, 64 * 1024)
+    text_stream = dex.Stream("createText", str, 64 * 1024)
     create = MutationStep(MutationStepConfig(
         "CreateItem", str, StepAnnotations("sample", "Sample", "Create one sample item."),
         CreateExampleItem(), connection, lambda value: value,
         {"created": created},
+        result_attribute=result_attribute,
+        progress_stream=progress_stream, text_stream=text_stream,
     ))
-    dex.Registry([CreateItemFlow(create, created)], allow_async_handlers=True)
+    dex.Registry([
+        CreateItemFlow(create, created, result_attribute, progress_stream, text_stream)
+    ], allow_async_handlers=True)
 
     def token_response(request: httpx.Request) -> httpx.Response:
         return httpx.Response(

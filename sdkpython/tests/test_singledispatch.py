@@ -6,7 +6,7 @@ import asyncio
 import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, cast
+from typing import cast
 
 import dex
 import pytest
@@ -76,7 +76,7 @@ class FakeContext:
         """Distinguish a missing checkpoint from a persisted marker."""
         return self.previous is not None
 
-    def get_last_heartbeat_value(self, value_type: type[dict[Any, Any]]) -> object:
+    def get_last_heartbeat_value(self, value_type: type[Marker]) -> object:
         """Return the previous attempt's decoded public heartbeat value."""
         return self.previous
 
@@ -116,11 +116,12 @@ async def test_fence_claims_once_and_repeats_heartbeat_while_sending() -> None:
 
     assert await fence.dispatch(send) == "accepted"
     assert sends == 1
-    assert all(Marker.from_wire(value).state == State.CLAIMED for value in context.heartbeats)
+    assert all(isinstance(value, Marker) and value.state == State.CLAIMED for value in context.heartbeats)
     with pytest.raises(DispatchNotAllowedError):
         await fence.dispatch(send)
     await fence.record_provider_id("provider-object")
-    assert Marker.from_wire(context.heartbeats[-1]).provider_id == "provider-object"
+    assert isinstance(context.heartbeats[-1], Marker)
+    assert context.heartbeats[-1].provider_id == "provider-object"
     assert decide_dispatch(
         CallID("5af8fafa-06ff-5b2d-bb13-04693809fabf"), 2, context.heartbeats[-1]
     ).kind == DecisionKind.READ_BACK_REQUIRED
@@ -195,7 +196,8 @@ async def test_fence_short_attempt_and_untrusted_checkpoint_fail_before_send() -
     with pytest.raises(InsufficientAttemptTimeError):
         await short.dispatch(send)
     assert not sent
-    assert Marker.from_wire(short_context.heartbeats[-1]).state == State.NOT_SENT
+    assert isinstance(short_context.heartbeats[-1], Marker)
+    assert short_context.heartbeats[-1].state == State.NOT_SENT
 
     malformed = FakeContext(2, {"callId": "foreign", "attempt": 1, "state": "claimed"})
     closed = _fence(malformed)

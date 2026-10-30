@@ -5,12 +5,13 @@
 import hashlib
 import math
 import re
+import threading
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Generic, Literal, Self, TypeVar, cast
 from uuid import NAMESPACE_URL, UUID, uuid5
 
-from dex import AsyncContext
+from dex import AsyncBufferedTextStream, AsyncContext, Stream
 
 from .errors import Failure
 from .retry_policy import RetryPolicy
@@ -103,6 +104,54 @@ class OperationRef:
 
 
 @dataclass(frozen=True, slots=True)
+class Progress:
+    """Provider-safe progress before Dex call and attempt identity is added."""
+
+    phase: str
+    message: str = ""
+    percent: float | None = None
+    provider_sequence: int | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ProgressUpdate:
+    """Structured best-effort Dex Stream message for one connector attempt."""
+
+    call_id: CallID = field(metadata={"dex_json_name": "callId"})
+    attempt: int
+    sequence: int
+    phase: str
+    message: str = field(default="", metadata={"dex_json_omit_default": True})
+    percent: float | None = field(default=None, metadata={"dex_json_omit_default": True})
+    provider_sequence: int | None = field(
+        default=None,
+        metadata={"dex_json_name": "providerSequence", "dex_json_omit_default": True},
+    )
+
+
+class _ProgressReporter:
+    def __init__(self, stream: Stream[ProgressUpdate], context: AsyncContext, call_id: CallID) -> None:
+        self.stream = stream
+        self.context = context
+        self.call_id = call_id
+        self.sequence = 0
+        self.lock = threading.Lock()
+
+    def report(self, progress: Progress) -> None:
+        if progress.percent is not None and (progress.percent < 0 or progress.percent > 1):
+            raise ValueError("connector progress percent must be between 0 and 1")
+        with self.lock:
+            self.sequence += 1
+            self.stream.write(
+                self.context,
+                ProgressUpdate(
+                    self.call_id, self.context.attempt, self.sequence,
+                    progress.phase, progress.message, progress.percent, progress.provider_sequence,
+                ),
+            )
+
+
+@dataclass(frozen=True, slots=True)
 class Call:
     """Provider-safe metadata and ephemeral async Dex Context for one invocation.
 
@@ -115,6 +164,26 @@ class Call:
     operation: OperationRef
     idempotency_key: IdempotencyKey = IdempotencyKey("")
     context: AsyncContext | None = field(default=None, repr=False, compare=False)
+    _progress_reporter: _ProgressReporter | None = field(default=None, repr=False, compare=False)
+    _text_writer: AsyncBufferedTextStream | None = field(default=None, repr=False, compare=False)
+
+    def report_progress(self, progress: Progress) -> None:
+        """Append structured progress when the consuming Flow registered a Stream."""
+        if self._progress_reporter is not None:
+            self._progress_reporter.report(progress)
+
+    def write_text(self, value: str) -> None:
+        """Append ordered text when a buffered text Stream is configured."""
+        if self._text_writer is not None:
+            self._text_writer.write(value)
+
+    def has_progress_stream(self) -> bool:
+        """Report whether this invocation can emit structured progress."""
+        return self._progress_reporter is not None
+
+    def has_text_stream(self) -> bool:
+        """Report whether this invocation can emit buffered text."""
+        return self._text_writer is not None
 
     def to_wire(self) -> dict[str, object]:
         """Encode the Go Call's persisted identity fields."""
