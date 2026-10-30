@@ -1,0 +1,161 @@
+# Copyright (c) 2026 Super Durable
+# SPDX-License-Identifier: MIT
+"""Runnable operation, credential, OAuth, and dispatch-decision example."""
+
+import asyncio
+from datetime import UTC, datetime, timedelta
+
+import dex
+import httpx
+
+from dex_connectors.sdk import (
+    BranchDefinition,
+    Call,
+    CallID,
+    ConnectionRef,
+    CredentialRefreshResult,
+    CredentialRefreshState,
+    IdempotencyKey,
+    MutationAttempt,
+    MutationDefinition,
+    MutationResult,
+    MutationStep,
+    MutationStepConfig,
+    OperationRef,
+    Progress,
+    ProgressUpdate,
+    Receipt,
+    StaticCredentialProvider,
+    StepAnnotations,
+    StepDefaults,
+    resolve_credential,
+    run_mutation,
+)
+from dex_connectors.sdk.credentials import SecretString
+from dex_connectors.sdk.oauthtoken import (
+    ClientAuthenticationMethod,
+    ClientCredentials,
+    TokenEndpoint,
+)
+from dex_connectors.sdk.singledispatch import DecisionKind, decide_dispatch
+
+
+class ExampleRefreshDriver:
+    """Inert driver that leaves local example credentials unchanged."""
+
+    def refresh_required(self, state: CredentialRefreshState[SecretString]) -> bool:
+        """Report no expiry for this local static example."""
+        return False
+
+    async def refresh(
+        self, state: CredentialRefreshState[SecretString]
+    ) -> CredentialRefreshResult[SecretString]:
+        """Return inert replacement material if a host calls refresh."""
+        return CredentialRefreshResult(state.credentials, state.now + timedelta(hours=1))
+
+
+class CreateExampleItem:
+    """Mutation whose provider write is represented by an inert local result."""
+
+    def definition(self) -> MutationDefinition:
+        """Declare the stable operation and its happy and defect routes."""
+        return MutationDefinition(
+            OperationRef("sample", "createItem"),
+            (
+                BranchDefinition("created", "Item created"),
+                BranchDefinition("defect", "Connector defect", True),
+            ),
+            StepDefaults(timedelta(seconds=10), 1),
+        )
+
+    def idempotency_key(self, call_id: CallID, input: str) -> IdempotencyKey:
+        """Use the stable Call ID as the example provider key."""
+        return IdempotencyKey(call_id)
+
+    async def invoke(self, call: Call, input: str) -> MutationAttempt[str]:
+        """Return one definite, repeatable provider outcome."""
+        call.report_progress(Progress("create", "Creating the sample item", 0.5))
+        call.write_text("sample item created")
+        return MutationAttempt.branch_result(
+            "created", input, Receipt(call.id, "sample", datetime.now(UTC))
+        )
+
+
+class CreatedItem(dex.Step[MutationResult[str]]):
+    """Consume the connector's typed happy-path result."""
+
+    async def execute(  # type: ignore[override]
+        self, context: dex.AsyncContext, input: MutationResult[str]
+    ) -> dex.StepDecision:
+        """Finish the example Flow after a definite provider outcome."""
+        return dex.graceful_complete()
+
+
+class CreateItemFlow(dex.Flow[str]):
+    """Register one operation-specific connector Step instance."""
+
+    def __init__(
+        self, create: MutationStep[str, str, str], created: CreatedItem,
+        result_attribute: dex.Attribute[MutationResult[str]],
+        progress_stream: dex.Stream[ProgressUpdate], text_stream: dex.Stream[str],
+    ) -> None:
+        self.create = create
+        self.created = created
+        self.result_attribute = result_attribute
+        self.progress_stream = progress_stream
+        self.text_stream = text_stream
+
+    def get_steps(self) -> dex.StepList[str]:
+        """Start with the provider operation and then consume its result."""
+        return dex.StepList.start_step(self.create).other_steps(self.created)
+
+    def get_persistence_schema(self) -> dex.PersistenceSchema:
+        """Register the result Attribute and both application-owned Streams."""
+        return dex.PersistenceSchema.of(
+            self.result_attribute, self.progress_stream, self.text_stream
+        )
+
+
+async def main() -> None:
+    """Run the public APIs without a Dex Worker or real provider credentials."""
+    call_id = CallID("5af8fafa-06ff-5b2d-bb13-04693809fabf")
+    connection = ConnectionRef("sample", "default")
+    call = Call(call_id, connection, OperationRef("sample", "createItem"))
+    credentials = StaticCredentialProvider({connection: SecretString("INERT_SECRET")})
+    credential = await resolve_credential(credentials, call, ExampleRefreshDriver())
+    assert credential.reveal() == "INERT_SECRET"
+    result = await run_mutation(CreateExampleItem(), call, "item-1")
+    assert result.branch == "created" and result.receipt.idempotency_key == str(call_id)
+    assert decide_dispatch(call_id, 1, None).kind == DecisionKind.SEND_ALLOWED
+    created = CreatedItem()
+    result_attribute = dex.Attribute("createdItem", MutationResult[str])
+    progress_stream = dex.Stream("createProgress", ProgressUpdate, 64 * 1024)
+    text_stream = dex.Stream("createText", str, 64 * 1024)
+    create = MutationStep(MutationStepConfig(
+        "CreateItem", str, StepAnnotations("sample", "Sample", "Create one sample item."),
+        CreateExampleItem(), connection, lambda value: value,
+        {"created": created},
+        result_attribute=result_attribute,
+        progress_stream=progress_stream, text_stream=text_stream,
+    ))
+    dex.Registry([
+        CreateItemFlow(create, created, result_attribute, progress_stream, text_stream)
+    ], allow_async_handlers=True)
+
+    def token_response(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200, json={"access_token": "INERT_ACCESS", "expires_in": 3600, "token_type": "Bearer"}
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(token_response)) as http_client:
+        endpoint = TokenEndpoint("Example", "https://oauth.example/token", http_client)
+        oauth_client = ClientCredentials(
+            "example-client", SecretString("INERT_CLIENT_SECRET"),
+            ClientAuthenticationMethod.CLIENT_SECRET_POST,
+        )
+        token = await endpoint.exchange_refresh_token(oauth_client, SecretString("INERT_REFRESH"))
+        assert token.access_token.reveal() == "INERT_ACCESS"
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

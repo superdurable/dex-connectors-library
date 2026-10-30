@@ -5,10 +5,13 @@
 import hashlib
 import math
 import re
+import threading
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from typing import Generic, Literal, TypeVar, cast
+from datetime import UTC, datetime, timedelta
+from typing import Generic, Literal, Self, TypeVar, cast
 from uuid import NAMESPACE_URL, UUID, uuid5
+
+from dex import AsyncBufferedTextStream, AsyncContext, Stream
 
 from .errors import Failure
 from .retry_policy import RetryPolicy
@@ -101,13 +104,86 @@ class OperationRef:
 
 
 @dataclass(frozen=True, slots=True)
+class Progress:
+    """Provider-safe progress before Dex call and attempt identity is added."""
+
+    phase: str
+    message: str = ""
+    percent: float | None = None
+    provider_sequence: int | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ProgressUpdate:
+    """Structured best-effort Dex Stream message for one connector attempt."""
+
+    call_id: CallID = field(metadata={"dex_json_name": "callId"})
+    attempt: int
+    sequence: int
+    phase: str
+    message: str = field(default="", metadata={"dex_json_omit_default": True})
+    percent: float | None = field(default=None, metadata={"dex_json_omit_default": True})
+    provider_sequence: int | None = field(
+        default=None,
+        metadata={"dex_json_name": "providerSequence", "dex_json_omit_default": True},
+    )
+
+
+class _ProgressReporter:
+    def __init__(self, stream: Stream[ProgressUpdate], context: AsyncContext, call_id: CallID) -> None:
+        self.stream = stream
+        self.context = context
+        self.call_id = call_id
+        self.sequence = 0
+        self.lock = threading.Lock()
+
+    def report(self, progress: Progress) -> None:
+        if progress.percent is not None and (progress.percent < 0 or progress.percent > 1):
+            raise ValueError("connector progress percent must be between 0 and 1")
+        with self.lock:
+            self.sequence += 1
+            self.stream.write(
+                self.context,
+                ProgressUpdate(
+                    self.call_id, self.context.attempt, self.sequence,
+                    progress.phase, progress.message, progress.percent, progress.provider_sequence,
+                ),
+            )
+
+
+@dataclass(frozen=True, slots=True)
 class Call:
-    """Provider-safe metadata for one invocation; Dex context stays outside JSON."""
+    """Provider-safe metadata and ephemeral async Dex Context for one invocation.
+
+    The live context is available only during a Step handler and is never
+    serialized, compared, or included in Flow state.
+    """
 
     id: CallID
     connection: ConnectionRef
     operation: OperationRef
     idempotency_key: IdempotencyKey = IdempotencyKey("")
+    context: AsyncContext | None = field(default=None, repr=False, compare=False)
+    _progress_reporter: _ProgressReporter | None = field(default=None, repr=False, compare=False)
+    _text_writer: AsyncBufferedTextStream | None = field(default=None, repr=False, compare=False)
+
+    def report_progress(self, progress: Progress) -> None:
+        """Append structured progress when the consuming Flow registered a Stream."""
+        if self._progress_reporter is not None:
+            self._progress_reporter.report(progress)
+
+    def write_text(self, value: str) -> None:
+        """Append ordered text when a buffered text Stream is configured."""
+        if self._text_writer is not None:
+            self._text_writer.write(value)
+
+    def has_progress_stream(self) -> bool:
+        """Report whether this invocation can emit structured progress."""
+        return self._progress_reporter is not None
+
+    def has_text_stream(self) -> bool:
+        """Report whether this invocation can emit buffered text."""
+        return self._text_writer is not None
 
     def to_wire(self) -> dict[str, object]:
         """Encode the Go Call's persisted identity fields."""
@@ -249,7 +325,7 @@ class QueryDefinition:
         }
 
     @classmethod
-    def from_wire(cls, value: dict[str, object]) -> "QueryDefinition":
+    def from_wire(cls, value: dict[str, object]) -> Self:
         """Decode a Go Query definition."""
         operation = cast(dict[str, str], value["operation"])
         branches = cast(list[dict[str, object]] | None, value["branches"])
@@ -284,15 +360,30 @@ class MutationDefinition(QueryDefinition):
 
 @dataclass(frozen=True, slots=True)
 class Receipt:
-    """Provider correlation data; callers must exclude secrets before construction."""
+    """Provider correlation data; zero values are completed by the operation runner.
 
-    call_id: CallID
-    provider: str
-    observed_at: RFC3339NanoTimestamp | datetime
-    idempotency_key: IdempotencyKey = IdempotencyKey("")
-    provider_object_id: str = ""
-    provider_request_id: str = ""
-    metadata: dict[str, str] = field(default_factory=dict)
+    Callers must exclude secrets before construction. The all-zero shape matches
+    Go's sdkgo.Receipt{} for a local or uncorrelated provider outcome.
+    """
+
+    call_id: CallID = field(default=CallID(""), metadata={"dex_json_name": "callId"})
+    provider: str = ""
+    observed_at: RFC3339NanoTimestamp | datetime = field(
+        default=datetime.min.replace(tzinfo=UTC), metadata={"dex_json_name": "observedAt"}
+    )
+    idempotency_key: IdempotencyKey = field(
+        default=IdempotencyKey(""),
+        metadata={"dex_json_name": "idempotencyKey", "dex_json_omit_default": True},
+    )
+    provider_object_id: str = field(
+        default="", metadata={"dex_json_name": "providerObjectId", "dex_json_omit_default": True}
+    )
+    provider_request_id: str = field(
+        default="", metadata={"dex_json_name": "providerRequestId", "dex_json_omit_default": True}
+    )
+    metadata: dict[str, str] = field(
+        default_factory=dict, metadata={"dex_json_omit_default": True}
+    )
 
     def to_wire(self) -> dict[str, object]:
         """Encode Go's camel-case receipt and RFC 3339 timestamp."""
@@ -328,7 +419,8 @@ class Receipt:
         ):
             raise ValueError("receipt metadata is invalid")
         call_id = CallID(value["callId"])
-        call_id.validate()
+        if call_id:
+            call_id.validate()
         return cls(
             call_id,
             value["provider"],
@@ -347,7 +439,7 @@ class QueryResult(Generic[T]):
     branch: str
     value: T
     receipt: Receipt
-    failure: Failure | None = None
+    failure: Failure | None = field(default=None, metadata={"dex_json_omit_default": True})
 
     def __post_init__(self) -> None:
         """Reject malformed Query routes before they enter Flow state."""
@@ -383,7 +475,7 @@ class MutationResult(Generic[T]):
     branch: str
     value: T
     receipt: Receipt
-    failure: Failure | None = None
+    failure: Failure | None = field(default=None, metadata={"dex_json_omit_default": True})
 
     def __post_init__(self) -> None:
         """Require failure context for an uncertain write route."""

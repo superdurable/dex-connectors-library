@@ -73,6 +73,7 @@ jobs:
           uv run --project sdkpython mypy --strict sdkpython/src
           uv run --project sdkpython pytest sdkpython/tests
           uv build sdkpython --out-dir "${RUNNER_TEMP}/sdk-dist"
+          python3 -c 'import glob, os, zipfile; wheels = glob.glob(os.path.join(os.environ["RUNNER_TEMP"], "sdk-dist", "*.whl")); assert len(wheels) == 1; assert "dex_connectors/sdk/py.typed" in zipfile.ZipFile(wheels[0]).namelist(), "Python SDK wheel lacks py.typed"'
           rm -f "${RUNNER_TEMP}/sdk-dist/.gitignore"
       - name: Build release notes and manifest
         env:

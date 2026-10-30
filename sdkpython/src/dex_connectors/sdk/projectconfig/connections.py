@@ -7,7 +7,10 @@ import json
 import re
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from .broker import SharedConnection
 
 from ..timestamps import RFC3339NanoTimestamp, format_rfc3339_nano
 from .models import Scope, digest_bytes, go_canonical_json_bytes, require_object
@@ -138,13 +141,24 @@ def _connection_record_wire(
 
 
 class ConnectionStore:
-    """Read exact material and conditionally replace connection credentials."""
+    """Read ordinary material and bind loaded shared entries for provider routing.
 
-    def __init__(self, objects: ObjectStore, scope: Scope) -> None:
+    Shared entries are constructor-injected from the pinned project document.
+    Their credentials remain broker-owned and never enter stored connection heads.
+    """
+
+    def __init__(
+        self, objects: ObjectStore, scope: Scope,
+        shared_connections: dict[ConnectionKey, "SharedConnection"] | None = None,
+    ) -> None:
         if objects is None:
             raise ValueError("project connection object store is required")
         self.objects = objects
         self.scope = scope
+        self._shared_connections = dict(shared_connections or {})
+
+    def _shared_connection(self, key: ConnectionKey) -> "SharedConnection | None":
+        return self._shared_connections.get(key)
 
     async def read_connection(self, key: ConnectionKey) -> Connection:
         """Read safe metadata without refreshing credentials."""
@@ -166,7 +180,6 @@ class ConnectionStore:
             envelope.get("schemaVersion") != CONNECTION_SCHEMA_VERSION
             or envelope.get("scope") != self.scope.to_wire()
             or envelope.get("connection") != key.to_wire()
-            or envelope.get("fence") != connection.fence
             or envelope.get("authMethod") != connection.auth_method
             or envelope.get("expiresAt") != record.get("expiresAt")
         ):
@@ -277,6 +290,25 @@ class ConnectionStore:
                 or not re.fullmatch(r"[0-9a-f]{64}", credential_ref["digest"])
             ):
                 raise ValueError("project credential reference is invalid")
+        mutation = record.get("mutation")
+        if record["status"] in ("REFRESHING", "AUTHORIZING"):
+            if not isinstance(mutation, dict):
+                raise ValueError("credential exchange admission is absent")
+            attempt_id = mutation.get("id")
+            if (
+                not isinstance(attempt_id, str)
+                or not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", attempt_id)
+                or mutation.get("kind") != record["status"]
+                or not isinstance(mutation.get("invocationId"), str)
+                or not mutation["invocationId"]
+                or mutation.get("fence") != record["fence"]
+                or mutation.get("baseRevision") != record["revision"] - 1
+                or mutation.get("resultKey") != f"{path}/exchange-results/{attempt_id}"
+                or self._parse_time(mutation.get("deadline")) is None
+            ):
+                raise ValueError("credential exchange admission is invalid")
+        elif mutation is not None:
+            raise ValueError("inactive credential exchange admission is invalid")
         return record, item
 
     def _connection(self, key: ConnectionKey, record: dict[str, Any]) -> Connection:

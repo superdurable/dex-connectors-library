@@ -7,14 +7,46 @@ from pathlib import Path
 
 import pytest
 
-from dex_connectors.sdk import ConnectionRef, Failure, FailureKind, OperationRef
+from dex_connectors.sdk import (
+    Call,
+    CallID,
+    ConnectionRef,
+    Failure,
+    FailureKind,
+    MutationDefinition,
+    OperationRef,
+    QueryDefinition,
+)
 from dex_connectors.sdk.connectormock import (
     Case,
+    Mutation,
+    Query,
     RecordedCall,
     ScriptedOperation,
     _append_to_report,
     load_fixture,
 )
+
+
+@pytest.mark.asyncio
+async def test_operation_adapters_use_real_definitions_and_require_step_context(
+    conformance_dir: Path,
+) -> None:
+    """Expose Go-compatible mocks without silently inventing Dex context data."""
+    fixture = json.loads((conformance_dir / "connectormock.json").read_text())
+    query_definition = QueryDefinition.from_wire(fixture["queryDefinition"])
+    mutation_definition = MutationDefinition.from_wire(fixture["mutationDefinition"])
+    query = Query[dict[str, str], str](query_definition).respond(Case.branch_result("found", "ok"))
+    mutation = Mutation[dict[str, str], str](mutation_definition).respond(
+        Case.branch_result("created", "ok")
+    )
+    assert query.definition() == query_definition
+    assert mutation.definition() == mutation_definition
+    call_id = CallID("5af8fafa-06ff-5b2d-bb13-04693809fabf")
+    assert mutation.idempotency_key(call_id, {}) == str(call_id)
+    call = Call(call_id, ConnectionRef("sample", "main"), query_definition.operation)
+    with pytest.raises(ValueError, match="live Dex Step context"):
+        await query.invoke(call, {})
 
 
 def test_flow_precedence_retry_and_terminal_key_replay() -> None:

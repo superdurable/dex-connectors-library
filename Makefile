@@ -1,4 +1,4 @@
-.PHONY: check test test-common test-conformance test-connectors test-sdkpython test-sdkts test-python-connectors test-typescript-connectors catalog-check test-integration test-sdk-integration test-projectconfig-s3-integration test-connector-integration test-dex-compat-current test-dex-compat-released test-dex-compat-latest-go-sdk studio-bundle-theme react react-sdk react-connectors workspace githooks
+.PHONY: check test test-common test-conformance test-connectors test-sdkpython test-sdkpython-integration test-sdkts test-python-connectors test-typescript-connectors catalog-check test-integration test-sdk-integration test-projectconfig-s3-integration test-connector-integration test-dex-compat-current test-dex-compat-released test-dex-compat-latest-go-sdk studio-bundle-theme react react-sdk react-connectors workspace githooks
 
 CONNECTOR_CATALOG ?= catalog.yaml
 CONNECTOR_SCOPE ?= all
@@ -37,7 +37,10 @@ test-connectors:
 	done
 
 test-sdkpython:
-	@if [ -f sdkpython/pyproject.toml ]; then test -f sdkpython/uv.lock || { echo 'sdkpython/uv.lock is missing' >&2; exit 1; }; uv sync --locked --project sdkpython && uv run --project sdkpython ruff check sdkpython && uv run --project sdkpython mypy --strict sdkpython/src && uv run --project sdkpython pytest sdkpython/tests; fi
+	@if [ -f sdkpython/pyproject.toml ]; then test -f sdkpython/uv.lock || { echo 'sdkpython/uv.lock is missing' >&2; exit 1; }; uv sync --locked --project sdkpython && uv run --project sdkpython ruff check sdkpython && (cd sdkpython && uv run mypy --strict src tests examples integration) && uv run --project sdkpython pytest sdkpython/tests; fi
+
+test-sdkpython-integration:
+	uv run --project sdkpython pytest sdkpython/integration
 
 test-sdkts:
 	@if [ -f sdkts/package.json ]; then test -f sdkts/package-lock.json || { echo 'sdkts/package-lock.json is missing' >&2; exit 1; }; npm ci --prefix sdkts && npm run typecheck --prefix sdkts && npm run lint --prefix sdkts && npm test --prefix sdkts; fi

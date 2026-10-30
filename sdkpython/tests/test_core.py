@@ -49,7 +49,9 @@ def test_go_identity_and_results_round_trip(conformance_dir: Path) -> None:
         OperationRef(source["connectorId"], source["operationId"]),
     )
     assert derived == identity["derivedCall"]["id"]
-    assert Call.from_wire(identity["derivedCall"]).to_wire() == identity["derivedCall"]
+    decoded_call = Call.from_wire(identity["derivedCall"])
+    assert decoded_call.to_wire() == identity["derivedCall"]
+    assert decoded_call.context is None
     assert derive_call_id(source["flowId"], "other", OperationRef("sample", "createItem")) != derived
     CallID(derived).validate()
     assert identity["callIDNamespace"] == "63281a42-70ad-5bc3-a289-728819af723f"
@@ -88,6 +90,10 @@ def test_go_identity_and_results_round_trip(conformance_dir: Path) -> None:
     nanosecond_result["receipt"] = dict(nanosecond_result["receipt"])
     nanosecond_result["receipt"]["observedAt"] = "2026-10-29T12:30:45.123456789Z"
     assert QueryResult.from_wire(nanosecond_result).to_wire() == nanosecond_result
+    assert Receipt().to_wire() == {
+        "callId": "", "provider": "", "observedAt": "0001-01-01T00:00:00Z"
+    }
+    assert Receipt.from_wire(Receipt().to_wire()).to_wire() == Receipt().to_wire()
 
 
 def test_failure_and_retry_policy_conformance(conformance_dir: Path) -> None:

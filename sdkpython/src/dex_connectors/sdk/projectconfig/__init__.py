@@ -17,6 +17,7 @@ import httpx
 
 from .broker import CredentialBrokerClient, SharedConnection
 from .connections import ConnectionKey, ConnectionStore, CredentialMaterial
+from .dexweb_store import DexWebObjectStore
 from .models import (
     CONFIGURATION_SCHEMA_VERSION,
     LOCAL_CONNECTIONS_SCHEMA_VERSION,
@@ -89,17 +90,23 @@ class LoadedProject:
 
 
 async def load_project_from_object_store(
-    objects: ObjectStore, scope: Scope, reference: SnapshotRef, broker_client: httpx.AsyncClient | None = None
+    objects: ObjectStore, scope: Scope, reference: SnapshotRef,
+    broker_client: httpx.AsyncClient | None = None,
+    connection_store: ConnectionStore | None = None,
 ) -> LoadedProject:
     """Read a pinned snapshot from a trusted object store without fetching credentials."""
     configurations = ConfigurationStore(objects, scope)
     configuration = await configurations.read_snapshot(reference)
-    connections = ConnectionStore(objects, scope)
-    project = LoadedProject(configuration, reference, connections, configurations)
+    if connection_store is not None and any(
+        entry.shared_connection_id for entry in configuration.connections
+    ):
+        raise ValueError("an externally supplied connection store cannot bind shared connections")
+    broker: CredentialBrokerClient | None = None
+    shared_connections: dict[ConnectionKey, SharedConnection] = {}
     if configuration.credential_broker is not None:
 
         async def read_token(token_reference: ApplicationSecretRef) -> str:
-            return await project._read_secret(token_reference, "DEX_CREDENTIAL_BROKER_TOKEN")
+            return await configurations.read_secret_value(token_reference, "DEX_CREDENTIAL_BROKER_TOKEN")
 
         async def current_reference() -> ApplicationSecretRef:
             current, _ = await configurations.read_configuration()
@@ -107,17 +114,24 @@ async def load_project_from_object_store(
                 raise ValueError("credential broker token reference is absent")
             return current.credential_broker.token_secret_ref
 
-        project.broker = CredentialBrokerClient(
+        broker = CredentialBrokerClient(
             configuration.credential_broker, read_token, current_reference, broker_client
         )
-        project.shared_connections = {
+        shared_connections = {
             ConnectionKey(entry.connector_id, entry.connection_name): SharedConnection(
-                entry.shared_connection_id, project.broker
+                entry.shared_connection_id, broker
             )
             for entry in configuration.connections
             if entry.shared_connection_id
         }
-    return project
+    connections = (
+        connection_store if connection_store is not None
+        else ConnectionStore(objects, scope, shared_connections)
+    )
+    return LoadedProject(
+        configuration, reference, connections, configurations,
+        broker=broker, shared_connections=shared_connections,
+    )
 
 
 def _read_private_file(path: Path) -> dict[str, Any]:
@@ -194,7 +208,6 @@ async def load_dex_web_project(path: str | Path) -> LoadedProject:
     if not isinstance(raw_connections, list):
         raise ValueError("connections.json requires connections")
     entries: list[ConnectionConfiguration] = []
-    credentials = _decode_local_credentials(source)
     for index, raw in enumerate(raw_connections):
         record = require_object(raw, f"connection {index}")
         entry = ConnectionConfiguration.from_wire(
@@ -231,10 +244,11 @@ async def load_dex_web_project(path: str | Path) -> LoadedProject:
     )
     written, _ = await configurations.write_configuration(0, document)
     reference = await configurations.freeze_configuration(written.revision)
-    project = await load_project_from_object_store(store, scope, reference)
-    project.local_credentials = credentials
-    project.local_connections_path = connections_path
-    return project
+    local_objects = DexWebObjectStore(connections_path, scope)
+    await local_objects.initialize()
+    return await load_project_from_object_store(
+        store, scope, reference, connection_store=ConnectionStore(local_objects, scope)
+    )
 
 
 async def load_from_environment(

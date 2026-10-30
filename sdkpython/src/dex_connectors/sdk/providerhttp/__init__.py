@@ -19,7 +19,16 @@ _ERROR_TOKEN = re.compile(r"^[A-Za-z0-9_.:-]{1,64}$")
 
 
 class BodyTooLargeError(ValueError):
-    """Provider body exceeded its configured byte limit."""
+    """Provider body exceeded its limit while preserving response metadata.
+
+    Status and headers remain available for safe classification after the
+    response stream closes. The exception message omits header values.
+    """
+
+    def __init__(self, status_code: int, headers: httpx.Headers) -> None:
+        self.status_code = status_code
+        self.headers = headers.copy()
+        super().__init__("provider response body exceeds its size limit")
 
 
 class ProviderTransportError(OSError):
@@ -83,7 +92,7 @@ async def read_bounded_body(response: httpx.Response, maximum_bytes: int) -> byt
         async for chunk in response.aiter_bytes():
             count += len(chunk)
             if count > maximum_bytes:
-                raise BodyTooLargeError("provider response body exceeds its size limit")
+                raise BodyTooLargeError(response.status_code, response.headers)
             chunks.append(chunk)
     except httpx.HTTPError:
         raise ProviderTransportError(False) from None

@@ -93,6 +93,55 @@ jobs:
              ! git diff --name-only "${BASE_SHA}" HEAD | grep -Eq '^sdkpython/'; then exit 0; fi
           make test-sdkpython
 
+  sdkpython-integration:
+    needs: dex-version-plan
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    env:
+      DEX_CLI_RELEASE_TAG: ${{ needs.dex-version-plan.outputs.cli_tag }}
+      DEX_CLI_ASSET_URL: ${{ needs.dex-version-plan.outputs.cli_asset_url }}
+      DEX_CLI_SHA256: ${{ needs.dex-version-plan.outputs.cli_sha256 }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v7
+      - name: Check Python SDK changes
+        id: sdkpython_changes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+        run: |
+          if [ ! -f sdkpython/pyproject.toml ]; then echo 'run=false' >> "$GITHUB_OUTPUT"; exit 0; fi
+          if [ -n "$BASE_SHA" ] && git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null &&
+             ! git diff --name-only "$BASE_SHA" HEAD | grep -Eq '^sdkpython/'; then
+            echo 'run=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'run=true' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Install Dex CLI from the run's resolved release
+        if: steps.sdkpython_changes.outputs.run == 'true'
+        run: python3 script/dex_compatibility.py install-dexcli --output .bin/dexcli
+      - name: Run Python SDK against real Dex Flows
+        if: steps.sdkpython_changes.outputs.run == 'true'
+        run: |
+          uv sync --locked --project sdkpython
+          mkdir -p sdkpython/.dexcli-data/logs
+          .bin/dexcli dev -dex-port 19881 -web-port 19882 -open=false \
+            -zd-data-dir sdkpython/.dexcli-data/zd \
+            -server-log-folder sdkpython/.dexcli-data/logs > sdkpython/.dexcli-data/server.log 2>&1 &
+          dex_pid=$!
+          trap 'kill "$dex_pid" 2>/dev/null || true; wait "$dex_pid" 2>/dev/null || true' EXIT
+          for _ in $(seq 1 120); do
+            if (echo > /dev/tcp/127.0.0.1/19881) 2>/dev/null; then
+              make test-sdkpython-integration
+              exit
+            fi
+            if ! kill -0 "$dex_pid" 2>/dev/null; then break; fi
+            sleep 0.25
+          done
+          cat sdkpython/.dexcli-data/server.log
+          exit 1
+
   sdkts:
     runs-on: ubuntu-latest
     steps:

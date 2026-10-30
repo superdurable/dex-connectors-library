@@ -4,6 +4,7 @@
 
 from dataclasses import dataclass
 from enum import StrEnum
+from math import isfinite
 
 
 class FailureKind(StrEnum):
@@ -67,10 +68,15 @@ class RetryError(Exception):
 
     def __init__(self, failure: Failure, retry_after_seconds: float = 0) -> None:
         failure.validate()
-        if retry_after_seconds < 0:
-            raise ValueError("retry delay cannot be negative")
+        if retry_after_seconds < 0 or not isfinite(retry_after_seconds):
+            raise ValueError("retry delay must be finite and nonnegative")
         self.failure = failure
         self.retry_after_seconds = retry_after_seconds
         super().__init__(
             f"connector {failure.provider} {failure.operation} retry ({failure.kind}): {failure.message}"
         )
+
+    @property
+    def retry_after_whole_seconds(self) -> int:
+        """Return the whole-second delay that Dex can serialize, truncating fractions."""
+        return int(self.retry_after_seconds)

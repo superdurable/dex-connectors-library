@@ -37,8 +37,11 @@ async def test_redirect_not_followed_and_body_bounded() -> None:
         )
         assert observed.status_code == 302
         assert len(requests) == 1
-        with pytest.raises(BodyTooLargeError):
+        with pytest.raises(BodyTooLargeError) as oversized:
             await read_bounded_body(observed, 4)
+        assert oversized.value.status_code == 302
+        assert oversized.value.headers["Location"] == "https://other.example/steal"
+        assert "https://other.example/steal" not in str(oversized.value)
 
 
 @pytest.mark.asyncio
