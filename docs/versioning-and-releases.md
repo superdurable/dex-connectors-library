@@ -240,6 +240,10 @@ description, so the directory can show and search supported configuration and
 actions without reading provider code. A connector with mocks also lists them
 under `mocks` with the import path of its generated `mockPackage`. The workflow
 publishes matching `catalog.yaml` and `catalog.json` documents.
+Each operation and Trigger also lists its supported languages for connectors
+with language packages. Language release validation checks declared operations
+against generated `dex-connector.json` factories. Manifest validation rejects
+nonempty language Trigger lists until those factories are supported.
 
 The `Release Connectors and Catalog` workflow runs automatically after a push
 to `main`. It compares every declared manifest version with reachable tags and

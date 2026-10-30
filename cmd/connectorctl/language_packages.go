@@ -6,6 +6,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -16,6 +17,31 @@ import (
 )
 
 var pythonProjectField = regexp.MustCompile(`^\s*(name|version)\s*=\s*["']([^"']+)["']\s*(?:#.*)?$`)
+
+func languageCapabilitiesCommand(manifestPath, languageName string, output io.Writer) error {
+	manifest, err := load(manifestPath)
+	if err != nil {
+		return err
+	}
+	var language *schema.LanguagePackage
+	if manifest.Spec.Languages != nil {
+		switch languageName {
+		case "python":
+			language = manifest.Spec.Languages.Python
+		case "typescript":
+			language = manifest.Spec.Languages.TypeScript
+		default:
+			return fmt.Errorf("unsupported language: %s", languageName)
+		}
+	}
+	if language == nil {
+		return fmt.Errorf("%s does not declare spec.languages.%s", manifestPath, languageName)
+	}
+	return json.NewEncoder(output).Encode(struct {
+		Operations []string `json:"operations"`
+		Triggers   []string `json:"triggers"`
+	}{Operations: language.Operations, Triggers: language.Triggers})
+}
 
 func validateLanguagePackages(manifestPath string, manifest schema.Manifest) error {
 	if manifest.Spec.Languages == nil || (manifest.Spec.Languages.Python == nil && manifest.Spec.Languages.TypeScript == nil) {

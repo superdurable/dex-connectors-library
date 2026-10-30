@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/santhosh-tekuri/jsonschema/v6"
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/schema"
 	"gopkg.in/yaml.v3"
@@ -81,9 +82,14 @@ func TestLanguageManifestVersionAndPackageValidation(t *testing.T) {
 		languageBlock string
 		problem       string
 	}{
-		{name: "valid independent versions", languageBlock: "  languages:\n    python: {version: v0.2.0, package: dex-connector-google-sheets}\n    typescript: {version: v1.0.0, package: '@superdurable/connector-google-sheets'}\n"},
+		{name: "valid independent versions", languageBlock: "  languages:\n    python: {version: v0.2.0, package: dex-connector-google-sheets, operations: [appendRows], triggers: []}\n    typescript: {version: v1.0.0, package: '@superdurable/connector-google-sheets', operations: [appendRows], triggers: []}\n"},
 		{name: "invalid Python version", languageBlock: "  languages:\n    python: {version: 0.2.0}\n", problem: "spec.languages.python.version"},
-		{name: "invalid npm name", languageBlock: "  languages:\n    typescript: {version: v0.2.0, package: invalid}\n", problem: "spec.languages.typescript.package"},
+		{name: "invalid npm name", languageBlock: "  languages:\n    typescript: {version: v0.2.0, package: invalid, operations: [appendRows], triggers: []}\n", problem: "spec.languages.typescript.package"},
+		{name: "missing lists", languageBlock: "  languages:\n    python: {version: v0.2.0}\n", problem: "spec.languages.python.operations is required"},
+		{name: "unknown operation", languageBlock: "  languages:\n    python: {version: v0.2.0, operations: [missing], triggers: []}\n", problem: "spec.languages.python.operations names unknown missing"},
+		{name: "duplicate operation", languageBlock: "  languages:\n    python: {version: v0.2.0, operations: [appendRows, appendRows], triggers: []}\n", problem: "spec.languages.python.operations has duplicate name appendRows"},
+		{name: "unknown Trigger", languageBlock: "  languages:\n    python: {version: v0.2.0, operations: [], triggers: [missing]}\n", problem: "spec.languages.python.triggers names unknown missing"},
+		{name: "unsupported Trigger", languageBlock: "  languages:\n    typescript: {version: v0.2.0, operations: [], triggers: [messageReceived]}\n", problem: "spec.languages.typescript.triggers must be empty until language Trigger factories are supported"},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			contents := strings.Replace(string(fixture), "spec:\n", "spec:\n"+testCase.languageBlock, 1)
@@ -97,6 +103,38 @@ func TestLanguageManifestVersionAndPackageValidation(t *testing.T) {
 			require.Equal(t, "v1.0.0", manifest.Spec.Languages.TypeScript.Version)
 		})
 	}
+}
+
+func TestLanguageCapabilityJSONSchemaRequiresListsWithoutDuplicates(t *testing.T) {
+	contents, err := os.ReadFile("connector-manifest.schema.json")
+	require.NoError(t, err)
+	var definition any
+	require.NoError(t, json.Unmarshal(contents, &definition))
+	compiler := jsonschema.NewCompiler()
+	languageDefinition := definition.(map[string]any)["$defs"].(map[string]any)["pythonLanguage"]
+	require.NoError(t, compiler.AddResource("https://connectors.dex.dev/python-language.schema.json", languageDefinition))
+	compiled, err := compiler.Compile("https://connectors.dex.dev/python-language.schema.json")
+	require.NoError(t, err)
+	language := schema.LanguagePackage{Version: "v0.1.0", Operations: []string{"appendRows"}, Triggers: []string{}}
+	validate := func() error {
+		contents, err := json.Marshal(language)
+		if err != nil {
+			return err
+		}
+		var document any
+		if err := json.Unmarshal(contents, &document); err != nil {
+			return err
+		}
+		return compiled.Validate(document)
+	}
+	require.NoError(t, validate())
+	language.Operations = nil
+	require.ErrorContains(t, validate(), "operations")
+	language.Operations = []string{"appendRows", "appendRows"}
+	require.ErrorContains(t, validate(), "operations")
+	language.Operations = []string{"appendRows"}
+	language.Triggers = []string{"messageReceived"}
+	require.ErrorContains(t, validate(), "triggers")
 }
 
 func TestExecutionRetryPolicyValidation(t *testing.T) {

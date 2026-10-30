@@ -11,8 +11,12 @@ spec:
   languages:
     python:
       version: v0.1.0
+      operations: [getMessage, sendMessage, replyToMessage]
+      triggers: []
     typescript:
       version: v0.1.0
+      operations: [getMessage, sendMessage, replyToMessage]
+      triggers: []
   codegen:
     go:
       package: gmail

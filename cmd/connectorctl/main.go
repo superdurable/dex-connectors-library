@@ -35,7 +35,7 @@ func main() {
 
 func run(args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: connectorctl <validate|catalog|release-matrix|release-candidate|test-matrix|generate|mocks|ui-artifact|release-artifact> [path ...]")
+		return errors.New("usage: connectorctl <validate|language-capabilities|catalog|release-matrix|release-candidate|test-matrix|generate|mocks|ui-artifact|release-artifact> [path ...]")
 	}
 	switch args[0] {
 	case "validate":
@@ -55,6 +55,11 @@ func run(args []string) error {
 		return nil
 	case "catalog":
 		return catalogCommand(args[1:])
+	case "language-capabilities":
+		if len(args) != 3 {
+			return errors.New("usage: connectorctl language-capabilities <manifest> <python|typescript>")
+		}
+		return languageCapabilitiesCommand(args[1], args[2], os.Stdout)
 	case "release-matrix":
 		return releaseMatrixCommand(args[1:])
 	case "test-matrix":

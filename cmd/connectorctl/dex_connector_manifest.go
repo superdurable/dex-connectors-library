@@ -74,9 +74,16 @@ func generatedLanguageManifestFiles(manifestPath string, manifest schema.Manifes
 				Name:      languagePackageName(connectorDirectory, language.name, language.packageDeclaration.Package),
 				Version:   strings.TrimPrefix(language.packageDeclaration.Version, "v"),
 			},
-			Factories: make([]dexConnectorFactory, 0, len(manifest.Spec.Operations)),
+			Factories: make([]dexConnectorFactory, 0, len(language.packageDeclaration.Operations)),
+		}
+		selectedOperations := make(map[string]bool, len(language.packageDeclaration.Operations))
+		for _, name := range language.packageDeclaration.Operations {
+			selectedOperations[name] = true
 		}
 		for _, operation := range manifest.Spec.Operations {
+			if !selectedOperations[operation.Name] {
+				continue
+			}
 			fields := dexConnectorFields{ConnectionName: "connectionName", ResultAttribute: "resultAttribute"}
 			if language.name == "python" {
 				fields.StepType = "step_type"

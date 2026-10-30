@@ -91,6 +91,14 @@ export function connectorMatchesQuery(connector, query) {
   return tokens.every((token) => haystack.includes(token));
 }
 
+export function connectorMatchesLanguage(connector, language) {
+  return language === "all" || Object.hasOwn(connector.languages, language);
+}
+
+export function capabilityMatchesLanguage(capability, language) {
+  return language === "all" || capability.languages.includes(language);
+}
+
 export function catalogTotals(connectors) {
   const companies = new Set();
   let uiUnits = 0;
@@ -146,6 +154,8 @@ export function readOperations(text) {
     name: requiredText(operation.name, "operation name"),
     kind: requiredText(operation.kind, "operation kind"),
     description: requiredText(operation.description, "operation description"),
+    languages: ["go", ...["python", "typescript"].filter((language) =>
+      spec.languages?.[language]?.[operation.kind === "trigger" ? "triggers" : "operations"]?.includes(operation.name))],
   }));
 }
 
@@ -160,7 +170,21 @@ function readCapabilities(value, fixedKind) {
     name: requiredText(capability.name, "capability name"),
     kind: fixedKind || requiredText(capability.kind, "operation kind"),
     description: requiredText(capability.description, "capability description"),
+    languages: readCapabilityLanguages(capability.languages),
   }));
+}
+
+function readCapabilityLanguages(value) {
+  if (value == null) {
+    return ["go"];
+  }
+  if (!Array.isArray(value) || value.length === 0 || value[0] !== "go" ||
+      value.some((language) => !["go", "python", "typescript"].includes(language)) ||
+      new Set(value).size !== value.length ||
+      value.join(",") !== ["go", "python", "typescript"].filter((language) => value.includes(language)).join(",")) {
+    throw new Error("catalog capability languages must be sorted, unique, and include go");
+  }
+  return value;
 }
 
 function requiredText(value, label) {

@@ -27,6 +27,7 @@ export type CatalogCapability = {
   name: string;
   kind: string;
   description: string;
+  languages: Array<"go" | "python" | "typescript">;
 };
 
 export type CatalogTotals = {
@@ -43,6 +44,8 @@ export function companyLogoUrl(company: string, origin: "local" | "published"): 
 export function catalogDocumentUrl(isDev: boolean, baseUrl: string): string;
 export function readCatalog(text: string): CatalogConnector[];
 export function connectorMatchesQuery(connector: CatalogConnector, query: string): boolean;
+export function connectorMatchesLanguage(connector: CatalogConnector, language: "all" | "go" | "python" | "typescript"): boolean;
+export function capabilityMatchesLanguage(capability: CatalogCapability, language: "all" | "go" | "python" | "typescript"): boolean;
 export function catalogTotals(connectors: CatalogConnector[]): CatalogTotals;
 export function groupCatalog(connectors: CatalogConnector[]): CompanyGroup[];
 export function readOperations(text: string): CatalogCapability[];

@@ -30,7 +30,7 @@ func TestGenerateLanguagePackageManifestsAndDetectDrift(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(repositoryRoot, "catalog.yaml"), []byte("connectors: []\n"), 0o600))
 	fixture, err := os.ReadFile(filepath.Join("..", "..", "schema", "testdata", "google-oauth.yaml"))
 	require.NoError(t, err)
-	manifestSource := strings.Replace(string(fixture), "spec:\n", "spec:\n  languages:\n    python: {version: v0.2.0, package: dex-connector-custom-sheets}\n    typescript: {version: v0.3.0}\n", 1)
+	manifestSource := strings.Replace(string(fixture), "spec:\n", "spec:\n  languages:\n    python: {version: v0.2.0, package: dex-connector-custom-sheets, operations: [appendRows], triggers: []}\n    typescript: {version: v0.3.0, operations: [appendRows], triggers: []}\n", 1)
 	manifestSource = strings.Replace(manifestSource, "  operations:\n", `  studio:
     setup:
       entrypoint: index.html
@@ -95,12 +95,20 @@ func TestGenerateLanguagePackageManifestsAndDetectDrift(t *testing.T) {
 		require.ErrorContains(t, generate([]string{"--check", manifestPath}), "generated file is stale")
 		require.NoError(t, generate([]string{manifestPath}))
 	}
-	manifestSource = strings.Replace(manifestSource, "  languages:\n    python: {version: v0.2.0, package: dex-connector-custom-sheets}\n    typescript: {version: v0.3.0}\n", "", 1)
+	pythonOnly := strings.Replace(manifestSource, "python: {version: v0.2.0, package: dex-connector-custom-sheets, operations: [appendRows]", "python: {version: v0.2.0, package: dex-connector-custom-sheets, operations: []", 1)
+	require.NoError(t, os.WriteFile(manifestPath, []byte(pythonOnly), 0o600))
+	require.ErrorContains(t, generate([]string{"--check", manifestPath}), "generated file is stale")
+	require.NoError(t, generate([]string{manifestPath}))
+	pythonManifest, err := os.ReadFile(filepath.Join(connectorDirectory, "python", "src", "dex_connectors", "google_sheets", "dex-connector.json"))
+	require.NoError(t, err)
+	require.Contains(t, string(pythonManifest), `"factories": []`)
+	require.NoError(t, generate([]string{"--check", manifestPath}))
+	manifestSource = strings.Replace(manifestSource, "  languages:\n    python: {version: v0.2.0, package: dex-connector-custom-sheets, operations: [appendRows], triggers: []}\n    typescript: {version: v0.3.0, operations: [appendRows], triggers: []}\n", "", 1)
 	require.NoError(t, os.WriteFile(manifestPath, []byte(manifestSource), 0o600))
 	require.ErrorContains(t, generate([]string{"--check", manifestPath}), "generated language package manifest is stale")
 	require.NoError(t, generate([]string{manifestPath}))
 	require.NoError(t, generate([]string{"--check", manifestPath}))
-	manifestSource = strings.Replace(manifestSource, "spec:\n", "spec:\n  languages:\n    python: {version: v0.2.0, package: dex-connector-custom-sheets}\n    typescript: {version: v0.3.0}\n", 1)
+	manifestSource = strings.Replace(manifestSource, "spec:\n", "spec:\n  languages:\n    python: {version: v0.2.0, package: dex-connector-custom-sheets, operations: [appendRows], triggers: []}\n    typescript: {version: v0.3.0, operations: [appendRows], triggers: []}\n", 1)
 	manifestSource = strings.Replace(manifestSource, "id: appended", "id: annotations", 1)
 	require.NoError(t, os.WriteFile(manifestPath, []byte(manifestSource), 0o600))
 	require.ErrorContains(t, generate([]string{manifestPath}), `factory maps more than one field to "annotations"`)

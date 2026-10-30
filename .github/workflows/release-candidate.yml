@@ -242,6 +242,9 @@ jobs:
           ref: ${{ needs.plan.outputs.source_sha }}
           fetch-depth: 0
           persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
       - uses: astral-sh/setup-uv@v7
         if: needs.plan.outputs.language == 'python'
       - uses: actions/setup-node@v6

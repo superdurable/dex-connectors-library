@@ -323,7 +323,7 @@ h2, h3 {
 
 .operations li {
   display: grid;
-  grid-template-columns: 108px 1fr;
+  grid-template-columns: 108px minmax(0, 1fr) auto;
   gap: 14px;
   align-items: start;
   padding: 14px 16px;
@@ -331,6 +331,28 @@ h2, h3 {
   border: 1px solid var(--line);
   border-radius: 14px;
 }
+
+.language-icons { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.language-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--panel);
+  color: #00add8;
+}
+.language-icon svg { width: 22px; height: 22px; fill: currentColor; }
+.language-icon-python { color: #3776ab; }
+.language-icon-typescript { color: #3178c6; }
+
+.language-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 18px; padding: 0; border: 0; }
+.language-filter legend { float: left; margin-right: 10px; padding: 5px 0; color: var(--muted-strong); font-size: 13px; font-weight: 600; }
+.language-filter label { padding: 5px 11px; border: 1px solid var(--line-strong); border-radius: 999px; color: var(--muted-strong); cursor: pointer; font-size: 13px; }
+.language-filter label.selected { background: var(--panel-light); border-color: var(--forest); color: var(--forest); }
+.language-filter label:focus-within { outline: 2px solid var(--forest); outline-offset: 2px; }
+.language-filter input { position: absolute; opacity: 0; width: 1px; height: 1px; }
 
 .operations strong {
   display: block;

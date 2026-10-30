@@ -62,6 +62,57 @@ type LanguagePackage struct {
 	Version string `yaml:"version" json:"version"`
 	// Package overrides the distribution name derived from the connector directory.
 	Package string `yaml:"package,omitempty" json:"package,omitempty"`
+	// Operations lists exactly the operation factories implemented by this package.
+	Operations []string `yaml:"operations" json:"operations"`
+	// Triggers lists exactly the Trigger factories implemented by this package.
+	Triggers []string `yaml:"triggers" json:"triggers"`
+}
+
+func validateLanguageCapabilities(name string, language *LanguagePackage, spec Spec) []string {
+	var problems []string
+	for _, capability := range []struct {
+		field  string
+		listed []string
+		known  map[string]bool
+	}{
+		{field: "operations", listed: language.Operations, known: operationNames(spec.Operations)},
+		{field: "triggers", listed: language.Triggers, known: triggerNames(spec.Triggers)},
+	} {
+		path := "spec.languages." + name + "." + capability.field
+		if capability.listed == nil {
+			problems = append(problems, path+" is required (use [] when none are implemented)")
+			continue
+		}
+		if capability.field == "triggers" && len(capability.listed) > 0 {
+			problems = append(problems, path+" must be empty until language Trigger factories are supported")
+		}
+		seen := make(map[string]bool, len(capability.listed))
+		for _, listedName := range capability.listed {
+			if seen[listedName] {
+				problems = append(problems, path+" has duplicate name "+listedName)
+			} else if !capability.known[listedName] {
+				problems = append(problems, path+" names unknown "+listedName)
+			}
+			seen[listedName] = true
+		}
+	}
+	return problems
+}
+
+func operationNames(operations []Operation) map[string]bool {
+	names := make(map[string]bool, len(operations))
+	for _, operation := range operations {
+		names[operation.Name] = true
+	}
+	return names
+}
+
+func triggerNames(triggers []Trigger) map[string]bool {
+	names := make(map[string]bool, len(triggers))
+	for _, trigger := range triggers {
+		names[trigger.Name] = true
+	}
+	return names
 }
 
 type Studio struct {
@@ -474,6 +525,7 @@ func (manifest Manifest) Validate() error {
 			if language.Package != "" && !pythonPackagePattern.MatchString(language.Package) {
 				problems = append(problems, "spec.languages.python.package must be a normalized PyPI distribution name")
 			}
+			problems = append(problems, validateLanguageCapabilities("python", language, manifest.Spec)...)
 		}
 		if language := manifest.Spec.Languages.TypeScript; language != nil {
 			if !versionPattern.MatchString(language.Version) {
@@ -482,6 +534,7 @@ func (manifest Manifest) Validate() error {
 			if language.Package != "" && !typeScriptPackagePattern.MatchString(language.Package) {
 				problems = append(problems, "spec.languages.typescript.package must be a scoped npm package name")
 			}
+			problems = append(problems, validateLanguageCapabilities("typescript", language, manifest.Spec)...)
 		}
 	}
 	if strings.TrimSpace(manifest.Spec.Provider) == "" {

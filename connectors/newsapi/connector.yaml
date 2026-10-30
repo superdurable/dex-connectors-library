@@ -11,8 +11,12 @@ spec:
   languages:
     python:
       version: v0.1.0
+      operations: [searchArticles]
+      triggers: []
     typescript:
       version: v0.1.0
+      operations: [searchArticles]
+      triggers: []
   codegen:
     go:
       package: newsapi

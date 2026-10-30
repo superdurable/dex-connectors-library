@@ -704,6 +704,10 @@ def validate_language_connector_release(
         r"connectors/" + re.escape(connector_path) + r"/v[0-9]+\.[0-9]+\.[0-9]+", release_tag
     ):
         raise ValueError(f"{connector_manifest_path} releaseTag must name its Go connector release")
+    source_manifest = path.parent / "connector.yaml"
+    if not source_manifest.is_file():
+        raise ValueError(f"{path} requires {source_manifest}")
+    validate_language_capability_coverage(source_manifest, language, document)
     if not require_completed_release:
         return
     if not lookup.has_tag(release_tag):
@@ -712,6 +716,42 @@ def validate_language_connector_release(
         raise ValueError(f"required Go connector release is not reachable from main: {release_tag}")
     if CONNECTOR_RELEASE_COMPLETE_ASSET not in lookup.release_asset_names(release_tag):
         raise ValueError(f"required Go connector release is incomplete: {release_tag} has no {CONNECTOR_RELEASE_COMPLETE_ASSET} asset")
+
+
+def validate_language_capability_coverage(source_manifest: Path, language: str, document: dict) -> None:
+    """Check declared Step coverage before a language package is released."""
+    operations, triggers = read_declared_language_capabilities(source_manifest, language)
+    factories = document.get("factories")
+    if not isinstance(factories, list) or any(not isinstance(factory, dict) for factory in factories):
+        raise ValueError("dex-connector.json factories must be a list")
+    factory_operations = [factory.get("operationId") for factory in factories]
+    if any(not isinstance(operation, str) for operation in factory_operations):
+        raise ValueError("dex-connector.json factories must name operation IDs")
+    if len(set(factory_operations)) != len(factory_operations) or set(factory_operations) != operations:
+        raise ValueError(f"{language} declared operations differ from dex-connector.json factories")
+    if triggers:
+        raise ValueError(f"{language} Trigger factories are not supported by dex-connector.json")
+
+
+def read_declared_language_capabilities(source_manifest: Path, language: str) -> tuple[set[str], set[str]]:
+    repository_root = next((parent for parent in source_manifest.resolve().parents
+                            if (parent / "cmd/connectorctl/main.go").is_file()), None)
+    if repository_root is None:
+        raise ValueError(f"connectorctl is unavailable for {source_manifest}")
+    result = subprocess.run(
+        ["go", "run", "./cmd/connectorctl", "language-capabilities", str(source_manifest.resolve()), language],
+        cwd=repository_root, env={**os.environ, "GOWORK": "off"}, capture_output=True, text=True, check=False,
+    )
+    if result.returncode != 0:
+        raise ValueError(f"connectorctl could not validate language capabilities: {result.stderr.strip()}")
+    try:
+        declared = json.loads(result.stdout)
+    except json.JSONDecodeError as error:
+        raise ValueError("connectorctl returned invalid language capabilities JSON") from error
+    if not isinstance(declared, dict) or not all(isinstance(declared.get(field), list) and
+            all(isinstance(name, str) for name in declared[field]) for field in ("operations", "triggers")):
+        raise ValueError("connectorctl returned invalid language capability lists")
+    return set(declared["operations"]), set(declared["triggers"])
 
 
 def stamp_language_candidate_connector_manifest(path: Path, language: str, candidate_version: str) -> None:
