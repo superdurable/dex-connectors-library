@@ -14,7 +14,8 @@ never place credentials in Flow state.
 
 Runnable examples are [`examples/core.py`](examples/core.py),
 [`examples/credentials_and_project.py`](examples/credentials_and_project.py),
-and [`examples/operations_and_oauth.py`](examples/operations_and_oauth.py).
+[`examples/operations_and_oauth.py`](examples/operations_and_oauth.py),
+and [`examples/single_dispatch.py`](examples/single_dispatch.py).
 Run each with `uv run python examples/<name>.py`.
 
 ## Core values, failures, and retry policy
@@ -139,10 +140,29 @@ assert token.access_token.reveal() == "INERT_ACCESS"
 allows an initial send or a resend only after the immediately prior attempt
 recorded `notSent` or `canResend` without a provider ID. A claimed, missing,
 stale, or accepted checkpoint requires read-back; malformed or foreign data
-fails closed. The Dex heartbeat fence will use these values after R1 lands.
+fails closed. `singledispatch.Fence` reads `Call.context.deadline` and the
+previous Dex heartbeat before credential lookup. `dispatch(send)` checkpoints
+`claimed` before one provider send and repeats that claim every five seconds.
+The callback receives the write deadline and must avoid transport replay.
+Call `record_not_sent` before retrying a credential or pre-send failure;
+`record_can_resend` requires positive proof that the provider did not process
+the request. `record_provider_id` preserves an accepted resource identity for
+read-back. Use sync Execute durability because local async activities ignore
+heartbeats.
+
+From [the runnable single-dispatch example](examples/single_dispatch.py):
 
 ```python
-assert decide_dispatch(call_id, 1, None).kind == DecisionKind.SEND_ALLOWED
+fence = Fence(call, timedelta(seconds=10))
+assert (await fence.decide()).kind == DecisionKind.SEND_ALLOWED
+
+async def send(write_deadline: datetime) -> str:
+    """Use the deadline when constructing a real non-replaying provider request."""
+    assert write_deadline > datetime.now(UTC)
+    return "INERT_PROVIDER_OBJECT"
+
+provider_id = await fence.dispatch(send)
+await fence.record_provider_id(provider_id)
 ```
 
 ## Provider HTTP
