@@ -60,8 +60,9 @@ hours because Stripe retains idempotency keys for at least 24 hours.
 
 `stripemock.Mock` exposes all five operations with the happy path scenario
 from `connector.yaml` as the default. Its named scenario functions cover
-every manifest mock branch. Provider unit tests use `httpx.MockTransport` and
-do not require Stripe credentials.
+every manifest mock branch. Pass `Mock("stripe-payments").connection()` to the
+operation-specific Step factories to run a Flow with scripted answers. Provider
+unit tests use `httpx.MockTransport` and do not require Stripe credentials.
 
 ## Runnable Flow
 

@@ -4,6 +4,7 @@
 
 from dataclasses import MISSING, fields, is_dataclass
 from pathlib import Path
+from typing import Any, cast
 from uuid import UUID
 
 import pytest
@@ -75,7 +76,7 @@ def test_all_manifest_operations_match_python_definitions() -> None:
     assert set(OPERATIONS) == set(DEFINITIONS) == set(MOCK_CASES)
     call_id = CallID(str(UUID("ffdd13f6-fd46-4d55-ad11-7afce245c321")))
     mock = Mock("stripe-payments")
-    operation_instances = {
+    operation_instances: dict[str, Any] = {
         "createCardCheckoutSession": mock.create_card_checkout_session,
         "createACHCheckoutSession": mock.create_ach_checkout_session,
         "getCheckoutSession": mock.get_checkout_session,
@@ -94,19 +95,24 @@ def test_all_manifest_operations_match_python_definitions() -> None:
         assert manifest_operation.get("authorization", "required") == "required"
         if is_mutation:
             assert operation_instances[name].idempotency_key(call_id, None) == IdempotencyKey(call_id)
-        assert [(branch.id, branch.optional) for branch in definition.branches] == [
-            (branch["id"], branch.get("optional", False)) for branch in manifest_operation["branches"]
+        assert definition.branches is not None
+        assert [(branch.id, branch.description, branch.optional) for branch in definition.branches] == [
+            (branch["id"], branch["description"], branch.get("optional", False))
+            for branch in manifest_operation["branches"]
         ]
         execution = manifest_operation["execution"]
         assert execution["executeMethodTimeout"] == "30s"
         assert execution["durability"] == "async"
         assert "retry" not in execution
         assert definition.step_defaults.execute_method_timeout.total_seconds() == 30
-        assert definition.step_defaults.execute_durability == {
-            "default": 0,
-            "sync": 1,
-            "async": 2,
-        }[execution["durability"]]
+        assert (
+            definition.step_defaults.execute_durability
+            == {
+                "default": 0,
+                "sync": 1,
+                "async": 2,
+            }[execution["durability"]]
+        )
         assert definition.step_defaults.execute_retry is None
         assert definition.step_defaults.heartbeat_timeout.total_seconds() == 0
 
@@ -120,7 +126,7 @@ def test_manifest_mock_scenarios_match_hand_written_cases(name: str) -> None:
     assert [item["name"] for item in scenarios].count(DEFAULT_SCENARIOS[name]) == 1
     assert [item["name"] for item in scenarios if item.get("default")] == [DEFAULT_SCENARIOS[name]]
     for scenario in scenarios:
-        case = MOCK_CASES[name](scenario["name"])
+        case = cast(Any, MOCK_CASES[name])(scenario["name"])
         uncertain = scenario.get("uncertain")
         assert case.kind == ("uncertain" if uncertain else "branch")
         assert case.branch == (scenario.get("branch") or "uncertain")

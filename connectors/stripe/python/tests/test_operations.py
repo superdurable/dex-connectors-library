@@ -2,7 +2,9 @@
 # SPDX-License-Identifier: MIT
 """Operation parity checks against the Go connector's HTTP behavior."""
 
+from dataclasses import replace
 from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 import httpx
@@ -30,6 +32,7 @@ from dex_connectors.stripe import (
     GetCheckoutSessionInput,
     GetPaymentIntentInput,
 )
+from dex_connectors.stripe.client import retry_after_seconds
 
 CALL_ID = CallID(str(UUID("ffdd13f6-fd46-4d55-ad11-7afce245c321")))
 CONNECTION = ConnectionRef("stripe", "payments")
@@ -102,9 +105,10 @@ async def test_checkout_creation_request_and_receipt(operation: str, card: bool)
     client = client_for(httpx.MockTransport(answer))
     operation_value = client.create_card_checkout_session() if card else client.create_ach_checkout_session()
     result = await operation_value.invoke(make_call(operation, True), checkout_input(card))
+    assert result.value is not None and result.receipt is not None
     assert result.kind == "branch" and result.branch == "created" and result.value.id == "cs_test_123"
     assert result.receipt.provider_request_id == "req_123"
-    assert result.receipt.idempotency_key == CALL_ID
+    assert str(result.receipt.idempotency_key) == str(CALL_ID)
     request = captured[0]
     assert request.method == "POST" and request.url.path == "/v1/checkout/sessions"
     assert request.headers["Idempotency-Key"] == CALL_ID
@@ -133,11 +137,90 @@ async def test_checkout_query_found_and_payment_intent_query_found() -> None:
     payment = await client.get_payment_intent().invoke(
         make_call("getPaymentIntent"), GetPaymentIntentInput("pi_test_123")
     )
+    assert checkout.value is not None and payment.value is not None
     assert checkout.branch == "found" and checkout.value.payment_intent_id == "pi_test_123"
     assert payment.branch == "found" and payment.value.amount_refunded == 2500
     assert payment.value.customer_email == "person@example.com"
     assert requests[1].url.params["expand[]"] == "latest_charge"
     assert "Idempotency-Key" not in requests[1].headers
+
+
+@pytest.mark.parametrize(
+    "operation,identifier,expected_path",
+    [
+        ("getCheckoutSession", "cs_test_%2f", b"/v1/checkout/sessions/cs_test_%252f"),
+        ("getPaymentIntent", "pi_test_%2f", b"/v1/payment_intents/pi_test_%252f"),
+        ("getCheckoutSession", "cs_a\x00b", b"/v1/checkout/sessions/cs_a%00b"),
+        ("getPaymentIntent", "pi_a\nb", b"/v1/payment_intents/pi_a%0Ab"),
+    ],
+)
+async def test_query_ids_are_escaped_as_single_path_segments(
+    operation: str, identifier: str, expected_path: bytes
+) -> None:
+    """Literal percent sequences and control bytes never change the endpoint."""
+    result: Any
+    captured: list[httpx.Request] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        captured.append(request)
+        return httpx.Response(404)
+
+    client = client_for(httpx.MockTransport(answer))
+    if operation == "getCheckoutSession":
+        result = await client.get_checkout_session().invoke(
+            make_call(operation), GetCheckoutSessionInput(identifier)
+        )
+    else:
+        result = await client.get_payment_intent().invoke(
+            make_call(operation), GetPaymentIntentInput(identifier)
+        )
+    assert result.branch == "notFound"
+    assert captured[0].url.raw_path.split(b"?", 1)[0] == expected_path
+
+
+@pytest.mark.parametrize("customer_email", ["@x", "foo@", "a@b@c"])
+async def test_checkout_rejects_invalid_plain_email(customer_email: str) -> None:
+    """Malformed addresses select validation defect before sending a write."""
+    requests: list[httpx.Request] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200)
+
+    client = client_for(httpx.MockTransport(answer))
+    input_value = replace(checkout_input(card=True), customer_email=customer_email)
+    result = await client.create_card_checkout_session().invoke(
+        make_call("createCardCheckoutSession", True), input_value
+    )
+    assert result.branch == "defect"
+    assert result.failure is not None and result.failure.kind == FailureKind.VALIDATION
+    assert result.receipt is not None
+    assert result.receipt.provider == "" and result.receipt.call_id == ""
+    assert not requests
+
+
+async def test_checkout_rejects_naive_expiration() -> None:
+    """A local timezone cannot silently change the Stripe expiration."""
+    requests: list[httpx.Request] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200)
+
+    client = client_for(httpx.MockTransport(answer))
+    input_value = replace(checkout_input(card=True), expires_at=datetime(2026, 10, 30, 12))
+    result = await client.create_card_checkout_session().invoke(
+        make_call("createCardCheckoutSession", True), input_value
+    )
+    assert result.branch == "defect"
+    assert result.failure is not None and result.failure.kind == FailureKind.VALIDATION
+    assert not requests
+
+
+@pytest.mark.parametrize("value,expected", [("+5", 5), ("7200", 3600), ("9223372036854775808", 0), ("-5", 0)])
+def test_retry_after_matches_go_int64_parsing(value: str, expected: float) -> None:
+    """Signed hints and int64 overflow have the same delay as the Go client."""
+    assert retry_after_seconds(httpx.Headers({"Retry-After": value})) == expected
 
 
 async def test_refund_success_request_and_reserved_marker() -> None:
@@ -152,6 +235,7 @@ async def test_refund_success_request_and_reserved_marker() -> None:
     result = await client.create_refund().invoke(
         make_call("createRefund", True), CreateRefundInput("pi_test_123", 2500)
     )
+    assert result.value is not None
     assert result.branch == "refunded" and result.value.refund_id == "re_test_123"
     assert result.value.status == "pending"
     form = dict(httpx.QueryParams(captured[0].content))
@@ -172,6 +256,7 @@ async def test_refund_success_request_and_reserved_marker() -> None:
 )
 async def test_malformed_provider_field_is_invalid_response(operation: str, body: dict[str, object]) -> None:
     """Wrong provider field types select invalidResponse, matching Go JSON decoding."""
+    result: Any
     client = client_for(httpx.MockTransport(lambda request: httpx.Response(200, json=body)))
     if operation == "createCardCheckoutSession":
         result = await client.create_card_checkout_session().invoke(
@@ -216,6 +301,7 @@ async def test_checkout_redirect_does_not_forward_credentials() -> None:
 @pytest.mark.parametrize("operation", ["getCheckoutSession", "getPaymentIntent"])
 async def test_missing_query_resource_is_not_found(operation: str) -> None:
     """Both read operations preserve the declared notFound branch."""
+    result: Any
     client = client_for(
         httpx.MockTransport(
             lambda request: httpx.Response(
@@ -252,6 +338,7 @@ async def test_keyed_mutation_conflict_and_uncertainty(
     operation: str, status: int, body: dict[str, object], kind: str
 ) -> None:
     """All keyed writes share 409 and unhinted 500 behavior."""
+    result: Any
 
     def answer(request: httpx.Request) -> httpx.Response:
         if request.method == "GET":
@@ -289,6 +376,7 @@ async def test_oversized_error_keeps_status_classification(
     operation: str, status: int, expected: str
 ) -> None:
     """Truncated error bodies cannot turn status-based failures into protocol failures."""
+    result: Any
 
     def answer(request: httpx.Request) -> httpx.Response:
         if request.method == "GET" and request.url.path.endswith("refunds"):
@@ -340,6 +428,7 @@ async def test_oversized_error_keeps_status_classification(
 )
 async def test_terminal_branches(operation: str, status: int, branch: str, kind: FailureKind) -> None:
     """Every operation classifies terminal provider responses consistently."""
+    result: Any
 
     def answer(request: httpx.Request) -> httpx.Response:
         return httpx.Response(
@@ -384,6 +473,7 @@ async def test_terminal_branches(operation: str, status: int, branch: str, kind:
 @pytest.mark.parametrize("status,kind", [(429, FailureKind.RATE_LIMIT), (503, FailureKind.AVAILABILITY)])
 async def test_retry_after_and_availability(operation: str, status: int, kind: FailureKind) -> None:
     """429 and safe 503 failures retry, with bounded integer Retry-After."""
+    result: Any
     client = client_for(
         httpx.MockTransport(lambda request: httpx.Response(status, headers={"Retry-After": "4000"}))
     )
@@ -423,6 +513,7 @@ async def test_retry_after_and_availability(operation: str, status: int, kind: F
 )
 async def test_oversized_success_is_invalid_response(operation: str) -> None:
     """Oversized successful responses never get decoded or persisted."""
+    result: Any
     client = client_for(httpx.MockTransport(lambda request: httpx.Response(200, content=b"x" * 65)), 64)
     if operation == "createCardCheckoutSession":
         result = await client.create_card_checkout_session().invoke(
@@ -460,6 +551,7 @@ async def test_oversized_success_is_invalid_response(operation: str) -> None:
 )
 async def test_invalid_input_is_defect_without_provider_call(operation: str) -> None:
     """Invalid local input returns VALIDATION before credential or network access."""
+    result: Any
 
     def no_request(request: httpx.Request) -> httpx.Response:
         raise AssertionError("invalid input reached Stripe")
@@ -537,6 +629,7 @@ async def test_refund_readback_finds_original_call_and_keeps_one_key() -> None:
     result = await client.create_refund().invoke(
         make_call("createRefund", True), CreateRefundInput("pi_test_123", 2500)
     )
+    assert result.value is not None
     assert result.branch == "refunded" and result.value.refund_id == "re_test_123"
     assert len(requests) == 2 and requests[1].url.params["limit"] == "100"
     assert "Idempotency-Key" not in requests[1].headers
@@ -566,6 +659,7 @@ async def test_refund_unconfirmed_and_readback_denial(readback_status: int, kind
         make_call("createRefund", True), CreateRefundInput("pi_test_123", 2500)
     )
     assert result.kind == ("retry" if readback_status == 503 else "uncertain")
+    assert result.failure is not None
     assert result.failure.kind == kind
 
 
@@ -637,7 +731,8 @@ async def test_refund_readback_is_bounded_to_three_pages(match_on_third_page: bo
 )
 async def test_missing_credentials_are_authentication_defects(operation: str) -> None:
     """A missing connection never sends an unauthenticated provider request."""
-    credentials = StaticCredentialProvider({})
+    result: Any
+    credentials: StaticCredentialProvider[Credentials] = StaticCredentialProvider({})
     client = Client(
         Config("http://127.0.0.1:12345/v1"),
         credentials,
@@ -678,21 +773,23 @@ def test_definitions_match_manifest_branches() -> None:
         GET_PAYMENT_INTENT_DEFINITION,
     )
 
-    for definition in (
+    for mutation_definition in (
         CREATE_CARD_CHECKOUT_SESSION_DEFINITION,
         CREATE_ACH_CHECKOUT_SESSION_DEFINITION,
         CREATE_REFUND_DEFINITION,
     ):
-        assert [branch.id for branch in definition.branches] == [
-            "refunded" if definition.operation.operation_id == "createRefund" else "created",
+        assert mutation_definition.branches is not None
+        assert [branch.id for branch in mutation_definition.branches] == [
+            "refunded" if mutation_definition.operation.operation_id == "createRefund" else "created",
             "providerRejected",
             "uncertain",
             "invalidResponse",
             "defect",
         ]
-        assert definition.step_defaults.execute_method_timeout.total_seconds() == 30
-    for definition in (GET_CHECKOUT_SESSION_DEFINITION, GET_PAYMENT_INTENT_DEFINITION):
-        assert [branch.id for branch in definition.branches] == [
+        assert mutation_definition.step_defaults.execute_method_timeout.total_seconds() == 30
+    for query_definition in (GET_CHECKOUT_SESSION_DEFINITION, GET_PAYMENT_INTENT_DEFINITION):
+        assert query_definition.branches is not None
+        assert [branch.id for branch in query_definition.branches] == [
             "found",
             "notFound",
             "providerRejected",
@@ -720,6 +817,7 @@ async def test_sdk_runners_preserve_stripe_key_and_query_branch() -> None:
         make_call("getCheckoutSession"),
         GetCheckoutSessionInput("cs_test_123"),
     )
-    assert mutation.branch == "created" and mutation.receipt.idempotency_key == CALL_ID
+    assert mutation.receipt is not None and query.value is not None
+    assert mutation.branch == "created" and str(mutation.receipt.idempotency_key) == str(CALL_ID)
     assert requests[0].headers["Idempotency-Key"] == CALL_ID
     assert query.branch == "found" and query.value.id == "cs_test_123"

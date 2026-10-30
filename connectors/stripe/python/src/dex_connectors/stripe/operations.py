@@ -7,7 +7,7 @@ import re
 from datetime import timedelta
 from email.utils import parseaddr
 from typing import cast
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 from dex_connectors.sdk import (
     BranchDefinition,
@@ -21,6 +21,7 @@ from dex_connectors.sdk import (
     OperationRef,
     QueryAttempt,
     QueryDefinition,
+    Receipt,
     StepDefaults,
 )
 from dex_connectors.sdk.providerhttp import ProviderTransportError
@@ -52,32 +53,92 @@ from .models import (
 _DEFAULTS = StepDefaults(timedelta(seconds=30), 2)
 
 
-def _definition(operation: str, happy_path: str, is_mutation: bool) -> QueryDefinition | MutationDefinition:
-    branches = [BranchDefinition(happy_path, f"Stripe returned {happy_path}.")]
-    if not is_mutation:
-        branches.append(BranchDefinition("notFound", "Stripe did not find the resource.", True))
-    branches.append(BranchDefinition("providerRejected", "Stripe conclusively rejected the request.", True))
-    if is_mutation:
-        branches.append(BranchDefinition("uncertain", "Stripe could not confirm the write outcome.", True))
-    branches.extend(
-        (
-            BranchDefinition("invalidResponse", "Stripe returned an invalid or oversized response.", True),
-            BranchDefinition("defect", "Local input, connection, or connector definition is invalid.", True),
-        )
-    )
+def _definition(
+    operation: str, branches: tuple[BranchDefinition, ...], is_mutation: bool
+) -> QueryDefinition | MutationDefinition:
     definition_type = MutationDefinition if is_mutation else QueryDefinition
-    return definition_type(OperationRef("stripe", operation), tuple(branches), _DEFAULTS)
+    return definition_type(OperationRef("stripe", operation), branches, _DEFAULTS)
 
+
+_DEFECT = BranchDefinition(
+    "defect", "Local input, connection configuration, or connector definition is invalid.", True
+)
+_CHECKOUT_MUTATION_BRANCHES = (
+    BranchDefinition("created", "Stripe created the Checkout Session."),
+    BranchDefinition("providerRejected", "Stripe conclusively rejected the Checkout Session request.", True),
+    BranchDefinition(
+        "uncertain",
+        "A Stripe 500 or non-retryable server response left the Checkout Session outcome unconfirmed.",
+        True,
+    ),
+    BranchDefinition(
+        "invalidResponse", "Stripe returned an invalid or oversized Checkout Session response.", True
+    ),
+    _DEFECT,
+)
 
 CREATE_CARD_CHECKOUT_SESSION_DEFINITION = cast(
-    MutationDefinition, _definition("createCardCheckoutSession", "created", True)
+    MutationDefinition, _definition("createCardCheckoutSession", _CHECKOUT_MUTATION_BRANCHES, True)
 )
 CREATE_ACH_CHECKOUT_SESSION_DEFINITION = cast(
-    MutationDefinition, _definition("createACHCheckoutSession", "created", True)
+    MutationDefinition, _definition("createACHCheckoutSession", _CHECKOUT_MUTATION_BRANCHES, True)
 )
-GET_CHECKOUT_SESSION_DEFINITION = _definition("getCheckoutSession", "found", False)
-GET_PAYMENT_INTENT_DEFINITION = _definition("getPaymentIntent", "found", False)
-CREATE_REFUND_DEFINITION = cast(MutationDefinition, _definition("createRefund", "refunded", True))
+GET_CHECKOUT_SESSION_DEFINITION = _definition(
+    "getCheckoutSession",
+    (
+        BranchDefinition("found", "The Checkout Session exists and was returned."),
+        BranchDefinition("notFound", "The Checkout Session does not exist.", True),
+        BranchDefinition(
+            "providerRejected", "Stripe conclusively rejected the Checkout Session query.", True
+        ),
+        BranchDefinition(
+            "invalidResponse", "Stripe returned an invalid or oversized Checkout Session response.", True
+        ),
+        _DEFECT,
+    ),
+    False,
+)
+GET_PAYMENT_INTENT_DEFINITION = _definition(
+    "getPaymentIntent",
+    (
+        BranchDefinition("found", "The PaymentIntent exists and was returned."),
+        BranchDefinition("notFound", "Stripe reported resource_missing for the PaymentIntent.", True),
+        BranchDefinition("providerRejected", "Stripe conclusively rejected the PaymentIntent query.", True),
+        BranchDefinition(
+            "invalidResponse", "Stripe returned an invalid or oversized PaymentIntent response.", True
+        ),
+        _DEFECT,
+    ),
+    False,
+)
+CREATE_REFUND_DEFINITION = cast(
+    MutationDefinition,
+    _definition(
+        "createRefund",
+        (
+            BranchDefinition(
+                "refunded", "Stripe accepted the refund; read its status to tell succeeded from pending."
+            ),
+            BranchDefinition(
+                "providerRejected",
+                "Stripe conclusively rejected the refund with a 4xx error such as "
+                "charge_already_refunded or an amount that is too large.",
+                True,
+            ),
+            BranchDefinition(
+                "uncertain",
+                "A non-retryable Stripe server response left the refund outcome unconfirmed "
+                "after bounded read-back.",
+                True,
+            ),
+            BranchDefinition(
+                "invalidResponse", "Stripe returned an invalid or oversized refund response.", True
+            ),
+            _DEFECT,
+        ),
+        True,
+    ),
+)
 
 
 def _validate_payment_intent_id(identifier: str) -> None:
@@ -113,7 +174,7 @@ def _checkout_form(
     if not input_value.client_reference_id.strip() or len(input_value.client_reference_id) > 200:
         raise ValueError("client reference ID must be non-empty and at most 200 characters")
     display_name, address = parseaddr(input_value.customer_email.strip())
-    if display_name or address != input_value.customer_email.strip() or "@" not in address:
+    if display_name or address != input_value.customer_email.strip() or not address.partition("@")[0]:
         raise ValueError("customer email must be one plain email address")
     _validate_redirect_url(input_value.success_url, "success")
     _validate_redirect_url(input_value.cancel_url, "cancel")
@@ -140,6 +201,8 @@ def _checkout_form(
         values[f"metadata[{key}]"] = value
         values[f"payment_intent_data[metadata][{key}]"] = value
     if input_value.expires_at is not None:
+        if input_value.expires_at.utcoffset() is None:
+            raise ValueError("expiresAt must include a timezone")
         values["expires_at"] = str(int(input_value.expires_at.timestamp()))
     return values
 
@@ -201,12 +264,12 @@ class _CheckoutMutation:
             return MutationAttempt.branch_result(
                 "defect",
                 empty,
-                self._client.receipt(call),
+                Receipt(),
                 stripe_failure(self._operation, FailureKind.VALIDATION, str(error)),
             )
         credentials, failure = await self._client.resolve_credentials(call, self._operation)
         if failure is not None or credentials is None:
-            return MutationAttempt.branch_result("defect", empty, self._client.receipt(call), failure)
+            return MutationAttempt.branch_result("defect", empty, Receipt(), failure)
         try:
             response = await self._client.request(
                 call, credentials.secret_key.reveal(), "POST", "checkout/sessions", values
@@ -221,7 +284,7 @@ class _CheckoutMutation:
             return MutationAttempt.branch_result(
                 "defect",
                 empty,
-                self._client.receipt(call),
+                Receipt(),
                 stripe_failure(self._operation, FailureKind.LOCAL_DEFECT, "Stripe request is invalid"),
             )
         if response.status_code == 429:
@@ -252,16 +315,14 @@ class _CheckoutMutation:
                     ),
                     retry_after_seconds(response.headers),
                 )
-            return MutationAttempt(
-                "uncertain",
-                "uncertain",
+            return MutationAttempt.uncertain(
                 empty,
-                self._client.receipt(call, response),
                 stripe_failure(
                     self._operation,
                     FailureKind.AVAILABILITY,
                     "Stripe Checkout Session outcome cannot be confirmed after a server error",
                 ),
+                self._client.receipt(call, response),
             )
         if not 200 <= response.status_code < 300:
             return MutationAttempt.branch_result(
@@ -336,15 +397,18 @@ class GetCheckoutSessionOperation:
             return QueryAttempt.branch_result(
                 "defect",
                 empty,
-                self._client.receipt(call),
+                Receipt(),
                 stripe_failure(operation, FailureKind.VALIDATION, "Stripe Checkout Session ID is required"),
             )
         credentials, failure = await self._client.resolve_credentials(call, operation)
         if failure is not None or credentials is None:
-            return QueryAttempt.branch_result("defect", empty, self._client.receipt(call), failure)
+            return QueryAttempt.branch_result("defect", empty, Receipt(), failure)
         try:
             response = await self._client.request(
-                call, credentials.secret_key.reveal(), "GET", f"checkout/sessions/{session_id}"
+                call,
+                credentials.secret_key.reveal(),
+                "GET",
+                f"checkout/sessions/{quote(session_id, safe='')}",
             )
         except ProviderTransportError:
             return QueryAttempt.retry(
@@ -421,18 +485,18 @@ class GetPaymentIntentOperation:
             return QueryAttempt.branch_result(
                 "defect",
                 empty,
-                self._client.receipt(call),
+                Receipt(),
                 stripe_failure(operation, FailureKind.VALIDATION, str(error)),
             )
         credentials, failure = await self._client.resolve_credentials(call, operation)
         if failure is not None or credentials is None:
-            return QueryAttempt.branch_result("defect", empty, self._client.receipt(call), failure)
+            return QueryAttempt.branch_result("defect", empty, Receipt(), failure)
         try:
             response = await self._client.request(
                 call,
                 credentials.secret_key.reveal(),
                 "GET",
-                f"payment_intents/{payment_intent_id}",
+                f"payment_intents/{quote(payment_intent_id, safe='')}",
                 {"expand[]": "latest_charge"},
             )
         except ProviderTransportError:
@@ -520,12 +584,12 @@ class CreateRefundOperation:
             return MutationAttempt.branch_result(
                 "defect",
                 empty,
-                self._client.receipt(call),
+                Receipt(),
                 stripe_failure(operation, FailureKind.VALIDATION, str(error)),
             )
         credentials, failure = await self._client.resolve_credentials(call, operation)
         if failure is not None or credentials is None:
-            return MutationAttempt.branch_result("defect", empty, self._client.receipt(call), failure)
+            return MutationAttempt.branch_result("defect", empty, Receipt(), failure)
         try:
             response = await self._client.request(
                 call, credentials.secret_key.reveal(), "POST", "refunds", values
@@ -538,7 +602,7 @@ class CreateRefundOperation:
             return MutationAttempt.branch_result(
                 "defect",
                 empty,
-                self._client.receipt(call),
+                Receipt(),
                 stripe_failure(operation, FailureKind.LOCAL_DEFECT, "Stripe request is invalid"),
             )
         if response.status_code == 429:
@@ -663,16 +727,14 @@ class CreateRefundOperation:
         return self._uncertain_refund(call, original)
 
     def _uncertain_refund(self, call: Call, original: ProviderResponse) -> MutationAttempt[Refund]:
-        return MutationAttempt(
-            "uncertain",
-            "uncertain",
+        return MutationAttempt.uncertain(
             Refund(),
-            self._client.receipt(call, original),
             stripe_failure(
                 "createRefund",
                 FailureKind.AVAILABILITY,
                 "Stripe refund outcome cannot be confirmed after a server error",
             ),
+            self._client.receipt(call, original),
         )
 
     def _denied_refund_readback(
@@ -690,10 +752,8 @@ class CreateRefundOperation:
                 "Stripe refund outcome cannot be confirmed after a server error because the API key lacks "
                 "permission for the refund read-back; grant it Refund read permission"
             )
-        return MutationAttempt(
-            "uncertain",
-            "uncertain",
+        return MutationAttempt.uncertain(
             Refund(),
-            self._client.receipt(call, original),
             stripe_failure("createRefund", kind, message),
+            self._client.receipt(call, original),
         )

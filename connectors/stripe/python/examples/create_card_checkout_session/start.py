@@ -22,8 +22,10 @@ async def start_card_checkout(flow_id: str, input_file: Path) -> str:
         encoded_input = source.read(65_537)
     if len(encoded_input) > 65_536:
         raise ValueError("card Checkout input exceeds 65536 bytes")
-    input_value = dex.CodecRegistry().resolve(CardCheckoutInput).decode(
-        dex.Value(dex.WireKind.JSON, encoded_input.decode("utf-8"))
+    input_value = (
+        dex.CodecRegistry()
+        .resolve(CardCheckoutInput)
+        .decode(dex.Value(dex.WireKind.JSON, encoded_input.decode("utf-8")))
     )
     project = await load_from_environment()
     connection = new_project_connection(project, CONNECTION_NAME)

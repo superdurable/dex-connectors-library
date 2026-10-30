@@ -3,11 +3,13 @@
 """Check all manifest scenarios and default mock scripts."""
 
 from types import SimpleNamespace
+from typing import Any, cast
 from uuid import UUID
 
 import pytest
 from dex_connectors.sdk import Call, CallID, ConnectionRef, FailureKind, IdempotencyKey
 
+from dex_connectors.stripe import CreateRefundInput
 from dex_connectors.stripe.stripemock import (
     Mock,
     create_ach_checkout_session_case,
@@ -65,7 +67,7 @@ def test_manifest_mock_scenario(
     factory: object, scenario: str, branch: str, kind: FailureKind | None
 ) -> None:
     """Every declared scenario carries its branch and Failure kind."""
-    case = factory(scenario)
+    case = cast(Any, factory)(scenario)
     assert case.branch == branch
     assert case.kind == ("uncertain" if branch == "uncertain" else "branch")
     assert (case.failure.kind if case.failure else None) == kind
@@ -88,7 +90,7 @@ async def test_default_mock_answers_all_five_operations() -> None:
             IdempotencyKey(CALL_ID),
             SimpleNamespace(flow_id="flow-1"),
         )
-        attempt = await operation.invoke(call, None)
+        attempt = await cast(Any, operation).invoke(call, None)
         assert attempt.kind == "branch"
         assert attempt.branch in ("created", "found", "refunded")
     mock.assert_no_failures()
@@ -106,8 +108,8 @@ async def test_mock_flow_scope_and_keyed_replay() -> None:
         IdempotencyKey(CALL_ID),
         SimpleNamespace(flow_id="refund-flow-123"),
     )
-    first = await operation.invoke(call, None)
-    second = await operation.invoke(call, None)
+    first = await operation.invoke(call, CreateRefundInput("pi_test_123", 2500))
+    second = await operation.invoke(call, CreateRefundInput("pi_test_123", 2500))
     assert first.branch == second.branch == "providerRejected"
     assert operation.calls()[0].flow_id == "refund-flow-123"
     assert operation.calls()[1].replay

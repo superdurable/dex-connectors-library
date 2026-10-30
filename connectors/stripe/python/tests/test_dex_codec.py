@@ -4,6 +4,7 @@
 
 import json
 from datetime import UTC, datetime
+from typing import TypedDict
 
 import pytest
 from dex import CodecRegistry, Context, Value, WireKind
@@ -19,7 +20,18 @@ from dex_connectors.stripe.models import (
     Refund,
 )
 
-_CHECKOUT_FIELDS = {
+
+class _CheckoutFields(TypedDict):
+    client_reference_id: str
+    customer_email: str
+    success_url: str
+    cancel_url: str
+    currency: str
+    unit_amount: int
+    product_name: str
+
+
+_CHECKOUT_FIELDS: _CheckoutFields = {
     "client_reference_id": "order-123",
     "customer_email": "buyer@example.com",
     "success_url": "https://example.com/success",
@@ -69,6 +81,7 @@ def test_operation_models_match_go_wire_json(value: object, expected: dict[str, 
 
     encoded = codec.encode(value)
 
+    assert isinstance(encoded.data, (str, bytes))
     assert json.loads(encoded.data) == expected
     assert codec.decode(encoded) == value
 
@@ -91,6 +104,8 @@ def test_datetime_and_optional_fields_match_go_wire_json() -> None:
         )
     )
 
+    assert isinstance(encoded_input.data, (str, bytes))
+    assert isinstance(encoded_session.data, (str, bytes))
     assert json.loads(encoded_input.data) == {
         **_CHECKOUT_WIRE,
         "metadata": {"order": "123"},

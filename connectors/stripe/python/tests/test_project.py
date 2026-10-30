@@ -78,6 +78,7 @@ async def test_project_client_uses_current_local_credential_at_call_time() -> No
         OperationRef("stripe", "getCheckoutSession"),
     )
     first = await client.get_checkout_session().invoke(call, GetCheckoutSessionInput("cs_test_123"))
+    assert project.local_credentials is not None
     project.local_credentials[ConnectionKey("stripe", "stripe-payments")] = CredentialMaterial(
         {"secret_key": "sk_test_second"}, None, "api-key-only"
     )

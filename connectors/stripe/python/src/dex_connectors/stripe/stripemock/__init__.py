@@ -2,9 +2,10 @@
 # SPDX-License-Identifier: MIT
 """Manifest-backed Stripe scenarios for deterministic connector tests."""
 
-from dex_connectors.sdk import Failure, FailureKind
+from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
+from ..connection import Connection, new_connection_with_operations
 from ..models import (
     CheckoutSession,
     CreateACHCheckoutSessionInput,
@@ -259,6 +260,26 @@ def create_refund_case(name: str) -> Case[Refund]:
     raise ValueError("unknown createRefund mock scenario")
 
 
+class _MockOperations:
+    def __init__(self, mock: "Mock") -> None:
+        self._mock = mock
+
+    def create_card_checkout_session(self) -> Mutation[CreateCardCheckoutSessionInput, CheckoutSession]:
+        return self._mock.create_card_checkout_session
+
+    def create_ach_checkout_session(self) -> Mutation[CreateACHCheckoutSessionInput, CheckoutSession]:
+        return self._mock.create_ach_checkout_session
+
+    def get_checkout_session(self) -> Query[GetCheckoutSessionInput, CheckoutSession]:
+        return self._mock.get_checkout_session
+
+    def get_payment_intent(self) -> Query[GetPaymentIntentInput, PaymentIntent]:
+        return self._mock.get_payment_intent
+
+    def create_refund(self) -> Mutation[CreateRefundInput, Refund]:
+        return self._mock.create_refund
+
+
 class Mock:
     """Script all five Stripe operations, defaulting to manifest happy paths."""
 
@@ -284,6 +305,13 @@ class Mock:
         self.get_checkout_session.default(get_checkout_session_case("paidSession"))
         self.get_payment_intent.default(get_payment_intent_case("partiallyRefundedPayment"))
         self.create_refund.default(create_refund_case("succeededRefund"))
+        self._connection = new_connection_with_operations(
+            _MockOperations(self), ConnectionRef("stripe", connection_name)
+        )
+
+    def connection(self) -> Connection:
+        """Return this mock's named connection for Step registration."""
+        return self._connection
 
     def assert_no_failures(self) -> None:
         """Assert every scripted operation was answered and report writes succeeded."""

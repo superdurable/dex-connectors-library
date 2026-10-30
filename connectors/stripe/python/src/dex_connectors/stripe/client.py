@@ -187,9 +187,14 @@ def stripe_failure(operation: str, kind: FailureKind, message: str) -> Failure:
 def retry_after_seconds(headers: httpx.Headers) -> float:
     """Read Stripe's integer Retry-After hint, capped to one hour like Go."""
     value = headers.get("Retry-After", "")
-    if not value.isascii() or not value.isdecimal():
+    if re.fullmatch(r"[+-]?[0-9]+", value) is None:
         return 0
-    seconds = int(value)
+    try:
+        seconds = int(value)
+    except ValueError:
+        return 0
+    if not -(2**63) <= seconds <= 2**63 - 1:
+        return 0
     return float(min(seconds, 3600)) if seconds >= 1 else 0
 
 

@@ -85,9 +85,7 @@ class PrepareCardCheckout(dex.Step[CardCheckoutInput]):
 class CompleteCardCheckout(dex.Step[MutationResult[CheckoutSession]]):
     """Persist the safe provider result and complete the Flow."""
 
-    def execute(
-        self, context: dex.Context, input: MutationResult[CheckoutSession]
-    ) -> dex.StepDecision:
+    def execute(self, context: dex.Context, input: MutationResult[CheckoutSession]) -> dex.StepDecision:
         """Save the created session for Dex Web and return it to the caller."""
         card_checkout_session.set(context, input.value)
         return dex.graceful_complete(input.value)

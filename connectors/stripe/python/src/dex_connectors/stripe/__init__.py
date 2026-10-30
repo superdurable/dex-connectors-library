@@ -3,7 +3,13 @@
 """Dex-native Stripe Checkout Session, PaymentIntent, and refund operations."""
 
 from .client import Client
-from .connection import Connection, new_connection, new_project_connection
+from .connection import (
+    Connection,
+    Operations,
+    new_connection,
+    new_connection_with_operations,
+    new_project_connection,
+)
 from .models import (
     CheckoutSession,
     Config,
@@ -58,10 +64,12 @@ __all__ = [
     "GetCheckoutSessionOperation",
     "GetPaymentIntentInput",
     "GetPaymentIntentOperation",
+    "Operations",
     "PaymentIntent",
     "Refund",
     "decode_credentials",
     "new_connection",
+    "new_connection_with_operations",
     "new_create_ach_checkout_session_step",
     "new_create_card_checkout_session_step",
     "new_create_refund_step",

@@ -77,13 +77,9 @@ async def test_card_checkout_retries_and_fails_unwired_rejection_in_real_dex(
             connection = new_project_connection(project, CONNECTION_NAME, provider_http_client)
             flow = CardCheckoutFlow(connection)
             registry = dex.Registry([flow], allow_async_handlers=True)
-            cache = dex.open_blob_cache(
-                dex.BlobCacheConfig(str(Path(cache_directory) / "blobs"), 1 << 24)
-            )
+            cache = dex.open_blob_cache(dex.BlobCacheConfig(str(Path(cache_directory) / "blobs"), 1 << 24))
             try:
-                worker = dex.AsyncWorker(
-                    registry, cache, dex.WorkerOptions(server_address=server_address)
-                )
+                worker = dex.AsyncWorker(registry, cache, dex.WorkerOptions(server_address=server_address))
                 worker_task = asyncio.create_task(worker.start())
                 try:
                     await worker.wait_pull_registered(timeout=15)
