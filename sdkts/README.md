@@ -1,6 +1,6 @@
 # Connector TypeScript SDK
 
-`@superdurable/connectors-sdk` is the provider-neutral TypeScript SDK for Dex connectors. It provides stable value contracts, typed Query and Mutation operations, credential refresh, OAuth token exchanges, HTTP safety helpers, project configuration loading, scripted mocks, and single-dispatch marker decisions. Dex Step factories and the live single-dispatch fence are being completed against the Dex SDK's public Context deadline and instance-addressed Step APIs. The package is at version `0.1.0` and requires Node 22 or 24.
+`@superdurable/connectors-sdk` is the provider-neutral TypeScript SDK for Dex connectors. It provides stable value contracts, typed Query and Mutation operations, Dex Step factories, credential refresh, OAuth token exchanges, HTTP safety helpers, project configuration loading, scripted mocks, and single-dispatch marker decisions. The package is at version `0.1.0`, requires Node 22 or 24, and uses `@superdurable/dex` 1.28.0 or newer.
 
 Install dependencies and verify the package from this directory:
 
@@ -9,6 +9,7 @@ npm ci
 npm run check
 node examples/core.mjs
 node examples/operations.mjs
+node examples/steps.mjs
 node examples/providerhttp.mjs
 node examples/projectconfig.mjs
 node examples/refreshing_project.mjs
@@ -39,6 +40,23 @@ const credentials = new StaticCredentialProvider([[call.connection, { apiKey: 't
 ```
 
 `Call.context` is the live Dex `AsyncContext` object attached as a non-enumerable field by `createCall`; do not put it in Flow input or persisted state. Hosts with coordinated refresh implement `RefreshingCredentialProvider` and optionally `RejectedCredentialRefreshingProvider`. `resolveCredential` selects refresh support when present; `resolveCredentialAfterRejection` forces one coordinated refresh after an explicit authentication rejection.
+
+## Dex Step factories
+
+The [runnable Step factory example](examples/steps.mjs) builds Query and Mutation Steps with instance-addressed branch targets. `newQueryStep` and `newMutationStep` validate required routes at construction; optional unwired routes force-fail the Flow if selected. Their `getStepOptions()` applies the connector's one-hour Execute retry policy and accepts Execute-only overrides. A provider retry becomes a Dex retry; a provider delay of at least one second is floored to whole seconds before `retryAfter` is thrown. Register each Step instance in a Dex `StepList`, along with its target Steps and any result Attribute used by the Flow.
+
+```js
+import { StepRef } from '@superdurable/dex';
+import { goToBranch, newQueryBranch, newQueryStep } from '../dist/index.js';
+
+const query = newQueryStep({
+  stepType: 'GetItem', annotations, connection, mapToOperationInput: input => input,
+  operation: { definition: () => ({ operation: { connectorId: 'example', operationId: 'getItem' },
+    branches: [{ id: 'found', description: 'Item found' }, { id: 'defect', description: 'Connector defect', optional: true }], stepDefaults: {} }),
+    invoke: (_call, input) => newQueryBranch('found', { id: input.id }) },
+  branches: [goToBranch('found', new StepRef('QueryDone'))],
+});
+```
 
 ## Core contracts, errors, and credentials
 
@@ -208,4 +226,4 @@ if (first.kind !== 'sendAllowed' || later.kind !== 'readBackRequired') throw new
 
 ### 0.1.0
 
-First public TypeScript Connector SDK release: Go-compatible contracts and conformance fixtures, safe provider HTTP, project configuration with durable credential refresh and guarded local writeback, typed operations, OAuth exchanges, scripted mocks, and single-dispatch markers. Dex Step factories and the live fence require the upcoming public Dex Context deadline and instance-addressed Step APIs; no live provider authorization has been tested.
+First public TypeScript Connector SDK release: Go-compatible contracts and conformance fixtures, safe provider HTTP, project configuration with durable credential refresh and guarded local writeback, typed operations and Dex Step factories, OAuth exchanges, scripted mocks, and single-dispatch markers. The live single-dispatch fence is being completed against Dex 1.28.0; no live provider authorization has been tested.

@@ -96,7 +96,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.900.0",
-    "@superdurable/dex": "1.26.0",
+    "@superdurable/dex": ">=1.28.0",
     "zod": "^4.1.0"
   },
   "devDependencies": {
