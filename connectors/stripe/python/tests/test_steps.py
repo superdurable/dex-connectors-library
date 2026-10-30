@@ -118,7 +118,11 @@ def test_mock_connection_binds_a_step_factory() -> None:
     step = new_create_card_checkout_session_step(
         step_type="CreateCardCheckout",
         step_input_type=str,
-        annotations=StepAnnotations("stripe", "Stripe", "Create a card Checkout Session."),
+        annotations={
+            "groupId": "stripe",
+            "groupLabel": "Stripe",
+            "explanation": "Create a card Checkout Session.",
+        },
         connection=connection,
         connection_name="stripe-payments",
         map_to_operation_input=_card_input,
@@ -126,7 +130,30 @@ def test_mock_connection_binds_a_step_factory() -> None:
     )
     assert step.get_step_type() == "CreateCardCheckout"
     assert step._config.operation is mock.create_card_checkout_session
+    assert step._config.annotations == StepAnnotations("stripe", "Stripe", "Create a card Checkout Session.")
     assert connection.operations.create_card_checkout_session() is mock.create_card_checkout_session
+
+
+@pytest.mark.parametrize(
+    "annotations",
+    [
+        {"groupId": "stripe", "groupLabel": "Stripe"},
+        {"groupId": "stripe", "groupLabel": "Stripe", "explanation": "Call Stripe.", "extra": "value"},
+        {"groupId": "", "groupLabel": "Stripe", "explanation": "Call Stripe."},
+    ],
+)
+def test_factory_rejects_invalid_static_annotations(annotations: dict[str, str]) -> None:
+    """Static Flow annotations must contain exactly the meaningful SDK fields."""
+    with pytest.raises(ValueError):
+        new_create_card_checkout_session_step(
+            step_type="CreateCardCheckout",
+            step_input_type=str,
+            annotations=annotations,
+            connection=Mock("stripe-payments").connection(),
+            connection_name="stripe-payments",
+            map_to_operation_input=_card_input,
+            created=dex.StepRef("Sink"),
+        )
 
 
 def _card_input(reference: str) -> CreateCardCheckoutSessionInput:

@@ -36,7 +36,7 @@ def new_create_card_checkout_session_step(
     *,
     step_type: str,
     step_input_type: object,
-    annotations: StepAnnotations,
+    annotations: StepAnnotations | Mapping[str, str],
     connection: Connection,
     connection_name: str,
     map_to_operation_input: Callable[[StepInput], CreateCardCheckoutSessionInput],
@@ -63,7 +63,7 @@ def new_create_card_checkout_session_step(
         MutationStepConfig(
             step_type=step_type,
             step_input_type=step_input_type,
-            annotations=annotations,
+            annotations=_validate_step_annotations(annotations),
             operation=connection.operations.create_card_checkout_session(),
             connection=connection.reference,
             map_to_operation_input=map_to_operation_input,
@@ -78,7 +78,7 @@ def new_create_ach_checkout_session_step(
     *,
     step_type: str,
     step_input_type: object,
-    annotations: StepAnnotations,
+    annotations: StepAnnotations | Mapping[str, str],
     connection: Connection,
     connection_name: str,
     map_to_operation_input: Callable[[StepInput], CreateACHCheckoutSessionInput],
@@ -105,7 +105,7 @@ def new_create_ach_checkout_session_step(
         MutationStepConfig(
             step_type=step_type,
             step_input_type=step_input_type,
-            annotations=annotations,
+            annotations=_validate_step_annotations(annotations),
             operation=connection.operations.create_ach_checkout_session(),
             connection=connection.reference,
             map_to_operation_input=map_to_operation_input,
@@ -120,7 +120,7 @@ def new_get_checkout_session_step(
     *,
     step_type: str,
     step_input_type: object,
-    annotations: StepAnnotations,
+    annotations: StepAnnotations | Mapping[str, str],
     connection: Connection,
     connection_name: str,
     map_to_operation_input: Callable[[StepInput], GetCheckoutSessionInput],
@@ -147,7 +147,7 @@ def new_get_checkout_session_step(
         QueryStepConfig(
             step_type=step_type,
             step_input_type=step_input_type,
-            annotations=annotations,
+            annotations=_validate_step_annotations(annotations),
             operation=connection.operations.get_checkout_session(),
             connection=connection.reference,
             map_to_operation_input=map_to_operation_input,
@@ -162,7 +162,7 @@ def new_get_payment_intent_step(
     *,
     step_type: str,
     step_input_type: object,
-    annotations: StepAnnotations,
+    annotations: StepAnnotations | Mapping[str, str],
     connection: Connection,
     connection_name: str,
     map_to_operation_input: Callable[[StepInput], GetPaymentIntentInput],
@@ -189,7 +189,7 @@ def new_get_payment_intent_step(
         QueryStepConfig(
             step_type=step_type,
             step_input_type=step_input_type,
-            annotations=annotations,
+            annotations=_validate_step_annotations(annotations),
             operation=connection.operations.get_payment_intent(),
             connection=connection.reference,
             map_to_operation_input=map_to_operation_input,
@@ -204,7 +204,7 @@ def new_create_refund_step(
     *,
     step_type: str,
     step_input_type: object,
-    annotations: StepAnnotations,
+    annotations: StepAnnotations | Mapping[str, str],
     connection: Connection,
     connection_name: str,
     map_to_operation_input: Callable[[StepInput], CreateRefundInput],
@@ -231,7 +231,7 @@ def new_create_refund_step(
         MutationStepConfig(
             step_type=step_type,
             step_input_type=step_input_type,
-            annotations=annotations,
+            annotations=_validate_step_annotations(annotations),
             operation=connection.operations.create_refund(),
             connection=connection.reference,
             map_to_operation_input=map_to_operation_input,
@@ -250,6 +250,22 @@ def _validate_connection_name(connection: Connection, connection_name: str) -> N
             f"Stripe Step connection_name {connection_name!r} must equal its connection name "
             f"{connection.reference.name!r}"
         )
+
+
+def _validate_step_annotations(annotations: StepAnnotations | Mapping[str, str]) -> StepAnnotations:
+    if isinstance(annotations, StepAnnotations):
+        annotations.validate()
+        return annotations
+    required_fields = {"groupId", "groupLabel", "explanation"}
+    if (
+        not isinstance(annotations, Mapping)
+        or set(annotations) != required_fields
+        or any(not isinstance(value, str) for value in annotations.values())
+    ):
+        raise ValueError("Stripe Step annotations require groupId, groupLabel, and explanation")
+    resolved = StepAnnotations(annotations["groupId"], annotations["groupLabel"], annotations["explanation"])
+    resolved.validate()
+    return resolved
 
 
 def _provided_branches(

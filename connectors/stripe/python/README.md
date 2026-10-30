@@ -34,10 +34,11 @@ defaults to one MiB; increase it only when valid complete provider responses
 exceed that safety bound. Both values are connection configuration, never
 secrets.
 
-Dex CLI and Dex Web 1.28.0 support Python FDG 2.0 connector recognition. The
-`dex-connector.json` descriptor generator is being added;
-until that descriptor is available, the Python example uses the Go connector's
-strict FDG 2.0 graph for Dex Web Connections setup. Load the project with the Connector SDK's
+The package includes a generated `dex-connector.json` descriptor for Dex CLI
+and Dex Web 1.28.0. The Python example uses the Go connector's strict FDG 2.0
+graph for Dex Web Connections setup. Strict FDG analysis of its local-to-connector
+route requires Dex CLI 1.28.1, which tracks the literal `dex.StepRef` analyzer fix
+in issue #362 (dex#1086). Load the project with the Connector SDK's
 `projectconfig.load_from_environment`, then call
 `stripe.new_project_connection(project, "stripe-payments")`. It validates the
 ordinary connection settings and resolves current private credentials for
@@ -81,6 +82,11 @@ finally:
     await connection.aclose()
     await project.close()
 ```
+
+For Dex FDG 2.0 source analysis, pass an inline `annotations` mapping with
+`groupId`, `groupLabel`, and `explanation` to each Step factory. Pass literal
+Flow type and `connection_name` strings at their call sites. Factories also
+accept `StepAnnotations` for programmatic registration.
 
 The example integration test runs the Flow through a real Dex Worker and
 Client with a credential-safe fake provider. A live Stripe account has not

@@ -4,8 +4,11 @@ This runnable Flow creates one hosted Stripe card Checkout Session. Its Worker
 uses the static `stripe-payments` connection and resolves credentials from the
 Dex project at provider call time.
 
-From `connectors/stripe`, generate the Go connector's strict FDG 2.0 setup
-reference while the Python connector descriptor generator is pending:
+The Python package includes a generated connector descriptor. Dex CLI 1.28.0
+currently reports `unknown_step_target` for this Flow's literal `dex.StepRef`
+(dex#1086). Strict FDG analysis of local-to-connector routing requires Dex CLI
+1.28.1; issue #362 tracks the fix. From `connectors/stripe`, generate the Go
+connector's strict FDG 2.0 setup reference:
 
 ```sh
 mkdir -p build
@@ -78,7 +81,5 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 \
   uv run pytest examples/create_card_checkout_session/integration_test.py
 ```
 
-Dex CLI and Dex Web 1.28.0 can analyze Python connector Flows once the
-generated `dex-connector.json` descriptor is checked in. Until then, the Go
-FDG above supplies shared Stripe connection setup and `start.py` starts the
-Python Flow.
+The Go FDG above supplies shared Stripe connection setup while the Python
+analyzer diagnostics are being resolved. `start.py` starts the Python Flow.

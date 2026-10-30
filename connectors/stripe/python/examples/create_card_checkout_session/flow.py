@@ -5,7 +5,7 @@
 from dataclasses import dataclass, field, replace
 
 import dex
-from dex_connectors.sdk import MutationResult, StepAnnotations
+from dex_connectors.sdk import MutationResult
 
 from dex_connectors.stripe import (
     CheckoutSession,
@@ -52,9 +52,6 @@ card_checkout_session = dex.Attribute("card-checkout-session", CheckoutSession)
 class PrepareCardCheckout(dex.Step[CardCheckoutInput]):
     """Record the trimmed request before invoking Stripe."""
 
-    def __init__(self, create_step: dex.Step[CardCheckoutInput]) -> None:
-        self._create_step = create_step
-
     def execute(self, context: dex.Context, input: CardCheckoutInput) -> dex.StepDecision:
         """Persist a safe request and continue to the provider Mutation."""
         prepared = replace(
@@ -77,7 +74,7 @@ class PrepareCardCheckout(dex.Step[CardCheckoutInput]):
         ):
             return dex.force_fail("all card Checkout fields are required and unitAmount must be positive")
         card_checkout_request.set(context, prepared)
-        return dex.go_to(self._create_step, prepared)
+        return dex.go_to(dex.StepRef("CreateCardCheckout"), prepared)
 
 
 # dex:group group-id:card-checkout group-label:"Card Checkout"
@@ -102,21 +99,21 @@ class CardCheckoutFlow(dex.Flow[CardCheckoutInput]):
         self.create = new_create_card_checkout_session_step(
             step_type="CreateCardCheckout",
             step_input_type=CardCheckoutInput,
-            annotations=StepAnnotations(
-                group_id="card-checkout",
-                group_label="Card Checkout",
-                explanation="Create one hosted card Checkout Session.",
-            ),
+            annotations={
+                "groupId": "card-checkout",
+                "groupLabel": "Card Checkout",
+                "explanation": "Create one hosted card Checkout Session.",
+            },
             connection=connection,
-            connection_name=CONNECTION_NAME,
+            connection_name="stripe-payments",
             map_to_operation_input=CardCheckoutInput.to_operation_input,
             created=self.complete,
         )
-        self.prepare = PrepareCardCheckout(self.create)
+        self.prepare = PrepareCardCheckout()
 
     def get_flow_type(self) -> str:
         """Keep the application Flow identity stable across Worker versions."""
-        return FLOW_TYPE
+        return "StripeCreateCardCheckoutSessionPython"
 
     def get_steps(self) -> dex.StepList[CardCheckoutInput]:
         """Run validation, the provider call, then safe result persistence."""
