@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import type { AsyncContext } from '@superdurable/dex';
 import { stepRef } from '@superdurable/connectors-sdk';
 import { newGetMessageStep, newReplyToMessageStep, newSendMessageStep } from '../src/index.js';
-import { GmailMock } from '../src/mock/index.js';
+import { GmailMock, getMessageDeletedMessage, replyToMessageSourceMissing, sendMessageInvalidRecipient } from '../src/mock/index.js';
 
 const ConnectionName = 'gmail-inbox';
 const annotations = { groupId: 'gmail', groupLabel: 'Gmail', explanation: 'Call the selected Gmail operation.' };
@@ -45,5 +45,30 @@ describe('Gmail operation-specific Dex Step factories', () => {
     const connection = new GmailMock(ConnectionName).connection();
     expect(() => newGetMessageStep({ stepType: 'ReadGmailMessage', annotations, connectionName: 'other', connection,
       mapToOperationInput: (input: { messageId: string }) => input, read: stepRef('Done') })).toThrow('connection name');
+  });
+
+  it('routes explicitly wired optional branches through their named factory properties', async () => {
+    const mock = new GmailMock(ConnectionName);
+    const connection = mock.connection();
+    mock.getMessage().respond(getMessageDeletedMessage());
+    mock.sendMessage().respond(sendMessageInvalidRecipient());
+    mock.replyToMessage().respond(replyToMessageSourceMissing());
+    const read = newGetMessageStep({ stepType: 'ReadGmailMessage', annotations, connectionName: ConnectionName, connection,
+      mapToOperationInput: (input: { messageId: string }) => input, read: stepRef('ReadDone'), notFound: stepRef('MissingDone') });
+    const send = newSendMessageStep({ stepType: 'SendGmailMessage', annotations, connectionName: ConnectionName, connection,
+      mapToOperationInput: (input: { to: string[]; subject: string; textBody: string }) => input, sent: stepRef('SendDone'), providerRejected: stepRef('RejectedDone') });
+    const reply = newReplyToMessageStep({ stepType: 'ReplyToGmailMessage', annotations, connectionName: ConnectionName, connection,
+      mapToOperationInput: (input: { messageId: string; textBody: string }) => input, sent: stepRef('ReplyDone'), providerRejected: stepRef('RejectedDone') });
+    for (const [decision, branch] of [
+      [await read.execute(context, { messageId: 'missing' }), 'notFound'],
+      [await send.execute(context, { to: ['invalid'], subject: 'Hello', textBody: 'Update' }), 'providerRejected'],
+      [await reply.execute(context, { messageId: 'missing', textBody: 'Answer' }), 'providerRejected'],
+    ] as const) {
+      expect(decision.kind).toBe('next');
+      if (decision.kind === 'next') expect(decision.movements[0]?.input).toMatchObject({ branch });
+    }
+    mock.getMessage().assertNoFailures();
+    mock.sendMessage().assertNoFailures();
+    mock.replyToMessage().assertNoFailures();
   });
 });
