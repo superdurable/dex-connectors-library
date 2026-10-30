@@ -45,7 +45,9 @@
     "build": "tsup src/index.ts src/mock.ts --format esm,cjs --dts --clean",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src test examples",
-    "test": "vitest run",
+    "test": "vitest run --exclude 'test/integration/**'",
+    "test:integration": "vitest run test/integration/*.integration.test.ts",
+    "example:card-checkout": "tsx examples/create-card-checkout-session/main.ts",
     "check": "npm run typecheck && npm run lint && npm test && npm run build"
   },
   "dependencies": {
@@ -58,6 +60,7 @@
     "@types/node": "^22.0.0",
     "eslint": "^9.0.0",
     "tsup": "^8.0.0",
+    "tsx": "^4.23.15",
     "typescript": "^5.9.0",
     "typescript-eslint": "^8.0.0",
     "vitest": "^3.0.0",
