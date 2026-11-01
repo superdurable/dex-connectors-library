@@ -8,6 +8,11 @@ metadata:
   version: v0.2.0
 spec:
   provider: tmdb
+  languages:
+    python:
+      version: v0.2.0
+      operations: [searchMovies, getMovie]
+      triggers: []
   codegen:
     go:
       package: tmdb

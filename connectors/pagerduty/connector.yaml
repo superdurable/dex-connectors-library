@@ -8,6 +8,11 @@ metadata:
   version: v0.2.0
 spec:
   provider: pagerduty
+  languages:
+    python:
+      version: v0.2.0
+      operations: [listIncidents, getIncident]
+      triggers: []
   codegen:
     go:
       package: pagerduty
