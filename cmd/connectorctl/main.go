@@ -373,16 +373,54 @@ func readDigest(path string, expectedFile string) (string, error) {
 
 func generate(args []string) error {
 	check := false
-	if len(args) > 0 && args[0] == "--check" {
-		check = true
-		args = args[1:]
+	language := ""
+	var positional []string
+	for index := 0; index < len(args); index++ {
+		switch args[index] {
+		case "--check":
+			check = true
+		case "--lang":
+			index++
+			if index >= len(args) {
+				return errors.New("--lang requires a language")
+			}
+			language = args[index]
+		default:
+			positional = append(positional, args[index])
+		}
+	}
+	args = positional
+	if language != "" && language != "typescript" {
+		return fmt.Errorf("unsupported generate language %q", language)
 	}
 	if len(args) != 1 {
-		return errors.New("usage: connectorctl generate [--check] <manifest>")
+		return errors.New("usage: connectorctl generate [--check] [--lang typescript] <manifest>")
 	}
 	manifest, err := load(args[0])
 	if err != nil {
 		return err
+	}
+	if language == "typescript" {
+		generated, err := generatedTypeScriptFiles(args[0], manifest)
+		if err != nil {
+			return err
+		}
+		stale, err := staleTypeScriptFiles(args[0], generated)
+		if err != nil {
+			return err
+		}
+		if check {
+			if len(stale) > 0 {
+				return fmt.Errorf("generated TypeScript file is stale: %s", stale[0])
+			}
+			return checkGeneratedFiles(generated)
+		}
+		for _, path := range stale {
+			if err := os.Remove(path); err != nil {
+				return fmt.Errorf("remove stale %s: %w", path, err)
+			}
+		}
+		return writeGeneratedFiles(generated)
 	}
 	generated, err := codegen.Generate(manifest)
 	if err != nil {
@@ -405,6 +443,14 @@ func generate(args []string) error {
 	if err != nil {
 		return err
 	}
+	typeScriptFiles, err := generatedTypeScriptFiles(args[0], manifest)
+	if err != nil {
+		return err
+	}
+	staleTypeScript, err := staleTypeScriptFiles(args[0], typeScriptFiles)
+	if err != nil {
+		return err
+	}
 	staleLanguageManifests, err := staleLanguageManifestFiles(args[0], languageManifestFiles)
 	if err != nil {
 		return err
@@ -416,6 +462,9 @@ func generate(args []string) error {
 		mockFiles[path] = contents
 	}
 	for path, contents := range languageManifestFiles {
+		mockFiles[path] = contents
+	}
+	for path, contents := range typeScriptFiles {
 		mockFiles[path] = contents
 	}
 	stale := staleMockFiles(args[0], manifest)
@@ -441,12 +490,15 @@ func generate(args []string) error {
 		if len(staleLanguageManifests) > 0 {
 			return fmt.Errorf("generated language package manifest is stale: %s", staleLanguageManifests[0])
 		}
+		if len(staleTypeScript) > 0 {
+			return fmt.Errorf("generated TypeScript file is stale: %s", staleTypeScript[0])
+		}
 		return checkGeneratedFiles(mockFiles)
 	}
 	if err := os.WriteFile(output, generated, 0o644); err != nil {
 		return fmt.Errorf("write %s: %w", output, err)
 	}
-	for _, path := range slices.Concat(stale, staleRefreshAgreement, staleSharedCredential, staleLanguageManifests) {
+	for _, path := range slices.Concat(stale, staleRefreshAgreement, staleSharedCredential, staleLanguageManifests, staleTypeScript) {
 		if err := os.Remove(path); err != nil {
 			return fmt.Errorf("remove stale %s: %w", path, err)
 		}

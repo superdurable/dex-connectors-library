@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2022", "lib": ["ES2022", "DOM"], "module": "NodeNext", "moduleResolution": "NodeNext",
-    "strict": true, "noUncheckedIndexedAccess": true,
+    "strict": true, "noUncheckedIndexedAccess": true, "exactOptionalPropertyTypes": true,
     "esModuleInterop": true, "skipLibCheck": true, "noEmit": true, "types": ["node", "vitest/globals"]
   },
   "include": ["src/**/*.ts", "test/**/*.ts", "examples/**/*.ts"]

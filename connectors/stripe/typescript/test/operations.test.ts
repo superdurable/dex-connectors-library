@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { SecretString, type Call } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { StripeClient, type StripeRequestSender } from '../src/client.js';
-import type { CreateACHCheckoutSessionInput, CreateRefundInput, Credentials } from '../src/models.js';
+import { CheckoutSessionSchema, PaymentIntentSchema, RefundSchema, type CreateACHCheckoutSessionInput, type CreateRefundInput, type Credentials } from '../src/models.js';
 import { noProgress } from './call.js';
 
 const callId = '11111111-1111-5111-8111-111111111111';
@@ -18,6 +18,29 @@ const refundInput: CreateRefundInput = { paymentIntentId: 'pi_123', amount: 2500
 const checkoutResponse = { object: 'checkout.session', id: 'cs_123', status: 'open', payment_status: 'unpaid', amount_total: 7500 };
 const intentResponse = { object: 'payment_intent', id: 'pi_123', amount: 7500, currency: 'usd', status: 'succeeded', latest_charge: { id: 'ch_123', amount_refunded: 2500, billing_details: { email: 'person@example.com' } } };
 const refundResponse = { object: 'refund', id: 're_123', status: 'succeeded', amount: 2500, currency: 'usd' };
+
+it('keeps required output fields and ZodObject schema methods', () => {
+  for (const schema of [CheckoutSessionSchema, PaymentIntentSchema]) {
+    expect(schema.safeParse({}).success).toBe(false);
+    expect(schema.shape.id).toBeDefined();
+    expect(typeof schema.extend).toBe('function');
+  }
+  expect(RefundSchema.safeParse({}).success).toBe(false);
+  expect(RefundSchema.shape.refundId).toBeDefined();
+  expect(typeof RefundSchema.extend).toBe('function');
+});
+
+it('classifies missing required input for every operation as a validation defect', async () => {
+  const stripe = client([]);
+  const attempts = await Promise.all([
+    stripe.createCardCheckoutSession().invoke(call('createCardCheckoutSession', true), {} as never),
+    stripe.createACHCheckoutSession().invoke(call('createACHCheckoutSession', true), {} as never),
+    stripe.getCheckoutSession().invoke(call('getCheckoutSession'), {} as never),
+    stripe.getPaymentIntent().invoke(call('getPaymentIntent'), {} as never),
+    stripe.createRefund().invoke(call('createRefund', true), {} as never),
+  ]);
+  for (const attempt of attempts) expect(attempt).toMatchObject({ kind: 'branch', branch: 'defect', failure: { kind: 'VALIDATION' } });
+});
 
 function call(operationId: string, keyed = false): Call {
   return { ...noProgress, id: callId, context: { flowId: 'test-flow' } as Call['context'], connection: { provider: 'stripe', name: 'stripe-payments' }, operation: { connectorId: 'stripe', operationId }, ...(keyed ? { idempotencyKey: callId } : {}) };

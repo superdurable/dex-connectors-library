@@ -13,13 +13,13 @@ const GmailMessagePartSchema: z.ZodType<GmailMessagePart> = z.lazy(() => z.objec
 /** Provider message part with nested MIME children. */
 export interface GmailMessagePart {
   /** MIME content type. */
-  mimeType?: string | null;
+  mimeType?: string | null | undefined;
   /** Message headers supplied on the root part. */
-  headers?: { name: string; value: string }[] | null;
+  headers?: { name: string; value: string }[] | null | undefined;
   /** Base64url-encoded body. */
-  body?: { data?: string | null } | null;
+  body?: { data?: string | null | undefined } | null | undefined;
   /** Child parts of a multipart message. */
-  parts?: GmailMessagePart[] | null;
+  parts?: GmailMessagePart[] | null | undefined;
 }
 
 /** Gmail message resource required by the reader. */

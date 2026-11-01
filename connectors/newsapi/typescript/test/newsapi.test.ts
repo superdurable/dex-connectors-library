@@ -33,7 +33,7 @@ async function provider(handler: RequestListener): Promise<string> {
 }
 
 function operation(baseUrl: string, key = apiKey, maxResponseBytes?: number): SearchArticlesOperation {
-  return new SearchArticlesOperation({ baseUrl, maxResponseBytes }, new StaticCredentialProvider([[connection, { apiKey: new SecretString(key) }]]));
+  return new SearchArticlesOperation({ baseUrl, ...(maxResponseBytes !== undefined ? { maxResponseBytes } : {}) }, new StaticCredentialProvider([[connection, { apiKey: new SecretString(key) }]]));
 }
 
 function branch(attempt: QueryAttempt<ArticlePage>, expected: string, kind?: string): void {
@@ -42,6 +42,11 @@ function branch(attempt: QueryAttempt<ArticlePage>, expected: string, kind?: str
 }
 
 describe('NewsAPI searchArticles', () => {
+  it('classifies invalid page input as a validation defect before a provider call', async () => {
+    const attempt = await operation('http://127.0.0.1:1/v2').invoke(call, { page: 'invalid' } as never);
+    expect(attempt).toMatchObject({ kind: 'branch', branch: 'defect', failure: { kind: 'VALIDATION' } });
+  });
+
   it('sends the key only in a header and preserves article nulls and UTC time', async () => {
     let requests = 0;
     const baseUrl = await provider((request, response) => {

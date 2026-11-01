@@ -7,6 +7,7 @@ import { z } from 'zod';
 import type { CheckoutSession, CreateACHCheckoutSessionInput, CreateCardCheckoutSessionInput, CreateRefundInput, GetCheckoutSessionInput, GetPaymentIntentInput, PaymentIntent, Refund } from './models.js';
 import type { Config, Credentials } from './models.js';
 import { StripeClient, type StripeClientOptions } from './client.js';
+import { Connection as GeneratedConnection } from './generated/connection.js';
 
 /** One typed operation accessor per Stripe manifest operation. */
 export interface Operations {
@@ -18,19 +19,16 @@ export interface Operations {
 }
 
 /** Named Stripe operation connection; this object must remain outside Flow state. */
-export class Connection {
-  /** Static provider and connection name used by each Step factory. */
-  readonly reference: ConnectionRef;
-  /** Bound operation implementations. */
-  readonly operations: Operations;
-
+export class Connection extends GeneratedConnection {
+	declare private readonly stripeConnectionBrand: void;
+  /** Bound Stripe operations retain their public request types. */
+  declare readonly operations: Operations;
   /** Validate one static connection name and own its operations. */
   constructor(reference: ConnectionRef, operations: Operations) {
     ConnectionRefSchema.parse(reference);
     if (reference.provider !== 'stripe') throw new TypeError('Stripe connection provider must be stripe');
     if (!operations) throw new TypeError('Stripe connector operations are required');
-    this.reference = reference;
-    this.operations = operations;
+    super(reference, operations);
   }
 
   /** Prevent accidental serialization of connection and credential adapters. */
