@@ -8,6 +8,11 @@ metadata:
   version: v0.2.0
 spec:
   provider: mixpanel
+  languages:
+    python:
+      version: v0.1.0
+      operations: [trackEvent, exportEvents]
+      triggers: []
   codegen:
     go:
       package: mixpanel
