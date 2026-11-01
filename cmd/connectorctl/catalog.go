@@ -111,11 +111,12 @@ func catalogCommand(args []string) error {
 	catalogPath := flags.String("catalog", "", "connector catalog source")
 	outputPath := flags.String("output", "", "generated catalog path")
 	jsonOutputPath := flags.String("json-output", "", "generated JSON catalog path")
+	completedLanguageTagsPath := flags.String("completed-language-tags", "", "file listing completed language release tags")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
 	if flags.NArg() != 0 || *catalogPath == "" || (*check && (*outputPath != "" || *jsonOutputPath != "")) || (!*check && *outputPath == "") {
-		return errors.New("usage: connectorctl catalog --catalog PATH (--check | --output PATH [--json-output PATH])")
+		return errors.New("usage: connectorctl catalog --catalog PATH (--check | --output PATH [--json-output PATH] [--completed-language-tags PATH])")
 	}
 	entries, err := loadConnectorDirectoryEntries(*catalogPath)
 	if err != nil {
@@ -124,7 +125,19 @@ func catalogCommand(args []string) error {
 	if *check {
 		return nil
 	}
-	generated, err := encodeConnectorCatalog(entries)
+	completedLanguageTags := make(map[string]bool)
+	if *completedLanguageTagsPath != "" {
+		contents, readErr := os.ReadFile(*completedLanguageTagsPath)
+		if readErr != nil {
+			return fmt.Errorf("read completed language release tags: %w", readErr)
+		}
+		for _, tag := range strings.Split(string(contents), "\n") {
+			if tag != "" {
+				completedLanguageTags[tag] = true
+			}
+		}
+	}
+	generated, err := encodeConnectorCatalog(entries, completedLanguageTags)
 	if err != nil {
 		return err
 	}
@@ -155,13 +168,14 @@ func releaseMatrixCommand(args []string) error {
 	catalogPath := flags.String("catalog", "", "connector catalog source")
 	directoryFilter := flags.String("directory", "", "one registered connector directory")
 	includePublished := flags.Bool("include-published", false, "include versions with reachable tags for recovery checks")
+	includePublishedLanguages := flags.Bool("include-published-languages", false, "include tagged language versions for recovery checks")
 	includePublishedAt := flags.String("include-published-at", "", "include published versions whose tag resolves to this revision")
 	githubOutputPath := flags.String("github-output", "", "GitHub Actions output path")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
 	if flags.NArg() != 0 || *catalogPath == "" {
-		return errors.New("usage: connectorctl release-matrix --catalog PATH [--directory DIRECTORY] [--include-published | --include-published-at REV] [--github-output PATH]")
+		return errors.New("usage: connectorctl release-matrix --catalog PATH [--directory DIRECTORY] [--include-published | --include-published-languages | --include-published-at REV] [--github-output PATH]")
 	}
 	if *includePublished && *includePublishedAt != "" {
 		return errors.New("include-published and include-published-at cannot be combined")
@@ -249,7 +263,7 @@ func releaseMatrixCommand(args []string) error {
 				}
 			}
 			isPublishedAtIncludedSource := includedSourceCommit != "" && latestRelease.SourceCommit == includedSourceCommit
-			if !isPending && !*includePublished && !isPublishedAtIncludedSource {
+			if !isPending && !*includePublished && !*includePublishedLanguages && !isPublishedAtIncludedSource {
 				continue
 			}
 			languageMatrix.Include = append(languageMatrix.Include, connectorReleaseMatrixItem{
@@ -260,9 +274,6 @@ func releaseMatrixCommand(args []string) error {
 		}
 	}
 	if err := validateConnectorReleaseMatrixSize(matrix); err != nil {
-		return err
-	}
-	if err := validateConnectorReleaseMatrixSize(languageMatrix); err != nil {
 		return err
 	}
 	encoded, err := json.Marshal(matrix)
@@ -522,7 +533,7 @@ func validateDiscoveredConnectorDirectories(repositoryRoot string, registeredDir
 	})
 }
 
-func encodeConnectorCatalog(entries []connectorDirectoryEntry) ([]byte, error) {
+func encodeConnectorCatalog(entries []connectorDirectoryEntry, completedLanguageTags map[string]bool) ([]byte, error) {
 	catalog := connectorCatalog{
 		APIVersion: connectorCatalogAPIVersion,
 		Kind:       "ConnectorCatalog",
@@ -530,6 +541,17 @@ func encodeConnectorCatalog(entries []connectorDirectoryEntry) ([]byte, error) {
 	}
 	for _, entry := range entries {
 		metadata := entry.Manifest.Metadata
+		var releasedLanguages *schema.Languages
+		if entry.Manifest.Spec.Languages != nil {
+			filtered := *entry.Manifest.Spec.Languages
+			if filtered.Python != nil && !completedLanguageTags[entry.Directory+"/python/"+filtered.Python.Version] {
+				filtered.Python = nil
+			}
+			if filtered.TypeScript != nil && !completedLanguageTags[entry.Directory+"/typescript/"+filtered.TypeScript.Version] {
+				filtered.TypeScript = nil
+			}
+			releasedLanguages = &filtered
+		}
 		uiUnits := []catalogCapability{}
 		if entry.Manifest.Spec.Studio != nil {
 			uiUnits = make([]catalogCapability, 0, len(entry.Manifest.Spec.Studio.Units))
@@ -540,13 +562,13 @@ func encodeConnectorCatalog(entries []connectorDirectoryEntry) ([]byte, error) {
 		triggers := make([]catalogCapability, 0, len(entry.Manifest.Spec.Triggers))
 		for _, trigger := range entry.Manifest.Spec.Triggers {
 			triggers = append(triggers, catalogCapability{Name: trigger.Name, Description: trigger.Description,
-				Languages: capabilityLanguages(entry.Manifest.Spec.Languages, trigger.Name, true)})
+				Languages: capabilityLanguages(releasedLanguages, trigger.Name, true)})
 		}
 		operations := make([]catalogCapability, 0, len(entry.Manifest.Spec.Operations))
 		for _, operation := range entry.Manifest.Spec.Operations {
 			operations = append(operations, catalogCapability{
 				Name: operation.Name, Kind: operation.Kind, Description: operation.Description,
-				Languages: capabilityLanguages(entry.Manifest.Spec.Languages, operation.Name, false),
+				Languages: capabilityLanguages(releasedLanguages, operation.Name, false),
 			})
 		}
 		item := connectorCatalogItem{
@@ -554,12 +576,12 @@ func encodeConnectorCatalog(entries []connectorDirectoryEntry) ([]byte, error) {
 			Description: metadata.Description, Version: metadata.Version, Directory: entry.Directory,
 			UIUnits: uiUnits, Triggers: triggers, Operations: operations,
 		}
-		if entry.Manifest.Spec.Languages != nil && (entry.Manifest.Spec.Languages.Python != nil || entry.Manifest.Spec.Languages.TypeScript != nil) {
+		if releasedLanguages != nil && (releasedLanguages.Python != nil || releasedLanguages.TypeScript != nil) {
 			item.Languages = map[string]string{"go": metadata.Version}
-			if python := entry.Manifest.Spec.Languages.Python; python != nil {
+			if python := releasedLanguages.Python; python != nil {
 				item.Languages["python"] = python.Version
 			}
-			if typeScript := entry.Manifest.Spec.Languages.TypeScript; typeScript != nil {
+			if typeScript := releasedLanguages.TypeScript; typeScript != nil {
 				item.Languages["typescript"] = typeScript.Version
 			}
 		}

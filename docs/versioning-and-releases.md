@@ -222,19 +222,33 @@ serialized queue, but npm documents no comparable project-creation cap; they
 do not consume the PyPI cap. Packages beyond the cap are deferred. If PyPI
 responds `429 Too many new projects created`, the job retries after 20, 60,
 and 120 seconds, then reports a deferral without failing the release run.
+Later first publishes in that run defer immediately after the limit is hit.
 Other publish errors still fail the run. A deferred upload creates no GitHub
 tag or release until the registry artifact is verified.
 
-The same workflow runs hourly at minute 17 to drain pending first publishes,
-including a version whose registry upload succeeded but whose GitHub release
-lacks `language-release.complete`. Scheduled runs do not publish Go modules.
+The same workflow runs hourly at minute 17 to drain pending language releases
+and pending Go releases. A scheduled run repairs an incomplete language release
+when its tag records the original source commit. If a registry version exists
+without a GitHub tag, the build fails with a recovery message: rerun the
+original workflow at its source commit or create the missing tag at that
+commit before repair. It never rebuilds the registry version from a newer
+commit. Concurrent push and scheduled runs can cancel a queued run, so check
+the release summary for remaining work; the next scheduled run selects pending
+Go releases again.
 The `summarize-language` job writes published, deferred, and failed tags plus
 the pending count to its job summary and `result` JSON output. To recover
 manually, run `Release Connectors and Catalog` on `main` with the affected
 `connector_directory`; leave `dry_run` disabled. For a broad backlog, set
-`drain_first_publishes` on a manual run or wait for the next hourly run. If a registry upload succeeded but GitHub release
+`drain_first_publishes` on a manual run or wait for the next hourly run. A
+manual drain also releases pending Go versions. If a registry upload succeeded but GitHub release
 creation failed, rerun the original workflow at its source commit as described
 below so its archive digest still matches.
+
+The deployed catalog lists Python and TypeScript versions and capabilities
+only after their GitHub release contains `language-release.complete`. The
+catalog generator accepts a completed-tag inventory with
+`--completed-language-tags`; without one, it omits language entries rather than
+advertising a pending version. An idle scheduled run skips the Pages deploy.
 
 If registry publication succeeds but GitHub tag or release creation fails,
 rerun the failed workflow at its original commit. If that run is unavailable,
@@ -320,10 +334,9 @@ the original push commit, retaining its release matrix. The workflow:
 9. verifies the published Go module is downloadable;
 10. runs Released compatibility against the new component tag;
 11. publishes the directory site, `catalog.yaml`, and `card.png` to GitHub
-    Pages when connector releases succeed or none are pending. A failed Go
-    or language build or release blocks the whole catalog publish, including Go entries.
-    When no language release is pending, skipped language jobs allow Go-only
-    catalog deployment.
+    Pages when a Go or language release is selected or a manual catalog rebuild
+    is requested. An idle scheduled run skips deployment. A failed Go or
+    language build or release blocks the catalog publish, including Go entries.
     The site is
     `https://superdurable.github.io/dex-connectors-library/` and the README
     preview is `card.png` beside `catalog.yaml`.

@@ -251,7 +251,7 @@ func TestCatalogListsMocksAndTheMockPackage(t *testing.T) {
 	encoded, err := encodeConnectorCatalog([]connectorDirectoryEntry{
 		{Directory: "connectors/example/mock-fixture", ModulePath: "example.com/connectors/example/mock-fixture", Manifest: manifest},
 		{Directory: "connectors/example/plain", ModulePath: "example.com/connectors/example/plain", Manifest: withoutMocks},
-	})
+	}, nil)
 
 	require.NoError(t, err)
 	catalog := string(encoded)

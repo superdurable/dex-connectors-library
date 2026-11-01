@@ -19,8 +19,7 @@ on:
       first_publish_limit:
         description: Maximum new PyPI projects to try in this run
         required: false
-        default: 3
-        type: number
+        type: string
       drain_first_publishes:
         description: Drain the pending language publish queue without publishing Go releases
         required: false
@@ -86,6 +85,10 @@ jobs:
           DRAIN_FIRST_PUBLISHES: ${{ inputs.drain_first_publishes }}
           LANGUAGE_SELECTION_PATH: ${{ runner.temp }}/language-selection.json
         run: |
+          if [ -n "${REPAIR_DIRECTORY}" ] && [ "${DRAIN_FIRST_PUBLISHES}" = true ]; then
+            echo 'Select either connector_directory or drain_first_publishes, not both' >&2
+            exit 1
+          fi
           if [ "${EVENT_NAME}" = workflow_dispatch ] && [ -z "${REPAIR_DIRECTORY}" ] && [ "${DRAIN_FIRST_PUBLISHES}" != true ]; then
             printf 'matrix={"include":[]}\ncount=0\nlanguage_matrix={"include":[]}\nlanguage_count=0\nupdates_matrix={"include":[]}\nupdates_count=0\nfirst_matrix={"include":[]}\nfirst_count=0\npending_count=0\n' >> "${GITHUB_OUTPUT}"
             exit
@@ -94,17 +97,15 @@ jobs:
           if [ "${EVENT_NAME}" = workflow_dispatch ] && [ -n "${REPAIR_DIRECTORY}" ]; then
             arguments+=(--directory "${REPAIR_DIRECTORY}" --include-published)
           elif [ "${EVENT_NAME}" = schedule ] || [ "${DRAIN_FIRST_PUBLISHES}" = true ]; then
-            arguments+=(--include-published)
+            arguments+=(--include-published-languages)
           else
             arguments+=(--include-published-at "${SOURCE_SHA}")
           fi
           GOWORK=off go run ./cmd/connectorctl release-matrix "${arguments[@]}"
-          selection_args=()
-          if [ "${EVENT_NAME}" = schedule ] || [ "${DRAIN_FIRST_PUBLISHES}" = true ]; then selection_args+=(--scheduled); fi
           python3 script/release/language_publish.py select \
             --matrix-output "${RUNNER_TEMP}/release-matrix-output" \
             --github-output "${GITHUB_OUTPUT}" \
-            --first-publish-limit "${FIRST_PUBLISH_LIMIT}" "${selection_args[@]}"
+            --first-publish-limit "${FIRST_PUBLISH_LIMIT}"
       - uses: actions/upload-artifact@v4
         if: steps.matrix.outputs.language_count != '0' || steps.matrix.outputs.pending_count != '0'
         with:
@@ -377,9 +378,11 @@ jobs:
           cp script/release/component_release.py "${RUNNER_TEMP}/component_release.py"
           tag="${TAG_PREFIX}${RELEASE_VERSION}"
           source_sha="${GITHUB_SHA}"
+          tag_exists=false
           if git show-ref --verify --quiet "refs/tags/${tag}"; then
             git merge-base --is-ancestor "${tag}" HEAD || { echo "Release tag is not reachable from main: ${tag}" >&2; exit 1; }
             source_sha="$(git rev-parse "${tag}^{commit}")"
+            tag_exists=true
           fi
           required=true
           if published_assets="$(gh release view "${tag}" --json assets --jq '.assets[].name' 2>/dev/null)" &&
@@ -388,8 +391,16 @@ jobs:
           fi
           if [ "${RELEASE_DRY_RUN}" = true ]; then required=true; fi
           if [ "${required}" = false ]; then touch "${RUNNER_TEMP}/language-work/skip"; fi
-          echo "release_required=${required}" >> "${GITHUB_OUTPUT}"
-          echo "source_sha=${source_sha}" >> "${GITHUB_OUTPUT}"
+          {
+            echo "release_required=${required}"
+            echo "source_sha=${source_sha}"
+            echo "tag_exists=${tag_exists}"
+          } >> "${GITHUB_OUTPUT}"
+      - name: Reject an untagged registry version built from a newer commit
+        if: steps.state.outputs.release_required == 'true' && steps.state.outputs.tag_exists == 'false' && inputs.dry_run != true
+        run: |
+          python3 script/release/language_publish.py check-untagged-version \
+            --language "${LANGUAGE}" --package "${PACKAGE_NAME}" --version "${RELEASE_VERSION}"
       - name: Restore tagged language source for repair
         if: steps.state.outputs.release_required == 'true' && steps.state.outputs.source_sha != github.sha
         env:
@@ -511,8 +522,17 @@ jobs:
             source_sha="$(git rev-parse "${tag}^{commit}")"
           fi
           echo "source_sha=${source_sha}" >> "${GITHUB_OUTPUT}"
+      - name: Defer after this run hits the PyPI project-creation limit
+        id: first-limit
+        if: steps.state.outputs.release_required == 'true' && matrix.first_publish == true && matrix.language == 'python'
+        run: |
+          artifact_names="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts?per_page=100" --jq '.artifacts[].name')"
+          if grep -Fxq "pypi-project-limit-${GITHUB_RUN_ID}" <<<"${artifact_names}"; then
+            echo 'status=deferred' >> "${GITHUB_OUTPUT}"
+            echo '::notice::Deferred: this run has already hit the PyPI project-creation limit.'
+          fi
       - name: Verify package archives before publication
-        if: steps.state.outputs.release_required == 'true'
+        if: steps.state.outputs.release_required == 'true' && steps.first-limit.outputs.status != 'deferred'
         run: |
           if [ "${LANGUAGE}" = python ]; then
             assets=("${RUNNER_TEMP}"/language-work/dist/*.whl "${RUNNER_TEMP}"/language-work/dist/*.tar.gz)
@@ -524,7 +544,7 @@ jobs:
           python3 script/release/component_release.py verify-language-artifacts \
             --language "${LANGUAGE}" --package "${PACKAGE_NAME}" --version "${RELEASE_VERSION}" "${arguments[@]}"
       - name: Regenerate trusted release metadata
-        if: steps.state.outputs.release_required == 'true'
+        if: steps.state.outputs.release_required == 'true' && steps.first-limit.outputs.status != 'deferred'
         run: |
           tag="${TAG_PREFIX}${RELEASE_VERSION}"
           cp script/release/component_release.py "${RUNNER_TEMP}/component_release.py"
@@ -556,7 +576,7 @@ jobs:
             --tag "${tag}" --source-sha "$(git rev-parse HEAD)" "${arguments[@]}"
       - name: Publish Python package
         id: python-publish
-        if: steps.state.outputs.release_required == 'true' && matrix.language == 'python'
+        if: steps.state.outputs.release_required == 'true' && steps.first-limit.outputs.status != 'deferred' && matrix.language == 'python'
         env:
           UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
         run: |
@@ -574,7 +594,7 @@ jobs:
               --package "${PACKAGE_NAME}" --version "${RELEASE_VERSION}" --require-all --wait-seconds 120 "${arguments[@]}"
           fi
       - name: Publish npm package
-        if: steps.state.outputs.release_required == 'true' && matrix.language == 'typescript'
+        if: steps.state.outputs.release_required == 'true' && steps.first-limit.outputs.status != 'deferred' && matrix.language == 'typescript'
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
@@ -582,7 +602,7 @@ jobs:
           python3 "${RUNNER_TEMP}/npm_publish.py" publish --package "${PACKAGE_NAME}" \
             --version "${RELEASE_VERSION}" --tarball "${package_tarball[0]}"
       - name: Create or repair language release
-        if: steps.state.outputs.release_required == 'true' && steps.python-publish.outputs.status != 'deferred'
+        if: steps.state.outputs.release_required == 'true' && steps.python-publish.outputs.status != 'deferred' && steps.first-limit.outputs.status != 'deferred'
         env:
           SOURCE_SHA: ${{ steps.state.outputs.source_sha }}
         run: |
@@ -598,23 +618,33 @@ jobs:
               --notes-file "${RUNNER_TEMP}/language-work/notes.md" "${RUNNER_TEMP}"/language-work/dist/*
           fi
       - name: Mark language release complete
-        if: steps.state.outputs.release_required == 'true' && steps.python-publish.outputs.status != 'deferred'
+        if: steps.state.outputs.release_required == 'true' && steps.python-publish.outputs.status != 'deferred' && steps.first-limit.outputs.status != 'deferred'
         id: complete
         run: |
           printf '%s\n' "${TAG_PREFIX}${RELEASE_VERSION}" > "${RUNNER_TEMP}/language-release.complete"
           gh release upload "${TAG_PREFIX}${RELEASE_VERSION}" --clobber "${RUNNER_TEMP}/language-release.complete"
+      - name: Record the PyPI project-creation limit for this run
+        if: matrix.first_publish == true && steps.python-publish.outputs.status == 'deferred'
+        run: touch "${RUNNER_TEMP}/pypi-project-limit"
+      - uses: actions/upload-artifact@v4
+        if: matrix.first_publish == true && steps.python-publish.outputs.status == 'deferred'
+        with:
+          name: pypi-project-limit-${{ github.run_id }}
+          path: ${{ runner.temp }}/pypi-project-limit
+          retention-days: 1
       - name: Record language release result
         if: always()
         env:
           JOB_STATUS: ${{ job.status }}
-          PYPI_STATUS: ${{ steps.python-publish.outputs.status }}
+          PYPI_STATUS: ${{ steps.python-publish.outputs.status || steps.first-limit.outputs.status }}
           COMPLETE_STATUS: ${{ steps.complete.outcome }}
+          RELEASE_REQUIRED: ${{ steps.state.outputs.release_required }}
         run: |
           status=failed
           if [ "${JOB_STATUS}" = success ]; then
             if [ "${PYPI_STATUS}" = deferred ]; then
               status=deferred
-            elif [ "${COMPLETE_STATUS}" = success ] || [ "${{ steps.state.outputs.release_required }}" = false ]; then
+            elif [ "${COMPLETE_STATUS}" = success ] || [ "${RELEASE_REQUIRED}" = false ]; then
               status=published
             fi
           fi
@@ -659,6 +689,7 @@ jobs:
     outputs:
       result: ${{ steps.summary.outputs.result }}
       pending_count: ${{ steps.summary.outputs.pending_count }}
+      published_count: ${{ steps.summary.outputs.published_count }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -684,7 +715,7 @@ jobs:
 
   build-catalog:
     needs: [plan, release, build-language, publish-language, publish-language-first, summarize-language]
-    if: always() && needs.plan.result == 'success' && (needs.release.result == 'success' || needs.release.result == 'skipped') && (needs.build-language.result == 'success' || needs.build-language.result == 'skipped') && (needs.publish-language.result == 'success' || (needs.plan.outputs.updates_count == '0' && needs.publish-language.result == 'skipped')) && (needs.publish-language-first.result == 'success' || (needs.plan.outputs.first_count == '0' && needs.publish-language-first.result == 'skipped')) && (needs.summarize-language.result == 'success' || (needs.plan.outputs.pending_count == '0' && needs.summarize-language.result == 'skipped')) && inputs.dry_run != true
+    if: always() && needs.plan.result == 'success' && (needs.release.result == 'success' || needs.release.result == 'skipped') && (needs.build-language.result == 'success' || needs.build-language.result == 'skipped') && (needs.publish-language.result == 'success' || (needs.plan.outputs.updates_count == '0' && needs.publish-language.result == 'skipped')) && (needs.publish-language-first.result == 'success' || (needs.plan.outputs.first_count == '0' && needs.publish-language-first.result == 'skipped')) && (needs.summarize-language.result == 'success' || (needs.plan.outputs.pending_count == '0' && needs.summarize-language.result == 'skipped')) && (needs.plan.outputs.count != '0' || needs.summarize-language.outputs.published_count != '0' || github.event_name == 'workflow_dispatch') && inputs.dry_run != true
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -693,6 +724,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
@@ -702,10 +734,15 @@ jobs:
           cache: npm
           cache-dependency-path: site/package-lock.json
       - name: Generate public Connector catalog
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p dist/pages
+          python3 script/release/language_publish.py completed-language-tags \
+            --output "${RUNNER_TEMP}/completed-language-tags"
           go run ./cmd/connectorctl catalog \
             --catalog catalog.yaml \
+            --completed-language-tags "${RUNNER_TEMP}/completed-language-tags" \
             --output dist/pages/catalog.yaml \
             --json-output dist/pages/catalog.json
       - name: Build directory site and preview card
