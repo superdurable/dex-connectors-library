@@ -6,6 +6,9 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/shopify`.
 
 Read-only Dex Query Steps for Shopify. The module is `github.com/superdurable/dex-connectors-library/connectors/shopify/go`. See the [runnable resource-read Flow](go/examples/resource-read/README.md).
 
+The Python package is [`dex-connector-shopify`](python/README.md), imported as
+`dex_connectors.shopify`.
+
 ## Operations
 
 | Factory | Input | Output | Happy branch |
