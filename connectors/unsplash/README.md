@@ -13,6 +13,9 @@ Read-only Unsplash photo operations for Dex. The connector uses the public JSON 
 
 Each photo result includes Unsplash-hosted image URLs and attribution URLs. Applications must hotlink `regularUrl` and attribute the photographer and Unsplash; do not download and serve the image from your own host. A download-like action requires Unsplash's separate download tracking endpoint, which this connector does not expose.
 
+The Python package is [`dex-connector-unsplash`](python/README.md), imported as
+`dex_connectors.unsplash`.
+
 ## Authorization
 
 Sign in at [Unsplash Your apps](https://unsplash.com/oauth/applications), choose **New Application**, accept the API guidelines, enter an application name and description, and copy the displayed **Access Key** string. Paste it into Dex Web Connections' secret `access_key` field. Blank prevents requests. Leave `baseUrl`, `timeout`, and `maxResponseBytes` blank for their displayed defaults. Override them only for a compatible gateway, a slower network, or larger photo pages. The key is never placed in a URL.
