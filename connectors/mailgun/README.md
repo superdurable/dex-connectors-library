@@ -6,6 +6,9 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/mailgun`.
 
 Read Mailgun domain events and account domains. The manifest is the source of generated Config, Credentials, Connection, operation factories, and mocks. See the [runnable demo](go/examples/demo/README.md) for Worker and strict FDG 2.0 generation commands.
 
+The Python package is [`dex-connector-mailgun`](python/README.md), imported as
+`dex_connectors.mailgun`.
+
 ## Operations and provider references
 
 | Operation | Dex kind | Official API reference |
