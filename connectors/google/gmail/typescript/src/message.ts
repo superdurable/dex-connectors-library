@@ -42,12 +42,19 @@ export function decodeGmailMessage(resource: GmailMessageResource): Message {
   visitGmailBody(resource.payload ?? {}, textBodies, htmlBodies);
   const to = splitAddressHeader(headers.get('to') ?? '');
   return {
-    messageId: resource.id, threadId: resource.threadId, rfcMessageId: headers.get('message-id') ?? '',
-    inReplyTo: headers.get('in-reply-to') ?? '', references: headers.get('references') ?? '',
-    from: headers.get('from') ?? '', replyTo: headers.get('reply-to') ?? '', to,
-    subject: decodeRFC2047Header(headers.get('subject') ?? ''), textBody: textBodies.join('\n'),
-    htmlBody: htmlBodies.join('\n'), snippet: resource.snippet ?? '',
-    receivedAt: receivedAt.toISOString().replace('.000Z', 'Z'), labelIds: resource.labelIds ?? [],
+    messageId: resource.id, threadId: resource.threadId,
+    ...(headers.get('message-id') ? { rfcMessageId: headers.get('message-id') } : {}),
+    ...(headers.get('in-reply-to') ? { inReplyTo: headers.get('in-reply-to') } : {}),
+    ...(headers.get('references') ? { references: headers.get('references') } : {}),
+    from: headers.get('from') ?? '',
+    ...(headers.get('reply-to') ? { replyTo: headers.get('reply-to') } : {}),
+    ...(to.length ? { to } : {}),
+    subject: decodeRFC2047Header(headers.get('subject') ?? ''),
+    ...(textBodies.length ? { textBody: textBodies.join('\n') } : {}),
+    ...(htmlBodies.length ? { htmlBody: htmlBodies.join('\n') } : {}),
+    ...(resource.snippet ? { snippet: resource.snippet } : {}),
+    receivedAt: receivedAt.toISOString().replace('.000Z', 'Z'),
+    ...(resource.labelIds?.length ? { labelIds: resource.labelIds } : {}),
   };
 }
 
