@@ -4,7 +4,6 @@
 
 import json
 from collections.abc import Callable
-from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any, TypeVar
 
@@ -15,13 +14,11 @@ from dex_connectors.sdk import (
     CredentialProvider,
     Failure,
     FailureKind,
-    OperationRef,
     QueryAttempt,
     QueryDefinition,
     ReauthorizationRequiredError,
     Receipt,
     RetryPolicy,
-    SecretString,
     StepDefaults,
 )
 from dex_connectors.sdk.providerhttp import (
@@ -35,16 +32,44 @@ from dex_connectors.sdk.providerhttp import (
     validate_base_url,
 )
 
+from ._generated.config import (
+    Config as Config,
+)
+from ._generated.config import (
+    Credentials as Credentials,
+)
+from ._generated.definitions import (
+    CONNECTOR_ID as CONNECTOR_ID,
+)
+from ._generated.definitions import (
+    DEFECT as DEFECT,
+)
+from ._generated.definitions import (
+    EMBED_DEFINITION as EMBED_DEFINITION,
+)
+from ._generated.definitions import (
+    EMBED_OPERATION_ID as EMBED_OPERATION_ID,
+)
+from ._generated.definitions import (
+    EMBEDDED as EMBEDDED,
+)
+from ._generated.definitions import (
+    INVALID_RESPONSE as INVALID_RESPONSE,
+)
+from ._generated.definitions import (
+    PROVIDER_REJECTED as PROVIDER_REJECTED,
+)
+from ._generated.definitions import (
+    RANKED as RANKED,
+)
+from ._generated.definitions import (
+    RERANK_DEFINITION as RERANK_DEFINITION,
+)
+from ._generated.definitions import (
+    RERANK_OPERATION_ID as RERANK_OPERATION_ID,
+)
 from .models import EmbedInput, EmbedOutput, RankedDocument, RerankInput, RerankOutput
 
-CONNECTOR_ID = "cohere"
-EMBED_OPERATION_ID = "embed"
-RERANK_OPERATION_ID = "rerank"
-EMBEDDED = "embedded"
-RANKED = "ranked"
-PROVIDER_REJECTED = "providerRejected"
-INVALID_RESPONSE = "invalidResponse"
-DEFECT = "defect"
 INPUT_TYPES = ("search_document", "search_query", "classification", "clustering")
 _DEFAULT_BASE_URL = "https://api.cohere.com"
 _DEFAULT_TIMEOUT_SECONDS = 30
@@ -56,44 +81,12 @@ _STEP_DEFAULTS = StepDefaults(
     execute_retry=RetryPolicy(timedelta(seconds=2), 2, timedelta(seconds=30), 3, timedelta(minutes=5)),
 )
 _DEFECT_BRANCH = BranchDefinition(DEFECT, "Local input or connection credentials are invalid.", True)
-EMBED_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, EMBED_OPERATION_ID),
-    (
-        BranchDefinition(EMBEDDED, "Cohere returned one float vector per text."),
-        BranchDefinition(PROVIDER_REJECTED, "Cohere conclusively rejected the embedding request.", True),
-        BranchDefinition(INVALID_RESPONSE, "Cohere returned malformed or oversized embedding data.", True),
-        _DEFECT_BRANCH,
-    ),
-    _STEP_DEFAULTS,
-)
-RERANK_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, RERANK_OPERATION_ID),
-    (
-        BranchDefinition(RANKED, "Cohere returned ranked document indices and scores."),
-        BranchDefinition(PROVIDER_REJECTED, "Cohere conclusively rejected the rerank request.", True),
-        BranchDefinition(INVALID_RESPONSE, "Cohere returned malformed or oversized rerank data.", True),
-        _DEFECT_BRANCH,
-    ),
-    _STEP_DEFAULTS,
-)
 
 Output = TypeVar("Output")
 
 
-@dataclass(frozen=True, slots=True)
-class Config:
-    """Cohere HTTP settings; zero or blank values use manifest defaults."""
-
-    base_url: str = _DEFAULT_BASE_URL
-    timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS
-    max_response_bytes: int = _DEFAULT_MAX_RESPONSE_BYTES
 
 
-@dataclass(frozen=True, slots=True)
-class Credentials:
-    """Cohere API key, resolved anew for every provider attempt."""
-
-    api_key: SecretString
 
 
 class Client:

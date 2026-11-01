@@ -11,17 +11,14 @@ from urllib.parse import urlencode
 
 import httpx
 from dex_connectors.sdk import (
-    BranchDefinition,
     Call,
     CredentialProvider,
     Failure,
     FailureKind,
-    OperationRef,
     QueryAttempt,
     QueryDefinition,
     ReauthorizationRequiredError,
     Receipt,
-    SecretString,
     StepDefaults,
 )
 from dex_connectors.sdk.providerhttp import (
@@ -36,17 +33,47 @@ from dex_connectors.sdk.providerhttp import (
 )
 from dex_connectors.sdk.retry_policy import default_connector_step_execute_retry_policy
 
+from ._generated.config import (
+    Config as Config,
+)
+from ._generated.config import (
+    Credentials as Credentials,
+)
+from ._generated.definitions import (
+    CONNECTOR_ID as CONNECTOR_ID,
+)
+from ._generated.definitions import (
+    DEFECT as DEFECT,
+)
+from ._generated.definitions import (
+    FOUND as FOUND,
+)
+from ._generated.definitions import (
+    GET_ENTRY_DEFINITION as GET_ENTRY_DEFINITION,
+)
+from ._generated.definitions import (
+    GET_ENTRY_OPERATION_ID as GET_ENTRY_OPERATION_ID,
+)
+from ._generated.definitions import (
+    INVALID_RESPONSE as INVALID_RESPONSE,
+)
+from ._generated.definitions import (
+    LIST_ENTRIES_DEFINITION as LIST_ENTRIES_DEFINITION,
+)
+from ._generated.definitions import (
+    LIST_ENTRIES_OPERATION_ID as LIST_ENTRIES_OPERATION_ID,
+)
+from ._generated.definitions import (
+    LISTED as LISTED,
+)
+from ._generated.definitions import (
+    NOT_FOUND as NOT_FOUND,
+)
+from ._generated.definitions import (
+    PROVIDER_REJECTED as PROVIDER_REJECTED,
+)
 from .models import GetEntryInput, GetEntryOutput, ListEntriesInput, ListEntriesOutput
 
-CONNECTOR_ID = "contentful"
-GET_ENTRY_OPERATION_ID = "getEntry"
-LIST_ENTRIES_OPERATION_ID = "listEntries"
-FOUND = "found"
-LISTED = "listed"
-NOT_FOUND = "notFound"
-PROVIDER_REJECTED = "providerRejected"
-INVALID_RESPONSE = "invalidResponse"
-DEFECT = "defect"
 _IDENTIFIER = re.compile(r"[A-Za-z0-9_-]+")
 _DEFAULT_BASE_URL = "https://cdn.contentful.com"
 _DEFAULT_TIMEOUT_SECONDS = 15
@@ -60,51 +87,12 @@ _STATUS_KINDS = {
     400: FailureKind.VALIDATION,
     422: FailureKind.VALIDATION,
 }
-GET_ENTRY_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, "getEntry"),
-    (
-        BranchDefinition("found", "Get one published Contentful entry."),
-        BranchDefinition(
-            "notFound", "The requested provider resource does not exist or is not visible.", True
-        ),
-        BranchDefinition(
-            "providerRejected", "The provider conclusively rejected the request or credentials.", True
-        ),
-        BranchDefinition("invalidResponse", "The provider returned malformed or oversized JSON.", True),
-        BranchDefinition("defect", "Local input, configuration, or credentials are invalid.", True),
-    ),
-    _STEP_DEFAULTS,
-)
-LIST_ENTRIES_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, "listEntries"),
-    (
-        BranchDefinition("listed", "List one page of published entries in a space and environment."),
-        BranchDefinition(
-            "providerRejected", "The provider conclusively rejected the request or credentials.", True
-        ),
-        BranchDefinition("invalidResponse", "The provider returned malformed or oversized JSON.", True),
-        BranchDefinition("defect", "Local input, configuration, or credentials are invalid.", True),
-    ),
-    _STEP_DEFAULTS,
-)
 
 Output = TypeVar("Output")
 
 
-@dataclass(frozen=True, slots=True)
-class Config:
-    """Contentful HTTP settings; zero or blank values use manifest defaults."""
-
-    base_url: str = _DEFAULT_BASE_URL
-    timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS
-    max_response_bytes: int = _DEFAULT_MAX_RESPONSE_BYTES
 
 
-@dataclass(frozen=True, slots=True)
-class Credentials:
-    """Contentful Content Delivery API token, resolved anew for every provider attempt."""
-
-    delivery_token: SecretString
 
 
 @dataclass(frozen=True, slots=True)

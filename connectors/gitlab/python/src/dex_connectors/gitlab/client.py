@@ -20,12 +20,10 @@ from dex_connectors.sdk import (
     IdempotencyKey,
     MutationAttempt,
     MutationDefinition,
-    OperationRef,
     QueryAttempt,
     QueryDefinition,
     ReauthorizationRequiredError,
     Receipt,
-    SecretString,
     StepDefaults,
 )
 from dex_connectors.sdk.providerhttp import (
@@ -40,19 +38,56 @@ from dex_connectors.sdk.providerhttp import (
 )
 from dex_connectors.sdk.retry_policy import default_connector_step_execute_retry_policy
 
+from ._generated.config import (
+    Config as Config,
+)
+from ._generated.config import (
+    Credentials as Credentials,
+)
+from ._generated.definitions import (
+    CONNECTOR_ID as CONNECTOR_ID,
+)
+from ._generated.definitions import (
+    DEFECT as DEFECT,
+)
+from ._generated.definitions import (
+    FOUND as FOUND,
+)
+from ._generated.definitions import (
+    GET_PROJECT_DEFINITION as GET_PROJECT_DEFINITION,
+)
+from ._generated.definitions import (
+    GET_PROJECT_OPERATION_ID as GET_PROJECT_OPERATION_ID,
+)
+from ._generated.definitions import (
+    INVALID_RESPONSE as INVALID_RESPONSE,
+)
+from ._generated.definitions import (
+    LIST_ISSUES_DEFINITION as LIST_ISSUES_DEFINITION,
+)
+from ._generated.definitions import (
+    LIST_ISSUES_OPERATION_ID as LIST_ISSUES_OPERATION_ID,
+)
+from ._generated.definitions import (
+    LISTED as LISTED,
+)
+from ._generated.definitions import (
+    NOT_FOUND as NOT_FOUND,
+)
+from ._generated.definitions import (
+    PROVIDER_REJECTED as PROVIDER_REJECTED,
+)
+from ._generated.definitions import (
+    UPDATE_ISSUE_LABELS_DEFINITION as UPDATE_ISSUE_LABELS_DEFINITION,
+)
+from ._generated.definitions import (
+    UPDATE_ISSUE_LABELS_OPERATION_ID as UPDATE_ISSUE_LABELS_OPERATION_ID,
+)
+from ._generated.definitions import (
+    UPDATED as UPDATED,
+)
 from .models import GetProjectInput, Issue, IssuesPage, ListIssuesInput, Project, UpdateIssueLabelsInput
 
-CONNECTOR_ID = "gitlab"
-GET_PROJECT_OPERATION_ID = "getProject"
-LIST_ISSUES_OPERATION_ID = "listIssues"
-UPDATE_ISSUE_LABELS_OPERATION_ID = "updateIssueLabels"
-FOUND = "found"
-LISTED = "listed"
-UPDATED = "updated"
-NOT_FOUND = "notFound"
-PROVIDER_REJECTED = "providerRejected"
-INVALID_RESPONSE = "invalidResponse"
-DEFECT = "defect"
 _DEFAULT_BASE_URL = "https://gitlab.com/api/v4"
 _DEFAULT_TIMEOUT_SECONDS = 15
 _DEFAULT_MAX_RESPONSE_BYTES = 2_097_152
@@ -73,44 +108,12 @@ _SHARED_BRANCHES = (
     BranchDefinition(INVALID_RESPONSE, "The provider returned malformed or oversized JSON.", True),
     BranchDefinition(DEFECT, "Local input or connection credentials are invalid.", True),
 )
-GET_PROJECT_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, GET_PROJECT_OPERATION_ID),
-    (BranchDefinition(FOUND, "Read one GitLab project by numeric ID or namespace path."), *_SHARED_BRANCHES),
-    _STEP_DEFAULTS,
-)
-LIST_ISSUES_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, LIST_ISSUES_OPERATION_ID),
-    (BranchDefinition(LISTED, "List the first page of issues for a GitLab project."), *_SHARED_BRANCHES),
-    _STEP_DEFAULTS,
-)
-UPDATE_ISSUE_LABELS_DEFINITION = MutationDefinition(
-    OperationRef(CONNECTOR_ID, UPDATE_ISSUE_LABELS_OPERATION_ID),
-    (
-        BranchDefinition(
-            UPDATED, "Replace one GitLab issue's complete label set; repeating the request is safe."
-        ),
-        *_SHARED_BRANCHES,
-    ),
-    _STEP_DEFAULTS,
-)
 
 Output = TypeVar("Output")
 
 
-@dataclass(frozen=True, slots=True)
-class Config:
-    """GitLab HTTP settings; zero or blank values use manifest defaults."""
-
-    base_url: str = _DEFAULT_BASE_URL
-    timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS
-    max_response_bytes: int = _DEFAULT_MAX_RESPONSE_BYTES
 
 
-@dataclass(frozen=True, slots=True)
-class Credentials:
-    """GitLab personal, project, or group access token, resolved anew for every provider attempt."""
-
-    access_token: SecretString
 
 
 @dataclass(frozen=True, slots=True)

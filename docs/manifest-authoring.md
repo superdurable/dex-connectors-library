@@ -24,13 +24,32 @@ the languages for each operation and Trigger; Go-only entries omit that field.
 
 `connectorctl generate` also writes `dex-connector.json` for each declared
 language. Python places it in `python/src/dex_connectors/<slug_with_underscores>/`;
-npm places it beside `typescript/package.json`. Check in the generated file and
-run `connectorctl generate --check <connector.yaml>` to detect drift. The file
+npm places it beside `typescript/package.json`. Check in the generated files and
+run `connectorctl generate --check <connector.yaml>` to detect drift. The JSON file
 maps the manifest's operation factories, branch IDs and optional status, package
 identity, and fields used by Dex CLI's Python and TypeScript source analyzers.
 Only listed operation factories are generated. Trigger factory mappings await
 language package and `dex-connector.json` contract support; validation rejects
 nonempty language Trigger lists until then.
+
+For a declared Python package, generation also writes its `_generated/` module:
+Go-derived operation dataclasses, Config and Credentials, operation definitions
+and branch constants, Step factories, connection bindings, and manifest mock
+outcomes. Run `connectorctl generate --lang python <connector.yaml>` to update
+only these Python files; `--lang python --check` verifies them without writing.
+The default `generate` and `generate --check` include them. The manifest selects
+the Python operations and defines their identities, branches, settings, and
+mock scenarios. The named Go input and output structs define model fields and
+JSON names. `omitempty` and `omitzero` make a key optional; a nilable Go value
+without either option remains a required key that may be null. Embedded structs
+follow `encoding/json` field selection, and named constants become typed enum
+values. Keep provider HTTP behavior and each operation's invocation in
+hand-written modules. Preserve historical Python constructors and mock names
+through small hand-written facade modules when they differ from the canonical
+Go shape. A facade containing `# connectorctl: handwritten facade` owns its
+Step, connection, or mock component and suppresses that generated file. Do not
+edit `_generated/` files directly.
+
 Runtime arguments such as `connection`, `map_to_operation_input`/
 `mapToOperationInput`, and `step_options_override`/`stepOptionsOverride`
 remain factory inputs; the Dex 1.28.0 schema has no mapping keys for them.
@@ -43,10 +62,10 @@ accept one config object with `stepType`, `annotations`, `connection`,
 `resultAttribute`, and `stepOptionsOverride`. TypeScript factory names use
 `goName` exactly, including acronyms. `step_input_type`, `connection`, input
 mappers, and Step options are runtime inputs, so the static analyzer does not
-map them. Current language factories do not accept `configurationUI`, progress
-or text Streams, or text options; add those mappings only with matching runtime
-factory support. Trigger factories are not emitted until the language package
-implements them. The vendored
+map them. The OpenAI Python factory also accepts its existing configuration UI
+and progress and text Stream options; static analyzer mappings for those options
+await matching schema support. Trigger factories are not emitted until the
+language package implements them. The vendored
 [`dex-connector.schema.json`](../schema/dex-connector.schema.json) is from Dex
 `cli-v1.28.0` at `cli/internal/flowviz/dex-connector.schema.json`.
 

@@ -1,25 +1,21 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Typed Bitbucket repository and pull request pages."""
+"""Public model names backed by Go-derived generated dataclasses."""
 
 from dataclasses import dataclass
 
-
-@dataclass(frozen=True, slots=True)
-class ListRepositoriesInput:
-    """Bitbucket workspace slug or UUID."""
-
-    workspace: str = ""
-
-
-@dataclass(frozen=True, slots=True)
-class Repository:
-    """Repository UUID, name, workspace-qualified full name, and privacy flag."""
-
-    uuid: str = ""
-    name: str = ""
-    full_name: str = ""
-    is_private: bool = False
+from ._generated.models import (
+    ListPullRequestsInput as ListPullRequestsInput,
+)
+from ._generated.models import (
+    ListRepositoriesInput as ListRepositoriesInput,
+)
+from ._generated.models import (
+    PullRequest as PullRequest,
+)
+from ._generated.models import (
+    Repository as Repository,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,23 +26,6 @@ class RepositoryPage:
     next: str = ""
     page: int = 0
     pagelen: int = 0
-
-
-@dataclass(frozen=True, slots=True)
-class ListPullRequestsInput:
-    """Bitbucket workspace and repository slug."""
-
-    workspace: str = ""
-    repository: str = ""
-
-
-@dataclass(frozen=True, slots=True)
-class PullRequest:
-    """Pull request number, title, and state such as OPEN."""
-
-    id: int = 0
-    title: str = ""
-    state: str = ""
 
 
 @dataclass(frozen=True, slots=True)

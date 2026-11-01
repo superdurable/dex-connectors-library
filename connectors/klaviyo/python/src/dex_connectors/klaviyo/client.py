@@ -5,7 +5,6 @@
 import hashlib
 import json
 import re
-from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from urllib.parse import quote
@@ -21,12 +20,10 @@ from dex_connectors.sdk import (
     IdempotencyKey,
     MutationAttempt,
     MutationDefinition,
-    OperationRef,
     QueryAttempt,
     QueryDefinition,
     ReauthorizationRequiredError,
     Receipt,
-    SecretString,
     StepDefaults,
 )
 from dex_connectors.sdk.providerhttp import (
@@ -41,17 +38,47 @@ from dex_connectors.sdk.providerhttp import (
 )
 from dex_connectors.sdk.retry_policy import default_connector_step_execute_retry_policy
 
+from ._generated.config import (
+    Config as Config,
+)
+from ._generated.config import (
+    Credentials as Credentials,
+)
+from ._generated.definitions import (
+    ACCEPTED as ACCEPTED,
+)
+from ._generated.definitions import (
+    CONNECTOR_ID as CONNECTOR_ID,
+)
+from ._generated.definitions import (
+    CREATE_EVENT_DEFINITION as CREATE_EVENT_DEFINITION,
+)
+from ._generated.definitions import (
+    CREATE_EVENT_OPERATION_ID as CREATE_EVENT_OPERATION_ID,
+)
+from ._generated.definitions import (
+    DEFECT as DEFECT,
+)
+from ._generated.definitions import (
+    FOUND as FOUND,
+)
+from ._generated.definitions import (
+    GET_PROFILE_DEFINITION as GET_PROFILE_DEFINITION,
+)
+from ._generated.definitions import (
+    GET_PROFILE_OPERATION_ID as GET_PROFILE_OPERATION_ID,
+)
+from ._generated.definitions import (
+    INVALID_RESPONSE as INVALID_RESPONSE,
+)
+from ._generated.definitions import (
+    NOT_FOUND as NOT_FOUND,
+)
+from ._generated.definitions import (
+    PROVIDER_REJECTED as PROVIDER_REJECTED,
+)
 from .models import CreateEventInput, EventAcceptance, GetProfileInput, Profile
 
-CONNECTOR_ID = "klaviyo"
-GET_PROFILE_OPERATION_ID = "getProfile"
-CREATE_EVENT_OPERATION_ID = "createEvent"
-FOUND = "found"
-ACCEPTED = "accepted"
-NOT_FOUND = "notFound"
-PROVIDER_REJECTED = "providerRejected"
-INVALID_RESPONSE = "invalidResponse"
-DEFECT = "defect"
 API_REVISION = "2026-10-15"
 _DEFAULT_BASE_URL = "https://a.klaviyo.com/api"
 _DEFAULT_TIMEOUT_SECONDS = 15
@@ -62,42 +89,10 @@ _STEP_DEFAULTS = StepDefaults(
     timedelta(seconds=30), 2, execute_retry=default_connector_step_execute_retry_policy()
 )
 _DEFECT_BRANCH = BranchDefinition(DEFECT, "Local input or credentials are invalid.", True)
-GET_PROFILE_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, GET_PROFILE_OPERATION_ID),
-    (
-        BranchDefinition(FOUND, "Klaviyo returned the profile."),
-        BranchDefinition(NOT_FOUND, "No profile has that ID.", True),
-        BranchDefinition(PROVIDER_REJECTED, "Klaviyo rejected the request or key.", True),
-        BranchDefinition(INVALID_RESPONSE, "Klaviyo returned malformed or oversized data.", True),
-        _DEFECT_BRANCH,
-    ),
-    _STEP_DEFAULTS,
-)
-CREATE_EVENT_DEFINITION = MutationDefinition(
-    OperationRef(CONNECTOR_ID, CREATE_EVENT_OPERATION_ID),
-    (
-        BranchDefinition(ACCEPTED, "Klaviyo accepted the deduplicated event for asynchronous processing."),
-        BranchDefinition(PROVIDER_REJECTED, "Klaviyo rejected the event or key.", True),
-        _DEFECT_BRANCH,
-    ),
-    _STEP_DEFAULTS,
-)
 
 
-@dataclass(frozen=True, slots=True)
-class Config:
-    """Klaviyo HTTP settings; zero or blank values use manifest defaults."""
-
-    base_url: str = _DEFAULT_BASE_URL
-    timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS
-    max_response_bytes: int = _DEFAULT_MAX_RESPONSE_BYTES
 
 
-@dataclass(frozen=True, slots=True)
-class Credentials:
-    """Klaviyo private API key, resolved anew for every provider attempt."""
-
-    private_api_key: SecretString
 
 
 class Client:

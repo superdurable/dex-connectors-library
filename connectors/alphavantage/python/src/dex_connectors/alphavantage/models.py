@@ -1,36 +1,18 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Typed Alpha Vantage symbol inputs, quotes, and daily price series."""
+"""Public model names backed by Go-derived generated dataclasses."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
-
-@dataclass(frozen=True, slots=True)
-class StockInput:
-    """Ticker symbol such as IBM: 1 to 25 letters, digits, '.', '_', or '-'."""
-
-    symbol: str = ""
-
-
-@dataclass(frozen=True, slots=True)
-class GlobalQuoteOutput:
-    """Latest quote; price is Alpha Vantage's decimal text and the day is YYYY-MM-DD."""
-
-    symbol: str = ""
-    price: str = ""
-    latest_trading_day: str = field(default="", metadata={"dex_json_name": "latestTradingDay"})
-
-
-@dataclass(frozen=True, slots=True)
-class DailyPrice:
-    """One trading day's prices and volume as Alpha Vantage's decimal text."""
-
-    date: str = ""
-    open: str = ""
-    high: str = ""
-    low: str = ""
-    close: str = ""
-    volume: str = ""
+from ._generated.models import (
+    DailyPrice as DailyPrice,
+)
+from ._generated.models import (
+    GlobalQuoteOutput as GlobalQuoteOutput,
+)
+from ._generated.models import (
+    StockInput as StockInput,
+)
 
 
 @dataclass(frozen=True, slots=True)

@@ -1,8 +1,12 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Typed Cohere embedding and rerank requests and results."""
+"""Public model names backed by Go-derived generated dataclasses."""
 
 from dataclasses import dataclass, field
+
+from ._generated.models import (
+    RankedDocument as RankedDocument,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,14 +34,6 @@ class RerankInput:
     query: str = ""
     documents: tuple[str, ...] = ()
     top_n: int = field(default=0, metadata={"dex_json_omit_default": True})
-
-
-@dataclass(frozen=True, slots=True)
-class RankedDocument:
-    """Input document index and its relevance score."""
-
-    index: int = 0
-    relevance_score: float = field(default=0.0, metadata={"dex_json_name": "relevanceScore"})
 
 
 @dataclass(frozen=True, slots=True)

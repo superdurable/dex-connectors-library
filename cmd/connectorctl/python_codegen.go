@@ -1,0 +1,141 @@
+// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+
+package main
+
+import (
+	"bytes"
+	_ "embed"
+	"encoding/json"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+
+	"github.com/superdurable/dex-connectors-library/internal/codegen/gomodel"
+	"github.com/superdurable/dex-connectors-library/schema"
+)
+
+//go:embed python_codegen.py
+var pythonCodegenSource string
+
+type pythonCodegenInput struct {
+	Manifest    schema.Manifest `json:"manifest"`
+	Models      []gomodel.Model `json:"models"`
+	PackageName string          `json:"packageName"`
+}
+
+func generatedPythonFiles(manifestPath string, manifest schema.Manifest) (map[string][]byte, error) {
+	files := make(map[string][]byte)
+	if manifest.Spec.Languages == nil || manifest.Spec.Languages.Python == nil {
+		return files, nil
+	}
+	connectorDirectory, err := connectorDirectoryInCatalog(manifestPath)
+	if err != nil {
+		return nil, err
+	}
+	packageName := pythonImportPackageName(connectorDirectory)
+	packageDirectory := filepath.Join(filepath.Dir(manifestPath), "python", "src", "dex_connectors", packageName)
+	if _, err := os.Stat(filepath.Join(packageDirectory, "__init__.py")); os.IsNotExist(err) {
+		return files, nil
+	} else if err != nil {
+		return nil, err
+	}
+	rootNames := make([]string, 0, len(manifest.Spec.Languages.Python.Operations)*2)
+	for _, operationName := range manifest.Spec.Languages.Python.Operations {
+		for _, operation := range manifest.Spec.Operations {
+			if operation.Name == operationName {
+				rootNames = append(rootNames, operation.InputType, operation.OutputType)
+				break
+			}
+		}
+	}
+	models, err := gomodel.Load(filepath.Join(filepath.Dir(manifestPath), "go"), rootNames)
+	if err != nil {
+		return nil, err
+	}
+	payload, err := json.Marshal(pythonCodegenInput{Manifest: manifest, Models: models.Models, PackageName: packageName})
+	if err != nil {
+		return nil, fmt.Errorf("encode Python generation input: %w", err)
+	}
+	command := exec.Command("python3", "-c", pythonCodegenSource)
+	command.Stdin = bytes.NewReader(payload)
+	var output bytes.Buffer
+	var diagnostics bytes.Buffer
+	command.Stdout = &output
+	command.Stderr = &diagnostics
+	if err := command.Run(); err != nil {
+		return nil, fmt.Errorf("generate Python connector: %w: %s", err, diagnostics.String())
+	}
+	var generated map[string]string
+	if err := json.Unmarshal(output.Bytes(), &generated); err != nil {
+		return nil, fmt.Errorf("decode Python generation output: %w", err)
+	}
+	manualFiles := map[string]string{
+		"connection.py": filepath.Join(packageDirectory, "connection.py"),
+		"steps.py":      filepath.Join(packageDirectory, "steps.py"),
+	}
+	mockFacades, err := filepath.Glob(filepath.Join(packageDirectory, "*mock", "__init__.py"))
+	if err != nil {
+		return nil, fmt.Errorf("find Python mock facade: %w", err)
+	}
+	if len(mockFacades) > 1 {
+		return nil, fmt.Errorf("multiple Python mock facades in %s", packageDirectory)
+	}
+	if len(mockFacades) == 1 {
+		manualFiles["mock.py"] = mockFacades[0]
+	}
+	for name, source := range generated {
+		if facadePath, exists := manualFiles[name]; exists {
+			isManual, err := isHandwrittenPythonFacade(facadePath)
+			if err != nil {
+				return nil, err
+			}
+			if isManual {
+				continue
+			}
+		}
+		files[filepath.Join(packageDirectory, "_generated", name)] = []byte(source)
+	}
+	return files, nil
+}
+
+func isHandwrittenPythonFacade(path string) (bool, error) {
+	source, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("read Python facade %s: %w", path, err)
+	}
+	return bytes.Contains(source, []byte("# connectorctl: handwritten facade")), nil
+}
+
+func stalePythonFiles(manifestPath string, generated map[string][]byte) ([]string, error) {
+	if len(generated) == 0 {
+		return nil, nil
+	}
+	connectorDirectory, err := connectorDirectoryInCatalog(manifestPath)
+	if err != nil {
+		return nil, err
+	}
+	packageDirectory := filepath.Join(filepath.Dir(manifestPath), "python", "src", "dex_connectors", pythonImportPackageName(connectorDirectory), "_generated")
+	entries, err := os.ReadDir(packageDirectory)
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read generated Python module: %w", err)
+	}
+	var stale []string
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".py" {
+			continue
+		}
+		path := filepath.Join(packageDirectory, entry.Name())
+		if _, expected := generated[path]; !expected {
+			stale = append(stale, path)
+		}
+	}
+	return stale, nil
+}

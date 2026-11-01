@@ -4,7 +4,6 @@
 
 import json
 from collections.abc import Callable
-from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any, TypeVar
 from urllib.parse import quote
@@ -16,12 +15,10 @@ from dex_connectors.sdk import (
     CredentialProvider,
     Failure,
     FailureKind,
-    OperationRef,
     QueryAttempt,
     QueryDefinition,
     ReauthorizationRequiredError,
     Receipt,
-    SecretString,
     StepDefaults,
 )
 from dex_connectors.sdk.providerhttp import (
@@ -36,17 +33,47 @@ from dex_connectors.sdk.providerhttp import (
 )
 from dex_connectors.sdk.retry_policy import default_connector_step_execute_retry_policy
 
+from ._generated.config import (
+    Config as Config,
+)
+from ._generated.config import (
+    Credentials as Credentials,
+)
+from ._generated.definitions import (
+    CONNECTOR_ID as CONNECTOR_ID,
+)
+from ._generated.definitions import (
+    DEFECT as DEFECT,
+)
+from ._generated.definitions import (
+    FOUND as FOUND,
+)
+from ._generated.definitions import (
+    GET_INCIDENT_DEFINITION as GET_INCIDENT_DEFINITION,
+)
+from ._generated.definitions import (
+    GET_INCIDENT_OPERATION_ID as GET_INCIDENT_OPERATION_ID,
+)
+from ._generated.definitions import (
+    INVALID_RESPONSE as INVALID_RESPONSE,
+)
+from ._generated.definitions import (
+    LIST_INCIDENTS_DEFINITION as LIST_INCIDENTS_DEFINITION,
+)
+from ._generated.definitions import (
+    LIST_INCIDENTS_OPERATION_ID as LIST_INCIDENTS_OPERATION_ID,
+)
+from ._generated.definitions import (
+    LISTED as LISTED,
+)
+from ._generated.definitions import (
+    NOT_FOUND as NOT_FOUND,
+)
+from ._generated.definitions import (
+    PROVIDER_REJECTED as PROVIDER_REJECTED,
+)
 from .models import GetIncidentInput, Incident, IncidentPage, ListIncidentsInput
 
-CONNECTOR_ID = "pagerduty"
-LIST_INCIDENTS_OPERATION_ID = "listIncidents"
-GET_INCIDENT_OPERATION_ID = "getIncident"
-LISTED = "listed"
-FOUND = "found"
-NOT_FOUND = "notFound"
-PROVIDER_REJECTED = "providerRejected"
-INVALID_RESPONSE = "invalidResponse"
-DEFECT = "defect"
 _DEFAULT_BASE_URL = "https://api.pagerduty.com"
 _DEFAULT_TIMEOUT_SECONDS = 15
 _DEFAULT_MAX_RESPONSE_BYTES = 2_097_152
@@ -58,38 +85,12 @@ _SHARED_BRANCHES = (
     BranchDefinition(INVALID_RESPONSE, "The provider returned malformed or oversized JSON.", True),
     BranchDefinition(DEFECT, "Local input or connection credentials are invalid.", True),
 )
-LIST_INCIDENTS_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, LIST_INCIDENTS_OPERATION_ID),
-    (BranchDefinition(LISTED, "PagerDuty returned the requested result."), *_SHARED_BRANCHES),
-    _STEP_DEFAULTS,
-)
-GET_INCIDENT_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, GET_INCIDENT_OPERATION_ID),
-    (
-        BranchDefinition(FOUND, "PagerDuty returned the requested result."),
-        BranchDefinition(NOT_FOUND, "The requested resource does not exist.", True),
-        *_SHARED_BRANCHES,
-    ),
-    _STEP_DEFAULTS,
-)
 
 Output = TypeVar("Output")
 
 
-@dataclass(frozen=True, slots=True)
-class Config:
-    """PagerDuty HTTP settings; zero or blank values use manifest defaults."""
-
-    base_url: str = _DEFAULT_BASE_URL
-    timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS
-    max_response_bytes: int = _DEFAULT_MAX_RESPONSE_BYTES
 
 
-@dataclass(frozen=True, slots=True)
-class Credentials:
-    """PagerDuty REST API key, resolved anew for every provider attempt."""
-
-    api_key: SecretString
 
 
 class Client:

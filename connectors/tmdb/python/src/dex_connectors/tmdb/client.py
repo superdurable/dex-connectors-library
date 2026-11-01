@@ -4,7 +4,6 @@
 
 import json
 from collections.abc import Callable
-from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any, TypeVar
 from urllib.parse import urlencode
@@ -16,12 +15,10 @@ from dex_connectors.sdk import (
     CredentialProvider,
     Failure,
     FailureKind,
-    OperationRef,
     QueryAttempt,
     QueryDefinition,
     ReauthorizationRequiredError,
     Receipt,
-    SecretString,
     StepDefaults,
 )
 from dex_connectors.sdk.providerhttp import (
@@ -36,17 +33,47 @@ from dex_connectors.sdk.providerhttp import (
 )
 from dex_connectors.sdk.retry_policy import default_connector_step_execute_retry_policy
 
+from ._generated.config import (
+    Config as Config,
+)
+from ._generated.config import (
+    Credentials as Credentials,
+)
+from ._generated.definitions import (
+    CONNECTOR_ID as CONNECTOR_ID,
+)
+from ._generated.definitions import (
+    DEFECT as DEFECT,
+)
+from ._generated.definitions import (
+    FOUND as FOUND,
+)
+from ._generated.definitions import (
+    GET_MOVIE_DEFINITION as GET_MOVIE_DEFINITION,
+)
+from ._generated.definitions import (
+    GET_MOVIE_OPERATION_ID as GET_MOVIE_OPERATION_ID,
+)
+from ._generated.definitions import (
+    INVALID_RESPONSE as INVALID_RESPONSE,
+)
+from ._generated.definitions import (
+    NOT_FOUND as NOT_FOUND,
+)
+from ._generated.definitions import (
+    PROVIDER_REJECTED as PROVIDER_REJECTED,
+)
+from ._generated.definitions import (
+    SEARCH_MOVIES_DEFINITION as SEARCH_MOVIES_DEFINITION,
+)
+from ._generated.definitions import (
+    SEARCH_MOVIES_OPERATION_ID as SEARCH_MOVIES_OPERATION_ID,
+)
+from ._generated.definitions import (
+    SEARCHED as SEARCHED,
+)
 from .models import GetMovieInput, Movie, MoviePage, SearchMoviesInput
 
-CONNECTOR_ID = "tmdb"
-SEARCH_MOVIES_OPERATION_ID = "searchMovies"
-GET_MOVIE_OPERATION_ID = "getMovie"
-SEARCHED = "searched"
-FOUND = "found"
-NOT_FOUND = "notFound"
-PROVIDER_REJECTED = "providerRejected"
-INVALID_RESPONSE = "invalidResponse"
-DEFECT = "defect"
 _DEFAULT_BASE_URL = "https://api.themoviedb.org/3"
 _DEFAULT_TIMEOUT_SECONDS = 15
 _DEFAULT_MAX_RESPONSE_BYTES = 2_097_152
@@ -58,38 +85,12 @@ _SHARED_BRANCHES = (
     BranchDefinition(INVALID_RESPONSE, "The provider returned malformed or oversized JSON.", True),
     BranchDefinition(DEFECT, "Local input or connection credentials are invalid.", True),
 )
-SEARCH_MOVIES_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, SEARCH_MOVIES_OPERATION_ID),
-    (BranchDefinition(SEARCHED, "TMDB returned the requested result."), *_SHARED_BRANCHES),
-    _STEP_DEFAULTS,
-)
-GET_MOVIE_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, GET_MOVIE_OPERATION_ID),
-    (
-        BranchDefinition(FOUND, "TMDB returned the requested result."),
-        BranchDefinition(NOT_FOUND, "The requested resource does not exist.", True),
-        *_SHARED_BRANCHES,
-    ),
-    _STEP_DEFAULTS,
-)
 
 Output = TypeVar("Output")
 
 
-@dataclass(frozen=True, slots=True)
-class Config:
-    """TMDB HTTP settings; zero or blank values use manifest defaults."""
-
-    base_url: str = _DEFAULT_BASE_URL
-    timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS
-    max_response_bytes: int = _DEFAULT_MAX_RESPONSE_BYTES
 
 
-@dataclass(frozen=True, slots=True)
-class Credentials:
-    """TMDB API Read Access Token, resolved anew for every provider attempt."""
-
-    api_key: SecretString
 
 
 class Client:

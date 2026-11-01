@@ -1,5 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
+# connectorctl: handwritten facade
 """Typed Gmail operation set bound to one logical Dex connection."""
 
 from dataclasses import dataclass

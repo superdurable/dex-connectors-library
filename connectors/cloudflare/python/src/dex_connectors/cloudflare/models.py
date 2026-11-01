@@ -48,3 +48,6 @@ class CachePurge:
 
     success: bool = False
     result: PurgeRequest = PurgeRequest()
+
+# Let generated mocks use the Go inline model name.
+CachePurgeResult = PurgeRequest

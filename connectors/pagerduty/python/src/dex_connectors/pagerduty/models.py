@@ -1,32 +1,18 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Typed PagerDuty incident pages and incident records."""
+"""Public model names backed by Go-derived generated dataclasses."""
 
 from dataclasses import dataclass
 
-
-@dataclass(frozen=True, slots=True)
-class ListIncidentsInput:
-    """One page of incidents; limit zero means 25, at most 100."""
-
-    limit: int = 0
-    offset: int = 0
-
-
-@dataclass(frozen=True, slots=True)
-class GetIncidentInput:
-    """PagerDuty incident ID, such as P123456."""
-
-    id: str = ""
-
-
-@dataclass(frozen=True, slots=True)
-class Incident:
-    """Incident summary with PagerDuty's status text, such as triggered or resolved."""
-
-    id: str = ""
-    title: str = ""
-    status: str = ""
+from ._generated.models import (
+    GetIncidentInput as GetIncidentInput,
+)
+from ._generated.models import (
+    Incident as Incident,
+)
+from ._generated.models import (
+    ListIncidentsInput as ListIncidentsInput,
+)
 
 
 @dataclass(frozen=True, slots=True)

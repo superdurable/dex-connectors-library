@@ -1,9 +1,15 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Typed Pinecone vector upserts and nearest-vector queries."""
+"""Public model names backed by Go-derived generated dataclasses."""
 
 from dataclasses import dataclass, field
-from typing import Any
+
+from ._generated.models import (
+    QueryVectorsOutput as QueryVectorsOutput,
+)
+from ._generated.models import (
+    UpsertVectorsOutput as UpsertVectorsOutput,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,13 +30,6 @@ class UpsertVectorsInput:
 
 
 @dataclass(frozen=True, slots=True)
-class UpsertVectorsOutput:
-    """The number of vectors Pinecone accepted."""
-
-    upserted_count: int = field(default=0, metadata={"dex_json_name": "upsertedCount"})
-
-
-@dataclass(frozen=True, slots=True)
 class QueryVectorsInput:
     """Namespace, dense query vector, result limit from 1 through 10000, and whether to include metadata."""
 
@@ -40,10 +39,3 @@ class QueryVectorsInput:
     include_metadata: bool = field(
         default=False, metadata={"dex_json_name": "includeMetadata", "dex_json_omit_default": True}
     )
-
-
-@dataclass(frozen=True, slots=True)
-class QueryVectorsOutput:
-    """Pinecone's query JSON with matches and namespace, kept untouched."""
-
-    data: Any = None

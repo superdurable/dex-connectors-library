@@ -1,116 +1,13 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Operation-specific Dex Step factories for Mixpanel event operations."""
+"""Public operation-specific Step factories from connector.yaml."""
 
-from collections.abc import Callable, Mapping
-from typing import TypeVar
-
-import dex
-from dex_connectors.sdk import (
-    MutationResult,
-    MutationStep,
-    MutationStepConfig,
-    QueryResult,
-    QueryStep,
-    QueryStepConfig,
-    StepAnnotations,
+from ._generated.steps import (
+    StepInput as StepInput,
 )
-
-from .connection import Connection
-from .models import EventImportResult, ExportedEvents, ExportEventsInput, TrackEventInput
-
-StepInput = TypeVar("StepInput")
-BranchTarget = TypeVar("BranchTarget")
-
-
-def new_track_event_step(
-    *,
-    step_type: str,
-    step_input_type: type[StepInput],
-    annotations: StepAnnotations | Mapping[str, str],
-    connection: Connection,
-    connection_name: str,
-    map_to_operation_input: Callable[[StepInput], TrackEventInput],
-    imported: dex.StepTarget[MutationResult[EventImportResult]],
-    provider_rejected: dex.StepTarget[MutationResult[EventImportResult]] | None = None,
-    invalid_response: dex.StepTarget[MutationResult[EventImportResult]] | None = None,
-    defect: dex.StepTarget[MutationResult[EventImportResult]] | None = None,
-    result_attribute: dex.Attribute[MutationResult[EventImportResult]] | None = None,
-    step_options_override: dex.StepOptions | None = None,
-) -> MutationStep[StepInput, TrackEventInput, EventImportResult]:
-    """Create the typed event import Step; unwired optional outcomes fail the Flow."""
-    _require_connection(connection, connection_name)
-    return MutationStep(
-        MutationStepConfig(
-            step_type=step_type,
-            step_input_type=step_input_type,
-            annotations=_step_annotations(annotations),
-            operation=connection.track_event(),
-            connection=connection.reference,
-            map_to_operation_input=map_to_operation_input,
-            branches=_branches(
-                ("imported", imported),
-                ("providerRejected", provider_rejected),
-                ("invalidResponse", invalid_response),
-                ("defect", defect),
-            ),
-            result_attribute=result_attribute,
-            step_options_override=step_options_override,
-        )
-    )
-
-
-def new_export_events_step(
-    *,
-    step_type: str,
-    step_input_type: type[StepInput],
-    annotations: StepAnnotations | Mapping[str, str],
-    connection: Connection,
-    connection_name: str,
-    map_to_operation_input: Callable[[StepInput], ExportEventsInput],
-    exported: dex.StepTarget[QueryResult[ExportedEvents]],
-    provider_rejected: dex.StepTarget[QueryResult[ExportedEvents]] | None = None,
-    invalid_response: dex.StepTarget[QueryResult[ExportedEvents]] | None = None,
-    defect: dex.StepTarget[QueryResult[ExportedEvents]] | None = None,
-    result_attribute: dex.Attribute[QueryResult[ExportedEvents]] | None = None,
-    step_options_override: dex.StepOptions | None = None,
-) -> QueryStep[StepInput, ExportEventsInput, ExportedEvents]:
-    """Create the typed raw export Step; unwired optional outcomes fail the Flow."""
-    _require_connection(connection, connection_name)
-    return QueryStep(
-        QueryStepConfig(
-            step_type=step_type,
-            step_input_type=step_input_type,
-            annotations=_step_annotations(annotations),
-            operation=connection.export_events(),
-            connection=connection.reference,
-            map_to_operation_input=map_to_operation_input,
-            branches=_branches(
-                ("exported", exported),
-                ("providerRejected", provider_rejected),
-                ("invalidResponse", invalid_response),
-                ("defect", defect),
-            ),
-            result_attribute=result_attribute,
-            step_options_override=step_options_override,
-        )
-    )
-
-
-def _require_connection(connection: Connection, connection_name: str) -> None:
-    if connection is None or connection.reference.name != connection_name:
-        raise ValueError("Mixpanel Step connection name must match its connection reference")
-
-
-def _step_annotations(annotations: StepAnnotations | Mapping[str, str]) -> StepAnnotations:
-    if isinstance(annotations, StepAnnotations):
-        return annotations
-    if not isinstance(annotations, Mapping) or set(annotations) != {"groupId", "groupLabel", "explanation"}:
-        raise ValueError("Mixpanel Step annotations require groupId, groupLabel, and explanation")
-    if any(not isinstance(value, str) for value in annotations.values()):
-        raise ValueError("Mixpanel Step annotations must be strings")
-    return StepAnnotations(annotations["groupId"], annotations["groupLabel"], annotations["explanation"])
-
-
-def _branches(*targets: tuple[str, BranchTarget | None]) -> dict[str, BranchTarget]:
-    return {branch: target for branch, target in targets if target is not None}
+from ._generated.steps import (
+    new_export_events_step as new_export_events_step,
+)
+from ._generated.steps import (
+    new_track_event_step as new_track_event_step,
+)

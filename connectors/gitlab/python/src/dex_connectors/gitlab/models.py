@@ -1,32 +1,18 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Typed GitLab projects, issue pages, and issue label replacements."""
+"""Public model names backed by Go-derived generated dataclasses."""
 
 from dataclasses import dataclass, field
 
-
-@dataclass(frozen=True, slots=True)
-class GetProjectInput:
-    """A numeric project ID or namespace path, such as meridian/web."""
-
-    project_id: str = field(default="", metadata={"dex_json_name": "projectId"})
-
-
-@dataclass(frozen=True, slots=True)
-class Project:
-    """A project's numeric ID, display name, full group and project path, and web page."""
-
-    id: int = 0
-    name: str = ""
-    path_with_namespace: str = ""
-    web_url: str = ""
-
-
-@dataclass(frozen=True, slots=True)
-class ListIssuesInput:
-    """The numeric ID or namespace path of the project whose issues are listed."""
-
-    project_id: str = field(default="", metadata={"dex_json_name": "projectId"})
+from ._generated.models import (
+    GetProjectInput as GetProjectInput,
+)
+from ._generated.models import (
+    ListIssuesInput as ListIssuesInput,
+)
+from ._generated.models import (
+    Project as Project,
+)
 
 
 @dataclass(frozen=True, slots=True)

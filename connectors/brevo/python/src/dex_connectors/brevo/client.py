@@ -4,7 +4,6 @@
 
 import json
 import re
-from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from urllib.parse import quote
@@ -20,12 +19,10 @@ from dex_connectors.sdk import (
     IdempotencyKey,
     MutationAttempt,
     MutationDefinition,
-    OperationRef,
     QueryAttempt,
     QueryDefinition,
     ReauthorizationRequiredError,
     Receipt,
-    SecretString,
     StepDefaults,
 )
 from dex_connectors.sdk.providerhttp import (
@@ -40,17 +37,47 @@ from dex_connectors.sdk.providerhttp import (
 )
 from dex_connectors.sdk.retry_policy import default_connector_step_execute_retry_policy
 
+from ._generated.config import (
+    Config as Config,
+)
+from ._generated.config import (
+    Credentials as Credentials,
+)
+from ._generated.definitions import (
+    CONNECTOR_ID as CONNECTOR_ID,
+)
+from ._generated.definitions import (
+    CREATE_OR_UPDATE_CONTACT_DEFINITION as CREATE_OR_UPDATE_CONTACT_DEFINITION,
+)
+from ._generated.definitions import (
+    CREATE_OR_UPDATE_CONTACT_OPERATION_ID as CREATE_OR_UPDATE_CONTACT_OPERATION_ID,
+)
+from ._generated.definitions import (
+    DEFECT as DEFECT,
+)
+from ._generated.definitions import (
+    FOUND as FOUND,
+)
+from ._generated.definitions import (
+    GET_CONTACT_DEFINITION as GET_CONTACT_DEFINITION,
+)
+from ._generated.definitions import (
+    GET_CONTACT_OPERATION_ID as GET_CONTACT_OPERATION_ID,
+)
+from ._generated.definitions import (
+    INVALID_RESPONSE as INVALID_RESPONSE,
+)
+from ._generated.definitions import (
+    NOT_FOUND as NOT_FOUND,
+)
+from ._generated.definitions import (
+    PROVIDER_REJECTED as PROVIDER_REJECTED,
+)
+from ._generated.definitions import (
+    SAVED as SAVED,
+)
 from .models import Contact, ContactWriteResult, CreateOrUpdateContactInput, GetContactInput
 
-CONNECTOR_ID = "brevo"
-CREATE_OR_UPDATE_CONTACT_OPERATION_ID = "createOrUpdateContact"
-GET_CONTACT_OPERATION_ID = "getContact"
-SAVED = "saved"
-FOUND = "found"
-NOT_FOUND = "notFound"
-PROVIDER_REJECTED = "providerRejected"
-INVALID_RESPONSE = "invalidResponse"
-DEFECT = "defect"
 _DEFAULT_BASE_URL = "https://api.brevo.com/v3"
 _DEFAULT_TIMEOUT_SECONDS = 15
 _DEFAULT_MAX_RESPONSE_BYTES = 2_097_152
@@ -63,43 +90,10 @@ _INVALID_RESPONSE_BRANCH = BranchDefinition(
     INVALID_RESPONSE, "Brevo returned malformed or oversized data.", True
 )
 _DEFECT_BRANCH = BranchDefinition(DEFECT, "Local input or credentials are invalid.", True)
-CREATE_OR_UPDATE_CONTACT_DEFINITION = MutationDefinition(
-    OperationRef(CONNECTOR_ID, CREATE_OR_UPDATE_CONTACT_OPERATION_ID),
-    (
-        BranchDefinition(SAVED, "Brevo created or updated the contact."),
-        BranchDefinition(PROVIDER_REJECTED, "Brevo rejected the contact or credentials.", True),
-        _INVALID_RESPONSE_BRANCH,
-        _DEFECT_BRANCH,
-    ),
-    _STEP_DEFAULTS,
-)
-GET_CONTACT_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, GET_CONTACT_OPERATION_ID),
-    (
-        BranchDefinition(FOUND, "Brevo returned the contact."),
-        BranchDefinition(NOT_FOUND, "No contact has that email.", True),
-        BranchDefinition(PROVIDER_REJECTED, "Brevo rejected the request or credentials.", True),
-        _INVALID_RESPONSE_BRANCH,
-        _DEFECT_BRANCH,
-    ),
-    _STEP_DEFAULTS,
-)
 
 
-@dataclass(frozen=True, slots=True)
-class Config:
-    """Brevo HTTP settings; zero or blank values use manifest defaults."""
-
-    base_url: str = _DEFAULT_BASE_URL
-    timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS
-    max_response_bytes: int = _DEFAULT_MAX_RESPONSE_BYTES
 
 
-@dataclass(frozen=True, slots=True)
-class Credentials:
-    """Brevo API key, resolved anew for every provider attempt."""
-
-    api_key: SecretString
 
 
 class Client:

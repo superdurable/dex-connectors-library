@@ -4,7 +4,6 @@
 
 import json
 from collections.abc import Callable
-from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any, TypeVar
 from urllib.parse import quote, urlencode, urlsplit
@@ -16,12 +15,10 @@ from dex_connectors.sdk import (
     CredentialProvider,
     Failure,
     FailureKind,
-    OperationRef,
     QueryAttempt,
     QueryDefinition,
     ReauthorizationRequiredError,
     Receipt,
-    SecretString,
     StepDefaults,
 )
 from dex_connectors.sdk.providerhttp import (
@@ -36,17 +33,47 @@ from dex_connectors.sdk.providerhttp import (
 )
 from dex_connectors.sdk.retry_policy import default_connector_step_execute_retry_policy
 
+from ._generated.config import (
+    Config as Config,
+)
+from ._generated.config import (
+    Credentials as Credentials,
+)
+from ._generated.definitions import (
+    CONNECTOR_ID as CONNECTOR_ID,
+)
+from ._generated.definitions import (
+    DEFECT as DEFECT,
+)
+from ._generated.definitions import (
+    FOUND as FOUND,
+)
+from ._generated.definitions import (
+    GET_PHOTO_DEFINITION as GET_PHOTO_DEFINITION,
+)
+from ._generated.definitions import (
+    GET_PHOTO_OPERATION_ID as GET_PHOTO_OPERATION_ID,
+)
+from ._generated.definitions import (
+    INVALID_RESPONSE as INVALID_RESPONSE,
+)
+from ._generated.definitions import (
+    NOT_FOUND as NOT_FOUND,
+)
+from ._generated.definitions import (
+    PROVIDER_REJECTED as PROVIDER_REJECTED,
+)
+from ._generated.definitions import (
+    SEARCH_PHOTOS_DEFINITION as SEARCH_PHOTOS_DEFINITION,
+)
+from ._generated.definitions import (
+    SEARCH_PHOTOS_OPERATION_ID as SEARCH_PHOTOS_OPERATION_ID,
+)
+from ._generated.definitions import (
+    SEARCHED as SEARCHED,
+)
 from .models import GetPhotoInput, Photo, PhotoPage, SearchPhotosInput
 
-CONNECTOR_ID = "unsplash"
-SEARCH_PHOTOS_OPERATION_ID = "searchPhotos"
-GET_PHOTO_OPERATION_ID = "getPhoto"
-SEARCHED = "searched"
-FOUND = "found"
-NOT_FOUND = "notFound"
-PROVIDER_REJECTED = "providerRejected"
-INVALID_RESPONSE = "invalidResponse"
-DEFECT = "defect"
 _DEFAULT_BASE_URL = "https://api.unsplash.com"
 _DEFAULT_TIMEOUT_SECONDS = 15
 _DEFAULT_MAX_RESPONSE_BYTES = 2_097_152
@@ -57,45 +84,12 @@ _INVALID_RESPONSE_BRANCH = BranchDefinition(
     INVALID_RESPONSE, "Unsplash returned malformed or oversized data.", True
 )
 _DEFECT_BRANCH = BranchDefinition(DEFECT, "Local input or credentials are invalid.", True)
-SEARCH_PHOTOS_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, SEARCH_PHOTOS_OPERATION_ID),
-    (
-        BranchDefinition(SEARCHED, "Unsplash returned a page of photos, possibly empty."),
-        BranchDefinition(PROVIDER_REJECTED, "Unsplash rejected the search or key.", True),
-        _INVALID_RESPONSE_BRANCH,
-        _DEFECT_BRANCH,
-    ),
-    _STEP_DEFAULTS,
-)
-GET_PHOTO_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, GET_PHOTO_OPERATION_ID),
-    (
-        BranchDefinition(FOUND, "Unsplash returned the photo."),
-        BranchDefinition(NOT_FOUND, "No photo has that ID.", True),
-        BranchDefinition(PROVIDER_REJECTED, "Unsplash rejected the request or key.", True),
-        _INVALID_RESPONSE_BRANCH,
-        _DEFECT_BRANCH,
-    ),
-    _STEP_DEFAULTS,
-)
 
 Output = TypeVar("Output")
 
 
-@dataclass(frozen=True, slots=True)
-class Config:
-    """Unsplash HTTP settings; zero or blank values use manifest defaults."""
-
-    base_url: str = _DEFAULT_BASE_URL
-    timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS
-    max_response_bytes: int = _DEFAULT_MAX_RESPONSE_BYTES
 
 
-@dataclass(frozen=True, slots=True)
-class Credentials:
-    """Unsplash application access key, resolved anew for every provider attempt."""
-
-    access_key: SecretString
 
 
 class Client:

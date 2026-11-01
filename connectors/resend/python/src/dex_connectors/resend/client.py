@@ -3,7 +3,6 @@
 """Resend provider calls and Go-compatible branch classification."""
 
 import json
-from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any, TypeVar
 from urllib.parse import quote
@@ -19,12 +18,10 @@ from dex_connectors.sdk import (
     IdempotencyKey,
     MutationAttempt,
     MutationDefinition,
-    OperationRef,
     QueryAttempt,
     QueryDefinition,
     ReauthorizationRequiredError,
     Receipt,
-    SecretString,
     StepDefaults,
 )
 from dex_connectors.sdk.providerhttp import (
@@ -41,17 +38,47 @@ from dex_connectors.sdk.providerhttp import (
 )
 from dex_connectors.sdk.retry_policy import default_connector_step_execute_retry_policy
 
+from ._generated.config import (
+    Config as Config,
+)
+from ._generated.config import (
+    Credentials as Credentials,
+)
+from ._generated.definitions import (
+    CONNECTOR_ID as CONNECTOR_ID,
+)
+from ._generated.definitions import (
+    DEFECT as DEFECT,
+)
+from ._generated.definitions import (
+    FOUND as FOUND,
+)
+from ._generated.definitions import (
+    GET_EMAIL_DEFINITION as GET_EMAIL_DEFINITION,
+)
+from ._generated.definitions import (
+    GET_EMAIL_OPERATION_ID as GET_EMAIL_OPERATION_ID,
+)
+from ._generated.definitions import (
+    INVALID_RESPONSE as INVALID_RESPONSE,
+)
+from ._generated.definitions import (
+    NOT_FOUND as NOT_FOUND,
+)
+from ._generated.definitions import (
+    PROVIDER_REJECTED as PROVIDER_REJECTED,
+)
+from ._generated.definitions import (
+    SEND_EMAIL_DEFINITION as SEND_EMAIL_DEFINITION,
+)
+from ._generated.definitions import (
+    SEND_EMAIL_OPERATION_ID as SEND_EMAIL_OPERATION_ID,
+)
+from ._generated.definitions import (
+    SENT as SENT,
+)
 from .models import Email, GetEmailInput, SendEmailInput, SentEmail
 
-CONNECTOR_ID = "resend"
-SEND_EMAIL_OPERATION_ID = "sendEmail"
-GET_EMAIL_OPERATION_ID = "getEmail"
-SENT = "sent"
-FOUND = "found"
-NOT_FOUND = "notFound"
-PROVIDER_REJECTED = "providerRejected"
-INVALID_RESPONSE = "invalidResponse"
-DEFECT = "defect"
 _DEFAULT_BASE_URL = "https://api.resend.com"
 _DEFAULT_TIMEOUT_SECONDS = 15
 _DEFAULT_MAX_RESPONSE_BYTES = 2_097_152
@@ -65,45 +92,12 @@ _INVALID_RESPONSE_BRANCH = BranchDefinition(
     INVALID_RESPONSE, "The provider returned malformed or oversized JSON.", True
 )
 _DEFECT_BRANCH = BranchDefinition(DEFECT, "Local input or connection credentials are invalid.", True)
-SEND_EMAIL_DEFINITION = MutationDefinition(
-    OperationRef(CONNECTOR_ID, SEND_EMAIL_OPERATION_ID),
-    (
-        BranchDefinition(SENT, "Resend returned the requested result."),
-        _PROVIDER_REJECTED_BRANCH,
-        _INVALID_RESPONSE_BRANCH,
-        _DEFECT_BRANCH,
-    ),
-    _STEP_DEFAULTS,
-)
-GET_EMAIL_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, GET_EMAIL_OPERATION_ID),
-    (
-        BranchDefinition(FOUND, "Resend returned the requested result."),
-        BranchDefinition(NOT_FOUND, "The requested resource does not exist.", True),
-        _PROVIDER_REJECTED_BRANCH,
-        _INVALID_RESPONSE_BRANCH,
-        _DEFECT_BRANCH,
-    ),
-    _STEP_DEFAULTS,
-)
 
 Output = TypeVar("Output")
 
 
-@dataclass(frozen=True, slots=True)
-class Config:
-    """Resend HTTP settings; zero or blank values use manifest defaults."""
-
-    base_url: str = _DEFAULT_BASE_URL
-    timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS
-    max_response_bytes: int = _DEFAULT_MAX_RESPONSE_BYTES
 
 
-@dataclass(frozen=True, slots=True)
-class Credentials:
-    """Resend API key, resolved anew for every provider attempt."""
-
-    api_key: SecretString
 
 
 class Client:

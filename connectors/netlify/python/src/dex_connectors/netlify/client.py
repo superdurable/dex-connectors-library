@@ -4,7 +4,6 @@
 
 import json
 from collections.abc import Callable
-from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any, TypeVar
 from urllib.parse import quote
@@ -16,12 +15,10 @@ from dex_connectors.sdk import (
     CredentialProvider,
     Failure,
     FailureKind,
-    OperationRef,
     QueryAttempt,
     QueryDefinition,
     ReauthorizationRequiredError,
     Receipt,
-    SecretString,
     StepDefaults,
 )
 from dex_connectors.sdk.providerhttp import (
@@ -36,17 +33,45 @@ from dex_connectors.sdk.providerhttp import (
 )
 from dex_connectors.sdk.retry_policy import default_connector_step_execute_retry_policy
 
+from ._generated.config import (
+    Config as Config,
+)
+from ._generated.config import (
+    Credentials as Credentials,
+)
+from ._generated.definitions import (
+    CONNECTOR_ID as CONNECTOR_ID,
+)
+from ._generated.definitions import (
+    DEFECT as DEFECT,
+)
+from ._generated.definitions import (
+    INVALID_RESPONSE as INVALID_RESPONSE,
+)
+from ._generated.definitions import (
+    LIST_DEPLOYS_DEFINITION as LIST_DEPLOYS_DEFINITION,
+)
+from ._generated.definitions import (
+    LIST_DEPLOYS_OPERATION_ID as LIST_DEPLOYS_OPERATION_ID,
+)
+from ._generated.definitions import (
+    LIST_SITES_DEFINITION as LIST_SITES_DEFINITION,
+)
+from ._generated.definitions import (
+    LIST_SITES_OPERATION_ID as LIST_SITES_OPERATION_ID,
+)
+from ._generated.definitions import (
+    LISTED as LISTED,
+)
+from ._generated.definitions import (
+    NOT_FOUND as NOT_FOUND,
+)
+from ._generated.definitions import (
+    PROVIDER_REJECTED as PROVIDER_REJECTED,
+)
 from .models import Deploy, DeploysPage, ListDeploysInput, ListSitesInput, Site, SitesPage
 
-CONNECTOR_ID = "netlify"
 PROVIDER_NAME = "Netlify"
-LIST_SITES_OPERATION_ID = "listSites"
-LIST_DEPLOYS_OPERATION_ID = "listDeploys"
-LISTED = "listed"
-NOT_FOUND = "notFound"
-PROVIDER_REJECTED = "providerRejected"
-INVALID_RESPONSE = "invalidResponse"
-DEFECT = "defect"
 _DEFAULT_BASE_URL = "https://api.netlify.com/api/v1"
 _DEFAULT_TIMEOUT_SECONDS = 15
 _DEFAULT_MAX_RESPONSE_BYTES = 2_097_152
@@ -57,20 +82,6 @@ _SHARED_BRANCHES = (
     BranchDefinition(PROVIDER_REJECTED, "The provider rejected the request.", True),
     BranchDefinition(INVALID_RESPONSE, "The provider returned malformed or oversized JSON.", True),
     BranchDefinition(DEFECT, "Local input or connection credentials are invalid.", True),
-)
-LIST_SITES_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, LIST_SITES_OPERATION_ID),
-    (BranchDefinition(LISTED, "List sites visible to the Netlify token."), *_SHARED_BRANCHES),
-    _STEP_DEFAULTS,
-)
-LIST_DEPLOYS_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, LIST_DEPLOYS_OPERATION_ID),
-    (
-        BranchDefinition(LISTED, "List deploys for one Netlify site."),
-        BranchDefinition(NOT_FOUND, "The requested resource does not exist or is inaccessible.", True),
-        *_SHARED_BRANCHES,
-    ),
-    _STEP_DEFAULTS,
 )
 _STATUS_KINDS = {
     401: FailureKind.AUTHENTICATION,
@@ -83,20 +94,8 @@ _STATUS_KINDS = {
 Output = TypeVar("Output")
 
 
-@dataclass(frozen=True, slots=True)
-class Config:
-    """Netlify HTTP settings; zero or blank values use manifest defaults."""
-
-    base_url: str = _DEFAULT_BASE_URL
-    timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS
-    max_response_bytes: int = _DEFAULT_MAX_RESPONSE_BYTES
 
 
-@dataclass(frozen=True, slots=True)
-class Credentials:
-    """Netlify personal access token, resolved anew for every provider attempt."""
-
-    access_token: SecretString
 
 
 class Client:

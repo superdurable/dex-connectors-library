@@ -4,7 +4,6 @@
 
 import json
 from collections.abc import Callable
-from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any, TypeVar
 from urllib.parse import urlencode
@@ -16,12 +15,10 @@ from dex_connectors.sdk import (
     CredentialProvider,
     Failure,
     FailureKind,
-    OperationRef,
     QueryAttempt,
     QueryDefinition,
     ReauthorizationRequiredError,
     Receipt,
-    SecretString,
     StepDefaults,
 )
 from dex_connectors.sdk.providerhttp import (
@@ -36,17 +33,45 @@ from dex_connectors.sdk.providerhttp import (
 )
 from dex_connectors.sdk.retry_policy import default_connector_step_execute_retry_policy
 
+from ._generated.config import (
+    Config as Config,
+)
+from ._generated.config import (
+    Credentials as Credentials,
+)
+from ._generated.definitions import (
+    CONNECTOR_ID as CONNECTOR_ID,
+)
+from ._generated.definitions import (
+    DEFECT as DEFECT,
+)
+from ._generated.definitions import (
+    INVALID_RESPONSE as INVALID_RESPONSE,
+)
+from ._generated.definitions import (
+    LIST_MONITORS_DEFINITION as LIST_MONITORS_DEFINITION,
+)
+from ._generated.definitions import (
+    LIST_MONITORS_OPERATION_ID as LIST_MONITORS_OPERATION_ID,
+)
+from ._generated.definitions import (
+    LISTED as LISTED,
+)
+from ._generated.definitions import (
+    PROVIDER_REJECTED as PROVIDER_REJECTED,
+)
+from ._generated.definitions import (
+    QUERIED as QUERIED,
+)
+from ._generated.definitions import (
+    QUERY_METRICS_DEFINITION as QUERY_METRICS_DEFINITION,
+)
+from ._generated.definitions import (
+    QUERY_METRICS_OPERATION_ID as QUERY_METRICS_OPERATION_ID,
+)
 from .models import ListMonitorsInput, MetricSeries, MetricsQuery, Monitor, MonitorsPage, QueryMetricsInput
 
-CONNECTOR_ID = "datadog"
 PROVIDER_NAME = "Datadog"
-QUERY_METRICS_OPERATION_ID = "queryMetrics"
-LIST_MONITORS_OPERATION_ID = "listMonitors"
-QUERIED = "queried"
-LISTED = "listed"
-PROVIDER_REJECTED = "providerRejected"
-INVALID_RESPONSE = "invalidResponse"
-DEFECT = "defect"
 _DEFAULT_BASE_URL = "https://api.datadoghq.com"
 _DEFAULT_TIMEOUT_SECONDS = 15
 _DEFAULT_MAX_RESPONSE_BYTES = 2_097_152
@@ -57,19 +82,6 @@ _SHARED_BRANCHES = (
     BranchDefinition(PROVIDER_REJECTED, "The provider rejected the request.", True),
     BranchDefinition(INVALID_RESPONSE, "The provider returned malformed or oversized JSON.", True),
     BranchDefinition(DEFECT, "Local input or connection credentials are invalid.", True),
-)
-QUERY_METRICS_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, QUERY_METRICS_OPERATION_ID),
-    (
-        BranchDefinition(QUERIED, "Query Datadog timeseries points over an explicit Unix-second interval."),
-        *_SHARED_BRANCHES,
-    ),
-    _STEP_DEFAULTS,
-)
-LIST_MONITORS_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, LIST_MONITORS_OPERATION_ID),
-    (BranchDefinition(LISTED, "List one page of Datadog monitors."), *_SHARED_BRANCHES),
-    _STEP_DEFAULTS,
 )
 _STATUS_KINDS = {
     401: FailureKind.AUTHENTICATION,
@@ -82,21 +94,8 @@ _STATUS_KINDS = {
 Output = TypeVar("Output")
 
 
-@dataclass(frozen=True, slots=True)
-class Config:
-    """Datadog HTTP settings; base_url selects the Datadog site; zero or blank values use defaults."""
-
-    base_url: str = _DEFAULT_BASE_URL
-    timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS
-    max_response_bytes: int = _DEFAULT_MAX_RESPONSE_BYTES
 
 
-@dataclass(frozen=True, slots=True)
-class Credentials:
-    """Datadog API and application keys, resolved anew for every provider attempt."""
-
-    api_key: SecretString
-    application_key: SecretString
 
 
 class Client:

@@ -1,43 +1,21 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Typed Sentry issue inputs, issues, and issue pages."""
+"""Public model names backed by Go-derived generated dataclasses."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
-
-@dataclass(frozen=True, slots=True)
-class ListIssuesInput:
-    """Organization slug and optional Sentry search query, such as is:unresolved."""
-
-    organization: str = ""
-    query: str = ""
-
-
-@dataclass(frozen=True, slots=True)
-class GetIssueInput:
-    """Organization slug and numeric issue ID text."""
-
-    organization: str = ""
-    id: str = ""
-
-
-@dataclass(frozen=True, slots=True)
-class UpdateIssueStatusInput:
-    """Organization slug, issue ID, and status: resolved, unresolved, or ignored."""
-
-    organization: str = ""
-    id: str = ""
-    status: str = ""
-
-
-@dataclass(frozen=True, slots=True)
-class Issue:
-    """Sentry issue summary; short_id is the project-scoped label such as APP-1."""
-
-    id: str = ""
-    short_id: str = field(default="", metadata={"dex_json_name": "shortId"})
-    title: str = ""
-    status: str = ""
+from ._generated.models import (
+    GetIssueInput as GetIssueInput,
+)
+from ._generated.models import (
+    Issue as Issue,
+)
+from ._generated.models import (
+    ListIssuesInput as ListIssuesInput,
+)
+from ._generated.models import (
+    UpdateIssueStatusInput as UpdateIssueStatusInput,
+)
 
 
 @dataclass(frozen=True, slots=True)

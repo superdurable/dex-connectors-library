@@ -6,7 +6,6 @@ import base64
 import json
 import re
 from collections.abc import Callable
-from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any, TypeVar
 
@@ -17,12 +16,10 @@ from dex_connectors.sdk import (
     CredentialProvider,
     Failure,
     FailureKind,
-    OperationRef,
     QueryAttempt,
     QueryDefinition,
     ReauthorizationRequiredError,
     Receipt,
-    SecretString,
     StepDefaults,
 )
 from dex_connectors.sdk.providerhttp import (
@@ -37,17 +34,47 @@ from dex_connectors.sdk.providerhttp import (
 )
 from dex_connectors.sdk.retry_policy import default_connector_step_execute_retry_policy
 
+from ._generated.config import (
+    Config as Config,
+)
+from ._generated.config import (
+    Credentials as Credentials,
+)
+from ._generated.definitions import (
+    CONNECTOR_ID as CONNECTOR_ID,
+)
+from ._generated.definitions import (
+    DEFECT as DEFECT,
+)
+from ._generated.definitions import (
+    FOUND as FOUND,
+)
+from ._generated.definitions import (
+    GET_LEAD_DEFINITION as GET_LEAD_DEFINITION,
+)
+from ._generated.definitions import (
+    GET_LEAD_OPERATION_ID as GET_LEAD_OPERATION_ID,
+)
+from ._generated.definitions import (
+    INVALID_RESPONSE as INVALID_RESPONSE,
+)
+from ._generated.definitions import (
+    LIST_LEADS_DEFINITION as LIST_LEADS_DEFINITION,
+)
+from ._generated.definitions import (
+    LIST_LEADS_OPERATION_ID as LIST_LEADS_OPERATION_ID,
+)
+from ._generated.definitions import (
+    LISTED as LISTED,
+)
+from ._generated.definitions import (
+    NOT_FOUND as NOT_FOUND,
+)
+from ._generated.definitions import (
+    PROVIDER_REJECTED as PROVIDER_REJECTED,
+)
 from .models import GetLeadInput, Lead, LeadPage, ListLeadsInput
 
-CONNECTOR_ID = "close"
-LIST_LEADS_OPERATION_ID = "listLeads"
-GET_LEAD_OPERATION_ID = "getLead"
-LISTED = "listed"
-FOUND = "found"
-NOT_FOUND = "notFound"
-PROVIDER_REJECTED = "providerRejected"
-INVALID_RESPONSE = "invalidResponse"
-DEFECT = "defect"
 _DEFAULT_BASE_URL = "https://api.close.com/api/v1"
 _DEFAULT_TIMEOUT_SECONDS = 30
 _DEFAULT_MAX_RESPONSE_BYTES = 4_194_304
@@ -60,38 +87,12 @@ _SHARED_BRANCHES = (
     BranchDefinition(INVALID_RESPONSE, "Close returned malformed or oversized JSON.", True),
     BranchDefinition(DEFECT, "Local input or connection credentials are invalid.", True),
 )
-LIST_LEADS_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, LIST_LEADS_OPERATION_ID),
-    (BranchDefinition(LISTED, "Close returned the requested data."), *_SHARED_BRANCHES),
-    _STEP_DEFAULTS,
-)
-GET_LEAD_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, GET_LEAD_OPERATION_ID),
-    (
-        BranchDefinition(FOUND, "Close returned the requested data."),
-        BranchDefinition(NOT_FOUND, "Close does not have the requested resource.", True),
-        *_SHARED_BRANCHES,
-    ),
-    _STEP_DEFAULTS,
-)
 
 Output = TypeVar("Output")
 
 
-@dataclass(frozen=True, slots=True)
-class Config:
-    """Close HTTP settings; zero or blank values use manifest defaults."""
-
-    base_url: str = _DEFAULT_BASE_URL
-    timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS
-    max_response_bytes: int = _DEFAULT_MAX_RESPONSE_BYTES
 
 
-@dataclass(frozen=True, slots=True)
-class Credentials:
-    """Close API key, resolved anew for every provider attempt."""
-
-    api_key: SecretString
 
 
 class Client:

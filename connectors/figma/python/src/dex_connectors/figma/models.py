@@ -1,40 +1,21 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Typed Figma file and comment reads."""
+"""Public model names backed by Go-derived generated dataclasses."""
 
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
 
-
-@dataclass(frozen=True, slots=True)
-class GetFileInput:
-    """Figma file key from the file URL, such as figma.com/design/<key>/..."""
-
-    file_key: str = field(default="", metadata={"dex_json_name": "fileKey"})
-
-
-@dataclass(frozen=True, slots=True)
-class File:
-    """File name, last-modified timestamp text, and the untouched document node tree."""
-
-    name: str = ""
-    last_modified: str = field(default="", metadata={"dex_json_name": "lastModified"})
-    document: Any = None
-
-
-@dataclass(frozen=True, slots=True)
-class GetFileCommentsInput:
-    """Figma file key whose comments are read."""
-
-    file_key: str = field(default="", metadata={"dex_json_name": "fileKey"})
-
-
-@dataclass(frozen=True, slots=True)
-class FileComment:
-    """One comment's ID and message text."""
-
-    id: str = ""
-    message: str = ""
+from ._generated.models import (
+    File as File,
+)
+from ._generated.models import (
+    FileComment as FileComment,
+)
+from ._generated.models import (
+    GetFileCommentsInput as GetFileCommentsInput,
+)
+from ._generated.models import (
+    GetFileInput as GetFileInput,
+)
 
 
 @dataclass(frozen=True, slots=True)

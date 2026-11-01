@@ -46,3 +46,6 @@ class GetDeploymentInput:
 
     id_or_url: str = field(default="", metadata={"dex_json_name": "idOrUrl"})
     team_id: str = field(default="", metadata={"dex_json_name": "teamId", "dex_json_omit_default": True})
+
+# Let generated mocks use the Go inline model name.
+DeploymentsPagePagination = Pagination

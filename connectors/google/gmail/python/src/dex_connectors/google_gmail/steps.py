@@ -1,5 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
+# connectorctl: handwritten facade
 """Operation-specific Gmail Step factories with static Dex connection identity."""
 
 from collections.abc import Callable, Mapping

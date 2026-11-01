@@ -1,5 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
+# connectorctl: handwritten facade
 """Operation-specific Dex Step factories for OpenAI Responses."""
 
 from collections.abc import Callable, Mapping

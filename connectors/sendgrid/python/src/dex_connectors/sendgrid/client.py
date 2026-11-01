@@ -5,7 +5,6 @@
 import json
 import re
 from collections.abc import Callable
-from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from typing import Any, TypeVar
 from urllib.parse import parse_qs, urlencode, urlsplit
@@ -17,12 +16,10 @@ from dex_connectors.sdk import (
     CredentialProvider,
     Failure,
     FailureKind,
-    OperationRef,
     QueryAttempt,
     QueryDefinition,
     ReauthorizationRequiredError,
     Receipt,
-    SecretString,
     StepDefaults,
 )
 from dex_connectors.sdk.providerhttp import (
@@ -37,16 +34,44 @@ from dex_connectors.sdk.providerhttp import (
 )
 from dex_connectors.sdk.retry_policy import default_connector_step_execute_retry_policy
 
+from ._generated.config import (
+    Config as Config,
+)
+from ._generated.config import (
+    Credentials as Credentials,
+)
+from ._generated.definitions import (
+    CONNECTOR_ID as CONNECTOR_ID,
+)
+from ._generated.definitions import (
+    DEFECT as DEFECT,
+)
+from ._generated.definitions import (
+    FOUND as FOUND,
+)
+from ._generated.definitions import (
+    GET_STATS_DEFINITION as GET_STATS_DEFINITION,
+)
+from ._generated.definitions import (
+    GET_STATS_OPERATION_ID as GET_STATS_OPERATION_ID,
+)
+from ._generated.definitions import (
+    INVALID_RESPONSE as INVALID_RESPONSE,
+)
+from ._generated.definitions import (
+    LIST_TEMPLATES_DEFINITION as LIST_TEMPLATES_DEFINITION,
+)
+from ._generated.definitions import (
+    LIST_TEMPLATES_OPERATION_ID as LIST_TEMPLATES_OPERATION_ID,
+)
+from ._generated.definitions import (
+    LISTED as LISTED,
+)
+from ._generated.definitions import (
+    PROVIDER_REJECTED as PROVIDER_REJECTED,
+)
 from .models import GetStatsInput, ListTemplatesInput, StatsDay, StatsOutput, Template, TemplatesOutput
 
-CONNECTOR_ID = "sendgrid"
-GET_STATS_OPERATION_ID = "getStats"
-LIST_TEMPLATES_OPERATION_ID = "listTemplates"
-FOUND = "found"
-LISTED = "listed"
-PROVIDER_REJECTED = "providerRejected"
-INVALID_RESPONSE = "invalidResponse"
-DEFECT = "defect"
 TEMPLATE_GENERATIONS = ("dynamic", "legacy")
 _DEFAULT_BASE_URL = "https://api.sendgrid.com"
 _DEFAULT_TIMEOUT_SECONDS = 15
@@ -63,34 +88,12 @@ _SHARED_BRANCHES = (
     BranchDefinition(INVALID_RESPONSE, "The provider returned malformed or oversized data.", True),
     BranchDefinition(DEFECT, "Local input or credentials are invalid.", True),
 )
-GET_STATS_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, GET_STATS_OPERATION_ID),
-    (BranchDefinition(FOUND, "SendGrid returned the requested result."), *_SHARED_BRANCHES),
-    _STEP_DEFAULTS,
-)
-LIST_TEMPLATES_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, LIST_TEMPLATES_OPERATION_ID),
-    (BranchDefinition(LISTED, "SendGrid returned the requested result."), *_SHARED_BRANCHES),
-    _STEP_DEFAULTS,
-)
 
 Output = TypeVar("Output")
 
 
-@dataclass(frozen=True, slots=True)
-class Config:
-    """SendGrid HTTP settings; zero or blank values use manifest defaults."""
-
-    base_url: str = _DEFAULT_BASE_URL
-    timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS
-    max_response_bytes: int = _DEFAULT_MAX_RESPONSE_BYTES
 
 
-@dataclass(frozen=True, slots=True)
-class Credentials:
-    """SendGrid API key, resolved anew for every provider attempt."""
-
-    api_key: SecretString
 
 
 class Client:
