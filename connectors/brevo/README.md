@@ -13,6 +13,9 @@ Brevo contact operations for Dex. The module uses Brevo's public v3 REST API and
 
 `createOrUpdateContact` identifies a contact by email and sets the provided attributes to absolute values. Brevo's `updateEnabled` makes a retry update that same contact. A 201 response includes a new contact ID; a 204 update does not. It does not expose provider attributes in the result. `getContact` returns only the contact ID and email.
 
+The Python package is [`dex-connector-brevo`](python/README.md), imported as
+`dex_connectors.brevo`.
+
 ## Authorization
 
 Sign in at [Brevo API keys](https://app.brevo.com/settings/keys/api), open **Settings > SMTP & API > API keys**, choose **Generate a new API key**, name it, and copy its secret string once. Enter the key into Dex Web Connections' secret `api_key` field. Blank means the connection cannot make requests. The key travels only in the `api-key` header. Leave `baseUrl`, `timeout`, and `maxResponseBytes` blank to use the displayed defaults. Override the URL only for a compatible gateway, the timeout for network latency, or the byte limit for a larger response.
