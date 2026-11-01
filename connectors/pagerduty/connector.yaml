@@ -10,7 +10,7 @@ spec:
   provider: pagerduty
   languages:
     python:
-      version: v0.1.0
+      version: v0.2.0
       operations: [listIncidents, getIncident]
       triggers: []
   codegen:
