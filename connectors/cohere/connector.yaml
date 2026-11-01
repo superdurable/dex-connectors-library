@@ -8,6 +8,11 @@ metadata:
   version: v0.2.0
 spec:
   provider: cohere
+  languages:
+    python:
+      version: v0.1.0
+      operations: [embed, rerank]
+      triggers: []
   codegen:
     go:
       package: cohere
