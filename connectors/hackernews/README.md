@@ -13,6 +13,9 @@ It requires no API key. Its Go module is
 `github.com/superdurable/dex-connectors-library/connectors/hackernews/go`.
 The connector ID is `hacker-news-daily`.
 
+The Python package is [`dex-connector-hackernews`](python/README.md), imported as
+`dex_connectors.hackernews`.
+
 ## Operations
 
 | Factory | Input | Required branch | Optional branches |

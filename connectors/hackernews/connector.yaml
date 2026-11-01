@@ -8,6 +8,11 @@ metadata:
   version: v0.23.0
 spec:
   provider: hacker-news
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listStoryIDs, getItem]
+      triggers: []
   codegen:
     go:
       package: hackernews
