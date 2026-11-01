@@ -13,6 +13,9 @@ Klaviyo profile lookup and deduplicated event submission for Dex. The connector 
 
 `createEvent` derives `unique_id` as the SHA-256 hex digest of Dex's stable connector call ID and sends it in `data.attributes.unique_id`. Retries reuse the same value. Klaviyo deduplicates on `(profile, metric, unique_id)`, so a retry cannot produce a second event for the same logical call. The 202 response means the event was validated and queued, not that asynchronous processing completed. Klaviyo may silently drop events for test email domains such as `example.com` and `test.com`.
 
+The Python package is [`dex-connector-klaviyo`](python/README.md), imported as
+`dex_connectors.klaviyo`.
+
 ## Authorization
 
 Sign in at [Klaviyo API keys](https://www.klaviyo.com/settings/account/api-keys), open **Settings > API keys**, and select **Create Private API Key**. Name the key, grant `profiles:read` and `events:write`, create it, and copy the `pk_`-prefixed secret once. Paste it into Dex Web Connections' secret `private_api_key` field. Blank prevents requests. The secret travels only in `Authorization: Klaviyo-API-Key`. Leave `baseUrl`, `timeout`, and `maxResponseBytes` blank for their displayed defaults. Override for a compatible gateway, a slower network, or larger profile responses.
