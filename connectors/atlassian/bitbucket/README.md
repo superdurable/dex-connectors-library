@@ -6,6 +6,9 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/atlassian/
 
 Read-only Dex Query Steps for Bitbucket. The module is `github.com/superdurable/dex-connectors-library/connectors/atlassian/bitbucket/go`. See the [runnable resource-read Flow](go/examples/resource-read/README.md).
 
+The Python package is [`dex-connector-atlassian-bitbucket`](python/README.md), imported as
+`dex_connectors.atlassian_bitbucket`.
+
 ## Operations
 
 | Factory | Input | Output | Happy branch |
