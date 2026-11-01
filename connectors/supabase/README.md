@@ -16,6 +16,9 @@ Official documentation used for the endpoint, authentication, and response contr
 - [https://supabase.com/docs/guides/getting-started/api-keys](https://supabase.com/docs/guides/getting-started/api-keys)
 - [https://docs.postgrest.org/en/v14/references/api/tables_views.html](https://docs.postgrest.org/en/v14/references/api/tables_views.html)
 
+The Python package is [`dex-connector-supabase`](python/README.md), imported as
+`dex_connectors.supabase`.
+
 ## Authorization and configuration
 
 Start at [https://supabase.com/dashboard/projects](https://supabase.com/dashboard/projects) and follow the authorization guide shown in Dex Web Connections. The `api_key` field is secret. It is resolved for each call and sent only in the `apikey` header. The connector never places it in a URL, Result, receipt, Failure, or log. Leave `timeout` blank for 15 seconds and `maxResponseBytes` blank for 2,097,152 bytes. A larger bounded value can be entered if a real response page exceeds that limit.

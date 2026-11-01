@@ -8,6 +8,11 @@ metadata:
   version: v0.2.0
 spec:
   provider: supabase
+  languages:
+    python:
+      version: v0.1.0
+      operations: [selectRows, upsertRows]
+      triggers: []
   codegen:
     go:
       package: supabase
