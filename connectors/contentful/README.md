@@ -6,6 +6,9 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/contentful
 
 This Dex connector exposes `getEntry`, `listEntries`. The runnable [sample Flow](go/examples/sample-contentful/flow/workflow.go) uses `getEntry` with the static `contentful` connection. Each operation uses the generated typed Step factory.
 
+The Python package is [`dex-connector-contentful`](python/README.md), imported as
+`dex_connectors.contentful`.
+
 ## Provider contract
 
 The Content Delivery API is read-only and returns published entries. The token travels in the Authorization header, never in a query parameter.
