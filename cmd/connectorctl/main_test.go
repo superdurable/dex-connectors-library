@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -445,6 +446,8 @@ func TestGenerateCheckDetectsDrift(t *testing.T) {
 	source := filepath.Join("..", "..", "connectors", "openai", "connector.yaml")
 	content, err := os.ReadFile(source)
 	require.NoError(t, err)
+	// Language packages need the repository catalog, which this isolated copy lacks.
+	content = regexp.MustCompile(`(?m)^  languages:\n(?:    .*\n)+`).ReplaceAll(content, nil)
 	directory := t.TempDir()
 	manifest := filepath.Join(directory, "connector.yaml")
 	require.NoError(t, os.WriteFile(manifest, content, 0o600))

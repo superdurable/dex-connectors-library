@@ -8,6 +8,11 @@ metadata:
   version: v0.23.0
 spec:
   provider: openai
+  languages:
+    python:
+      version: v0.1.0
+      operations: [createResponse, retrieveResponse]
+      triggers: []
   codegen:
     go:
       package: openai
