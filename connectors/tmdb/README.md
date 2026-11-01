@@ -10,6 +10,9 @@ manifest version is `v0.1.0`; the Go module requires connector SDK `v0.33.0`
 [`movie-search` example](go/examples/movie-search/README.md) shows a
 complete Worker and the generated operation-specific Step factory.
 
+The Python package is [`dex-connector-tmdb`](python/README.md), imported as
+`dex_connectors.tmdb`.
+
 ## Operations
 
 | Operation | Kind | Output |
