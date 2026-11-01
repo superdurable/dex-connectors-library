@@ -15,6 +15,9 @@ The `cloudflare` Go module exposes typed Dex Steps for Cloudflare. Its [runnable
 
 `purgeCacheByURLs` sends `{"files":[...]}`. Repeating a purge removes the same URLs, so a retry is safe. Cloudflare confirms acceptance with HTTP 200 and `success: true`; it does not guarantee that content was cached or removed. The list operation returns the first provider page.
 
+The Python package is [`dex-connector-cloudflare`](python/README.md), imported as
+`dex_connectors.cloudflare`.
+
 ## Authorization
 
 Create a custom scoped token at [My Profile > API Tokens](https://dash.cloudflare.com/profile/api-tokens) with Zone Read and Cache Purge permissions on the intended zones. The connector sends `Authorization: Bearer <token>`.
