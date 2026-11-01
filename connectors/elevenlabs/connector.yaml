@@ -8,6 +8,11 @@ metadata:
   version: v0.2.0
 spec:
   provider: elevenlabs
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listVoices, createSpeech]
+      triggers: []
   codegen:
     go:
       package: elevenlabs
