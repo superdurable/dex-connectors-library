@@ -475,7 +475,7 @@ func TestCatalogIncludesUIUnitsOperationsAndTriggers(t *testing.T) {
 			},
 		},
 	}}
-	encoded, err := encodeConnectorCatalog(entries, nil)
+	encoded, err := encodeConnectorCatalog(entries, nil, "")
 	require.NoError(t, err)
 	catalog := string(encoded)
 	require.Contains(t, catalog, "name: channelPicker")
@@ -528,6 +528,18 @@ func TestCatalogJSONListsLanguageVersions(t *testing.T) {
 	require.NoError(t, json.Unmarshal(contents, &document))
 	require.Equal(t, map[string]string{"go": "v0.1.0", "python": "v0.1.0", "typescript": "v0.1.0"}, document.Connectors[0].Languages)
 	require.Equal(t, []string{"go", "python", "typescript"}, document.Connectors[0].Operations[0].Languages)
+	initializeConnectorReleaseRepository(t, repositoryRoot, directory+"/python/v0.1.0")
+	replaceInFile(t, manifestPath,
+		"python: {version: v0.1.0, operations: [appendRows], triggers: []}",
+		"python: {version: v0.2.0, operations: [appendRows], triggers: []}")
+	replaceInFile(t, filepath.Join(repositoryRoot, directory, "python", "pyproject.toml"), "0.1.0", "0.2.0")
+	require.NoError(t, catalogCommand([]string{"--catalog", catalogPath, "--output", filepath.Join(outputDirectory, "catalog.yaml"),
+		"--json-output", jsonPath, "--completed-language-tags", completedTagsPath}))
+	contents, err = os.ReadFile(jsonPath)
+	require.NoError(t, err)
+	document.Connectors = nil
+	require.NoError(t, json.Unmarshal(contents, &document))
+	require.Equal(t, map[string]string{"go": "v0.1.0", "python": "v0.1.0", "typescript": "v0.1.0"}, document.Connectors[0].Languages)
 	require.NoError(t, catalogCommand([]string{"--catalog", catalogPath, "--output", filepath.Join(outputDirectory, "catalog.yaml"),
 		"--json-output", jsonPath}))
 	contents, err = os.ReadFile(jsonPath)
@@ -543,7 +555,7 @@ func TestGoOnlyCatalogCapabilityBytesStayUnchanged(t *testing.T) {
 		Metadata: schema.Metadata{Name: "example", DisplayName: "Example", Description: "Example.", Company: "Example", Version: "v0.1.0"},
 		Spec:     schema.Spec{Operations: []schema.Operation{{Name: "getThing", Kind: "query", Description: "Get a thing."}}},
 	}}
-	baseline, err := encodeConnectorCatalog([]connectorDirectoryEntry{entry}, nil)
+	baseline, err := encodeConnectorCatalog([]connectorDirectoryEntry{entry}, nil, "")
 	require.NoError(t, err)
 	require.Equal(t, `apiVersion: connectors.dex.dev/catalog/v1alpha1
 kind: ConnectorCatalog
@@ -562,7 +574,7 @@ connectors:
           description: Get a thing.
 `, string(baseline))
 	entry.Manifest.Spec.Languages = &schema.Languages{}
-	withEmptyLanguages, err := encodeConnectorCatalog([]connectorDirectoryEntry{entry}, nil)
+	withEmptyLanguages, err := encodeConnectorCatalog([]connectorDirectoryEntry{entry}, nil, "")
 	require.NoError(t, err)
 	require.Equal(t, baseline, withEmptyLanguages)
 	require.NotContains(t, string(baseline), "languages:")

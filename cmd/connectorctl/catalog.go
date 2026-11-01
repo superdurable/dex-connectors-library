@@ -137,7 +137,7 @@ func catalogCommand(args []string) error {
 			}
 		}
 	}
-	generated, err := encodeConnectorCatalog(entries, completedLanguageTags)
+	generated, err := encodeConnectorCatalog(entries, completedLanguageTags, filepath.Dir(*catalogPath))
 	if err != nil {
 		return err
 	}
@@ -533,7 +533,7 @@ func validateDiscoveredConnectorDirectories(repositoryRoot string, registeredDir
 	})
 }
 
-func encodeConnectorCatalog(entries []connectorDirectoryEntry, completedLanguageTags map[string]bool) ([]byte, error) {
+func encodeConnectorCatalog(entries []connectorDirectoryEntry, completedLanguageTags map[string]bool, repositoryRoot string) ([]byte, error) {
 	catalog := connectorCatalog{
 		APIVersion: connectorCatalogAPIVersion,
 		Kind:       "ConnectorCatalog",
@@ -544,11 +544,14 @@ func encodeConnectorCatalog(entries []connectorDirectoryEntry, completedLanguage
 		var releasedLanguages *schema.Languages
 		if entry.Manifest.Spec.Languages != nil {
 			filtered := *entry.Manifest.Spec.Languages
-			if filtered.Python != nil && !completedLanguageTags[entry.Directory+"/python/"+filtered.Python.Version] {
-				filtered.Python = nil
+			var declarationErr error
+			filtered.Python, declarationErr = releasedLanguageDeclaration(entry, "python", filtered.Python, completedLanguageTags, repositoryRoot)
+			if declarationErr != nil {
+				return nil, declarationErr
 			}
-			if filtered.TypeScript != nil && !completedLanguageTags[entry.Directory+"/typescript/"+filtered.TypeScript.Version] {
-				filtered.TypeScript = nil
+			filtered.TypeScript, declarationErr = releasedLanguageDeclaration(entry, "typescript", filtered.TypeScript, completedLanguageTags, repositoryRoot)
+			if declarationErr != nil {
+				return nil, declarationErr
 			}
 			releasedLanguages = &filtered
 		}
@@ -596,6 +599,57 @@ func encodeConnectorCatalog(entries []connectorDirectoryEntry, completedLanguage
 		return nil, fmt.Errorf("encode connector catalog: %w", err)
 	}
 	return encoded, nil
+}
+
+func releasedLanguageDeclaration(entry connectorDirectoryEntry, language string, current *schema.LanguagePackage,
+	completedLanguageTags map[string]bool, repositoryRoot string) (*schema.LanguagePackage, error) {
+	if current == nil {
+		return nil, nil
+	}
+	prefix := entry.Directory + "/" + language + "/"
+	selectedTag := ""
+	for tag := range completedLanguageTags {
+		if !strings.HasPrefix(tag, prefix) {
+			continue
+		}
+		version := strings.TrimPrefix(tag, prefix)
+		if !connectorVersionPattern.MatchString(version) || compareConnectorVersions(version, current.Version) > 0 {
+			continue
+		}
+		if selectedTag == "" || compareConnectorVersions(version, strings.TrimPrefix(selectedTag, prefix)) > 0 {
+			selectedTag = tag
+		}
+	}
+	if selectedTag == "" {
+		return nil, nil
+	}
+	selectedVersion := strings.TrimPrefix(selectedTag, prefix)
+	if selectedVersion == current.Version {
+		return current, nil
+	}
+	command := exec.Command("git", "show", selectedTag+":"+entry.ManifestPath)
+	command.Dir = repositoryRoot
+	contents, err := command.Output()
+	if err != nil {
+		return nil, fmt.Errorf("read %s release manifest for catalog: %w", selectedTag, err)
+	}
+	var releasedManifest schema.Manifest
+	if err := yaml.Unmarshal(contents, &releasedManifest); err != nil {
+		return nil, fmt.Errorf("decode %s release manifest for catalog: %w", selectedTag, err)
+	}
+	if releasedManifest.Spec.Languages == nil {
+		return nil, fmt.Errorf("%s release manifest has no language declarations", selectedTag)
+	}
+	var releasedDeclaration *schema.LanguagePackage
+	if language == "python" {
+		releasedDeclaration = releasedManifest.Spec.Languages.Python
+	} else {
+		releasedDeclaration = releasedManifest.Spec.Languages.TypeScript
+	}
+	if releasedDeclaration == nil || releasedDeclaration.Version != selectedVersion {
+		return nil, fmt.Errorf("%s release manifest has a different language version", selectedTag)
+	}
+	return releasedDeclaration, nil
 }
 
 func capabilityLanguages(languages *schema.Languages, capabilityName string, isTrigger bool) []string {

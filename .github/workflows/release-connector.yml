@@ -21,7 +21,7 @@ on:
         required: false
         type: string
       drain_first_publishes:
-        description: Drain the pending language publish queue without publishing Go releases
+        description: Drain pending language publishes and pending Go releases
         required: false
         default: false
         type: boolean
@@ -378,11 +378,9 @@ jobs:
           cp script/release/component_release.py "${RUNNER_TEMP}/component_release.py"
           tag="${TAG_PREFIX}${RELEASE_VERSION}"
           source_sha="${GITHUB_SHA}"
-          tag_exists=false
           if git show-ref --verify --quiet "refs/tags/${tag}"; then
             git merge-base --is-ancestor "${tag}" HEAD || { echo "Release tag is not reachable from main: ${tag}" >&2; exit 1; }
             source_sha="$(git rev-parse "${tag}^{commit}")"
-            tag_exists=true
           fi
           required=true
           if published_assets="$(gh release view "${tag}" --json assets --jq '.assets[].name' 2>/dev/null)" &&
@@ -394,13 +392,7 @@ jobs:
           {
             echo "release_required=${required}"
             echo "source_sha=${source_sha}"
-            echo "tag_exists=${tag_exists}"
           } >> "${GITHUB_OUTPUT}"
-      - name: Reject an untagged registry version built from a newer commit
-        if: steps.state.outputs.release_required == 'true' && steps.state.outputs.tag_exists == 'false' && inputs.dry_run != true
-        run: |
-          python3 script/release/language_publish.py check-untagged-version \
-            --language "${LANGUAGE}" --package "${PACKAGE_NAME}" --version "${RELEASE_VERSION}"
       - name: Restore tagged language source for repair
         if: steps.state.outputs.release_required == 'true' && steps.state.outputs.source_sha != github.sha
         env:
@@ -526,11 +518,9 @@ jobs:
         id: first-limit
         if: steps.state.outputs.release_required == 'true' && matrix.first_publish == true && matrix.language == 'python'
         run: |
-          artifact_names="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts?per_page=100" --jq '.artifacts[].name')"
-          if grep -Fxq "pypi-project-limit-${GITHUB_RUN_ID}" <<<"${artifact_names}"; then
-            echo 'status=deferred' >> "${GITHUB_OUTPUT}"
-            echo '::notice::Deferred: this run has already hit the PyPI project-creation limit.'
-          fi
+          python3 script/release/language_publish.py check-project-limit \
+            --repository "${GITHUB_REPOSITORY}" --run-id "${GITHUB_RUN_ID}" \
+            --github-output "${GITHUB_OUTPUT}"
       - name: Verify package archives before publication
         if: steps.state.outputs.release_required == 'true' && steps.first-limit.outputs.status != 'deferred'
         run: |
@@ -649,7 +639,9 @@ jobs:
             fi
           fi
           mkdir -p "${RUNNER_TEMP}/release-result"
-          RESULT_STATUS="${status}" python3 -c 'import json,os; print(json.dumps({"tag":os.environ["TAG_PREFIX"]+os.environ["RELEASE_VERSION"],"status":os.environ["RESULT_STATUS"]}))' \
+          reason=""
+          if [ "${status}" = deferred ]; then reason=project_creation_limit; fi
+          RESULT_STATUS="${status}" RESULT_REASON="${reason}" python3 -c 'import json,os; print(json.dumps({"tag":os.environ["TAG_PREFIX"]+os.environ["RELEASE_VERSION"],"status":os.environ["RESULT_STATUS"],"reason":os.environ["RESULT_REASON"]}))' \
             > "${RUNNER_TEMP}/release-result/release-result.json"
       - uses: actions/upload-artifact@v4
         if: always()
@@ -715,7 +707,7 @@ jobs:
 
   build-catalog:
     needs: [plan, release, build-language, publish-language, publish-language-first, summarize-language]
-    if: always() && needs.plan.result == 'success' && (needs.release.result == 'success' || needs.release.result == 'skipped') && (needs.build-language.result == 'success' || needs.build-language.result == 'skipped') && (needs.publish-language.result == 'success' || (needs.plan.outputs.updates_count == '0' && needs.publish-language.result == 'skipped')) && (needs.publish-language-first.result == 'success' || (needs.plan.outputs.first_count == '0' && needs.publish-language-first.result == 'skipped')) && (needs.summarize-language.result == 'success' || (needs.plan.outputs.pending_count == '0' && needs.summarize-language.result == 'skipped')) && (needs.plan.outputs.count != '0' || needs.summarize-language.outputs.published_count != '0' || github.event_name == 'workflow_dispatch') && inputs.dry_run != true
+    if: always() && needs.plan.result == 'success' && (needs.release.result == 'success' || needs.release.result == 'skipped') && (needs.build-language.result == 'success' || needs.build-language.result == 'skipped') && (needs.publish-language.result == 'success' || (needs.plan.outputs.updates_count == '0' && needs.publish-language.result == 'skipped')) && (needs.publish-language-first.result == 'success' || (needs.plan.outputs.first_count == '0' && needs.publish-language-first.result == 'skipped')) && (needs.summarize-language.result == 'success' || (needs.plan.outputs.pending_count == '0' && needs.summarize-language.result == 'skipped')) && (github.event_name != 'schedule' || needs.plan.outputs.count != '0' || (needs.summarize-language.outputs.published_count != '' && needs.summarize-language.outputs.published_count != '0')) && inputs.dry_run != true
     runs-on: ubuntu-latest
     permissions:
       contents: read

@@ -32,6 +32,7 @@ class SelectReleaseMatricesTests(unittest.TestCase):
                          [entry["package"].removeprefix("dex-connector-") for entry in selection["first"]])
         self.assertEqual(["new-three"],
                          [entry["package"].removeprefix("dex-connector-") for entry in selection["deferred"]])
+        self.assertEqual("first_publish_cap", selection["deferred"][0]["defer_reason"])
         self.assertEqual([0, 1, 2, 3], [entry["artifact_index"] for entry in selection["updates"] + selection["first"]])
         self.assertEqual(5, selection["pending_count"])
 
@@ -49,6 +50,7 @@ class SelectReleaseMatricesTests(unittest.TestCase):
             [item("unavailable"), item("available")], 1, project_exists=project_exists)
         self.assertEqual(["dex-connector-available"], [entry["package"] for entry in selection["first"]])
         self.assertEqual(["dex-connector-unavailable"], [entry["package"] for entry in selection["deferred"]])
+        self.assertEqual("registry_lookup_failure", selection["deferred"][0]["defer_reason"])
 
     def test_caps_after_filtering_more_than_256_declared_languages(self) -> None:
         selection = language_publish.select_release_matrices(
@@ -107,6 +109,23 @@ class RegistryLookupTests(unittest.TestCase):
             output = github_output.read_text(encoding="utf-8")
             self.assertIn("count=1\n", output)
             self.assertIn("deferred_count=1\n", output)
+            selection = json.loads((directory / "selection.json").read_text(encoding="utf-8"))
+            self.assertEqual("release_inventory_unavailable", selection["deferred"][0]["defer_reason"])
+
+    def test_project_limit_artifact_lookup_retries_and_paginates(self) -> None:
+        attempts = []
+
+        def run(command, **_kwargs):
+            attempts.append(command)
+            if len(attempts) == 1:
+                return subprocess.CompletedProcess(command, 1, "", "rate limit")
+            return subprocess.CompletedProcess(command, 0, "another-artifact\npypi-project-limit-42\n", "")
+
+        delays = []
+        self.assertTrue(language_publish.has_run_project_limit_artifact(
+            "superdurable/dex-connectors-library", "42", run=run, sleep=delays.append))
+        self.assertIn("--paginate", attempts[0])
+        self.assertEqual([1], delays)
 
 
 class PublishPypiTests(unittest.TestCase):
@@ -148,12 +167,20 @@ class SummaryTests(unittest.TestCase):
             directory = Path(temporary)
             (directory / "release-result.json").write_text(json.dumps({
                 "tag": "connectors/published/python/v0.1.0", "status": "published"}), encoding="utf-8")
+            (directory / "throttled").mkdir()
+            (directory / "throttled" / "release-result.json").write_text(json.dumps({
+                "tag": "connectors/throttled/python/v0.1.0", "status": "deferred",
+                "reason": "project_creation_limit"}), encoding="utf-8")
+            capped = item("capped")
+            capped["defer_reason"] = "first_publish_cap"
             summary = language_publish.summarize(
-                [item("published"), item("missing")], directory, [item("capped")])
+                [item("published"), item("throttled"), item("missing")], directory, [capped])
         self.assertEqual(["connectors/published/python/v0.1.0"], summary["published"])
-        self.assertEqual(["connectors/capped/python/v0.1.0"], summary["deferred"])
+        self.assertEqual(["connectors/capped/python/v0.1.0", "connectors/throttled/python/v0.1.0"], summary["deferred"])
+        self.assertEqual({"connectors/capped/python/v0.1.0": "first_publish_cap",
+                          "connectors/throttled/python/v0.1.0": "project_creation_limit"}, summary["deferred_reasons"])
         self.assertEqual(["connectors/missing/python/v0.1.0"], summary["failed"])
-        self.assertEqual(2, summary["pending_count"])
+        self.assertEqual(3, summary["pending_count"])
 
 
 if __name__ == "__main__":

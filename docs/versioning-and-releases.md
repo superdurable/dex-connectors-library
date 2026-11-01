@@ -228,34 +228,50 @@ tag or release until the registry artifact is verified.
 
 The same workflow runs hourly at minute 17 to drain pending language releases
 and pending Go releases. A scheduled run repairs an incomplete language release
-when its tag records the original source commit. If a registry version exists
-without a GitHub tag, the build fails with a recovery message: rerun the
-original workflow at its source commit or create the missing tag at that
-commit before repair. It never rebuilds the registry version from a newer
-commit. Concurrent push and scheduled runs can cancel a queued run, so check
+when its tag records the original source commit. If the upload succeeded but
+tag creation failed, a later run may rebuild from newer source only when the
+PyPI archive SHA-256 digests or npm tarball integrity match the published
+artifacts. A mismatch fails without creating a tag. Concurrent push and
+scheduled runs can cancel a queued run, so check
 the release summary for remaining work; the next scheduled run selects pending
 Go releases again.
 The `summarize-language` job writes published, deferred, and failed tags plus
-the pending count to its job summary and `result` JSON output. To recover
+the pending count to its job summary and `result` JSON output. Deferred tags
+carry a reason such as `first_publish_cap`, `registry_lookup_failure`, or
+`project_creation_limit`. To recover
 manually, run `Release Connectors and Catalog` on `main` with the affected
 `connector_directory`; leave `dry_run` disabled. For a broad backlog, set
 `drain_first_publishes` on a manual run or wait for the next hourly run. A
-manual drain also releases pending Go versions. If a registry upload succeeded but GitHub release
-creation failed, rerun the original workflow at its source commit as described
-below so its archive digest still matches.
+manual drain also releases pending Go versions. If a registry upload succeeded
+but GitHub release creation failed, the scheduled run can repair an identical
+rebuild. If the archive differs, rerun the original workflow at its source
+commit as described below.
+
+Catalog deployment still requires successful release jobs. Its event gate is:
+
+| Event | Pending Go selected | Language published | Deploy catalog |
+| --- | --- | --- | --- |
+| Push or manual dispatch | Any | Any | Yes |
+| Schedule | No | No or summary skipped | No |
+| Schedule | Yes | Any | Yes |
+| Schedule | No | Yes | Yes |
 
 The deployed catalog lists Python and TypeScript versions and capabilities
-only after their GitHub release contains `language-release.complete`. The
+only after their GitHub release contains `language-release.complete`. While a
+newer manifest language version is pending, it keeps the latest completed
+version and reads that version's capability declarations from its release tag. The
 catalog generator accepts a completed-tag inventory with
 `--completed-language-tags`; without one, it omits language entries rather than
 advertising a pending version. An idle scheduled run skips the Pages deploy.
 
 If registry publication succeeds but GitHub tag or release creation fails,
-rerun the failed workflow at its original commit. If that run is unavailable,
-create the missing tag at the original source commit, then dispatch the SDK
-workflow with `repair_version` or `Release Connectors and Catalog` with its
-`connector_directory`. Rebuilding that version from a newer commit can
-produce a different archive, which the registry integrity check rejects.
+the scheduled connector workflow retries the release and accepts only identical
+registry artifacts. If the rebuild differs, rerun the failed workflow at its
+original commit. If that run is unavailable, create the missing tag at the
+original source commit, then dispatch the SDK workflow with `repair_version`
+or `Release Connectors and Catalog` with its `connector_directory`. Rebuilding
+from a newer commit can produce a different archive, which the registry
+integrity check rejects.
 
 Connector language packages require a released SDK, with
 no local path, Git, file, workspace, or uv source override. CI and release
@@ -334,8 +350,9 @@ the original push commit, retaining its release matrix. The workflow:
 9. verifies the published Go module is downloadable;
 10. runs Released compatibility against the new component tag;
 11. publishes the directory site, `catalog.yaml`, and `card.png` to GitHub
-    Pages when a Go or language release is selected or a manual catalog rebuild
-    is requested. An idle scheduled run skips deployment. A failed Go or
+    Pages after a push or manual run, and after a scheduled run that selected
+    Go work or published a language package. An idle scheduled run skips
+    deployment. A failed Go or
     language build or release blocks the catalog publish, including Go entries.
     The site is
     `https://superdurable.github.io/dex-connectors-library/` and the README

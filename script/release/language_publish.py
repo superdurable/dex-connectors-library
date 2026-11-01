@@ -52,17 +52,6 @@ def has_registry_url(url: str, description: str, *, sleep=time.sleep) -> bool:
     raise AssertionError("unreachable")
 
 
-def has_registry_version(language: str, package: str, version: str) -> bool:
-    public_version = version.removeprefix("v")
-    if language == "python":
-        url = f"https://pypi.org/pypi/{urllib.parse.quote(package)}/{urllib.parse.quote(public_version)}/json"
-    elif language == "typescript":
-        url = f"https://registry.npmjs.org/{urllib.parse.quote(package, safe='')}/{urllib.parse.quote(public_version)}"
-    else:
-        raise ValueError(f"unsupported language: {language}")
-    return has_registry_url(url, f"{package}@{public_version}")
-
-
 def list_completed_language_tags(*, run=subprocess.run, sleep=time.sleep) -> set[str]:
     command = ("gh", "api", "--paginate", "repos/{owner}/{repo}/releases?per_page=100", "--jq",
                '.[] | select(any(.assets[]; .name == "language-release.complete")) | .tag_name')
@@ -72,6 +61,20 @@ def list_completed_language_tags(*, run=subprocess.run, sleep=time.sleep) -> set
             return set(result.stdout.splitlines())
         if attempt == len(LOOKUP_RETRY_DELAYS):
             raise RuntimeError(f"GitHub release inventory failed after retries: {result.stderr.strip()}")
+        sleep(LOOKUP_RETRY_DELAYS[attempt])
+    raise AssertionError("unreachable")
+
+
+def has_run_project_limit_artifact(repository: str, run_id: str, *, run=subprocess.run, sleep=time.sleep) -> bool:
+    artifact_name = f"pypi-project-limit-{run_id}"
+    command = ("gh", "api", "--paginate", f"repos/{repository}/actions/runs/{run_id}/artifacts?per_page=100",
+               "--jq", ".artifacts[].name")
+    for attempt in range(len(LOOKUP_RETRY_DELAYS) + 1):
+        result = run(command, capture_output=True, text=True, check=False)
+        if result.returncode == 0:
+            return artifact_name in result.stdout.splitlines()
+        if attempt == len(LOOKUP_RETRY_DELAYS):
+            raise RuntimeError(f"PyPI project-limit artifact lookup failed after retries: {result.stderr.strip()}")
         sleep(LOOKUP_RETRY_DELAYS[attempt])
     raise AssertionError("unreachable")
 
@@ -96,11 +99,13 @@ def select_release_matrices(items: list[dict[str, str]], first_publish_limit: in
             has_project = project_exists(item["language"], item["package"])
         except RuntimeError as error:
             print(f"::warning::{error}; deferring {item['package']} without blocking Go releases", file=sys.stderr)
+            item["defer_reason"] = "registry_lookup_failure"
             deferred.append(item)
             continue
         if has_project:
             updates.append(item)
         elif item["language"] == "python" and python_first_count >= first_publish_limit:
+            item["defer_reason"] = "first_publish_cap"
             deferred.append(item)
         else:
             item["first_publish"] = True
@@ -110,11 +115,15 @@ def select_release_matrices(items: list[dict[str, str]], first_publish_limit: in
     if len(updates) + len(first) > MAXIMUM_GITHUB_MATRIX_JOBS:
         available_first = max(0, MAXIMUM_GITHUB_MATRIX_JOBS - len(updates))
         if len(updates) > MAXIMUM_GITHUB_MATRIX_JOBS:
+            for item in updates[MAXIMUM_GITHUB_MATRIX_JOBS:] + first:
+                item["defer_reason"] = "matrix_limit"
             deferred.extend(updates[MAXIMUM_GITHUB_MATRIX_JOBS:])
             updates = updates[:MAXIMUM_GITHUB_MATRIX_JOBS]
             deferred.extend(first)
             first = []
         else:
+            for item in first[available_first:]:
+                item["defer_reason"] = "matrix_limit"
             deferred.extend(first[available_first:])
             first = first[:available_first]
     for index, item in enumerate(updates + first):
@@ -160,26 +169,29 @@ def publish_pypi(assets: list[str], *, delays: tuple[int, ...] = PYPI_RETRY_DELA
 
 
 def summarize(expected: list[dict[str, str]], results_directory: Path, deferred: list[dict[str, str]]) -> dict[str, object]:
-    results: dict[str, str] = {}
+    results: dict[str, dict[str, str]] = {}
     for result_file in results_directory.rglob("release-result.json"):
         result = json.loads(result_file.read_text(encoding="utf-8"))
         tag = result["tag"]
         if tag in results:
             raise ValueError(f"duplicate release result: {tag}")
-        results[tag] = result["status"]
+        results[tag] = result
     published: list[str] = []
     deferred_tags = [item["tag_prefix"] + item["version"] for item in deferred]
+    deferred_reasons = {item["tag_prefix"] + item["version"]: item.get("defer_reason", "unspecified") for item in deferred}
     failed: list[str] = []
     for item in expected:
         tag = item["tag_prefix"] + item["version"]
-        status = results.get(tag, "failed")
+        result = results.get(tag, {"status": "failed"})
+        status = result["status"]
         if status == "published":
             published.append(tag)
         elif status == "deferred":
             deferred_tags.append(tag)
+            deferred_reasons[tag] = result.get("reason", "unspecified")
         else:
             failed.append(tag)
-    return {"published": published, "deferred": deferred_tags, "failed": failed,
+    return {"published": published, "deferred": deferred_tags, "deferred_reasons": deferred_reasons, "failed": failed,
             "pending_count": len(deferred_tags) + len(failed)}
 
 
@@ -192,10 +204,10 @@ def main() -> int:
     select_parser.add_argument("--first-publish-limit", type=int, default=PYPI_FIRST_PUBLISH_LIMIT)
     completed_parser = commands.add_parser("completed-language-tags")
     completed_parser.add_argument("--output", type=Path, required=True)
-    untagged_parser = commands.add_parser("check-untagged-version")
-    untagged_parser.add_argument("--language", choices=("python", "typescript"), required=True)
-    untagged_parser.add_argument("--package", required=True)
-    untagged_parser.add_argument("--version", required=True)
+    limit_parser = commands.add_parser("check-project-limit")
+    limit_parser.add_argument("--repository", required=True)
+    limit_parser.add_argument("--run-id", required=True)
+    limit_parser.add_argument("--github-output", type=Path, required=True)
     publish_parser = commands.add_parser("publish-pypi")
     publish_parser.add_argument("--github-output", type=Path, required=True)
     publish_parser.add_argument("assets", nargs="+")
@@ -212,6 +224,8 @@ def main() -> int:
                 completed_tags = list_completed_language_tags()
             except RuntimeError as error:
                 print(f"::warning::{error}; deferring language selection without blocking Go releases", file=sys.stderr)
+                for item in items:
+                    item["defer_reason"] = "release_inventory_unavailable"
                 selection = {"updates": [], "first": [], "deferred": items, "pending_count": len(items)}
             else:
                 selection = select_release_matrices(items, args.first_publish_limit, completed_tags=completed_tags)
@@ -223,10 +237,11 @@ def main() -> int:
         elif args.command == "completed-language-tags":
             completed_tags = list_completed_language_tags()
             args.output.write_text("\n".join(sorted(completed_tags)) + "\n", encoding="utf-8")
-        elif args.command == "check-untagged-version":
-            if has_registry_version(args.language, args.package, args.version):
-                raise RuntimeError(f"{args.package}@{args.version} exists on the registry without a GitHub tag; "
-                                   "rerun the original workflow at its source commit or create a tag at that commit before repair")
+        elif args.command == "check-project-limit":
+            if has_run_project_limit_artifact(args.repository, args.run_id):
+                with args.github_output.open("a", encoding="utf-8") as output:
+                    output.write("status=deferred\nreason=project_creation_limit\n")
+                print("::notice::Deferred: this run has already hit the PyPI project-creation limit.")
         elif args.command == "publish-pypi":
             status = publish_pypi(args.assets)
             with args.github_output.open("a", encoding="utf-8") as output:
@@ -242,7 +257,11 @@ def main() -> int:
             with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a", encoding="utf-8") as output:
                 output.write("## Language releases\n\n")
                 for status in ("published", "deferred", "failed"):
-                    output.write(f"- {status}: {len(summary[status])} — {', '.join(summary[status]) or 'none'}\n")
+                    if status == "deferred":
+                        labels = [f"{tag} ({summary['deferred_reasons'][tag]})" for tag in summary[status]]
+                    else:
+                        labels = summary[status]
+                    output.write(f"- {status}: {len(summary[status])} — {', '.join(labels) or 'none'}\n")
                 output.write(f"- pending: {summary['pending_count']}\n")
             print(json.dumps(summary))
     except (OSError, ValueError, RuntimeError, KeyError, json.JSONDecodeError) as error:
