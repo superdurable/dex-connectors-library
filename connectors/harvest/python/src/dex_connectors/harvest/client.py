@@ -279,7 +279,9 @@ class ListTimeEntriesOperation:
         """Validate the page, read once, then select a branch or safe retry."""
         operation = LIST_TIME_ENTRIES_OPERATION_ID
         if not isinstance(input, ListTimeEntriesInput):
-            return _failed(operation, DEFECT, TimeEntryPage(), FailureKind.VALIDATION, "page input is invalid")
+            return _failed(
+                operation, DEFECT, TimeEntryPage(), FailureKind.VALIDATION, "page input is invalid"
+            )
         problem = _page_problem(input.cursor, input.per_page)
         if problem:
             return _failed(operation, DEFECT, TimeEntryPage(), FailureKind.VALIDATION, problem)
