@@ -64,7 +64,7 @@ boundary and manifest mocks.
 
 Gmail does not deduplicate messages by `Message-ID`. The connector derives a
 stable run-specific RFC Message-ID from the Dex Call key, run ID, and Flow start
-second. Its Python Mutation Steps use the manifest's asynchronous Execute
+second. Its Python Mutation Steps use the manifest's synchronous Execute
 durability and persist the single-dispatch heartbeat before a POST. On a
 numbered retry it searches Sent Mail first. A prior claimed send can only be
 read back; a second POST requires a persisted `notSent` or `canResend` marker.

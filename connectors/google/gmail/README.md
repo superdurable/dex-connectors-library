@@ -153,28 +153,30 @@ uses that header for Sent Mail read-back:
 - Every numbered attempt after the first searches Sent Mail before reading a
   reply's source or posting. A match returns `sent` without another POST; for a
   reply its `recipients` can be empty because the source was never read. A miss
-  permits one POST; a failed search returns Retry without sending. After a
-  later POST's 4xx, one more search can find an earlier accepted copy before
-  the connector selects `providerRejected`.
+  permits another POST only when the preceding attempt checkpointed `notSent`
+  or `canResend`. A prior `claimed` dispatch can only read back; a search miss
+  or failure returns Retry without another POST.
 - A 429 and a failure that a traced DNS, connect, or TLS error proves happened
   before a connection existed return Retry.
 
-A 503 or another possibly accepted request resends under the same `Message-ID`
-after a search miss. If Gmail accepted the message but has not indexed it by
-the next attempt, the recipient can receive two copies. Gmail does not dedupe
-by `Message-ID`. Dex local-activity crash replay may restart the visible
-attempt number at one; that replay can POST without the pre-send search. Sent
-Mail indexing lag and this replay can both cause duplicate delivery. Retries
-stop when the configured budget is exhausted; the Flow then fails. The released
-v0.23.1 selected `uncertain` for an ambiguous send and did not search Sent Mail.
+A send or reply records a `claimed` heartbeat before the POST. Synchronous
+Execute durability carries that checkpoint across regular retries. A 429, 503,
+or proven undispatched transport failure can checkpoint `canResend`, allowing
+one later POST after a Sent Mail search miss. An ambiguous dispatch stays
+`claimed`: even if Gmail has not indexed it, later attempts only search, and
+the Flow fails when retries are exhausted. Gmail does not dedupe by
+`Message-ID`; the fence prevents a later connector POST after an ambiguous
+dispatch, although a lost heartbeat frame cannot prove exactly-once delivery.
+The released v0.23.1 selected `uncertain` for an ambiguous send and did not
+search Sent Mail.
 The run-specific Message-ID reduces false matches when a Flow ID is reused or
 a Flow retries, although two runs with the same first run ID and Flow start
 second can still collide.
 
 A request whose dispatch cannot be traced counts as possibly sent. That
 includes every failure through a `WithHTTPClient` transport that does not drive
-`net/http/httptrace`, so such a client searches after a failed POST and retries
-when the message is not found.
+`net/http/httptrace`, so such a client searches after a failed POST and later
+attempts never resend after a miss.
 
 Each attempt budgets at most the manifest's 30-second Execute timeout,
 shortened by the Dex Step context deadline when that is earlier. The send ends
@@ -186,7 +188,7 @@ the default async durability, Dex first runs the Step under a much shorter
 deadline, 7 seconds on the Temporal engine, so the send gets about 4 seconds
 and the search under 2. A slower send, such as a large message, returns Retry
 when the search does not yet find it. The next attempt usually searches again
-before sending; local-activity crash replay is the exception described above.
+before sending only after a `notSent` or `canResend` checkpoint.
 
 The search adds no scope: `gmail.readonly` permits
 [`messages.list`](https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.messages/list)
@@ -194,8 +196,8 @@ with a query. Three Gmail behaviors are unverified without a live account:
 whether `messages.send` keeps the client-set `Message-ID` header, whether the
 documented query matches it, and how soon a sent message becomes searchable.
 If either of the first two fails, the search never matches, so ambiguous sends
-retry and can create duplicates. Live provider authorization and indexing
-latency remain unverified.
+retry until the Flow fails without a second POST. Live provider authorization
+and indexing latency remain unverified.
 
 Every operation uses `defect` for invalid local input, connection configuration,
 or Connector contract violations. A conclusive Gmail API refusal uses

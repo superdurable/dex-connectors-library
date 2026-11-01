@@ -88,15 +88,6 @@ func (budget sendAttemptBudget) preSendContext() (context.Context, context.Cance
 	return context.WithDeadline(budget.attemptContext, budget.sendDeadline.Add(-budget.minimumSendTime))
 }
 
-// sendContext bounds the POST; false means too little time is left to start it.
-func (budget sendAttemptBudget) sendContext() (context.Context, context.CancelFunc, bool) {
-	if budget.minimumSendTime <= 0 || time.Until(budget.sendDeadline) < budget.minimumSendTime {
-		return nil, nil, false
-	}
-	sendContext, cancel := context.WithDeadline(budget.attemptContext, budget.sendDeadline)
-	return sendContext, cancel, true
-}
-
 // sentMessageSearchQuery uses Gmail's documented rfc822msgid syntax, which omits the angle brackets.
 func sentMessageSearchQuery(call sdkgo.Call) string {
 	return "in:sent rfc822msgid:" + rfcMessageIDAddress(call)

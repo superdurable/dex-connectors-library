@@ -524,7 +524,7 @@ var SendMessageDefinition = sdkgo.MutationDefinition{
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
-		ExecuteDurability: dex.StepDurabilityAsync,
+		ExecuteDurability: dex.StepDurabilitySync,
 	},
 }
 
@@ -593,7 +593,7 @@ var ReplyToMessageDefinition = sdkgo.MutationDefinition{
 	StepDefaults: sdkgo.StepDefaults{
 		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
 		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(30000000000), MaximumAttempts: 5, TotalDuration: time.Duration(120000000000)},
-		ExecuteDurability: dex.StepDurabilityAsync,
+		ExecuteDurability: dex.StepDurabilitySync,
 	},
 }
 

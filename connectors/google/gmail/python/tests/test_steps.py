@@ -53,7 +53,7 @@ def test_send_step_factory_registers_and_checks_static_connection_name() -> None
     dex.Registry([SendFlow(send, sent)], allow_async_handlers=True)
     assert send.get_step_type() == "SendEmail"
     assert send.get_step_options().execute_retry is not None
-    assert send.get_step_options().execute_durability == dex.StepDurability.ASYNC
+    assert send.get_step_options().execute_durability == dex.StepDurability.SYNC
     with pytest.raises(ValueError, match="ConnectionName"):
         new_send_message_step(
             step_type="SendEmail",

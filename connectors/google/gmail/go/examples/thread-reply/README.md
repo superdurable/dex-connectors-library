@@ -113,9 +113,9 @@ The example wires only the happy-path branches. An unwired optional branch
 fails the Flow with its safe failure reason. A reply whose answer is lost
 completes when the Sent Mail search finds its Message-ID. A failed or missing
 read-back retries, and each numbered later attempt searches before reading the
-source or posting. Any possibly accepted failure can resend after a search
-miss; Gmail does not deduplicate by Message-ID. Dex local-activity crash replay
-can restart the visible attempt number at one and POST without a pre-send
-search. An accepted 2xx with an unusable response selects `sent` without
+source or posting. A prior `claimed` dispatch cannot resend after a search
+miss; the Flow fails when its retry budget runs out. A 429, 503, or proven
+undispatched failure may checkpoint `canResend` and permit one later POST after
+a search miss. An accepted 2xx with an unusable response selects `sent` without
 resending; if Sent Mail still has no match, the output `messageId` is empty and
 `threadId` is the requested reply thread.
