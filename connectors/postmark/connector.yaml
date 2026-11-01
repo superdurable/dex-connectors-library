@@ -8,11 +8,6 @@ metadata:
   version: v0.2.0
 spec:
   provider: postmark
-  languages:
-    python:
-      version: v0.1.0
-      operations: [listOutboundMessages, getMessageDetails]
-      triggers: []
   codegen:
     go:
       package: postmark

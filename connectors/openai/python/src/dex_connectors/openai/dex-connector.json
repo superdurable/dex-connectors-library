@@ -1,0 +1,87 @@
+{
+  "connectorId": "openai",
+  "releaseTag": "connectors/openai/go/v0.23.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-openai",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_create_response_step",
+      "kind": "mutation",
+      "operationId": "createResponse",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "completed",
+          "field": "completed",
+          "optional": false
+        },
+        {
+          "id": "failed",
+          "field": "failed",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "uncertain",
+          "field": "uncertain",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "name": "new_retrieve_response_step",
+      "kind": "query",
+      "operationId": "retrieveResponse",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "not_found",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    }
+  ]
+}
