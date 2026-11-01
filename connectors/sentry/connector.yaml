@@ -8,6 +8,11 @@ metadata:
   version: v0.2.0
 spec:
   provider: sentry
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listIssues, getIssue, updateIssueStatus]
+      triggers: []
   codegen:
     go:
       package: sentry
