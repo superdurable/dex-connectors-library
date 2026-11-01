@@ -1,7 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated operation bindings for one named Dex connection."""
 
 from typing import Any
 
@@ -14,7 +13,6 @@ from .definitions import CONNECTOR_ID, GET_PROJECT_DEFINITION, LIST_ISSUES_DEFIN
 from ..models import GetProjectInput, Issue, IssuesPage, ListIssuesInput, Project, UpdateIssueLabelsInput
 
 class Connection:
-    """Nonserializable GitLab operation binding."""
 
     __slots__ = ('_get_project', '_list_issues', '_update_issue_labels', '_client', 'reference')
 
@@ -41,35 +39,28 @@ class Connection:
         self._client = client
 
     def get_project(self) -> Query[GetProjectInput, Project]:
-        """Return the get_project operation for a Dex Step."""
         return self._get_project
 
     def list_issues(self) -> Query[ListIssuesInput, IssuesPage]:
-        """Return the list_issues operation for a Dex Step."""
         return self._list_issues
 
     def update_issue_labels(self) -> Mutation[UpdateIssueLabelsInput, Issue]:
-        """Return the update_issue_labels operation for a Dex Step."""
         return self._update_issue_labels
 
     async def aclose(self) -> None:
-        """Close the owned provider transport after Worker shutdown."""
         if self._client is not None:
             await self._client.aclose()
 
     def __repr__(self) -> str:
-        """Keep provider transport and credentials out of logs."""
         return "gitlab.Connection([REDACTED])"
 
     def __reduce__(self) -> tuple[object, ...]:
-        """Prevent a live connection from entering durable Flow state."""
         raise TypeError("GitLab connections cannot be serialized")
 
 setattr(Connection, '__module__', 'dex_connectors.gitlab.connection')
 
 
 def new_connection(client: Client, reference: ConnectionRef) -> Connection:
-    """Bind a provider client to an explicit logical connection reference."""
     if client is None:
         raise ValueError("GitLab client is required")
     return Connection(reference, client.get_project(), client.list_issues(), client.update_issue_labels(), client)
@@ -83,14 +74,12 @@ def new_connection_with_operations(
     update_issue_labels: Mutation[UpdateIssueLabelsInput, Issue],
     reference: ConnectionRef,
 ) -> Connection:
-    """Bind mock operations to the same logical connection identity."""
     return Connection(reference, get_project, list_issues, update_issue_labels)
 
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.gitlab.connection')
 
 
 class _ProjectCredentialSource:
-    """Resolve current secret material at each provider attempt."""
 
     def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
         self.project = project
@@ -107,7 +96,6 @@ class _ProjectCredentialSource:
 def new_project_connection(
     project: LoadedProject, connection_name: str, http_client: httpx.AsyncClient | None = None
 ) -> Connection:
-    """Open declared project settings and resolve provider credentials per call."""
     if project is None:
         raise ValueError("GitLab connection requires loaded project configuration")
     reference = ConnectionRef(CONNECTOR_ID, connection_name)

@@ -1,51 +1,55 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated Python dataclasses from Go operation types."""
 
 from dataclasses import dataclass, field as _dataclass_field
 from typing import Any
 
-@dataclass(frozen=True, slots=True)
-class SelectRowsInput:
-    """Typed SelectRowsInput value from the Go connector contract."""
-
-    table: str = ''
-    columns: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
-    limit: int = _dataclass_field(default=0, metadata={'dex_json_omit_default': True})
-    offset: int = _dataclass_field(default=0, metadata={'dex_json_omit_default': True})
-
-
-setattr(SelectRowsInput, '__module__', 'dex_connectors.supabase.models')
-
-
-@dataclass(frozen=True, slots=True)
-class SelectRowsOutput:
-    """Typed SelectRowsOutput value from the Go connector contract."""
-
-    data: Any = None
-
-
-setattr(SelectRowsOutput, '__module__', 'dex_connectors.supabase.models')
-
-
+# UpsertRowsInput replaces rows on a database-enforced unique conflict key.
 @dataclass(frozen=True, slots=True)
 class UpsertRowsInput:
-    """Typed UpsertRowsInput value from the Go connector contract."""
-
+    # Table is an exposed table name.
     table: str = ''
+    # OnConflict is a comma-separated list of unique columns; the database must enforce uniqueness.
     on_conflict: str = _dataclass_field(default='', metadata={'dex_json_name': 'onConflict'})
+    # Rows contain complete replacement values for all fields the caller owns.
     rows: tuple[dict[str, Any] | None, ...] | None = None
 
 
 setattr(UpsertRowsInput, '__module__', 'dex_connectors.supabase.models')
 
 
+# UpsertRowsOutput preserves returned PostgREST rows.
 @dataclass(frozen=True, slots=True)
 class UpsertRowsOutput:
-    """Typed UpsertRowsOutput value from the Go connector contract."""
-
+    # Data is the JSON row array returned after the merge.
     data: Any = None
 
 
 setattr(UpsertRowsOutput, '__module__', 'dex_connectors.supabase.models')
+
+
+# SelectRowsInput reads a bounded PostgREST table page.
+@dataclass(frozen=True, slots=True)
+class SelectRowsInput:
+    # Table is an exposed table name.
+    table: str = ''
+    # Columns is a comma-separated PostgREST select expression; blank selects all columns.
+    columns: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
+    # Limit caps rows, from 1 through 1000; zero selects 100.
+    limit: int = _dataclass_field(default=0, metadata={'dex_json_omit_default': True})
+    # Offset skips this many rows.
+    offset: int = _dataclass_field(default=0, metadata={'dex_json_omit_default': True})
+
+
+setattr(SelectRowsInput, '__module__', 'dex_connectors.supabase.models')
+
+
+# SelectRowsOutput preserves the selected JSON row array.
+@dataclass(frozen=True, slots=True)
+class SelectRowsOutput:
+    # Data is the JSON array of selected rows.
+    data: Any = None
+
+
+setattr(SelectRowsOutput, '__module__', 'dex_connectors.supabase.models')

@@ -1,7 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated operation bindings for one named Dex connection."""
 
 from typing import Any
 
@@ -14,7 +13,6 @@ from .definitions import CONNECTOR_ID, LIST_PROJECTS_DEFINITION, LIST_TIME_ENTRI
 from ..models import ListProjectsInput, ListTimeEntriesInput, ProjectPage, TimeEntryPage
 
 class Connection:
-    """Nonserializable Harvest operation binding."""
 
     __slots__ = ('_list_projects', '_list_time_entries', '_client', 'reference')
 
@@ -37,31 +35,25 @@ class Connection:
         self._client = client
 
     def list_projects(self) -> Query[ListProjectsInput, ProjectPage]:
-        """Return the list_projects operation for a Dex Step."""
         return self._list_projects
 
     def list_time_entries(self) -> Query[ListTimeEntriesInput, TimeEntryPage]:
-        """Return the list_time_entries operation for a Dex Step."""
         return self._list_time_entries
 
     async def aclose(self) -> None:
-        """Close the owned provider transport after Worker shutdown."""
         if self._client is not None:
             await self._client.aclose()
 
     def __repr__(self) -> str:
-        """Keep provider transport and credentials out of logs."""
         return "harvest.Connection([REDACTED])"
 
     def __reduce__(self) -> tuple[object, ...]:
-        """Prevent a live connection from entering durable Flow state."""
         raise TypeError("Harvest connections cannot be serialized")
 
 setattr(Connection, '__module__', 'dex_connectors.harvest.connection')
 
 
 def new_connection(client: Client, reference: ConnectionRef) -> Connection:
-    """Bind a provider client to an explicit logical connection reference."""
     if client is None:
         raise ValueError("Harvest client is required")
     return Connection(reference, client.list_projects(), client.list_time_entries(), client)
@@ -74,14 +66,12 @@ def new_connection_with_operations(
     list_time_entries: Query[ListTimeEntriesInput, TimeEntryPage],
     reference: ConnectionRef,
 ) -> Connection:
-    """Bind mock operations to the same logical connection identity."""
     return Connection(reference, list_projects, list_time_entries)
 
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.harvest.connection')
 
 
 class _ProjectCredentialSource:
-    """Resolve current secret material at each provider attempt."""
 
     def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
         self.project = project
@@ -98,7 +88,6 @@ class _ProjectCredentialSource:
 def new_project_connection(
     project: LoadedProject, connection_name: str, http_client: httpx.AsyncClient | None = None
 ) -> Connection:
-    """Open declared project settings and resolve provider credentials per call."""
     if project is None:
         raise ValueError("Harvest connection requires loaded project configuration")
     reference = ConnectionRef(CONNECTOR_ID, connection_name)

@@ -1,62 +1,68 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated Python dataclasses from Go operation types."""
 
 from dataclasses import dataclass, field as _dataclass_field
 
-@dataclass(frozen=True, slots=True)
-class SearchInput:
-    """Typed SearchInput value from the Go connector contract."""
-
-    index_name: str = _dataclass_field(default='', metadata={'dex_json_name': 'indexName'})
-    query: str = ''
-    hits_per_page: int = _dataclass_field(default=0, metadata={'dex_json_name': 'hitsPerPage', 'dex_json_omit_default': True})
-
-
-setattr(SearchInput, '__module__', 'dex_connectors.algolia.models')
-
-
-@dataclass(frozen=True, slots=True)
-class SearchHit:
-    """Typed SearchHit value from the Go connector contract."""
-
-    object_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'objectID'})
-    name: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
-
-
-setattr(SearchHit, '__module__', 'dex_connectors.algolia.models')
-
-
-@dataclass(frozen=True, slots=True)
-class SearchPage:
-    """Typed SearchPage value from the Go connector contract."""
-
-    nb_hits: int = _dataclass_field(default=0, metadata={'dex_json_name': 'nbHits'})
-    hits: tuple[SearchHit, ...] | None = None
-
-
-setattr(SearchPage, '__module__', 'dex_connectors.algolia.models')
-
-
+# SaveObjectInput replaces a record's complete set of string attributes.
 @dataclass(frozen=True, slots=True)
 class SaveObjectInput:
-    """Typed SaveObjectInput value from the Go connector contract."""
-
+    # IndexName names the target index.
     index_name: str = _dataclass_field(default='', metadata={'dex_json_name': 'indexName'})
+    # ObjectID identifies the record to replace on retries.
     object_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'objectID'})
+    # Attributes are absolute non-secret record values; omitted old attributes are removed.
     attributes: dict[str, str] | None = None
 
 
 setattr(SaveObjectInput, '__module__', 'dex_connectors.algolia.models')
 
 
+# SavedObject confirms Algolia queued an indexing task.
 @dataclass(frozen=True, slots=True)
 class SavedObject:
-    """Typed SavedObject value from the Go connector contract."""
-
+    # ObjectID identifies the replaced record.
     object_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'objectID'})
+    # TaskID identifies the queued Algolia indexing task.
     task_id: int = _dataclass_field(default=0, metadata={'dex_json_name': 'taskID'})
 
 
 setattr(SavedObject, '__module__', 'dex_connectors.algolia.models')
+
+
+# SearchInput selects an index and search phrase.
+@dataclass(frozen=True, slots=True)
+class SearchInput:
+    # IndexName names the Algolia index.
+    index_name: str = _dataclass_field(default='', metadata={'dex_json_name': 'indexName'})
+    # Query is the search phrase; blank matches all records.
+    query: str = ''
+    # HitsPerPage bounds the returned hits; zero uses Algolia's default.
+    hits_per_page: int = _dataclass_field(default=0, metadata={'dex_json_name': 'hitsPerPage', 'dex_json_omit_default': True})
+
+
+setattr(SearchInput, '__module__', 'dex_connectors.algolia.models')
+
+
+# SearchHit retains only identity and display name from a matching record.
+@dataclass(frozen=True, slots=True)
+class SearchHit:
+    # ObjectID is the record's stable ID.
+    object_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'objectID'})
+    # Name is an optional record name.
+    name: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
+
+
+setattr(SearchHit, '__module__', 'dex_connectors.algolia.models')
+
+
+# SearchPage contains a bounded Algolia hit page.
+@dataclass(frozen=True, slots=True)
+class SearchPage:
+    # NbHits is Algolia's count of matching records.
+    nb_hits: int = _dataclass_field(default=0, metadata={'dex_json_name': 'nbHits'})
+    # Hits contains the returned record identities.
+    hits: tuple[SearchHit, ...] | None = None
+
+
+setattr(SearchPage, '__module__', 'dex_connectors.algolia.models')

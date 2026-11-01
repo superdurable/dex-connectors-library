@@ -1,7 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated operation bindings for one named Dex connection."""
 
 from typing import Any
 
@@ -14,7 +13,6 @@ from .definitions import CONNECTOR_ID, GET_MESSAGE_DETAILS_DEFINITION, LIST_OUTB
 from ..models import GetMessageDetailsInput, ListOutboundMessagesInput, MessageDetails, MessagePage
 
 class Connection:
-    """Nonserializable Postmark operation binding."""
 
     __slots__ = ('_list_outbound_messages', '_get_message_details', '_client', 'reference')
 
@@ -37,31 +35,25 @@ class Connection:
         self._client = client
 
     def list_outbound_messages(self) -> Query[ListOutboundMessagesInput, MessagePage]:
-        """Return the list_outbound_messages operation for a Dex Step."""
         return self._list_outbound_messages
 
     def get_message_details(self) -> Query[GetMessageDetailsInput, MessageDetails]:
-        """Return the get_message_details operation for a Dex Step."""
         return self._get_message_details
 
     async def aclose(self) -> None:
-        """Close the owned provider transport after Worker shutdown."""
         if self._client is not None:
             await self._client.aclose()
 
     def __repr__(self) -> str:
-        """Keep provider transport and credentials out of logs."""
         return "postmark.Connection([REDACTED])"
 
     def __reduce__(self) -> tuple[object, ...]:
-        """Prevent a live connection from entering durable Flow state."""
         raise TypeError("Postmark connections cannot be serialized")
 
 setattr(Connection, '__module__', 'dex_connectors.postmark.connection')
 
 
 def new_connection(client: Client, reference: ConnectionRef) -> Connection:
-    """Bind a provider client to an explicit logical connection reference."""
     if client is None:
         raise ValueError("Postmark client is required")
     return Connection(reference, client.list_outbound_messages(), client.get_message_details(), client)
@@ -74,14 +66,12 @@ def new_connection_with_operations(
     get_message_details: Query[GetMessageDetailsInput, MessageDetails],
     reference: ConnectionRef,
 ) -> Connection:
-    """Bind mock operations to the same logical connection identity."""
     return Connection(reference, list_outbound_messages, get_message_details)
 
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.postmark.connection')
 
 
 class _ProjectCredentialSource:
-    """Resolve current secret material at each provider attempt."""
 
     def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
         self.project = project
@@ -98,7 +88,6 @@ class _ProjectCredentialSource:
 def new_project_connection(
     project: LoadedProject, connection_name: str, http_client: httpx.AsyncClient | None = None
 ) -> Connection:
-    """Open declared project settings and resolve provider credentials per call."""
     if project is None:
         raise ValueError("Postmark connection requires loaded project configuration")
     reference = ConnectionRef(CONNECTOR_ID, connection_name)

@@ -1,7 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated manifest-backed provider outcomes and scripts."""
 
 from datetime import datetime
 
@@ -13,80 +12,67 @@ from ..models import ListMonitorsInput, MetricSeries, MetricsQuery, Monitor, Mon
 from .definitions import CONNECTOR_ID, DEFECT, INVALID_RESPONSE, LISTED, LIST_MONITORS_DEFINITION, PROVIDER_REJECTED, QUERIED, QUERY_METRICS_DEFINITION
 
 def query_metrics_queried(value: MetricsQuery, failure: Failure | None = None) -> Case[MetricsQuery]:
-    """Script the queried branch."""
     return Case.branch_result(QUERIED, value, failure)
 
 setattr(query_metrics_queried, '__module__', "dex_connectors.datadog.datadogmock")
 
 def query_metrics_provider_rejected(value: MetricsQuery, failure: Failure | None = None) -> Case[MetricsQuery]:
-    """Script the providerRejected branch."""
     return Case.branch_result(PROVIDER_REJECTED, value, failure)
 
 setattr(query_metrics_provider_rejected, '__module__', "dex_connectors.datadog.datadogmock")
 
 def query_metrics_invalid_response(value: MetricsQuery, failure: Failure | None = None) -> Case[MetricsQuery]:
-    """Script the invalidResponse branch."""
     return Case.branch_result(INVALID_RESPONSE, value, failure)
 
 setattr(query_metrics_invalid_response, '__module__', "dex_connectors.datadog.datadogmock")
 
 def query_metrics_defect(value: MetricsQuery, failure: Failure | None = None) -> Case[MetricsQuery]:
-    """Script the defect branch."""
     return Case.branch_result(DEFECT, value, failure)
 
 setattr(query_metrics_defect, '__module__', "dex_connectors.datadog.datadogmock")
 
 def query_metrics_retry(failure: Failure, after_seconds: float = 0) -> Case[MetricsQuery]:
-    """Script a retry of this provider operation."""
     return Case.retry(failure, after_seconds)
 
 setattr(query_metrics_retry, '__module__', "dex_connectors.datadog.datadogmock")
 
 def query_metrics_queried_default() -> Case[MetricsQuery]:
-    """Return the manifest queriedDefault outcome."""
     return Case.branch_result(QUERIED, MetricsQuery(status='ok', series=(MetricSeries(metric='system.cpu.user', pointlist=((1761436800000, 0.23),)),)))
 
 setattr(query_metrics_queried_default, '__module__', "dex_connectors.datadog.datadogmock")
 
 def list_monitors_listed(value: MonitorsPage, failure: Failure | None = None) -> Case[MonitorsPage]:
-    """Script the listed branch."""
     return Case.branch_result(LISTED, value, failure)
 
 setattr(list_monitors_listed, '__module__', "dex_connectors.datadog.datadogmock")
 
 def list_monitors_provider_rejected(value: MonitorsPage, failure: Failure | None = None) -> Case[MonitorsPage]:
-    """Script the providerRejected branch."""
     return Case.branch_result(PROVIDER_REJECTED, value, failure)
 
 setattr(list_monitors_provider_rejected, '__module__', "dex_connectors.datadog.datadogmock")
 
 def list_monitors_invalid_response(value: MonitorsPage, failure: Failure | None = None) -> Case[MonitorsPage]:
-    """Script the invalidResponse branch."""
     return Case.branch_result(INVALID_RESPONSE, value, failure)
 
 setattr(list_monitors_invalid_response, '__module__', "dex_connectors.datadog.datadogmock")
 
 def list_monitors_defect(value: MonitorsPage, failure: Failure | None = None) -> Case[MonitorsPage]:
-    """Script the defect branch."""
     return Case.branch_result(DEFECT, value, failure)
 
 setattr(list_monitors_defect, '__module__', "dex_connectors.datadog.datadogmock")
 
 def list_monitors_retry(failure: Failure, after_seconds: float = 0) -> Case[MonitorsPage]:
-    """Script a retry of this provider operation."""
     return Case.retry(failure, after_seconds)
 
 setattr(list_monitors_retry, '__module__', "dex_connectors.datadog.datadogmock")
 
 def list_monitors_listed_default() -> Case[MonitorsPage]:
-    """Return the manifest listedDefault outcome."""
     return Case.branch_result(LISTED, MonitorsPage(monitors=(Monitor(id=12345, name='Meridian API latency', type='metric alert', overall_state='OK'),)))
 
 setattr(list_monitors_listed_default, '__module__', "dex_connectors.datadog.datadogmock")
 
 
 class Mock:
-    """Script manifest outcomes for this connector."""
 
     def __init__(self, connection_name: str = "datadog") -> None:
         self.query_metrics_script: Query[QueryMetricsInput, MetricsQuery] = Query(QUERY_METRICS_DEFINITION)
@@ -100,7 +86,6 @@ class Mock:
         )
 
     def connection(self) -> Connection:
-        """Return this mock connection for Dex Step registration."""
         return self._connection
 
 setattr(Mock, '__module__', "dex_connectors.datadog.datadogmock")

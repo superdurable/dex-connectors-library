@@ -1,7 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated operation bindings for one named Dex connection."""
 
 from typing import Any
 
@@ -14,7 +13,6 @@ from .definitions import CONNECTOR_ID, LIST_MONITORS_DEFINITION, QUERY_METRICS_D
 from ..models import ListMonitorsInput, MetricsQuery, MonitorsPage, QueryMetricsInput
 
 class Connection:
-    """Nonserializable Datadog operation binding."""
 
     __slots__ = ('_query_metrics', '_list_monitors', '_client', 'reference')
 
@@ -37,31 +35,25 @@ class Connection:
         self._client = client
 
     def query_metrics(self) -> Query[QueryMetricsInput, MetricsQuery]:
-        """Return the query_metrics operation for a Dex Step."""
         return self._query_metrics
 
     def list_monitors(self) -> Query[ListMonitorsInput, MonitorsPage]:
-        """Return the list_monitors operation for a Dex Step."""
         return self._list_monitors
 
     async def aclose(self) -> None:
-        """Close the owned provider transport after Worker shutdown."""
         if self._client is not None:
             await self._client.aclose()
 
     def __repr__(self) -> str:
-        """Keep provider transport and credentials out of logs."""
         return "datadog.Connection([REDACTED])"
 
     def __reduce__(self) -> tuple[object, ...]:
-        """Prevent a live connection from entering durable Flow state."""
         raise TypeError("Datadog connections cannot be serialized")
 
 setattr(Connection, '__module__', 'dex_connectors.datadog.connection')
 
 
 def new_connection(client: Client, reference: ConnectionRef) -> Connection:
-    """Bind a provider client to an explicit logical connection reference."""
     if client is None:
         raise ValueError("Datadog client is required")
     return Connection(reference, client.query_metrics(), client.list_monitors(), client)
@@ -74,14 +66,12 @@ def new_connection_with_operations(
     list_monitors: Query[ListMonitorsInput, MonitorsPage],
     reference: ConnectionRef,
 ) -> Connection:
-    """Bind mock operations to the same logical connection identity."""
     return Connection(reference, query_metrics, list_monitors)
 
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.datadog.connection')
 
 
 class _ProjectCredentialSource:
-    """Resolve current secret material at each provider attempt."""
 
     def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
         self.project = project
@@ -101,7 +91,6 @@ class _ProjectCredentialSource:
 def new_project_connection(
     project: LoadedProject, connection_name: str, http_client: httpx.AsyncClient | None = None
 ) -> Connection:
-    """Open declared project settings and resolve provider credentials per call."""
     if project is None:
         raise ValueError("Datadog connection requires loaded project configuration")
     reference = ConnectionRef(CONNECTOR_ID, connection_name)

@@ -1,7 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated manifest-backed provider outcomes and scripts."""
 
 from datetime import datetime
 
@@ -13,86 +12,72 @@ from ..models import GetRowInput, GetRowOutput, ListRowsInput, ListRowsOutput
 from .definitions import CONNECTOR_ID, DEFECT, FOUND, GET_ROW_DEFINITION, INVALID_RESPONSE, LISTED, LIST_ROWS_DEFINITION, NOT_FOUND, PROVIDER_REJECTED
 
 def list_rows_listed(value: ListRowsOutput, failure: Failure | None = None) -> Case[ListRowsOutput]:
-    """Script the listed branch."""
     return Case.branch_result(LISTED, value, failure)
 
 setattr(list_rows_listed, '__module__', "dex_connectors.coda.codamock")
 
 def list_rows_provider_rejected(value: ListRowsOutput, failure: Failure | None = None) -> Case[ListRowsOutput]:
-    """Script the providerRejected branch."""
     return Case.branch_result(PROVIDER_REJECTED, value, failure)
 
 setattr(list_rows_provider_rejected, '__module__', "dex_connectors.coda.codamock")
 
 def list_rows_invalid_response(value: ListRowsOutput, failure: Failure | None = None) -> Case[ListRowsOutput]:
-    """Script the invalidResponse branch."""
     return Case.branch_result(INVALID_RESPONSE, value, failure)
 
 setattr(list_rows_invalid_response, '__module__', "dex_connectors.coda.codamock")
 
 def list_rows_defect(value: ListRowsOutput, failure: Failure | None = None) -> Case[ListRowsOutput]:
-    """Script the defect branch."""
     return Case.branch_result(DEFECT, value, failure)
 
 setattr(list_rows_defect, '__module__', "dex_connectors.coda.codamock")
 
 def list_rows_retry(failure: Failure, after_seconds: float = 0) -> Case[ListRowsOutput]:
-    """Script a retry of this provider operation."""
     return Case.retry(failure, after_seconds)
 
 setattr(list_rows_retry, '__module__', "dex_connectors.coda.codamock")
 
 def list_rows_default_list_rows() -> Case[ListRowsOutput]:
-    """Return the manifest defaultListRows outcome."""
     return Case.branch_result(LISTED, ListRowsOutput(data={'items': [{'id': 'i-Meridian', 'name': 'Meridian', 'values': {'c-Name': 'Meridian'}}], 'nextPageToken': ''}))
 
 setattr(list_rows_default_list_rows, '__module__', "dex_connectors.coda.codamock")
 
 def get_row_found(value: GetRowOutput, failure: Failure | None = None) -> Case[GetRowOutput]:
-    """Script the found branch."""
     return Case.branch_result(FOUND, value, failure)
 
 setattr(get_row_found, '__module__', "dex_connectors.coda.codamock")
 
 def get_row_not_found(value: GetRowOutput, failure: Failure | None = None) -> Case[GetRowOutput]:
-    """Script the notFound branch."""
     return Case.branch_result(NOT_FOUND, value, failure)
 
 setattr(get_row_not_found, '__module__', "dex_connectors.coda.codamock")
 
 def get_row_provider_rejected(value: GetRowOutput, failure: Failure | None = None) -> Case[GetRowOutput]:
-    """Script the providerRejected branch."""
     return Case.branch_result(PROVIDER_REJECTED, value, failure)
 
 setattr(get_row_provider_rejected, '__module__', "dex_connectors.coda.codamock")
 
 def get_row_invalid_response(value: GetRowOutput, failure: Failure | None = None) -> Case[GetRowOutput]:
-    """Script the invalidResponse branch."""
     return Case.branch_result(INVALID_RESPONSE, value, failure)
 
 setattr(get_row_invalid_response, '__module__', "dex_connectors.coda.codamock")
 
 def get_row_defect(value: GetRowOutput, failure: Failure | None = None) -> Case[GetRowOutput]:
-    """Script the defect branch."""
     return Case.branch_result(DEFECT, value, failure)
 
 setattr(get_row_defect, '__module__', "dex_connectors.coda.codamock")
 
 def get_row_retry(failure: Failure, after_seconds: float = 0) -> Case[GetRowOutput]:
-    """Script a retry of this provider operation."""
     return Case.retry(failure, after_seconds)
 
 setattr(get_row_retry, '__module__', "dex_connectors.coda.codamock")
 
 def get_row_default_get_row() -> Case[GetRowOutput]:
-    """Return the manifest defaultGetRow outcome."""
     return Case.branch_result(FOUND, GetRowOutput(data={'id': 'i-Meridian', 'name': 'Meridian', 'values': {'c-Name': 'Meridian'}}))
 
 setattr(get_row_default_get_row, '__module__', "dex_connectors.coda.codamock")
 
 
 class Mock:
-    """Script manifest outcomes for this connector."""
 
     def __init__(self, connection_name: str = "coda") -> None:
         self.list_rows_script: Query[ListRowsInput, ListRowsOutput] = Query(LIST_ROWS_DEFINITION)
@@ -106,7 +91,6 @@ class Mock:
         )
 
     def connection(self) -> Connection:
-        """Return this mock connection for Dex Step registration."""
         return self._connection
 
 setattr(Mock, '__module__', "dex_connectors.coda.codamock")

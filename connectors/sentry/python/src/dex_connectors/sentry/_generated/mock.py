@@ -1,7 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated manifest-backed provider outcomes and scripts."""
 
 from datetime import datetime
 
@@ -13,128 +12,107 @@ from ..models import GetIssueInput, Issue, IssuePage, ListIssuesInput, UpdateIss
 from .definitions import CONNECTOR_ID, DEFECT, FOUND, GET_ISSUE_DEFINITION, INVALID_RESPONSE, LISTED, LIST_ISSUES_DEFINITION, NOT_FOUND, PROVIDER_REJECTED, UPDATED, UPDATE_ISSUE_STATUS_DEFINITION
 
 def list_issues_listed(value: IssuePage, failure: Failure | None = None) -> Case[IssuePage]:
-    """Script the listed branch."""
     return Case.branch_result(LISTED, value, failure)
 
 setattr(list_issues_listed, '__module__', "dex_connectors.sentry.sentrymock")
 
 def list_issues_provider_rejected(value: IssuePage, failure: Failure | None = None) -> Case[IssuePage]:
-    """Script the providerRejected branch."""
     return Case.branch_result(PROVIDER_REJECTED, value, failure)
 
 setattr(list_issues_provider_rejected, '__module__', "dex_connectors.sentry.sentrymock")
 
 def list_issues_invalid_response(value: IssuePage, failure: Failure | None = None) -> Case[IssuePage]:
-    """Script the invalidResponse branch."""
     return Case.branch_result(INVALID_RESPONSE, value, failure)
 
 setattr(list_issues_invalid_response, '__module__', "dex_connectors.sentry.sentrymock")
 
 def list_issues_defect(value: IssuePage, failure: Failure | None = None) -> Case[IssuePage]:
-    """Script the defect branch."""
     return Case.branch_result(DEFECT, value, failure)
 
 setattr(list_issues_defect, '__module__', "dex_connectors.sentry.sentrymock")
 
 def list_issues_retry(failure: Failure, after_seconds: float = 0) -> Case[IssuePage]:
-    """Script a retry of this provider operation."""
     return Case.retry(failure, after_seconds)
 
 setattr(list_issues_retry, '__module__', "dex_connectors.sentry.sentrymock")
 
 def list_issues_default() -> Case[IssuePage]:
-    """Return the manifest listIssuesDefault outcome."""
     return Case.branch_result(LISTED, IssuePage(issues=(Issue(id='123', short_id='APP-1', title='ExampleError', status='unresolved'),)))
 
 setattr(list_issues_default, '__module__', "dex_connectors.sentry.sentrymock")
 
 def get_issue_found(value: Issue, failure: Failure | None = None) -> Case[Issue]:
-    """Script the found branch."""
     return Case.branch_result(FOUND, value, failure)
 
 setattr(get_issue_found, '__module__', "dex_connectors.sentry.sentrymock")
 
 def get_issue_not_found(value: Issue, failure: Failure | None = None) -> Case[Issue]:
-    """Script the notFound branch."""
     return Case.branch_result(NOT_FOUND, value, failure)
 
 setattr(get_issue_not_found, '__module__', "dex_connectors.sentry.sentrymock")
 
 def get_issue_provider_rejected(value: Issue, failure: Failure | None = None) -> Case[Issue]:
-    """Script the providerRejected branch."""
     return Case.branch_result(PROVIDER_REJECTED, value, failure)
 
 setattr(get_issue_provider_rejected, '__module__', "dex_connectors.sentry.sentrymock")
 
 def get_issue_invalid_response(value: Issue, failure: Failure | None = None) -> Case[Issue]:
-    """Script the invalidResponse branch."""
     return Case.branch_result(INVALID_RESPONSE, value, failure)
 
 setattr(get_issue_invalid_response, '__module__', "dex_connectors.sentry.sentrymock")
 
 def get_issue_defect(value: Issue, failure: Failure | None = None) -> Case[Issue]:
-    """Script the defect branch."""
     return Case.branch_result(DEFECT, value, failure)
 
 setattr(get_issue_defect, '__module__', "dex_connectors.sentry.sentrymock")
 
 def get_issue_retry(failure: Failure, after_seconds: float = 0) -> Case[Issue]:
-    """Script a retry of this provider operation."""
     return Case.retry(failure, after_seconds)
 
 setattr(get_issue_retry, '__module__', "dex_connectors.sentry.sentrymock")
 
 def get_issue_default() -> Case[Issue]:
-    """Return the manifest getIssueDefault outcome."""
     return Case.branch_result(FOUND, Issue(id='123', short_id='APP-1', title='ExampleError', status='unresolved'))
 
 setattr(get_issue_default, '__module__', "dex_connectors.sentry.sentrymock")
 
 def update_issue_status_updated(value: Issue, failure: Failure | None = None) -> Case[Issue]:
-    """Script the updated branch."""
     return Case.branch_result(UPDATED, value, failure)
 
 setattr(update_issue_status_updated, '__module__', "dex_connectors.sentry.sentrymock")
 
 def update_issue_status_not_found(value: Issue, failure: Failure | None = None) -> Case[Issue]:
-    """Script the notFound branch."""
     return Case.branch_result(NOT_FOUND, value, failure)
 
 setattr(update_issue_status_not_found, '__module__', "dex_connectors.sentry.sentrymock")
 
 def update_issue_status_provider_rejected(value: Issue, failure: Failure | None = None) -> Case[Issue]:
-    """Script the providerRejected branch."""
     return Case.branch_result(PROVIDER_REJECTED, value, failure)
 
 setattr(update_issue_status_provider_rejected, '__module__', "dex_connectors.sentry.sentrymock")
 
 def update_issue_status_invalid_response(value: Issue, failure: Failure | None = None) -> Case[Issue]:
-    """Script the invalidResponse branch."""
     return Case.branch_result(INVALID_RESPONSE, value, failure)
 
 setattr(update_issue_status_invalid_response, '__module__', "dex_connectors.sentry.sentrymock")
 
 def update_issue_status_defect(value: Issue, failure: Failure | None = None) -> Case[Issue]:
-    """Script the defect branch."""
     return Case.branch_result(DEFECT, value, failure)
 
 setattr(update_issue_status_defect, '__module__', "dex_connectors.sentry.sentrymock")
 
 def update_issue_status_retry(failure: Failure, after_seconds: float = 0) -> Case[Issue]:
-    """Script a retry of this provider operation."""
     return Case.retry(failure, after_seconds)
 
 setattr(update_issue_status_retry, '__module__', "dex_connectors.sentry.sentrymock")
 
 def update_issue_status_default() -> Case[Issue]:
-    """Return the manifest updateIssueStatusDefault outcome."""
     return Case.branch_result(UPDATED, Issue(id='123', short_id='APP-1', title='ExampleError', status='resolved'))
 
 setattr(update_issue_status_default, '__module__', "dex_connectors.sentry.sentrymock")
 
 
 class Mock:
-    """Script manifest outcomes for this connector."""
 
     def __init__(self, connection_name: str = "sentry") -> None:
         self.list_issues_script: Query[ListIssuesInput, IssuePage] = Query(LIST_ISSUES_DEFINITION)
@@ -151,7 +129,6 @@ class Mock:
         )
 
     def connection(self) -> Connection:
-        """Return this mock connection for Dex Step registration."""
         return self._connection
 
 setattr(Mock, '__module__', "dex_connectors.sentry.sentrymock")

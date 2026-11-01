@@ -1,70 +1,74 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated Python dataclasses from Go operation types."""
 
 from dataclasses import dataclass, field as _dataclass_field
 
+# ListSitesInput requests the default Netlify sites page.
 @dataclass(frozen=True, slots=True)
 class ListSitesInput:
-    """Typed ListSitesInput value from the Go connector contract."""
-
     pass
 
 
 setattr(ListSitesInput, '__module__', 'dex_connectors.netlify.models')
 
 
+# Site is a Netlify site summary.
 @dataclass(frozen=True, slots=True)
 class Site:
-    """Typed Site value from the Go connector contract."""
-
+    # ID is the API site identifier, shown as Project ID in Netlify.
     id: str = ''
+    # Name is the site name.
     name: str = ''
+    # URL is the site's public URL.
     url: str = ''
+    # AdminURL links to the Netlify management page.
     admin_url: str = ''
 
 
 setattr(Site, '__module__', 'dex_connectors.netlify.models')
 
 
+# SitesPage contains the returned sites.
 @dataclass(frozen=True, slots=True)
 class SitesPage:
-    """Typed SitesPage value from the Go connector contract."""
-
+    # Sites contains one provider page, possibly empty.
     sites: tuple[Site, ...] | None = None
 
 
 setattr(SitesPage, '__module__', 'dex_connectors.netlify.models')
 
 
+# ListDeploysInput names the site whose deploys are listed.
 @dataclass(frozen=True, slots=True)
 class ListDeploysInput:
-    """Typed ListDeploysInput value from the Go connector contract."""
-
+    # SiteID is the API site ID or accepted site domain.
     site_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'siteId'})
 
 
 setattr(ListDeploysInput, '__module__', 'dex_connectors.netlify.models')
 
 
+# Deploy is a Netlify deploy summary.
 @dataclass(frozen=True, slots=True)
 class Deploy:
-    """Typed Deploy value from the Go connector contract."""
-
+    # ID is the deployment identifier.
     id: str = ''
+    # SiteID identifies its Netlify site.
     site_id: str = ''
+    # State is the provider-reported deployment state.
     state: str = ''
+    # URL is the deployment URL.
     url: str = ''
 
 
 setattr(Deploy, '__module__', 'dex_connectors.netlify.models')
 
 
+# DeploysPage contains the returned deploys.
 @dataclass(frozen=True, slots=True)
 class DeploysPage:
-    """Typed DeploysPage value from the Go connector contract."""
-
+    # Deploys contains one provider page, possibly empty.
     deploys: tuple[Deploy, ...] | None = None
 
 

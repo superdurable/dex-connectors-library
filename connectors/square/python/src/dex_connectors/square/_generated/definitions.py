@@ -1,7 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated operation identities, branches, and Step defaults."""
 
 from datetime import timedelta
 

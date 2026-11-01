@@ -5,13 +5,14 @@
 import json
 import re
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
+from datetime import timedelta as timedelta
 from typing import Any, TypeVar
 from urllib.parse import urlencode
 
 import httpx
+from dex_connectors.sdk import BranchDefinition as BranchDefinition
 from dex_connectors.sdk import (
-    BranchDefinition,
     Call,
     CallID,
     CredentialProvider,
@@ -24,8 +25,10 @@ from dex_connectors.sdk import (
     QueryDefinition,
     ReauthorizationRequiredError,
     Receipt,
-    StepDefaults,
 )
+from dex_connectors.sdk import OperationRef as OperationRef
+from dex_connectors.sdk import SecretString as SecretString
+from dex_connectors.sdk import StepDefaults as StepDefaults
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -36,7 +39,9 @@ from dex_connectors.sdk.providerhttp import (
     send_traced,
     validate_base_url,
 )
-from dex_connectors.sdk.retry_policy import default_connector_step_execute_retry_policy
+from dex_connectors.sdk.retry_policy import (
+    default_connector_step_execute_retry_policy as default_connector_step_execute_retry_policy,
+)
 
 from ._generated.config import (
     Config as Config,
@@ -84,22 +89,12 @@ _DEFAULT_MAX_RESPONSE_BYTES = 2_097_152
 _DEFAULT_SELECT_LIMIT = 100
 _MAX_SELECT_LIMIT = 1000
 _MAX_UPSERT_ROWS = 100
-_STEP_DEFAULTS = StepDefaults(
-    timedelta(seconds=30), 2, execute_retry=default_connector_step_execute_retry_policy()
-)
 _STATUS_KINDS = {
     401: FailureKind.AUTHENTICATION,
     403: FailureKind.AUTHORIZATION,
     400: FailureKind.VALIDATION,
     422: FailureKind.VALIDATION,
 }
-_SHARED_BRANCHES = (
-    BranchDefinition(
-        PROVIDER_REJECTED, "The provider conclusively rejected the request or credentials.", True
-    ),
-    BranchDefinition(INVALID_RESPONSE, "The provider returned malformed or oversized JSON.", True),
-    BranchDefinition(DEFECT, "Local input, configuration, or credentials are invalid.", True),
-)
 
 Output = TypeVar("Output")
 

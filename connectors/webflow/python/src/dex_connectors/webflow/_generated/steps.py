@@ -1,7 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated operation-specific Dex Step factories."""
 
 from collections.abc import Callable, Mapping
 from typing import Any, TypeVar
@@ -34,7 +33,6 @@ def new_list_collection_items_step(
     result_attribute: dex.Attribute[QueryResult[ListCollectionItemsOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
 ) -> QueryStep[StepInput, ListCollectionItemsInput, ListCollectionItemsOutput]:
-    """Create the list_collection_items Step with the manifest branch identities."""
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Webflow Step connection name must match its connection reference")
     if isinstance(annotations, StepAnnotations):
@@ -86,7 +84,6 @@ def new_get_collection_item_step(
     result_attribute: dex.Attribute[QueryResult[GetCollectionItemOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
 ) -> QueryStep[StepInput, GetCollectionItemInput, GetCollectionItemOutput]:
-    """Create the get_collection_item Step with the manifest branch identities."""
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Webflow Step connection name must match its connection reference")
     if isinstance(annotations, StepAnnotations):
@@ -126,7 +123,6 @@ setattr(new_get_collection_item_step, '__module__', 'dex_connectors.webflow.step
 
 
 def _bound_operation(connection: Connection, operation_name: str) -> Any:
-    """Resolve a bound operation from a connection or its operation collection."""
     source = getattr(connection, operation_name, None)
     if source is None:
         source = getattr(getattr(connection, "operations", None), operation_name, None)

@@ -11,7 +11,7 @@ spec:
   languages:
     python:
       version: v0.1.0
-      operations: [search, saveObject]
+      operations: [saveObject, search]
       triggers: []
   codegen:
     go:

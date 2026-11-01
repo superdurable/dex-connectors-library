@@ -5,13 +5,15 @@
 import json
 import re
 from collections.abc import Callable
-from datetime import UTC, datetime, timedelta
+from dataclasses import dataclass as dataclass
+from datetime import UTC, datetime
+from datetime import timedelta as timedelta
 from typing import Any, TypeVar
 from urllib.parse import urlencode
 
 import httpx
+from dex_connectors.sdk import BranchDefinition as BranchDefinition
 from dex_connectors.sdk import (
-    BranchDefinition,
     Call,
     CredentialProvider,
     Failure,
@@ -20,8 +22,10 @@ from dex_connectors.sdk import (
     QueryDefinition,
     ReauthorizationRequiredError,
     Receipt,
-    StepDefaults,
 )
+from dex_connectors.sdk import OperationRef as OperationRef
+from dex_connectors.sdk import SecretString as SecretString
+from dex_connectors.sdk import StepDefaults as StepDefaults
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -32,7 +36,9 @@ from dex_connectors.sdk.providerhttp import (
     send_traced,
     validate_base_url,
 )
-from dex_connectors.sdk.retry_policy import default_connector_step_execute_retry_policy
+from dex_connectors.sdk.retry_policy import (
+    default_connector_step_execute_retry_policy as default_connector_step_execute_retry_policy,
+)
 
 from ._generated.config import (
     Config as Config,
@@ -77,16 +83,6 @@ _DEFAULT_TIMEOUT_SECONDS = 15
 _DEFAULT_MAX_RESPONSE_BYTES = 1_048_576
 _SYMBOL = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,24}")
 _RATE_LIMIT_PHRASES = ("rate limit", "call frequency", "requests per day")
-_STEP_DEFAULTS = StepDefaults(
-    timedelta(seconds=30), 2, execute_retry=default_connector_step_execute_retry_policy()
-)
-_BRANCHES = (
-    BranchDefinition(FOUND, "Alpha Vantage returned the requested result."),
-    BranchDefinition(NOT_FOUND, "No market data exists for the requested symbol.", True),
-    BranchDefinition(PROVIDER_REJECTED, "The provider conclusively rejected the request.", True),
-    BranchDefinition(INVALID_RESPONSE, "The provider returned malformed or oversized data.", True),
-    BranchDefinition(DEFECT, "Local input or credentials are invalid.", True),
-)
 
 
 class _NoDataError(ValueError):

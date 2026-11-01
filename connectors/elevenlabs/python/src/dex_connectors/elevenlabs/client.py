@@ -6,13 +6,15 @@ import base64
 import json
 import re
 from collections.abc import Callable
+from dataclasses import dataclass as dataclass
 from datetime import UTC, datetime
+from datetime import timedelta as timedelta
 from typing import Any, TypeVar
 from urllib.parse import urlencode
 
 import httpx
+from dex_connectors.sdk import BranchDefinition as BranchDefinition
 from dex_connectors.sdk import (
-    BranchDefinition,
     Call,
     CredentialProvider,
     Failure,
@@ -22,6 +24,9 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk import OperationRef as OperationRef
+from dex_connectors.sdk import SecretString as SecretString
+from dex_connectors.sdk import StepDefaults as StepDefaults
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -31,6 +36,10 @@ from dex_connectors.sdk.providerhttp import (
     read_bounded_body,
     send_traced,
     validate_base_url,
+)
+from dex_connectors.sdk.retry_policy import RetryPolicy as RetryPolicy
+from dex_connectors.sdk.retry_policy import (
+    default_connector_step_execute_retry_policy as default_connector_step_execute_retry_policy,
 )
 
 from ._generated.config import (
@@ -79,11 +88,6 @@ _DEFAULT_MAX_RESPONSE_BYTES = 2_097_152
 _MAX_PAGE_SIZE = 100
 _VOICE_ID = re.compile(r"[A-Za-z0-9_-]{1,128}")
 _CREDENTIAL_MESSAGE = "connection credentials are unavailable or invalid"
-_SHARED_BRANCHES = (
-    BranchDefinition(PROVIDER_REJECTED, "The provider conclusively rejected the request.", True),
-    BranchDefinition(INVALID_RESPONSE, "The provider returned malformed or oversized data.", True),
-    BranchDefinition(DEFECT, "Local input or credentials are invalid.", True),
-)
 
 Output = TypeVar("Output")
 

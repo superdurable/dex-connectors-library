@@ -1,7 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated manifest-backed provider outcomes and scripts."""
 
 from datetime import datetime
 
@@ -13,80 +12,67 @@ from ..models import EventImportResult, ExportEventsInput, ExportedEvent, Export
 from .definitions import CONNECTOR_ID, DEFECT, EXPORTED, EXPORT_EVENTS_DEFINITION, IMPORTED, INVALID_RESPONSE, PROVIDER_REJECTED, TRACK_EVENT_DEFINITION
 
 def track_event_imported(value: EventImportResult, failure: Failure | None = None) -> Case[EventImportResult]:
-    """Script the imported branch."""
     return Case.branch_result(IMPORTED, value, failure)
 
 setattr(track_event_imported, '__module__', "dex_connectors.mixpanel.mixpanelmock")
 
 def track_event_provider_rejected(value: EventImportResult, failure: Failure | None = None) -> Case[EventImportResult]:
-    """Script the providerRejected branch."""
     return Case.branch_result(PROVIDER_REJECTED, value, failure)
 
 setattr(track_event_provider_rejected, '__module__', "dex_connectors.mixpanel.mixpanelmock")
 
 def track_event_invalid_response(value: EventImportResult, failure: Failure | None = None) -> Case[EventImportResult]:
-    """Script the invalidResponse branch."""
     return Case.branch_result(INVALID_RESPONSE, value, failure)
 
 setattr(track_event_invalid_response, '__module__', "dex_connectors.mixpanel.mixpanelmock")
 
 def track_event_defect(value: EventImportResult, failure: Failure | None = None) -> Case[EventImportResult]:
-    """Script the defect branch."""
     return Case.branch_result(DEFECT, value, failure)
 
 setattr(track_event_defect, '__module__', "dex_connectors.mixpanel.mixpanelmock")
 
 def track_event_retry(failure: Failure, after_seconds: float = 0) -> Case[EventImportResult]:
-    """Script a retry of this provider operation."""
     return Case.retry(failure, after_seconds)
 
 setattr(track_event_retry, '__module__', "dex_connectors.mixpanel.mixpanelmock")
 
 def track_event_imported_default_event() -> Case[EventImportResult]:
-    """Return the manifest importedDefaultEvent outcome."""
     return Case.branch_result(IMPORTED, EventImportResult(imported=True))
 
 setattr(track_event_imported_default_event, '__module__', "dex_connectors.mixpanel.mixpanelmock")
 
 def export_events_exported(value: ExportedEvents, failure: Failure | None = None) -> Case[ExportedEvents]:
-    """Script the exported branch."""
     return Case.branch_result(EXPORTED, value, failure)
 
 setattr(export_events_exported, '__module__', "dex_connectors.mixpanel.mixpanelmock")
 
 def export_events_provider_rejected(value: ExportedEvents, failure: Failure | None = None) -> Case[ExportedEvents]:
-    """Script the providerRejected branch."""
     return Case.branch_result(PROVIDER_REJECTED, value, failure)
 
 setattr(export_events_provider_rejected, '__module__', "dex_connectors.mixpanel.mixpanelmock")
 
 def export_events_invalid_response(value: ExportedEvents, failure: Failure | None = None) -> Case[ExportedEvents]:
-    """Script the invalidResponse branch."""
     return Case.branch_result(INVALID_RESPONSE, value, failure)
 
 setattr(export_events_invalid_response, '__module__', "dex_connectors.mixpanel.mixpanelmock")
 
 def export_events_defect(value: ExportedEvents, failure: Failure | None = None) -> Case[ExportedEvents]:
-    """Script the defect branch."""
     return Case.branch_result(DEFECT, value, failure)
 
 setattr(export_events_defect, '__module__', "dex_connectors.mixpanel.mixpanelmock")
 
 def export_events_retry(failure: Failure, after_seconds: float = 0) -> Case[ExportedEvents]:
-    """Script a retry of this provider operation."""
     return Case.retry(failure, after_seconds)
 
 setattr(export_events_retry, '__module__', "dex_connectors.mixpanel.mixpanelmock")
 
 def export_events_exported_default_events() -> Case[ExportedEvents]:
-    """Return the manifest exportedDefaultEvents outcome."""
     return Case.branch_result(EXPORTED, ExportedEvents(events=(ExportedEvent(event='Signed Up', distinct_id='member-1', time=1793232000, insert_id='4b5d3f33-2e21-4c1c-b392-2dae2a74a2ed'),)))
 
 setattr(export_events_exported_default_events, '__module__', "dex_connectors.mixpanel.mixpanelmock")
 
 
 class Mock:
-    """Script manifest outcomes for this connector."""
 
     def __init__(self, connection_name: str = "mixpanel") -> None:
         self.track_event_script: Mutation[TrackEventInput, EventImportResult] = Mutation(TRACK_EVENT_DEFINITION)
@@ -100,7 +86,6 @@ class Mock:
         )
 
     def connection(self) -> Connection:
-        """Return this mock connection for Dex Step registration."""
         return self._connection
 
 setattr(Mock, '__module__', "dex_connectors.mixpanel.mixpanelmock")

@@ -1,50 +1,55 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated Python dataclasses from Go operation types."""
 
 from dataclasses import dataclass, field as _dataclass_field
 
+# WeatherInput selects coordinates and temperature units.
 @dataclass(frozen=True, slots=True)
 class WeatherInput:
-    """Typed WeatherInput value from the Go connector contract."""
-
+    # Latitude is degrees north, from -90 through 90.
     latitude: float = 0.0
+    # Longitude is degrees east, from -180 through 180.
     longitude: float = 0.0
+    # Units is standard, metric, or imperial; blank uses standard.
     units: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
 
 
 setattr(WeatherInput, '__module__', 'dex_connectors.openweathermap.models')
 
 
+# CurrentWeatherOutput is the current temperature and condition at a location.
 @dataclass(frozen=True, slots=True)
 class CurrentWeatherOutput:
-    """Typed CurrentWeatherOutput value from the Go connector contract."""
-
+    # City is the provider's location name.
     city: str = ''
+    # Temperature uses the requested units.
     temperature: float = 0.0
+    # Description is the provider's weather condition text.
     description: str = ''
 
 
 setattr(CurrentWeatherOutput, '__module__', 'dex_connectors.openweathermap.models')
 
 
+# ForecastEntry is one three-hour forecast point.
 @dataclass(frozen=True, slots=True)
 class ForecastEntry:
-    """Typed ForecastEntry value from the Go connector contract."""
-
+    # Timestamp is the forecast's UTC Unix time in seconds.
     timestamp: int = 0
+    # Temperature uses the requested units.
     temperature: float = 0.0
 
 
 setattr(ForecastEntry, '__module__', 'dex_connectors.openweathermap.models')
 
 
+# ForecastOutput contains one five-day forecast page.
 @dataclass(frozen=True, slots=True)
 class ForecastOutput:
-    """Typed ForecastOutput value from the Go connector contract."""
-
+    # City is the provider's location name.
     city: str = ''
+    # Entries are the forecast's three-hour points.
     entries: tuple[ForecastEntry, ...] | None = None
 
 

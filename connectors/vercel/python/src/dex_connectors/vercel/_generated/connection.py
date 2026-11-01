@@ -1,7 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated operation bindings for one named Dex connection."""
 
 from typing import Any
 
@@ -14,7 +13,6 @@ from .definitions import CONNECTOR_ID, GET_DEPLOYMENT_DEFINITION, LIST_DEPLOYMEN
 from ..models import Deployment, DeploymentsPage, GetDeploymentInput, ListDeploymentsInput
 
 class Connection:
-    """Nonserializable Vercel operation binding."""
 
     __slots__ = ('_list_deployments', '_get_deployment', '_client', 'reference')
 
@@ -37,31 +35,25 @@ class Connection:
         self._client = client
 
     def list_deployments(self) -> Query[ListDeploymentsInput, DeploymentsPage]:
-        """Return the list_deployments operation for a Dex Step."""
         return self._list_deployments
 
     def get_deployment(self) -> Query[GetDeploymentInput, Deployment]:
-        """Return the get_deployment operation for a Dex Step."""
         return self._get_deployment
 
     async def aclose(self) -> None:
-        """Close the owned provider transport after Worker shutdown."""
         if self._client is not None:
             await self._client.aclose()
 
     def __repr__(self) -> str:
-        """Keep provider transport and credentials out of logs."""
         return "vercel.Connection([REDACTED])"
 
     def __reduce__(self) -> tuple[object, ...]:
-        """Prevent a live connection from entering durable Flow state."""
         raise TypeError("Vercel connections cannot be serialized")
 
 setattr(Connection, '__module__', 'dex_connectors.vercel.connection')
 
 
 def new_connection(client: Client, reference: ConnectionRef) -> Connection:
-    """Bind a provider client to an explicit logical connection reference."""
     if client is None:
         raise ValueError("Vercel client is required")
     return Connection(reference, client.list_deployments(), client.get_deployment(), client)
@@ -74,14 +66,12 @@ def new_connection_with_operations(
     get_deployment: Query[GetDeploymentInput, Deployment],
     reference: ConnectionRef,
 ) -> Connection:
-    """Bind mock operations to the same logical connection identity."""
     return Connection(reference, list_deployments, get_deployment)
 
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.vercel.connection')
 
 
 class _ProjectCredentialSource:
-    """Resolve current secret material at each provider attempt."""
 
     def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
         self.project = project
@@ -98,7 +88,6 @@ class _ProjectCredentialSource:
 def new_project_connection(
     project: LoadedProject, connection_name: str, http_client: httpx.AsyncClient | None = None
 ) -> Connection:
-    """Open declared project settings and resolve provider credentials per call."""
     if project is None:
         raise ValueError("Vercel connection requires loaded project configuration")
     reference = ConnectionRef(CONNECTOR_ID, connection_name)

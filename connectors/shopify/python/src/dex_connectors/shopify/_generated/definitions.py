@@ -1,7 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated operation identities, branches, and Step defaults."""
 
 from datetime import timedelta
 
@@ -17,8 +16,8 @@ from dex_connectors.sdk import (
 
 CONNECTOR_ID = "shopify"
 PROVIDER = "shopify"
-GET_ORDER_OPERATION_ID = "getOrder"
 LIST_ORDERS_OPERATION_ID = "listOrders"
+GET_ORDER_OPERATION_ID = "getOrder"
 DEFECT = "defect"
 FOUND = "found"
 INVALID_RESPONSE = "invalidResponse"
@@ -26,10 +25,10 @@ LISTED = "listed"
 NOT_FOUND = "notFound"
 PROVIDER_REJECTED = "providerRejected"
 
-GET_ORDER_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, GET_ORDER_OPERATION_ID),
+LIST_ORDERS_DEFINITION = QueryDefinition(
+    OperationRef(CONNECTOR_ID, LIST_ORDERS_OPERATION_ID),
     (
-        BranchDefinition(FOUND, "Read one Shopify order.", False),
+        BranchDefinition(LISTED, "List one page of Shopify orders.", False),
         BranchDefinition(NOT_FOUND, "The requested resource was not found.", True),
         BranchDefinition(PROVIDER_REJECTED, "The provider conclusively rejected the request.", True),
         BranchDefinition(INVALID_RESPONSE, "The provider returned malformed or oversized JSON.", True),
@@ -42,10 +41,10 @@ GET_ORDER_DEFINITION = QueryDefinition(
     ),
 )
 
-LIST_ORDERS_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, LIST_ORDERS_OPERATION_ID),
+GET_ORDER_DEFINITION = QueryDefinition(
+    OperationRef(CONNECTOR_ID, GET_ORDER_OPERATION_ID),
     (
-        BranchDefinition(LISTED, "List one page of Shopify orders.", False),
+        BranchDefinition(FOUND, "Read one Shopify order.", False),
         BranchDefinition(NOT_FOUND, "The requested resource was not found.", True),
         BranchDefinition(PROVIDER_REJECTED, "The provider conclusively rejected the request.", True),
         BranchDefinition(INVALID_RESPONSE, "The provider returned malformed or oversized JSON.", True),

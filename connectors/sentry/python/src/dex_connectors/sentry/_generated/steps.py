@@ -1,7 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated operation-specific Dex Step factories."""
 
 from collections.abc import Callable, Mapping
 from typing import Any, TypeVar
@@ -37,7 +36,6 @@ def new_list_issues_step(
     result_attribute: dex.Attribute[QueryResult[IssuePage]] | None = None,
     step_options_override: dex.StepOptions | None = None,
 ) -> QueryStep[StepInput, ListIssuesInput, IssuePage]:
-    """Create the list_issues Step with the manifest branch identities."""
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Sentry Step connection name must match its connection reference")
     if isinstance(annotations, StepAnnotations):
@@ -89,7 +87,6 @@ def new_get_issue_step(
     result_attribute: dex.Attribute[QueryResult[Issue]] | None = None,
     step_options_override: dex.StepOptions | None = None,
 ) -> QueryStep[StepInput, GetIssueInput, Issue]:
-    """Create the get_issue Step with the manifest branch identities."""
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Sentry Step connection name must match its connection reference")
     if isinstance(annotations, StepAnnotations):
@@ -143,7 +140,6 @@ def new_update_issue_status_step(
     result_attribute: dex.Attribute[MutationResult[Issue]] | None = None,
     step_options_override: dex.StepOptions | None = None,
 ) -> MutationStep[StepInput, UpdateIssueStatusInput, Issue]:
-    """Create the update_issue_status Step with the manifest branch identities."""
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Sentry Step connection name must match its connection reference")
     if isinstance(annotations, StepAnnotations):
@@ -183,7 +179,6 @@ setattr(new_update_issue_status_step, '__module__', 'dex_connectors.sentry.steps
 
 
 def _bound_operation(connection: Connection, operation_name: str) -> Any:
-    """Resolve a bound operation from a connection or its operation collection."""
     source = getattr(connection, operation_name, None)
     if source is None:
         source = getattr(getattr(connection, "operations", None), operation_name, None)

@@ -37,15 +37,20 @@ Go-derived operation dataclasses, Config and Credentials, operation definitions
 and branch constants, Step factories, connection bindings, and manifest mock
 outcomes. Run `connectorctl generate --lang python <connector.yaml>` to update
 only these Python files; `--lang python --check` verifies them without writing.
+Python generation requires `python3` on `PATH`.
 The default `generate` and `generate --check` include them. The manifest selects
-the Python operations and defines their identities, branches, settings, and
+the Python operations in the order used by generated connection constructors,
+and defines their identities, branches, settings, and
 mock scenarios. The named Go input and output structs define model fields and
 JSON names. `omitempty` and `omitzero` make a key optional; a nilable Go value
 without either option remains a required key that may be null. Embedded structs
-follow `encoding/json` field selection, and named constants become typed enum
-values. Keep provider HTTP behavior and each operation's invocation in
+follow `encoding/json` field selection, and named constants use open string or
+integer types so unknown provider values remain decodable. An optional Go
+pointer becomes `T | None`: `None` omits the key, while `False`, zero, and empty
+collections remain present. Non-omitting nilable fields accept and emit JSON
+null. Keep provider HTTP behavior and each operation's invocation in
 hand-written modules. Preserve historical Python constructors and mock names
-through small hand-written facade modules when they differ from the canonical
+through hand-written facade modules when they differ from the canonical
 Go shape. A facade containing `# connectorctl: handwritten facade` owns its
 Step, connection, or mock component and suppresses that generated file. Do not
 edit `_generated/` files directly.

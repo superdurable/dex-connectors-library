@@ -1,7 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated operation bindings for one named Dex connection."""
 
 from typing import Any
 
@@ -14,7 +13,6 @@ from .definitions import CONNECTOR_ID, GET_FILE_COMMENTS_DEFINITION, GET_FILE_DE
 from ..models import File, FileComments, GetFileCommentsInput, GetFileInput
 
 class Connection:
-    """Nonserializable Figma operation binding."""
 
     __slots__ = ('_get_file', '_get_file_comments', '_client', 'reference')
 
@@ -37,31 +35,25 @@ class Connection:
         self._client = client
 
     def get_file(self) -> Query[GetFileInput, File]:
-        """Return the get_file operation for a Dex Step."""
         return self._get_file
 
     def get_file_comments(self) -> Query[GetFileCommentsInput, FileComments]:
-        """Return the get_file_comments operation for a Dex Step."""
         return self._get_file_comments
 
     async def aclose(self) -> None:
-        """Close the owned provider transport after Worker shutdown."""
         if self._client is not None:
             await self._client.aclose()
 
     def __repr__(self) -> str:
-        """Keep provider transport and credentials out of logs."""
         return "figma.Connection([REDACTED])"
 
     def __reduce__(self) -> tuple[object, ...]:
-        """Prevent a live connection from entering durable Flow state."""
         raise TypeError("Figma connections cannot be serialized")
 
 setattr(Connection, '__module__', 'dex_connectors.figma.connection')
 
 
 def new_connection(client: Client, reference: ConnectionRef) -> Connection:
-    """Bind a provider client to an explicit logical connection reference."""
     if client is None:
         raise ValueError("Figma client is required")
     return Connection(reference, client.get_file(), client.get_file_comments(), client)
@@ -74,14 +66,12 @@ def new_connection_with_operations(
     get_file_comments: Query[GetFileCommentsInput, FileComments],
     reference: ConnectionRef,
 ) -> Connection:
-    """Bind mock operations to the same logical connection identity."""
     return Connection(reference, get_file, get_file_comments)
 
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.figma.connection')
 
 
 class _ProjectCredentialSource:
-    """Resolve current secret material at each provider attempt."""
 
     def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
         self.project = project
@@ -98,7 +88,6 @@ class _ProjectCredentialSource:
 def new_project_connection(
     project: LoadedProject, connection_name: str, http_client: httpx.AsyncClient | None = None
 ) -> Connection:
-    """Open declared project settings and resolve provider credentials per call."""
     if project is None:
         raise ValueError("Figma connection requires loaded project configuration")
     reference = ConnectionRef(CONNECTOR_ID, connection_name)

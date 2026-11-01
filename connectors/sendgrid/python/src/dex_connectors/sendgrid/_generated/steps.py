@@ -1,7 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated operation-specific Dex Step factories."""
 
 from collections.abc import Callable, Mapping
 from typing import Any, TypeVar
@@ -34,7 +33,6 @@ def new_get_stats_step(
     result_attribute: dex.Attribute[QueryResult[StatsOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
 ) -> QueryStep[StepInput, GetStatsInput, StatsOutput]:
-    """Create the get_stats Step with the manifest branch identities."""
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("SendGrid Step connection name must match its connection reference")
     if isinstance(annotations, StepAnnotations):
@@ -85,7 +83,6 @@ def new_list_templates_step(
     result_attribute: dex.Attribute[QueryResult[TemplatesOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
 ) -> QueryStep[StepInput, ListTemplatesInput, TemplatesOutput]:
-    """Create the list_templates Step with the manifest branch identities."""
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("SendGrid Step connection name must match its connection reference")
     if isinstance(annotations, StepAnnotations):
@@ -123,7 +120,6 @@ setattr(new_list_templates_step, '__module__', 'dex_connectors.sendgrid.steps')
 
 
 def _bound_operation(connection: Connection, operation_name: str) -> Any:
-    """Resolve a bound operation from a connection or its operation collection."""
     source = getattr(connection, operation_name, None)
     if source is None:
         source = getattr(getattr(connection, "operations", None), operation_name, None)

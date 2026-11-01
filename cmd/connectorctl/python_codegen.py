@@ -11,22 +11,25 @@ payload = json.load(sys.stdin)
 manifest = payload["manifest"]
 metadata = manifest["metadata"]
 spec = manifest["spec"]
-selected = set(spec["languages"]["python"]["operations"])
+operations_by_name = {operation["name"]: operation for operation in spec["operations"]}
 operations = [
-    operation for operation in spec["operations"] if operation["name"] in selected
+    operations_by_name[name] for name in spec["languages"]["python"]["operations"]
 ]
 connector_id = metadata["name"]
 package_name = payload["packageName"]
+mock_package_name = payload["mockPackageName"]
 
 
 models = [
     {
         "name": model["Name"],
+        "description": model.get("Comment", ""),
         "fields": [
             {
                 "jsonName": field_info["Name"],
                 "omitEmpty": field_info["Optional"],
-                "description": "",
+                "hasPresence": field_info.get("HasPresence", False),
+                "description": field_info.get("Comment", ""),
                 "irType": field_info["Type"],
             }
             for field_info in model["Fields"]
@@ -41,6 +44,11 @@ def snake(value):
     value = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1_\2", value)
     value = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", value)
     return value.replace("-", "_").lower()
+
+
+def python_field_name(value):
+    name = snake(value)
+    return name + "_" if keyword.iskeyword(name) else name
 
 
 def constant(value):
@@ -80,7 +88,9 @@ def referenced_models(type_info):
     return set()
 
 
-def python_type(type_info, defined_models, required_models, optional=False):
+def python_type(
+    type_info, defined_models, required_models, optional=False, has_presence=False
+):
     kind = type_info["Kind"]
     if kind == "ref":
         name = type_info["Ref"]
@@ -88,22 +98,23 @@ def python_type(type_info, defined_models, required_models, optional=False):
         if name in required_models:
             default = None
         elif name in defined_models:
-            default = f"field(default_factory={name})"
+            default = f"_dataclass_field(default_factory={name})"
         else:
-            default = f"field(default_factory=lambda: {name}())"
+            default = f"_dataclass_field(default_factory=lambda: {name}())"
     elif kind == "list":
         element, _ = python_type(type_info["Elem"], defined_models, required_models)
         annotation, default = f"tuple[{element}, ...]", "()"
     elif kind == "map":
         key, _ = python_type(type_info["Key"], defined_models, required_models)
         element, _ = python_type(type_info["Elem"], defined_models, required_models)
-        annotation, default = f"dict[{key}, {element}]", "field(default_factory=dict)"
-    elif kind == "enum":
-        values = ", ".join(
-            quoted(value) if type_info["EnumBase"] == "string" else value
-            for value in type_info["EnumValues"]
+        annotation, default = (
+            f"dict[{key}, {element}]",
+            "_dataclass_field(default_factory=dict)",
         )
-        annotation, default = f"Literal[{values}]", None
+    elif kind == "enum":
+        annotation, default = (
+            ("str", None) if type_info["EnumBase"] == "string" else ("int", None)
+        )
     else:
         annotation, default = {
             "string": ("str", "''"),
@@ -113,12 +124,12 @@ def python_type(type_info, defined_models, required_models, optional=False):
             "float": ("float", "0.0"),
             "time": (
                 "datetime",
-                "field(default_factory=lambda: datetime.min.replace(tzinfo=UTC))",
+                "_dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC))",
             ),
             "bytes": ("str", "''"),
             "unknown": ("Any", "None"),
         }[kind]
-    if type_info["Nullable"] or (optional and kind in ("enum", "ref")):
+    if type_info["Nullable"] or has_presence or (optional and kind in ("enum", "ref")):
         if kind != "unknown":
             if kind == "ref" and type_info["Ref"] not in defined_models:
                 annotation = f"Optional[{annotation}]"
@@ -128,8 +139,24 @@ def python_type(type_info, defined_models, required_models, optional=False):
     return annotation, default
 
 
+class ModelDependencyOrder:
+    def __init__(self):
+        self.by_name = {model["name"]: model for model in models}
+        self.visited = set()
+        self.ordered = []
+
+    def visit(self, model):
+        if model["name"] in self.visited:
+            return
+        self.visited.add(model["name"])
+        for field_info in model["fields"]:
+            for dependency in referenced_models(field_info["irType"]):
+                if dependency in self.by_name:
+                    self.visit(self.by_name[dependency])
+        self.ordered.append(model)
+
+
 def render_models():
-    by_name = {model["name"]: model for model in models}
     required_models = set()
     while True:
         newly_required = {
@@ -149,56 +176,27 @@ def render_models():
         if newly_required <= required_models:
             break
         required_models |= newly_required
-    ordered = []
-    visited = set()
-
-    def visit(model):
-        if model["name"] in visited:
-            return
-        visited.add(model["name"])
-        for field_info in model["fields"]:
-            for dependency in referenced_models(field_info["irType"]):
-                if dependency in by_name:
-                    visit(by_name[dependency])
-        ordered.append(model)
-
+    dependency_order = ModelDependencyOrder()
     for model in models:
-        visit(model)
+        dependency_order.visit(model)
     lines = []
     defined_models = set()
-    for model in ordered:
-        lines += ["@dataclass(frozen=True, slots=True)", f"class {model['name']}:"]
-        description = model.get("description", "").strip().replace('"""', "'''")
+    for model in dependency_order.ordered:
+        description = model.get("description", "").strip()
         if description:
-            lines += [f'    """{description}"""', ""]
-        else:
-            lines += [
-                f'    """Typed {model["name"]} value from the Go connector contract."""',
-                "",
-            ]
+            lines.extend("# " + line for line in description.splitlines())
+        lines += ["@dataclass(frozen=True, slots=True)", f"class {model['name']}:"]
         if not model["fields"]:
             lines.append("    pass")
-        fields = sorted(
-            model["fields"],
-            key=lambda field_info: (
-                python_type(
-                    field_info["irType"],
-                    defined_models,
-                    required_models,
-                    field_info["omitEmpty"],
-                )[1]
-                is not None
-            ),
-        )
-        for field_info in fields:
-            python_name = snake(field_info["jsonName"])
-            if keyword.iskeyword(python_name):
-                python_name += "_"
+        has_default_field = False
+        for field_info in model["fields"]:
+            python_name = python_field_name(field_info["jsonName"])
             field_type, default = python_type(
                 field_info["irType"],
                 defined_models,
                 required_models,
                 field_info["omitEmpty"],
+                field_info["hasPresence"],
             )
             wire_name = field_info["jsonName"]
             metadata = {}
@@ -211,29 +209,38 @@ def render_models():
             if field_info.get("description"):
                 for comment_line in field_info["description"].strip().splitlines():
                     lines.append("    # " + comment_line)
-            if default is None and not metadata:
+            if default is None and has_default_field:
+                arguments = "kw_only=True"
+                if metadata:
+                    arguments += f", metadata={metadata!r}"
+                lines.append(
+                    f"    {python_name}: {field_type} = _dataclass_field({arguments})"
+                )
+            elif default is None and not metadata:
                 lines.append(f"    {python_name}: {field_type}")
             elif default is None:
                 lines.append(
-                    f"    {python_name}: {field_type} = field(metadata={metadata!r})"
+                    f"    {python_name}: {field_type} = _dataclass_field(metadata={metadata!r})"
                 )
             elif metadata:
-                if default.startswith("field("):
+                if default.startswith("_dataclass_field("):
                     merged = default[:-1] + f", metadata={metadata!r})"
                     lines.append(f"    {python_name}: {field_type} = {merged}")
                 else:
                     lines.append(
-                        f"    {python_name}: {field_type} = field(default={default}, metadata={metadata!r})"
+                        f"    {python_name}: {field_type} = _dataclass_field(default={default}, metadata={metadata!r})"
                     )
             else:
                 lines.append(f"    {python_name}: {field_type} = {default}")
+            if default is not None:
+                has_default_field = True
         lines += ["", ""]
         lines.append(
             f"setattr({model['name']}, '__module__', 'dex_connectors.{package_name}.models')"
         )
         lines += ["", ""]
         defined_models.add(model["name"])
-    body = ("\n".join(lines).rstrip() + "\n").replace("field(", "_dataclass_field(")
+    body = "\n".join(lines).rstrip() + "\n"
     header = [
         "# Copyright (c) 2026 Super Durable",
         "# SPDX-License-Identifier: MIT",
@@ -803,6 +810,11 @@ def render_mock():
     }
     operation_prefixes = sorted(operation_by_name, key=len, reverse=True)
     scenarios = {}
+    reserved_helpers = {
+        snake(operation["name"]) + "_" + snake(branch["id"])
+        for operation in operations
+        for branch in operation["branches"]
+    } | {snake(operation["name"]) + "_retry" for operation in operations}
     for operation in operations:
         operation_name = snake(operation["name"])
         for mock in operation.get("mocks", []):
@@ -812,7 +824,15 @@ def render_mock():
                 if mock_name.startswith(operation_name + "_")
                 else operation_name + "_" + mock_name
             )
-            scenarios[operation["name"] + "." + mock["name"]] = helper_name
+            unique_name = helper_name
+            suffix = 0
+            while unique_name in reserved_helpers:
+                suffix += 1
+                unique_name = (
+                    helper_name + "_mock" + (str(suffix) if suffix > 1 else "")
+                )
+            reserved_helpers.add(unique_name)
+            scenarios[operation["name"] + "." + mock["name"]] = unique_name
     scenario_by_helper = {helper: key for key, helper in scenarios.items()}
     helpers = []
     for operation in operations:
@@ -825,7 +845,6 @@ def render_mock():
             scenarios[operation["name"] + "." + mock["name"]]
             for mock in operation.get("mocks", [])
         )
-    mock_package_name = package_name + "mock"
     mock_module = f"dex_connectors.{package_name}.{mock_package_name}"
 
     def output_expression(type_info, value):
@@ -868,10 +887,20 @@ def render_mock():
                 else by_lower_name.get(wire_name.lower())
             )
             if actual_key is None:
+                if not field_info["omitEmpty"] and not field_info["irType"]["Nullable"]:
+                    if field_info["irType"]["Kind"] == "enum":
+                        zero_value = (
+                            "''"
+                            if field_info["irType"]["EnumBase"] == "string"
+                            else "0"
+                        )
+                        arguments.append(f"{python_field_name(wire_name)}={zero_value}")
+                    elif field_info["irType"]["Kind"] == "ref":
+                        arguments.append(
+                            f"{python_field_name(wire_name)}={output_expression(field_info['irType'], {})}"
+                        )
                 continue
-            field_name = snake(wire_name)
-            if keyword.iskeyword(field_name):
-                field_name += "_"
+            field_name = python_field_name(wire_name)
             field_value = output_expression(field_info["irType"], value[actual_key])
             arguments.append(f"{field_name}={field_value}")
         return model_name + "(" + ", ".join(arguments) + ")"
@@ -1034,7 +1063,7 @@ def render_mock():
             f"setattr({helper_name}, '__module__', {quoted(mock_module)})",
             "",
         ]
-    connection_default = package_name
+    connection_default = connector_id
     lines += [
         "",
         "class Mock:",
@@ -1095,9 +1124,17 @@ if mock_source is not None:
     result["mock.py"] = mock_source
 for filename, source in result.items():
     if filename != "__init__.py":
-        result[filename] = source.replace(
+        source = source.replace(
             "# SPDX-License-Identifier: MIT\n",
             "# SPDX-License-Identifier: MIT\n# ruff: noqa\n",
             1,
         )
+    result[filename] = (
+        "\n".join(
+            line
+            for line in source.splitlines()
+            if not re.fullmatch(r'\s*"""[^"\n]*"""', line)
+        ).rstrip()
+        + "\n"
+    )
 json.dump(result, sys.stdout)

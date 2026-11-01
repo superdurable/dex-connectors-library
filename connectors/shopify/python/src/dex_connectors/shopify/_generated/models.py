@@ -1,49 +1,52 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated Python dataclasses from Go operation types."""
 
 from dataclasses import dataclass, field as _dataclass_field
 
-@dataclass(frozen=True, slots=True)
-class GetOrderInput:
-    """Typed GetOrderInput value from the Go connector contract."""
-
-    order_id: int = _dataclass_field(default=0, metadata={'dex_json_name': 'orderId'})
-
-
-setattr(GetOrderInput, '__module__', 'dex_connectors.shopify.models')
-
-
-@dataclass(frozen=True, slots=True)
-class Order:
-    """Typed Order value from the Go connector contract."""
-
-    id: int = 0
-    name: str = ''
-    financial_status: str = ''
-    total_price: str = ''
-    currency: str = ''
-
-
-setattr(Order, '__module__', 'dex_connectors.shopify.models')
-
-
+# ListOrdersInput selects one bounded page of Shopify orders.
 @dataclass(frozen=True, slots=True)
 class ListOrdersInput:
-    """Typed ListOrdersInput value from the Go connector contract."""
-
+    # Limit bounds one page from 1 through 250; zero uses Shopify default.
     limit: int = _dataclass_field(default=0, metadata={'dex_json_omit_default': True})
 
 
 setattr(ListOrdersInput, '__module__', 'dex_connectors.shopify.models')
 
 
+# Order is a minimal Shopify order summary; protected customer data is omitted.
+@dataclass(frozen=True, slots=True)
+class Order:
+    # ID is the numeric Shopify order ID.
+    id: int = 0
+    # Name is the human-readable order number.
+    name: str = ''
+    # FinancialStatus is the payment state.
+    financial_status: str = ''
+    # TotalPrice is the decimal order total.
+    total_price: str = ''
+    # Currency is the ISO currency code.
+    currency: str = ''
+
+
+setattr(Order, '__module__', 'dex_connectors.shopify.models')
+
+
+# OrderPage contains one Shopify order page.
 @dataclass(frozen=True, slots=True)
 class OrderPage:
-    """Typed OrderPage value from the Go connector contract."""
-
+    # Orders contains the returned orders, possibly none.
     orders: tuple[Order, ...] | None = None
 
 
 setattr(OrderPage, '__module__', 'dex_connectors.shopify.models')
+
+
+# GetOrderInput identifies one Shopify order.
+@dataclass(frozen=True, slots=True)
+class GetOrderInput:
+    # OrderID is the numeric Shopify order ID.
+    order_id: int = _dataclass_field(default=0, metadata={'dex_json_name': 'orderId'})
+
+
+setattr(GetOrderInput, '__module__', 'dex_connectors.shopify.models')

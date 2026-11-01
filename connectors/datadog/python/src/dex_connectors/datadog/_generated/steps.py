@@ -1,7 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated operation-specific Dex Step factories."""
 
 from collections.abc import Callable, Mapping
 from typing import Any, TypeVar
@@ -34,7 +33,6 @@ def new_query_metrics_step(
     result_attribute: dex.Attribute[QueryResult[MetricsQuery]] | None = None,
     step_options_override: dex.StepOptions | None = None,
 ) -> QueryStep[StepInput, QueryMetricsInput, MetricsQuery]:
-    """Create the query_metrics Step with the manifest branch identities."""
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Datadog Step connection name must match its connection reference")
     if isinstance(annotations, StepAnnotations):
@@ -85,7 +83,6 @@ def new_list_monitors_step(
     result_attribute: dex.Attribute[QueryResult[MonitorsPage]] | None = None,
     step_options_override: dex.StepOptions | None = None,
 ) -> QueryStep[StepInput, ListMonitorsInput, MonitorsPage]:
-    """Create the list_monitors Step with the manifest branch identities."""
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Datadog Step connection name must match its connection reference")
     if isinstance(annotations, StepAnnotations):
@@ -123,7 +120,6 @@ setattr(new_list_monitors_step, '__module__', 'dex_connectors.datadog.steps')
 
 
 def _bound_operation(connection: Connection, operation_name: str) -> Any:
-    """Resolve a bound operation from a connection or its operation collection."""
     source = getattr(connection, operation_name, None)
     if source is None:
         source = getattr(getattr(connection, "operations", None), operation_name, None)

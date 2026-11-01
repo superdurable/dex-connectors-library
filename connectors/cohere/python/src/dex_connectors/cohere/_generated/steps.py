@@ -1,7 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated operation-specific Dex Step factories."""
 
 from collections.abc import Callable, Mapping
 from typing import Any, TypeVar
@@ -34,7 +33,6 @@ def new_embed_step(
     result_attribute: dex.Attribute[QueryResult[EmbedOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
 ) -> QueryStep[StepInput, EmbedInput, EmbedOutput]:
-    """Create the embed Step with the manifest branch identities."""
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Cohere Step connection name must match its connection reference")
     if isinstance(annotations, StepAnnotations):
@@ -85,7 +83,6 @@ def new_rerank_step(
     result_attribute: dex.Attribute[QueryResult[RerankOutput]] | None = None,
     step_options_override: dex.StepOptions | None = None,
 ) -> QueryStep[StepInput, RerankInput, RerankOutput]:
-    """Create the rerank Step with the manifest branch identities."""
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Cohere Step connection name must match its connection reference")
     if isinstance(annotations, StepAnnotations):
@@ -123,7 +120,6 @@ setattr(new_rerank_step, '__module__', 'dex_connectors.cohere.steps')
 
 
 def _bound_operation(connection: Connection, operation_name: str) -> Any:
-    """Resolve a bound operation from a connection or its operation collection."""
     source = getattr(connection, operation_name, None)
     if source is None:
         source = getattr(getattr(connection, "operations", None), operation_name, None)

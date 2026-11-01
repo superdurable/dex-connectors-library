@@ -1,7 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated manifest-backed provider outcomes and scripts."""
 
 from datetime import datetime
 
@@ -13,92 +12,77 @@ from ..models import ListProjectsInput, ListTimeEntriesInput, Project, ProjectPa
 from .definitions import CONNECTOR_ID, DEFECT, INVALID_RESPONSE, LISTED, LIST_PROJECTS_DEFINITION, LIST_TIME_ENTRIES_DEFINITION, PROVIDER_REJECTED
 
 def list_projects_listed(value: ProjectPage, failure: Failure | None = None) -> Case[ProjectPage]:
-    """Script the listed branch."""
     return Case.branch_result(LISTED, value, failure)
 
 setattr(list_projects_listed, '__module__', "dex_connectors.harvest.harvestmock")
 
 def list_projects_provider_rejected(value: ProjectPage, failure: Failure | None = None) -> Case[ProjectPage]:
-    """Script the providerRejected branch."""
     return Case.branch_result(PROVIDER_REJECTED, value, failure)
 
 setattr(list_projects_provider_rejected, '__module__', "dex_connectors.harvest.harvestmock")
 
 def list_projects_invalid_response(value: ProjectPage, failure: Failure | None = None) -> Case[ProjectPage]:
-    """Script the invalidResponse branch."""
     return Case.branch_result(INVALID_RESPONSE, value, failure)
 
 setattr(list_projects_invalid_response, '__module__', "dex_connectors.harvest.harvestmock")
 
 def list_projects_defect(value: ProjectPage, failure: Failure | None = None) -> Case[ProjectPage]:
-    """Script the defect branch."""
     return Case.branch_result(DEFECT, value, failure)
 
 setattr(list_projects_defect, '__module__', "dex_connectors.harvest.harvestmock")
 
 def list_projects_retry(failure: Failure, after_seconds: float = 0) -> Case[ProjectPage]:
-    """Script a retry of this provider operation."""
     return Case.retry(failure, after_seconds)
 
 setattr(list_projects_retry, '__module__', "dex_connectors.harvest.harvestmock")
 
 def list_projects_default_answer() -> Case[ProjectPage]:
-    """Return the manifest defaultAnswer outcome."""
     return Case.branch_result(LISTED, ProjectPage(projects=(Project(id=3001, name='Meridian Website', is_active=True),)))
 
 setattr(list_projects_default_answer, '__module__', "dex_connectors.harvest.harvestmock")
 
 def list_projects_invalid_key() -> Case[ProjectPage]:
-    """Return the manifest invalidKey outcome."""
     return Case.branch_result(PROVIDER_REJECTED, ProjectPage(), Failure(FailureKind.AUTHENTICATION, CONNECTOR_ID, "listProjects", "Harvest rejected the token."))
 
 setattr(list_projects_invalid_key, '__module__', "dex_connectors.harvest.harvestmock")
 
 def list_time_entries_listed(value: TimeEntryPage, failure: Failure | None = None) -> Case[TimeEntryPage]:
-    """Script the listed branch."""
     return Case.branch_result(LISTED, value, failure)
 
 setattr(list_time_entries_listed, '__module__', "dex_connectors.harvest.harvestmock")
 
 def list_time_entries_provider_rejected(value: TimeEntryPage, failure: Failure | None = None) -> Case[TimeEntryPage]:
-    """Script the providerRejected branch."""
     return Case.branch_result(PROVIDER_REJECTED, value, failure)
 
 setattr(list_time_entries_provider_rejected, '__module__', "dex_connectors.harvest.harvestmock")
 
 def list_time_entries_invalid_response(value: TimeEntryPage, failure: Failure | None = None) -> Case[TimeEntryPage]:
-    """Script the invalidResponse branch."""
     return Case.branch_result(INVALID_RESPONSE, value, failure)
 
 setattr(list_time_entries_invalid_response, '__module__', "dex_connectors.harvest.harvestmock")
 
 def list_time_entries_defect(value: TimeEntryPage, failure: Failure | None = None) -> Case[TimeEntryPage]:
-    """Script the defect branch."""
     return Case.branch_result(DEFECT, value, failure)
 
 setattr(list_time_entries_defect, '__module__', "dex_connectors.harvest.harvestmock")
 
 def list_time_entries_retry(failure: Failure, after_seconds: float = 0) -> Case[TimeEntryPage]:
-    """Script a retry of this provider operation."""
     return Case.retry(failure, after_seconds)
 
 setattr(list_time_entries_retry, '__module__', "dex_connectors.harvest.harvestmock")
 
 def list_time_entries_default_answer() -> Case[TimeEntryPage]:
-    """Return the manifest defaultAnswer outcome."""
     return Case.branch_result(LISTED, TimeEntryPage(time_entries=(TimeEntry(id=4001, project=TimeEntryProject(id=3001), hours=2.5, spent_date='2026-10-28'),)))
 
 setattr(list_time_entries_default_answer, '__module__', "dex_connectors.harvest.harvestmock")
 
 def list_time_entries_invalid_key() -> Case[TimeEntryPage]:
-    """Return the manifest invalidKey outcome."""
     return Case.branch_result(PROVIDER_REJECTED, TimeEntryPage(), Failure(FailureKind.AUTHENTICATION, CONNECTOR_ID, "listTimeEntries", "Harvest rejected the token."))
 
 setattr(list_time_entries_invalid_key, '__module__', "dex_connectors.harvest.harvestmock")
 
 
 class Mock:
-    """Script manifest outcomes for this connector."""
 
     def __init__(self, connection_name: str = "harvest") -> None:
         self.list_projects_script: Query[ListProjectsInput, ProjectPage] = Query(LIST_PROJECTS_DEFINITION)
@@ -112,7 +96,6 @@ class Mock:
         )
 
     def connection(self) -> Connection:
-        """Return this mock connection for Dex Step registration."""
         return self._connection
 
 setattr(Mock, '__module__', "dex_connectors.harvest.harvestmock")

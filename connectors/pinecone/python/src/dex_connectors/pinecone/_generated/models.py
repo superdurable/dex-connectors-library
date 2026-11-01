@@ -1,61 +1,66 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated Python dataclasses from Go operation types."""
 
 from dataclasses import dataclass, field as _dataclass_field
 from typing import Any
 
+# Vector is one dense Pinecone vector, replaced by ID during upsert.
 @dataclass(frozen=True, slots=True)
 class Vector:
-    """Typed Vector value from the Go connector contract."""
-
+    # ID is the stable vector identity.
     id: str = ''
+    # Values contains the dense vector coordinates.
     values: tuple[float, ...] | None = None
+    # Metadata contains optional string-valued filterable attributes.
     metadata: dict[str, str] = _dataclass_field(default_factory=dict, metadata={'dex_json_omit_default': True})
 
 
 setattr(Vector, '__module__', 'dex_connectors.pinecone.models')
 
 
+# UpsertVectorsInput writes one bounded vector batch.
 @dataclass(frozen=True, slots=True)
 class UpsertVectorsInput:
-    """Typed UpsertVectorsInput value from the Go connector contract."""
-
+    # Namespace selects the index namespace; blank uses Pinecone's default.
     namespace: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
+    # Vectors are replaced by ID; each ID must be stable across retries.
     vectors: tuple[Vector, ...] | None = None
 
 
 setattr(UpsertVectorsInput, '__module__', 'dex_connectors.pinecone.models')
 
 
+# UpsertVectorsOutput reports Pinecone's accepted vector count.
 @dataclass(frozen=True, slots=True)
 class UpsertVectorsOutput:
-    """Typed UpsertVectorsOutput value from the Go connector contract."""
-
+    # UpsertedCount is the number of vectors accepted.
     upserted_count: int = _dataclass_field(default=0, metadata={'dex_json_name': 'upsertedCount'})
 
 
 setattr(UpsertVectorsOutput, '__module__', 'dex_connectors.pinecone.models')
 
 
+# QueryVectorsInput searches by one dense vector.
 @dataclass(frozen=True, slots=True)
 class QueryVectorsInput:
-    """Typed QueryVectorsInput value from the Go connector contract."""
-
+    # Namespace selects the index namespace.
     namespace: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
+    # Vector is the dense query vector.
     vector: tuple[float, ...] | None = None
+    # TopK is the result limit from 1 through 10000.
     top_k: int = _dataclass_field(default=0, metadata={'dex_json_name': 'topK'})
+    # IncludeMetadata requests stored metadata in matches.
     include_metadata: bool = _dataclass_field(default=False, metadata={'dex_json_name': 'includeMetadata', 'dex_json_omit_default': True})
 
 
 setattr(QueryVectorsInput, '__module__', 'dex_connectors.pinecone.models')
 
 
+# QueryVectorsOutput preserves Pinecone's JSON response.
 @dataclass(frozen=True, slots=True)
 class QueryVectorsOutput:
-    """Typed QueryVectorsOutput value from the Go connector contract."""
-
+    # Data contains matches and the namespace, with provider fields preserved.
     data: Any = None
 
 

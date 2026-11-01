@@ -1,7 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated operation bindings for one named Dex connection."""
 
 from typing import Any
 
@@ -14,7 +13,6 @@ from .definitions import CONNECTOR_ID, CREATE_OR_UPDATE_CONTACT_DEFINITION, GET_
 from ..models import Contact, ContactWriteResult, CreateOrUpdateContactInput, GetContactInput
 
 class Connection:
-    """Nonserializable Brevo operation binding."""
 
     __slots__ = ('_create_or_update_contact', '_get_contact', '_client', 'reference')
 
@@ -37,31 +35,25 @@ class Connection:
         self._client = client
 
     def create_or_update_contact(self) -> Mutation[CreateOrUpdateContactInput, ContactWriteResult]:
-        """Return the create_or_update_contact operation for a Dex Step."""
         return self._create_or_update_contact
 
     def get_contact(self) -> Query[GetContactInput, Contact]:
-        """Return the get_contact operation for a Dex Step."""
         return self._get_contact
 
     async def aclose(self) -> None:
-        """Close the owned provider transport after Worker shutdown."""
         if self._client is not None:
             await self._client.aclose()
 
     def __repr__(self) -> str:
-        """Keep provider transport and credentials out of logs."""
         return "brevo.Connection([REDACTED])"
 
     def __reduce__(self) -> tuple[object, ...]:
-        """Prevent a live connection from entering durable Flow state."""
         raise TypeError("Brevo connections cannot be serialized")
 
 setattr(Connection, '__module__', 'dex_connectors.brevo.connection')
 
 
 def new_connection(client: Client, reference: ConnectionRef) -> Connection:
-    """Bind a provider client to an explicit logical connection reference."""
     if client is None:
         raise ValueError("Brevo client is required")
     return Connection(reference, client.create_or_update_contact(), client.get_contact(), client)
@@ -74,14 +66,12 @@ def new_connection_with_operations(
     get_contact: Query[GetContactInput, Contact],
     reference: ConnectionRef,
 ) -> Connection:
-    """Bind mock operations to the same logical connection identity."""
     return Connection(reference, create_or_update_contact, get_contact)
 
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.brevo.connection')
 
 
 class _ProjectCredentialSource:
-    """Resolve current secret material at each provider attempt."""
 
     def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
         self.project = project
@@ -98,7 +88,6 @@ class _ProjectCredentialSource:
 def new_project_connection(
     project: LoadedProject, connection_name: str, http_client: httpx.AsyncClient | None = None
 ) -> Connection:
-    """Open declared project settings and resolve provider credentials per call."""
     if project is None:
         raise ValueError("Brevo connection requires loaded project configuration")
     reference = ConnectionRef(CONNECTOR_ID, connection_name)

@@ -1,7 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated connection settings and credential values."""
 
 from dataclasses import dataclass
 
@@ -10,7 +9,6 @@ from dex_connectors.sdk import SecretString
 
 @dataclass(frozen=True, slots=True)
 class Config:
-    """Mailgun connection settings from the manifest."""
 
     base_url: str = "https://api.mailgun.net"
     timeout_seconds: float = 15
@@ -21,7 +19,6 @@ setattr(Config, '__module__', 'dex_connectors.mailgun.client')
 
 @dataclass(frozen=True, slots=True)
 class Credentials:
-    """Mailgun provider credentials resolved per call."""
 
     api_key: SecretString
 

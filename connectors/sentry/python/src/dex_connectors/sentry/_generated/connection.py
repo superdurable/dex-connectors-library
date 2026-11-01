@@ -1,7 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated operation bindings for one named Dex connection."""
 
 from typing import Any
 
@@ -14,7 +13,6 @@ from .definitions import CONNECTOR_ID, GET_ISSUE_DEFINITION, LIST_ISSUES_DEFINIT
 from ..models import GetIssueInput, Issue, IssuePage, ListIssuesInput, UpdateIssueStatusInput
 
 class Connection:
-    """Nonserializable Sentry operation binding."""
 
     __slots__ = ('_list_issues', '_get_issue', '_update_issue_status', '_client', 'reference')
 
@@ -41,35 +39,28 @@ class Connection:
         self._client = client
 
     def list_issues(self) -> Query[ListIssuesInput, IssuePage]:
-        """Return the list_issues operation for a Dex Step."""
         return self._list_issues
 
     def get_issue(self) -> Query[GetIssueInput, Issue]:
-        """Return the get_issue operation for a Dex Step."""
         return self._get_issue
 
     def update_issue_status(self) -> Mutation[UpdateIssueStatusInput, Issue]:
-        """Return the update_issue_status operation for a Dex Step."""
         return self._update_issue_status
 
     async def aclose(self) -> None:
-        """Close the owned provider transport after Worker shutdown."""
         if self._client is not None:
             await self._client.aclose()
 
     def __repr__(self) -> str:
-        """Keep provider transport and credentials out of logs."""
         return "sentry.Connection([REDACTED])"
 
     def __reduce__(self) -> tuple[object, ...]:
-        """Prevent a live connection from entering durable Flow state."""
         raise TypeError("Sentry connections cannot be serialized")
 
 setattr(Connection, '__module__', 'dex_connectors.sentry.connection')
 
 
 def new_connection(client: Client, reference: ConnectionRef) -> Connection:
-    """Bind a provider client to an explicit logical connection reference."""
     if client is None:
         raise ValueError("Sentry client is required")
     return Connection(reference, client.list_issues(), client.get_issue(), client.update_issue_status(), client)
@@ -83,14 +74,12 @@ def new_connection_with_operations(
     update_issue_status: Mutation[UpdateIssueStatusInput, Issue],
     reference: ConnectionRef,
 ) -> Connection:
-    """Bind mock operations to the same logical connection identity."""
     return Connection(reference, list_issues, get_issue, update_issue_status)
 
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.sentry.connection')
 
 
 class _ProjectCredentialSource:
-    """Resolve current secret material at each provider attempt."""
 
     def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
         self.project = project
@@ -107,7 +96,6 @@ class _ProjectCredentialSource:
 def new_project_connection(
     project: LoadedProject, connection_name: str, http_client: httpx.AsyncClient | None = None
 ) -> Connection:
-    """Open declared project settings and resolve provider credentials per call."""
     if project is None:
         raise ValueError("Sentry connection requires loaded project configuration")
     reference = ConnectionRef(CONNECTOR_ID, connection_name)

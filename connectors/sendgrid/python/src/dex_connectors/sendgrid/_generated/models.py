@@ -1,73 +1,81 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated Python dataclasses from Go operation types."""
 
 from dataclasses import dataclass, field as _dataclass_field
 
+# GetStatsInput selects a global email statistics date range.
 @dataclass(frozen=True, slots=True)
 class GetStatsInput:
-    """Typed GetStatsInput value from the Go connector contract."""
-
+    # StartDate is the first day in YYYY-MM-DD format.
     start_date: str = _dataclass_field(default='', metadata={'dex_json_name': 'startDate'})
+    # EndDate is the final day in YYYY-MM-DD format; blank means today.
     end_date: str = _dataclass_field(default='', metadata={'dex_json_name': 'endDate', 'dex_json_omit_default': True})
 
 
 setattr(GetStatsInput, '__module__', 'dex_connectors.sendgrid.models')
 
 
+# StatsDay gives the requested and delivered counts for one date.
 @dataclass(frozen=True, slots=True)
 class StatsDay:
-    """Typed StatsDay value from the Go connector contract."""
-
+    # Date is the reporting date in YYYY-MM-DD format.
     date: str = ''
+    # Requests is the number of email requests.
     requests: int = 0
+    # Delivered is the number confirmed delivered.
     delivered: int = 0
 
 
 setattr(StatsDay, '__module__', 'dex_connectors.sendgrid.models')
 
 
+# StatsOutput contains daily global email statistics.
 @dataclass(frozen=True, slots=True)
 class StatsOutput:
-    """Typed StatsOutput value from the Go connector contract."""
-
+    # Days is the returned date series.
     days: tuple[StatsDay, ...] | None = None
 
 
 setattr(StatsOutput, '__module__', 'dex_connectors.sendgrid.models')
 
 
+# ListTemplatesInput chooses a page of transactional templates.
 @dataclass(frozen=True, slots=True)
 class ListTemplatesInput:
-    """Typed ListTemplatesInput value from the Go connector contract."""
-
+    # Generation is dynamic or legacy; blank selects dynamic.
     generation: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
+    # PageSize is 1 to 200 templates; zero selects 100.
     page_size: int = _dataclass_field(default=0, metadata={'dex_json_name': 'pageSize', 'dex_json_omit_default': True})
+    # PageToken is the token from the preceding page; blank starts at page one.
     page_token: str = _dataclass_field(default='', metadata={'dex_json_name': 'pageToken', 'dex_json_omit_default': True})
 
 
 setattr(ListTemplatesInput, '__module__', 'dex_connectors.sendgrid.models')
 
 
+# Template identifies a transactional template.
 @dataclass(frozen=True, slots=True)
 class Template:
-    """Typed Template value from the Go connector contract."""
-
+    # ID is the provider template ID.
     id: str = ''
+    # Name is the human-readable template name.
     name: str = ''
+    # Generation is legacy or dynamic.
     generation: str = ''
 
 
 setattr(Template, '__module__', 'dex_connectors.sendgrid.models')
 
 
+# TemplatesOutput holds the returned template page.
 @dataclass(frozen=True, slots=True)
 class TemplatesOutput:
-    """Typed TemplatesOutput value from the Go connector contract."""
-
+    # Templates is the returned page of templates.
     templates: tuple[Template, ...] | None = None
+    # Count is the provider-reported count; its precise meaning is unverified.
     count: int = 0
+    # NextPageToken selects the next page when the provider supplies one.
     next_page_token: str = _dataclass_field(default='', metadata={'dex_json_name': 'nextPageToken', 'dex_json_omit_default': True})
 
 

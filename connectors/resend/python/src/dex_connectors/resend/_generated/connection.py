@@ -1,7 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated operation bindings for one named Dex connection."""
 
 from typing import Any
 
@@ -14,7 +13,6 @@ from .definitions import CONNECTOR_ID, GET_EMAIL_DEFINITION, SEND_EMAIL_DEFINITI
 from ..models import Email, GetEmailInput, SendEmailInput, SentEmail
 
 class Connection:
-    """Nonserializable Resend operation binding."""
 
     __slots__ = ('_send_email', '_get_email', '_client', 'reference')
 
@@ -37,31 +35,25 @@ class Connection:
         self._client = client
 
     def send_email(self) -> Mutation[SendEmailInput, SentEmail]:
-        """Return the send_email operation for a Dex Step."""
         return self._send_email
 
     def get_email(self) -> Query[GetEmailInput, Email]:
-        """Return the get_email operation for a Dex Step."""
         return self._get_email
 
     async def aclose(self) -> None:
-        """Close the owned provider transport after Worker shutdown."""
         if self._client is not None:
             await self._client.aclose()
 
     def __repr__(self) -> str:
-        """Keep provider transport and credentials out of logs."""
         return "resend.Connection([REDACTED])"
 
     def __reduce__(self) -> tuple[object, ...]:
-        """Prevent a live connection from entering durable Flow state."""
         raise TypeError("Resend connections cannot be serialized")
 
 setattr(Connection, '__module__', 'dex_connectors.resend.connection')
 
 
 def new_connection(client: Client, reference: ConnectionRef) -> Connection:
-    """Bind a provider client to an explicit logical connection reference."""
     if client is None:
         raise ValueError("Resend client is required")
     return Connection(reference, client.send_email(), client.get_email(), client)
@@ -74,14 +66,12 @@ def new_connection_with_operations(
     get_email: Query[GetEmailInput, Email],
     reference: ConnectionRef,
 ) -> Connection:
-    """Bind mock operations to the same logical connection identity."""
     return Connection(reference, send_email, get_email)
 
 setattr(new_connection_with_operations, '__module__', 'dex_connectors.resend.connection')
 
 
 class _ProjectCredentialSource:
-    """Resolve current secret material at each provider attempt."""
 
     def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
         self.project = project
@@ -98,7 +88,6 @@ class _ProjectCredentialSource:
 def new_project_connection(
     project: LoadedProject, connection_name: str, http_client: httpx.AsyncClient | None = None
 ) -> Connection:
-    """Open declared project settings and resolve provider credentials per call."""
     if project is None:
         raise ValueError("Resend connection requires loaded project configuration")
     reference = ConnectionRef(CONNECTOR_ID, connection_name)

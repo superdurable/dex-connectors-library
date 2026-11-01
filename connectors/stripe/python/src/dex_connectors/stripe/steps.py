@@ -1,22 +1,22 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-# connectorctl: handwritten facade
 """Operation-specific Stripe Step factories for Dex Flows."""
 
 from collections.abc import Callable, Mapping
-from typing import TypeVar
+from typing import TypeVar, cast
 
 import dex
 from dex_connectors.sdk import (
     MutationResult,
     MutationStep,
-    MutationStepConfig,
     QueryResult,
     QueryStep,
-    QueryStepConfig,
     StepAnnotations,
 )
+from dex_connectors.sdk import MutationStepConfig as MutationStepConfig
+from dex_connectors.sdk import QueryStepConfig as QueryStepConfig
 
+from ._generated import steps as generated_steps
 from .connection import Connection
 from .models import (
     CheckoutSession,
@@ -51,27 +51,20 @@ def new_create_card_checkout_session_step(
 ) -> MutationStep[StepInput, CreateCardCheckoutSessionInput, CheckoutSession]:
     """Create a card Checkout Step with the manifest's branch identities."""
     _validate_connection_name(connection, connection_name)
-    branches = _provided_branches(
-        {
-            "created": created,
-            "providerRejected": provider_rejected,
-            "uncertain": uncertain,
-            "invalidResponse": invalid_response,
-            "defect": defect,
-        }
-    )
-    return MutationStep(
-        MutationStepConfig(
-            step_type=step_type,
-            step_input_type=step_input_type,
-            annotations=_validate_step_annotations(annotations),
-            operation=connection.operations.create_card_checkout_session(),
-            connection=connection.reference,
-            map_to_operation_input=map_to_operation_input,
-            branches=branches,
-            result_attribute=result_attribute,
-            step_options_override=step_options_override,
-        )
+    return generated_steps.new_create_card_checkout_session_step(
+        step_type=step_type,
+        step_input_type=cast(type[StepInput], step_input_type),
+        annotations=_validate_step_annotations(annotations),
+        connection=connection,
+        connection_name=connection_name,
+        map_to_operation_input=map_to_operation_input,
+        created=created,
+        provider_rejected=provider_rejected,
+        uncertain=uncertain,
+        invalid_response=invalid_response,
+        defect=defect,
+        result_attribute=result_attribute,
+        step_options_override=step_options_override,
     )
 
 
@@ -93,27 +86,20 @@ def new_create_ach_checkout_session_step(
 ) -> MutationStep[StepInput, CreateACHCheckoutSessionInput, CheckoutSession]:
     """Create a US bank account Checkout Step with manifest branch identities."""
     _validate_connection_name(connection, connection_name)
-    branches = _provided_branches(
-        {
-            "created": created,
-            "providerRejected": provider_rejected,
-            "uncertain": uncertain,
-            "invalidResponse": invalid_response,
-            "defect": defect,
-        }
-    )
-    return MutationStep(
-        MutationStepConfig(
-            step_type=step_type,
-            step_input_type=step_input_type,
-            annotations=_validate_step_annotations(annotations),
-            operation=connection.operations.create_ach_checkout_session(),
-            connection=connection.reference,
-            map_to_operation_input=map_to_operation_input,
-            branches=branches,
-            result_attribute=result_attribute,
-            step_options_override=step_options_override,
-        )
+    return generated_steps.new_create_ach_checkout_session_step(
+        step_type=step_type,
+        step_input_type=cast(type[StepInput], step_input_type),
+        annotations=_validate_step_annotations(annotations),
+        connection=connection,
+        connection_name=connection_name,
+        map_to_operation_input=map_to_operation_input,
+        created=created,
+        provider_rejected=provider_rejected,
+        uncertain=uncertain,
+        invalid_response=invalid_response,
+        defect=defect,
+        result_attribute=result_attribute,
+        step_options_override=step_options_override,
     )
 
 
@@ -135,27 +121,20 @@ def new_get_checkout_session_step(
 ) -> QueryStep[StepInput, GetCheckoutSessionInput, CheckoutSession]:
     """Create a Checkout Session Query Step with manifest branch identities."""
     _validate_connection_name(connection, connection_name)
-    branches = _provided_branches(
-        {
-            "found": found,
-            "notFound": not_found,
-            "providerRejected": provider_rejected,
-            "invalidResponse": invalid_response,
-            "defect": defect,
-        }
-    )
-    return QueryStep(
-        QueryStepConfig(
-            step_type=step_type,
-            step_input_type=step_input_type,
-            annotations=_validate_step_annotations(annotations),
-            operation=connection.operations.get_checkout_session(),
-            connection=connection.reference,
-            map_to_operation_input=map_to_operation_input,
-            branches=branches,
-            result_attribute=result_attribute,
-            step_options_override=step_options_override,
-        )
+    return generated_steps.new_get_checkout_session_step(
+        step_type=step_type,
+        step_input_type=cast(type[StepInput], step_input_type),
+        annotations=_validate_step_annotations(annotations),
+        connection=connection,
+        connection_name=connection_name,
+        map_to_operation_input=map_to_operation_input,
+        found=found,
+        not_found=not_found,
+        provider_rejected=provider_rejected,
+        invalid_response=invalid_response,
+        defect=defect,
+        result_attribute=result_attribute,
+        step_options_override=step_options_override,
     )
 
 
@@ -177,27 +156,20 @@ def new_get_payment_intent_step(
 ) -> QueryStep[StepInput, GetPaymentIntentInput, PaymentIntent]:
     """Create a PaymentIntent Query Step with manifest branch identities."""
     _validate_connection_name(connection, connection_name)
-    branches = _provided_branches(
-        {
-            "found": found,
-            "notFound": not_found,
-            "providerRejected": provider_rejected,
-            "invalidResponse": invalid_response,
-            "defect": defect,
-        }
-    )
-    return QueryStep(
-        QueryStepConfig(
-            step_type=step_type,
-            step_input_type=step_input_type,
-            annotations=_validate_step_annotations(annotations),
-            operation=connection.operations.get_payment_intent(),
-            connection=connection.reference,
-            map_to_operation_input=map_to_operation_input,
-            branches=branches,
-            result_attribute=result_attribute,
-            step_options_override=step_options_override,
-        )
+    return generated_steps.new_get_payment_intent_step(
+        step_type=step_type,
+        step_input_type=cast(type[StepInput], step_input_type),
+        annotations=_validate_step_annotations(annotations),
+        connection=connection,
+        connection_name=connection_name,
+        map_to_operation_input=map_to_operation_input,
+        found=found,
+        not_found=not_found,
+        provider_rejected=provider_rejected,
+        invalid_response=invalid_response,
+        defect=defect,
+        result_attribute=result_attribute,
+        step_options_override=step_options_override,
     )
 
 
@@ -219,27 +191,20 @@ def new_create_refund_step(
 ) -> MutationStep[StepInput, CreateRefundInput, Refund]:
     """Create a refund Mutation Step with the manifest's branch identities."""
     _validate_connection_name(connection, connection_name)
-    branches = _provided_branches(
-        {
-            "refunded": refunded,
-            "providerRejected": provider_rejected,
-            "uncertain": uncertain,
-            "invalidResponse": invalid_response,
-            "defect": defect,
-        }
-    )
-    return MutationStep(
-        MutationStepConfig(
-            step_type=step_type,
-            step_input_type=step_input_type,
-            annotations=_validate_step_annotations(annotations),
-            operation=connection.operations.create_refund(),
-            connection=connection.reference,
-            map_to_operation_input=map_to_operation_input,
-            branches=branches,
-            result_attribute=result_attribute,
-            step_options_override=step_options_override,
-        )
+    return generated_steps.new_create_refund_step(
+        step_type=step_type,
+        step_input_type=cast(type[StepInput], step_input_type),
+        annotations=_validate_step_annotations(annotations),
+        connection=connection,
+        connection_name=connection_name,
+        map_to_operation_input=map_to_operation_input,
+        refunded=refunded,
+        provider_rejected=provider_rejected,
+        uncertain=uncertain,
+        invalid_response=invalid_response,
+        defect=defect,
+        result_attribute=result_attribute,
+        step_options_override=step_options_override,
     )
 
 

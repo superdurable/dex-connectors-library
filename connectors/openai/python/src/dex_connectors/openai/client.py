@@ -7,12 +7,13 @@ import json
 import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from datetime import timedelta as timedelta
 from typing import Any
 from urllib.parse import quote, urlsplit
 
 import httpx
+from dex_connectors.sdk import BranchDefinition as BranchDefinition
 from dex_connectors.sdk import (
-    BranchDefinition,
     Call,
     CallID,
     CredentialProvider,
@@ -26,6 +27,9 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     Receipt,
 )
+from dex_connectors.sdk import OperationRef as OperationRef
+from dex_connectors.sdk import SecretString as SecretString
+from dex_connectors.sdk import StepDefaults as StepDefaults
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -34,6 +38,10 @@ from dex_connectors.sdk.providerhttp import (
     parse_retry_after,
     read_bounded_body,
     send_traced,
+)
+from dex_connectors.sdk.retry_policy import RetryPolicy as RetryPolicy
+from dex_connectors.sdk.retry_policy import (
+    default_connector_step_execute_retry_policy as default_connector_step_execute_retry_policy,
 )
 
 from ._generated.config import (
@@ -107,9 +115,6 @@ _RATE_LIMIT_HEADER_NAMES = (
     "x-ratelimit-limit-tokens",
     "x-ratelimit-remaining-tokens",
     "x-ratelimit-reset-tokens",
-)
-_DEFECT_BRANCH = BranchDefinition(
-    DEFECT, "Local input, connection configuration, or connector definition is invalid.", True
 )
 
 

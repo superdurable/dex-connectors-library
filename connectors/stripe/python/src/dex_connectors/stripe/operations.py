@@ -6,11 +6,9 @@ import json
 import re
 from datetime import timedelta
 from email.utils import parseaddr
-from typing import cast
 from urllib.parse import quote, urlsplit
 
 from dex_connectors.sdk import (
-    BranchDefinition,
     Call,
     CallID,
     Failure,
@@ -18,7 +16,6 @@ from dex_connectors.sdk import (
     IdempotencyKey,
     MutationAttempt,
     MutationDefinition,
-    OperationRef,
     QueryAttempt,
     QueryDefinition,
     Receipt,
@@ -26,6 +23,7 @@ from dex_connectors.sdk import (
 )
 from dex_connectors.sdk.providerhttp import ProviderTransportError
 
+from ._generated import definitions as generated_definitions
 from .client import (
     Client,
     ProviderResponse,
@@ -52,92 +50,30 @@ from .models import (
 
 _DEFAULTS = StepDefaults(timedelta(seconds=30), 2)
 
-
-def _definition(
-    operation: str, branches: tuple[BranchDefinition, ...], is_mutation: bool
-) -> QueryDefinition | MutationDefinition:
-    definition_type = MutationDefinition if is_mutation else QueryDefinition
-    return definition_type(OperationRef("stripe", operation), branches, _DEFAULTS)
-
-
-_DEFECT = BranchDefinition(
-    "defect", "Local input, connection configuration, or connector definition is invalid.", True
+CREATE_CARD_CHECKOUT_SESSION_DEFINITION = MutationDefinition(
+    generated_definitions.CREATE_CARD_CHECKOUT_SESSION_DEFINITION.operation,
+    generated_definitions.CREATE_CARD_CHECKOUT_SESSION_DEFINITION.branches or (),
+    _DEFAULTS,
 )
-_CHECKOUT_MUTATION_BRANCHES = (
-    BranchDefinition("created", "Stripe created the Checkout Session."),
-    BranchDefinition("providerRejected", "Stripe conclusively rejected the Checkout Session request.", True),
-    BranchDefinition(
-        "uncertain",
-        "A Stripe 500 or non-retryable server response left the Checkout Session outcome unconfirmed.",
-        True,
-    ),
-    BranchDefinition(
-        "invalidResponse", "Stripe returned an invalid or oversized Checkout Session response.", True
-    ),
-    _DEFECT,
+CREATE_ACH_CHECKOUT_SESSION_DEFINITION = MutationDefinition(
+    generated_definitions.CREATE_ACH_CHECKOUT_SESSION_DEFINITION.operation,
+    generated_definitions.CREATE_ACH_CHECKOUT_SESSION_DEFINITION.branches or (),
+    _DEFAULTS,
 )
-
-CREATE_CARD_CHECKOUT_SESSION_DEFINITION = cast(
-    MutationDefinition, _definition("createCardCheckoutSession", _CHECKOUT_MUTATION_BRANCHES, True)
+GET_CHECKOUT_SESSION_DEFINITION = QueryDefinition(
+    generated_definitions.GET_CHECKOUT_SESSION_DEFINITION.operation,
+    generated_definitions.GET_CHECKOUT_SESSION_DEFINITION.branches or (),
+    _DEFAULTS,
 )
-CREATE_ACH_CHECKOUT_SESSION_DEFINITION = cast(
-    MutationDefinition, _definition("createACHCheckoutSession", _CHECKOUT_MUTATION_BRANCHES, True)
+GET_PAYMENT_INTENT_DEFINITION = QueryDefinition(
+    generated_definitions.GET_PAYMENT_INTENT_DEFINITION.operation,
+    generated_definitions.GET_PAYMENT_INTENT_DEFINITION.branches or (),
+    _DEFAULTS,
 )
-GET_CHECKOUT_SESSION_DEFINITION = _definition(
-    "getCheckoutSession",
-    (
-        BranchDefinition("found", "The Checkout Session exists and was returned."),
-        BranchDefinition("notFound", "The Checkout Session does not exist.", True),
-        BranchDefinition(
-            "providerRejected", "Stripe conclusively rejected the Checkout Session query.", True
-        ),
-        BranchDefinition(
-            "invalidResponse", "Stripe returned an invalid or oversized Checkout Session response.", True
-        ),
-        _DEFECT,
-    ),
-    False,
-)
-GET_PAYMENT_INTENT_DEFINITION = _definition(
-    "getPaymentIntent",
-    (
-        BranchDefinition("found", "The PaymentIntent exists and was returned."),
-        BranchDefinition("notFound", "Stripe reported resource_missing for the PaymentIntent.", True),
-        BranchDefinition("providerRejected", "Stripe conclusively rejected the PaymentIntent query.", True),
-        BranchDefinition(
-            "invalidResponse", "Stripe returned an invalid or oversized PaymentIntent response.", True
-        ),
-        _DEFECT,
-    ),
-    False,
-)
-CREATE_REFUND_DEFINITION = cast(
-    MutationDefinition,
-    _definition(
-        "createRefund",
-        (
-            BranchDefinition(
-                "refunded", "Stripe accepted the refund; read its status to tell succeeded from pending."
-            ),
-            BranchDefinition(
-                "providerRejected",
-                "Stripe conclusively rejected the refund with a 4xx error such as "
-                "charge_already_refunded or an amount that is too large.",
-                True,
-            ),
-            BranchDefinition(
-                "uncertain",
-                "A non-retryable Stripe server response left the refund outcome unconfirmed "
-                "after bounded read-back.",
-                True,
-            ),
-            BranchDefinition(
-                "invalidResponse", "Stripe returned an invalid or oversized refund response.", True
-            ),
-            _DEFECT,
-        ),
-        True,
-    ),
+CREATE_REFUND_DEFINITION = MutationDefinition(
+    generated_definitions.CREATE_REFUND_DEFINITION.operation,
+    generated_definitions.CREATE_REFUND_DEFINITION.branches or (),
+    _DEFAULTS,
 )
 
 

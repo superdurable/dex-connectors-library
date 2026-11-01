@@ -1,7 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated manifest-backed provider outcomes and scripts."""
 
 from datetime import datetime
 
@@ -13,80 +12,67 @@ from ..models import GetStatsInput, ListTemplatesInput, StatsDay, StatsOutput, T
 from .definitions import CONNECTOR_ID, DEFECT, FOUND, GET_STATS_DEFINITION, INVALID_RESPONSE, LISTED, LIST_TEMPLATES_DEFINITION, PROVIDER_REJECTED
 
 def get_stats_found(value: StatsOutput, failure: Failure | None = None) -> Case[StatsOutput]:
-    """Script the found branch."""
     return Case.branch_result(FOUND, value, failure)
 
 setattr(get_stats_found, '__module__', "dex_connectors.sendgrid.sendgridmock")
 
 def get_stats_provider_rejected(value: StatsOutput, failure: Failure | None = None) -> Case[StatsOutput]:
-    """Script the providerRejected branch."""
     return Case.branch_result(PROVIDER_REJECTED, value, failure)
 
 setattr(get_stats_provider_rejected, '__module__', "dex_connectors.sendgrid.sendgridmock")
 
 def get_stats_invalid_response(value: StatsOutput, failure: Failure | None = None) -> Case[StatsOutput]:
-    """Script the invalidResponse branch."""
     return Case.branch_result(INVALID_RESPONSE, value, failure)
 
 setattr(get_stats_invalid_response, '__module__', "dex_connectors.sendgrid.sendgridmock")
 
 def get_stats_defect(value: StatsOutput, failure: Failure | None = None) -> Case[StatsOutput]:
-    """Script the defect branch."""
     return Case.branch_result(DEFECT, value, failure)
 
 setattr(get_stats_defect, '__module__', "dex_connectors.sendgrid.sendgridmock")
 
 def get_stats_retry(failure: Failure, after_seconds: float = 0) -> Case[StatsOutput]:
-    """Script a retry of this provider operation."""
     return Case.retry(failure, after_seconds)
 
 setattr(get_stats_retry, '__module__', "dex_connectors.sendgrid.sendgridmock")
 
 def get_stats_found_default() -> Case[StatsOutput]:
-    """Return the manifest foundDefault outcome."""
     return Case.branch_result(FOUND, StatsOutput(days=(StatsDay(date='2026-10-27', requests=8, delivered=7),)))
 
 setattr(get_stats_found_default, '__module__', "dex_connectors.sendgrid.sendgridmock")
 
 def list_templates_listed(value: TemplatesOutput, failure: Failure | None = None) -> Case[TemplatesOutput]:
-    """Script the listed branch."""
     return Case.branch_result(LISTED, value, failure)
 
 setattr(list_templates_listed, '__module__', "dex_connectors.sendgrid.sendgridmock")
 
 def list_templates_provider_rejected(value: TemplatesOutput, failure: Failure | None = None) -> Case[TemplatesOutput]:
-    """Script the providerRejected branch."""
     return Case.branch_result(PROVIDER_REJECTED, value, failure)
 
 setattr(list_templates_provider_rejected, '__module__', "dex_connectors.sendgrid.sendgridmock")
 
 def list_templates_invalid_response(value: TemplatesOutput, failure: Failure | None = None) -> Case[TemplatesOutput]:
-    """Script the invalidResponse branch."""
     return Case.branch_result(INVALID_RESPONSE, value, failure)
 
 setattr(list_templates_invalid_response, '__module__', "dex_connectors.sendgrid.sendgridmock")
 
 def list_templates_defect(value: TemplatesOutput, failure: Failure | None = None) -> Case[TemplatesOutput]:
-    """Script the defect branch."""
     return Case.branch_result(DEFECT, value, failure)
 
 setattr(list_templates_defect, '__module__', "dex_connectors.sendgrid.sendgridmock")
 
 def list_templates_retry(failure: Failure, after_seconds: float = 0) -> Case[TemplatesOutput]:
-    """Script a retry of this provider operation."""
     return Case.retry(failure, after_seconds)
 
 setattr(list_templates_retry, '__module__', "dex_connectors.sendgrid.sendgridmock")
 
 def list_templates_listed_default() -> Case[TemplatesOutput]:
-    """Return the manifest listedDefault outcome."""
     return Case.branch_result(LISTED, TemplatesOutput(templates=(Template(id='d-meridian', name='Meridian receipt', generation='dynamic'),), count=1))
 
 setattr(list_templates_listed_default, '__module__', "dex_connectors.sendgrid.sendgridmock")
 
 
 class Mock:
-    """Script manifest outcomes for this connector."""
 
     def __init__(self, connection_name: str = "sendgrid") -> None:
         self.get_stats_script: Query[GetStatsInput, StatsOutput] = Query(GET_STATS_DEFINITION)
@@ -100,7 +86,6 @@ class Mock:
         )
 
     def connection(self) -> Connection:
-        """Return this mock connection for Dex Step registration."""
         return self._connection
 
 setattr(Mock, '__module__', "dex_connectors.sendgrid.sendgridmock")

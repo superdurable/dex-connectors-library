@@ -5,13 +5,15 @@
 import hashlib
 import json
 import re
-from datetime import UTC, datetime, timedelta
+from dataclasses import dataclass as dataclass
+from datetime import UTC, datetime
+from datetime import timedelta as timedelta
 from typing import Any
 from urllib.parse import quote
 
 import httpx
+from dex_connectors.sdk import BranchDefinition as BranchDefinition
 from dex_connectors.sdk import (
-    BranchDefinition,
     Call,
     CallID,
     CredentialProvider,
@@ -24,8 +26,10 @@ from dex_connectors.sdk import (
     QueryDefinition,
     ReauthorizationRequiredError,
     Receipt,
-    StepDefaults,
 )
+from dex_connectors.sdk import OperationRef as OperationRef
+from dex_connectors.sdk import SecretString as SecretString
+from dex_connectors.sdk import StepDefaults as StepDefaults
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -36,7 +40,9 @@ from dex_connectors.sdk.providerhttp import (
     send_traced,
     validate_base_url,
 )
-from dex_connectors.sdk.retry_policy import default_connector_step_execute_retry_policy
+from dex_connectors.sdk.retry_policy import (
+    default_connector_step_execute_retry_policy as default_connector_step_execute_retry_policy,
+)
 
 from ._generated.config import (
     Config as Config,
@@ -85,10 +91,6 @@ _DEFAULT_TIMEOUT_SECONDS = 15
 _DEFAULT_MAX_RESPONSE_BYTES = 2_097_152
 _MAX_EVENT_PAYLOAD_BYTES = 1 << 20
 _EMAIL = re.compile(r"[A-Za-z0-9!#$%&'*+/=?^_`{|}~.-]+@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?")
-_STEP_DEFAULTS = StepDefaults(
-    timedelta(seconds=30), 2, execute_retry=default_connector_step_execute_retry_policy()
-)
-_DEFECT_BRANCH = BranchDefinition(DEFECT, "Local input or credentials are invalid.", True)
 
 
 

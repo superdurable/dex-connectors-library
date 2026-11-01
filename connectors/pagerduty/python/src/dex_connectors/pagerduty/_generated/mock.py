@@ -1,7 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated manifest-backed provider outcomes and scripts."""
 
 from datetime import datetime
 
@@ -13,86 +12,72 @@ from ..models import GetIncidentInput, Incident, IncidentPage, ListIncidentsInpu
 from .definitions import CONNECTOR_ID, DEFECT, FOUND, GET_INCIDENT_DEFINITION, INVALID_RESPONSE, LISTED, LIST_INCIDENTS_DEFINITION, NOT_FOUND, PROVIDER_REJECTED
 
 def list_incidents_listed(value: IncidentPage, failure: Failure | None = None) -> Case[IncidentPage]:
-    """Script the listed branch."""
     return Case.branch_result(LISTED, value, failure)
 
 setattr(list_incidents_listed, '__module__', "dex_connectors.pagerduty.pagerdutymock")
 
 def list_incidents_provider_rejected(value: IncidentPage, failure: Failure | None = None) -> Case[IncidentPage]:
-    """Script the providerRejected branch."""
     return Case.branch_result(PROVIDER_REJECTED, value, failure)
 
 setattr(list_incidents_provider_rejected, '__module__', "dex_connectors.pagerduty.pagerdutymock")
 
 def list_incidents_invalid_response(value: IncidentPage, failure: Failure | None = None) -> Case[IncidentPage]:
-    """Script the invalidResponse branch."""
     return Case.branch_result(INVALID_RESPONSE, value, failure)
 
 setattr(list_incidents_invalid_response, '__module__', "dex_connectors.pagerduty.pagerdutymock")
 
 def list_incidents_defect(value: IncidentPage, failure: Failure | None = None) -> Case[IncidentPage]:
-    """Script the defect branch."""
     return Case.branch_result(DEFECT, value, failure)
 
 setattr(list_incidents_defect, '__module__', "dex_connectors.pagerduty.pagerdutymock")
 
 def list_incidents_retry(failure: Failure, after_seconds: float = 0) -> Case[IncidentPage]:
-    """Script a retry of this provider operation."""
     return Case.retry(failure, after_seconds)
 
 setattr(list_incidents_retry, '__module__', "dex_connectors.pagerduty.pagerdutymock")
 
 def list_incidents_default() -> Case[IncidentPage]:
-    """Return the manifest listIncidentsDefault outcome."""
     return Case.branch_result(LISTED, IncidentPage(incidents=(Incident(id='P123456', title='API latency', status='triggered'),), limit=25, offset=0, more=False))
 
 setattr(list_incidents_default, '__module__', "dex_connectors.pagerduty.pagerdutymock")
 
 def get_incident_found(value: Incident, failure: Failure | None = None) -> Case[Incident]:
-    """Script the found branch."""
     return Case.branch_result(FOUND, value, failure)
 
 setattr(get_incident_found, '__module__', "dex_connectors.pagerduty.pagerdutymock")
 
 def get_incident_not_found(value: Incident, failure: Failure | None = None) -> Case[Incident]:
-    """Script the notFound branch."""
     return Case.branch_result(NOT_FOUND, value, failure)
 
 setattr(get_incident_not_found, '__module__', "dex_connectors.pagerduty.pagerdutymock")
 
 def get_incident_provider_rejected(value: Incident, failure: Failure | None = None) -> Case[Incident]:
-    """Script the providerRejected branch."""
     return Case.branch_result(PROVIDER_REJECTED, value, failure)
 
 setattr(get_incident_provider_rejected, '__module__', "dex_connectors.pagerduty.pagerdutymock")
 
 def get_incident_invalid_response(value: Incident, failure: Failure | None = None) -> Case[Incident]:
-    """Script the invalidResponse branch."""
     return Case.branch_result(INVALID_RESPONSE, value, failure)
 
 setattr(get_incident_invalid_response, '__module__', "dex_connectors.pagerduty.pagerdutymock")
 
 def get_incident_defect(value: Incident, failure: Failure | None = None) -> Case[Incident]:
-    """Script the defect branch."""
     return Case.branch_result(DEFECT, value, failure)
 
 setattr(get_incident_defect, '__module__', "dex_connectors.pagerduty.pagerdutymock")
 
 def get_incident_retry(failure: Failure, after_seconds: float = 0) -> Case[Incident]:
-    """Script a retry of this provider operation."""
     return Case.retry(failure, after_seconds)
 
 setattr(get_incident_retry, '__module__', "dex_connectors.pagerduty.pagerdutymock")
 
 def get_incident_default() -> Case[Incident]:
-    """Return the manifest getIncidentDefault outcome."""
     return Case.branch_result(FOUND, Incident(id='P123456', title='API latency', status='triggered'))
 
 setattr(get_incident_default, '__module__', "dex_connectors.pagerduty.pagerdutymock")
 
 
 class Mock:
-    """Script manifest outcomes for this connector."""
 
     def __init__(self, connection_name: str = "pagerduty") -> None:
         self.list_incidents_script: Query[ListIncidentsInput, IncidentPage] = Query(LIST_INCIDENTS_DEFINITION)
@@ -106,7 +91,6 @@ class Mock:
         )
 
     def connection(self) -> Connection:
-        """Return this mock connection for Dex Step registration."""
         return self._connection
 
 setattr(Mock, '__module__', "dex_connectors.pagerduty.pagerdutymock")

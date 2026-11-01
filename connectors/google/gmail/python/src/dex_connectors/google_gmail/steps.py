@@ -1,22 +1,22 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-# connectorctl: handwritten facade
 """Operation-specific Gmail Step factories with static Dex connection identity."""
 
 from collections.abc import Callable, Mapping
-from typing import TypeVar
+from typing import TypeVar, cast
 
 import dex
 from dex_connectors.sdk import (
     MutationResult,
     MutationStep,
-    MutationStepConfig,
     QueryResult,
     QueryStep,
-    QueryStepConfig,
     StepAnnotations,
 )
+from dex_connectors.sdk import MutationStepConfig as MutationStepConfig
+from dex_connectors.sdk import QueryStepConfig as QueryStepConfig
 
+from ._generated import steps as generated_steps
 from .connection import Connection
 from .models import GetMessageInput, Message, ReplyToMessageInput, SendMessageInput, SendMessageOutput
 
@@ -65,26 +65,21 @@ def new_get_message_step(
     for Dex source analysis, or a ``StepAnnotations`` instance at runtime.
     """
     _validate_connection(connection, connection_name)
-    branches: dict[str, dex.StepTarget[QueryResult[Message]]] = {"read": read}
-    for branch_id, target in (
-        ("notFound", not_found),
-        ("providerRejected", provider_rejected),
-        ("invalidResponse", invalid_response),
-        ("defect", defect),
-    ):
-        if target is not None:
-            branches[branch_id] = target
-    return QueryStep(QueryStepConfig(
+    return generated_steps.new_get_message_step(
         step_type=step_type,
-        step_input_type=step_input_type,
+        step_input_type=cast(type[StepInput], step_input_type),
         annotations=_step_annotations(annotations),
-        operation=connection.get_message,
-        connection=connection.reference,
+        connection=connection,
+        connection_name=connection_name,
         map_to_operation_input=map_to_operation_input,
-        branches=branches,
+        read=read,
+        not_found=not_found,
+        provider_rejected=provider_rejected,
+        invalid_response=invalid_response,
+        defect=defect,
         result_attribute=result_attribute,
         step_options_override=step_options_override,
-    ))
+    )
 
 
 def new_send_message_step(
@@ -107,21 +102,19 @@ def new_send_message_step(
     for Dex source analysis, or a ``StepAnnotations`` instance at runtime.
     """
     _validate_connection(connection, connection_name)
-    branches: dict[str, dex.StepTarget[MutationResult[SendMessageOutput]]] = {"sent": sent}
-    for branch_id, target in (("providerRejected", provider_rejected), ("defect", defect)):
-        if target is not None:
-            branches[branch_id] = target
-    return MutationStep(MutationStepConfig(
+    return generated_steps.new_send_message_step(
         step_type=step_type,
-        step_input_type=step_input_type,
+        step_input_type=cast(type[StepInput], step_input_type),
         annotations=_step_annotations(annotations),
-        operation=connection.send_message,
-        connection=connection.reference,
+        connection=connection,
+        connection_name=connection_name,
         map_to_operation_input=map_to_operation_input,
-        branches=branches,
+        sent=sent,
+        provider_rejected=provider_rejected,
+        defect=defect,
         result_attribute=result_attribute,
         step_options_override=step_options_override,
-    ))
+    )
 
 
 def new_reply_to_message_step(
@@ -145,25 +138,20 @@ def new_reply_to_message_step(
     for Dex source analysis, or a ``StepAnnotations`` instance at runtime.
     """
     _validate_connection(connection, connection_name)
-    branches: dict[str, dex.StepTarget[MutationResult[SendMessageOutput]]] = {"sent": sent}
-    for branch_id, target in (
-        ("providerRejected", provider_rejected),
-        ("invalidResponse", invalid_response),
-        ("defect", defect),
-    ):
-        if target is not None:
-            branches[branch_id] = target
-    return MutationStep(MutationStepConfig(
+    return generated_steps.new_reply_to_message_step(
         step_type=step_type,
-        step_input_type=step_input_type,
+        step_input_type=cast(type[StepInput], step_input_type),
         annotations=_step_annotations(annotations),
-        operation=connection.reply_to_message,
-        connection=connection.reference,
+        connection=connection,
+        connection_name=connection_name,
         map_to_operation_input=map_to_operation_input,
-        branches=branches,
+        sent=sent,
+        provider_rejected=provider_rejected,
+        invalid_response=invalid_response,
+        defect=defect,
         result_attribute=result_attribute,
         step_options_override=step_options_override,
-    ))
+    )
 
 
 __all__ = ["new_get_message_step", "new_send_message_step", "new_reply_to_message_step"]

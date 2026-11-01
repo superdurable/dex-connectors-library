@@ -4,12 +4,14 @@
 
 import json
 from collections.abc import Callable
-from datetime import UTC, datetime, timedelta
+from dataclasses import dataclass as dataclass
+from datetime import UTC, datetime
+from datetime import timedelta as timedelta
 from typing import Any, TypeVar
 
 import httpx
+from dex_connectors.sdk import BranchDefinition as BranchDefinition
 from dex_connectors.sdk import (
-    BranchDefinition,
     Call,
     CredentialProvider,
     Failure,
@@ -18,9 +20,11 @@ from dex_connectors.sdk import (
     QueryDefinition,
     ReauthorizationRequiredError,
     Receipt,
-    RetryPolicy,
-    StepDefaults,
 )
+from dex_connectors.sdk import OperationRef as OperationRef
+from dex_connectors.sdk import RetryPolicy as RetryPolicy
+from dex_connectors.sdk import SecretString as SecretString
+from dex_connectors.sdk import StepDefaults as StepDefaults
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -75,12 +79,6 @@ _DEFAULT_BASE_URL = "https://api.cohere.com"
 _DEFAULT_TIMEOUT_SECONDS = 30
 _DEFAULT_MAX_RESPONSE_BYTES = 4_194_304
 # Billed calls: three attempts within five minutes, as the manifest explains.
-_STEP_DEFAULTS = StepDefaults(
-    timedelta(seconds=45),
-    2,
-    execute_retry=RetryPolicy(timedelta(seconds=2), 2, timedelta(seconds=30), 3, timedelta(minutes=5)),
-)
-_DEFECT_BRANCH = BranchDefinition(DEFECT, "Local input or connection credentials are invalid.", True)
 
 Output = TypeVar("Output")
 

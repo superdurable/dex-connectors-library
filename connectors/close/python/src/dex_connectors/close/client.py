@@ -6,12 +6,14 @@ import base64
 import json
 import re
 from collections.abc import Callable
-from datetime import UTC, datetime, timedelta
+from dataclasses import dataclass as dataclass
+from datetime import UTC, datetime
+from datetime import timedelta as timedelta
 from typing import Any, TypeVar
 
 import httpx
+from dex_connectors.sdk import BranchDefinition as BranchDefinition
 from dex_connectors.sdk import (
-    BranchDefinition,
     Call,
     CredentialProvider,
     Failure,
@@ -20,8 +22,10 @@ from dex_connectors.sdk import (
     QueryDefinition,
     ReauthorizationRequiredError,
     Receipt,
-    StepDefaults,
 )
+from dex_connectors.sdk import OperationRef as OperationRef
+from dex_connectors.sdk import SecretString as SecretString
+from dex_connectors.sdk import StepDefaults as StepDefaults
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -32,7 +36,9 @@ from dex_connectors.sdk.providerhttp import (
     send_traced,
     validate_base_url,
 )
-from dex_connectors.sdk.retry_policy import default_connector_step_execute_retry_policy
+from dex_connectors.sdk.retry_policy import (
+    default_connector_step_execute_retry_policy as default_connector_step_execute_retry_policy,
+)
 
 from ._generated.config import (
     Config as Config,
@@ -79,14 +85,6 @@ _DEFAULT_BASE_URL = "https://api.close.com/api/v1"
 _DEFAULT_TIMEOUT_SECONDS = 30
 _DEFAULT_MAX_RESPONSE_BYTES = 4_194_304
 _SAFE_KEY = re.compile(r"[A-Za-z0-9_-]{1,128}")
-_STEP_DEFAULTS = StepDefaults(
-    timedelta(seconds=45), 2, execute_retry=default_connector_step_execute_retry_policy()
-)
-_SHARED_BRANCHES = (
-    BranchDefinition(PROVIDER_REJECTED, "Close conclusively rejected the read.", True),
-    BranchDefinition(INVALID_RESPONSE, "Close returned malformed or oversized JSON.", True),
-    BranchDefinition(DEFECT, "Local input or connection credentials are invalid.", True),
-)
 
 Output = TypeVar("Output")
 

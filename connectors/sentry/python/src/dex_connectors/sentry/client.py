@@ -5,13 +5,14 @@
 import json
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
+from datetime import timedelta as timedelta
 from typing import Any, TypeVar
 from urllib.parse import quote
 
 import httpx
+from dex_connectors.sdk import BranchDefinition as BranchDefinition
 from dex_connectors.sdk import (
-    BranchDefinition,
     Call,
     CallID,
     CredentialProvider,
@@ -24,8 +25,10 @@ from dex_connectors.sdk import (
     QueryDefinition,
     ReauthorizationRequiredError,
     Receipt,
-    StepDefaults,
 )
+from dex_connectors.sdk import OperationRef as OperationRef
+from dex_connectors.sdk import SecretString as SecretString
+from dex_connectors.sdk import StepDefaults as StepDefaults
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -38,7 +41,9 @@ from dex_connectors.sdk.providerhttp import (
     send_traced,
     validate_base_url,
 )
-from dex_connectors.sdk.retry_policy import default_connector_step_execute_retry_policy
+from dex_connectors.sdk.retry_policy import (
+    default_connector_step_execute_retry_policy as default_connector_step_execute_retry_policy,
+)
 
 from ._generated.config import (
     Config as Config,
@@ -94,15 +99,6 @@ ISSUE_STATUSES = ("resolved", "unresolved", "ignored")
 _DEFAULT_BASE_URL = "https://sentry.io/api/0"
 _DEFAULT_TIMEOUT_SECONDS = 15
 _DEFAULT_MAX_RESPONSE_BYTES = 2_097_152
-_STEP_DEFAULTS = StepDefaults(
-    timedelta(seconds=30), 2, execute_retry=default_connector_step_execute_retry_policy()
-)
-_NOT_FOUND_BRANCH = BranchDefinition(NOT_FOUND, "The requested resource does not exist.", True)
-_SHARED_BRANCHES = (
-    BranchDefinition(PROVIDER_REJECTED, "The provider definitively rejected the request.", True),
-    BranchDefinition(INVALID_RESPONSE, "The provider returned malformed or oversized JSON.", True),
-    BranchDefinition(DEFECT, "Local input or connection credentials are invalid.", True),
-)
 
 Output = TypeVar("Output")
 

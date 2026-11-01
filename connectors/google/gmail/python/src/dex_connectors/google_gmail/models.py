@@ -9,21 +9,17 @@ from typing import Any
 from dex_connectors.sdk import SecretString
 from dex_connectors.sdk.providerhttp import validate_base_url
 
+from ._generated.config import Config as GeneratedConfig
 
-@dataclass(frozen=True, slots=True)
-class Config:
-    """Gmail API settings; zero-valued limits select the manifest defaults."""
 
-    # Gmail API root, normally Google's public HTTPS v1 endpoint.
-    endpoint: str = "https://gmail.googleapis.com/gmail/v1"
-    # Maximum complete provider response in bytes.
-    max_response_bytes: int = 1_048_576
-    # Maximum base64url-encoded RFC 5322 message size in bytes.
-    max_message_bytes: int = 10_485_760
-    # Trigger poll delay in seconds for a future polling source.
-    poll_interval_seconds: float = 10
-    # Recent inbox messages inspected per future Trigger poll.
-    poll_page_size: int = 25
+class Config(GeneratedConfig):
+    """Gmail API settings; zero-valued limits select the manifest defaults.
+
+    The endpoint, response limit, message limit, poll interval, and page size
+    inherit their defaults from the generated connection contract.
+    """
+
+    __slots__ = ()
 
     @classmethod
     def from_project_settings(cls, settings: dict[str, Any]) -> "Config":

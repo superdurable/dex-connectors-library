@@ -1,7 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated operation-specific Dex Step factories."""
 
 from collections.abc import Callable, Mapping
 from typing import Any, TypeVar
@@ -37,7 +36,6 @@ def new_send_email_step(
     result_attribute: dex.Attribute[MutationResult[SentEmail]] | None = None,
     step_options_override: dex.StepOptions | None = None,
 ) -> MutationStep[StepInput, SendEmailInput, SentEmail]:
-    """Create the send_email Step with the manifest branch identities."""
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Resend Step connection name must match its connection reference")
     if isinstance(annotations, StepAnnotations):
@@ -89,7 +87,6 @@ def new_get_email_step(
     result_attribute: dex.Attribute[QueryResult[Email]] | None = None,
     step_options_override: dex.StepOptions | None = None,
 ) -> QueryStep[StepInput, GetEmailInput, Email]:
-    """Create the get_email Step with the manifest branch identities."""
     if connection is None or connection.reference.name != connection_name:
         raise ValueError("Resend Step connection name must match its connection reference")
     if isinstance(annotations, StepAnnotations):
@@ -129,7 +126,6 @@ setattr(new_get_email_step, '__module__', 'dex_connectors.resend.steps')
 
 
 def _bound_operation(connection: Connection, operation_name: str) -> Any:
-    """Resolve a bound operation from a connection or its operation collection."""
     source = getattr(connection, operation_name, None)
     if source is None:
         source = getattr(getattr(connection, "operations", None), operation_name, None)

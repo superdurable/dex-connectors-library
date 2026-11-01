@@ -1,7 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated manifest-backed provider outcomes and scripts."""
 
 from datetime import datetime
 
@@ -13,86 +12,72 @@ from ..models import GetMovieInput, Movie, MoviePage, SearchMoviesInput
 from .definitions import CONNECTOR_ID, DEFECT, FOUND, GET_MOVIE_DEFINITION, INVALID_RESPONSE, NOT_FOUND, PROVIDER_REJECTED, SEARCHED, SEARCH_MOVIES_DEFINITION
 
 def search_movies_searched(value: MoviePage, failure: Failure | None = None) -> Case[MoviePage]:
-    """Script the searched branch."""
     return Case.branch_result(SEARCHED, value, failure)
 
 setattr(search_movies_searched, '__module__', "dex_connectors.tmdb.tmdbmock")
 
 def search_movies_provider_rejected(value: MoviePage, failure: Failure | None = None) -> Case[MoviePage]:
-    """Script the providerRejected branch."""
     return Case.branch_result(PROVIDER_REJECTED, value, failure)
 
 setattr(search_movies_provider_rejected, '__module__', "dex_connectors.tmdb.tmdbmock")
 
 def search_movies_invalid_response(value: MoviePage, failure: Failure | None = None) -> Case[MoviePage]:
-    """Script the invalidResponse branch."""
     return Case.branch_result(INVALID_RESPONSE, value, failure)
 
 setattr(search_movies_invalid_response, '__module__', "dex_connectors.tmdb.tmdbmock")
 
 def search_movies_defect(value: MoviePage, failure: Failure | None = None) -> Case[MoviePage]:
-    """Script the defect branch."""
     return Case.branch_result(DEFECT, value, failure)
 
 setattr(search_movies_defect, '__module__', "dex_connectors.tmdb.tmdbmock")
 
 def search_movies_retry(failure: Failure, after_seconds: float = 0) -> Case[MoviePage]:
-    """Script a retry of this provider operation."""
     return Case.retry(failure, after_seconds)
 
 setattr(search_movies_retry, '__module__', "dex_connectors.tmdb.tmdbmock")
 
 def search_movies_default() -> Case[MoviePage]:
-    """Return the manifest searchMoviesDefault outcome."""
     return Case.branch_result(SEARCHED, MoviePage(page=1, total_pages=1, total_results=1, results=(Movie(id=343611, title='Jack Reacher: Never Go Back', overview='A thriller.', release_date='2016-10-19'),)))
 
 setattr(search_movies_default, '__module__', "dex_connectors.tmdb.tmdbmock")
 
 def get_movie_found(value: Movie, failure: Failure | None = None) -> Case[Movie]:
-    """Script the found branch."""
     return Case.branch_result(FOUND, value, failure)
 
 setattr(get_movie_found, '__module__', "dex_connectors.tmdb.tmdbmock")
 
 def get_movie_not_found(value: Movie, failure: Failure | None = None) -> Case[Movie]:
-    """Script the notFound branch."""
     return Case.branch_result(NOT_FOUND, value, failure)
 
 setattr(get_movie_not_found, '__module__', "dex_connectors.tmdb.tmdbmock")
 
 def get_movie_provider_rejected(value: Movie, failure: Failure | None = None) -> Case[Movie]:
-    """Script the providerRejected branch."""
     return Case.branch_result(PROVIDER_REJECTED, value, failure)
 
 setattr(get_movie_provider_rejected, '__module__', "dex_connectors.tmdb.tmdbmock")
 
 def get_movie_invalid_response(value: Movie, failure: Failure | None = None) -> Case[Movie]:
-    """Script the invalidResponse branch."""
     return Case.branch_result(INVALID_RESPONSE, value, failure)
 
 setattr(get_movie_invalid_response, '__module__', "dex_connectors.tmdb.tmdbmock")
 
 def get_movie_defect(value: Movie, failure: Failure | None = None) -> Case[Movie]:
-    """Script the defect branch."""
     return Case.branch_result(DEFECT, value, failure)
 
 setattr(get_movie_defect, '__module__', "dex_connectors.tmdb.tmdbmock")
 
 def get_movie_retry(failure: Failure, after_seconds: float = 0) -> Case[Movie]:
-    """Script a retry of this provider operation."""
     return Case.retry(failure, after_seconds)
 
 setattr(get_movie_retry, '__module__', "dex_connectors.tmdb.tmdbmock")
 
 def get_movie_default() -> Case[Movie]:
-    """Return the manifest getMovieDefault outcome."""
     return Case.branch_result(FOUND, Movie(id=343611, title='Jack Reacher: Never Go Back', overview='A thriller.', release_date='2016-10-19'))
 
 setattr(get_movie_default, '__module__', "dex_connectors.tmdb.tmdbmock")
 
 
 class Mock:
-    """Script manifest outcomes for this connector."""
 
     def __init__(self, connection_name: str = "tmdb") -> None:
         self.search_movies_script: Query[SearchMoviesInput, MoviePage] = Query(SEARCH_MOVIES_DEFINITION)
@@ -106,7 +91,6 @@ class Mock:
         )
 
     def connection(self) -> Connection:
-        """Return this mock connection for Dex Step registration."""
         return self._connection
 
 setattr(Mock, '__module__', "dex_connectors.tmdb.tmdbmock")

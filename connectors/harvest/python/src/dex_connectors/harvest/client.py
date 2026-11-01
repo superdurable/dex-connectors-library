@@ -6,25 +6,26 @@ import json
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
+from datetime import timedelta as timedelta
 from typing import Any, TypeVar
 from urllib.parse import parse_qs, urlencode, urlsplit
 
 import httpx
+from dex_connectors.sdk import BranchDefinition as BranchDefinition
 from dex_connectors.sdk import (
-    BranchDefinition,
     Call,
     CredentialProvider,
     Failure,
     FailureKind,
-    OperationRef,
     QueryAttempt,
     QueryDefinition,
     ReauthorizationRequiredError,
     Receipt,
-    SecretString,
-    StepDefaults,
 )
+from dex_connectors.sdk import OperationRef as OperationRef
+from dex_connectors.sdk import SecretString as SecretString
+from dex_connectors.sdk import StepDefaults as StepDefaults
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -35,8 +36,21 @@ from dex_connectors.sdk.providerhttp import (
     send_traced,
     validate_base_url,
 )
-from dex_connectors.sdk.retry_policy import default_connector_step_execute_retry_policy
+from dex_connectors.sdk.retry_policy import (
+    default_connector_step_execute_retry_policy as default_connector_step_execute_retry_policy,
+)
 
+from ._generated.config import Config as GeneratedConfig
+from ._generated.config import Credentials as GeneratedCredentials
+from ._generated.definitions import CONNECTOR_ID as CONNECTOR_ID
+from ._generated.definitions import DEFECT as DEFECT
+from ._generated.definitions import INVALID_RESPONSE as INVALID_RESPONSE
+from ._generated.definitions import LIST_PROJECTS_DEFINITION as LIST_PROJECTS_DEFINITION
+from ._generated.definitions import LIST_PROJECTS_OPERATION_ID as LIST_PROJECTS_OPERATION_ID
+from ._generated.definitions import LIST_TIME_ENTRIES_DEFINITION as LIST_TIME_ENTRIES_DEFINITION
+from ._generated.definitions import LIST_TIME_ENTRIES_OPERATION_ID as LIST_TIME_ENTRIES_OPERATION_ID
+from ._generated.definitions import LISTED as LISTED
+from ._generated.definitions import PROVIDER_REJECTED as PROVIDER_REJECTED
 from .models import (
     ListProjectsInput,
     ListTimeEntriesInput,
@@ -47,52 +61,26 @@ from .models import (
     TimeEntryProject,
 )
 
-CONNECTOR_ID = "harvest"
-LIST_PROJECTS_OPERATION_ID = "listProjects"
-LIST_TIME_ENTRIES_OPERATION_ID = "listTimeEntries"
-LISTED = "listed"
-PROVIDER_REJECTED = "providerRejected"
-INVALID_RESPONSE = "invalidResponse"
-DEFECT = "defect"
 _DEFAULT_BASE_URL = "https://api.harvestapp.com/v2"
 _DEFAULT_TIMEOUT_SECONDS = 30
 _DEFAULT_MAX_RESPONSE_BYTES = 4_194_304
 _DECIMAL_ID = re.compile(r"[1-9][0-9]{0,18}")
 _SAFE_KEY = re.compile(r"[A-Za-z0-9_-]{1,128}")
-_STEP_DEFAULTS = StepDefaults(
-    timedelta(seconds=45), 2, execute_retry=default_connector_step_execute_retry_policy()
-)
-_LIST_BRANCHES = (
-    BranchDefinition(LISTED, "Harvest returned the requested data."),
-    BranchDefinition(PROVIDER_REJECTED, "Harvest conclusively rejected the read.", True),
-    BranchDefinition(INVALID_RESPONSE, "Harvest returned malformed or oversized JSON.", True),
-    BranchDefinition(DEFECT, "Local input or connection credentials are invalid.", True),
-)
-LIST_PROJECTS_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, LIST_PROJECTS_OPERATION_ID), _LIST_BRANCHES, _STEP_DEFAULTS
-)
-LIST_TIME_ENTRIES_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, LIST_TIME_ENTRIES_OPERATION_ID), _LIST_BRANCHES, _STEP_DEFAULTS
-)
 
 Output = TypeVar("Output")
 
 
 @dataclass(frozen=True, slots=True)
-class Config:
+class Config(GeneratedConfig):
     """Harvest settings; account_id is required, other zero or blank values use manifest defaults."""
 
     account_id: str = ""
-    base_url: str = _DEFAULT_BASE_URL
-    timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS
-    max_response_bytes: int = _DEFAULT_MAX_RESPONSE_BYTES
 
 
-@dataclass(frozen=True, slots=True)
-class Credentials:
+class Credentials(GeneratedCredentials):
     """Harvest personal access token, resolved anew for every provider attempt."""
 
-    api_key: SecretString
+    __slots__ = ()
 
 
 class Client:

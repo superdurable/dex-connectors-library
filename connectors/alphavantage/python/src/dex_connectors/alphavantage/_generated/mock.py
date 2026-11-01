@@ -1,7 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated manifest-backed provider outcomes and scripts."""
 
 from datetime import datetime
 
@@ -13,92 +12,77 @@ from ..models import DailyPrice, DailySeriesOutput, GlobalQuoteOutput, StockInpu
 from .definitions import CONNECTOR_ID, DEFECT, FOUND, GET_GLOBAL_QUOTE_DEFINITION, GET_TIME_SERIES_DAILY_DEFINITION, INVALID_RESPONSE, NOT_FOUND, PROVIDER_REJECTED
 
 def get_global_quote_found(value: GlobalQuoteOutput, failure: Failure | None = None) -> Case[GlobalQuoteOutput]:
-    """Script the found branch."""
     return Case.branch_result(FOUND, value, failure)
 
 setattr(get_global_quote_found, '__module__', "dex_connectors.alphavantage.alphavantagemock")
 
 def get_global_quote_not_found(value: GlobalQuoteOutput, failure: Failure | None = None) -> Case[GlobalQuoteOutput]:
-    """Script the notFound branch."""
     return Case.branch_result(NOT_FOUND, value, failure)
 
 setattr(get_global_quote_not_found, '__module__', "dex_connectors.alphavantage.alphavantagemock")
 
 def get_global_quote_provider_rejected(value: GlobalQuoteOutput, failure: Failure | None = None) -> Case[GlobalQuoteOutput]:
-    """Script the providerRejected branch."""
     return Case.branch_result(PROVIDER_REJECTED, value, failure)
 
 setattr(get_global_quote_provider_rejected, '__module__', "dex_connectors.alphavantage.alphavantagemock")
 
 def get_global_quote_invalid_response(value: GlobalQuoteOutput, failure: Failure | None = None) -> Case[GlobalQuoteOutput]:
-    """Script the invalidResponse branch."""
     return Case.branch_result(INVALID_RESPONSE, value, failure)
 
 setattr(get_global_quote_invalid_response, '__module__', "dex_connectors.alphavantage.alphavantagemock")
 
 def get_global_quote_defect(value: GlobalQuoteOutput, failure: Failure | None = None) -> Case[GlobalQuoteOutput]:
-    """Script the defect branch."""
     return Case.branch_result(DEFECT, value, failure)
 
 setattr(get_global_quote_defect, '__module__', "dex_connectors.alphavantage.alphavantagemock")
 
 def get_global_quote_retry(failure: Failure, after_seconds: float = 0) -> Case[GlobalQuoteOutput]:
-    """Script a retry of this provider operation."""
     return Case.retry(failure, after_seconds)
 
 setattr(get_global_quote_retry, '__module__', "dex_connectors.alphavantage.alphavantagemock")
 
 def get_global_quote_found_default() -> Case[GlobalQuoteOutput]:
-    """Return the manifest foundDefault outcome."""
     return Case.branch_result(FOUND, GlobalQuoteOutput(symbol='IBM', price='255.25', latest_trading_day='2026-10-28'))
 
 setattr(get_global_quote_found_default, '__module__', "dex_connectors.alphavantage.alphavantagemock")
 
 def get_time_series_daily_found(value: DailySeriesOutput, failure: Failure | None = None) -> Case[DailySeriesOutput]:
-    """Script the found branch."""
     return Case.branch_result(FOUND, value, failure)
 
 setattr(get_time_series_daily_found, '__module__', "dex_connectors.alphavantage.alphavantagemock")
 
 def get_time_series_daily_not_found(value: DailySeriesOutput, failure: Failure | None = None) -> Case[DailySeriesOutput]:
-    """Script the notFound branch."""
     return Case.branch_result(NOT_FOUND, value, failure)
 
 setattr(get_time_series_daily_not_found, '__module__', "dex_connectors.alphavantage.alphavantagemock")
 
 def get_time_series_daily_provider_rejected(value: DailySeriesOutput, failure: Failure | None = None) -> Case[DailySeriesOutput]:
-    """Script the providerRejected branch."""
     return Case.branch_result(PROVIDER_REJECTED, value, failure)
 
 setattr(get_time_series_daily_provider_rejected, '__module__', "dex_connectors.alphavantage.alphavantagemock")
 
 def get_time_series_daily_invalid_response(value: DailySeriesOutput, failure: Failure | None = None) -> Case[DailySeriesOutput]:
-    """Script the invalidResponse branch."""
     return Case.branch_result(INVALID_RESPONSE, value, failure)
 
 setattr(get_time_series_daily_invalid_response, '__module__', "dex_connectors.alphavantage.alphavantagemock")
 
 def get_time_series_daily_defect(value: DailySeriesOutput, failure: Failure | None = None) -> Case[DailySeriesOutput]:
-    """Script the defect branch."""
     return Case.branch_result(DEFECT, value, failure)
 
 setattr(get_time_series_daily_defect, '__module__', "dex_connectors.alphavantage.alphavantagemock")
 
 def get_time_series_daily_retry(failure: Failure, after_seconds: float = 0) -> Case[DailySeriesOutput]:
-    """Script a retry of this provider operation."""
     return Case.retry(failure, after_seconds)
 
 setattr(get_time_series_daily_retry, '__module__', "dex_connectors.alphavantage.alphavantagemock")
 
 def get_time_series_daily_found_default() -> Case[DailySeriesOutput]:
-    """Return the manifest foundDefault outcome."""
     return Case.branch_result(FOUND, DailySeriesOutput(symbol='IBM', days=(DailyPrice(date='2026-10-28', open='254.00', high='256.00', low='253.00', close='255.25', volume='1200000'),)))
 
 setattr(get_time_series_daily_found_default, '__module__', "dex_connectors.alphavantage.alphavantagemock")
 
 
 class Mock:
-    """Script manifest outcomes for this connector."""
 
     def __init__(self, connection_name: str = "alphavantage") -> None:
         self.get_global_quote_script: Query[StockInput, GlobalQuoteOutput] = Query(GET_GLOBAL_QUOTE_DEFINITION)
@@ -112,7 +96,6 @@ class Mock:
         )
 
     def connection(self) -> Connection:
-        """Return this mock connection for Dex Step registration."""
         return self._connection
 
 setattr(Mock, '__module__', "dex_connectors.alphavantage.alphavantagemock")

@@ -1,7 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated manifest-backed provider outcomes and scripts."""
 
 from datetime import datetime
 
@@ -13,86 +12,72 @@ from ..models import Contact, ContactWriteResult, CreateOrUpdateContactInput, Ge
 from .definitions import CONNECTOR_ID, CREATE_OR_UPDATE_CONTACT_DEFINITION, DEFECT, FOUND, GET_CONTACT_DEFINITION, INVALID_RESPONSE, NOT_FOUND, PROVIDER_REJECTED, SAVED
 
 def create_or_update_contact_saved(value: ContactWriteResult, failure: Failure | None = None) -> Case[ContactWriteResult]:
-    """Script the saved branch."""
     return Case.branch_result(SAVED, value, failure)
 
 setattr(create_or_update_contact_saved, '__module__', "dex_connectors.brevo.brevomock")
 
 def create_or_update_contact_provider_rejected(value: ContactWriteResult, failure: Failure | None = None) -> Case[ContactWriteResult]:
-    """Script the providerRejected branch."""
     return Case.branch_result(PROVIDER_REJECTED, value, failure)
 
 setattr(create_or_update_contact_provider_rejected, '__module__', "dex_connectors.brevo.brevomock")
 
 def create_or_update_contact_invalid_response(value: ContactWriteResult, failure: Failure | None = None) -> Case[ContactWriteResult]:
-    """Script the invalidResponse branch."""
     return Case.branch_result(INVALID_RESPONSE, value, failure)
 
 setattr(create_or_update_contact_invalid_response, '__module__', "dex_connectors.brevo.brevomock")
 
 def create_or_update_contact_defect(value: ContactWriteResult, failure: Failure | None = None) -> Case[ContactWriteResult]:
-    """Script the defect branch."""
     return Case.branch_result(DEFECT, value, failure)
 
 setattr(create_or_update_contact_defect, '__module__', "dex_connectors.brevo.brevomock")
 
 def create_or_update_contact_retry(failure: Failure, after_seconds: float = 0) -> Case[ContactWriteResult]:
-    """Script a retry of this provider operation."""
     return Case.retry(failure, after_seconds)
 
 setattr(create_or_update_contact_retry, '__module__', "dex_connectors.brevo.brevomock")
 
 def create_or_update_contact_saved_default_contact() -> Case[ContactWriteResult]:
-    """Return the manifest savedDefaultContact outcome."""
     return Case.branch_result(SAVED, ContactWriteResult(id=21, email='member@meridian.example', created=True))
 
 setattr(create_or_update_contact_saved_default_contact, '__module__', "dex_connectors.brevo.brevomock")
 
 def get_contact_found(value: Contact, failure: Failure | None = None) -> Case[Contact]:
-    """Script the found branch."""
     return Case.branch_result(FOUND, value, failure)
 
 setattr(get_contact_found, '__module__', "dex_connectors.brevo.brevomock")
 
 def get_contact_not_found(value: Contact, failure: Failure | None = None) -> Case[Contact]:
-    """Script the notFound branch."""
     return Case.branch_result(NOT_FOUND, value, failure)
 
 setattr(get_contact_not_found, '__module__', "dex_connectors.brevo.brevomock")
 
 def get_contact_provider_rejected(value: Contact, failure: Failure | None = None) -> Case[Contact]:
-    """Script the providerRejected branch."""
     return Case.branch_result(PROVIDER_REJECTED, value, failure)
 
 setattr(get_contact_provider_rejected, '__module__', "dex_connectors.brevo.brevomock")
 
 def get_contact_invalid_response(value: Contact, failure: Failure | None = None) -> Case[Contact]:
-    """Script the invalidResponse branch."""
     return Case.branch_result(INVALID_RESPONSE, value, failure)
 
 setattr(get_contact_invalid_response, '__module__', "dex_connectors.brevo.brevomock")
 
 def get_contact_defect(value: Contact, failure: Failure | None = None) -> Case[Contact]:
-    """Script the defect branch."""
     return Case.branch_result(DEFECT, value, failure)
 
 setattr(get_contact_defect, '__module__', "dex_connectors.brevo.brevomock")
 
 def get_contact_retry(failure: Failure, after_seconds: float = 0) -> Case[Contact]:
-    """Script a retry of this provider operation."""
     return Case.retry(failure, after_seconds)
 
 setattr(get_contact_retry, '__module__', "dex_connectors.brevo.brevomock")
 
 def get_contact_found_default_contact() -> Case[Contact]:
-    """Return the manifest foundDefaultContact outcome."""
     return Case.branch_result(FOUND, Contact(id=21, email='member@meridian.example'))
 
 setattr(get_contact_found_default_contact, '__module__', "dex_connectors.brevo.brevomock")
 
 
 class Mock:
-    """Script manifest outcomes for this connector."""
 
     def __init__(self, connection_name: str = "brevo") -> None:
         self.create_or_update_contact_script: Mutation[CreateOrUpdateContactInput, ContactWriteResult] = Mutation(CREATE_OR_UPDATE_CONTACT_DEFINITION)
@@ -106,7 +91,6 @@ class Mock:
         )
 
     def connection(self) -> Connection:
-        """Return this mock connection for Dex Step registration."""
         return self._connection
 
 setattr(Mock, '__module__', "dex_connectors.brevo.brevomock")

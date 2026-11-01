@@ -1,30 +1,35 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated Python dataclasses from Go operation types."""
 
 from dataclasses import dataclass, field as _dataclass_field
 
+# ListDeploymentsInput optionally selects a Vercel team ID.
 @dataclass(frozen=True, slots=True)
 class ListDeploymentsInput:
-    """Typed ListDeploymentsInput value from the Go connector contract."""
-
+    # TeamID is the team ID; blank uses the personal account.
     team_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'teamId', 'dex_json_omit_default': True})
 
 
 setattr(ListDeploymentsInput, '__module__', 'dex_connectors.vercel.models')
 
 
+# Deployment is a Vercel deployment summary.
 @dataclass(frozen=True, slots=True)
 class Deployment:
-    """Typed Deployment value from the Go connector contract."""
-
+    # UID is the deployment identifier returned by the list endpoint.
     uid: str = ''
+    # ID is the identifier returned by some deployment detail responses.
     id: str = ''
+    # Name is the Vercel project name.
     name: str = ''
+    # URL is the deployment hostname without a scheme.
     url: str = ''
+    # State is the list endpoint's deployment state.
     state: str = ''
+    # ReadyState is the detail endpoint's deployment state.
     ready_state: str = _dataclass_field(default='', metadata={'dex_json_name': 'readyState'})
+    # Created is the creation timestamp in Unix milliseconds.
     created: int = 0
 
 
@@ -33,30 +38,30 @@ setattr(Deployment, '__module__', 'dex_connectors.vercel.models')
 
 @dataclass(frozen=True, slots=True)
 class DeploymentsPagePagination:
-    """Typed DeploymentsPagePagination value from the Go connector contract."""
-
     next: int | None = None
 
 
 setattr(DeploymentsPagePagination, '__module__', 'dex_connectors.vercel.models')
 
 
+# DeploymentsPage contains Vercel's deployments and pagination cursor.
 @dataclass(frozen=True, slots=True)
 class DeploymentsPage:
-    """Typed DeploymentsPage value from the Go connector contract."""
-
+    # Deployments holds the listed deployments.
     deployments: tuple[Deployment, ...] | None = None
+    # Pagination contains the next cursor when more results exist.
     pagination: DeploymentsPagePagination = _dataclass_field(default_factory=DeploymentsPagePagination)
 
 
 setattr(DeploymentsPage, '__module__', 'dex_connectors.vercel.models')
 
 
+# GetDeploymentInput identifies one deployment and an optional team.
 @dataclass(frozen=True, slots=True)
 class GetDeploymentInput:
-    """Typed GetDeploymentInput value from the Go connector contract."""
-
+    # IDOrURL is a deployment ID or hostname.
     id_or_url: str = _dataclass_field(default='', metadata={'dex_json_name': 'idOrUrl'})
+    # TeamID is the team ID; blank uses the personal account.
     team_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'teamId', 'dex_json_omit_default': True})
 
 

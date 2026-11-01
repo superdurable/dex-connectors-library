@@ -1,54 +1,63 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated Python dataclasses from Go operation types."""
 
 from dataclasses import dataclass, field as _dataclass_field
 
+# SearchPhotosInput selects one page of public photos.
 @dataclass(frozen=True, slots=True)
 class SearchPhotosInput:
-    """Typed SearchPhotosInput value from the Go connector contract."""
-
+    # Query is the nonblank search phrase.
     query: str = ''
+    # Page is the 1-based page; zero uses Unsplash's first page.
     page: int = _dataclass_field(default=0, metadata={'dex_json_omit_default': True})
+    # PerPage is the page size; zero uses Unsplash's default of ten.
     per_page: int = _dataclass_field(default=0, metadata={'dex_json_name': 'perPage', 'dex_json_omit_default': True})
 
 
 setattr(SearchPhotosInput, '__module__', 'dex_connectors.unsplash.models')
 
 
+# Photo contains hotlink and attribution fields for one Unsplash image.
 @dataclass(frozen=True, slots=True)
 class Photo:
-    """Typed Photo value from the Go connector contract."""
-
+    # ID is the stable Unsplash photo ID.
     id: str = ''
-    description: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
-    alt_description: str = _dataclass_field(default='', metadata={'dex_json_name': 'altDescription', 'dex_json_omit_default': True})
+    # Description is the photographer's description, when present.
+    description: str | None = _dataclass_field(default=None, metadata={'dex_json_omit_default': True})
+    # AltDescription is Unsplash's suggested alternative text, when present.
+    alt_description: str | None = _dataclass_field(default=None, metadata={'dex_json_name': 'altDescription', 'dex_json_omit_default': True})
+    # HTMLURL is the photo's Unsplash page for attribution.
     html_url: str = _dataclass_field(default='', metadata={'dex_json_name': 'htmlUrl'})
+    # RegularURL is the Unsplash hosted image URL to hotlink.
     regular_url: str = _dataclass_field(default='', metadata={'dex_json_name': 'regularUrl'})
+    # PhotographerName is the credited photographer.
     photographer_name: str = _dataclass_field(default='', metadata={'dex_json_name': 'photographerName'})
+    # PhotographerURL is the photographer's Unsplash profile for attribution.
     photographer_url: str = _dataclass_field(default='', metadata={'dex_json_name': 'photographerURL'})
 
 
 setattr(Photo, '__module__', 'dex_connectors.unsplash.models')
 
 
+# PhotoPage is one search page and its provider counts.
 @dataclass(frozen=True, slots=True)
 class PhotoPage:
-    """Typed PhotoPage value from the Go connector contract."""
-
+    # Total is the number of matching photos.
     total: int = 0
+    # TotalPages is the number of available pages.
     total_pages: int = _dataclass_field(default=0, metadata={'dex_json_name': 'totalPages'})
+    # Photos holds this page's photos.
     photos: tuple[Photo, ...] | None = None
 
 
 setattr(PhotoPage, '__module__', 'dex_connectors.unsplash.models')
 
 
+# GetPhotoInput identifies a public photo.
 @dataclass(frozen=True, slots=True)
 class GetPhotoInput:
-    """Typed GetPhotoInput value from the Go connector contract."""
-
+    # ID is the Unsplash photo ID.
     id: str = ''
 
 

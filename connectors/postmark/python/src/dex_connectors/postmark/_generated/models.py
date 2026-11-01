@@ -1,48 +1,51 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 # ruff: noqa
-"""Generated Python dataclasses from Go operation types."""
 
 from dataclasses import dataclass, field as _dataclass_field
 
+# ListOutboundMessagesInput chooses a bounded outbound search page.
 @dataclass(frozen=True, slots=True)
 class ListOutboundMessagesInput:
-    """Typed ListOutboundMessagesInput value from the Go connector contract."""
-
+    # Count is the number of messages requested, up to 500.
     count: int = 0
+    # Offset is the zero-based page offset.
     offset: int = 0
 
 
 setattr(ListOutboundMessagesInput, '__module__', 'dex_connectors.postmark.models')
 
 
+# MessageDetails contains non-secret outbound message metadata.
 @dataclass(frozen=True, slots=True)
 class MessageDetails:
-    """Typed MessageDetails value from the Go connector contract."""
-
+    # MessageID is Postmark's outbound message identifier.
     message_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'MessageID'})
+    # Subject is the email subject.
     subject: str = _dataclass_field(default='', metadata={'dex_json_name': 'Subject'})
+    # Status is the provider's current status.
     status: str = _dataclass_field(default='', metadata={'dex_json_name': 'Status'})
 
 
 setattr(MessageDetails, '__module__', 'dex_connectors.postmark.models')
 
 
+# MessagePage is one outbound message search page.
 @dataclass(frozen=True, slots=True)
 class MessagePage:
-    """Typed MessagePage value from the Go connector contract."""
-
+    # TotalCount is the count of matching provider records.
     total_count: int = _dataclass_field(default=0, metadata={'dex_json_name': 'TotalCount'})
+    # Messages contains the current outbound page.
     messages: tuple[MessageDetails, ...] | None = _dataclass_field(default=None, metadata={'dex_json_name': 'Messages'})
 
 
 setattr(MessagePage, '__module__', 'dex_connectors.postmark.models')
 
 
+# GetMessageDetailsInput identifies an outbound message.
 @dataclass(frozen=True, slots=True)
 class GetMessageDetailsInput:
-    """Typed GetMessageDetailsInput value from the Go connector contract."""
-
+    # MessageID is Postmark's outbound message identifier.
     message_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'messageId'})
 
 

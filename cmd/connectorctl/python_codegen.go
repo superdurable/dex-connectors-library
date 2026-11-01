@@ -20,9 +20,10 @@ import (
 var pythonCodegenSource string
 
 type pythonCodegenInput struct {
-	Manifest    schema.Manifest `json:"manifest"`
-	Models      []gomodel.Model `json:"models"`
-	PackageName string          `json:"packageName"`
+	Manifest        schema.Manifest `json:"manifest"`
+	Models          []gomodel.Model `json:"models"`
+	PackageName     string          `json:"packageName"`
+	MockPackageName string          `json:"mockPackageName"`
 }
 
 func generatedPythonFiles(manifestPath string, manifest schema.Manifest) (map[string][]byte, error) {
@@ -54,33 +55,24 @@ func generatedPythonFiles(manifestPath string, manifest schema.Manifest) (map[st
 	if err != nil {
 		return nil, err
 	}
-	payload, err := json.Marshal(pythonCodegenInput{Manifest: manifest, Models: models.Models, PackageName: packageName})
-	if err != nil {
-		return nil, fmt.Errorf("encode Python generation input: %w", err)
-	}
-	command := exec.Command("python3", "-c", pythonCodegenSource)
-	command.Stdin = bytes.NewReader(payload)
-	var output bytes.Buffer
-	var diagnostics bytes.Buffer
-	command.Stdout = &output
-	command.Stderr = &diagnostics
-	if err := command.Run(); err != nil {
-		return nil, fmt.Errorf("generate Python connector: %w: %s", err, diagnostics.String())
-	}
-	var generated map[string]string
-	if err := json.Unmarshal(output.Bytes(), &generated); err != nil {
-		return nil, fmt.Errorf("decode Python generation output: %w", err)
-	}
-	manualFiles := map[string]string{
-		"connection.py": filepath.Join(packageDirectory, "connection.py"),
-		"steps.py":      filepath.Join(packageDirectory, "steps.py"),
-	}
 	mockFacades, err := filepath.Glob(filepath.Join(packageDirectory, "*mock", "__init__.py"))
 	if err != nil {
 		return nil, fmt.Errorf("find Python mock facade: %w", err)
 	}
 	if len(mockFacades) > 1 {
 		return nil, fmt.Errorf("multiple Python mock facades in %s", packageDirectory)
+	}
+	mockPackageName := packageName + "mock"
+	if len(mockFacades) == 1 {
+		mockPackageName = filepath.Base(filepath.Dir(mockFacades[0]))
+	}
+	generated, err := renderPythonCodegen(pythonCodegenInput{Manifest: manifest, Models: models.Models, PackageName: packageName, MockPackageName: mockPackageName})
+	if err != nil {
+		return nil, err
+	}
+	manualFiles := map[string]string{
+		"connection.py": filepath.Join(packageDirectory, "connection.py"),
+		"steps.py":      filepath.Join(packageDirectory, "steps.py"),
 	}
 	if len(mockFacades) == 1 {
 		manualFiles["mock.py"] = mockFacades[0]
@@ -98,6 +90,27 @@ func generatedPythonFiles(manifestPath string, manifest schema.Manifest) (map[st
 		files[filepath.Join(packageDirectory, "_generated", name)] = []byte(source)
 	}
 	return files, nil
+}
+
+func renderPythonCodegen(input pythonCodegenInput) (map[string]string, error) {
+	payload, err := json.Marshal(input)
+	if err != nil {
+		return nil, fmt.Errorf("encode Python generation input: %w", err)
+	}
+	command := exec.Command("python3", "-c", pythonCodegenSource)
+	command.Stdin = bytes.NewReader(payload)
+	var output bytes.Buffer
+	var diagnostics bytes.Buffer
+	command.Stdout = &output
+	command.Stderr = &diagnostics
+	if err := command.Run(); err != nil {
+		return nil, fmt.Errorf("generate Python connector: %w: %s", err, diagnostics.String())
+	}
+	var generated map[string]string
+	if err := json.Unmarshal(output.Bytes(), &generated); err != nil {
+		return nil, fmt.Errorf("decode Python generation output: %w", err)
+	}
+	return generated, nil
 }
 
 func isHandwrittenPythonFacade(path string) (bool, error) {

@@ -7,6 +7,8 @@ from datetime import datetime
 
 from dex_connectors.sdk import SecretString
 
+from ._generated.config import Config as ManifestConfig
+
 
 @dataclass(frozen=True, slots=True)
 class Config:
@@ -16,11 +18,17 @@ class Config:
     preserve the shared connection contract for a future Python Trigger.
     """
 
-    endpoint: str = "https://api.stripe.com/v1"
-    max_response_bytes: int = field(default=1_048_576, metadata={"dex_json_name": "maxResponseBytes"})
-    webhook_max_body_bytes: int = field(default=1_048_576, metadata={"dex_json_name": "webhookMaxBodyBytes"})
+    endpoint: str = ManifestConfig().endpoint
+    max_response_bytes: int = field(
+        default=ManifestConfig().max_response_bytes, metadata={"dex_json_name": "maxResponseBytes"}
+    )
+    webhook_max_body_bytes: int = field(
+        default=ManifestConfig().webhook_max_body_bytes,
+        metadata={"dex_json_name": "webhookMaxBodyBytes"},
+    )
     webhook_signature_tolerance: str | int = field(
-        default="5m", metadata={"dex_json_name": "webhookSignatureTolerance"}
+        default=f"{ManifestConfig().webhook_signature_tolerance_seconds / 60:g}m",
+        metadata={"dex_json_name": "webhookSignatureTolerance"},
     )
 
 

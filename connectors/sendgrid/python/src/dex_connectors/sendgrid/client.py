@@ -5,13 +5,15 @@
 import json
 import re
 from collections.abc import Callable
-from datetime import UTC, date, datetime, timedelta
+from dataclasses import dataclass as dataclass
+from datetime import UTC, date, datetime
+from datetime import timedelta as timedelta
 from typing import Any, TypeVar
 from urllib.parse import parse_qs, urlencode, urlsplit
 
 import httpx
+from dex_connectors.sdk import BranchDefinition as BranchDefinition
 from dex_connectors.sdk import (
-    BranchDefinition,
     Call,
     CredentialProvider,
     Failure,
@@ -20,8 +22,10 @@ from dex_connectors.sdk import (
     QueryDefinition,
     ReauthorizationRequiredError,
     Receipt,
-    StepDefaults,
 )
+from dex_connectors.sdk import OperationRef as OperationRef
+from dex_connectors.sdk import SecretString as SecretString
+from dex_connectors.sdk import StepDefaults as StepDefaults
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -32,7 +36,9 @@ from dex_connectors.sdk.providerhttp import (
     send_traced,
     validate_base_url,
 )
-from dex_connectors.sdk.retry_policy import default_connector_step_execute_retry_policy
+from dex_connectors.sdk.retry_policy import (
+    default_connector_step_execute_retry_policy as default_connector_step_execute_retry_policy,
+)
 
 from ._generated.config import (
     Config as Config,
@@ -80,14 +86,6 @@ _DEFAULT_TEMPLATE_PAGE_SIZE = 100
 _MAX_TEMPLATE_PAGE_SIZE = 200
 _ISO_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
 _CREDENTIAL_MESSAGE = "connection credentials are unavailable or invalid"
-_STEP_DEFAULTS = StepDefaults(
-    timedelta(seconds=30), 2, execute_retry=default_connector_step_execute_retry_policy()
-)
-_SHARED_BRANCHES = (
-    BranchDefinition(PROVIDER_REJECTED, "The provider conclusively rejected the request.", True),
-    BranchDefinition(INVALID_RESPONSE, "The provider returned malformed or oversized data.", True),
-    BranchDefinition(DEFECT, "Local input or credentials are invalid.", True),
-)
 
 Output = TypeVar("Output")
 

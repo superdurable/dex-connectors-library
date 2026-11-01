@@ -13,8 +13,8 @@ from typing import Any, TypeVar
 from urllib.parse import quote, urlencode
 
 import httpx
+from dex_connectors.sdk import BranchDefinition as BranchDefinition
 from dex_connectors.sdk import (
-    BranchDefinition,
     Call,
     CredentialProvider,
     Failure,
@@ -23,8 +23,10 @@ from dex_connectors.sdk import (
     QueryDefinition,
     ReauthorizationRequiredError,
     Receipt,
-    StepDefaults,
 )
+from dex_connectors.sdk import OperationRef as OperationRef
+from dex_connectors.sdk import SecretString as SecretString
+from dex_connectors.sdk import StepDefaults as StepDefaults
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -35,7 +37,9 @@ from dex_connectors.sdk.providerhttp import (
     send_traced,
     validate_base_url,
 )
-from dex_connectors.sdk.retry_policy import default_connector_step_execute_retry_policy
+from dex_connectors.sdk.retry_policy import (
+    default_connector_step_execute_retry_policy as default_connector_step_execute_retry_policy,
+)
 
 from ._generated.config import (
     Config as Config,
@@ -93,15 +97,6 @@ _MAX_TOKEN_RESPONSE_BYTES = 65_536
 _TOKEN_EXPIRY_MARGIN_SECONDS = 30
 _MAX_TOKEN_LIFETIME_SECONDS = 24 * 60 * 60
 _MAX_TRANSACTION_WINDOW = timedelta(days=31)
-_STEP_DEFAULTS = StepDefaults(
-    timedelta(seconds=30), 2, execute_retry=default_connector_step_execute_retry_policy()
-)
-_SHARED_BRANCHES = (
-    BranchDefinition(NOT_FOUND, "The requested resource was not found.", True),
-    BranchDefinition(PROVIDER_REJECTED, "The provider conclusively rejected the request.", True),
-    BranchDefinition(INVALID_RESPONSE, "The provider returned malformed or oversized JSON.", True),
-    BranchDefinition(DEFECT, "Local input or connection credentials are invalid.", True),
-)
 
 Output = TypeVar("Output")
 
