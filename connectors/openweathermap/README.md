@@ -6,6 +6,9 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/openweathe
 
 Read current weather and a five-day forecast by coordinates. The manifest is the source of generated Config, Credentials, Connection, operation factories, and mocks. See the [runnable demo](go/examples/demo/README.md) for Worker and strict FDG 2.0 generation commands.
 
+The Python package is [`dex-connector-openweathermap`](python/README.md), imported as
+`dex_connectors.openweathermap`.
+
 ## Operations and provider references
 
 | Operation | Dex kind | Official API reference |
