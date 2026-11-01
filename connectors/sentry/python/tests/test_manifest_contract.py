@@ -70,3 +70,25 @@ def test_example_registers_with_mock_connection() -> None:
     flow = IssueReviewFlow(Mock().connection())
     assert flow.get_flow_type() == FLOW_TYPE
     dex.Registry([flow], allow_async_handlers=True)
+
+
+def test_factory_parameters_match_declared_branch_fields() -> None:
+    import inspect
+    import json
+
+    import dex_connectors.sentry as package
+
+    document = json.loads((Path(package.__file__).parent / "dex-connector.json").read_text())
+    common = {
+        "step_type",
+        "step_input_type",
+        "annotations",
+        "connection",
+        "connection_name",
+        "map_to_operation_input",
+        "result_attribute",
+        "step_options_override",
+    }
+    for factory in document["factories"]:
+        parameters = set(inspect.signature(getattr(package, factory["name"])).parameters)
+        assert parameters - common == {branch["field"] for branch in factory["branches"]}
