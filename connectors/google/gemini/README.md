@@ -20,6 +20,9 @@ Install a published component release:
 go get github.com/superdurable/dex-connectors-library/connectors/google/gemini/go@v0.23.0
 ```
 
+The Python package is [`dex-connector-google-gemini`](python/README.md), imported as
+`dex_connectors.google_gemini`.
+
 ## Connection
 
 The connection kind is `gemini-api-key`. Its one secret field, `api_key`, is a
