@@ -10,6 +10,9 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/close`.
 
 In Dex Web Connections, create a `close` connection named `close`. Open [Settings > Developer > API Keys](https://app.close.com/settings/api/), create the token, and paste it into the secret `api_key` field. Leave `baseUrl`, `timeout`, and `maxResponseBytes` blank for their displayed defaults.
 
+The Python package is [`dex-connector-close`](python/README.md), imported as
+`dex_connectors.close`.
+
 ## Operations
 
 | Operation | Official API reference |
