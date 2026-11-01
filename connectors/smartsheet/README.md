@@ -10,6 +10,9 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/smartsheet
 
 In Dex Web Connections, create a `smartsheet` connection named `smartsheet`. Open [Account icon > Personal Settings > API Access > Generate new access token](https://app.smartsheet.com), create the token, and paste it into the secret `api_key` field. Leave `baseUrl`, `timeout`, and `maxResponseBytes` blank for their displayed defaults.
 
+The Python package is [`dex-connector-smartsheet`](python/README.md), imported as
+`dex_connectors.smartsheet`.
+
 ## Operations
 
 | Operation | Official API reference |
