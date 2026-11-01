@@ -13,6 +13,9 @@ Mixpanel event import and bounded raw export for Dex. The connector uses the pub
 
 `trackEvent` fixes event name, `distinct_id`, and Unix-second `time` in the operation input. It derives a UUID-shaped, 36-byte `$insert_id` from Dex's stable call ID. All four deduplication fields therefore remain identical on retries. Mixpanel applies query-time deduplication to that tuple. Raw exports can still contain duplicate ingested rows; the export operation intentionally returns raw events and does not claim deduplication. It strips arbitrary event properties from Flow output, retaining only event name, distinct ID, time, and insert ID.
 
+The Python package is [`dex-connector-mixpanel`](python/README.md), imported as
+`dex_connectors.mixpanel`.
+
 ## Authorization
 
 Sign in at [Mixpanel Organization Settings](https://mixpanel.com/settings/org/), open **Service Accounts**, and choose **Create Service Account** with Owner or Admin access to the project. Copy the generated username into the secret `service_account_username` field and the secret shown once into `service_account_secret`. Open [Project Settings > Overview](https://mixpanel.com/settings/project/) and enter its positive numeric Project ID in `projectId`; blank cannot authenticate. Both service-account fields are sent only in the Basic authorization header; the non-secret project ID is a query parameter. Leave `baseUrl`, `exportBaseUrl`, `timeout`, and `maxResponseBytes` blank for their displayed US defaults. For EU or India residency, set both host fields to the provider's matching regional endpoints.
