@@ -6,6 +6,9 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/coda`.
 
 This Dex connector exposes `listRows`, `getRow`. The runnable [sample Flow](go/examples/sample-coda/flow/workflow.go) uses `listRows` with the static `coda` connection. Each operation uses the generated typed Step factory.
 
+The Python package is [`dex-connector-coda`](python/README.md), imported as
+`dex_connectors.coda`.
+
 ## Provider contract
 
 This connector is read-only. Coda accepts upserts asynchronously with HTTP 202, and the public contract does not establish safe deduplication of overlapping queued requests, so `upsertRows` is intentionally absent.
