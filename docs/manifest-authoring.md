@@ -50,6 +50,27 @@ implements them. The vendored
 [`dex-connector.schema.json`](../schema/dex-connector.schema.json) is from Dex
 `cli-v1.28.0` at `cli/internal/flowviz/dex-connector.schema.json`.
 
+For every declared TypeScript package, `connectorctl generate` also writes
+`typescript/src/generated/{models,definitions,steps,connection,mock}.ts`.
+Operation models come from the manifest's named types in the connector Go
+module. The generator loads those types with `go/packages` and maps exported
+JSON-tagged struct fields to Zod: `omitempty` and pointers are optional,
+slices are arrays, string-keyed maps are records, nested connector structs are
+schemas, `time.Time` is an ISO datetime string, and `json.RawMessage` or `any`
+is unknown. Generated definitions, branch IDs, operation-specific object
+factories, connection helpers, and mock cases come from `connector.yaml`.
+Run `go run ./cmd/connectorctl generate --lang typescript <connector.yaml>`
+to update the package. Run the same command with `--check` before `--lang`
+to reject drift. The ordinary generate command updates these files as well.
+
+Keep a small hand-written adapter when a public TypeScript contract cannot be
+derived exactly from the Go JSON shape, such as a nullable value represented
+by a Go pointer, a narrower application input enum, or provider-specific
+credential decoding. Re-export generated contracts where they match and keep
+the adapter's exported names stable. The checked-in runnable examples remain
+the consuming application for each package; changing generated Step or mock
+behavior requires running that package's TypeScript checks and example tests.
+
 The Python build backend must include the JSON as package data: in the source
 and sdist under `src/dex_connectors/<slug_with_underscores>/`, and in the wheel
 under `dex_connectors/<slug_with_underscores>/`. If the npm

@@ -2,10 +2,13 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
-import type { StepTarget } from '@superdurable/dex';
-import { SecretString, newQueryStep, type Call, type ConnectionRef, type CredentialProvider, type Failure, type Query, type QueryAttempt, type QueryDefinition, type QueryResult, type QueryStep, type QueryStepConfig, newQueryBranch, newQueryRetry, defaultConnectorStepExecuteRetryPolicy } from '@superdurable/connectors-sdk';
+import { SecretString, type Call, type ConnectionRef, type CredentialProvider, type Failure, type Query, type QueryAttempt, type QueryDefinition, newQueryBranch, newQueryRetry, defaultConnectorStepExecuteRetryPolicy } from '@superdurable/connectors-sdk';
 import { AddressRefusal, BodyTooLargeError, MaxErrorBodyBytes, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, readErrorTokens, sendProviderRequest, validateBaseURL } from '@superdurable/connectors-sdk/providerhttp';
 import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
+import type { Config, Credentials } from './generated/models.js';
+export type { Config, Credentials } from './generated/models.js';
+export { newSearchArticlesStep } from './generated/steps.js';
+export type { SearchArticlesStepConfig } from './generated/steps.js';
 
 /** Stable connector identity. */
 export const ConnectorID = 'newsapi';
@@ -24,16 +27,6 @@ export const SearchInFields = ['title', 'description', 'content'] as const;
 export const Languages = ['ar', 'de', 'en', 'es', 'fr', 'he', 'it', 'nl', 'no', 'pt', 'ru', 'sv', 'ud', 'zh'] as const;
 /** Supported result ordering. */
 export const SortOrders = ['publishedAt', 'relevancy', 'popularity'] as const;
-
-/** NewsAPI settings; omitted or zero fields use manifest defaults. */
-export interface Config {
-  /** HTTPS API base URL or loopback test endpoint. */ baseUrl?: string;
-  /** One HTTP request timeout in milliseconds. */ timeoutMs?: number;
-  /** Maximum successful response size in bytes. */ maxResponseBytes?: number;
-}
-
-/** Private NewsAPI credential, resolved for every call. */
-export interface Credentials { /** API key sent only in X-Api-Key. */ apiKey: SecretString }
 
 /** One page request to NewsAPI's everything endpoint. */
 export interface SearchArticlesInput {
@@ -221,31 +214,6 @@ export function newProjectConnection(project: LoadedProject, connectionName: str
     },
   };
   return newConnection(new Client(config, credentials), { provider: ConnectorID, name: connectionName });
-}
-
-/** Operation-specific factory settings with a static Dex Web connection name. */
-export interface SearchArticlesStepConfig<StepInput> extends Omit<QueryStepConfig<StepInput, SearchArticlesInput, ArticlePage>, 'operation' | 'connection' | 'branches'> {
-  /** Typed real or mock NewsAPI connection. */ connection: Connection;
-  /** Static name also declared by the consuming Flow. */ connectionName: string;
-  /** Required successful route. */ searched: StepTarget<QueryResult<ArticlePage>>;
-  /** Optional conclusive provider rejection route; omission fails the Flow. */ providerRejected?: StepTarget<QueryResult<ArticlePage>>;
-  /** Optional invalid provider response route; omission fails the Flow. */ invalidResponse?: StepTarget<QueryResult<ArticlePage>>;
-  /** Optional local input or credential defect route; omission fails the Flow. */ defect?: StepTarget<QueryResult<ArticlePage>>;
-}
-
-/** Create the manifest-backed searchArticles Query Step for one Flow. */
-export function newSearchArticlesStep<StepInput>(configuration: SearchArticlesStepConfig<StepInput>): QueryStep<StepInput, SearchArticlesInput, ArticlePage> {
-  const { connection, connectionName, searched, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
-  if (connection.reference.name !== connectionName) throw new TypeError('NewsAPI Step connection name differs from the bound connection');
-  return newQueryStep({
-    ...stepConfiguration, operation: connection.searchArticles, connection: connection.reference,
-    branches: [
-      { branch: SearchArticlesBranchSearched, target: searched },
-      ...(providerRejected ? [{ branch: SearchArticlesBranchProviderRejected, target: providerRejected }] : []),
-      ...(invalidResponse ? [{ branch: SearchArticlesBranchInvalidResponse, target: invalidResponse }] : []),
-      ...(defect ? [{ branch: SearchArticlesBranchDefect, target: defect }] : []),
-    ],
-  });
 }
 
 function parseDurationMilliseconds(value: string): number {

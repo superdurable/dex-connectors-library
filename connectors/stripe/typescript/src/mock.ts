@@ -1,143 +1,106 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { branchCase, newMutation, newQuery, retryCase, uncertainCase, type Case, type MockMutation, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
-import type { Failure, FailureKind } from '@superdurable/connectors-sdk';
+import { branchCase, retryCase, uncertainCase, type Case } from '@superdurable/connectors-sdk/connectormock';
+import type { Failure } from '@superdurable/connectors-sdk';
 import type { CheckoutSession, PaymentIntent, Refund } from './models.js';
-import type { CreateACHCheckoutSessionInput, CreateCardCheckoutSessionInput, CreateRefundInput, GetCheckoutSessionInput, GetPaymentIntentInput } from './models.js';
-import { CreateACHCheckoutSessionDefinition, CreateCardCheckoutSessionDefinition, CreateRefundDefinition, GetCheckoutSessionDefinition, GetPaymentIntentDefinition } from './definitions.js';
 import { newConnectionWithOperations, type Connection } from './connection.js';
-
-const emptySession: CheckoutSession = { id: '' };
-const emptyIntent: PaymentIntent = { id: '', amount: 0, currency: '', status: '', amountRefunded: 0 };
-const emptyRefund: Refund = { refundId: '', status: '', amount: 0, currency: '' };
-
-function failure(operation: string, kind: FailureKind, message: string): Failure {
-  return { kind, provider: 'stripe', operation, message };
-}
+import { GeneratedMock } from './generated/mock.js';
+import * as generatedMock from './generated/mock.js';
 
 /** Script a safe retry of one card Checkout attempt. */
 export function createCardCheckoutSessionRetry(providerFailure: Failure, retryAfterMs = 0): Case<CheckoutSession> { return retryCase(providerFailure, retryAfterMs); }
 /** Script an unconfirmable card Checkout attempt. */
 export function createCardCheckoutSessionUncertain(value: CheckoutSession, providerFailure: Failure): Case<CheckoutSession> { return uncertainCase(value, providerFailure); }
 /** Manifest mock createdCardSession, also the default card scenario. */
-export function createCardCheckoutSessionCreatedCardSession(): Case<CheckoutSession> { return branchCase('created', { id: 'cs_test_card123', url: 'https://checkout.stripe.com/c/pay/cs_test_card123', clientReferenceId: 'registration-card-42', paymentStatus: 'unpaid', status: 'open', currency: 'usd', amountTotal: 7500, metadata: { registration_id: 'registration-card-42' } }); }
+export function createCardCheckoutSessionCreatedCardSession(): Case<CheckoutSession> { return generatedMock.createCardCheckoutSessionCreatedCardSession(); }
 /** Manifest mock invalidCardRequest. */
-export function createCardCheckoutSessionInvalidCardRequest(): Case<CheckoutSession> { return branchCase('providerRejected', emptySession, failure('createCardCheckoutSession', 'PROVIDER_REJECTION', 'Stripe rejected the request')); }
+export function createCardCheckoutSessionInvalidCardRequest(): Case<CheckoutSession> { return generatedMock.createCardCheckoutSessionInvalidCardRequest(); }
 /** Manifest mock unconfirmedCardSession. */
-export function createCardCheckoutSessionUnconfirmedCardSession(): Case<CheckoutSession> { return uncertainCase(emptySession, failure('createCardCheckoutSession', 'AVAILABILITY', 'Stripe Checkout Session outcome cannot be confirmed after a server error')); }
+export function createCardCheckoutSessionUnconfirmedCardSession(): Case<CheckoutSession> { return generatedMock.createCardCheckoutSessionUnconfirmedCardSession(); }
 /** Manifest mock malformedCardSession. */
-export function createCardCheckoutSessionMalformedCardSession(): Case<CheckoutSession> { return branchCase('invalidResponse', emptySession, failure('createCardCheckoutSession', 'PROTOCOL', 'Stripe response is invalid: Stripe returned an invalid Checkout Session')); }
+export function createCardCheckoutSessionMalformedCardSession(): Case<CheckoutSession> { return generatedMock.createCardCheckoutSessionMalformedCardSession(); }
 /** Manifest mock invalidCardCurrency. */
-export function createCardCheckoutSessionInvalidCardCurrency(): Case<CheckoutSession> { return branchCase('defect', emptySession, failure('createCardCheckoutSession', 'VALIDATION', 'currency must be a lowercase three-letter code')); }
+export function createCardCheckoutSessionInvalidCardCurrency(): Case<CheckoutSession> { return generatedMock.createCardCheckoutSessionInvalidCardCurrency(); }
 /** Default card Checkout scenario. */
-export function createCardCheckoutSessionDefault(): Case<CheckoutSession> { return createCardCheckoutSessionCreatedCardSession(); }
+export function createCardCheckoutSessionDefault(): Case<CheckoutSession> { return generatedMock.createCardCheckoutSessionDefault(); }
 
 /** Script a safe retry of one ACH Checkout attempt. */
 export function createACHCheckoutSessionRetry(providerFailure: Failure, retryAfterMs = 0): Case<CheckoutSession> { return retryCase(providerFailure, retryAfterMs); }
 /** Script an unconfirmable ACH Checkout attempt. */
 export function createACHCheckoutSessionUncertain(value: CheckoutSession, providerFailure: Failure): Case<CheckoutSession> { return uncertainCase(value, providerFailure); }
 /** Manifest mock createdSession, also the default ACH scenario. */
-export function createACHCheckoutSessionCreatedSession(): Case<CheckoutSession> { return branchCase('created', { id: 'cs_test_a1b2c3', url: 'https://checkout.stripe.com/c/pay/cs_test_a1b2c3', clientReferenceId: 'registration-42', paymentStatus: 'unpaid', status: 'open', currency: 'usd', amountTotal: 7500, metadata: { registration_id: 'registration-42' } }); }
+export function createACHCheckoutSessionCreatedSession(): Case<CheckoutSession> { return generatedMock.createACHCheckoutSessionCreatedSession(); }
 /** Manifest mock invalidRequest. */
-export function createACHCheckoutSessionInvalidRequest(): Case<CheckoutSession> { return branchCase('providerRejected', emptySession, failure('createACHCheckoutSession', 'PROVIDER_REJECTION', 'Stripe rejected the request')); }
+export function createACHCheckoutSessionInvalidRequest(): Case<CheckoutSession> { return generatedMock.createACHCheckoutSessionInvalidRequest(); }
 /** Manifest mock unconfirmedSession. */
-export function createACHCheckoutSessionUnconfirmedSession(): Case<CheckoutSession> { return uncertainCase(emptySession, failure('createACHCheckoutSession', 'AVAILABILITY', 'Stripe Checkout Session outcome cannot be confirmed after a server error')); }
+export function createACHCheckoutSessionUnconfirmedSession(): Case<CheckoutSession> { return generatedMock.createACHCheckoutSessionUnconfirmedSession(); }
 /** Manifest mock malformedSession. */
-export function createACHCheckoutSessionMalformedSession(): Case<CheckoutSession> { return branchCase('invalidResponse', emptySession, failure('createACHCheckoutSession', 'PROTOCOL', 'Stripe response is invalid: Stripe returned an invalid Checkout Session')); }
+export function createACHCheckoutSessionMalformedSession(): Case<CheckoutSession> { return generatedMock.createACHCheckoutSessionMalformedSession(); }
 /** Manifest mock invalidCurrency. */
-export function createACHCheckoutSessionInvalidCurrency(): Case<CheckoutSession> { return branchCase('defect', emptySession, failure('createACHCheckoutSession', 'VALIDATION', 'currency must be a lowercase three-letter code')); }
+export function createACHCheckoutSessionInvalidCurrency(): Case<CheckoutSession> { return generatedMock.createACHCheckoutSessionInvalidCurrency(); }
 /** Default ACH Checkout scenario. */
-export function createACHCheckoutSessionDefault(): Case<CheckoutSession> { return createACHCheckoutSessionCreatedSession(); }
+export function createACHCheckoutSessionDefault(): Case<CheckoutSession> { return generatedMock.createACHCheckoutSessionDefault(); }
 
 /** Script a safe retry of one Checkout Session query. */
 export function getCheckoutSessionRetry(providerFailure: Failure, retryAfterMs = 0): Case<CheckoutSession> { return retryCase(providerFailure, retryAfterMs); }
 /** Manifest mock paidSession, also the default query scenario. */
-export function getCheckoutSessionPaidSession(): Case<CheckoutSession> { return branchCase('found', { id: 'cs_test_a1b2c3', paymentStatus: 'paid', status: 'complete', paymentIntentId: 'pi_3Pabc123', currency: 'usd', amountTotal: 7500 }); }
+export function getCheckoutSessionPaidSession(): Case<CheckoutSession> { return generatedMock.getCheckoutSessionPaidSession(); }
 /** Manifest mock missingSession. */
-export function getCheckoutSessionMissingSession(): Case<CheckoutSession> { return branchCase('notFound', emptySession, failure('getCheckoutSession', 'NOT_FOUND', 'Stripe Checkout Session was not found')); }
+export function getCheckoutSessionMissingSession(): Case<CheckoutSession> { return generatedMock.getCheckoutSessionMissingSession(); }
 /** Manifest mock unauthorizedKey. */
-export function getCheckoutSessionUnauthorizedKey(): Case<CheckoutSession> { return branchCase('providerRejected', emptySession, failure('getCheckoutSession', 'AUTHENTICATION', 'Stripe rejected the request')); }
+export function getCheckoutSessionUnauthorizedKey(): Case<CheckoutSession> { return generatedMock.getCheckoutSessionUnauthorizedKey(); }
 /** Manifest mock malformedSession. */
-export function getCheckoutSessionMalformedSession(): Case<CheckoutSession> { return branchCase('invalidResponse', emptySession, failure('getCheckoutSession', 'PROTOCOL', 'Stripe response is invalid: Stripe returned an invalid Checkout Session')); }
+export function getCheckoutSessionMalformedSession(): Case<CheckoutSession> { return generatedMock.getCheckoutSessionMalformedSession(); }
 /** Manifest mock invalidSessionID. */
-export function getCheckoutSessionInvalidSessionID(): Case<CheckoutSession> { return branchCase('defect', emptySession, failure('getCheckoutSession', 'VALIDATION', 'Stripe Checkout Session ID is required')); }
+export function getCheckoutSessionInvalidSessionID(): Case<CheckoutSession> { return generatedMock.getCheckoutSessionInvalidSessionID(); }
 /** Default Checkout Session query scenario. */
-export function getCheckoutSessionDefault(): Case<CheckoutSession> { return getCheckoutSessionPaidSession(); }
+export function getCheckoutSessionDefault(): Case<CheckoutSession> { return generatedMock.getCheckoutSessionDefault(); }
 
 /** Script a safe retry of one PaymentIntent query. */
 export function getPaymentIntentRetry(providerFailure: Failure, retryAfterMs = 0): Case<PaymentIntent> { return retryCase(providerFailure, retryAfterMs); }
 /** Manifest mock partiallyRefundedPayment, also the default query scenario. */
-export function getPaymentIntentPartiallyRefundedPayment(): Case<PaymentIntent> { return branchCase('found', { id: 'pi_3Pabc123', amount: 7500, currency: 'usd', status: 'succeeded', amountRefunded: 2500, customerEmail: 'person@example.com', latestChargeId: 'ch_3Pabc123' }); }
+export function getPaymentIntentPartiallyRefundedPayment(): Case<PaymentIntent> { return generatedMock.getPaymentIntentPartiallyRefundedPayment(); }
 /** Manifest mock missingPaymentIntent. */
-export function getPaymentIntentMissingPaymentIntent(): Case<PaymentIntent> { return branchCase('notFound', emptyIntent, failure('getPaymentIntent', 'NOT_FOUND', 'Stripe PaymentIntent was not found: resource_missing')); }
+export function getPaymentIntentMissingPaymentIntent(): Case<PaymentIntent> { return generatedMock.getPaymentIntentMissingPaymentIntent(); }
 /** Manifest mock unauthorizedKey. */
-export function getPaymentIntentUnauthorizedKey(): Case<PaymentIntent> { return branchCase('providerRejected', emptyIntent, failure('getPaymentIntent', 'AUTHENTICATION', 'Stripe rejected the request')); }
+export function getPaymentIntentUnauthorizedKey(): Case<PaymentIntent> { return generatedMock.getPaymentIntentUnauthorizedKey(); }
 /** Manifest mock malformedPaymentIntent. */
-export function getPaymentIntentMalformedPaymentIntent(): Case<PaymentIntent> { return branchCase('invalidResponse', emptyIntent, failure('getPaymentIntent', 'PROTOCOL', 'Stripe response is invalid: Stripe returned an invalid PaymentIntent')); }
+export function getPaymentIntentMalformedPaymentIntent(): Case<PaymentIntent> { return generatedMock.getPaymentIntentMalformedPaymentIntent(); }
 /** Manifest mock invalidPaymentIntentID. */
-export function getPaymentIntentInvalidPaymentIntentID(): Case<PaymentIntent> { return branchCase('defect', emptyIntent, failure('getPaymentIntent', 'VALIDATION', 'Stripe PaymentIntent ID must be a pi_ identifier')); }
+export function getPaymentIntentInvalidPaymentIntentID(): Case<PaymentIntent> { return generatedMock.getPaymentIntentInvalidPaymentIntentID(); }
 /** Default PaymentIntent query scenario. */
-export function getPaymentIntentDefault(): Case<PaymentIntent> { return getPaymentIntentPartiallyRefundedPayment(); }
+export function getPaymentIntentDefault(): Case<PaymentIntent> { return generatedMock.getPaymentIntentDefault(); }
 
 /** Script a safe retry of one refund attempt. */
 export function createRefundRetry(providerFailure: Failure, retryAfterMs = 0): Case<Refund> { return retryCase(providerFailure, retryAfterMs); }
 /** Script an unconfirmable refund attempt. */
 export function createRefundUncertain(value: Refund, providerFailure: Failure): Case<Refund> { return uncertainCase(value, providerFailure); }
 /** Manifest mock succeededRefund, also the default refund scenario. */
-export function createRefundSucceededRefund(): Case<Refund> { return branchCase('refunded', { refundId: 're_3Pabc123', status: 'succeeded', amount: 2500, currency: 'usd' }); }
+export function createRefundSucceededRefund(): Case<Refund> { return generatedMock.createRefundSucceededRefund(); }
 /** Manifest mock alreadyRefunded. */
-export function createRefundAlreadyRefunded(): Case<Refund> { return branchCase('providerRejected', emptyRefund, failure('createRefund', 'PROVIDER_REJECTION', 'Stripe rejected the refund: charge_already_refunded: Charge ch_3Pabc123 has already been refunded.')); }
+export function createRefundAlreadyRefunded(): Case<Refund> { return generatedMock.createRefundAlreadyRefunded(); }
 /** Manifest mock unconfirmedRefund. */
-export function createRefundUnconfirmedRefund(): Case<Refund> { return uncertainCase(emptyRefund, failure('createRefund', 'AVAILABILITY', 'Stripe refund outcome cannot be confirmed after a server error')); }
+export function createRefundUnconfirmedRefund(): Case<Refund> { return generatedMock.createRefundUnconfirmedRefund(); }
 /** Manifest mock malformedRefund. */
-export function createRefundMalformedRefund(): Case<Refund> { return branchCase('invalidResponse', emptyRefund, failure('createRefund', 'PROTOCOL', 'Stripe response is invalid: Stripe returned an invalid refund')); }
+export function createRefundMalformedRefund(): Case<Refund> { return generatedMock.createRefundMalformedRefund(); }
 /** Manifest mock invalidAmount. */
-export function createRefundInvalidAmount(): Case<Refund> { return branchCase('defect', emptyRefund, failure('createRefund', 'VALIDATION', 'refund amount must be positive')); }
+export function createRefundInvalidAmount(): Case<Refund> { return generatedMock.createRefundInvalidAmount(); }
 /** Default refund scenario. */
-export function createRefundDefault(): Case<Refund> { return createRefundSucceededRefund(); }
+export function createRefundDefault(): Case<Refund> { return generatedMock.createRefundDefault(); }
 
 /** Scripted Stripe connection with every Go manifest default installed. */
-export class StripeMock {
-  private readonly card: MockMutation<CreateCardCheckoutSessionInput, CheckoutSession>;
-  private readonly ach: MockMutation<CreateACHCheckoutSessionInput, CheckoutSession>;
-  private readonly checkout: MockQuery<GetCheckoutSessionInput, CheckoutSession>;
-  private readonly payment: MockQuery<GetPaymentIntentInput, PaymentIntent>;
-  private readonly refund: MockMutation<CreateRefundInput, Refund>;
+export class StripeMock extends GeneratedMock {
   private readonly namedConnection: Connection;
 
   /** Construct the same five default scenarios as Go's stripemock.New. */
   constructor(connectionName: string) {
-    this.card = newMutation<CreateCardCheckoutSessionInput, CheckoutSession>(CreateCardCheckoutSessionDefinition).default(createCardCheckoutSessionDefault());
-    this.ach = newMutation<CreateACHCheckoutSessionInput, CheckoutSession>(CreateACHCheckoutSessionDefinition).default(createACHCheckoutSessionDefault());
-    this.checkout = newQuery<GetCheckoutSessionInput, CheckoutSession>(GetCheckoutSessionDefinition).default(getCheckoutSessionDefault());
-    this.payment = newQuery<GetPaymentIntentInput, PaymentIntent>(GetPaymentIntentDefinition).default(getPaymentIntentDefault());
-    this.refund = newMutation<CreateRefundInput, Refund>(CreateRefundDefinition).default(createRefundDefault());
-    this.namedConnection = newConnectionWithOperations({
-      createCardCheckoutSession: () => this.card,
-      createACHCheckoutSession: () => this.ach,
-      getCheckoutSession: () => this.checkout,
-      getPaymentIntent: () => this.payment,
-      createRefund: () => this.refund,
-    }, { provider: 'stripe', name: connectionName });
+    super(connectionName);
+    this.namedConnection = newConnectionWithOperations(this, { provider: 'stripe', name: connectionName });
   }
 
   /** Return the operation connection used by Dex Step factories. */
-  connection(): Connection { return this.namedConnection; }
-  /** Script the card Checkout mutation. */ createCardCheckoutSession(): MockMutation<CreateCardCheckoutSessionInput, CheckoutSession> { return this.card; }
-  /** Script the ACH Checkout mutation. */ createACHCheckoutSession(): MockMutation<CreateACHCheckoutSessionInput, CheckoutSession> { return this.ach; }
-  /** Script the Checkout Session query. */ getCheckoutSession(): MockQuery<GetCheckoutSessionInput, CheckoutSession> { return this.checkout; }
-  /** Script the PaymentIntent query. */ getPaymentIntent(): MockQuery<GetPaymentIntentInput, PaymentIntent> { return this.payment; }
-  /** Script the refund mutation. */ createRefund(): MockMutation<CreateRefundInput, Refund> { return this.refund; }
-
-  /** Fail test verification if any operation had an invalid or unscripted answer. */
-  assertNoFailures(): void {
-    this.card.assertNoFailures();
-    this.ach.assertNoFailures();
-    this.checkout.assertNoFailures();
-    this.payment.assertNoFailures();
-    this.refund.assertNoFailures();
-  }
+  override connection(): Connection { return this.namedConnection; }
 }
 
 /** Construct one scripted Stripe connection with manifest defaults. */

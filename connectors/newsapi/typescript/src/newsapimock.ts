@@ -1,9 +1,10 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { branchCase, newQuery, retryCase, type Case, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
+import { branchCase, newQuery, type Case, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
 import type { Failure } from '@superdurable/connectors-sdk';
-import { ArticlePageSchema, ConnectorID, newConnectionWithOperations, SearchArticlesBranchDefect, SearchArticlesBranchInvalidResponse, SearchArticlesBranchProviderRejected, SearchArticlesBranchSearched, SearchArticlesDefinition, type ArticlePage, type Connection, type SearchArticlesInput } from './index.js';
+import { ArticlePageSchema, ConnectorID, newConnectionWithOperations, SearchArticlesBranchProviderRejected, SearchArticlesBranchSearched, SearchArticlesDefinition, type ArticlePage, type Connection, type SearchArticlesInput } from './index.js';
+import * as generatedMock from './generated/mock.js';
 
 /** Default mock answer from connector.yaml. */
 export function searchArticlesSearchedDefaultAnswer(): Case<ArticlePage> {
@@ -22,15 +23,15 @@ export function searchArticlesInvalidKey(): Case<ArticlePage> {
 }
 
 /** Build a searched branch mock case. */
-export function searchArticlesSearched(value: ArticlePage, failure?: Failure): Case<ArticlePage> { return branchCase(SearchArticlesBranchSearched, value, failure); }
+export function searchArticlesSearched(value: ArticlePage, failure?: Failure): Case<ArticlePage> { return generatedMock.searchArticlesSearched(value, failure); }
 /** Build a provider rejection mock case. */
-export function searchArticlesProviderRejected(value: ArticlePage, failure?: Failure): Case<ArticlePage> { return branchCase(SearchArticlesBranchProviderRejected, value, failure); }
+export function searchArticlesProviderRejected(value: ArticlePage, failure?: Failure): Case<ArticlePage> { return generatedMock.searchArticlesProviderRejected(value, failure); }
 /** Build an invalid response mock case. */
-export function searchArticlesInvalidResponse(value: ArticlePage, failure?: Failure): Case<ArticlePage> { return branchCase(SearchArticlesBranchInvalidResponse, value, failure); }
+export function searchArticlesInvalidResponse(value: ArticlePage, failure?: Failure): Case<ArticlePage> { return generatedMock.searchArticlesInvalidResponse(value, failure); }
 /** Build a local defect mock case. */
-export function searchArticlesDefect(value: ArticlePage, failure?: Failure): Case<ArticlePage> { return branchCase(SearchArticlesBranchDefect, value, failure); }
+export function searchArticlesDefect(value: ArticlePage, failure?: Failure): Case<ArticlePage> { return generatedMock.searchArticlesDefect(value, failure); }
 /** Build a retry mock case. */
-export function searchArticlesRetry(failure: Failure, retryAfterMs = 0): Case<ArticlePage> { return retryCase(failure, retryAfterMs); }
+export function searchArticlesRetry(failure: Failure, retryAfterMs = 0): Case<ArticlePage> { return generatedMock.searchArticlesRetry(failure, retryAfterMs); }
 
 /** Scripted NewsAPI connection for application tests. */
 export class Mock {

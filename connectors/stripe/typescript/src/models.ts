@@ -2,17 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
-
-/** A hosted Stripe Checkout Session safe for Dex persistence. */
-export const CheckoutSessionSchema = z.strictObject({
-  id: z.string(), url: z.string().optional(), clientReferenceId: z.string().optional(),
-  paymentStatus: z.string().optional(), status: z.string().optional(),
-  paymentIntentId: z.string().optional(), currency: z.string().optional(),
-  amountTotal: z.number().int().optional(), expiresAt: z.iso.datetime({ offset: true }).optional(),
-  metadata: z.record(z.string(), z.string()).optional(),
-});
-/** A hosted Stripe Checkout Session safe for Dex persistence. */
-export type CheckoutSession = z.infer<typeof CheckoutSessionSchema>;
+export { CheckoutSessionSchema, PaymentIntentSchema, RefundSchema } from './generated/models.js';
+export type { CheckoutSession, PaymentIntent, Refund } from './generated/models.js';
 
 /** One hosted ACH Checkout request; money uses minor currency units. */
 export interface CreateACHCheckoutSessionInput {
@@ -53,14 +44,6 @@ export interface GetPaymentIntentInput {
 /** Runtime validation for a PaymentIntent lookup. */
 export const GetPaymentIntentInputSchema = z.object({ paymentIntentId: z.string() });
 
-/** Safe PaymentIntent summary, with its latest charge refund total. */
-export const PaymentIntentSchema = z.strictObject({
-  id: z.string(), amount: z.number().int(), currency: z.string(), status: z.string(),
-  amountRefunded: z.number().int(), customerEmail: z.string().optional(), latestChargeId: z.string().optional(),
-});
-/** Safe PaymentIntent summary, with its latest charge refund total. */
-export type PaymentIntent = z.infer<typeof PaymentIntentSchema>;
-
 /** One keyed Stripe refund request; money uses minor currency units. */
 export interface CreateRefundInput {
   /** Stripe pi_ identifier. */ paymentIntentId: string;
@@ -75,13 +58,6 @@ export const CreateRefundInputSchema = z.object({
   reason: z.enum(['duplicate', 'fraudulent', 'requested_by_customer']).optional(),
   metadata: z.record(z.string(), z.string()).optional(),
 });
-
-/** Safe Stripe refund result. */
-export const RefundSchema = z.strictObject({
-  refundId: z.string(), status: z.string(), amount: z.number().int(), currency: z.string(),
-});
-/** Safe Stripe refund result. */
-export type Refund = z.infer<typeof RefundSchema>;
 
 /** Connection settings; blank endpoint and zero size use manifest defaults. */
 export interface Config {

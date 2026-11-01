@@ -2,6 +2,12 @@
 
 `@superdurable/connector-stripe` provides the same five API operations as the Go Stripe connector: hosted card and ACH Checkout Session creation, Checkout Session lookup, PaymentIntent lookup, and refund creation. The package uses `@superdurable/connectors-sdk` for Dex operation and connection contracts, including operation-specific Step factories. Its `mock` export supplies typed manifest scenarios for application tests.
 
+The checked-in `src/generated/` contracts come from `connector.yaml` and the
+Go operation structs. Run `go run ./cmd/connectorctl generate --lang typescript connectors/stripe/connector.yaml` from the repository root after either source changes.
+`src/models.ts` keeps the narrower refund reason enum and input
+validators; `src/connection.ts` keeps Stripe's credential decoding and public
+constructor signatures.
+
 ## Install
 
 ```sh

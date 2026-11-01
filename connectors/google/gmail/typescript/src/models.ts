@@ -1,8 +1,14 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { z } from 'zod';
 import type { RefreshingCredentialProvider, SecretString } from '@superdurable/connectors-sdk';
+export {
+  GetMessageInputSchema, SendMessageInputSchema, ReplyToMessageInputSchema,
+  MessageSchema, SendMessageOutputSchema,
+} from './generated/models.js';
+export type {
+  GetMessageInput, SendMessageInput, ReplyToMessageInput, Message, SendMessageOutput,
+} from './generated/models.js';
 
 /** Stable Gmail connector identity. */
 export const ConnectorID = 'gmail';
@@ -36,40 +42,3 @@ export interface Credentials {
 
 /** Host-owned refreshing credential source required by the Gmail client. */
 export type CredentialSource = RefreshingCredentialProvider<Credentials>;
-
-/** Input for one Gmail message read. */
-export const GetMessageInputSchema = z.strictObject({ messageId: z.string() });
-/** Input for one Gmail message read. */
-export type GetMessageInput = z.infer<typeof GetMessageInputSchema>;
-
-/** Input for one outbound Gmail message. */
-export const SendMessageInputSchema = z.strictObject({
-  to: z.array(z.string()), subject: z.string(), textBody: z.string(), htmlBody: z.string().optional(),
-});
-/** Input for one outbound Gmail message. */
-export type SendMessageInput = z.infer<typeof SendMessageInputSchema>;
-
-/** Input for a reply to an existing Gmail message. */
-export const ReplyToMessageInputSchema = z.strictObject({
-  messageId: z.string(), textBody: z.string(), htmlBody: z.string().optional(),
-});
-/** Input for a reply to an existing Gmail message. */
-export type ReplyToMessageInput = z.infer<typeof ReplyToMessageInputSchema>;
-
-/** Decoded Gmail message returned by getMessage. */
-export const MessageSchema = z.strictObject({
-  messageId: z.string(), threadId: z.string(), rfcMessageId: z.string().optional(),
-  inReplyTo: z.string().optional(), references: z.string().optional(), from: z.string(),
-  replyTo: z.string().optional(), to: z.array(z.string()).optional(), subject: z.string(),
-  textBody: z.string().optional(), htmlBody: z.string().optional(), snippet: z.string().optional(),
-  receivedAt: z.iso.datetime({ offset: true }), labelIds: z.array(z.string()).optional(),
-});
-/** Decoded Gmail message returned by getMessage. */
-export type Message = z.infer<typeof MessageSchema>;
-
-/** Gmail accepted-send identity and safe recipients. */
-export const SendMessageOutputSchema = z.strictObject({
-  sender: z.string(), recipients: z.array(z.string()), messageId: z.string(), threadId: z.string(),
-});
-/** Gmail accepted-send identity and safe recipients. */
-export type SendMessageOutput = z.infer<typeof SendMessageOutputSchema>;

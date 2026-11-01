@@ -4,6 +4,9 @@
 operation to Dex TypeScript applications. It returns a typed `ArticlePage` and
 selects `searched`, `providerRejected`, `invalidResponse`, or `defect`.
 
+The checked-in `src/generated/` contracts come from `connector.yaml` and the
+Go operation structs. Run `go run ./cmd/connectorctl generate --lang typescript connectors/newsapi/connector.yaml` from the repository root after either source changes. The article model and `ArticlePageSchema` remain hand-written so nullable NewsAPI values and the existing page validator keep their public behavior; the connection adapter and project credential decoder remain hand-written.
+
 ## Install
 
 ```sh

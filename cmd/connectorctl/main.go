@@ -377,8 +377,16 @@ func generate(args []string) error {
 		check = true
 		args = args[1:]
 	}
+	language := ""
+	if len(args) > 1 && args[0] == "--lang" {
+		language = args[1]
+		args = args[2:]
+	}
+	if language != "" && language != "typescript" {
+		return fmt.Errorf("unsupported generate language %q", language)
+	}
 	if len(args) != 1 {
-		return errors.New("usage: connectorctl generate [--check] <manifest>")
+		return errors.New("usage: connectorctl generate [--check] [--lang typescript] <manifest>")
 	}
 	manifest, err := load(args[0])
 	if err != nil {
@@ -405,6 +413,14 @@ func generate(args []string) error {
 	if err != nil {
 		return err
 	}
+	typeScriptFiles, err := generatedTypeScriptFiles(args[0], manifest)
+	if err != nil {
+		return err
+	}
+	staleTypeScript, err := staleTypeScriptFiles(args[0], typeScriptFiles)
+	if err != nil {
+		return err
+	}
 	staleLanguageManifests, err := staleLanguageManifestFiles(args[0], languageManifestFiles)
 	if err != nil {
 		return err
@@ -416,6 +432,9 @@ func generate(args []string) error {
 		mockFiles[path] = contents
 	}
 	for path, contents := range languageManifestFiles {
+		mockFiles[path] = contents
+	}
+	for path, contents := range typeScriptFiles {
 		mockFiles[path] = contents
 	}
 	stale := staleMockFiles(args[0], manifest)
@@ -441,12 +460,15 @@ func generate(args []string) error {
 		if len(staleLanguageManifests) > 0 {
 			return fmt.Errorf("generated language package manifest is stale: %s", staleLanguageManifests[0])
 		}
+		if len(staleTypeScript) > 0 {
+			return fmt.Errorf("generated TypeScript file is stale: %s", staleTypeScript[0])
+		}
 		return checkGeneratedFiles(mockFiles)
 	}
 	if err := os.WriteFile(output, generated, 0o644); err != nil {
 		return fmt.Errorf("write %s: %w", output, err)
 	}
-	for _, path := range slices.Concat(stale, staleRefreshAgreement, staleSharedCredential, staleLanguageManifests) {
+	for _, path := range slices.Concat(stale, staleRefreshAgreement, staleSharedCredential, staleLanguageManifests, staleTypeScript) {
 		if err := os.Remove(path); err != nil {
 			return fmt.Errorf("remove stale %s: %w", path, err)
 		}
