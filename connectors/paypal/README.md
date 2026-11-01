@@ -17,6 +17,9 @@ Each operation has optional `notFound`, `providerRejected`, `invalidResponse`, a
 
 PayPal Transaction Search requires the reporting/search/read permission, returns transactions with up to a three-hour visibility delay, and supports only the previous three years. [PayPal publishes the endpoint and scope](https://github.com/paypal/paypal-rest-api-specifications/blob/main/openapi/reporting_transactions_v1.json). This connector reads only the minimal transaction_info fields.
 
+The Python package is [`dex-connector-paypal`](python/README.md), imported as
+`dex_connectors.paypal`.
+
 ## Authentication and configuration
 
 Follow the authorization guide in `connector.yaml` from [https://developer.paypal.com/dashboard/applications/live](https://developer.paypal.com/dashboard/applications/live). The connection resolves credentials for each operation and caches the resulting access token in memory until shortly before expiry. Secrets travel in HTTP headers and never enter results, receipts, failures, or URLs. The `baseUrl` field uses the provider API URL, `timeout` bounds one HTTP request, and `maxResponseBytes` bounds JSON response size. The last two fields use a positive Go duration and a positive byte count, respectively; blank uses the displayed defaults.
