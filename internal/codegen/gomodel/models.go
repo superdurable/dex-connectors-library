@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"golang.org/x/tools/go/packages"
 )
@@ -185,6 +186,10 @@ func (modelLoader *loader) jsonFields(structure *types.Struct) ([]fieldCandidate
 					continue
 				}
 				jsonName, options := parseJSONTag(tag)
+				if !isValidJSONTagName(jsonName) {
+					jsonName = ""
+				}
+				isTagged := jsonName != ""
 				for _, option := range options {
 					if option != "omitempty" && option != "omitzero" {
 						return nil, fmt.Errorf("%s: unsupported json tag option %q", field.Name(), option)
@@ -205,7 +210,7 @@ func (modelLoader *loader) jsonFields(structure *types.Struct) ([]fieldCandidate
 				if jsonName == "" {
 					jsonName = field.Name()
 				}
-				candidate := fieldCandidate{name: jsonName, field: field, index: path, tagged: tagNamePresent(tag), optional: embedded.optional}
+				candidate := fieldCandidate{name: jsonName, field: field, index: path, tagged: isTagged, optional: embedded.optional}
 				candidates = append(candidates, candidate)
 				if embedded.count > 1 {
 					candidates = append(candidates, candidate)
@@ -414,9 +419,19 @@ func parseJSONTag(tag string) (string, []string) {
 	return parts[0], parts[1:]
 }
 
-func tagNamePresent(tag string) bool {
-	name, _ := parseJSONTag(tag)
-	return name != ""
+func isValidJSONTagName(name string) bool {
+	if name == "" {
+		return false
+	}
+	for _, character := range name {
+		switch {
+		case strings.ContainsRune("!#$%&()*+-./:;<=>?@[]^_{|}~ ", character):
+		case unicode.IsLetter(character) || unicode.IsDigit(character):
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 func isNilable(modelType types.Type) bool {

@@ -2,13 +2,27 @@
 // SPDX-License-Identifier: MIT
 
 import type { RefreshingCredentialProvider, SecretString } from '@superdurable/connectors-sdk';
+import { z } from 'zod';
 export {
-  GetMessageInputSchema, SendMessageInputSchema, ReplyToMessageInputSchema,
-  MessageSchema, SendMessageOutputSchema,
+  GetMessageInputSchema, ReplyToMessageInputSchema, MessageSchema,
 } from './generated/models.js';
 export type {
-  GetMessageInput, SendMessageInput, ReplyToMessageInput, Message, SendMessageOutput,
+  GetMessageInput, ReplyToMessageInput, Message,
 } from './generated/models.js';
+
+/** Public send input requires at least an array value before operation validation. */
+export const SendMessageInputSchema = z.strictObject({
+  to: z.array(z.string()), subject: z.string(), textBody: z.string(), htmlBody: z.string().optional(),
+});
+/** Message input accepted by Gmail applications. */
+export type SendMessageInput = z.infer<typeof SendMessageInputSchema>;
+
+/** Public send output always includes the resolved recipient list. */
+export const SendMessageOutputSchema = z.strictObject({
+  sender: z.string(), recipients: z.array(z.string()), messageId: z.string(), threadId: z.string(),
+});
+/** Confirmed Gmail delivery result. */
+export type SendMessageOutput = z.infer<typeof SendMessageOutputSchema>;
 
 /** Stable Gmail connector identity. */
 export const ConnectorID = 'gmail';

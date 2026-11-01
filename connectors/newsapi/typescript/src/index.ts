@@ -2,13 +2,12 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
-import { SecretString, type Call, type ConnectionRef, type CredentialProvider, type Failure, type Query, type QueryAttempt, type QueryDefinition, newQueryBranch, newQueryRetry, defaultConnectorStepExecuteRetryPolicy } from '@superdurable/connectors-sdk';
+import { SecretString, goToBranch, newQueryStep, type Call, type ConnectionRef, type CredentialProvider, type Failure, type Query, type QueryAttempt, type QueryDefinition, type QueryResult, type QueryStep, type QueryStepConfig, newQueryBranch, newQueryRetry, defaultConnectorStepExecuteRetryPolicy } from '@superdurable/connectors-sdk';
+import type { StepTarget } from '@superdurable/dex';
 import { AddressRefusal, BodyTooLargeError, MaxErrorBodyBytes, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, readErrorTokens, sendProviderRequest, validateBaseURL } from '@superdurable/connectors-sdk/providerhttp';
 import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
 import type { Config, Credentials } from './generated/models.js';
 export type { Config, Credentials } from './generated/models.js';
-export { newSearchArticlesStep } from './generated/steps.js';
-export type { SearchArticlesStepConfig } from './generated/steps.js';
 
 /** Stable connector identity. */
 export const ConnectorID = 'newsapi';
@@ -196,6 +195,28 @@ export function newConnection(client: Client, reference: ConnectionRef): Connect
 /** Bind scripted operations to a named logical connection for tests. */
 export function newConnectionWithOperations(operations: Operations, reference: ConnectionRef): Connection {
   return new Connection(reference, operations);
+}
+
+/** Step configuration preserving the published NewsAPI input and result types. */
+export interface SearchArticlesStepConfig<StepInput> extends Omit<QueryStepConfig<StepInput, SearchArticlesInput, ArticlePage>, 'operation' | 'connection' | 'branches'> {
+  /** Named NewsAPI connection. */ connection: Connection;
+  /** Name matching the connection. */ connectionName: string;
+  /** Successful search destination. */ searched: StepTarget<QueryResult<ArticlePage>>;
+  /** Conclusive provider rejection destination. */ providerRejected?: StepTarget<QueryResult<ArticlePage>>;
+  /** Malformed response destination. */ invalidResponse?: StepTarget<QueryResult<ArticlePage>>;
+  /** Local defect destination. */ defect?: StepTarget<QueryResult<ArticlePage>>;
+}
+
+/** Build a NewsAPI Step with the existing connection and result contracts. */
+export function newSearchArticlesStep<StepInput>(configuration: SearchArticlesStepConfig<StepInput>): QueryStep<StepInput, SearchArticlesInput, ArticlePage> {
+  const { connection, connectionName, searched, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  if (connection.reference.name !== connectionName) throw new TypeError('NewsAPI Step connection name differs from the bound connection');
+  return newQueryStep({ ...stepConfiguration, operation: connection.operations.searchArticles, connection: connection.reference, branches: [
+    goToBranch(SearchArticlesBranchSearched, searched),
+    ...(providerRejected ? [goToBranch(SearchArticlesBranchProviderRejected, providerRejected)] : []),
+    ...(invalidResponse ? [goToBranch(SearchArticlesBranchInvalidResponse, invalidResponse)] : []),
+    ...(defect ? [goToBranch(SearchArticlesBranchDefect, defect)] : []),
+  ] });
 }
 
 /** Open a declared Dex Web connection; private credentials are resolved at each call. */

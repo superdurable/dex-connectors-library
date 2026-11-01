@@ -5,25 +5,71 @@
 import { z } from 'zod';
 import type { CredentialProvider, SecretString } from '@superdurable/connectors-sdk';
 
+/** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
+  /** NewsAPI REST base URL; this is NewsAPI's fixed public v2 endpoint, so leave the field blank unless a compatible gateway or a loopback test server is being used. */
   baseUrl?: string;
+  /** Maximum duration for one NewsAPI HTTP request, using a positive Go duration such as 15s or 1m; leave blank for the displayed default. */
   timeoutMs?: number;
+  /** Maximum bytes accepted from one NewsAPI response; enter a positive integer only to change the safety limit. Oversized responses select invalidResponse. */
   maxResponseBytes?: number;
 }
 
+/** Runtime schema for manifest configuration. */
 export const ConfigSchema = z.object({
   "baseUrl": z.string().optional(),
   "timeoutMs": z.number().int().optional(),
   "maxResponseBytes": z.number().int().optional(),
 });
 
+/** Private connector credentials resolved by the host. */
 export interface Credentials {
+  /** Secret NewsAPI key shown under Your API key at https://newsapi.org/account after you sign in, 32 lowercase hexadecimal characters. It is sent only in the X-Api-Key header, never in a URL; blank makes every search select defect without a request. */
   apiKey: SecretString;
 }
 
+/** Host-owned source of private connector credentials. */
 export type CredentialSource = CredentialProvider<Credentials>;
 
-export const SearchArticlesInputSchema = z.strictObject({
+/** JSON model SearchArticlesInput from the connector Go package. */
+export interface SearchArticlesInput {
+  "query"?: string | undefined;
+  "searchIn"?: Array<string> | undefined;
+  "sources"?: Array<string> | undefined;
+  "domains"?: Array<string> | undefined;
+  "excludeDomains"?: Array<string> | undefined;
+  "from"?: string | undefined;
+  "to"?: string | undefined;
+  "language"?: string | undefined;
+  "sortBy"?: string | undefined;
+  "pageSize"?: number | undefined;
+  "page"?: number | undefined;
+}
+/** JSON model ArticleSource from the connector Go package. */
+export interface ArticleSource {
+  "id": string | null;
+  "name": string;
+}
+/** JSON model Article from the connector Go package. */
+export interface Article {
+  "source": ArticleSource;
+  "author": string | null;
+  "title": string;
+  "description": string | null;
+  "url": string;
+  "urlToImage": string | null;
+  "publishedAt": string;
+  "content": string | null;
+}
+/** JSON model ArticlePage from the connector Go package. */
+export interface ArticlePage {
+  "totalResults": number;
+  "articles": Array<Article> | null;
+  "page": number;
+  "hasMore": boolean;
+}
+
+export const SearchArticlesInputSchema: z.ZodType<SearchArticlesInput> = z.lazy(() => z.strictObject({
   "query": z.string().optional(),
   "searchIn": z.array(z.string()).optional(),
   "sources": z.array(z.string()).optional(),
@@ -35,31 +81,27 @@ export const SearchArticlesInputSchema = z.strictObject({
   "sortBy": z.string().optional(),
   "pageSize": z.number().int().optional(),
   "page": z.number().int().optional(),
-});
-export type SearchArticlesInput = z.infer<typeof SearchArticlesInputSchema>;
+}));
 
-export const ArticleSourceSchema = z.strictObject({
-  "id": z.string().optional(),
-  "name": z.string(),
-});
-export type ArticleSource = z.infer<typeof ArticleSourceSchema>;
+export const ArticleSourceSchema: z.ZodType<ArticleSource> = z.lazy(() => z.strictObject({
+  "id": z.string().nullable().prefault(null),
+  "name": z.string().prefault(''),
+}));
 
-export const ArticleSchema = z.strictObject({
-  "source": ArticleSourceSchema,
-  "author": z.string().optional(),
-  "title": z.string(),
-  "description": z.string().optional(),
-  "url": z.string(),
-  "urlToImage": z.string().optional(),
-  "publishedAt": z.iso.datetime({ offset: true }),
-  "content": z.string().optional(),
-});
-export type Article = z.infer<typeof ArticleSchema>;
+export const ArticleSchema: z.ZodType<Article> = z.lazy(() => z.strictObject({
+  "source": ArticleSourceSchema.prefault({}),
+  "author": z.string().nullable().prefault(null),
+  "title": z.string().prefault(''),
+  "description": z.string().nullable().prefault(null),
+  "url": z.string().prefault(''),
+  "urlToImage": z.string().nullable().prefault(null),
+  "publishedAt": z.iso.datetime({ offset: true }).prefault('0001-01-01T00:00:00Z'),
+  "content": z.string().nullable().prefault(null),
+}));
 
-export const ArticlePageSchema = z.strictObject({
-  "totalResults": z.number().int(),
-  "articles": z.array(ArticleSchema),
-  "page": z.number().int(),
-  "hasMore": z.boolean(),
-});
-export type ArticlePage = z.infer<typeof ArticlePageSchema>;
+export const ArticlePageSchema: z.ZodType<ArticlePage> = z.lazy(() => z.strictObject({
+  "totalResults": z.number().int().prefault(0),
+  "articles": z.array(ArticleSchema).nullable().prefault(null),
+  "page": z.number().int().prefault(0),
+  "hasMore": z.boolean().prefault(false),
+}));

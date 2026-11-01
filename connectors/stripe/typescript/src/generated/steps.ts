@@ -5,22 +5,29 @@
 import { goToBranch, newMutationStep, type MutationResult, type MutationStep, type MutationStepConfig, newQueryStep, type QueryResult, type QueryStep, type QueryStepConfig } from '@superdurable/connectors-sdk';
 import type { StepTarget } from '@superdurable/dex';
 import type { Connection } from './connection.js';
-import type { CreateCardCheckoutSessionInput, CheckoutSession, CreateACHCheckoutSessionInput, GetCheckoutSessionInput, GetPaymentIntentInput, PaymentIntent, CreateRefundInput, Refund } from '../models.js';
+import type { CreateCardCheckoutSessionInput, CheckoutSession, CreateACHCheckoutSessionInput, GetCheckoutSessionInput, GetPaymentIntentInput, PaymentIntent, CreateRefundInput, Refund } from './models.js';
 
+/** Configuration for the createCardCheckoutSession connector Step. */
 export interface CreateCardCheckoutSessionStepConfig<StepInput> extends Omit<MutationStepConfig<StepInput, CreateCardCheckoutSessionInput, CheckoutSession>, 'operation' | 'connection' | 'branches'> {
+  /** Named connection supplying this operation. */
   connection: Connection;
+  /** Name matching the bound connection. */
   connectionName: string;
+  /** Stripe created the Checkout Session. */
   created: StepTarget<MutationResult<CheckoutSession>>;
+  /** Stripe conclusively rejected the Checkout Session request. */
   providerRejected?: StepTarget<MutationResult<CheckoutSession>>;
+  /** A Stripe 500 or non-retryable server response left the Checkout Session outcome unconfirmed. */
   uncertain?: StepTarget<MutationResult<CheckoutSession>>;
+  /** Stripe returned an invalid or oversized Checkout Session response. */
   invalidResponse?: StepTarget<MutationResult<CheckoutSession>>;
+  /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<CheckoutSession>>;
 }
 
 export function newCreateCardCheckoutSessionStep<StepInput>(configuration: CreateCardCheckoutSessionStepConfig<StepInput>): MutationStep<StepInput, CreateCardCheckoutSessionInput, CheckoutSession> {
   const { connection, connectionName, created, providerRejected, uncertain, invalidResponse, defect, ...stepConfiguration } = configuration;
-  if (!connection) throw new TypeError('Stripe connection is required');
-  if (connectionName !== connection.reference.name) throw new TypeError(`Stripe connector Step connectionName ${JSON.stringify(connectionName)} must equal its connection name ${JSON.stringify(connection.reference.name)}`);
+  if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.createCardCheckoutSession(), connection: connection.reference, branches: [
     goToBranch("created", created),
     ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
@@ -30,20 +37,27 @@ export function newCreateCardCheckoutSessionStep<StepInput>(configuration: Creat
   ] });
 }
 
+/** Configuration for the createACHCheckoutSession connector Step. */
 export interface CreateACHCheckoutSessionStepConfig<StepInput> extends Omit<MutationStepConfig<StepInput, CreateACHCheckoutSessionInput, CheckoutSession>, 'operation' | 'connection' | 'branches'> {
+  /** Named connection supplying this operation. */
   connection: Connection;
+  /** Name matching the bound connection. */
   connectionName: string;
+  /** Stripe created the Checkout Session. */
   created: StepTarget<MutationResult<CheckoutSession>>;
+  /** Stripe conclusively rejected the Checkout Session request. */
   providerRejected?: StepTarget<MutationResult<CheckoutSession>>;
+  /** A Stripe 500 or non-retryable server response left the Checkout Session outcome unconfirmed. */
   uncertain?: StepTarget<MutationResult<CheckoutSession>>;
+  /** Stripe returned an invalid or oversized Checkout Session response. */
   invalidResponse?: StepTarget<MutationResult<CheckoutSession>>;
+  /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<CheckoutSession>>;
 }
 
 export function newCreateACHCheckoutSessionStep<StepInput>(configuration: CreateACHCheckoutSessionStepConfig<StepInput>): MutationStep<StepInput, CreateACHCheckoutSessionInput, CheckoutSession> {
   const { connection, connectionName, created, providerRejected, uncertain, invalidResponse, defect, ...stepConfiguration } = configuration;
-  if (!connection) throw new TypeError('Stripe connection is required');
-  if (connectionName !== connection.reference.name) throw new TypeError(`Stripe connector Step connectionName ${JSON.stringify(connectionName)} must equal its connection name ${JSON.stringify(connection.reference.name)}`);
+  if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.createACHCheckoutSession(), connection: connection.reference, branches: [
     goToBranch("created", created),
     ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
@@ -53,20 +67,27 @@ export function newCreateACHCheckoutSessionStep<StepInput>(configuration: Create
   ] });
 }
 
+/** Configuration for the getCheckoutSession connector Step. */
 export interface GetCheckoutSessionStepConfig<StepInput> extends Omit<QueryStepConfig<StepInput, GetCheckoutSessionInput, CheckoutSession>, 'operation' | 'connection' | 'branches'> {
+  /** Named connection supplying this operation. */
   connection: Connection;
+  /** Name matching the bound connection. */
   connectionName: string;
+  /** The Checkout Session exists and was returned. */
   found: StepTarget<QueryResult<CheckoutSession>>;
+  /** The Checkout Session does not exist. */
   notFound?: StepTarget<QueryResult<CheckoutSession>>;
+  /** Stripe conclusively rejected the Checkout Session query. */
   providerRejected?: StepTarget<QueryResult<CheckoutSession>>;
+  /** Stripe returned an invalid or oversized Checkout Session response. */
   invalidResponse?: StepTarget<QueryResult<CheckoutSession>>;
+  /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<QueryResult<CheckoutSession>>;
 }
 
 export function newGetCheckoutSessionStep<StepInput>(configuration: GetCheckoutSessionStepConfig<StepInput>): QueryStep<StepInput, GetCheckoutSessionInput, CheckoutSession> {
   const { connection, connectionName, found, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
-  if (!connection) throw new TypeError('Stripe connection is required');
-  if (connectionName !== connection.reference.name) throw new TypeError(`Stripe connector Step connectionName ${JSON.stringify(connectionName)} must equal its connection name ${JSON.stringify(connection.reference.name)}`);
+  if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newQueryStep({ ...stepConfiguration, operation: connection.operations.getCheckoutSession(), connection: connection.reference, branches: [
     goToBranch("found", found),
     ...(notFound ? [goToBranch("notFound", notFound)] : []),
@@ -76,20 +97,27 @@ export function newGetCheckoutSessionStep<StepInput>(configuration: GetCheckoutS
   ] });
 }
 
+/** Configuration for the getPaymentIntent connector Step. */
 export interface GetPaymentIntentStepConfig<StepInput> extends Omit<QueryStepConfig<StepInput, GetPaymentIntentInput, PaymentIntent>, 'operation' | 'connection' | 'branches'> {
+  /** Named connection supplying this operation. */
   connection: Connection;
+  /** Name matching the bound connection. */
   connectionName: string;
+  /** The PaymentIntent exists and was returned. */
   found: StepTarget<QueryResult<PaymentIntent>>;
+  /** Stripe reported resource_missing for the PaymentIntent. */
   notFound?: StepTarget<QueryResult<PaymentIntent>>;
+  /** Stripe conclusively rejected the PaymentIntent query. */
   providerRejected?: StepTarget<QueryResult<PaymentIntent>>;
+  /** Stripe returned an invalid or oversized PaymentIntent response. */
   invalidResponse?: StepTarget<QueryResult<PaymentIntent>>;
+  /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<QueryResult<PaymentIntent>>;
 }
 
 export function newGetPaymentIntentStep<StepInput>(configuration: GetPaymentIntentStepConfig<StepInput>): QueryStep<StepInput, GetPaymentIntentInput, PaymentIntent> {
   const { connection, connectionName, found, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
-  if (!connection) throw new TypeError('Stripe connection is required');
-  if (connectionName !== connection.reference.name) throw new TypeError(`Stripe connector Step connectionName ${JSON.stringify(connectionName)} must equal its connection name ${JSON.stringify(connection.reference.name)}`);
+  if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newQueryStep({ ...stepConfiguration, operation: connection.operations.getPaymentIntent(), connection: connection.reference, branches: [
     goToBranch("found", found),
     ...(notFound ? [goToBranch("notFound", notFound)] : []),
@@ -99,20 +127,27 @@ export function newGetPaymentIntentStep<StepInput>(configuration: GetPaymentInte
   ] });
 }
 
+/** Configuration for the createRefund connector Step. */
 export interface CreateRefundStepConfig<StepInput> extends Omit<MutationStepConfig<StepInput, CreateRefundInput, Refund>, 'operation' | 'connection' | 'branches'> {
+  /** Named connection supplying this operation. */
   connection: Connection;
+  /** Name matching the bound connection. */
   connectionName: string;
+  /** Stripe accepted the refund; read its status to tell succeeded from pending. */
   refunded: StepTarget<MutationResult<Refund>>;
+  /** Stripe conclusively rejected the refund with a 4xx error such as charge_already_refunded or an amount that is too large. */
   providerRejected?: StepTarget<MutationResult<Refund>>;
+  /** A non-retryable Stripe server response left the refund outcome unconfirmed after bounded read-back. */
   uncertain?: StepTarget<MutationResult<Refund>>;
+  /** Stripe returned an invalid or oversized refund response. */
   invalidResponse?: StepTarget<MutationResult<Refund>>;
+  /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<Refund>>;
 }
 
 export function newCreateRefundStep<StepInput>(configuration: CreateRefundStepConfig<StepInput>): MutationStep<StepInput, CreateRefundInput, Refund> {
   const { connection, connectionName, refunded, providerRejected, uncertain, invalidResponse, defect, ...stepConfiguration } = configuration;
-  if (!connection) throw new TypeError('Stripe connection is required');
-  if (connectionName !== connection.reference.name) throw new TypeError(`Stripe connector Step connectionName ${JSON.stringify(connectionName)} must equal its connection name ${JSON.stringify(connection.reference.name)}`);
+  if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.createRefund(), connection: connection.reference, branches: [
     goToBranch("refunded", refunded),
     ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),

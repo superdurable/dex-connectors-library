@@ -53,19 +53,30 @@ implements them. The vendored
 For every declared TypeScript package, `connectorctl generate` also writes
 `typescript/src/generated/{models,definitions,steps,connection,mock}.ts`.
 Operation models come from the manifest's named types in the connector Go
-module. The generator loads those types with `go/packages` and maps exported
-JSON-tagged struct fields to Zod: `omitempty` and pointers are optional,
-slices are arrays, string-keyed maps are records, nested connector structs are
-schemas, `time.Time` is an ISO datetime string, and `json.RawMessage` or `any`
-is unknown. Generated definitions, branch IDs, operation-specific object
+module. `internal/codegen/gomodel` loads their `encoding/json` shape into a
+language-neutral graph. `omitempty` and `omitzero` make a key optional;
+pointers and nil slices or maps without those options make its value nullable.
+Untagged embedded structs flatten according to Go's field conflict rules, and
+tagged embedded structs remain nested. Named string enums become `z.enum`,
+recursive models use `z.lazy`, `time.Time` is an ISO datetime string, byte
+slices are base64 strings, and `json.RawMessage` or `any` is unknown. Unsupported
+JSON tag options and custom marshalers without a known mapping stop generation.
+Go `int64` values use TypeScript `number`; applications must keep them within
+JavaScript's exact integer range (±(2^53−1)). Generated definitions, branch IDs, operation-specific object
 factories, connection helpers, and mock cases come from `connector.yaml`.
 Run `go run ./cmd/connectorctl generate --lang typescript <connector.yaml>`
-to update the package. Run the same command with `--check` before `--lang`
-to reject drift. The ordinary generate command updates these files as well.
+to update only the TypeScript files. Run the same command with `--check` before
+`--lang` to reject drift. The ordinary generate command updates all generated
+files. Generated TypeScript files depend only on other files in `src/generated/`
+and the connector SDK; hand-written adapters import them.
+After `npm ci --prefix connectors/stripe/typescript`, run
+`TS_CODEGEN_COMPILE=1 GOWORK=off go test ./internal/codegen ./cmd/connectorctl -run 'TestCatalogGeneratedTypeScriptCompiles|TestNonLegacyTypeScriptGoldenDefaultGeneration'`
+to compile every catalog connector's generated TypeScript and parse its mock
+scenarios without checking generated catalog output into the repository.
 
 Keep a small hand-written adapter when a public TypeScript contract cannot be
-derived exactly from the Go JSON shape, such as a nullable value represented
-by a Go pointer, a narrower application input enum, or provider-specific
+derived exactly from the Go JSON shape, such as a narrower application input
+enum, normalized provider response, or provider-specific
 credential decoding. Re-export generated contracts where they match and keep
 the adapter's exported names stable. The checked-in runnable examples remain
 the consuming application for each package; changing generated Step or mock

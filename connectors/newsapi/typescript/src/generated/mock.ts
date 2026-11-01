@@ -4,16 +4,33 @@
 
 import { branchCase, retryCase, type Case, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
 import type { Failure } from '@superdurable/connectors-sdk';
-import type { SearchArticlesInput, ArticlePage } from '../models.js';
-import { ConnectorID, ProviderID, SearchArticlesDefinition } from './definitions.js';
+import type { SearchArticlesInput, ArticleSource, Article, ArticlePage } from './models.js';
+import { SearchArticlesInputSchema, ArticleSourceSchema, ArticleSchema, ArticlePageSchema } from './models.js';
+import { ProviderID, ConnectorID, SearchArticlesDefinition } from './definitions.js';
 import { newConnectionWithOperations, type Connection, type Operations } from './connection.js';
 
-const emptySearchArticles: ArticlePage = {
+export const emptySearchArticlesInput: SearchArticlesInput = SearchArticlesInputSchema.parse({
+});
+export const emptyArticleSource: ArticleSource = ArticleSourceSchema.parse({
+  "id": null,
+  "name": '',
+});
+export const emptyArticle: Article = ArticleSchema.parse({
+  "source": emptyArticleSource,
+  "author": null,
+  "title": '',
+  "description": null,
+  "url": '',
+  "urlToImage": null,
+  "publishedAt": '0001-01-01T00:00:00Z',
+  "content": null,
+});
+export const emptyArticlePage: ArticlePage = ArticlePageSchema.parse({
   "totalResults": 0,
   "articles": [],
   "page": 0,
   "hasMore": false,
-};
+});
 
 export function searchArticlesSearched(value: ArticlePage, failure?: Failure): Case<ArticlePage> { return branchCase("searched", value, failure); }
 export function searchArticlesProviderRejected(value: ArticlePage, failure?: Failure): Case<ArticlePage> { return branchCase("providerRejected", value, failure); }
@@ -21,26 +38,27 @@ export function searchArticlesInvalidResponse(value: ArticlePage, failure?: Fail
 export function searchArticlesDefect(value: ArticlePage, failure?: Failure): Case<ArticlePage> { return branchCase("defect", value, failure); }
 export function searchArticlesRetry(failure: Failure, retryAfterMs = 0): Case<ArticlePage> { return retryCase(failure, retryAfterMs); }
 export function searchArticlesSearchedDefaultAnswer(): Case<ArticlePage> {
-  const value = {"totalResults":2,"page":1,"hasMore":false,"articles":[{"source":{"id":"meridian-news","name":"Meridian News"},"author":"A. Rivera","title":"Meridian opens a research lab","description":"The company opens a new lab.","url":"https://news.example.test/meridian-lab","publishedAt":"2026-10-26T12:00:00Z","content":"Meridian opened its newest research lab."},{"source":{"id":"meridian-news","name":"Meridian News"},"author":null,"title":"Meridian reports quarterly results","description":null,"url":"https://news.example.test/meridian-results","publishedAt":"2026-10-25T12:00:00Z","content":null}]} as ArticlePage;
+  const value = ArticlePageSchema.parse({"articles":[{"author":"A. Rivera","content":"Meridian opened its newest research lab.","description":"The company opens a new lab.","publishedAt":"2026-10-26T12:00:00Z","source":{"id":"meridian-news","name":"Meridian News"},"title":"Meridian opens a research lab","url":"https://news.example.test/meridian-lab"},{"author":null,"content":null,"description":null,"publishedAt":"2026-10-25T12:00:00Z","source":{"id":"meridian-news","name":"Meridian News"},"title":"Meridian reports quarterly results","url":"https://news.example.test/meridian-results"}],"hasMore":false,"page":1,"totalResults":2});
   return branchCase("searched", value);
 }
 export function searchArticlesDefault(): Case<ArticlePage> { return searchArticlesSearchedDefaultAnswer(); }
 export function searchArticlesInvalidKey(): Case<ArticlePage> {
-  const value = emptySearchArticles;
+  const value = emptyArticlePage;
   return branchCase("providerRejected", value, { kind: "AUTHENTICATION", provider: ConnectorID, operation: "searchArticles", message: "Searching with an invalid NewsAPI key is rejected." });
 }
 
 export class GeneratedMock implements Operations {
-  readonly searchArticles: MockQuery<SearchArticlesInput, ArticlePage>;
+  readonly #searchArticles: MockQuery<SearchArticlesInput, ArticlePage>;
   readonly #connection: Connection;
 
   constructor(connectionName: string) {
-    this.searchArticles = newQuery<SearchArticlesInput, ArticlePage>(SearchArticlesDefinition).default(searchArticlesDefault());
+    this.#searchArticles = newQuery<SearchArticlesInput, ArticlePage>(SearchArticlesDefinition).default(searchArticlesDefault());
     this.#connection = newConnectionWithOperations(this, { provider: ProviderID, name: connectionName });
   }
 
   connection(): Connection { return this.#connection; }
+  searchArticles(): MockQuery<SearchArticlesInput, ArticlePage> { return this.#searchArticles; }
   assertNoFailures(): void {
-    this.searchArticles.assertNoFailures();
+    this.#searchArticles.assertNoFailures();
   }
 }

@@ -5,22 +5,29 @@
 import { goToBranch, newMutationStep, type MutationResult, type MutationStep, type MutationStepConfig, newQueryStep, type QueryResult, type QueryStep, type QueryStepConfig } from '@superdurable/connectors-sdk';
 import type { StepTarget } from '@superdurable/dex';
 import type { Connection } from './connection.js';
-import { GmailConnection } from '../connection.js';
-import type { GetMessageInput, Message, SendMessageInput, SendMessageOutput, ReplyToMessageInput } from '../models.js';
+import type { GetMessageInput, Message, SendMessageInput, SendMessageOutput, ReplyToMessageInput } from './models.js';
 
+/** Configuration for the getMessage connector Step. */
 export interface GetMessageStepConfig<StepInput> extends Omit<QueryStepConfig<StepInput, GetMessageInput, Message>, 'operation' | 'connection' | 'branches'> {
+  /** Named connection supplying this operation. */
   connection: Connection;
+  /** Name matching the bound connection. */
   connectionName: string;
+  /** The Gmail message was read. */
   read: StepTarget<QueryResult<Message>>;
+  /** The Gmail message does not exist. */
   notFound?: StepTarget<QueryResult<Message>>;
+  /** Gmail conclusively rejected the message query. */
   providerRejected?: StepTarget<QueryResult<Message>>;
+  /** Gmail returned an invalid or oversized message response. */
   invalidResponse?: StepTarget<QueryResult<Message>>;
+  /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<QueryResult<Message>>;
 }
 
 export function newGetMessageStep<StepInput>(configuration: GetMessageStepConfig<StepInput>): QueryStep<StepInput, GetMessageInput, Message> {
   const { connection, connectionName, read, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
-  if (!(connection instanceof GmailConnection) || !connectionName || connection.reference.name !== connectionName) throw new TypeError('Gmail Step connection name must match its typed connection');
+  if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newQueryStep({ ...stepConfiguration, operation: connection.operations.getMessage(), connection: connection.reference, branches: [
     goToBranch("read", read),
     ...(notFound ? [goToBranch("notFound", notFound)] : []),
@@ -30,17 +37,23 @@ export function newGetMessageStep<StepInput>(configuration: GetMessageStepConfig
   ] });
 }
 
+/** Configuration for the sendMessage connector Step. */
 export interface SendMessageStepConfig<StepInput> extends Omit<MutationStepConfig<StepInput, SendMessageInput, SendMessageOutput>, 'operation' | 'connection' | 'branches'> {
+  /** Named connection supplying this operation. */
   connection: Connection;
+  /** Name matching the bound connection. */
   connectionName: string;
+  /** Gmail accepted the message; its message and thread IDs can be empty when an unusable accepted response has no Sent Mail match. */
   sent: StepTarget<MutationResult<SendMessageOutput>>;
+  /** Gmail conclusively rejected the message. */
   providerRejected?: StepTarget<MutationResult<SendMessageOutput>>;
+  /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<SendMessageOutput>>;
 }
 
 export function newSendMessageStep<StepInput>(configuration: SendMessageStepConfig<StepInput>): MutationStep<StepInput, SendMessageInput, SendMessageOutput> {
   const { connection, connectionName, sent, providerRejected, defect, ...stepConfiguration } = configuration;
-  if (!(connection instanceof GmailConnection) || !connectionName || connection.reference.name !== connectionName) throw new TypeError('Gmail Step connection name must match its typed connection');
+  if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.sendMessage(), connection: connection.reference, branches: [
     goToBranch("sent", sent),
     ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
@@ -48,18 +61,25 @@ export function newSendMessageStep<StepInput>(configuration: SendMessageStepConf
   ] });
 }
 
+/** Configuration for the replyToMessage connector Step. */
 export interface ReplyToMessageStepConfig<StepInput> extends Omit<MutationStepConfig<StepInput, ReplyToMessageInput, SendMessageOutput>, 'operation' | 'connection' | 'branches'> {
+  /** Named connection supplying this operation. */
   connection: Connection;
+  /** Name matching the bound connection. */
   connectionName: string;
+  /** Gmail accepted the reply; its message ID can be empty when an unusable accepted response has no Sent Mail match, while the requested thread ID remains. */
   sent: StepTarget<MutationResult<SendMessageOutput>>;
+  /** Gmail conclusively rejected the reply. */
   providerRejected?: StepTarget<MutationResult<SendMessageOutput>>;
+  /** Gmail returned an invalid or oversized source message response before sending the reply. */
   invalidResponse?: StepTarget<MutationResult<SendMessageOutput>>;
+  /** Local input, connection configuration, or connector definition is invalid. */
   defect?: StepTarget<MutationResult<SendMessageOutput>>;
 }
 
 export function newReplyToMessageStep<StepInput>(configuration: ReplyToMessageStepConfig<StepInput>): MutationStep<StepInput, ReplyToMessageInput, SendMessageOutput> {
   const { connection, connectionName, sent, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
-  if (!(connection instanceof GmailConnection) || !connectionName || connection.reference.name !== connectionName) throw new TypeError('Gmail Step connection name must match its typed connection');
+  if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.replyToMessage(), connection: connection.reference, branches: [
     goToBranch("sent", sent),
     ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),

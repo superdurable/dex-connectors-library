@@ -5,14 +5,21 @@
 import { z } from 'zod';
 import type { RefreshingCredentialProvider, SecretString } from '@superdurable/connectors-sdk';
 
+/** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
+  /** Gmail API base URL; leave blank for Google's public v1 API. Enter an absolute HTTPS URL only for an explicitly supported compatible gateway. */
   endpoint?: string;
+  /** Maximum complete Gmail API response in bytes; enter a positive integer only to change the safety limit. Oversized responses select invalidResponse. */
   maxResponseBytes?: number;
+  /** Maximum base64url-encoded RFC 5322 message size in bytes accepted for send or reply operations; enter a positive integer only to change the safety limit. */
   maxMessageBytes?: number;
+  /** Delay between local Gmail Trigger polls, using a positive Go duration such as 10s or 1m; shorter intervals increase Gmail API usage. */
   pollIntervalMs?: number;
+  /** Positive count of recent inbox messages inspected per Trigger poll; increase only when matching mail may fall outside the displayed default window. */
   pollPageSize?: number;
 }
 
+/** Runtime schema for manifest configuration. */
 export const ConfigSchema = z.object({
   "endpoint": z.string().optional(),
   "maxResponseBytes": z.number().int().optional(),
@@ -21,61 +28,108 @@ export const ConfigSchema = z.object({
   "pollPageSize": z.number().int().optional(),
 });
 
+/** Private connector credentials resolved by the host. */
 export interface Credentials {
+  /** Selected authorization method. */
   authMethodId?: string;
+  /** Secret short-lived delegated access token minted automatically from the service-account assertion; never paste a token and blank causes Dex to mint one before the next call. */
   accessToken?: SecretString;
+  /** Complete Workspace mailbox address selected by an administrator after authorizing the service account client ID at https://admin.google.com/ac/owl/domainwidedelegation; the value must be one user@example.com address and blank means no mailbox can be impersonated. */
   delegatedUser?: string;
+  /** Non-secret OAuth client ID copied from https://console.cloud.google.com/apis/credentials after opening APIs & Services > Credentials > OAuth 2.0 Client IDs; the value ends in .apps.googleusercontent.com and blank means authorization cannot start. */
   oauthClientId?: string;
+  /** Secret OAuth client secret copied once from the selected Web application at https://console.cloud.google.com/apis/credentials; store it only in the credential form and blank means authorization cannot start. */
   oauthClientSecret?: SecretString;
+  /** Read-only mailbox identity copied automatically from delegated_user after the administrator-managed setup is validated; do not enter a different sender. */
   primaryEmail?: string;
+  /** Secret long-lived refresh token returned by Google because offline access is requested; Dex stores and rotates it automatically, and blank means reauthorization is required. */
   refreshToken?: SecretString;
+  /** Secret service-account JSON key downloaded from https://console.cloud.google.com/iam-admin/serviceaccounts after selecting the account > Keys > Add key > Create new key > JSON; blank means delegated token minting cannot start. */
   serviceAccountKey?: SecretString;
 }
 
+/** Host-owned source of private connector credentials. */
 export type CredentialSource = RefreshingCredentialProvider<Credentials>;
 
-export const GetMessageInputSchema = z.strictObject({
-  "messageId": z.string(),
-});
-export type GetMessageInput = z.infer<typeof GetMessageInputSchema>;
+/** JSON model GetMessageInput from the connector Go package. */
+export interface GetMessageInput {
+  "messageId": string;
+}
+/** JSON model Message from the connector Go package. */
+export interface Message {
+  "messageId": string;
+  "threadId": string;
+  "rfcMessageId"?: string | undefined;
+  "inReplyTo"?: string | undefined;
+  "references"?: string | undefined;
+  "from": string;
+  "replyTo"?: string | undefined;
+  "to"?: Array<string> | undefined;
+  "subject": string;
+  "textBody"?: string | undefined;
+  "htmlBody"?: string | undefined;
+  "snippet"?: string | undefined;
+  "receivedAt": string;
+  "labelIds"?: Array<string> | undefined;
+}
+/** JSON model SendMessageInput from the connector Go package. */
+export interface SendMessageInput {
+  "to": Array<string> | null;
+  "subject": string;
+  "textBody": string;
+  "htmlBody"?: string | undefined;
+}
+/** JSON model SendMessageOutput from the connector Go package. */
+export interface SendMessageOutput {
+  "sender": string;
+  "recipients": Array<string> | null;
+  "messageId": string;
+  "threadId": string;
+}
+/** JSON model ReplyToMessageInput from the connector Go package. */
+export interface ReplyToMessageInput {
+  "messageId": string;
+  "textBody": string;
+  "htmlBody"?: string | undefined;
+}
 
-export const MessageSchema = z.strictObject({
-  "messageId": z.string(),
-  "threadId": z.string(),
+export const GetMessageInputSchema: z.ZodType<GetMessageInput> = z.lazy(() => z.strictObject({
+  "messageId": z.string().prefault(''),
+}));
+
+export const MessageSchema: z.ZodType<Message> = z.lazy(() => z.strictObject({
+  "messageId": z.string().prefault(''),
+  "threadId": z.string().prefault(''),
   "rfcMessageId": z.string().optional(),
   "inReplyTo": z.string().optional(),
   "references": z.string().optional(),
-  "from": z.string(),
+  "from": z.string().prefault(''),
   "replyTo": z.string().optional(),
   "to": z.array(z.string()).optional(),
-  "subject": z.string(),
+  "subject": z.string().prefault(''),
   "textBody": z.string().optional(),
   "htmlBody": z.string().optional(),
   "snippet": z.string().optional(),
-  "receivedAt": z.iso.datetime({ offset: true }),
+  "receivedAt": z.iso.datetime({ offset: true }).prefault('0001-01-01T00:00:00Z'),
   "labelIds": z.array(z.string()).optional(),
-});
-export type Message = z.infer<typeof MessageSchema>;
+}));
 
-export const SendMessageInputSchema = z.strictObject({
-  "to": z.array(z.string()),
-  "subject": z.string(),
-  "textBody": z.string(),
+export const SendMessageInputSchema: z.ZodType<SendMessageInput> = z.lazy(() => z.strictObject({
+  "to": z.array(z.string()).nullable().prefault(null),
+  "subject": z.string().prefault(''),
+  "textBody": z.string().prefault(''),
   "htmlBody": z.string().optional(),
-});
-export type SendMessageInput = z.infer<typeof SendMessageInputSchema>;
+}));
 
-export const SendMessageOutputSchema = z.strictObject({
-  "sender": z.string(),
-  "recipients": z.array(z.string()),
-  "messageId": z.string(),
-  "threadId": z.string(),
-});
-export type SendMessageOutput = z.infer<typeof SendMessageOutputSchema>;
+export const SendMessageOutputSchema: z.ZodType<SendMessageOutput> = z.lazy(() => z.strictObject({
+  "sender": z.string().prefault(''),
+  "recipients": z.array(z.string()).nullable().prefault(null),
+  "messageId": z.string().prefault(''),
+  "threadId": z.string().prefault(''),
+}));
 
-export const ReplyToMessageInputSchema = z.strictObject({
-  "messageId": z.string(),
-  "textBody": z.string(),
+export const ReplyToMessageInputSchema: z.ZodType<ReplyToMessageInput> = z.lazy(() => z.strictObject({
+  "messageId": z.string().prefault(''),
+  "textBody": z.string().prefault(''),
   "htmlBody": z.string().optional(),
-});
-export type ReplyToMessageInput = z.infer<typeof ReplyToMessageInputSchema>;
+}));

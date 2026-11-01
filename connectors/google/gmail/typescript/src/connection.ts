@@ -14,6 +14,8 @@ export interface GmailOperations {
 
 /** Named Gmail connection passed to operation Step factories. */
 export class GmailConnection extends GeneratedConnection {
+  /** Operation implementations constrained by Gmail's public input and output contracts. */
+  declare readonly operations: GmailOperations;
   /** Bind operation implementations to a static named Google connection. */
   constructor(operations: GmailOperations, reference: ConnectionRef) {
     if (!operations) throw new TypeError('Gmail connector operations are required');

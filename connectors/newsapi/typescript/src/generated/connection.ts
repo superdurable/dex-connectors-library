@@ -4,11 +4,11 @@
 
 import { ConnectionRefSchema, type ConnectionRef, type Query } from '@superdurable/connectors-sdk';
 import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
-import type { SearchArticlesInput, ArticlePage } from '../models.js';
+import type { SearchArticlesInput, ArticlePage } from './models.js';
 import { ConnectorID, ProviderID } from './definitions.js';
 
 export interface Operations {
-  searchArticles: Query<SearchArticlesInput, ArticlePage>;
+  searchArticles(): Query<SearchArticlesInput, ArticlePage>;
 }
 
 export class Connection {

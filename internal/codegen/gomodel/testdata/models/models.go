@@ -87,3 +87,11 @@ func (Custom) MarshalJSON() ([]byte, error) { return []byte(`"custom"`), nil }
 type UnsupportedMarshaler struct {
 	Value Custom `json:"value"`
 }
+
+type CustomText string
+
+func (CustomText) MarshalText() ([]byte, error) { return []byte("custom"), nil }
+
+type UnsupportedTextMarshaler struct {
+	Value CustomText `json:"value"`
+}

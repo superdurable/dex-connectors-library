@@ -1,0 +1,99 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: hacker-news-daily
+  displayName: Hacker News Daily
+  description: Read public Hacker News feeds, stories, and discussions for a daily developer digest with direct source links.
+  company: Hacker News
+  version: v0.23.0
+spec:
+  provider: hacker-news
+  languages:
+    typescript:
+      version: v0.1.0
+      operations: [listStoryIDs, getItem]
+      triggers: []
+  codegen:
+    go:
+      package: hackernews
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Hacker News Firebase API base URL; this is a fixed public endpoint, so leave the field blank unless a loopback test server is being used.
+        default: https://hacker-news.firebaseio.com/v0
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration for one Hacker News HTTP request, using a positive Go duration such as 15s or 1m; leave blank for the displayed default.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum bytes accepted from one Hacker News response; enter a positive integer only to change the safety limit. Oversized responses select invalidResponse.
+        default: 1048576
+  auth:
+    type: none
+    connectionKind: none
+    fields: []
+  operations:
+    - name: listStoryIDs
+      goName: ListStoryIDs
+      inputType: ListStoryIDsInput
+      outputType: StoryIDs
+      kind: query
+      description: Read a bounded snapshot of the top, best, new, Ask HN, or Show HN feed in provider order.
+      idempotency: none
+      authorization: none
+      branches:
+        - {id: listed, goName: Listed, description: The feed snapshot was read.}
+        - {id: providerRejected, goName: ProviderRejected, description: Hacker News rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Hacker News returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection configuration is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 0, totalDuration: 65m}
+      mocks:
+        - name: developerFeed
+          branch: listed
+          description: The top feed requested with a limit of at least one contains the compiler story 42001.
+          default: true
+          output: {ids: [42001], hasMore: true, observedAt: "2026-10-26T12:00:00Z"}
+        - name: feedRejected
+          branch: providerRejected
+          description: Hacker News rejects the requested feed snapshot.
+          failure: {kind: PROVIDER_REJECTION, message: Hacker News rejected the feed request.}
+    - name: getItem
+      goName: GetItem
+      inputType: GetItemInput
+      outputType: Item
+      kind: query
+      description: Read one public story or comment, its child IDs, and its direct Hacker News link.
+      idempotency: none
+      authorization: none
+      branches:
+        - {id: found, goName: Found, description: The public item was read.}
+        - {id: notFound, goName: NotFound, description: "The item is missing, deleted, or dead.", optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Hacker News rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Hacker News returned malformed or oversized data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection configuration is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 0, totalDuration: 65m}
+      mocks:
+        - name: compilerStory
+          branch: found
+          description: Item 42001 is a public compiler release story with a source and discussion link.
+          default: true
+          output: {id: 42001, type: story, by: compilerdev, time: 1793016000, title: A compiler release, url: "https://example.com/compiler", discussionUrl: "https://news.ycombinator.com/item?id=42001", score: 100, descendants: 0}
+        - name: itemMissing
+          branch: notFound
+          description: The requested item ID identifies a deleted or dead story.
+          failure: {kind: NOT_FOUND, message: Hacker News item is deleted or dead.}
+        - name: itemRejected
+          branch: providerRejected
+          description: Hacker News rejects the requested item read.
+          failure: {kind: PROVIDER_REJECTION, message: Hacker News rejected the item request.}

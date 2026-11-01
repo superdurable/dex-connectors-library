@@ -392,6 +392,28 @@ func generate(args []string) error {
 	if err != nil {
 		return err
 	}
+	if language == "typescript" {
+		generated, err := generatedTypeScriptFiles(args[0], manifest)
+		if err != nil {
+			return err
+		}
+		stale, err := staleTypeScriptFiles(args[0], generated)
+		if err != nil {
+			return err
+		}
+		if check {
+			if len(stale) > 0 {
+				return fmt.Errorf("generated TypeScript file is stale: %s", stale[0])
+			}
+			return checkGeneratedFiles(generated)
+		}
+		for _, path := range stale {
+			if err := os.Remove(path); err != nil {
+				return fmt.Errorf("remove stale %s: %w", path, err)
+			}
+		}
+		return writeGeneratedFiles(generated)
+	}
 	generated, err := codegen.Generate(manifest)
 	if err != nil {
 		return err

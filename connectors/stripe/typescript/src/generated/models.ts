@@ -5,13 +5,19 @@
 import { z } from 'zod';
 import type { CredentialProvider, SecretString } from '@superdurable/connectors-sdk';
 
+/** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
+  /** Stripe API base URL; leave blank for Stripe's public v1 API. Enter an absolute HTTPS URL only for an explicitly supported compatible gateway. */
   endpoint?: string;
+  /** Maximum complete Stripe API response in bytes; enter a positive integer only to change the safety limit. Oversized successful responses select invalidResponse; an oversized error response is classified by its status. */
   maxResponseBytes?: number;
+  /** Maximum raw signed webhook request body in bytes; enter a positive integer only to change the safety limit. Larger bodies are rejected before signature verification. */
   webhookMaxBodyBytes?: number;
+  /** Maximum accepted Stripe-Signature timestamp age, using a positive Go duration such as 5m; reduce only when clocks are synchronized and replay tolerance can be stricter. */
   webhookSignatureToleranceMs?: number;
 }
 
+/** Runtime schema for manifest configuration. */
 export const ConfigSchema = z.object({
   "endpoint": z.string().optional(),
   "maxResponseBytes": z.number().int().optional(),
@@ -19,29 +25,103 @@ export const ConfigSchema = z.object({
   "webhookSignatureToleranceMs": z.number().int().optional(),
 });
 
+/** Private connector credentials resolved by the host. */
 export interface Credentials {
+  /** Selected authorization method. */
   authMethodId?: string;
+  /** Secret rk_test_/rk_live_ restricted or sk_test_/sk_live_ key from Developers > API keys. Grant only the permissions needed by the chosen operations. */
   secretKey: SecretString;
+  /** Secret whsec_ signing secret from Developers > Webhooks > select the Dex endpoint > Signing secret > Reveal; this is different from an API key. */
   webhookSecret?: SecretString;
 }
 
+/** Host-owned source of private connector credentials. */
 export type CredentialSource = CredentialProvider<Credentials>;
 
-export const CreateCardCheckoutSessionInputSchema = z.strictObject({
-  "clientReferenceId": z.string(),
-  "customerEmail": z.string(),
-  "successUrl": z.string(),
-  "cancelUrl": z.string(),
-  "currency": z.string(),
-  "unitAmount": z.number().int(),
-  "productName": z.string(),
+/** JSON model CreateCardCheckoutSessionInput from the connector Go package. */
+export interface CreateCardCheckoutSessionInput {
+  "clientReferenceId": string;
+  "customerEmail": string;
+  "successUrl": string;
+  "cancelUrl": string;
+  "currency": string;
+  "unitAmount": number;
+  "productName": string;
+  "metadata"?: { [key: string]: string } | undefined;
+  "expiresAt"?: string | undefined;
+}
+/** JSON model CheckoutSession from the connector Go package. */
+export interface CheckoutSession {
+  "id": string;
+  "url"?: string | undefined;
+  "clientReferenceId"?: string | undefined;
+  "paymentStatus"?: string | undefined;
+  "status"?: string | undefined;
+  "paymentIntentId"?: string | undefined;
+  "currency"?: string | undefined;
+  "amountTotal"?: number | undefined;
+  "expiresAt"?: string | undefined;
+  "metadata"?: { [key: string]: string } | undefined;
+}
+/** JSON model CreateACHCheckoutSessionInput from the connector Go package. */
+export interface CreateACHCheckoutSessionInput {
+  "clientReferenceId": string;
+  "customerEmail": string;
+  "successUrl": string;
+  "cancelUrl": string;
+  "currency": string;
+  "unitAmount": number;
+  "productName": string;
+  "metadata"?: { [key: string]: string } | undefined;
+  "expiresAt"?: string | undefined;
+}
+/** JSON model GetCheckoutSessionInput from the connector Go package. */
+export interface GetCheckoutSessionInput {
+  "sessionId": string;
+}
+/** JSON model GetPaymentIntentInput from the connector Go package. */
+export interface GetPaymentIntentInput {
+  "paymentIntentId": string;
+}
+/** JSON model PaymentIntent from the connector Go package. */
+export interface PaymentIntent {
+  "id": string;
+  "amount": number;
+  "currency": string;
+  "status": string;
+  "amountRefunded": number;
+  "customerEmail"?: string | undefined;
+  "latestChargeId"?: string | undefined;
+}
+/** JSON model CreateRefundInput from the connector Go package. */
+export interface CreateRefundInput {
+  "paymentIntentId": string;
+  "amount": number;
+  "reason"?: string | undefined;
+  "metadata"?: { [key: string]: string } | undefined;
+}
+/** JSON model Refund from the connector Go package. */
+export interface Refund {
+  "refundId": string;
+  "status": string;
+  "amount": number;
+  "currency": string;
+}
+
+export const CreateCardCheckoutSessionInputSchema: z.ZodType<CreateCardCheckoutSessionInput> = z.lazy(() => z.strictObject({
+  "clientReferenceId": z.string().prefault(''),
+  "customerEmail": z.string().prefault(''),
+  "successUrl": z.string().prefault(''),
+  "cancelUrl": z.string().prefault(''),
+  "currency": z.string().prefault(''),
+  "unitAmount": z.number().int().prefault(0),
+  "productName": z.string().prefault(''),
   "metadata": z.record(z.string(), z.string()).optional(),
   "expiresAt": z.iso.datetime({ offset: true }).optional(),
-});
-export type CreateCardCheckoutSessionInput = z.infer<typeof CreateCardCheckoutSessionInputSchema>;
+}));
 
-export const CheckoutSessionSchema = z.strictObject({
-  "id": z.string(),
+export const CheckoutSessionSchema: z.ZodType<CheckoutSession> = z.lazy(() => z.strictObject({
+  "id": z.string().prefault(''),
   "url": z.string().optional(),
   "clientReferenceId": z.string().optional(),
   "paymentStatus": z.string().optional(),
@@ -51,55 +131,48 @@ export const CheckoutSessionSchema = z.strictObject({
   "amountTotal": z.number().int().optional(),
   "expiresAt": z.iso.datetime({ offset: true }).optional(),
   "metadata": z.record(z.string(), z.string()).optional(),
-});
-export type CheckoutSession = z.infer<typeof CheckoutSessionSchema>;
+}));
 
-export const CreateACHCheckoutSessionInputSchema = z.strictObject({
-  "clientReferenceId": z.string(),
-  "customerEmail": z.string(),
-  "successUrl": z.string(),
-  "cancelUrl": z.string(),
-  "currency": z.string(),
-  "unitAmount": z.number().int(),
-  "productName": z.string(),
+export const CreateACHCheckoutSessionInputSchema: z.ZodType<CreateACHCheckoutSessionInput> = z.lazy(() => z.strictObject({
+  "clientReferenceId": z.string().prefault(''),
+  "customerEmail": z.string().prefault(''),
+  "successUrl": z.string().prefault(''),
+  "cancelUrl": z.string().prefault(''),
+  "currency": z.string().prefault(''),
+  "unitAmount": z.number().int().prefault(0),
+  "productName": z.string().prefault(''),
   "metadata": z.record(z.string(), z.string()).optional(),
   "expiresAt": z.iso.datetime({ offset: true }).optional(),
-});
-export type CreateACHCheckoutSessionInput = z.infer<typeof CreateACHCheckoutSessionInputSchema>;
+}));
 
-export const GetCheckoutSessionInputSchema = z.strictObject({
-  "sessionId": z.string(),
-});
-export type GetCheckoutSessionInput = z.infer<typeof GetCheckoutSessionInputSchema>;
+export const GetCheckoutSessionInputSchema: z.ZodType<GetCheckoutSessionInput> = z.lazy(() => z.strictObject({
+  "sessionId": z.string().prefault(''),
+}));
 
-export const GetPaymentIntentInputSchema = z.strictObject({
-  "paymentIntentId": z.string(),
-});
-export type GetPaymentIntentInput = z.infer<typeof GetPaymentIntentInputSchema>;
+export const GetPaymentIntentInputSchema: z.ZodType<GetPaymentIntentInput> = z.lazy(() => z.strictObject({
+  "paymentIntentId": z.string().prefault(''),
+}));
 
-export const PaymentIntentSchema = z.strictObject({
-  "id": z.string(),
-  "amount": z.number().int(),
-  "currency": z.string(),
-  "status": z.string(),
-  "amountRefunded": z.number().int(),
+export const PaymentIntentSchema: z.ZodType<PaymentIntent> = z.lazy(() => z.strictObject({
+  "id": z.string().prefault(''),
+  "amount": z.number().int().prefault(0),
+  "currency": z.string().prefault(''),
+  "status": z.string().prefault(''),
+  "amountRefunded": z.number().int().prefault(0),
   "customerEmail": z.string().optional(),
   "latestChargeId": z.string().optional(),
-});
-export type PaymentIntent = z.infer<typeof PaymentIntentSchema>;
+}));
 
-export const CreateRefundInputSchema = z.strictObject({
-  "paymentIntentId": z.string(),
-  "amount": z.number().int(),
+export const CreateRefundInputSchema: z.ZodType<CreateRefundInput> = z.lazy(() => z.strictObject({
+  "paymentIntentId": z.string().prefault(''),
+  "amount": z.number().int().prefault(0),
   "reason": z.string().optional(),
   "metadata": z.record(z.string(), z.string()).optional(),
-});
-export type CreateRefundInput = z.infer<typeof CreateRefundInputSchema>;
+}));
 
-export const RefundSchema = z.strictObject({
-  "refundId": z.string(),
-  "status": z.string(),
-  "amount": z.number().int(),
-  "currency": z.string(),
-});
-export type Refund = z.infer<typeof RefundSchema>;
+export const RefundSchema: z.ZodType<Refund> = z.lazy(() => z.strictObject({
+  "refundId": z.string().prefault(''),
+  "status": z.string().prefault(''),
+  "amount": z.number().int().prefault(0),
+  "currency": z.string().prefault(''),
+}));

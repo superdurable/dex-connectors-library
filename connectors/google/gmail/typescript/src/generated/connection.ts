@@ -4,7 +4,7 @@
 
 import { ConnectionRefSchema, type ConnectionRef, type Mutation, type Query } from '@superdurable/connectors-sdk';
 import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
-import type { GetMessageInput, Message, SendMessageInput, SendMessageOutput, ReplyToMessageInput } from '../models.js';
+import type { GetMessageInput, Message, SendMessageInput, SendMessageOutput, ReplyToMessageInput } from './models.js';
 import { ConnectorID, ProviderID } from './definitions.js';
 
 export interface Operations {

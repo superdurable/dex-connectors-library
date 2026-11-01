@@ -5,21 +5,28 @@
 import { goToBranch, newQueryStep, type QueryResult, type QueryStep, type QueryStepConfig } from '@superdurable/connectors-sdk';
 import type { StepTarget } from '@superdurable/dex';
 import type { Connection } from './connection.js';
-import type { SearchArticlesInput, ArticlePage } from '../models.js';
+import type { SearchArticlesInput, ArticlePage } from './models.js';
 
+/** Configuration for the searchArticles connector Step. */
 export interface SearchArticlesStepConfig<StepInput> extends Omit<QueryStepConfig<StepInput, SearchArticlesInput, ArticlePage>, 'operation' | 'connection' | 'branches'> {
+  /** Named connection supplying this operation. */
   connection: Connection;
+  /** Name matching the bound connection. */
   connectionName: string;
+  /** NewsAPI returned one page of matching articles, possibly empty. */
   searched: StepTarget<QueryResult<ArticlePage>>;
+  /** NewsAPI conclusively rejected the search, such as an invalid or exhausted API key, a request the plan does not permit, or an unknown source. */
   providerRejected?: StepTarget<QueryResult<ArticlePage>>;
+  /** NewsAPI returned malformed or oversized data. */
   invalidResponse?: StepTarget<QueryResult<ArticlePage>>;
+  /** Local input, connection configuration, or credentials are invalid. */
   defect?: StepTarget<QueryResult<ArticlePage>>;
 }
 
 export function newSearchArticlesStep<StepInput>(configuration: SearchArticlesStepConfig<StepInput>): QueryStep<StepInput, SearchArticlesInput, ArticlePage> {
   const { connection, connectionName, searched, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
-  if (connection.reference.name !== connectionName) throw new TypeError('NewsAPI Step connection name differs from the bound connection');
-  return newQueryStep({ ...stepConfiguration, operation: connection.operations.searchArticles, connection: connection.reference, branches: [
+  if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
+  return newQueryStep({ ...stepConfiguration, operation: connection.operations.searchArticles(), connection: connection.reference, branches: [
     goToBranch("searched", searched),
     ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
     ...(invalidResponse ? [goToBranch("invalidResponse", invalidResponse)] : []),

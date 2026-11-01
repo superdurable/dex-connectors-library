@@ -6,7 +6,8 @@ The checked-in `src/generated/` contracts come from `connector.yaml` and the
 Go operation structs. Run `go run ./cmd/connectorctl generate --lang typescript connectors/stripe/connector.yaml` from the repository root after either source changes.
 `src/models.ts` keeps the narrower refund reason enum and input
 validators; `src/connection.ts` keeps Stripe's credential decoding and public
-constructor signatures.
+constructor signatures. `src/steps.ts` keeps the published connection-name
+validation error.
 
 ## Install
 

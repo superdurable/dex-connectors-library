@@ -74,7 +74,7 @@ func TestLoadJSONFieldRules(t *testing.T) {
 }
 
 func TestUnsupportedJSONEncodingsFail(t *testing.T) {
-	for _, test := range []struct{ name, want string }{{"UnsupportedOption", "unsupported json tag option"}, {"UnsupportedMarshaler", "custom JSON or text marshaler"}} {
+	for _, test := range []struct{ name, want string }{{"UnsupportedOption", "unsupported json tag option"}, {"UnsupportedMarshaler", "custom JSON or text marshaler"}, {"UnsupportedTextMarshaler", "custom JSON or text marshaler"}} {
 		t.Run(test.name, func(t *testing.T) {
 			_, err := Load(filepath.Join("testdata", "models"), []string{test.name})
 			if err == nil || !strings.Contains(err.Error(), test.want) {

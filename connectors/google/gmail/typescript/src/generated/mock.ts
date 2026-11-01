@@ -4,29 +4,36 @@
 
 import { branchCase, retryCase, type Case, newMutation, type MockMutation, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
 import type { Failure } from '@superdurable/connectors-sdk';
-import type { GetMessageInput, Message, SendMessageInput, SendMessageOutput, ReplyToMessageInput } from '../models.js';
-import { ConnectorID, ProviderID, GetMessageDefinition, SendMessageDefinition, ReplyToMessageDefinition } from './definitions.js';
+import type { GetMessageInput, Message, SendMessageInput, SendMessageOutput, ReplyToMessageInput } from './models.js';
+import { GetMessageInputSchema, MessageSchema, SendMessageInputSchema, SendMessageOutputSchema, ReplyToMessageInputSchema } from './models.js';
+import { ProviderID, ConnectorID, GetMessageDefinition, SendMessageDefinition, ReplyToMessageDefinition } from './definitions.js';
 import { newConnectionWithOperations, type Connection, type Operations } from './connection.js';
 
-const emptyGetMessage: Message = {
+export const emptyGetMessageInput: GetMessageInput = GetMessageInputSchema.parse({
+  "messageId": '',
+});
+export const emptyMessage: Message = MessageSchema.parse({
   "messageId": '',
   "threadId": '',
   "from": '',
   "subject": '',
   "receivedAt": '0001-01-01T00:00:00Z',
-};
-const emptySendMessage: SendMessageOutput = {
+});
+export const emptySendMessageInput: SendMessageInput = SendMessageInputSchema.parse({
+  "to": [],
+  "subject": '',
+  "textBody": '',
+});
+export const emptySendMessageOutput: SendMessageOutput = SendMessageOutputSchema.parse({
   "sender": '',
   "recipients": [],
   "messageId": '',
   "threadId": '',
-};
-const emptyReplyToMessage: SendMessageOutput = {
-  "sender": '',
-  "recipients": [],
+});
+export const emptyReplyToMessageInput: ReplyToMessageInput = ReplyToMessageInputSchema.parse({
   "messageId": '',
-  "threadId": '',
-};
+  "textBody": '',
+});
 
 export function getMessageRead(value: Message, failure?: Failure): Case<Message> { return branchCase("read", value, failure); }
 export function getMessageNotFound(value: Message, failure?: Failure): Case<Message> { return branchCase("notFound", value, failure); }
@@ -35,24 +42,24 @@ export function getMessageInvalidResponse(value: Message, failure?: Failure): Ca
 export function getMessageDefect(value: Message, failure?: Failure): Case<Message> { return branchCase("defect", value, failure); }
 export function getMessageRetry(failure: Failure, retryAfterMs = 0): Case<Message> { return retryCase(failure, retryAfterMs); }
 export function getMessageCustomerQuestion(): Case<Message> {
-  const value = {"messageId":"18c0a1b2c3d4e5f6","threadId":"18c0a1b2c3d4e5f0","rfcMessageId":"\u003cquestion-1@mail.example.com\u003e","inReplyTo":"\u003cwelcome-1@mail.example.com\u003e","references":"\u003cwelcome-1@mail.example.com\u003e","from":"Ada Customer \u003cada@example.com\u003e","replyTo":"ada.support@example.com","to":["support@example.org"],"subject":"Re: Order 1042 has not arrived","textBody":"Hello, my order 1042 has not arrived yet. Can you check?","htmlBody":"\u003cp\u003eHello, my order 1042 has not arrived yet. Can you check?\u003c/p\u003e","snippet":"Hello, my order 1042 has not arrived yet.","receivedAt":"2026-03-04T09:15:00Z","labelIds":["INBOX","UNREAD"]} as Message;
+  const value = MessageSchema.parse({"from":"Ada Customer \u003cada@example.com\u003e","htmlBody":"\u003cp\u003eHello, my order 1042 has not arrived yet. Can you check?\u003c/p\u003e","inReplyTo":"\u003cwelcome-1@mail.example.com\u003e","labelIds":["INBOX","UNREAD"],"messageId":"18c0a1b2c3d4e5f6","receivedAt":"2026-03-04T09:15:00Z","references":"\u003cwelcome-1@mail.example.com\u003e","replyTo":"ada.support@example.com","rfcMessageId":"\u003cquestion-1@mail.example.com\u003e","snippet":"Hello, my order 1042 has not arrived yet.","subject":"Re: Order 1042 has not arrived","textBody":"Hello, my order 1042 has not arrived yet. Can you check?","threadId":"18c0a1b2c3d4e5f0","to":["support@example.org"]});
   return branchCase("read", value);
 }
 export function getMessageDefault(): Case<Message> { return getMessageCustomerQuestion(); }
 export function getMessageDeletedMessage(): Case<Message> {
-  const value = emptyGetMessage;
+  const value = emptyMessage;
   return branchCase("notFound", value, { kind: "NOT_FOUND", provider: ConnectorID, operation: "getMessage", message: "The Gmail message does not exist." });
 }
 export function getMessageRevokedGrant(): Case<Message> {
-  const value = emptyGetMessage;
+  const value = emptyMessage;
   return branchCase("providerRejected", value, { kind: "AUTHORIZATION", provider: ConnectorID, operation: "getMessage", message: "Gmail rejected the message query for the granted scopes." });
 }
 export function getMessageMalformedPayload(): Case<Message> {
-  const value = emptyGetMessage;
+  const value = emptyMessage;
   return branchCase("invalidResponse", value, { kind: "PROTOCOL", provider: ConnectorID, operation: "getMessage", message: "Gmail returned an invalid message payload." });
 }
 export function getMessageEmptyMessageID(): Case<Message> {
-  const value = emptyGetMessage;
+  const value = emptyMessage;
   return branchCase("defect", value, { kind: "VALIDATION", provider: ConnectorID, operation: "getMessage", message: "The message ID is required." });
 }
 export function getMessageRateLimited(): Case<Message> {
@@ -64,19 +71,19 @@ export function sendMessageProviderRejected(value: SendMessageOutput, failure?: 
 export function sendMessageDefect(value: SendMessageOutput, failure?: Failure): Case<SendMessageOutput> { return branchCase("defect", value, failure); }
 export function sendMessageRetry(failure: Failure, retryAfterMs = 0): Case<SendMessageOutput> { return retryCase(failure, retryAfterMs); }
 export function sendMessageSentToCustomer(): Case<SendMessageOutput> {
-  const value = {"sender":"support@example.org","recipients":["ada@example.com"],"messageId":"18c0a1b2c3d4e600","threadId":"18c0a1b2c3d4e600"} as SendMessageOutput;
+  const value = SendMessageOutputSchema.parse({"messageId":"18c0a1b2c3d4e600","recipients":["ada@example.com"],"sender":"support@example.org","threadId":"18c0a1b2c3d4e600"});
   return branchCase("sent", value);
 }
 export function sendMessageDefault(): Case<SendMessageOutput> { return sendMessageSentToCustomer(); }
 export function sendMessageInvalidRecipient(): Case<SendMessageOutput> {
-  const value = emptySendMessage;
+  const value = emptySendMessageOutput;
   return branchCase("providerRejected", value, { kind: "PROVIDER_REJECTION", provider: ConnectorID, operation: "sendMessage", message: "Gmail rejected the message recipients." });
 }
 export function sendMessageConnectionLost(): Case<SendMessageOutput> {
   return retryCase({ kind: "TRANSPORT", provider: ConnectorID, operation: "sendMessage", message: "The connection closed before Gmail answered." });
 }
 export function sendMessageNoRecipients(): Case<SendMessageOutput> {
-  const value = emptySendMessage;
+  const value = emptySendMessageOutput;
   return branchCase("defect", value, { kind: "VALIDATION", provider: ConnectorID, operation: "sendMessage", message: "At least one recipient is required." });
 }
 export function sendMessageUnavailable(): Case<SendMessageOutput> {
@@ -89,23 +96,23 @@ export function replyToMessageInvalidResponse(value: SendMessageOutput, failure?
 export function replyToMessageDefect(value: SendMessageOutput, failure?: Failure): Case<SendMessageOutput> { return branchCase("defect", value, failure); }
 export function replyToMessageRetry(failure: Failure, retryAfterMs = 0): Case<SendMessageOutput> { return retryCase(failure, retryAfterMs); }
 export function replyToMessageRepliedInThread(): Case<SendMessageOutput> {
-  const value = {"sender":"support@example.org","recipients":["ada.support@example.com"],"messageId":"18c0a1b2c3d4e700","threadId":"18c0a1b2c3d4e5f0"} as SendMessageOutput;
+  const value = SendMessageOutputSchema.parse({"messageId":"18c0a1b2c3d4e700","recipients":["ada.support@example.com"],"sender":"support@example.org","threadId":"18c0a1b2c3d4e5f0"});
   return branchCase("sent", value);
 }
 export function replyToMessageDefault(): Case<SendMessageOutput> { return replyToMessageRepliedInThread(); }
 export function replyToMessageSourceMissing(): Case<SendMessageOutput> {
-  const value = emptyReplyToMessage;
+  const value = emptySendMessageOutput;
   return branchCase("providerRejected", value, { kind: "NOT_FOUND", provider: ConnectorID, operation: "replyToMessage", message: "The source Gmail message does not exist." });
 }
 export function replyToMessageMalformedSource(): Case<SendMessageOutput> {
-  const value = emptyReplyToMessage;
+  const value = emptySendMessageOutput;
   return branchCase("invalidResponse", value, { kind: "PROTOCOL", provider: ConnectorID, operation: "replyToMessage", message: "Gmail returned an invalid source message." });
 }
 export function replyToMessageConnectionLost(): Case<SendMessageOutput> {
   return retryCase({ kind: "TRANSPORT", provider: ConnectorID, operation: "replyToMessage", message: "The connection closed before Gmail answered." });
 }
 export function replyToMessageEmptyBody(): Case<SendMessageOutput> {
-  const value = emptyReplyToMessage;
+  const value = emptySendMessageOutput;
   return branchCase("defect", value, { kind: "VALIDATION", provider: ConnectorID, operation: "replyToMessage", message: "The reply body is required." });
 }
 
