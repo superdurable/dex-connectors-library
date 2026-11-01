@@ -10,6 +10,9 @@ manifest version is `v0.1.0`; the Go module requires connector SDK `v0.33.0`
 [`outbound-lookup` example](go/examples/outbound-lookup/README.md) shows a
 complete Worker and the generated operation-specific Step factory.
 
+The Python package is [`dex-connector-postmark`](python/README.md), imported as
+`dex_connectors.postmark`.
+
 ## Operations
 
 | Operation | Kind | Output |
