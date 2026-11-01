@@ -5,6 +5,7 @@ package newsapi
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -162,6 +163,9 @@ func TestHTTPFailureClassification(t *testing.T) {
 			require.Equal(t, test.kind, result.Failure.Kind)
 			require.NotContains(t, result.Failure.Message, "SENTINEL", "provider text never enters a Failure")
 			require.NotContains(t, result.Failure.Message, testAPIKey)
+			encoded, marshalErr := json.Marshal(result.Value)
+			require.NoError(t, marshalErr)
+			require.JSONEq(t, `{"totalResults":0,"articles":[],"page":0,"hasMore":false}`, string(encoded))
 		})
 	}
 }
@@ -192,6 +196,7 @@ func TestInvalidInputSelectsDefectWithoutARequest(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, SearchArticlesBranchDefect, result.Branch)
 			require.Equal(t, sdkgo.FailureValidation, result.Failure.Kind)
+			require.NotNil(t, result.Value.Articles)
 		})
 	}
 	require.Zero(t, requests.Load())
