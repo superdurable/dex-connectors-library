@@ -3,6 +3,7 @@
 
 import { ConnectionRefSchema, type ConnectionRef, type Mutation, type Query } from '@superdurable/connectors-sdk';
 import type { GetMessageInput, Message, ReplyToMessageInput, SendMessageInput, SendMessageOutput } from './models.js';
+import { Connection as GeneratedConnection } from './generated/connection.js';
 
 /** Three operation contracts supplied by a real client or scripted mock. */
 export interface GmailOperations {
@@ -12,15 +13,14 @@ export interface GmailOperations {
 }
 
 /** Named Gmail connection passed to operation Step factories. */
-export class GmailConnection {
-  /** Stable logical credential reference. */ readonly reference: ConnectionRef;
-  /** Provider or mock operation implementations. */ readonly operations: GmailOperations;
-
+export class GmailConnection extends GeneratedConnection {
+  /** Operation implementations constrained by Gmail's public input and output contracts. */
+  declare readonly operations: GmailOperations;
   /** Bind operation implementations to a static named Google connection. */
   constructor(operations: GmailOperations, reference: ConnectionRef) {
     if (!operations) throw new TypeError('Gmail connector operations are required');
-    this.reference = ConnectionRefSchema.parse(reference);
-    if (this.reference.provider !== 'google') throw new TypeError('Gmail connection provider must be google');
-    this.operations = operations;
+    const validatedReference = ConnectionRefSchema.parse(reference);
+    if (validatedReference.provider !== 'google') throw new TypeError('Gmail connection provider must be google');
+    super(validatedReference, operations);
   }
 }

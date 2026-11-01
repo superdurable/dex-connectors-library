@@ -8,7 +8,16 @@ import { ConnectionName, mapToSearchArticlesInput, prepareCompanyNewsRequest, ty
 import type { QueryResult } from '@superdurable/connectors-sdk';
 
 const requestSchema = z.object({ company: z.string(), days: z.number().int().optional(), maxArticles: z.number().int().optional(), language: z.string().optional(), from: z.string().optional() });
-const requestCodec = jsonCodec<CompanyNewsRequest>({ typeName: 'CompanyNewsRequest', decode: value => requestSchema.parse(value) });
+const requestCodec = jsonCodec<CompanyNewsRequest>({ typeName: 'CompanyNewsRequest', decode: value => {
+  const parsed = requestSchema.parse(value);
+  return {
+    company: parsed.company,
+    ...(parsed.days !== undefined ? { days: parsed.days } : {}),
+    ...(parsed.maxArticles !== undefined ? { maxArticles: parsed.maxArticles } : {}),
+    ...(parsed.language !== undefined ? { language: parsed.language } : {}),
+    ...(parsed.from !== undefined ? { from: parsed.from } : {}),
+  };
+} });
 const companyNewsRequestAttribute = new Attribute('newsapi-company-news-request', jsonCodec<Required<CompanyNewsRequest>>());
 const companyNewsOutcomeAttribute = new Attribute('newsapi-company-news-outcome', jsonCodec<CompanyNewsOutcome>());
 

@@ -9,6 +9,7 @@ import { GmailClient } from '../src/client.js';
 import { GmailProvider } from '../src/provider.js';
 import { GmailSendAttemptBudget, GmailSender } from '../src/send.js';
 import type { CredentialSource, Credentials } from '../src/models.js';
+import { GetMessageInputSchema, ReplyToMessageInputSchema, MessageSchema } from '../src/models.js';
 
 const connection = { provider: 'google', name: 'gmail-inbox' };
 const credentials: Credentials = { accessToken: new SecretString('access-token'), primaryEmail: 'owner@example.com' };
@@ -38,6 +39,30 @@ function sender(transport: (request: ProviderRequest) => Promise<ProviderRespons
 
 const sendInput = { to: ['ada@example.com'], subject: 'Progress', textBody: 'Update' };
 const replyInput = { messageId: 'source-1', textBody: 'Answer' };
+
+it('keeps required Gmail fields and ZodObject schema methods', () => {
+  expect(GetMessageInputSchema.safeParse({}).success).toBe(false);
+  expect(ReplyToMessageInputSchema.safeParse({}).success).toBe(false);
+  expect(MessageSchema.safeParse({}).success).toBe(false);
+  expect(GetMessageInputSchema.shape.messageId).toBeDefined();
+  expect(ReplyToMessageInputSchema.shape.messageId).toBeDefined();
+  expect(MessageSchema.shape.messageId).toBeDefined();
+  expect(typeof MessageSchema.extend).toBe('function');
+});
+
+it('classifies missing required input for all Gmail operations as a validation defect', async () => {
+  let requests = 0;
+  const client = new GmailClient({ endpoint: 'http://127.0.0.1:8080' }, new StaticCredentialProvider([[connection, credentials]]), {
+    refreshDriver: driver, transport: async () => { requests++; return response(200, {}); },
+  });
+  const attempts = await Promise.all([
+    client.getMessage().invoke(operationCall('getMessage'), {} as never),
+    client.sendMessage().invoke(operationCall('sendMessage'), {} as never),
+    client.replyToMessage().invoke(operationCall('replyToMessage'), {} as never),
+  ]);
+  for (const attempt of attempts) expect(attempt).toMatchObject({ kind: 'branch', branch: 'defect', failure: { kind: 'VALIDATION' } });
+  expect(requests).toBe(0);
+});
 
 describe('Gmail send and reply classification', () => {
   it('exposes both Mutations with the stable Call ID and Dex attempt deadline', async () => {

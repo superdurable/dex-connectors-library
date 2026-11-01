@@ -8,6 +8,9 @@ npm install @superdurable/connector-google-gmail @superdurable/dex
 
 This package provides typed `getMessage`, `sendMessage`, and `replyToMessage` operations. Its operation identities, branches, retry policy, authorization fields, and mock cases mirror [the manifest](https://github.com/superdurable/dex-connectors-library/blob/main/connectors/google/gmail/connector.yaml). Gmail Triggers and the thread-reply Trigger runner currently belong to the Go connector.
 
+The checked-in `src/generated/` contracts come from `connector.yaml` and the
+Go operation structs. Run `go run ./cmd/connectorctl generate --lang typescript connectors/google/gmail/connector.yaml` from the repository root after either source changes. `src/models.ts` keeps credential requirements specific to Google OAuth and Workspace delegation, plus the public non-null send recipient arrays. `src/steps.ts` delegates to generated factories while requiring `GmailConnection` at compile time; `src/mock/index.ts` re-exports matching generated scenarios and validates send scenarios against the public result type. `src/project.ts` keeps the refresh codec and public connection constructor.
+
 Send and reply recipients are validated as mailboxes and returned in canonical header form, such as `<ada@example.com>` or `"Ada" <ada@example.com>`.
 
 ## Configure a connection
