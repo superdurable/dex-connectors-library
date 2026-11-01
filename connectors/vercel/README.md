@@ -6,6 +6,9 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/vercel`.
 
 The `vercel` Go module exposes typed Dex Steps for Vercel. Its [runnable lookup Flow](go/examples/vercel-lookup/README.md) uses the static connection name `vercel`.
 
+The Python package is [`dex-connector-vercel`](python/README.md), imported as
+`dex_connectors.vercel`.
+
 ## Operations
 
 | Factory | Endpoint | Input | Output | Required branch | Optional branches |
