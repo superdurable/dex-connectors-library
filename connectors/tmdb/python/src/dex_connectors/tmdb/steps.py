@@ -24,7 +24,6 @@ def new_search_movies_step(
     connection_name: str,
     map_to_operation_input: Callable[[StepInput], SearchMoviesInput],
     searched: dex.StepTarget[QueryResult[MoviePage]],
-    not_searched: dex.StepTarget[QueryResult[MoviePage]] | None = None,
     provider_rejected: dex.StepTarget[QueryResult[MoviePage]] | None = None,
     invalid_response: dex.StepTarget[QueryResult[MoviePage]] | None = None,
     defect: dex.StepTarget[QueryResult[MoviePage]] | None = None,
