@@ -3,6 +3,15 @@
 # ruff: noqa
 
 from dataclasses import dataclass
+from typing import Any
+
+def _replace_nil_slices(value: Any, depth: int) -> Any:
+    if value is None:
+        return ()
+    if depth == 1:
+        return value
+    return tuple(_replace_nil_slices(item, depth - 1) for item in value)
+
 
 # SearchMoviesInput searches movie titles.
 @dataclass(frozen=True, slots=True)
@@ -42,9 +51,13 @@ class MoviePage:
     # TotalResults is the number of matching movies.
     total_results: int = 0
     # Results contains one movie search page.
-    results: tuple[Movie, ...] | None = None
+    results: tuple[Movie, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'results', _replace_nil_slices(self.results, 1))
 
 
+MoviePage.__annotations__['results'] = tuple[Movie, ...] | None
 setattr(MoviePage, '__module__', 'dex_connectors.tmdb.models')
 
 

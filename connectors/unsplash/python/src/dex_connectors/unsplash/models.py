@@ -4,21 +4,8 @@
 
 from dataclasses import dataclass, field
 
-
-@dataclass(frozen=True, slots=True)
-class SearchPhotosInput:
-    """Search phrase; zero page and per_page use Unsplash defaults, per_page at most 30."""
-
-    query: str = ""
-    page: int = field(default=0, metadata={"dex_json_omit_default": True})
-    per_page: int = field(default=0, metadata={"dex_json_name": "perPage", "dex_json_omit_default": True})
-
-
-@dataclass(frozen=True, slots=True)
-class GetPhotoInput:
-    """Unsplash photo ID; it must not contain /, ?, &, or #."""
-
-    id: str = ""
+from ._generated.models import GetPhotoInput as GetPhotoInput
+from ._generated.models import SearchPhotosInput as SearchPhotosInput
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,3 +30,9 @@ class PhotoPage:
     total: int = 0
     total_pages: int = field(default=0, metadata={"dex_json_name": "totalPages"})
     photos: tuple[Photo, ...] = ()
+
+
+SearchPhotosInput.__doc__ = (
+    "Search phrase; zero page and per_page use Unsplash defaults, per_page at most 30."
+)
+GetPhotoInput.__doc__ = "Unsplash photo ID; it must not contain /, ?, &, or #."

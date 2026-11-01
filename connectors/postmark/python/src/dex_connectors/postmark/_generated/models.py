@@ -3,6 +3,15 @@
 # ruff: noqa
 
 from dataclasses import dataclass, field as _dataclass_field
+from typing import Any
+
+def _replace_nil_slices(value: Any, depth: int) -> Any:
+    if value is None:
+        return ()
+    if depth == 1:
+        return value
+    return tuple(_replace_nil_slices(item, depth - 1) for item in value)
+
 
 # ListOutboundMessagesInput chooses a bounded outbound search page.
 @dataclass(frozen=True, slots=True)
@@ -36,9 +45,13 @@ class MessagePage:
     # TotalCount is the count of matching provider records.
     total_count: int = _dataclass_field(default=0, metadata={'dex_json_name': 'TotalCount'})
     # Messages contains the current outbound page.
-    messages: tuple[MessageDetails, ...] | None = _dataclass_field(default=None, metadata={'dex_json_name': 'Messages'})
+    messages: tuple[MessageDetails, ...] = _dataclass_field(default=(), metadata={'dex_json_name': 'Messages'})
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'messages', _replace_nil_slices(self.messages, 1))
 
 
+MessagePage.__annotations__['messages'] = tuple[MessageDetails, ...] | None
 setattr(MessagePage, '__module__', 'dex_connectors.postmark.models')
 
 

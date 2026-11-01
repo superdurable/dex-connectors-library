@@ -3,6 +3,15 @@
 # ruff: noqa
 
 from dataclasses import dataclass
+from typing import Any
+
+def _replace_nil_slices(value: Any, depth: int) -> Any:
+    if value is None:
+        return ()
+    if depth == 1:
+        return value
+    return tuple(_replace_nil_slices(item, depth - 1) for item in value)
+
 
 # ListIncidentsInput chooses one incident page.
 @dataclass(frozen=True, slots=True)
@@ -34,7 +43,7 @@ setattr(Incident, '__module__', 'dex_connectors.pagerduty.models')
 @dataclass(frozen=True, slots=True)
 class IncidentPage:
     # Incidents contains one incident page.
-    incidents: tuple[Incident, ...] | None = None
+    incidents: tuple[Incident, ...] = ()
     # Limit is the maximum number of incidents requested.
     limit: int = 0
     # Offset is the zero-based page offset.
@@ -42,7 +51,11 @@ class IncidentPage:
     # More reports whether another incident page exists.
     more: bool = False
 
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'incidents', _replace_nil_slices(self.incidents, 1))
 
+
+IncidentPage.__annotations__['incidents'] = tuple[Incident, ...] | None
 setattr(IncidentPage, '__module__', 'dex_connectors.pagerduty.models')
 
 

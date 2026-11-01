@@ -23,7 +23,7 @@ from dex_connectors.sdk import (
 )
 from dex_connectors.sdk.providerhttp import ProviderTransportError
 
-from ._generated import definitions as generated_definitions
+from ._generated import definitions as _generated_definitions
 from .client import (
     Client,
     ProviderResponse,
@@ -51,28 +51,28 @@ from .models import (
 _DEFAULTS = StepDefaults(timedelta(seconds=30), 2)
 
 CREATE_CARD_CHECKOUT_SESSION_DEFINITION = MutationDefinition(
-    generated_definitions.CREATE_CARD_CHECKOUT_SESSION_DEFINITION.operation,
-    generated_definitions.CREATE_CARD_CHECKOUT_SESSION_DEFINITION.branches or (),
+    _generated_definitions.CREATE_CARD_CHECKOUT_SESSION_DEFINITION.operation,
+    _generated_definitions.CREATE_CARD_CHECKOUT_SESSION_DEFINITION.branches or (),
     _DEFAULTS,
 )
 CREATE_ACH_CHECKOUT_SESSION_DEFINITION = MutationDefinition(
-    generated_definitions.CREATE_ACH_CHECKOUT_SESSION_DEFINITION.operation,
-    generated_definitions.CREATE_ACH_CHECKOUT_SESSION_DEFINITION.branches or (),
+    _generated_definitions.CREATE_ACH_CHECKOUT_SESSION_DEFINITION.operation,
+    _generated_definitions.CREATE_ACH_CHECKOUT_SESSION_DEFINITION.branches or (),
     _DEFAULTS,
 )
 GET_CHECKOUT_SESSION_DEFINITION = QueryDefinition(
-    generated_definitions.GET_CHECKOUT_SESSION_DEFINITION.operation,
-    generated_definitions.GET_CHECKOUT_SESSION_DEFINITION.branches or (),
+    _generated_definitions.GET_CHECKOUT_SESSION_DEFINITION.operation,
+    _generated_definitions.GET_CHECKOUT_SESSION_DEFINITION.branches or (),
     _DEFAULTS,
 )
 GET_PAYMENT_INTENT_DEFINITION = QueryDefinition(
-    generated_definitions.GET_PAYMENT_INTENT_DEFINITION.operation,
-    generated_definitions.GET_PAYMENT_INTENT_DEFINITION.branches or (),
+    _generated_definitions.GET_PAYMENT_INTENT_DEFINITION.operation,
+    _generated_definitions.GET_PAYMENT_INTENT_DEFINITION.branches or (),
     _DEFAULTS,
 )
 CREATE_REFUND_DEFINITION = MutationDefinition(
-    generated_definitions.CREATE_REFUND_DEFINITION.operation,
-    generated_definitions.CREATE_REFUND_DEFINITION.branches or (),
+    _generated_definitions.CREATE_REFUND_DEFINITION.operation,
+    _generated_definitions.CREATE_REFUND_DEFINITION.branches or (),
     _DEFAULTS,
 )
 

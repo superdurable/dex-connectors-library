@@ -115,20 +115,32 @@ setattr(new_project_connection, '__module__', 'dex_connectors.mixpanel.connectio
 def _decode_config(value: dict[str, Any]) -> Config:
     if set(value) - {"baseUrl", "exportBaseUrl", "projectId", "timeout", "maxResponseBytes"}:
         raise ValueError("Mixpanel configuration has unknown fields")
-    base_url = value.get("baseUrl", '')
-    if not isinstance(base_url, str):
-        raise ValueError("Mixpanel configuration baseUrl has an invalid type")
-    export_base_url = value.get("exportBaseUrl", '')
-    if not isinstance(export_base_url, str):
-        raise ValueError("Mixpanel configuration exportBaseUrl has an invalid type")
-    project_id = value.get("projectId", 0)
-    if not type(project_id) is int:
-        raise ValueError("Mixpanel configuration projectId has an invalid type")
-    timeout = value.get("timeout", 0)
-    if not type(timeout) is int:
-        raise ValueError("Mixpanel configuration timeout has an invalid type")
-    timeout_seconds = timeout / 1_000_000_000
-    max_response_bytes = value.get("maxResponseBytes", 0)
-    if not type(max_response_bytes) is int:
-        raise ValueError("Mixpanel configuration maxResponseBytes has an invalid type")
-    return Config(base_url=base_url, export_base_url=export_base_url, project_id=project_id, timeout_seconds=timeout_seconds, max_response_bytes=max_response_bytes)
+    config_arguments: dict[str, Any] = {}
+    if "baseUrl" in value:
+        base_url = value["baseUrl"]
+        if not (isinstance(base_url, str)):
+            raise ValueError("Mixpanel configuration baseUrl has an invalid type")
+        config_arguments['base_url'] = base_url
+    if "exportBaseUrl" in value:
+        export_base_url = value["exportBaseUrl"]
+        if not (isinstance(export_base_url, str)):
+            raise ValueError("Mixpanel configuration exportBaseUrl has an invalid type")
+        config_arguments['export_base_url'] = export_base_url
+    if "projectId" in value:
+        project_id = value["projectId"]
+        if not (type(project_id) is int):
+            raise ValueError("Mixpanel configuration projectId has an invalid type")
+        config_arguments['project_id'] = project_id
+    else:
+        raise ValueError("Mixpanel configuration projectId is required")
+    if "timeout" in value:
+        timeout = value["timeout"]
+        if not (type(timeout) is int):
+            raise ValueError("Mixpanel configuration timeout has an invalid type")
+        config_arguments['timeout_seconds'] = timeout / 1_000_000_000
+    if "maxResponseBytes" in value:
+        max_response_bytes = value["maxResponseBytes"]
+        if not (type(max_response_bytes) is int):
+            raise ValueError("Mixpanel configuration maxResponseBytes has an invalid type")
+        config_arguments['max_response_bytes'] = max_response_bytes
+    return Config(**config_arguments)

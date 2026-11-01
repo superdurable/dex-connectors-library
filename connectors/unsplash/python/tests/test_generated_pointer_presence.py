@@ -53,7 +53,8 @@ def test_optional_pointer_omits_none_but_emits_present_empty_string() -> None:
     assert codec.decode(Value(WireKind.JSON, json.dumps(present))).description == ""
 
 
-def test_nullable_slice_decodes_null() -> None:
+def test_nonpointer_slice_decodes_null_to_empty_tuple() -> None:
     codec = CodecRegistry().resolve(PhotoPage)
     page = codec.decode(Value(WireKind.JSON, '{"total":0,"totalPages":0,"photos":null}'))
-    assert page.photos is None
+    assert page.photos == ()
+    assert encoded_json(page)["photos"] == []

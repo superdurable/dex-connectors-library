@@ -7,7 +7,9 @@ from datetime import datetime
 
 from dex_connectors.sdk import SecretString
 
-from ._generated.config import Config as ManifestConfig
+from ._generated.config import Config as _ManifestConfig
+from ._generated.models import PaymentIntent as PaymentIntent
+from ._generated.models import Refund as Refund
 
 
 @dataclass(frozen=True, slots=True)
@@ -18,16 +20,16 @@ class Config:
     preserve the shared connection contract for a future Python Trigger.
     """
 
-    endpoint: str = ManifestConfig().endpoint
+    endpoint: str = _ManifestConfig().endpoint
     max_response_bytes: int = field(
-        default=ManifestConfig().max_response_bytes, metadata={"dex_json_name": "maxResponseBytes"}
+        default=_ManifestConfig().max_response_bytes, metadata={"dex_json_name": "maxResponseBytes"}
     )
     webhook_max_body_bytes: int = field(
-        default=ManifestConfig().webhook_max_body_bytes,
+        default=_ManifestConfig().webhook_max_body_bytes,
         metadata={"dex_json_name": "webhookMaxBodyBytes"},
     )
     webhook_signature_tolerance: str | int = field(
-        default=f"{ManifestConfig().webhook_signature_tolerance_seconds / 60:g}m",
+        default=f"{_ManifestConfig().webhook_signature_tolerance_seconds / 60:g}m",
         metadata={"dex_json_name": "webhookSignatureTolerance"},
     )
 
@@ -119,23 +121,6 @@ class GetPaymentIntentInput:
 
 
 @dataclass(frozen=True, slots=True)
-class PaymentIntent:
-    """Safe PaymentIntent summary with latest-charge refunded amount in minor units."""
-
-    id: str = ""
-    amount: int = 0
-    currency: str = ""
-    status: str = ""
-    amount_refunded: int = field(default=0, metadata={"dex_json_name": "amountRefunded"})
-    customer_email: str = field(
-        default="", metadata={"dex_json_name": "customerEmail", "dex_json_omit_default": True}
-    )
-    latest_charge_id: str = field(
-        default="", metadata={"dex_json_name": "latestChargeId", "dex_json_omit_default": True}
-    )
-
-
-@dataclass(frozen=True, slots=True)
 class CreateRefundInput:
     """Refund a PaymentIntent by a positive amount in minor currency units."""
 
@@ -145,11 +130,5 @@ class CreateRefundInput:
     metadata: dict[str, str] = field(default_factory=dict, metadata={"dex_json_omit_default": True})
 
 
-@dataclass(frozen=True, slots=True)
-class Refund:
-    """Safe Stripe refund summary; accepted refunds can remain pending."""
-
-    refund_id: str = field(default="", metadata={"dex_json_name": "refundId"})
-    status: str = ""
-    amount: int = 0
-    currency: str = ""
+PaymentIntent.__doc__ = "Safe PaymentIntent summary with latest-charge refunded amount in minor units."
+Refund.__doc__ = "Safe Stripe refund summary; accepted refunds can remain pending."

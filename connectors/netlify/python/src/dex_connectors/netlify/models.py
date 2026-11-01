@@ -2,11 +2,10 @@
 # SPDX-License-Identifier: MIT
 """Public model names backed by Go-derived generated dataclasses."""
 
-from dataclasses import dataclass
-
 from ._generated.models import (
     Deploy as Deploy,
 )
+from ._generated.models import DeploysPage as DeploysPage
 from ._generated.models import (
     ListDeploysInput as ListDeploysInput,
 )
@@ -16,17 +15,7 @@ from ._generated.models import (
 from ._generated.models import (
     Site as Site,
 )
+from ._generated.models import SitesPage as SitesPage
 
-
-@dataclass(frozen=True, slots=True)
-class SitesPage:
-    """Sites visible to the token."""
-
-    sites: tuple[Site, ...] = ()
-
-
-@dataclass(frozen=True, slots=True)
-class DeploysPage:
-    """Deploys for the site."""
-
-    deploys: tuple[Deploy, ...] = ()
+SitesPage.__doc__ = "Sites visible to the token."
+DeploysPage.__doc__ = "Deploys for the site."

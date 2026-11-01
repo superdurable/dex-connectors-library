@@ -3,6 +3,15 @@
 # ruff: noqa
 
 from dataclasses import dataclass, field as _dataclass_field
+from typing import Any
+
+def _replace_nil_slices(value: Any, depth: int) -> Any:
+    if value is None:
+        return ()
+    if depth == 1:
+        return value
+    return tuple(_replace_nil_slices(item, depth - 1) for item in value)
+
 
 # WeatherInput selects coordinates and temperature units.
 @dataclass(frozen=True, slots=True)
@@ -50,7 +59,11 @@ class ForecastOutput:
     # City is the provider's location name.
     city: str = ''
     # Entries are the forecast's three-hour points.
-    entries: tuple[ForecastEntry, ...] | None = None
+    entries: tuple[ForecastEntry, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'entries', _replace_nil_slices(self.entries, 1))
 
 
+ForecastOutput.__annotations__['entries'] = tuple[ForecastEntry, ...] | None
 setattr(ForecastOutput, '__module__', 'dex_connectors.openweathermap.models')

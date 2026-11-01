@@ -2,8 +2,6 @@
 # SPDX-License-Identifier: MIT
 """Public model names backed by Go-derived generated dataclasses."""
 
-from dataclasses import dataclass
-
 from ._generated.models import (
     GetOrderInput as GetOrderInput,
 )
@@ -13,10 +11,6 @@ from ._generated.models import (
 from ._generated.models import (
     Order as Order,
 )
+from ._generated.models import OrderPage as OrderPage
 
-
-@dataclass(frozen=True, slots=True)
-class OrderPage:
-    """One page of orders."""
-
-    orders: tuple[Order, ...] = ()
+OrderPage.__doc__ = "One page of orders."

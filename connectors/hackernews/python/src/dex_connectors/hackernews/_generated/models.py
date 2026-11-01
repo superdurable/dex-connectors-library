@@ -4,6 +4,15 @@
 
 from dataclasses import dataclass, field as _dataclass_field
 from datetime import UTC, datetime
+from typing import Any
+
+def _replace_nil_slices(value: Any, depth: int) -> Any:
+    if value is None:
+        return ()
+    if depth == 1:
+        return value
+    return tuple(_replace_nil_slices(item, depth - 1) for item in value)
+
 
 # ListStoryIDsInput selects one feed snapshot. It does not select a historical time window.
 @dataclass(frozen=True, slots=True)
@@ -21,13 +30,17 @@ setattr(ListStoryIDsInput, '__module__', 'dex_connectors.hackernews.models')
 @dataclass(frozen=True, slots=True)
 class StoryIDs:
     # IDs contains at most the requested limit. Top stories can include jobs.
-    ids: tuple[int, ...] | None = None
+    ids: tuple[int, ...] = ()
     # HasMore reports that the API returned more IDs than this operation retained. The API has no page cursor.
     has_more: bool = _dataclass_field(default=False, metadata={'dex_json_name': 'hasMore'})
     # ObservedAt is the UTC time when this response was read.
     observed_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'observedAt', 'dex_json_format': 'rfc3339'})
 
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'ids', _replace_nil_slices(self.ids, 1))
 
+
+StoryIDs.__annotations__['ids'] = tuple[int, ...] | None
 setattr(StoryIDs, '__module__', 'dex_connectors.hackernews.models')
 
 

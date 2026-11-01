@@ -112,16 +112,25 @@ setattr(new_project_connection, '__module__', 'dex_connectors.openai.connection'
 def _decode_config(value: dict[str, Any]) -> Config:
     if set(value) - {"model", "endpoint", "maxResponseBytes", "maxSseEventBytes"}:
         raise ValueError("OpenAI configuration has unknown fields")
-    model = value.get("model", '')
-    if not isinstance(model, str):
-        raise ValueError("OpenAI configuration model has an invalid type")
-    endpoint = value.get("endpoint", '')
-    if not isinstance(endpoint, str):
-        raise ValueError("OpenAI configuration endpoint has an invalid type")
-    max_response_bytes = value.get("maxResponseBytes", 0)
-    if not type(max_response_bytes) is int:
-        raise ValueError("OpenAI configuration maxResponseBytes has an invalid type")
-    max_sse_event_bytes = value.get("maxSseEventBytes", 0)
-    if not type(max_sse_event_bytes) is int:
-        raise ValueError("OpenAI configuration maxSseEventBytes has an invalid type")
-    return Config(model=model, endpoint=endpoint, max_response_bytes=max_response_bytes, max_sse_event_bytes=max_sse_event_bytes)
+    config_arguments: dict[str, Any] = {}
+    if "model" in value:
+        model = value["model"]
+        if not (isinstance(model, str)):
+            raise ValueError("OpenAI configuration model has an invalid type")
+        config_arguments['model'] = model
+    if "endpoint" in value:
+        endpoint = value["endpoint"]
+        if not (isinstance(endpoint, str)):
+            raise ValueError("OpenAI configuration endpoint has an invalid type")
+        config_arguments['endpoint'] = endpoint
+    if "maxResponseBytes" in value:
+        max_response_bytes = value["maxResponseBytes"]
+        if not (type(max_response_bytes) is int):
+            raise ValueError("OpenAI configuration maxResponseBytes has an invalid type")
+        config_arguments['max_response_bytes'] = max_response_bytes
+    if "maxSseEventBytes" in value:
+        max_sse_event_bytes = value["maxSseEventBytes"]
+        if not (type(max_sse_event_bytes) is int):
+            raise ValueError("OpenAI configuration maxSseEventBytes has an invalid type")
+        config_arguments['max_sse_event_bytes'] = max_sse_event_bytes
+    return Config(**config_arguments)

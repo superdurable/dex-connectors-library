@@ -3,7 +3,8 @@
 """Operation-specific Gmail Step factories with static Dex connection identity."""
 
 from collections.abc import Callable, Mapping
-from typing import TypeVar, cast
+from typing import TypeVar
+from typing import cast as _cast
 
 import dex
 from dex_connectors.sdk import (
@@ -16,7 +17,7 @@ from dex_connectors.sdk import (
 from dex_connectors.sdk import MutationStepConfig as MutationStepConfig
 from dex_connectors.sdk import QueryStepConfig as QueryStepConfig
 
-from ._generated import steps as generated_steps
+from ._generated import steps as _generated_steps
 from .connection import Connection
 from .models import GetMessageInput, Message, ReplyToMessageInput, SendMessageInput, SendMessageOutput
 
@@ -65,9 +66,9 @@ def new_get_message_step(
     for Dex source analysis, or a ``StepAnnotations`` instance at runtime.
     """
     _validate_connection(connection, connection_name)
-    return generated_steps.new_get_message_step(
+    return _generated_steps.new_get_message_step(
         step_type=step_type,
-        step_input_type=cast(type[StepInput], step_input_type),
+        step_input_type=_cast(type[StepInput], step_input_type),
         annotations=_step_annotations(annotations),
         connection=connection,
         connection_name=connection_name,
@@ -102,9 +103,9 @@ def new_send_message_step(
     for Dex source analysis, or a ``StepAnnotations`` instance at runtime.
     """
     _validate_connection(connection, connection_name)
-    return generated_steps.new_send_message_step(
+    return _generated_steps.new_send_message_step(
         step_type=step_type,
-        step_input_type=cast(type[StepInput], step_input_type),
+        step_input_type=_cast(type[StepInput], step_input_type),
         annotations=_step_annotations(annotations),
         connection=connection,
         connection_name=connection_name,
@@ -138,9 +139,9 @@ def new_reply_to_message_step(
     for Dex source analysis, or a ``StepAnnotations`` instance at runtime.
     """
     _validate_connection(connection, connection_name)
-    return generated_steps.new_reply_to_message_step(
+    return _generated_steps.new_reply_to_message_step(
         step_type=step_type,
-        step_input_type=cast(type[StepInput], step_input_type),
+        step_input_type=_cast(type[StepInput], step_input_type),
         annotations=_step_annotations(annotations),
         connection=connection,
         connection_name=connection_name,

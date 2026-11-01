@@ -40,8 +40,8 @@ from dex_connectors.sdk.retry_policy import (
     default_connector_step_execute_retry_policy as default_connector_step_execute_retry_policy,
 )
 
-from ._generated.config import Config as GeneratedConfig
-from ._generated.config import Credentials as GeneratedCredentials
+from ._generated.config import Config as _GeneratedConfig
+from ._generated.config import Credentials as _GeneratedCredentials
 from ._generated.definitions import CONNECTOR_ID as CONNECTOR_ID
 from ._generated.definitions import DEFECT as DEFECT
 from ._generated.definitions import INVALID_RESPONSE as INVALID_RESPONSE
@@ -71,13 +71,13 @@ Output = TypeVar("Output")
 
 
 @dataclass(frozen=True, slots=True)
-class Config(GeneratedConfig):
+class Config(_GeneratedConfig):
     """Harvest settings; account_id is required, other zero or blank values use manifest defaults."""
 
     account_id: str = ""
 
 
-class Credentials(GeneratedCredentials):
+class Credentials(_GeneratedCredentials):
     """Harvest personal access token, resolved anew for every provider attempt."""
 
     __slots__ = ()

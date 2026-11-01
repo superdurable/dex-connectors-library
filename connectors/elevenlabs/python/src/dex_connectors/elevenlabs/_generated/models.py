@@ -3,6 +3,15 @@
 # ruff: noqa
 
 from dataclasses import dataclass, field as _dataclass_field
+from typing import Any
+
+def _replace_nil_slices(value: Any, depth: int) -> Any:
+    if value is None:
+        return ()
+    if depth == 1:
+        return value
+    return tuple(_replace_nil_slices(item, depth - 1) for item in value)
+
 
 # ListVoicesInput selects one page of account voices.
 @dataclass(frozen=True, slots=True)
@@ -32,13 +41,17 @@ setattr(Voice, '__module__', 'dex_connectors.elevenlabs.models')
 @dataclass(frozen=True, slots=True)
 class ListVoicesOutput:
     # Voices is the page of available voices.
-    voices: tuple[Voice, ...] | None = None
+    voices: tuple[Voice, ...] = ()
     # HasMore reports whether another page is available.
     has_more: bool = _dataclass_field(default=False, metadata={'dex_json_name': 'hasMore'})
     # NextPageToken selects the next page when HasMore is true.
     next_page_token: str = _dataclass_field(default='', metadata={'dex_json_name': 'nextPageToken', 'dex_json_omit_default': True})
 
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'voices', _replace_nil_slices(self.voices, 1))
 
+
+ListVoicesOutput.__annotations__['voices'] = tuple[Voice, ...] | None
 setattr(ListVoicesOutput, '__module__', 'dex_connectors.elevenlabs.models')
 
 

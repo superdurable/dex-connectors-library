@@ -3,6 +3,15 @@
 # ruff: noqa
 
 from dataclasses import dataclass, field as _dataclass_field
+from typing import Any
+
+def _replace_nil_slices(value: Any, depth: int) -> Any:
+    if value is None:
+        return ()
+    if depth == 1:
+        return value
+    return tuple(_replace_nil_slices(item, depth - 1) for item in value)
+
 
 # GetEventsInput selects one sending domain and a bounded events page.
 @dataclass(frozen=True, slots=True)
@@ -34,9 +43,13 @@ setattr(Event, '__module__', 'dex_connectors.mailgun.models')
 @dataclass(frozen=True, slots=True)
 class EventsOutput:
     # Events is the returned event page.
-    events: tuple[Event, ...] | None = None
+    events: tuple[Event, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'events', _replace_nil_slices(self.events, 1))
 
 
+EventsOutput.__annotations__['events'] = tuple[Event, ...] | None
 setattr(EventsOutput, '__module__', 'dex_connectors.mailgun.models')
 
 
@@ -68,9 +81,13 @@ setattr(Domain, '__module__', 'dex_connectors.mailgun.models')
 @dataclass(frozen=True, slots=True)
 class DomainsOutput:
     # Domains is the page of sending domains.
-    domains: tuple[Domain, ...] | None = None
+    domains: tuple[Domain, ...] = ()
     # TotalCount is the provider-reported account domain count.
     total_count: int = _dataclass_field(default=0, metadata={'dex_json_name': 'totalCount'})
 
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'domains', _replace_nil_slices(self.domains, 1))
 
+
+DomainsOutput.__annotations__['domains'] = tuple[Domain, ...] | None
 setattr(DomainsOutput, '__module__', 'dex_connectors.mailgun.models')

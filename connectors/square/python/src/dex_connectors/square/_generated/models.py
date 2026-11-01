@@ -3,6 +3,15 @@
 # ruff: noqa
 
 from dataclasses import dataclass, field as _dataclass_field
+from typing import Any
+
+def _replace_nil_slices(value: Any, depth: int) -> Any:
+    if value is None:
+        return ()
+    if depth == 1:
+        return value
+    return tuple(_replace_nil_slices(item, depth - 1) for item in value)
+
 
 # ListPaymentsInput selects a Square payment page.
 @dataclass(frozen=True, slots=True)
@@ -44,11 +53,15 @@ setattr(Payment, '__module__', 'dex_connectors.square.models')
 @dataclass(frozen=True, slots=True)
 class PaymentPage:
     # Payments contains payments, possibly none.
-    payments: tuple[Payment, ...] | None = None
+    payments: tuple[Payment, ...] = ()
     # Cursor continues listing when set.
     cursor: str = ''
 
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'payments', _replace_nil_slices(self.payments, 1))
 
+
+PaymentPage.__annotations__['payments'] = tuple[Payment, ...] | None
 setattr(PaymentPage, '__module__', 'dex_connectors.square.models')
 
 

@@ -4,6 +4,15 @@
 
 from dataclasses import dataclass, field as _dataclass_field
 from datetime import UTC, datetime
+from typing import Any
+
+def _replace_nil_slices(value: Any, depth: int) -> Any:
+    if value is None:
+        return ()
+    if depth == 1:
+        return value
+    return tuple(_replace_nil_slices(item, depth - 1) for item in value)
+
 
 # SearchArticlesInput selects one page of NewsAPI's everything search.
 # Query, Sources, or Domains must be set. Empty fields are not sent, so NewsAPI applies its own defaults.
@@ -83,11 +92,15 @@ class ArticlePage:
     # TotalResults is NewsAPI's count of all matching articles. The Developer plan returns only the first 100.
     total_results: int = _dataclass_field(default=0, metadata={'dex_json_name': 'totalResults'})
     # Articles holds this page, possibly empty.
-    articles: tuple[Article, ...] | None = None
+    articles: tuple[Article, ...] = ()
     # Page is the 1-based page this result holds.
     page: int = 0
     # HasMore reports that TotalResults exceeds the articles up to and including this page.
     has_more: bool = _dataclass_field(default=False, metadata={'dex_json_name': 'hasMore'})
 
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'articles', _replace_nil_slices(self.articles, 1))
 
+
+ArticlePage.__annotations__['articles'] = tuple[Article, ...] | None
 setattr(ArticlePage, '__module__', 'dex_connectors.newsapi.models')

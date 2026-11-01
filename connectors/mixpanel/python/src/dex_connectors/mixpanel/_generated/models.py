@@ -3,6 +3,15 @@
 # ruff: noqa
 
 from dataclasses import dataclass, field as _dataclass_field
+from typing import Any
+
+def _replace_nil_slices(value: Any, depth: int) -> Any:
+    if value is None:
+        return ()
+    if depth == 1:
+        return value
+    return tuple(_replace_nil_slices(item, depth - 1) for item in value)
+
 
 # TrackEventInput identifies one stable event across Dex retries.
 @dataclass(frozen=True, slots=True)
@@ -64,7 +73,11 @@ setattr(ExportedEvent, '__module__', 'dex_connectors.mixpanel.models')
 @dataclass(frozen=True, slots=True)
 class ExportedEvents:
     # Events contains at most the requested limit, without arbitrary properties.
-    events: tuple[ExportedEvent, ...] | None = None
+    events: tuple[ExportedEvent, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'events', _replace_nil_slices(self.events, 1))
 
 
+ExportedEvents.__annotations__['events'] = tuple[ExportedEvent, ...] | None
 setattr(ExportedEvents, '__module__', 'dex_connectors.mixpanel.models')

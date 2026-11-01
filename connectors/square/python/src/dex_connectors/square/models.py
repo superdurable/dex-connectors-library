@@ -2,8 +2,6 @@
 # SPDX-License-Identifier: MIT
 """Public model names backed by Go-derived generated dataclasses."""
 
-from dataclasses import dataclass
-
 from ._generated.models import (
     GetPaymentInput as GetPaymentInput,
 )
@@ -16,11 +14,6 @@ from ._generated.models import (
 from ._generated.models import (
     Payment as Payment,
 )
+from ._generated.models import PaymentPage as PaymentPage
 
-
-@dataclass(frozen=True, slots=True)
-class PaymentPage:
-    """One page of payments; cursor is blank on the last page."""
-
-    payments: tuple[Payment, ...] = ()
-    cursor: str = ""
+PaymentPage.__doc__ = "One page of payments; cursor is blank on the last page."

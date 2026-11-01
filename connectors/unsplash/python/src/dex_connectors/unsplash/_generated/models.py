@@ -3,6 +3,15 @@
 # ruff: noqa
 
 from dataclasses import dataclass, field as _dataclass_field
+from typing import Any
+
+def _replace_nil_slices(value: Any, depth: int) -> Any:
+    if value is None:
+        return ()
+    if depth == 1:
+        return value
+    return tuple(_replace_nil_slices(item, depth - 1) for item in value)
+
 
 # SearchPhotosInput selects one page of public photos.
 @dataclass(frozen=True, slots=True)
@@ -48,9 +57,13 @@ class PhotoPage:
     # TotalPages is the number of available pages.
     total_pages: int = _dataclass_field(default=0, metadata={'dex_json_name': 'totalPages'})
     # Photos holds this page's photos.
-    photos: tuple[Photo, ...] | None = None
+    photos: tuple[Photo, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'photos', _replace_nil_slices(self.photos, 1))
 
 
+PhotoPage.__annotations__['photos'] = tuple[Photo, ...] | None
 setattr(PhotoPage, '__module__', 'dex_connectors.unsplash.models')
 
 

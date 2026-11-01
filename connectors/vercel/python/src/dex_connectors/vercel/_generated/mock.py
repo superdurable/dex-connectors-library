@@ -8,7 +8,7 @@ from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Query
 
 from ..connection import Connection, new_connection_with_operations
-from ..models import Deployment, DeploymentsPage, DeploymentsPagePagination, GetDeploymentInput, ListDeploymentsInput
+from ..models import Deployment, DeploymentsPage, GetDeploymentInput, ListDeploymentsInput, Pagination
 from .definitions import CONNECTOR_ID, DEFECT, FOUND, GET_DEPLOYMENT_DEFINITION, INVALID_RESPONSE, LISTED, LIST_DEPLOYMENTS_DEFINITION, NOT_FOUND, PROVIDER_REJECTED
 
 def list_deployments_listed(value: DeploymentsPage, failure: Failure | None = None) -> Case[DeploymentsPage]:
@@ -37,7 +37,7 @@ def list_deployments_retry(failure: Failure, after_seconds: float = 0) -> Case[D
 setattr(list_deployments_retry, '__module__', "dex_connectors.vercel.vercelmock")
 
 def list_deployments_listed_default() -> Case[DeploymentsPage]:
-    return Case.branch_result(LISTED, DeploymentsPage(deployments=(Deployment(uid='dpl_meridian1', name='meridian-web', url='meridian-web.vercel.app', state='READY', created=1761436800000),), pagination=DeploymentsPagePagination(next=None)))
+    return Case.branch_result(LISTED, DeploymentsPage(deployments=(Deployment(uid='dpl_meridian1', name='meridian-web', url='meridian-web.vercel.app', state='READY', created=1761436800000),), pagination=Pagination(next=None)))
 
 setattr(list_deployments_listed_default, '__module__', "dex_connectors.vercel.vercelmock")
 

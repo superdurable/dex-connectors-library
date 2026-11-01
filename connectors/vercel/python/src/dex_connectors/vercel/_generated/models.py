@@ -3,6 +3,15 @@
 # ruff: noqa
 
 from dataclasses import dataclass, field as _dataclass_field
+from typing import Any
+
+def _replace_nil_slices(value: Any, depth: int) -> Any:
+    if value is None:
+        return ()
+    if depth == 1:
+        return value
+    return tuple(_replace_nil_slices(item, depth - 1) for item in value)
+
 
 # ListDeploymentsInput optionally selects a Vercel team ID.
 @dataclass(frozen=True, slots=True)
@@ -48,11 +57,15 @@ setattr(DeploymentsPagePagination, '__module__', 'dex_connectors.vercel.models')
 @dataclass(frozen=True, slots=True)
 class DeploymentsPage:
     # Deployments holds the listed deployments.
-    deployments: tuple[Deployment, ...] | None = None
+    deployments: tuple[Deployment, ...] = ()
     # Pagination contains the next cursor when more results exist.
     pagination: DeploymentsPagePagination = _dataclass_field(default_factory=DeploymentsPagePagination)
 
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'deployments', _replace_nil_slices(self.deployments, 1))
 
+
+DeploymentsPage.__annotations__['deployments'] = tuple[Deployment, ...] | None
 setattr(DeploymentsPage, '__module__', 'dex_connectors.vercel.models')
 
 

@@ -3,6 +3,15 @@
 # ruff: noqa
 
 from dataclasses import dataclass, field as _dataclass_field
+from typing import Any
+
+def _replace_nil_slices(value: Any, depth: int) -> Any:
+    if value is None:
+        return ()
+    if depth == 1:
+        return value
+    return tuple(_replace_nil_slices(item, depth - 1) for item in value)
+
 
 # PurgeCacheByURLsInput names one zone and up to 30 absolute URLs.
 @dataclass(frozen=True, slots=True)
@@ -10,9 +19,13 @@ class PurgeCacheByURLsInput:
     # ZoneID identifies the zone whose cache is purged.
     zone_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'zoneId'})
     # URLs lists absolute HTTP or HTTPS URLs to purge.
-    urls: tuple[str, ...] | None = None
+    urls: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'urls', _replace_nil_slices(self.urls, 1))
 
 
+PurgeCacheByURLsInput.__annotations__['urls'] = tuple[str, ...] | None
 setattr(PurgeCacheByURLsInput, '__module__', 'dex_connectors.cloudflare.models')
 
 
@@ -65,7 +78,11 @@ class ZonesPage:
     # Success reports whether Cloudflare accepted the list request.
     success: bool = False
     # Result contains one zone page, possibly empty.
-    result: tuple[Zone, ...] | None = None
+    result: tuple[Zone, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'result', _replace_nil_slices(self.result, 1))
 
 
+ZonesPage.__annotations__['result'] = tuple[Zone, ...] | None
 setattr(ZonesPage, '__module__', 'dex_connectors.cloudflare.models')

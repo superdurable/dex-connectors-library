@@ -47,13 +47,20 @@ without either option remains a required key that may be null. Embedded structs
 follow `encoding/json` field selection, and named constants use open string or
 integer types so unknown provider values remain decodable. An optional Go
 pointer becomes `T | None`: `None` omits the key, while `False`, zero, and empty
-collections remain present. Non-omitting nilable fields accept and emit JSON
-null. Keep provider HTTP behavior and each operation's invocation in
-hand-written modules. Preserve historical Python constructors and mock names
+collections remain present. A nonpointer Go slice uses an empty tuple; JSON
+null decodes to that tuple, which emits an empty array unless the field omits
+empty values. Other nilable fields can retain and emit JSON null. Keep provider
+HTTP behavior and each operation's invocation in hand-written modules. Preserve
+historical Python constructors and mock names
 through hand-written facade modules when they differ from the canonical
 Go shape. A facade containing `# connectorctl: handwritten facade` owns its
 Step, connection, or mock component and suppresses that generated file. Do not
 edit `_generated/` files directly.
+
+Generated Python configuration uses manifest defaults, validates enum choices,
+and decodes `stringList` values as tuples. If a historical public model name
+differs from a Go inline model, add `# connectorctl: model-alias GoName=PublicName`
+to the hand-written `models.py` facade so generated mocks use the public name.
 
 Runtime arguments such as `connection`, `map_to_operation_input`/
 `mapToOperationInput`, and `step_options_override`/`stepOptionsOverride`

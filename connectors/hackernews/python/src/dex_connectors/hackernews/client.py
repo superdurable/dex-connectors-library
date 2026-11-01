@@ -32,8 +32,8 @@ from dex_connectors.sdk.providerhttp import (
 )
 from dex_connectors.sdk.retry_policy import RetryPolicy as RetryPolicy
 
-from ._generated import definitions as generated_definitions
-from ._generated.config import Config as GeneratedConfig
+from ._generated import definitions as _generated_definitions
+from ._generated.config import Config as _GeneratedConfig
 from ._generated.definitions import DEFECT as DEFECT
 from ._generated.definitions import FOUND as FOUND
 from ._generated.definitions import GET_ITEM_OPERATION_ID as GET_ITEM_OPERATION_ID
@@ -54,19 +54,19 @@ _DEFAULT_MAX_RESPONSE_BYTES = 1_048_576
 
 LIST_STORY_IDS_DEFINITION = QueryDefinition(
     OperationRef(CONNECTOR_ID, LIST_STORY_IDS_OPERATION_ID),
-    generated_definitions.LIST_STORY_IDS_DEFINITION.branches or (),
-    generated_definitions.LIST_STORY_IDS_DEFINITION.step_defaults,
+    _generated_definitions.LIST_STORY_IDS_DEFINITION.branches or (),
+    _generated_definitions.LIST_STORY_IDS_DEFINITION.step_defaults,
 )
 GET_ITEM_DEFINITION = QueryDefinition(
     OperationRef(CONNECTOR_ID, GET_ITEM_OPERATION_ID),
-    generated_definitions.GET_ITEM_DEFINITION.branches or (),
-    generated_definitions.GET_ITEM_DEFINITION.step_defaults,
+    _generated_definitions.GET_ITEM_DEFINITION.branches or (),
+    _generated_definitions.GET_ITEM_DEFINITION.step_defaults,
 )
 
 Output = TypeVar("Output")
 
 
-class Config(GeneratedConfig):
+class Config(_GeneratedConfig):
     """Hacker News HTTP settings; zero or blank values use manifest defaults."""
 
     __slots__ = ()

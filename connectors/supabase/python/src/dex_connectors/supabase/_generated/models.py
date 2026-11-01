@@ -5,6 +5,14 @@
 from dataclasses import dataclass, field as _dataclass_field
 from typing import Any
 
+def _replace_nil_slices(value: Any, depth: int) -> Any:
+    if value is None:
+        return ()
+    if depth == 1:
+        return value
+    return tuple(_replace_nil_slices(item, depth - 1) for item in value)
+
+
 # UpsertRowsInput replaces rows on a database-enforced unique conflict key.
 @dataclass(frozen=True, slots=True)
 class UpsertRowsInput:
@@ -13,9 +21,13 @@ class UpsertRowsInput:
     # OnConflict is a comma-separated list of unique columns; the database must enforce uniqueness.
     on_conflict: str = _dataclass_field(default='', metadata={'dex_json_name': 'onConflict'})
     # Rows contain complete replacement values for all fields the caller owns.
-    rows: tuple[dict[str, Any] | None, ...] | None = None
+    rows: tuple[dict[str, Any] | None, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'rows', _replace_nil_slices(self.rows, 1))
 
 
+UpsertRowsInput.__annotations__['rows'] = tuple[dict[str, Any] | None, ...] | None
 setattr(UpsertRowsInput, '__module__', 'dex_connectors.supabase.models')
 
 

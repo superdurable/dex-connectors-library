@@ -13,14 +13,7 @@ from ._generated.models import (
 from ._generated.models import (
     SearchInput as SearchInput,
 )
-
-
-@dataclass(frozen=True, slots=True)
-class SearchPage:
-    """Algolia's count of matching records and the returned record identities."""
-
-    nb_hits: int = field(default=0, metadata={"dex_json_name": "nbHits"})
-    hits: tuple[SearchHit, ...] = ()
+from ._generated.models import SearchPage as SearchPage
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,3 +23,6 @@ class SaveObjectInput:
     index_name: str = field(default="", metadata={"dex_json_name": "indexName"})
     object_id: str = field(default="", metadata={"dex_json_name": "objectID"})
     attributes: dict[str, str] = field(default_factory=dict)
+
+
+SearchPage.__doc__ = "Algolia's count of matching records and the returned record identities."

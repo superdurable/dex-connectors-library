@@ -3,6 +3,15 @@
 # ruff: noqa
 
 from dataclasses import dataclass, field as _dataclass_field
+from typing import Any
+
+def _replace_nil_slices(value: Any, depth: int) -> Any:
+    if value is None:
+        return ()
+    if depth == 1:
+        return value
+    return tuple(_replace_nil_slices(item, depth - 1) for item in value)
+
 
 # QueryMetricsInput supplies the metric expression and Unix-second window.
 @dataclass(frozen=True, slots=True)
@@ -24,9 +33,13 @@ class MetricSeries:
     # Metric is the queried metric name.
     metric: str = ''
     # Pointlist holds pairs of millisecond timestamps and possibly null values.
-    pointlist: tuple[tuple[float | None, ...] | None, ...] | None = None
+    pointlist: tuple[tuple[float | None, ...], ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'pointlist', _replace_nil_slices(self.pointlist, 2))
 
 
+MetricSeries.__annotations__['pointlist'] = tuple[tuple[float | None, ...] | None, ...] | None
 setattr(MetricSeries, '__module__', 'dex_connectors.datadog.models')
 
 
@@ -36,9 +49,13 @@ class MetricsQuery:
     # Status is Datadog's query status, normally ok.
     status: str = ''
     # Series contains the matching timeseries.
-    series: tuple[MetricSeries, ...] | None = None
+    series: tuple[MetricSeries, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'series', _replace_nil_slices(self.series, 1))
 
 
+MetricsQuery.__annotations__['series'] = tuple[MetricSeries, ...] | None
 setattr(MetricsQuery, '__module__', 'dex_connectors.datadog.models')
 
 
@@ -74,7 +91,11 @@ setattr(Monitor, '__module__', 'dex_connectors.datadog.models')
 @dataclass(frozen=True, slots=True)
 class MonitorsPage:
     # Monitors contains the requested monitor page, possibly empty.
-    monitors: tuple[Monitor, ...] | None = None
+    monitors: tuple[Monitor, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'monitors', _replace_nil_slices(self.monitors, 1))
 
 
+MonitorsPage.__annotations__['monitors'] = tuple[Monitor, ...] | None
 setattr(MonitorsPage, '__module__', 'dex_connectors.datadog.models')

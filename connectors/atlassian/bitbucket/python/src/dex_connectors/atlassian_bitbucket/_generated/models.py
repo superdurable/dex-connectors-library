@@ -3,6 +3,15 @@
 # ruff: noqa
 
 from dataclasses import dataclass
+from typing import Any
+
+def _replace_nil_slices(value: Any, depth: int) -> Any:
+    if value is None:
+        return ()
+    if depth == 1:
+        return value
+    return tuple(_replace_nil_slices(item, depth - 1) for item in value)
+
 
 # ListRepositoriesInput identifies the workspace whose repositories are read.
 @dataclass(frozen=True, slots=True)
@@ -34,7 +43,7 @@ setattr(Repository, '__module__', 'dex_connectors.atlassian_bitbucket.models')
 @dataclass(frozen=True, slots=True)
 class RepositoryPage:
     # Values contains repositories, possibly none.
-    values: tuple[Repository, ...] | None = None
+    values: tuple[Repository, ...] = ()
     # Next is the provider's next page URL, if any; applications must treat it as untrusted.
     next: str = ''
     # Page is the one-based page number.
@@ -42,7 +51,11 @@ class RepositoryPage:
     # PageLength is the provider page length.
     pagelen: int = 0
 
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'values', _replace_nil_slices(self.values, 1))
 
+
+RepositoryPage.__annotations__['values'] = tuple[Repository, ...] | None
 setattr(RepositoryPage, '__module__', 'dex_connectors.atlassian_bitbucket.models')
 
 
@@ -76,7 +89,7 @@ setattr(PullRequest, '__module__', 'dex_connectors.atlassian_bitbucket.models')
 @dataclass(frozen=True, slots=True)
 class PullRequestPage:
     # Values contains pull requests, possibly none.
-    values: tuple[PullRequest, ...] | None = None
+    values: tuple[PullRequest, ...] = ()
     # Next is the provider's next page URL, if any; applications must treat it as untrusted.
     next: str = ''
     # Page is the one-based page number.
@@ -84,5 +97,9 @@ class PullRequestPage:
     # PageLength is the provider page length.
     pagelen: int = 0
 
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'values', _replace_nil_slices(self.values, 1))
 
+
+PullRequestPage.__annotations__['values'] = tuple[PullRequest, ...] | None
 setattr(PullRequestPage, '__module__', 'dex_connectors.atlassian_bitbucket.models')

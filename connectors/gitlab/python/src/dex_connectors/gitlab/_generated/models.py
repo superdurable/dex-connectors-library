@@ -3,6 +3,15 @@
 # ruff: noqa
 
 from dataclasses import dataclass, field as _dataclass_field
+from typing import Any
+
+def _replace_nil_slices(value: Any, depth: int) -> Any:
+    if value is None:
+        return ()
+    if depth == 1:
+        return value
+    return tuple(_replace_nil_slices(item, depth - 1) for item in value)
+
 
 # GetProjectInput identifies a project by numeric ID or namespace path.
 @dataclass(frozen=True, slots=True)
@@ -50,11 +59,15 @@ class Issue:
     # Title is the issue title.
     title: str = ''
     # Labels is the issue's complete label set.
-    labels: tuple[str, ...] | None = None
+    labels: tuple[str, ...] = ()
     # WebURL links to the issue in GitLab.
     web_url: str = ''
 
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'labels', _replace_nil_slices(self.labels, 1))
 
+
+Issue.__annotations__['labels'] = tuple[str, ...] | None
 setattr(Issue, '__module__', 'dex_connectors.gitlab.models')
 
 
@@ -62,9 +75,13 @@ setattr(Issue, '__module__', 'dex_connectors.gitlab.models')
 @dataclass(frozen=True, slots=True)
 class IssuesPage:
     # Issues contains one provider page, possibly empty.
-    issues: tuple[Issue, ...] | None = None
+    issues: tuple[Issue, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'issues', _replace_nil_slices(self.issues, 1))
 
 
+IssuesPage.__annotations__['issues'] = tuple[Issue, ...] | None
 setattr(IssuesPage, '__module__', 'dex_connectors.gitlab.models')
 
 
@@ -76,7 +93,11 @@ class UpdateIssueLabelsInput:
     # IssueIID is the positive project-local issue number.
     issue_iid: int = _dataclass_field(default=0, metadata={'dex_json_name': 'issueIid'})
     # Labels is the desired complete label set; empty clears all labels.
-    labels: tuple[str, ...] | None = None
+    labels: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'labels', _replace_nil_slices(self.labels, 1))
 
 
+UpdateIssueLabelsInput.__annotations__['labels'] = tuple[str, ...] | None
 setattr(UpdateIssueLabelsInput, '__module__', 'dex_connectors.gitlab.models')

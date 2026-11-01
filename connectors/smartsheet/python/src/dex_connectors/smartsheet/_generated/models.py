@@ -5,6 +5,14 @@
 from dataclasses import dataclass, field as _dataclass_field
 from typing import Any
 
+def _replace_nil_slices(value: Any, depth: int) -> Any:
+    if value is None:
+        return ()
+    if depth == 1:
+        return value
+    return tuple(_replace_nil_slices(item, depth - 1) for item in value)
+
+
 # ListSheetsInput selects one page of accessible sheets.
 @dataclass(frozen=True, slots=True)
 class ListSheetsInput:
@@ -33,13 +41,17 @@ setattr(SheetSummary, '__module__', 'dex_connectors.smartsheet.models')
 @dataclass(frozen=True, slots=True)
 class SheetPage:
     # Sheets contains the accessible sheets on this page.
-    sheets: tuple[SheetSummary, ...] | None = None
+    sheets: tuple[SheetSummary, ...] = ()
     # PageNumber is the provider-returned 1-based page number.
     page_number: int = _dataclass_field(default=0, metadata={'dex_json_name': 'pageNumber'})
     # TotalCount counts all accessible matching sheets.
     total_count: int = _dataclass_field(default=0, metadata={'dex_json_name': 'totalCount'})
 
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'sheets', _replace_nil_slices(self.sheets, 1))
 
+
+SheetPage.__annotations__['sheets'] = tuple[SheetSummary, ...] | None
 setattr(SheetPage, '__module__', 'dex_connectors.smartsheet.models')
 
 
@@ -71,9 +83,13 @@ class SheetRow:
     # ID is the provider-assigned resource identity.
     id: int = 0
     # Cells preserves each row cell as provider JSON.
-    cells: tuple[Any, ...] | None = None
+    cells: tuple[Any, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'cells', _replace_nil_slices(self.cells, 1))
 
 
+SheetRow.__annotations__['cells'] = tuple[Any, ...] | None
 setattr(SheetRow, '__module__', 'dex_connectors.smartsheet.models')
 
 
@@ -85,9 +101,15 @@ class Sheet:
     # Name is the resource display name.
     name: str = ''
     # Columns describes the sheet columns.
-    columns: tuple[SheetColumn, ...] | None = None
+    columns: tuple[SheetColumn, ...] = ()
     # Rows contains the sheet rows returned by the API.
-    rows: tuple[SheetRow, ...] | None = None
+    rows: tuple[SheetRow, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'columns', _replace_nil_slices(self.columns, 1))
+        object.__setattr__(self, 'rows', _replace_nil_slices(self.rows, 1))
 
 
+Sheet.__annotations__['columns'] = tuple[SheetColumn, ...] | None
+Sheet.__annotations__['rows'] = tuple[SheetRow, ...] | None
 setattr(Sheet, '__module__', 'dex_connectors.smartsheet.models')

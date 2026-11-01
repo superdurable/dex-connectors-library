@@ -18,6 +18,7 @@ operations = [
 connector_id = metadata["name"]
 package_name = payload["packageName"]
 mock_package_name = payload["mockPackageName"]
+model_aliases = payload.get("modelAliases") or {}
 
 
 models = [
@@ -35,7 +36,7 @@ models = [
             for field_info in model["Fields"]
         ],
     }
-    for model in payload["models"]
+    for model in payload["models"] or []
 ]
 
 
@@ -129,7 +130,11 @@ def python_type(
             "bytes": ("str", "''"),
             "unknown": ("Any", "None"),
         }[kind]
-    if type_info["Nullable"] or has_presence or (optional and kind in ("enum", "ref")):
+    if (
+        (type_info["Nullable"] and kind != "list")
+        or has_presence
+        or (optional and kind in ("enum", "ref"))
+    ):
         if kind != "unknown":
             if kind == "ref" and type_info["Ref"] not in defined_models:
                 annotation = f"Optional[{annotation}]"
@@ -137,6 +142,20 @@ def python_type(
                 annotation += " | None"
         default = "None"
     return annotation, default
+
+
+def codec_list_type(type_info, defined_models, required_models):
+    if type_info["Kind"] != "list":
+        return python_type(type_info, defined_models, required_models)[0]
+    element = codec_list_type(type_info["Elem"], defined_models, required_models)
+    annotation = f"tuple[{element}, ...]"
+    return annotation + " | None" if type_info["Nullable"] else annotation
+
+
+def list_depth(type_info):
+    return (
+        1 + list_depth(type_info["Elem"]) if type_info["Elem"]["Kind"] == "list" else 1
+    )
 
 
 class ModelDependencyOrder:
@@ -180,6 +199,25 @@ def render_models():
     for model in models:
         dependency_order.visit(model)
     lines = []
+    if any(
+        field_info["irType"]["Kind"] == "list"
+        and field_info["irType"]["Nullable"]
+        and not field_info["hasPresence"]
+        for model in models
+        for field_info in model["fields"]
+    ):
+        lines.extend(
+            [
+                "def _replace_nil_slices(value: Any, depth: int) -> Any:",
+                "    if value is None:",
+                "        return ()",
+                "    if depth == 1:",
+                "        return value",
+                "    return tuple(_replace_nil_slices(item, depth - 1) for item in value)",
+                "",
+                "",
+            ]
+        )
     defined_models = set()
     for model in dependency_order.ordered:
         description = model.get("description", "").strip()
@@ -189,6 +227,7 @@ def render_models():
         if not model["fields"]:
             lines.append("    pass")
         has_default_field = False
+        nullable_list_fields = []
         for field_info in model["fields"]:
             python_name = python_field_name(field_info["jsonName"])
             field_type, default = python_type(
@@ -234,7 +273,27 @@ def render_models():
                 lines.append(f"    {python_name}: {field_type} = {default}")
             if default is not None:
                 has_default_field = True
+            if (
+                field_info["irType"]["Kind"] == "list"
+                and field_info["irType"]["Nullable"]
+                and not field_info["hasPresence"]
+            ):
+                nullable_list_fields.append((python_name, field_info["irType"]))
+        if nullable_list_fields:
+            lines.extend(["", "    def __post_init__(self) -> None:"])
+            for python_name, type_info in nullable_list_fields:
+                lines.append(
+                    f"        object.__setattr__(self, {python_name!r}, "
+                    f"_replace_nil_slices(self.{python_name}, {list_depth(type_info)}))"
+                )
         lines += ["", ""]
+        for python_name, type_info in nullable_list_fields:
+            codec_annotation = codec_list_type(
+                type_info, defined_models, required_models
+            )
+            lines.append(
+                f"{model['name']}.__annotations__[{python_name!r}] = {codec_annotation}"
+            )
         lines.append(
             f"setattr({model['name']}, '__module__', 'dex_connectors.{package_name}.models')"
         )
@@ -244,7 +303,6 @@ def render_models():
     header = [
         "# Copyright (c) 2026 Super Durable",
         "# SPDX-License-Identifier: MIT",
-        '"""Generated Python dataclasses from Go operation types."""',
         "",
         "from dataclasses import dataclass"
         + (", field as _dataclass_field" if "_dataclass_field(" in body else ""),
@@ -263,7 +321,6 @@ def render_definitions():
     lines = [
         "# Copyright (c) 2026 Super Durable",
         "# SPDX-License-Identifier: MIT",
-        '"""Generated operation identities, branches, and Step defaults."""',
         "",
         "from datetime import timedelta",
         "",
@@ -340,7 +397,6 @@ def render_config():
     lines = [
         "# Copyright (c) 2026 Super Durable",
         "# SPDX-License-Identifier: MIT",
-        '"""Generated connection settings and credential values."""',
         "",
         "from dataclasses import dataclass",
     ]
@@ -352,7 +408,6 @@ def render_config():
         "",
         "@dataclass(frozen=True, slots=True)",
         "class Config:",
-        f'    """{metadata["displayName"]} connection settings from the manifest."""',
         "",
     ]
     config_fields = spec["configuration"]["fields"]
@@ -379,9 +434,18 @@ def render_config():
         elif field_info["type"] == "boolean":
             field_type = "bool"
             default = str(field_info["default"]) if "default" in field_info else None
-        else:
+        elif field_info["type"] == "stringList":
+            field_type = "tuple[str, ...]"
+            default = (
+                repr(tuple(field_info["default"])) if "default" in field_info else None
+            )
+        elif field_info["type"] in ("string", "url", "enum"):
             field_type = "str"
             default = quoted(field_info["default"]) if "default" in field_info else None
+        else:
+            raise ValueError(
+                f"unsupported Python configuration type {field_info['type']!r}"
+            )
         lines.append(
             f"    {name}: {field_type}"
             + (f" = {default}" if default is not None else "")
@@ -396,7 +460,6 @@ def render_config():
             "",
             "@dataclass(frozen=True, slots=True)",
             "class Credentials:",
-            f'    """{metadata["displayName"]} provider credentials resolved per call."""',
             "",
         ]
         for field_info in credential_fields:
@@ -418,7 +481,6 @@ def render_steps():
     lines = [
         "# Copyright (c) 2026 Super Durable",
         "# SPDX-License-Identifier: MIT",
-        '"""Generated operation-specific Dex Step factories."""',
         "",
         "from collections.abc import Callable, Mapping",
         "from typing import Any, TypeVar",
@@ -479,7 +541,6 @@ def render_steps():
         lines += [
             "    step_options_override: dex.StepOptions | None = None,",
             f") -> {kind}Step[StepInput, {input_type}, {output_type}]:",
-            f'    """Create the {name} Step with the manifest branch identities."""',
         ]
         lines += [
             "    if connection is None or connection.reference.name != connection_name:",
@@ -531,7 +592,6 @@ def render_steps():
     lines += [
         "",
         "def _bound_operation(connection: Connection, operation_name: str) -> Any:",
-        '    """Resolve a bound operation from a connection or its operation collection."""',
         "    source = getattr(connection, operation_name, None)",
         "    if source is None:",
         '        source = getattr(getattr(connection, "operations", None), operation_name, None)',
@@ -565,7 +625,6 @@ def render_connection():
     lines = [
         "# Copyright (c) 2026 Super Durable",
         "# SPDX-License-Identifier: MIT",
-        '"""Generated operation bindings for one named Dex connection."""',
         "",
         "from typing import Any",
         "",
@@ -587,7 +646,6 @@ def render_connection():
         "from ..models import " + ", ".join(model_names),
         "",
         "class Connection:",
-        f'    """Nonserializable {metadata["displayName"]} operation binding."""',
         "",
         "    __slots__ = ("
         + ", ".join(repr("_" + name) for name in order)
@@ -633,29 +691,24 @@ def render_connection():
         kind = "Mutation" if operation["kind"] == "mutation" else "Query"
         lines += [
             f"    def {name}(self) -> {kind}[{operation['inputType']}, {operation['outputType']}]:",
-            f'        """Return the {name} operation for a Dex Step."""',
             f"        return self._{name}",
             "",
         ]
     lines += [
         "    async def aclose(self) -> None:",
-        '        """Close the owned provider transport after Worker shutdown."""',
         "        if self._client is not None:",
         "            await self._client.aclose()",
         "",
         "    def __repr__(self) -> str:",
-        '        """Keep provider transport and credentials out of logs."""',
         f"        return {quoted(package_name + '.Connection([REDACTED])')}",
         "",
         "    def __reduce__(self) -> tuple[object, ...]:",
-        '        """Prevent a live connection from entering durable Flow state."""',
         f"        raise TypeError({quoted(connection_label + ' connections cannot be serialized')})",
         "",
         f"setattr(Connection, '__module__', 'dex_connectors.{package_name}.connection')",
         "",
         "",
         "def new_connection(client: Client, reference: ConnectionRef) -> Connection:",
-        '    """Bind a provider client to an explicit logical connection reference."""',
         "    if client is None:",
         f"        raise ValueError({quoted(connection_label + ' client is required')})",
         "    return Connection(reference, "
@@ -677,7 +730,6 @@ def render_connection():
     lines += [
         "    reference: ConnectionRef,",
         ") -> Connection:",
-        '    """Bind mock operations to the same logical connection identity."""',
         "    return Connection(reference, " + ", ".join(name for name in order) + ")",
         "",
         f"setattr(new_connection_with_operations, '__module__', 'dex_connectors.{package_name}.connection')",
@@ -688,7 +740,6 @@ def render_connection():
         lines += [
             "",
             "class _ProjectCredentialSource:",
-            '    """Resolve current secret material at each provider attempt."""',
             "",
             "    def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:",
             "        self.project = project",
@@ -716,7 +767,6 @@ def render_connection():
         "def new_project_connection(",
         "    project: LoadedProject, connection_name: str, http_client: httpx.AsyncClient | None = None",
         ") -> Connection:",
-        '    """Open declared project settings and resolve provider credentials per call."""',
         "    if project is None:",
         f"        raise ValueError({quoted(connection_label + ' connection requires loaded project configuration')})",
         "    reference = ConnectionRef(CONNECTOR_ID, connection_name)",
@@ -760,51 +810,119 @@ def render_connection():
         f"    if set(value) - {allowed}:",
         f"        raise ValueError({quoted(connection_label + ' configuration has unknown fields')})",
     ]
-    config_names = []
+    lines.append("    config_arguments: dict[str, Any] = {}")
     for field_info in config_fields:
         name = snake(field_info["name"])
         if field_info["type"] == "duration":
             name += "_seconds"
-        config_names.append(name)
         raw_name = (
             name.removesuffix("_seconds") if field_info["type"] == "duration" else name
         )
-        default = (
-            "''"
-            if field_info["type"] in ("string", "url")
-            else "False"
-            if field_info["type"] == "boolean"
-            else "0"
-        )
-        lines.append(
-            f"    {raw_name} = value.get({quoted(field_info['name'])}, {default})"
-        )
-        check = (
-            f"isinstance({raw_name}, str)"
-            if field_info["type"] in ("string", "url")
-            else f"type({raw_name}) is {'bool' if field_info['type'] == 'boolean' else 'int'}"
-        )
+        lines.append(f"    if {quoted(field_info['name'])} in value:")
+        lines.append(f"        {raw_name} = value[{quoted(field_info['name'])}]")
+        field_type = field_info["type"]
+        if field_type in ("string", "url"):
+            check = f"isinstance({raw_name}, str)"
+        elif field_type == "enum":
+            check = f"isinstance({raw_name}, str) and {raw_name} in {tuple(field_info['enum'])!r}"
+        elif field_type == "stringList":
+            check = f"isinstance({raw_name}, list) and all(isinstance(item, str) for item in {raw_name})"
+        elif field_type in ("integer", "duration"):
+            check = f"type({raw_name}) is int"
+        elif field_type == "number":
+            check = f"type({raw_name}) in (int, float)"
+        elif field_type == "boolean":
+            check = f"type({raw_name}) is bool"
+        else:
+            raise ValueError(f"unsupported Python configuration type {field_type!r}")
         lines += [
-            f"    if not {check}:",
-            f"        raise ValueError({quoted(connection_label + ' configuration ' + field_info['name'] + ' has an invalid type')})",
+            f"        if not ({check}):",
+            f"            raise ValueError({quoted(connection_label + ' configuration ' + field_info['name'] + ' has an invalid type')})",
         ]
-        if field_info["type"] == "duration":
-            lines.append(f"    {name} = {raw_name} / 1_000_000_000")
-    by_field = {
-        field_info["name"]: snake(field_info["name"])
-        + ("_seconds" if field_info["type"] == "duration" else "")
-        for field_info in config_fields
-    }
-    lines.append(
-        "    return Config("
-        + ", ".join(f"{by_field[name]}={by_field[name]}" for name in by_field)
-        + ")"
-    )
+        expression = (
+            f"{raw_name} / 1_000_000_000"
+            if field_type == "duration"
+            else f"tuple({raw_name})"
+            if field_type == "stringList"
+            else f"float({raw_name})"
+            if field_type == "number"
+            else raw_name
+        )
+        lines.append(f"        config_arguments[{name!r}] = {expression}")
+        if "default" not in field_info:
+            lines.append("    else:")
+            lines.append(
+                f"        raise ValueError({quoted(connection_label + ' configuration ' + field_info['name'] + ' is required')})"
+            )
+    lines.append("    return Config(**config_arguments)")
     return "\n".join(lines).rstrip() + "\n"
 
 
+class MockOutputExpression:
+    def __init__(self, models):
+        self.models_by_name = {model["name"]: model for model in models}
+
+    def render(self, type_info, value):
+        if value is None:
+            return "None"
+        kind = type_info["Kind"]
+        if kind == "list":
+            return (
+                "("
+                + ", ".join(self.render(type_info["Elem"], item) for item in value)
+                + ("," if len(value) == 1 else "")
+                + ")"
+            )
+        if kind == "map":
+            return (
+                "{"
+                + ", ".join(
+                    f"{key!r}: {self.render(type_info['Elem'], item)}"
+                    for key, item in value.items()
+                )
+                + "}"
+            )
+        if kind == "time":
+            return f"datetime.fromisoformat({quoted(value)}.replace('Z', '+00:00'))"
+        if kind != "ref":
+            return repr(value)
+        model_name = type_info["Ref"]
+        model = self.models_by_name.get(model_name)
+        if model is None or not isinstance(value, dict):
+            return repr(value)
+        arguments = []
+        by_lower_name = {key.lower(): key for key in value}
+        for field_info in model["fields"]:
+            wire_name = field_info["jsonName"]
+            actual_key = (
+                wire_name
+                if wire_name in value
+                else by_lower_name.get(wire_name.lower())
+            )
+            if actual_key is None:
+                if not field_info["omitEmpty"] and not field_info["irType"]["Nullable"]:
+                    if field_info["irType"]["Kind"] == "enum":
+                        zero_value = (
+                            "''"
+                            if field_info["irType"]["EnumBase"] == "string"
+                            else "0"
+                        )
+                        arguments.append(f"{python_field_name(wire_name)}={zero_value}")
+                    elif field_info["irType"]["Kind"] == "ref":
+                        arguments.append(
+                            f"{python_field_name(wire_name)}={self.render(field_info['irType'], {})}"
+                        )
+                continue
+            field_name = python_field_name(wire_name)
+            field_value = self.render(field_info["irType"], value[actual_key])
+            arguments.append(f"{field_name}={field_value}")
+        return (
+            model_aliases.get(model_name, model_name) + "(" + ", ".join(arguments) + ")"
+        )
+
+
 def render_mock():
-    model_by_name = {model["name"]: model for model in models}
+    output_renderer = MockOutputExpression(models)
     operation_by_name = {
         snake(operation["name"]): operation for operation in operations
     }
@@ -847,71 +965,13 @@ def render_mock():
         )
     mock_module = f"dex_connectors.{package_name}.{mock_package_name}"
 
-    def output_expression(type_info, value):
-        if value is None:
-            return "None"
-        kind = type_info["Kind"]
-        if kind == "list":
-            return (
-                "("
-                + ", ".join(
-                    output_expression(type_info["Elem"], item) for item in value
-                )
-                + ("," if len(value) == 1 else "")
-                + ")"
-            )
-        if kind == "map":
-            return (
-                "{"
-                + ", ".join(
-                    f"{key!r}: {output_expression(type_info['Elem'], item)}"
-                    for key, item in value.items()
-                )
-                + "}"
-            )
-        if kind == "time":
-            return f"datetime.fromisoformat({quoted(value)}.replace('Z', '+00:00'))"
-        if kind != "ref":
-            return repr(value)
-        model_name = type_info["Ref"]
-        model = model_by_name.get(model_name)
-        if model is None or not isinstance(value, dict):
-            return repr(value)
-        arguments = []
-        by_lower_name = {key.lower(): key for key in value}
-        for field_info in model["fields"]:
-            wire_name = field_info["jsonName"]
-            actual_key = (
-                wire_name
-                if wire_name in value
-                else by_lower_name.get(wire_name.lower())
-            )
-            if actual_key is None:
-                if not field_info["omitEmpty"] and not field_info["irType"]["Nullable"]:
-                    if field_info["irType"]["Kind"] == "enum":
-                        zero_value = (
-                            "''"
-                            if field_info["irType"]["EnumBase"] == "string"
-                            else "0"
-                        )
-                        arguments.append(f"{python_field_name(wire_name)}={zero_value}")
-                    elif field_info["irType"]["Kind"] == "ref":
-                        arguments.append(
-                            f"{python_field_name(wire_name)}={output_expression(field_info['irType'], {})}"
-                        )
-                continue
-            field_name = python_field_name(wire_name)
-            field_value = output_expression(field_info["irType"], value[actual_key])
-            arguments.append(f"{field_name}={field_value}")
-        return model_name + "(" + ", ".join(arguments) + ")"
-
     model_names = sorted(
         {
-            name
+            model_aliases.get(name, name)
             for operation in operations
             for name in (operation["inputType"], operation["outputType"])
         }
-        | {model["name"] for model in models}
+        | {model_aliases.get(model["name"], model["name"]) for model in models}
     )
     kinds = {operation["kind"] for operation in operations}
     mock_imports = (
@@ -922,7 +982,6 @@ def render_mock():
     lines = [
         "# Copyright (c) 2026 Super Durable",
         "# SPDX-License-Identifier: MIT",
-        '"""Generated manifest-backed provider outcomes and scripts."""',
         "",
         "from datetime import datetime",
         "",
@@ -979,7 +1038,6 @@ def render_mock():
                 raise ValueError(f"stale Python mock scenario {scenario_key}")
             lines += [
                 f"def {helper_name}() -> Case[{output_type}]:",
-                f'    """Return the manifest {mock_name} outcome."""',
             ]
             failure = (
                 mock.get("failure")
@@ -998,21 +1056,21 @@ def render_mock():
                 )
                 lines.append(f"    return Case.retry({failure_expr}, {after_expr})")
             elif mock.get("uncertain") is not None:
-                value = output_expression(
+                value = output_renderer.render(
                     {"Kind": "ref", "Ref": output_type},
                     mock["uncertain"].get("output", {}),
                 )
                 lines.append(f"    return Case.uncertain({value}, {failure_expr})")
             elif mock.get("pages"):
                 pages = [
-                    output_expression({"Kind": "ref", "Ref": output_type}, page)
+                    output_renderer.render({"Kind": "ref", "Ref": output_type}, page)
                     for page in mock["pages"]
                 ]
                 lines.append(
                     f"    return Case.paged({constant(mock['branch'])}, ({', '.join(pages)}{',' if len(pages) == 1 else ''}))"
                 )
             else:
-                value = output_expression(
+                value = output_renderer.render(
                     {"Kind": "ref", "Ref": output_type}, mock.get("output", {})
                 )
                 if failure_expr:
@@ -1028,7 +1086,6 @@ def render_mock():
             if branch_name == "retry":
                 lines += [
                     f"def {helper_name}(failure: Failure, after_seconds: float = 0) -> Case[{output_type}]:",
-                    '    """Script a retry of this provider operation."""',
                     "    return Case.retry(failure, after_seconds)",
                 ]
             else:
@@ -1050,7 +1107,6 @@ def render_mock():
                 )
                 lines += [
                     f"def {helper_name}(value: {output_type}, {failure_parameter}) -> Case[{output_type}]:",
-                    f'    """Script the {branch["id"]} branch."""',
                 ]
                 if required_failure:
                     lines.append("    return Case.uncertain(value, failure)")
@@ -1067,7 +1123,6 @@ def render_mock():
     lines += [
         "",
         "class Mock:",
-        '    """Script manifest outcomes for this connector."""',
         "",
         f"    def __init__(self, connection_name: str = {quoted(connection_default)}) -> None:",
     ]
@@ -1094,7 +1149,6 @@ def render_mock():
         "        )",
         "",
         "    def connection(self) -> Connection:",
-        '        """Return this mock connection for Dex Step registration."""',
         "        return self._connection",
     ]
     lines += [
@@ -1110,7 +1164,7 @@ def render_mock():
 
 
 result = {
-    "__init__.py": '# Copyright (c) 2026 Super Durable\n# SPDX-License-Identifier: MIT\n"""Manifest-generated Python connector contract."""\n',
+    "__init__.py": "# Copyright (c) 2026 Super Durable\n# SPDX-License-Identifier: MIT\n",
     "models.py": render_models(),
     "config.py": render_config(),
     "definitions.py": render_definitions(),
@@ -1129,12 +1183,5 @@ for filename, source in result.items():
             "# SPDX-License-Identifier: MIT\n# ruff: noqa\n",
             1,
         )
-    result[filename] = (
-        "\n".join(
-            line
-            for line in source.splitlines()
-            if not re.fullmatch(r'\s*"""[^"\n]*"""', line)
-        ).rstrip()
-        + "\n"
-    )
+    result[filename] = source
 json.dump(result, sys.stdout)

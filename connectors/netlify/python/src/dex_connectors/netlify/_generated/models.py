@@ -3,6 +3,15 @@
 # ruff: noqa
 
 from dataclasses import dataclass, field as _dataclass_field
+from typing import Any
+
+def _replace_nil_slices(value: Any, depth: int) -> Any:
+    if value is None:
+        return ()
+    if depth == 1:
+        return value
+    return tuple(_replace_nil_slices(item, depth - 1) for item in value)
+
 
 # ListSitesInput requests the default Netlify sites page.
 @dataclass(frozen=True, slots=True)
@@ -33,9 +42,13 @@ setattr(Site, '__module__', 'dex_connectors.netlify.models')
 @dataclass(frozen=True, slots=True)
 class SitesPage:
     # Sites contains one provider page, possibly empty.
-    sites: tuple[Site, ...] | None = None
+    sites: tuple[Site, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'sites', _replace_nil_slices(self.sites, 1))
 
 
+SitesPage.__annotations__['sites'] = tuple[Site, ...] | None
 setattr(SitesPage, '__module__', 'dex_connectors.netlify.models')
 
 
@@ -69,7 +82,11 @@ setattr(Deploy, '__module__', 'dex_connectors.netlify.models')
 @dataclass(frozen=True, slots=True)
 class DeploysPage:
     # Deploys contains one provider page, possibly empty.
-    deploys: tuple[Deploy, ...] | None = None
+    deploys: tuple[Deploy, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'deploys', _replace_nil_slices(self.deploys, 1))
 
 
+DeploysPage.__annotations__['deploys'] = tuple[Deploy, ...] | None
 setattr(DeploysPage, '__module__', 'dex_connectors.netlify.models')

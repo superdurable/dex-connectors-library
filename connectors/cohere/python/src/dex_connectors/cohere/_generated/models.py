@@ -3,6 +3,15 @@
 # ruff: noqa
 
 from dataclasses import dataclass, field as _dataclass_field
+from typing import Any
+
+def _replace_nil_slices(value: Any, depth: int) -> Any:
+    if value is None:
+        return ()
+    if depth == 1:
+        return value
+    return tuple(_replace_nil_slices(item, depth - 1) for item in value)
+
 
 # EmbedInput asks Cohere to embed up to 96 texts as float vectors.
 @dataclass(frozen=True, slots=True)
@@ -10,11 +19,15 @@ class EmbedInput:
     # Model is a Cohere Embed model ID.
     model: str = ''
     # Texts are text inputs; the response has one vector per text.
-    texts: tuple[str, ...] | None = None
+    texts: tuple[str, ...] = ()
     # InputType is search_document, search_query, classification, or clustering.
     input_type: str = ''
 
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'texts', _replace_nil_slices(self.texts, 1))
 
+
+EmbedInput.__annotations__['texts'] = tuple[str, ...] | None
 setattr(EmbedInput, '__module__', 'dex_connectors.cohere.models')
 
 
@@ -24,9 +37,13 @@ class EmbedOutput:
     # ID is Cohere's embedding response ID.
     id: str = ''
     # Embeddings contains one float vector per text.
-    embeddings: tuple[tuple[float, ...] | None, ...] | None = None
+    embeddings: tuple[tuple[float, ...], ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'embeddings', _replace_nil_slices(self.embeddings, 2))
 
 
+EmbedOutput.__annotations__['embeddings'] = tuple[tuple[float, ...] | None, ...] | None
 setattr(EmbedOutput, '__module__', 'dex_connectors.cohere.models')
 
 
@@ -38,11 +55,15 @@ class RerankInput:
     # Query is the relevance question.
     query: str = ''
     # Documents are text passages to rank, in original order.
-    documents: tuple[str, ...] | None = None
+    documents: tuple[str, ...] = ()
     # TopN limits returned results; zero returns all.
     top_n: int = _dataclass_field(default=0, metadata={'dex_json_omit_default': True})
 
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'documents', _replace_nil_slices(self.documents, 1))
 
+
+RerankInput.__annotations__['documents'] = tuple[str, ...] | None
 setattr(RerankInput, '__module__', 'dex_connectors.cohere.models')
 
 
@@ -62,7 +83,11 @@ setattr(RankedDocument, '__module__', 'dex_connectors.cohere.models')
 @dataclass(frozen=True, slots=True)
 class RerankOutput:
     # Results are the ranked document indices and scores.
-    results: tuple[RankedDocument, ...] | None = None
+    results: tuple[RankedDocument, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'results', _replace_nil_slices(self.results, 1))
 
 
+RerankOutput.__annotations__['results'] = tuple[RankedDocument, ...] | None
 setattr(RerankOutput, '__module__', 'dex_connectors.cohere.models')

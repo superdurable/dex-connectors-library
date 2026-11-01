@@ -3,6 +3,15 @@
 # ruff: noqa
 
 from dataclasses import dataclass, field as _dataclass_field
+from typing import Any
+
+def _replace_nil_slices(value: Any, depth: int) -> Any:
+    if value is None:
+        return ()
+    if depth == 1:
+        return value
+    return tuple(_replace_nil_slices(item, depth - 1) for item in value)
+
 
 # ListTransactionsInput selects a PayPal transaction window and page.
 @dataclass(frozen=True, slots=True)
@@ -58,13 +67,17 @@ setattr(TransactionDetail, '__module__', 'dex_connectors.paypal.models')
 @dataclass(frozen=True, slots=True)
 class TransactionPage:
     # TransactionDetails contains transactions, possibly none.
-    transaction_details: tuple[TransactionDetail, ...] | None = None
+    transaction_details: tuple[TransactionDetail, ...] = ()
     # Page is the one-based page number.
     page: int = 0
     # TotalPages is the provider's count of pages.
     total_pages: int = 0
 
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'transaction_details', _replace_nil_slices(self.transaction_details, 1))
 
+
+TransactionPage.__annotations__['transaction_details'] = tuple[TransactionDetail, ...] | None
 setattr(TransactionPage, '__module__', 'dex_connectors.paypal.models')
 
 

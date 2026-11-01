@@ -8,7 +8,7 @@ from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
-from ..models import CachePurge, CachePurgeResult, ListZonesInput, PurgeCacheByURLsInput, Zone, ZonesPage
+from ..models import CachePurge, ListZonesInput, PurgeCacheByURLsInput, PurgeRequest, Zone, ZonesPage
 from .definitions import CONNECTOR_ID, DEFECT, INVALID_RESPONSE, LISTED, LIST_ZONES_DEFINITION, NOT_FOUND, PROVIDER_REJECTED, PURGED, PURGE_CACHE_BY_URLS_DEFINITION
 
 def purge_cache_by_urls_purged(value: CachePurge, failure: Failure | None = None) -> Case[CachePurge]:
@@ -42,7 +42,7 @@ def purge_cache_by_urls_retry(failure: Failure, after_seconds: float = 0) -> Cas
 setattr(purge_cache_by_urls_retry, '__module__', "dex_connectors.cloudflare.cloudflaremock")
 
 def purge_cache_by_urls_purged_default() -> Case[CachePurge]:
-    return Case.branch_result(PURGED, CachePurge(success=True, result=CachePurgeResult(id='purge-meridian')))
+    return Case.branch_result(PURGED, CachePurge(success=True, result=PurgeRequest(id='purge-meridian')))
 
 setattr(purge_cache_by_urls_purged_default, '__module__', "dex_connectors.cloudflare.cloudflaremock")
 

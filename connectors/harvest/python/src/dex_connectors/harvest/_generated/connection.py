@@ -112,17 +112,27 @@ setattr(new_project_connection, '__module__', 'dex_connectors.harvest.connection
 def _decode_config(value: dict[str, Any]) -> Config:
     if set(value) - {"baseUrl", "timeout", "maxResponseBytes", "accountId"}:
         raise ValueError("Harvest configuration has unknown fields")
-    base_url = value.get("baseUrl", '')
-    if not isinstance(base_url, str):
-        raise ValueError("Harvest configuration baseUrl has an invalid type")
-    timeout = value.get("timeout", 0)
-    if not type(timeout) is int:
-        raise ValueError("Harvest configuration timeout has an invalid type")
-    timeout_seconds = timeout / 1_000_000_000
-    max_response_bytes = value.get("maxResponseBytes", 0)
-    if not type(max_response_bytes) is int:
-        raise ValueError("Harvest configuration maxResponseBytes has an invalid type")
-    account_id = value.get("accountId", '')
-    if not isinstance(account_id, str):
-        raise ValueError("Harvest configuration accountId has an invalid type")
-    return Config(base_url=base_url, timeout_seconds=timeout_seconds, max_response_bytes=max_response_bytes, account_id=account_id)
+    config_arguments: dict[str, Any] = {}
+    if "baseUrl" in value:
+        base_url = value["baseUrl"]
+        if not (isinstance(base_url, str)):
+            raise ValueError("Harvest configuration baseUrl has an invalid type")
+        config_arguments['base_url'] = base_url
+    if "timeout" in value:
+        timeout = value["timeout"]
+        if not (type(timeout) is int):
+            raise ValueError("Harvest configuration timeout has an invalid type")
+        config_arguments['timeout_seconds'] = timeout / 1_000_000_000
+    if "maxResponseBytes" in value:
+        max_response_bytes = value["maxResponseBytes"]
+        if not (type(max_response_bytes) is int):
+            raise ValueError("Harvest configuration maxResponseBytes has an invalid type")
+        config_arguments['max_response_bytes'] = max_response_bytes
+    if "accountId" in value:
+        account_id = value["accountId"]
+        if not (isinstance(account_id, str)):
+            raise ValueError("Harvest configuration accountId has an invalid type")
+        config_arguments['account_id'] = account_id
+    else:
+        raise ValueError("Harvest configuration accountId is required")
+    return Config(**config_arguments)

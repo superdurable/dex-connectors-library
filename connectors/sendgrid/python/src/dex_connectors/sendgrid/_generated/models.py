@@ -3,6 +3,15 @@
 # ruff: noqa
 
 from dataclasses import dataclass, field as _dataclass_field
+from typing import Any
+
+def _replace_nil_slices(value: Any, depth: int) -> Any:
+    if value is None:
+        return ()
+    if depth == 1:
+        return value
+    return tuple(_replace_nil_slices(item, depth - 1) for item in value)
+
 
 # GetStatsInput selects a global email statistics date range.
 @dataclass(frozen=True, slots=True)
@@ -34,9 +43,13 @@ setattr(StatsDay, '__module__', 'dex_connectors.sendgrid.models')
 @dataclass(frozen=True, slots=True)
 class StatsOutput:
     # Days is the returned date series.
-    days: tuple[StatsDay, ...] | None = None
+    days: tuple[StatsDay, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'days', _replace_nil_slices(self.days, 1))
 
 
+StatsOutput.__annotations__['days'] = tuple[StatsDay, ...] | None
 setattr(StatsOutput, '__module__', 'dex_connectors.sendgrid.models')
 
 
@@ -72,11 +85,15 @@ setattr(Template, '__module__', 'dex_connectors.sendgrid.models')
 @dataclass(frozen=True, slots=True)
 class TemplatesOutput:
     # Templates is the returned page of templates.
-    templates: tuple[Template, ...] | None = None
+    templates: tuple[Template, ...] = ()
     # Count is the provider-reported count; its precise meaning is unverified.
     count: int = 0
     # NextPageToken selects the next page when the provider supplies one.
     next_page_token: str = _dataclass_field(default='', metadata={'dex_json_name': 'nextPageToken', 'dex_json_omit_default': True})
 
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'templates', _replace_nil_slices(self.templates, 1))
 
+
+TemplatesOutput.__annotations__['templates'] = tuple[Template, ...] | None
 setattr(TemplatesOutput, '__module__', 'dex_connectors.sendgrid.models')

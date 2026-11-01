@@ -51,7 +51,7 @@ SEND_MESSAGE_DEFINITION = MutationDefinition(
     ),
     StepDefaults(
         timedelta(seconds=30),
-        2,
+        1,
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=30), 5, timedelta(seconds=120)),
     ),
 )
@@ -66,7 +66,7 @@ REPLY_TO_MESSAGE_DEFINITION = MutationDefinition(
     ),
     StepDefaults(
         timedelta(seconds=30),
-        2,
+        1,
         execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=30), 5, timedelta(seconds=120)),
     ),
 )

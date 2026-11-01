@@ -115,14 +115,22 @@ setattr(new_project_connection, '__module__', 'dex_connectors.woocommerce.connec
 def _decode_config(value: dict[str, Any]) -> Config:
     if set(value) - {"storeUrl", "timeout", "maxResponseBytes"}:
         raise ValueError("WooCommerce configuration has unknown fields")
-    store_url = value.get("storeUrl", '')
-    if not isinstance(store_url, str):
-        raise ValueError("WooCommerce configuration storeUrl has an invalid type")
-    timeout = value.get("timeout", 0)
-    if not type(timeout) is int:
-        raise ValueError("WooCommerce configuration timeout has an invalid type")
-    timeout_seconds = timeout / 1_000_000_000
-    max_response_bytes = value.get("maxResponseBytes", 0)
-    if not type(max_response_bytes) is int:
-        raise ValueError("WooCommerce configuration maxResponseBytes has an invalid type")
-    return Config(store_url=store_url, timeout_seconds=timeout_seconds, max_response_bytes=max_response_bytes)
+    config_arguments: dict[str, Any] = {}
+    if "storeUrl" in value:
+        store_url = value["storeUrl"]
+        if not (isinstance(store_url, str)):
+            raise ValueError("WooCommerce configuration storeUrl has an invalid type")
+        config_arguments['store_url'] = store_url
+    else:
+        raise ValueError("WooCommerce configuration storeUrl is required")
+    if "timeout" in value:
+        timeout = value["timeout"]
+        if not (type(timeout) is int):
+            raise ValueError("WooCommerce configuration timeout has an invalid type")
+        config_arguments['timeout_seconds'] = timeout / 1_000_000_000
+    if "maxResponseBytes" in value:
+        max_response_bytes = value["maxResponseBytes"]
+        if not (type(max_response_bytes) is int):
+            raise ValueError("WooCommerce configuration maxResponseBytes has an invalid type")
+        config_arguments['max_response_bytes'] = max_response_bytes
+    return Config(**config_arguments)

@@ -3,6 +3,15 @@
 # ruff: noqa
 
 from dataclasses import dataclass, field as _dataclass_field
+from typing import Any
+
+def _replace_nil_slices(value: Any, depth: int) -> Any:
+    if value is None:
+        return ()
+    if depth == 1:
+        return value
+    return tuple(_replace_nil_slices(item, depth - 1) for item in value)
+
 
 # ListLeadsInput selects one Close lead page.
 @dataclass(frozen=True, slots=True)
@@ -32,11 +41,15 @@ setattr(Lead, '__module__', 'dex_connectors.close.models')
 @dataclass(frozen=True, slots=True)
 class LeadPage:
     # Leads contains the returned Close lead records.
-    leads: tuple[Lead, ...] | None = None
+    leads: tuple[Lead, ...] = ()
     # HasMore reports whether another lead page exists.
     has_more: bool = _dataclass_field(default=False, metadata={'dex_json_name': 'hasMore'})
 
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'leads', _replace_nil_slices(self.leads, 1))
 
+
+LeadPage.__annotations__['leads'] = tuple[Lead, ...] | None
 setattr(LeadPage, '__module__', 'dex_connectors.close.models')
 
 

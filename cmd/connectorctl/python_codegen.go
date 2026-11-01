@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 
 	"github.com/superdurable/dex-connectors-library/internal/codegen/gomodel"
 	"github.com/superdurable/dex-connectors-library/schema"
@@ -20,11 +21,14 @@ import (
 var pythonCodegenSource string
 
 type pythonCodegenInput struct {
-	Manifest        schema.Manifest `json:"manifest"`
-	Models          []gomodel.Model `json:"models"`
-	PackageName     string          `json:"packageName"`
-	MockPackageName string          `json:"mockPackageName"`
+	Manifest        schema.Manifest   `json:"manifest"`
+	Models          []gomodel.Model   `json:"models"`
+	PackageName     string            `json:"packageName"`
+	MockPackageName string            `json:"mockPackageName"`
+	ModelAliases    map[string]string `json:"modelAliases"`
 }
+
+var pythonModelAliasPattern = regexp.MustCompile(`(?m)^# connectorctl: model-alias ([A-Za-z_][A-Za-z_0-9]*)=([A-Za-z_][A-Za-z_0-9]*)$`)
 
 func generatedPythonFiles(manifestPath string, manifest schema.Manifest) (map[string][]byte, error) {
 	files := make(map[string][]byte)
@@ -55,6 +59,14 @@ func generatedPythonFiles(manifestPath string, manifest schema.Manifest) (map[st
 	if err != nil {
 		return nil, err
 	}
+	publicModels, err := os.ReadFile(filepath.Join(packageDirectory, "models.py"))
+	if err != nil && !os.IsNotExist(err) {
+		return nil, fmt.Errorf("read Python model facade: %w", err)
+	}
+	modelAliases := make(map[string]string)
+	for _, match := range pythonModelAliasPattern.FindAllStringSubmatch(string(publicModels), -1) {
+		modelAliases[match[1]] = match[2]
+	}
 	mockFacades, err := filepath.Glob(filepath.Join(packageDirectory, "*mock", "__init__.py"))
 	if err != nil {
 		return nil, fmt.Errorf("find Python mock facade: %w", err)
@@ -62,11 +74,11 @@ func generatedPythonFiles(manifestPath string, manifest schema.Manifest) (map[st
 	if len(mockFacades) > 1 {
 		return nil, fmt.Errorf("multiple Python mock facades in %s", packageDirectory)
 	}
-	mockPackageName := packageName + "mock"
+	mockPackageName := filepath.Base(connectorDirectory) + "mock"
 	if len(mockFacades) == 1 {
 		mockPackageName = filepath.Base(filepath.Dir(mockFacades[0]))
 	}
-	generated, err := renderPythonCodegen(pythonCodegenInput{Manifest: manifest, Models: models.Models, PackageName: packageName, MockPackageName: mockPackageName})
+	generated, err := renderPythonCodegen(pythonCodegenInput{Manifest: manifest, Models: models.Models, PackageName: packageName, MockPackageName: mockPackageName, ModelAliases: modelAliases})
 	if err != nil {
 		return nil, err
 	}
@@ -88,6 +100,15 @@ func generatedPythonFiles(manifestPath string, manifest schema.Manifest) (map[st
 			}
 		}
 		files[filepath.Join(packageDirectory, "_generated", name)] = []byte(source)
+	}
+	if len(mockFacades) == 0 {
+		if _, hasMock := generated["mock.py"]; hasMock {
+			files[filepath.Join(packageDirectory, mockPackageName, "__init__.py")] = []byte(
+				"# Copyright (c) 2026 Super Durable\n# SPDX-License-Identifier: MIT\n" +
+					"# ruff: noqa: F403\n\n" +
+					"from .._generated.mock import *\nfrom .._generated.mock import __all__ as __all__\n",
+			)
+		}
 	}
 	return files, nil
 }

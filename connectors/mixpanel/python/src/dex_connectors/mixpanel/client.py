@@ -45,8 +45,8 @@ from dex_connectors.sdk.retry_policy import (
     default_connector_step_execute_retry_policy as default_connector_step_execute_retry_policy,
 )
 
-from ._generated.config import Config as GeneratedConfig
-from ._generated.config import Credentials as GeneratedCredentials
+from ._generated.config import Config as _GeneratedConfig
+from ._generated.config import Credentials as _GeneratedCredentials
 from ._generated.definitions import CONNECTOR_ID as CONNECTOR_ID
 from ._generated.definitions import DEFECT as DEFECT
 from ._generated.definitions import EXPORT_EVENTS_DEFINITION as EXPORT_EVENTS_DEFINITION
@@ -69,13 +69,13 @@ _ISO_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
 _RESERVED_PROPERTY_NAMES = frozenset({"time", "distinct_id", "$insert_id", "ip"})
 
 
-class Config(GeneratedConfig):
+class Config(_GeneratedConfig):
     """Mixpanel project and HTTP settings; zero or blank values use manifest defaults."""
 
     __slots__ = ()
 
 
-class Credentials(GeneratedCredentials):
+class Credentials(_GeneratedCredentials):
     """Mixpanel service-account username and secret, resolved anew for every provider attempt."""
 
     __slots__ = ()

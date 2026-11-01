@@ -3,6 +3,15 @@
 # ruff: noqa
 
 from dataclasses import dataclass, field as _dataclass_field
+from typing import Any
+
+def _replace_nil_slices(value: Any, depth: int) -> Any:
+    if value is None:
+        return ()
+    if depth == 1:
+        return value
+    return tuple(_replace_nil_slices(item, depth - 1) for item in value)
+
 
 # StockInput selects one equity symbol such as IBM.
 @dataclass(frozen=True, slots=True)
@@ -54,7 +63,11 @@ class DailySeriesOutput:
     # Symbol is the requested equity ticker.
     symbol: str = ''
     # Days are newest first.
-    days: tuple[DailyPrice, ...] | None = None
+    days: tuple[DailyPrice, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'days', _replace_nil_slices(self.days, 1))
 
 
+DailySeriesOutput.__annotations__['days'] = tuple[DailyPrice, ...] | None
 setattr(DailySeriesOutput, '__module__', 'dex_connectors.alphavantage.models')

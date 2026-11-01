@@ -5,6 +5,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -206,5 +207,174 @@ func TestPythonGenerateCheckDetectsModelDrift(t *testing.T) {
 	}
 	if err := generate([]string{"--lang", "python", "--check", manifestPath}); err == nil || !strings.Contains(err.Error(), "stale") {
 		t.Fatalf("expected Python model drift, got %v", err)
+	}
+}
+
+func TestPythonCodegenDecodesEnumAndStringListConfiguration(t *testing.T) {
+	for _, testCase := range []struct {
+		name string
+		path string
+	}{
+		{"postgresql", filepath.Join("..", "..", "connectors", "postgresql", "connector.yaml")},
+		{"oauth2", filepath.Join("..", "..", "connectors", "superdurable", "oauth2-http", "connector.yaml")},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			manifest, err := load(testCase.path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			operationNames := make([]string, 0, len(manifest.Spec.Operations))
+			for _, operation := range manifest.Spec.Operations {
+				operationNames = append(operationNames, operation.Name)
+			}
+			if manifest.Spec.Languages == nil {
+				manifest.Spec.Languages = &schema.Languages{}
+			}
+			manifest.Spec.Languages.Python = &schema.LanguagePackage{Operations: operationNames}
+			generated, err := renderPythonCodegen(pythonCodegenInput{
+				Manifest: manifest, Models: []gomodel.Model{}, PackageName: "configuration_fixture", MockPackageName: "fixturemock",
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			payload, err := json.Marshal(map[string]string{
+				"case": testCase.name, "config": generated["config.py"], "connection": generated["connection.py"],
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			const script = `import ast, dataclasses, json, sys, typing
+sources = json.load(sys.stdin)
+config = next(node for node in ast.parse(sources["config"]).body if isinstance(node, ast.ClassDef) and node.name == "Config")
+decode = next(node for node in ast.parse(sources["connection"]).body if isinstance(node, ast.FunctionDef) and node.name == "_decode_config")
+namespace = {"dataclass": dataclasses.dataclass, "Any": typing.Any}
+exec(compile(ast.Module(body=[config, decode], type_ignores=[]), "generated.py", "exec"), namespace)
+decode_config = namespace["_decode_config"]
+if sources["case"] == "postgresql":
+    required = {"host": "db.example", "database": "app", "user": "dex_app"}
+    assert decode_config(required).ssl_mode == "require"
+    assert decode_config({**required, "sslMode": "verify-full"}).ssl_mode == "verify-full"
+    try:
+        decode_config({**required, "sslMode": "unknown"})
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("invalid PostgreSQL enum was accepted")
+else:
+    required = {"authorizationEndpoint": "https://auth.example", "tokenEndpoint": "https://auth.example/token", "apiBaseUrl": "https://api.example", "scopes": ["openid", "profile"]}
+    value = decode_config(required)
+    assert value.scopes == ("openid", "profile")
+    assert value.token_endpoint_auth_method == "client_secret_post"
+    try:
+        decode_config({**required, "scopes": "openid"})
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("stringList accepted a string")
+`
+			command := exec.Command("python3", "-c", script)
+			command.Stdin = bytes.NewReader(payload)
+			if output, err := command.CombinedOutput(); err != nil {
+				t.Fatalf("generated configuration failed: %v: %s", err, output)
+			}
+		})
+	}
+}
+
+func TestPythonCodegenCreatesRealNestedMockFacades(t *testing.T) {
+	for _, connectorDirectory := range []string{
+		filepath.Join("amazon", "sqs"),
+		filepath.Join("google", "calendar"),
+	} {
+		t.Run(connectorDirectory, func(t *testing.T) {
+			manifest, err := load(filepath.Join("..", "..", "connectors", connectorDirectory, "connector.yaml"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if manifest.Spec.Languages == nil {
+				manifest.Spec.Languages = &schema.Languages{}
+			}
+			operationNames := make([]string, 0, len(manifest.Spec.Operations))
+			modelNames := make(map[string]bool)
+			for _, operation := range manifest.Spec.Operations {
+				operationNames = append(operationNames, operation.Name)
+				modelNames[operation.InputType] = true
+				modelNames[operation.OutputType] = true
+			}
+			manifest.Spec.Languages.Python = &schema.LanguagePackage{Operations: operationNames}
+			repository := t.TempDir()
+			if err := os.WriteFile(filepath.Join(repository, "catalog.yaml"), []byte("directories: []\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			fixtureDirectory := filepath.Join(repository, "connectors", connectorDirectory)
+			goDirectory := filepath.Join(fixtureDirectory, "go")
+			if err := os.MkdirAll(goDirectory, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(goDirectory, "go.mod"), []byte("module example.com/mockfixture\n\ngo 1.24\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			models := "package mockfixture\n"
+			for name := range modelNames {
+				models += "type " + name + " struct{}\n"
+			}
+			if err := os.WriteFile(filepath.Join(goDirectory, "models.go"), []byte(models), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			packageName := pythonImportPackageName(filepath.ToSlash(filepath.Join("connectors", connectorDirectory)))
+			packageDirectory := filepath.Join(fixtureDirectory, "python", "src", "dex_connectors", packageName)
+			if err := os.MkdirAll(packageDirectory, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(packageDirectory, "__init__.py"), []byte(""), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			files, err := generatedPythonFiles(filepath.Join(fixtureDirectory, "connector.yaml"), manifest)
+			if err != nil {
+				t.Fatal(err)
+			}
+			mockPackageName := filepath.Base(connectorDirectory) + "mock"
+			facadePath := filepath.Join(packageDirectory, mockPackageName, "__init__.py")
+			if !bytes.Contains(files[facadePath], []byte("from .._generated.mock import *")) {
+				t.Errorf("missing generated public mock module %s", facadePath)
+			}
+			generatedMockPath := filepath.Join(packageDirectory, "_generated", "mock.py")
+			modulePath := "dex_connectors." + packageName + "." + mockPackageName
+			if !bytes.Contains(files[generatedMockPath], []byte(modulePath)) {
+				t.Errorf("mock helpers do not name the real %s module", modulePath)
+			}
+		})
+	}
+}
+
+func TestPythonCodegenUsesHistoricalInlineModelNames(t *testing.T) {
+	for _, testCase := range []struct {
+		connector   string
+		packageName string
+		publicName  string
+		goName      string
+	}{
+		{"cloudflare", "cloudflare", "PurgeRequest", "CachePurgeResult"},
+		{"vercel", "vercel", "Pagination", "DeploymentsPagePagination"},
+	} {
+		t.Run(testCase.connector, func(t *testing.T) {
+			manifestPath := filepath.Join("..", "..", "connectors", testCase.connector, "connector.yaml")
+			manifest, err := load(manifestPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			files, err := generatedPythonFiles(manifestPath, manifest)
+			if err != nil {
+				t.Fatal(err)
+			}
+			mockPath := filepath.Join(filepath.Dir(manifestPath), "python", "src", "dex_connectors", testCase.packageName, "_generated", "mock.py")
+			source := string(files[mockPath])
+			if !strings.Contains(source, testCase.publicName+"(") {
+				t.Errorf("mock output does not construct %s", testCase.publicName)
+			}
+			if strings.Contains(source, "from ..models import "+testCase.goName) {
+				t.Errorf("mock exposes Go inline name %s", testCase.goName)
+			}
+		})
 	}
 }

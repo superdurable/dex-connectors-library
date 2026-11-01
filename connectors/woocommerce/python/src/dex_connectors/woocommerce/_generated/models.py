@@ -3,6 +3,15 @@
 # ruff: noqa
 
 from dataclasses import dataclass, field as _dataclass_field
+from typing import Any
+
+def _replace_nil_slices(value: Any, depth: int) -> Any:
+    if value is None:
+        return ()
+    if depth == 1:
+        return value
+    return tuple(_replace_nil_slices(item, depth - 1) for item in value)
+
 
 # ListOrdersInput selects one WooCommerce order page.
 @dataclass(frozen=True, slots=True)
@@ -36,9 +45,13 @@ setattr(Order, '__module__', 'dex_connectors.woocommerce.models')
 @dataclass(frozen=True, slots=True)
 class OrderPage:
     # Orders contains the returned orders, possibly none.
-    orders: tuple[Order, ...] | None = None
+    orders: tuple[Order, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'orders', _replace_nil_slices(self.orders, 1))
 
 
+OrderPage.__annotations__['orders'] = tuple[Order, ...] | None
 setattr(OrderPage, '__module__', 'dex_connectors.woocommerce.models')
 
 

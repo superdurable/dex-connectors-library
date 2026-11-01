@@ -40,8 +40,8 @@ from dex_connectors.sdk.retry_policy import (
     default_connector_step_execute_retry_policy as default_connector_step_execute_retry_policy,
 )
 
-from ._generated.config import Config as GeneratedConfig
-from ._generated.config import Credentials as GeneratedCredentials
+from ._generated.config import Config as _GeneratedConfig
+from ._generated.config import Credentials as _GeneratedCredentials
 from ._generated.definitions import CONNECTOR_ID as CONNECTOR_ID
 from ._generated.definitions import DEFECT as DEFECT
 from ._generated.definitions import FOUND as FOUND
@@ -64,13 +64,13 @@ Output = TypeVar("Output")
 
 
 @dataclass(frozen=True, slots=True)
-class Config(GeneratedConfig):
+class Config(_GeneratedConfig):
     """Shopify settings; shop_subdomain is the <name> in <name>.myshopify.com; zero values use defaults."""
 
     shop_subdomain: str = ""
 
 
-class Credentials(GeneratedCredentials):
+class Credentials(_GeneratedCredentials):
     """Shopify Admin API access token, resolved anew for every provider attempt."""
 
     __slots__ = ()

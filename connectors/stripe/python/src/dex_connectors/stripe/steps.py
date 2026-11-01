@@ -3,7 +3,8 @@
 """Operation-specific Stripe Step factories for Dex Flows."""
 
 from collections.abc import Callable, Mapping
-from typing import TypeVar, cast
+from typing import TypeVar
+from typing import cast as _cast
 
 import dex
 from dex_connectors.sdk import (
@@ -16,7 +17,7 @@ from dex_connectors.sdk import (
 from dex_connectors.sdk import MutationStepConfig as MutationStepConfig
 from dex_connectors.sdk import QueryStepConfig as QueryStepConfig
 
-from ._generated import steps as generated_steps
+from ._generated import steps as _generated_steps
 from .connection import Connection
 from .models import (
     CheckoutSession,
@@ -51,9 +52,9 @@ def new_create_card_checkout_session_step(
 ) -> MutationStep[StepInput, CreateCardCheckoutSessionInput, CheckoutSession]:
     """Create a card Checkout Step with the manifest's branch identities."""
     _validate_connection_name(connection, connection_name)
-    return generated_steps.new_create_card_checkout_session_step(
+    return _generated_steps.new_create_card_checkout_session_step(
         step_type=step_type,
-        step_input_type=cast(type[StepInput], step_input_type),
+        step_input_type=_cast(type[StepInput], step_input_type),
         annotations=_validate_step_annotations(annotations),
         connection=connection,
         connection_name=connection_name,
@@ -86,9 +87,9 @@ def new_create_ach_checkout_session_step(
 ) -> MutationStep[StepInput, CreateACHCheckoutSessionInput, CheckoutSession]:
     """Create a US bank account Checkout Step with manifest branch identities."""
     _validate_connection_name(connection, connection_name)
-    return generated_steps.new_create_ach_checkout_session_step(
+    return _generated_steps.new_create_ach_checkout_session_step(
         step_type=step_type,
-        step_input_type=cast(type[StepInput], step_input_type),
+        step_input_type=_cast(type[StepInput], step_input_type),
         annotations=_validate_step_annotations(annotations),
         connection=connection,
         connection_name=connection_name,
@@ -121,9 +122,9 @@ def new_get_checkout_session_step(
 ) -> QueryStep[StepInput, GetCheckoutSessionInput, CheckoutSession]:
     """Create a Checkout Session Query Step with manifest branch identities."""
     _validate_connection_name(connection, connection_name)
-    return generated_steps.new_get_checkout_session_step(
+    return _generated_steps.new_get_checkout_session_step(
         step_type=step_type,
-        step_input_type=cast(type[StepInput], step_input_type),
+        step_input_type=_cast(type[StepInput], step_input_type),
         annotations=_validate_step_annotations(annotations),
         connection=connection,
         connection_name=connection_name,
@@ -156,9 +157,9 @@ def new_get_payment_intent_step(
 ) -> QueryStep[StepInput, GetPaymentIntentInput, PaymentIntent]:
     """Create a PaymentIntent Query Step with manifest branch identities."""
     _validate_connection_name(connection, connection_name)
-    return generated_steps.new_get_payment_intent_step(
+    return _generated_steps.new_get_payment_intent_step(
         step_type=step_type,
-        step_input_type=cast(type[StepInput], step_input_type),
+        step_input_type=_cast(type[StepInput], step_input_type),
         annotations=_validate_step_annotations(annotations),
         connection=connection,
         connection_name=connection_name,
@@ -191,9 +192,9 @@ def new_create_refund_step(
 ) -> MutationStep[StepInput, CreateRefundInput, Refund]:
     """Create a refund Mutation Step with the manifest's branch identities."""
     _validate_connection_name(connection, connection_name)
-    return generated_steps.new_create_refund_step(
+    return _generated_steps.new_create_refund_step(
         step_type=step_type,
-        step_input_type=cast(type[StepInput], step_input_type),
+        step_input_type=_cast(type[StepInput], step_input_type),
         annotations=_validate_step_annotations(annotations),
         connection=connection,
         connection_name=connection_name,

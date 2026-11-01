@@ -3,6 +3,15 @@
 # ruff: noqa
 
 from dataclasses import dataclass, field as _dataclass_field
+from typing import Any
+
+def _replace_nil_slices(value: Any, depth: int) -> Any:
+    if value is None:
+        return ()
+    if depth == 1:
+        return value
+    return tuple(_replace_nil_slices(item, depth - 1) for item in value)
+
 
 # ListProjectsInput selects a Harvest project page; Cursor comes from the prior result.
 @dataclass(frozen=True, slots=True)
@@ -34,11 +43,15 @@ setattr(Project, '__module__', 'dex_connectors.harvest.models')
 @dataclass(frozen=True, slots=True)
 class ProjectPage:
     # Projects contains the returned Harvest projects.
-    projects: tuple[Project, ...] | None = None
+    projects: tuple[Project, ...] = ()
     # NextCursor selects the next page; blank means this was the last page.
     next_cursor: str = _dataclass_field(default='', metadata={'dex_json_name': 'nextCursor', 'dex_json_omit_default': True})
 
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'projects', _replace_nil_slices(self.projects, 1))
 
+
+ProjectPage.__annotations__['projects'] = tuple[Project, ...] | None
 setattr(ProjectPage, '__module__', 'dex_connectors.harvest.models')
 
 
@@ -83,9 +96,13 @@ setattr(TimeEntry, '__module__', 'dex_connectors.harvest.models')
 @dataclass(frozen=True, slots=True)
 class TimeEntryPage:
     # TimeEntries contains the returned Harvest time records.
-    time_entries: tuple[TimeEntry, ...] | None = _dataclass_field(default=None, metadata={'dex_json_name': 'timeEntries'})
+    time_entries: tuple[TimeEntry, ...] = _dataclass_field(default=(), metadata={'dex_json_name': 'timeEntries'})
     # NextCursor selects the next page; blank means this was the last page.
     next_cursor: str = _dataclass_field(default='', metadata={'dex_json_name': 'nextCursor', 'dex_json_omit_default': True})
 
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'time_entries', _replace_nil_slices(self.time_entries, 1))
 
+
+TimeEntryPage.__annotations__['time_entries'] = tuple[TimeEntry, ...] | None
 setattr(TimeEntryPage, '__module__', 'dex_connectors.harvest.models')

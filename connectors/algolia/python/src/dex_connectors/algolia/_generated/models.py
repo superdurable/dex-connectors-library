@@ -3,6 +3,15 @@
 # ruff: noqa
 
 from dataclasses import dataclass, field as _dataclass_field
+from typing import Any
+
+def _replace_nil_slices(value: Any, depth: int) -> Any:
+    if value is None:
+        return ()
+    if depth == 1:
+        return value
+    return tuple(_replace_nil_slices(item, depth - 1) for item in value)
+
 
 # SaveObjectInput replaces a record's complete set of string attributes.
 @dataclass(frozen=True, slots=True)
@@ -62,7 +71,11 @@ class SearchPage:
     # NbHits is Algolia's count of matching records.
     nb_hits: int = _dataclass_field(default=0, metadata={'dex_json_name': 'nbHits'})
     # Hits contains the returned record identities.
-    hits: tuple[SearchHit, ...] | None = None
+    hits: tuple[SearchHit, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'hits', _replace_nil_slices(self.hits, 1))
 
 
+SearchPage.__annotations__['hits'] = tuple[SearchHit, ...] | None
 setattr(SearchPage, '__module__', 'dex_connectors.algolia.models')

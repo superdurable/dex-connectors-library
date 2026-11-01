@@ -3,6 +3,15 @@
 # ruff: noqa
 
 from dataclasses import dataclass, field as _dataclass_field
+from typing import Any
+
+def _replace_nil_slices(value: Any, depth: int) -> Any:
+    if value is None:
+        return ()
+    if depth == 1:
+        return value
+    return tuple(_replace_nil_slices(item, depth - 1) for item in value)
+
 
 # ListIssuesInput selects one organization's current issues.
 @dataclass(frozen=True, slots=True)
@@ -36,9 +45,13 @@ setattr(Issue, '__module__', 'dex_connectors.sentry.models')
 @dataclass(frozen=True, slots=True)
 class IssuePage:
     # Issues contains one Sentry issue response page.
-    issues: tuple[Issue, ...] | None = None
+    issues: tuple[Issue, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'issues', _replace_nil_slices(self.issues, 1))
 
 
+IssuePage.__annotations__['issues'] = tuple[Issue, ...] | None
 setattr(IssuePage, '__module__', 'dex_connectors.sentry.models')
 
 

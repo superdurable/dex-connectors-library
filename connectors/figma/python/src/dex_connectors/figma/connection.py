@@ -2,7 +2,15 @@
 # SPDX-License-Identifier: MIT
 """Figma connection and project credential binding."""
 
+from typing import Any as Any
 
+import httpx as httpx
+from dex_connectors.sdk import Call as Call
+from dex_connectors.sdk import ConnectionRef as ConnectionRef
+from dex_connectors.sdk import Query as Query
+from dex_connectors.sdk import SecretString as SecretString
+from dex_connectors.sdk.projectconfig import ConnectionKey as ConnectionKey
+from dex_connectors.sdk.projectconfig import LoadedProject as LoadedProject
 
 from ._generated.connection import (
     Connection as Connection,
@@ -16,3 +24,13 @@ from ._generated.connection import (
 from ._generated.connection import (
     new_project_connection as new_project_connection,
 )
+from .client import CONNECTOR_ID as CONNECTOR_ID
+from .client import GET_FILE_COMMENTS_DEFINITION as GET_FILE_COMMENTS_DEFINITION
+from .client import GET_FILE_DEFINITION as GET_FILE_DEFINITION
+from .client import Client as Client
+from .client import Config as Config
+from .client import Credentials as Credentials
+from .models import File as File
+from .models import FileComments as FileComments
+from .models import GetFileCommentsInput as GetFileCommentsInput
+from .models import GetFileInput as GetFileInput

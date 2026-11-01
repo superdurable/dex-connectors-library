@@ -5,6 +5,14 @@
 from dataclasses import dataclass, field as _dataclass_field
 from typing import Any
 
+def _replace_nil_slices(value: Any, depth: int) -> Any:
+    if value is None:
+        return ()
+    if depth == 1:
+        return value
+    return tuple(_replace_nil_slices(item, depth - 1) for item in value)
+
+
 # GetFileInput identifies a Figma file or branch by key.
 @dataclass(frozen=True, slots=True)
 class GetFileInput:
@@ -55,7 +63,11 @@ setattr(FileComment, '__module__', 'dex_connectors.figma.models')
 @dataclass(frozen=True, slots=True)
 class FileComments:
     # Comments contains comments returned for the file.
-    comments: tuple[FileComment, ...] | None = None
+    comments: tuple[FileComment, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'comments', _replace_nil_slices(self.comments, 1))
 
 
+FileComments.__annotations__['comments'] = tuple[FileComment, ...] | None
 setattr(FileComments, '__module__', 'dex_connectors.figma.models')
