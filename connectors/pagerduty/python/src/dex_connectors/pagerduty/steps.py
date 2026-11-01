@@ -24,7 +24,6 @@ def new_list_incidents_step(
     connection_name: str,
     map_to_operation_input: Callable[[StepInput], ListIncidentsInput],
     listed: dex.StepTarget[QueryResult[IncidentPage]],
-    not_listed: dex.StepTarget[QueryResult[IncidentPage]] | None = None,
     provider_rejected: dex.StepTarget[QueryResult[IncidentPage]] | None = None,
     invalid_response: dex.StepTarget[QueryResult[IncidentPage]] | None = None,
     defect: dex.StepTarget[QueryResult[IncidentPage]] | None = None,
