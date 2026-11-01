@@ -15,6 +15,9 @@ List voices and generate bounded audio through ElevenLabs. The manifest is the s
 
 The demo uses `elevenlabs.NewListVoicesStep` with the static `elevenlabs` connection. Each operation is an operation-specific Query Step. Generation operations use synchronous Execute durability and a three-attempt billed retry budget; read operations use the default one-hour retry policy.
 
+The Python package is [`dex-connector-elevenlabs`](python/README.md), imported as
+`dex_connectors.elevenlabs`.
+
 ## Authorization and configuration
 
 At [ElevenLabs > Developers > API Keys > Create API Key](https://elevenlabs.io/app/developers/api-keys), create or select an API key for these operations, copy its provider-issued value, and store it in the secret `api_key` field in Dex Web Connections. A blank key is invalid. The manifest supplies the public base URL, HTTP timeout, and response-size limit; leave their fields blank unless a compatible gateway, slow request, or known larger response requires an override.
