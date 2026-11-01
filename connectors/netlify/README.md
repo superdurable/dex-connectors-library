@@ -6,6 +6,9 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/netlify`.
 
 The `netlify` Go module exposes typed Dex Steps for Netlify. Its [runnable lookup Flow](go/examples/netlify-lookup/README.md) uses the static connection name `netlify`.
 
+The Python package is [`dex-connector-netlify`](python/README.md), imported as
+`dex_connectors.netlify`.
+
 ## Operations
 
 | Factory | Endpoint | Input | Output | Required branch | Optional branches |
