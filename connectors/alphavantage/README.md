@@ -6,6 +6,9 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/alphavanta
 
 This connector reads stock market data through Alpha Vantage's public REST API. The [demo Flow](go/examples/demo/README.md) calls `NewGetGlobalQuoteStep` with a static `alphavantage` connection.
 
+The Python package is [`dex-connector-alphavantage`](python/README.md), imported as
+`dex_connectors.alphavantage`.
+
 ## Operations and official references
 
 | Operation | Query | Official documentation |
