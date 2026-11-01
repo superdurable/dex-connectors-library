@@ -10,6 +10,9 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/harvest`.
 
 In Dex Web Connections, create a `harvest` connection named `harvest`. Open [Harvest ID > Developers > Personal Access Tokens](https://id.getharvest.com/developers), create the token, and paste it into the secret `api_key` field. Leave `baseUrl`, `timeout`, and `maxResponseBytes` blank for their displayed defaults. Copy the decimal account ID shown with the personal token into non-secret accountId.
 
+The Python package is [`dex-connector-harvest`](python/README.md), imported as
+`dex_connectors.harvest`.
+
 ## Operations
 
 | Operation | Official API reference |
