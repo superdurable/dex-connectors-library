@@ -35,3 +35,11 @@ __all__ = [
     "get_payment_not_found",
     "get_payment_default_answer",
 ]
+
+Mock.__doc__ = "Script Square Queries, defaulting to their manifest answers."
+
+list_payments_listed.__doc__ = "Script the successful listed route."
+list_payments_default_answer.__doc__ = "Return the manifest's listPayments defaultAnswer."
+get_payment_found.__doc__ = "Script the successful found route."
+get_payment_not_found.__doc__ = "Script a missing payment."
+get_payment_default_answer.__doc__ = "Return the manifest's getPayment defaultAnswer."

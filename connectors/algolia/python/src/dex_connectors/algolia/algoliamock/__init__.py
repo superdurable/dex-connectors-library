@@ -47,3 +47,8 @@ __all__ = [
     "save_object_saved",
     "save_object_default_answer",
 ]
+
+Mock.__doc__ = "Script Algolia operations, defaulting to their manifest answers."
+
+search_searched.__doc__ = "Script the searched route."
+save_object_saved.__doc__ = "Script the saved route."

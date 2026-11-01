@@ -24,3 +24,8 @@ __all__ = [
     "get_entry_default_get_entry",
     "list_entries_default_list_entries",
 ]
+
+Mock.__doc__ = "Script Contentful Queries, defaulting to their manifest answers."
+
+get_entry_default_get_entry.__doc__ = "Return the manifest's getEntry defaultGetEntry answer."
+list_entries_default_list_entries.__doc__ = "Return the manifest's listEntries defaultListEntries answer."

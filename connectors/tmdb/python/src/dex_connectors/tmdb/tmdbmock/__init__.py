@@ -37,3 +37,12 @@ __all__ = [
     "get_movie_not_found",
     "get_movie_default",
 ]
+
+Mock.__doc__ = "Script TMDB operations, defaulting to their manifest answers."
+
+search_movies_searched.__doc__ = "Script the successful searched route."
+search_movies_provider_rejected.__doc__ = "Script a definite provider rejection of the search."
+search_movies_default.__doc__ = "Return the manifest's searchMoviesDefault answer."
+get_movie_found.__doc__ = "Script the successful found route."
+get_movie_not_found.__doc__ = "Script a missing movie."
+get_movie_default.__doc__ = "Return the manifest's getMovieDefault answer."

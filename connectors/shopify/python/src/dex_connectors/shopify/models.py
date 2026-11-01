@@ -14,3 +14,9 @@ from ._generated.models import (
 from ._generated.models import OrderPage as OrderPage
 
 OrderPage.__doc__ = "One page of orders."
+
+GetOrderInput.__doc__ = "Positive Shopify order ID."
+ListOrdersInput.__doc__ = "Orders per page; zero uses Shopify's default, at most 250."
+Order.__doc__ = (
+    "Order identity, display name such as #101, financial status, decimal total text, and currency."
+)

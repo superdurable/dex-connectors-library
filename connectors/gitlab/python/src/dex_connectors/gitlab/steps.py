@@ -36,3 +36,11 @@ from .models import Project as Project
 from .models import UpdateIssueLabelsInput as UpdateIssueLabelsInput
 
 BranchTarget = TypeVar("BranchTarget")
+
+new_get_project_step.__doc__ = (
+    "Create the typed project lookup Step; unwired optional outcomes fail the Flow."
+)
+new_list_issues_step.__doc__ = "Create the typed issue page Step; unwired optional outcomes fail the Flow."
+new_update_issue_labels_step.__doc__ = (
+    "Create the typed issue label replacement Step; unwired optional outcomes fail the Flow."
+)

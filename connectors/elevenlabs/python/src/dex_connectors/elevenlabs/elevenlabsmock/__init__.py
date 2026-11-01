@@ -46,3 +46,8 @@ __all__ = [
     "create_speech_created",
     "create_speech_default_answer",
 ]
+
+Mock.__doc__ = "Script ElevenLabs operations, defaulting to their manifest answers."
+
+list_voices_listed.__doc__ = "Script the listed route."
+create_speech_created.__doc__ = "Script the created route."

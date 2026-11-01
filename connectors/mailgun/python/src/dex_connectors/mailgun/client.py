@@ -84,10 +84,6 @@ _DOMAIN = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?")
 Output = TypeVar("Output")
 
 
-
-
-
-
 class Client:
     """One redirect-safe HTTP client and call-time credential source."""
 
@@ -327,3 +323,7 @@ def _string(document: dict[str, Any], name: str) -> str:
     if not isinstance(value, str):
         raise ValueError
     return value
+
+
+Config.__doc__ = "Mailgun HTTP settings; zero or blank values use manifest defaults."
+Credentials.__doc__ = "Mailgun private API key, resolved anew for every provider attempt."

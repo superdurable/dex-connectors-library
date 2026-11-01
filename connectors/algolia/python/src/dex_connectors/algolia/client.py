@@ -90,10 +90,6 @@ _APPLICATION_ID = re.compile(r"[A-Z0-9]+")
 _PATH_SEGMENT_SAFE = "$&+:=@"
 
 
-
-
-
-
 @dataclass(frozen=True, slots=True)
 class _ProviderReply:
     """A successful HTTP 200 body, or the non-200 status that selects providerRejected."""
@@ -380,3 +376,12 @@ def _mutation_branch(branch: str, kind: FailureKind, message: str) -> MutationAt
     return MutationAttempt.branch_result(
         branch, SavedObject(), Receipt(), _failure(SAVE_OBJECT_OPERATION_ID, kind, message)
     )
+
+
+Config.__doc__ = (
+    "Algolia HTTP settings; zero or blank values use manifest defaults.\n\nThe"
+    " default base URL is a host template: each call prefixes the application ID.\n"
+)
+Credentials.__doc__ = (
+    "Public Algolia application ID and secret API key, resolved anew for every provider attempt."
+)

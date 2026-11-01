@@ -212,7 +212,7 @@ def render_models():
                 "    if value is None:",
                 "        return ()",
                 "    if depth == 1:",
-                "        return value",
+                "        return tuple(value)",
                 "    return tuple(_replace_nil_slices(item, depth - 1) for item in value)",
                 "",
                 "",
@@ -293,6 +293,9 @@ def render_models():
             )
             lines.append(
                 f"{model['name']}.__annotations__[{python_name!r}] = {codec_annotation}"
+            )
+            lines.append(
+                f"{model['name']}.__dataclass_fields__[{python_name!r}].type = {codec_annotation}"
             )
         lines.append(
             f"setattr({model['name']}, '__module__', 'dex_connectors.{package_name}.models')"
@@ -851,9 +854,22 @@ def render_connection():
         lines.append(f"        config_arguments[{name!r}] = {expression}")
         if "default" not in field_info:
             lines.append("    else:")
-            lines.append(
-                f"        raise ValueError({quoted(connection_label + ' configuration ' + field_info['name'] + ' is required')})"
-            )
+            if field_info["required"]:
+                lines.append(
+                    f"        raise ValueError({quoted(connection_label + ' configuration ' + field_info['name'] + ' is required')})"
+                )
+            else:
+                fallback = {
+                    "string": "''",
+                    "url": "''",
+                    "enum": "''",
+                    "stringList": "()",
+                    "integer": "0",
+                    "number": "0.0",
+                    "boolean": "False",
+                    "duration": "0.0",
+                }[field_type]
+                lines.append(f"        config_arguments[{name!r}] = {fallback}")
     lines.append("    return Config(**config_arguments)")
     return "\n".join(lines).rstrip() + "\n"
 

@@ -210,13 +210,15 @@ func TestPythonGenerateCheckDetectsModelDrift(t *testing.T) {
 	}
 }
 
-func TestPythonCodegenDecodesEnumAndStringListConfiguration(t *testing.T) {
+func TestPythonCodegenDecodesOptionalAndTypedConfiguration(t *testing.T) {
 	for _, testCase := range []struct {
 		name string
 		path string
 	}{
 		{"postgresql", filepath.Join("..", "..", "connectors", "postgresql", "connector.yaml")},
 		{"oauth2", filepath.Join("..", "..", "connectors", "superdurable", "oauth2-http", "connector.yaml")},
+		{"sqs", filepath.Join("..", "..", "connectors", "amazon", "sqs", "connector.yaml")},
+		{"mixpanel", filepath.Join("..", "..", "connectors", "mixpanel", "connector.yaml")},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			manifest, err := load(testCase.path)
@@ -260,7 +262,7 @@ if sources["case"] == "postgresql":
         pass
     else:
         raise AssertionError("invalid PostgreSQL enum was accepted")
-else:
+elif sources["case"] == "oauth2":
     required = {"authorizationEndpoint": "https://auth.example", "tokenEndpoint": "https://auth.example/token", "apiBaseUrl": "https://api.example", "scopes": ["openid", "profile"]}
     value = decode_config(required)
     assert value.scopes == ("openid", "profile")
@@ -271,6 +273,14 @@ else:
         pass
     else:
         raise AssertionError("stringList accepted a string")
+elif sources["case"] == "sqs":
+    value = decode_config({})
+    assert value.region == "us-east-1"
+    assert value.endpoint == ""
+    assert value.default_queue_url == ""
+    assert decode_config({"endpoint": "https://sqs.example"}).endpoint == "https://sqs.example"
+else:
+    assert decode_config({}).project_id == 0
 `
 			command := exec.Command("python3", "-c", script)
 			command.Stdin = bytes.NewReader(payload)
@@ -285,6 +295,8 @@ func TestPythonCodegenCreatesRealNestedMockFacades(t *testing.T) {
 	for _, connectorDirectory := range []string{
 		filepath.Join("amazon", "sqs"),
 		filepath.Join("google", "calendar"),
+		filepath.Join("microsoft", "outlook-calendar"),
+		filepath.Join("superdurable", "oauth2-http"),
 	} {
 		t.Run(connectorDirectory, func(t *testing.T) {
 			manifest, err := load(filepath.Join("..", "..", "connectors", connectorDirectory, "connector.yaml"))
@@ -333,7 +345,7 @@ func TestPythonCodegenCreatesRealNestedMockFacades(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			mockPackageName := filepath.Base(connectorDirectory) + "mock"
+			mockPackageName := manifest.Spec.Codegen.Go.Package + "mock"
 			facadePath := filepath.Join(packageDirectory, mockPackageName, "__init__.py")
 			if !bytes.Contains(files[facadePath], []byte("from .._generated.mock import *")) {
 				t.Errorf("missing generated public mock module %s", facadePath)

@@ -101,10 +101,6 @@ _MAX_TRANSACTION_WINDOW = timedelta(days=31)
 Output = TypeVar("Output")
 
 
-
-
-
-
 @dataclass(frozen=True, slots=True)
 class _AccessToken:
     """A bearer token cached for the credential pair that obtained it."""
@@ -532,3 +528,7 @@ def _string(document: dict[str, Any], name: str) -> str:
     if not isinstance(value, str):
         raise ValueError
     return value
+
+
+Config.__doc__ = "PayPal HTTP settings; zero or blank values use manifest defaults."
+Credentials.__doc__ = "PayPal REST app client ID and secret, resolved anew for every provider attempt."

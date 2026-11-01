@@ -48,3 +48,9 @@ __all__ = [
     "get_photo_not_found",
     "get_photo_default_answer",
 ]
+
+Mock.__doc__ = "Script Unsplash Queries, defaulting to their manifest answers."
+
+search_photos_searched.__doc__ = "Script the searched route."
+get_photo_found.__doc__ = "Script the successful found route."
+get_photo_not_found.__doc__ = "Script a missing photo."

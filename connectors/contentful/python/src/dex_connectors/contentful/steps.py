@@ -28,3 +28,6 @@ from .models import ListEntriesInput as ListEntriesInput
 from .models import ListEntriesOutput as ListEntriesOutput
 
 BranchTarget = TypeVar("BranchTarget")
+
+new_get_entry_step.__doc__ = "Create the typed getEntry Step; unwired optional outcomes fail the Flow."
+new_list_entries_step.__doc__ = "Create the typed listEntries Step; unwired optional outcomes fail the Flow."

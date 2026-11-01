@@ -9,7 +9,7 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
     if depth == 1:
-        return value
+        return tuple(value)
     return tuple(_replace_nil_slices(item, depth - 1) for item in value)
 
 
@@ -30,6 +30,7 @@ class SendEmailInput:
 
 
 SendEmailInput.__annotations__['to'] = tuple[str, ...] | None
+SendEmailInput.__dataclass_fields__['to'].type = tuple[str, ...] | None
 setattr(SendEmailInput, '__module__', 'dex_connectors.resend.models')
 
 
@@ -72,4 +73,5 @@ class Email:
 
 
 Email.__annotations__['to'] = tuple[str, ...] | None
+Email.__dataclass_fields__['to'].type = tuple[str, ...] | None
 setattr(Email, '__module__', 'dex_connectors.resend.models')

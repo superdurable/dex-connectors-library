@@ -74,7 +74,7 @@ func generatedPythonFiles(manifestPath string, manifest schema.Manifest) (map[st
 	if len(mockFacades) > 1 {
 		return nil, fmt.Errorf("multiple Python mock facades in %s", packageDirectory)
 	}
-	mockPackageName := filepath.Base(connectorDirectory) + "mock"
+	mockPackageName := manifest.Spec.Codegen.Go.Package + "mock"
 	if len(mockFacades) == 1 {
 		mockPackageName = filepath.Base(filepath.Dir(mockFacades[0]))
 	}

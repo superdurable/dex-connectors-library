@@ -28,3 +28,10 @@ from .models import ListCollectionItemsInput as ListCollectionItemsInput
 from .models import ListCollectionItemsOutput as ListCollectionItemsOutput
 
 BranchTarget = TypeVar("BranchTarget")
+
+new_list_collection_items_step.__doc__ = (
+    "Create the typed listCollectionItems Step; unwired optional outcomes fail the Flow."
+)
+new_get_collection_item_step.__doc__ = (
+    "Create the typed getCollectionItem Step; unwired optional outcomes fail the Flow."
+)

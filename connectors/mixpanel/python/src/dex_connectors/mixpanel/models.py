@@ -17,3 +17,8 @@ from ._generated.models import (
 )
 
 ExportedEvents.__doc__ = "Raw events in export order."
+
+TrackEventInput.__doc__ = "Event name, distinct ID, Unix time in seconds, and optional string properties."
+EventImportResult.__doc__ = "Whether Mixpanel imported the event."
+ExportEventsInput.__doc__ = "Inclusive YYYY-MM-DD range of at most 30 days and a limit from 1 through 100."
+ExportedEvent.__doc__ = "One raw event's name, distinct ID, Unix time, and insert ID."

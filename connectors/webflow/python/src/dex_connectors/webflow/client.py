@@ -99,10 +99,6 @@ _STATUS_KINDS = {
 Output = TypeVar("Output")
 
 
-
-
-
-
 @dataclass(frozen=True, slots=True)
 class _Outcome:
     """A terminal or retry attempt whose empty value the calling operation supplies."""
@@ -360,3 +356,7 @@ def _failed(
 
 def _is_object_id(value: object) -> bool:
     return isinstance(value, str) and _OBJECT_ID.fullmatch(value) is not None
+
+
+Config.__doc__ = "Webflow HTTP settings; zero or blank values use manifest defaults."
+Credentials.__doc__ = "Webflow site API token, resolved anew for every provider attempt."

@@ -46,3 +46,8 @@ __all__ = [
     "upsert_rows_upserted",
     "upsert_rows_default_answer",
 ]
+
+Mock.__doc__ = "Script Supabase operations, defaulting to their manifest answers."
+
+select_rows_selected.__doc__ = "Script the selected route."
+upsert_rows_upserted.__doc__ = "Script the upserted route."

@@ -39,3 +39,12 @@ __all__ = [
     "get_message_details_not_found",
     "get_message_details_default",
 ]
+
+Mock.__doc__ = "Script Postmark operations, defaulting to their manifest answers."
+
+list_outbound_messages_listed.__doc__ = "Script the successful listed route."
+list_outbound_messages_provider_rejected.__doc__ = "Script a definite provider rejection of the search."
+list_outbound_messages_default.__doc__ = "Return the manifest's listOutboundMessagesDefault answer."
+get_message_details_found.__doc__ = "Script the successful found route."
+get_message_details_not_found.__doc__ = "Script a missing outbound message."
+get_message_details_default.__doc__ = "Return the manifest's getMessageDetailsDefault answer."

@@ -34,3 +34,11 @@ from .models import GetCollectionItemInput as GetCollectionItemInput
 from .models import GetCollectionItemOutput as GetCollectionItemOutput
 from .models import ListCollectionItemsInput as ListCollectionItemsInput
 from .models import ListCollectionItemsOutput as ListCollectionItemsOutput
+
+Connection.__doc__ = "Nonserializable Webflow operation bindings for a named project connection."
+
+new_connection.__doc__ = "Bind a client to an explicit logical connection reference."
+new_connection_with_operations.__doc__ = (
+    "Bind mock operations to the same connection identity as the real provider."
+)
+new_project_connection.__doc__ = "Open declared ordinary settings and resolve the current token per call."

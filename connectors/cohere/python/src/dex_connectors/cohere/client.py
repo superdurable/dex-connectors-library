@@ -83,10 +83,6 @@ _DEFAULT_MAX_RESPONSE_BYTES = 4_194_304
 Output = TypeVar("Output")
 
 
-
-
-
-
 class Client:
     """One redirect-safe HTTP client and call-time credential source."""
 
@@ -380,3 +376,7 @@ def _object(value: Any) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ValueError
     return value
+
+
+Config.__doc__ = "Cohere HTTP settings; zero or blank values use manifest defaults."
+Credentials.__doc__ = "Cohere API key, resolved anew for every provider attempt."

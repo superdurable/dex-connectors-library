@@ -10,7 +10,7 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
     if depth == 1:
-        return value
+        return tuple(value)
     return tuple(_replace_nil_slices(item, depth - 1) for item in value)
 
 
@@ -77,6 +77,7 @@ class SendMessageInput:
 
 
 SendMessageInput.__annotations__['to'] = tuple[str, ...] | None
+SendMessageInput.__dataclass_fields__['to'].type = tuple[str, ...] | None
 setattr(SendMessageInput, '__module__', 'dex_connectors.google_gmail.models')
 
 
@@ -98,6 +99,7 @@ class SendMessageOutput:
 
 
 SendMessageOutput.__annotations__['recipients'] = tuple[str, ...] | None
+SendMessageOutput.__dataclass_fields__['recipients'].type = tuple[str, ...] | None
 setattr(SendMessageOutput, '__module__', 'dex_connectors.google_gmail.models')
 
 

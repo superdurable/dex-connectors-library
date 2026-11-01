@@ -37,9 +37,7 @@ def _step_annotations(value: StepAnnotations | Mapping[str, str]) -> StepAnnotat
             not isinstance(field_value, str) for field_value in value.values()
         ):
             raise ValueError("Gmail Step annotations require groupId, groupLabel, and explanation")
-        annotations = StepAnnotations(
-            value["groupId"], value["groupLabel"], value["explanation"]
-        )
+        annotations = StepAnnotations(value["groupId"], value["groupLabel"], value["explanation"])
     annotations.validate()
     return annotations
 

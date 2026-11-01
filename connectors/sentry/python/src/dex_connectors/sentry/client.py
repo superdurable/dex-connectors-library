@@ -103,10 +103,6 @@ _DEFAULT_MAX_RESPONSE_BYTES = 2_097_152
 Output = TypeVar("Output")
 
 
-
-
-
-
 @dataclass(frozen=True, slots=True)
 class _Outcome:
     """Provider-neutral classification shared by the Query and Mutation helpers."""
@@ -467,3 +463,7 @@ def _string(document: dict[str, Any], name: str) -> str:
     if not isinstance(value, str):
         raise ValueError
     return value
+
+
+Config.__doc__ = "Sentry HTTP settings; zero or blank values use manifest defaults."
+Credentials.__doc__ = "Sentry auth token, resolved anew for every provider attempt."

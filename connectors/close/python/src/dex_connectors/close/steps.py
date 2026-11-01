@@ -28,3 +28,6 @@ from .models import LeadPage as LeadPage
 from .models import ListLeadsInput as ListLeadsInput
 
 BranchTarget = TypeVar("BranchTarget")
+
+new_list_leads_step.__doc__ = "Create the typed lead page Step; unwired optional outcomes fail the Flow."
+new_get_lead_step.__doc__ = "Create the typed lead lookup Step; unwired optional outcomes fail the Flow."

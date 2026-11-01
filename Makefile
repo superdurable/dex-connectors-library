@@ -57,6 +57,7 @@ test-python-connectors:
 		uv run --project "$$module/python" python script/python_public_exports_test.py "$$module/python" && \
 		uv run --project "$$module/python" python script/python_model_drift_test.py "$$module/python" || exit 1; \
 	done
+	@python3 script/python_slice_wire_test.py
 
 test-typescript-connectors:
 	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))"; \

@@ -14,3 +14,7 @@ from ._generated.models import (
 )
 
 LeadPage.__doc__ = "One page of leads; has_more reports whether Close has another page."
+
+ListLeadsInput.__doc__ = "Offset page of leads; limit zero means 100, at most 100."
+GetLeadInput.__doc__ = "Close lead ID, which starts with lead_."
+Lead.__doc__ = "Close lead identity and display name."

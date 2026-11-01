@@ -31,3 +31,6 @@ from .models import ExportEventsInput as ExportEventsInput
 from .models import TrackEventInput as TrackEventInput
 
 BranchTarget = TypeVar("BranchTarget")
+
+new_track_event_step.__doc__ = "Create the typed event import Step; unwired optional outcomes fail the Flow."
+new_export_events_step.__doc__ = "Create the typed raw export Step; unwired optional outcomes fail the Flow."

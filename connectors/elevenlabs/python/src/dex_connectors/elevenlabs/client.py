@@ -92,10 +92,6 @@ _CREDENTIAL_MESSAGE = "connection credentials are unavailable or invalid"
 Output = TypeVar("Output")
 
 
-
-
-
-
 class Client:
     """One redirect-safe HTTP client and call-time credential source."""
 
@@ -336,3 +332,7 @@ def _failed(
 
 def _retry(operation: str, kind: FailureKind, message: str, after_seconds: float) -> QueryAttempt[Any]:
     return QueryAttempt.retry(Failure(kind, CONNECTOR_ID, operation, message), after_seconds)
+
+
+Config.__doc__ = "ElevenLabs HTTP settings; zero or blank values use manifest defaults."
+Credentials.__doc__ = "ElevenLabs API key, resolved anew for every provider attempt."

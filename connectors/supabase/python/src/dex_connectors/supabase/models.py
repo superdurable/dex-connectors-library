@@ -23,3 +23,10 @@ class UpsertRowsInput:
     table: str = ""
     on_conflict: str = field(default="", metadata={"dex_json_name": "onConflict"})
     rows: tuple[dict[str, Any], ...] = ()
+
+
+SelectRowsInput.__doc__ = (
+    "Exposed table, comma-separated columns (blank is all), limit 1-1000 (zero is 100), and offset."
+)
+SelectRowsOutput.__doc__ = "The selected JSON row array, kept untouched."
+UpsertRowsOutput.__doc__ = "The JSON row array PostgREST returned after the merge, kept untouched."

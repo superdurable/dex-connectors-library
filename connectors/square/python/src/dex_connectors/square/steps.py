@@ -28,3 +28,10 @@ from .models import Payment as Payment
 from .models import PaymentPage as PaymentPage
 
 BranchTarget = TypeVar("BranchTarget")
+
+new_list_payments_step.__doc__ = (
+    "Create the typed payment page Step; unwired optional outcomes fail the Flow."
+)
+new_get_payment_step.__doc__ = (
+    "Create the typed payment lookup Step; unwired optional outcomes fail the Flow."
+)

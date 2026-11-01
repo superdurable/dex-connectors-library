@@ -87,10 +87,6 @@ _DEFAULT_MAX_RESPONSE_BYTES = 2_097_152
 Output = TypeVar("Output")
 
 
-
-
-
-
 class Client:
     """One redirect-safe HTTP client and call-time credential source."""
 
@@ -356,3 +352,7 @@ def _integer(document: dict[str, Any], name: str) -> int:
     if type(value) is not int:
         raise ValueError
     return value
+
+
+Config.__doc__ = "TMDB HTTP settings; zero or blank values use manifest defaults."
+Credentials.__doc__ = "TMDB API Read Access Token, resolved anew for every provider attempt."

@@ -28,3 +28,6 @@ from .models import GetEventsInput as GetEventsInput
 from .models import ListDomainsInput as ListDomainsInput
 
 BranchTarget = TypeVar("BranchTarget")
+
+new_get_events_step.__doc__ = "Create the typed event page Step; unwired optional outcomes fail the Flow."
+new_list_domains_step.__doc__ = "Create the typed domain page Step; unwired optional outcomes fail the Flow."

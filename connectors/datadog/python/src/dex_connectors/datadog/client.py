@@ -92,10 +92,6 @@ _STATUS_KINDS = {
 Output = TypeVar("Output")
 
 
-
-
-
-
 class Client:
     """One redirect-safe HTTP client and call-time credential source."""
 
@@ -352,3 +348,9 @@ def _string(document: dict[str, Any], name: str) -> str:
     if not isinstance(value, str):
         raise ValueError
     return value
+
+
+Config.__doc__ = (
+    "Datadog HTTP settings; base_url selects the Datadog site; zero or blank values use defaults."
+)
+Credentials.__doc__ = "Datadog API and application keys, resolved anew for every provider attempt."

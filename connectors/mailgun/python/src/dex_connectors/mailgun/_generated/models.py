@@ -9,7 +9,7 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
     if depth == 1:
-        return value
+        return tuple(value)
     return tuple(_replace_nil_slices(item, depth - 1) for item in value)
 
 
@@ -50,6 +50,7 @@ class EventsOutput:
 
 
 EventsOutput.__annotations__['events'] = tuple[Event, ...] | None
+EventsOutput.__dataclass_fields__['events'].type = tuple[Event, ...] | None
 setattr(EventsOutput, '__module__', 'dex_connectors.mailgun.models')
 
 
@@ -90,4 +91,5 @@ class DomainsOutput:
 
 
 DomainsOutput.__annotations__['domains'] = tuple[Domain, ...] | None
+DomainsOutput.__dataclass_fields__['domains'].type = tuple[Domain, ...] | None
 setattr(DomainsOutput, '__module__', 'dex_connectors.mailgun.models')

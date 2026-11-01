@@ -9,7 +9,7 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
     if depth == 1:
-        return value
+        return tuple(value)
     return tuple(_replace_nil_slices(item, depth - 1) for item in value)
 
 
@@ -62,6 +62,7 @@ class PaymentPage:
 
 
 PaymentPage.__annotations__['payments'] = tuple[Payment, ...] | None
+PaymentPage.__dataclass_fields__['payments'].type = tuple[Payment, ...] | None
 setattr(PaymentPage, '__module__', 'dex_connectors.square.models')
 
 

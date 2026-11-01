@@ -28,3 +28,8 @@ from .models import StatsOutput as StatsOutput
 from .models import TemplatesOutput as TemplatesOutput
 
 BranchTarget = TypeVar("BranchTarget")
+
+new_get_stats_step.__doc__ = "Create the typed statistics Step; unwired optional outcomes fail the Flow."
+new_list_templates_step.__doc__ = (
+    "Create the typed template listing Step; unwired optional outcomes fail the Flow."
+)

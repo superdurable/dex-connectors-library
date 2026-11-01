@@ -47,3 +47,9 @@ __all__ = [
     "get_time_series_daily_found",
     "get_time_series_daily_default_answer",
 ]
+
+Mock.__doc__ = "Script Alpha Vantage Queries, defaulting to their manifest answers."
+
+get_global_quote_found.__doc__ = "Script the successful found route."
+get_global_quote_not_found.__doc__ = "Script a symbol without market data."
+get_time_series_daily_found.__doc__ = "Script the successful found route."

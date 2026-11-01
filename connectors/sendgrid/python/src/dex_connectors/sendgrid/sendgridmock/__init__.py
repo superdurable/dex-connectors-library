@@ -47,3 +47,8 @@ __all__ = [
     "list_templates_listed",
     "list_templates_default_answer",
 ]
+
+Mock.__doc__ = "Script SendGrid operations, defaulting to their manifest answers."
+
+get_stats_found.__doc__ = "Script the found route."
+list_templates_listed.__doc__ = "Script the listed route."

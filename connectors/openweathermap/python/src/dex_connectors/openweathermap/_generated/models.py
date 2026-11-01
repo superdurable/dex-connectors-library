@@ -9,7 +9,7 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
     if depth == 1:
-        return value
+        return tuple(value)
     return tuple(_replace_nil_slices(item, depth - 1) for item in value)
 
 
@@ -66,4 +66,5 @@ class ForecastOutput:
 
 
 ForecastOutput.__annotations__['entries'] = tuple[ForecastEntry, ...] | None
+ForecastOutput.__dataclass_fields__['entries'].type = tuple[ForecastEntry, ...] | None
 setattr(ForecastOutput, '__module__', 'dex_connectors.openweathermap.models')

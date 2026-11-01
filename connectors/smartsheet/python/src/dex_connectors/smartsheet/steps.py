@@ -28,3 +28,6 @@ from .models import Sheet as Sheet
 from .models import SheetPage as SheetPage
 
 BranchTarget = TypeVar("BranchTarget")
+
+new_list_sheets_step.__doc__ = "Create the typed sheet page Step; unwired optional outcomes fail the Flow."
+new_get_sheet_step.__doc__ = "Create the typed sheet lookup Step; unwired optional outcomes fail the Flow."

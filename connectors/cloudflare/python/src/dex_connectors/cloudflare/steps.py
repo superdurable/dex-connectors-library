@@ -31,3 +31,8 @@ from .models import PurgeCacheByURLsInput as PurgeCacheByURLsInput
 from .models import ZonesPage as ZonesPage
 
 BranchTarget = TypeVar("BranchTarget")
+
+new_purge_cache_by_urls_step.__doc__ = (
+    "Create the typed cache purge Step; unwired optional outcomes fail the Flow."
+)
+new_list_zones_step.__doc__ = "Create the typed zone listing Step; unwired optional outcomes fail the Flow."

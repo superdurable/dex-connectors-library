@@ -26,3 +26,9 @@ class SaveObjectInput:
 
 
 SearchPage.__doc__ = "Algolia's count of matching records and the returned record identities."
+
+SearchInput.__doc__ = (
+    "Index name, search phrase (blank matches all), and hits per page (zero uses Algolia's default)."
+)
+SearchHit.__doc__ = "A matching record's stable object ID and optional display name."
+SavedObject.__doc__ = "The replaced record's object ID and Algolia's queued indexing task ID."

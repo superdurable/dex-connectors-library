@@ -28,3 +28,10 @@ from .models import MonitorsPage as MonitorsPage
 from .models import QueryMetricsInput as QueryMetricsInput
 
 BranchTarget = TypeVar("BranchTarget")
+
+new_query_metrics_step.__doc__ = (
+    "Create the typed metric query Step; unwired optional outcomes fail the Flow."
+)
+new_list_monitors_step.__doc__ = (
+    "Create the typed monitor page Step; unwired optional outcomes fail the Flow."
+)

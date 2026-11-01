@@ -28,3 +28,10 @@ from .models import PullRequestPage as PullRequestPage
 from .models import RepositoryPage as RepositoryPage
 
 BranchTarget = TypeVar("BranchTarget")
+
+new_list_repositories_step.__doc__ = (
+    "Create the typed repository page Step; unwired optional outcomes fail the Flow."
+)
+new_list_pull_requests_step.__doc__ = (
+    "Create the typed pull request page Step; unwired optional outcomes fail the Flow."
+)

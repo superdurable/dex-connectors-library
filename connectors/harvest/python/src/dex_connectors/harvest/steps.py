@@ -28,3 +28,10 @@ from .models import ProjectPage as ProjectPage
 from .models import TimeEntryPage as TimeEntryPage
 
 BranchTarget = TypeVar("BranchTarget")
+
+new_list_projects_step.__doc__ = (
+    "Create the typed project page Step; unwired optional outcomes fail the Flow."
+)
+new_list_time_entries_step.__doc__ = (
+    "Create the typed time entry page Step; unwired optional outcomes fail the Flow."
+)

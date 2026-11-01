@@ -28,3 +28,6 @@ from .models import ListRowsInput as ListRowsInput
 from .models import ListRowsOutput as ListRowsOutput
 
 BranchTarget = TypeVar("BranchTarget")
+
+new_list_rows_step.__doc__ = "Create the typed listRows Step; unwired optional outcomes fail the Flow."
+new_get_row_step.__doc__ = "Create the typed getRow Step; unwired optional outcomes fail the Flow."

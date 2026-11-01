@@ -35,3 +35,11 @@ __all__ = [
     "list_deploys_not_found",
     "list_deploys_listed_default",
 ]
+
+Mock.__doc__ = "Script Netlify Queries, defaulting to their manifest answers."
+
+list_sites_listed.__doc__ = "Script the successful listed route."
+list_sites_listed_default.__doc__ = "Return the manifest's listSites listedDefault answer."
+list_deploys_listed.__doc__ = "Script the successful listed route."
+list_deploys_not_found.__doc__ = "Script a missing or inaccessible site."
+list_deploys_listed_default.__doc__ = "Return the manifest's listDeploys listedDefault answer."

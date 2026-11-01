@@ -40,3 +40,13 @@ __all__ = [
     "get_lead_default_answer",
     "get_lead_invalid_key",
 ]
+
+Mock.__doc__ = "Script Close Queries, defaulting to their manifest answers."
+
+list_leads_listed.__doc__ = "Script the successful listed route."
+list_leads_default_answer.__doc__ = "Return the manifest's listLeads defaultAnswer."
+list_leads_invalid_key.__doc__ = "Return the manifest's listLeads invalidKey answer."
+get_lead_found.__doc__ = "Script the successful found route."
+get_lead_not_found.__doc__ = "Script a missing lead."
+get_lead_default_answer.__doc__ = "Return the manifest's getLead defaultAnswer."
+get_lead_invalid_key.__doc__ = "Return the manifest's getLead invalidKey answer."

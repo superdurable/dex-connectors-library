@@ -47,3 +47,8 @@ __all__ = [
     "export_events_exported",
     "export_events_default_answer",
 ]
+
+Mock.__doc__ = "Script Mixpanel operations, defaulting to their manifest answers."
+
+track_event_imported.__doc__ = "Script the imported route."
+export_events_exported.__doc__ = "Script the exported route."

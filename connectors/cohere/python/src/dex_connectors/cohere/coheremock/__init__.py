@@ -34,3 +34,10 @@ __all__ = [
     "rerank_default_ranking",
     "rerank_invalid_key",
 ]
+
+Mock.__doc__ = "Script Cohere Queries, defaulting to their manifest answers."
+
+embed_default_embedding.__doc__ = "Return the manifest's embed defaultEmbedding answer."
+embed_invalid_key.__doc__ = "Return the manifest's embed invalidKey answer."
+rerank_default_ranking.__doc__ = "Return the manifest's rerank defaultRanking answer."
+rerank_invalid_key.__doc__ = "Return the manifest's rerank invalidKey answer."

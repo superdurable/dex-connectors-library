@@ -9,7 +9,7 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
     if depth == 1:
-        return value
+        return tuple(value)
     return tuple(_replace_nil_slices(item, depth - 1) for item in value)
 
 
@@ -70,4 +70,5 @@ class FileComments:
 
 
 FileComments.__annotations__['comments'] = tuple[FileComment, ...] | None
+FileComments.__dataclass_fields__['comments'].type = tuple[FileComment, ...] | None
 setattr(FileComments, '__module__', 'dex_connectors.figma.models')

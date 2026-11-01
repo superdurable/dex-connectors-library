@@ -31,3 +31,6 @@ from .models import UpsertRowsInput as UpsertRowsInput
 from .models import UpsertRowsOutput as UpsertRowsOutput
 
 BranchTarget = TypeVar("BranchTarget")
+
+new_upsert_rows_step.__doc__ = "Create the typed row upsert Step; unwired optional outcomes fail the Flow."
+new_select_rows_step.__doc__ = "Create the typed row selection Step; unwired optional outcomes fail the Flow."

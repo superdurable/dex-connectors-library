@@ -28,3 +28,6 @@ from .models import ListSitesInput as ListSitesInput
 from .models import SitesPage as SitesPage
 
 BranchTarget = TypeVar("BranchTarget")
+
+new_list_sites_step.__doc__ = "Create the typed site page Step; unwired optional outcomes fail the Flow."
+new_list_deploys_step.__doc__ = "Create the typed deploy page Step; unwired optional outcomes fail the Flow."

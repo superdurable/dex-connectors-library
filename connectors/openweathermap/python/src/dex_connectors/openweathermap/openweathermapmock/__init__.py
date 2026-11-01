@@ -47,3 +47,9 @@ __all__ = [
     "get_forecast_found",
     "get_forecast_default_answer",
 ]
+
+Mock.__doc__ = "Script OpenWeatherMap Queries, defaulting to their manifest answers."
+
+get_current_weather_found.__doc__ = "Script the successful found route."
+get_current_weather_not_found.__doc__ = "Script coordinates without weather data."
+get_forecast_found.__doc__ = "Script the successful found route."

@@ -9,7 +9,7 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
     if depth == 1:
-        return value
+        return tuple(value)
     return tuple(_replace_nil_slices(item, depth - 1) for item in value)
 
 
@@ -52,6 +52,7 @@ class ProjectPage:
 
 
 ProjectPage.__annotations__['projects'] = tuple[Project, ...] | None
+ProjectPage.__dataclass_fields__['projects'].type = tuple[Project, ...] | None
 setattr(ProjectPage, '__module__', 'dex_connectors.harvest.models')
 
 
@@ -105,4 +106,5 @@ class TimeEntryPage:
 
 
 TimeEntryPage.__annotations__['time_entries'] = tuple[TimeEntry, ...] | None
+TimeEntryPage.__dataclass_fields__['time_entries'].type = tuple[TimeEntry, ...] | None
 setattr(TimeEntryPage, '__module__', 'dex_connectors.harvest.models')

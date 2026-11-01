@@ -19,3 +19,6 @@ UpsertVectorsInput.__doc__ = (
 QueryVectorsInput.__doc__ = (
     "Namespace, dense query vector, result limit from 1 through 10000, and whether to include metadata."
 )
+
+UpsertVectorsOutput.__doc__ = "The number of vectors Pinecone accepted."
+QueryVectorsOutput.__doc__ = "Pinecone's query JSON with matches and namespace, kept untouched."

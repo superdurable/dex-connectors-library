@@ -132,7 +132,7 @@ def _decode_config(value: dict[str, Any]) -> Config:
             raise ValueError("Mixpanel configuration projectId has an invalid type")
         config_arguments['project_id'] = project_id
     else:
-        raise ValueError("Mixpanel configuration projectId is required")
+        config_arguments['project_id'] = 0
     if "timeout" in value:
         timeout = value["timeout"]
         if not (type(timeout) is int):

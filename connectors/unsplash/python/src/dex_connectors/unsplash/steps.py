@@ -28,3 +28,8 @@ from .models import PhotoPage as PhotoPage
 from .models import SearchPhotosInput as SearchPhotosInput
 
 BranchTarget = TypeVar("BranchTarget")
+
+new_search_photos_step.__doc__ = (
+    "Create the typed photo search Step; unwired optional outcomes fail the Flow."
+)
+new_get_photo_step.__doc__ = "Create the typed photo Step; unwired optional outcomes fail the Flow."

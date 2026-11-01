@@ -28,3 +28,8 @@ from .models import MoviePage as MoviePage
 from .models import SearchMoviesInput as SearchMoviesInput
 
 BranchTarget = TypeVar("BranchTarget")
+
+new_search_movies_step.__doc__ = (
+    "Create the typed movie search Step; unwired optional outcomes fail the Flow."
+)
+new_get_movie_step.__doc__ = "Create the typed movie lookup Step; unwired optional outcomes fail the Flow."

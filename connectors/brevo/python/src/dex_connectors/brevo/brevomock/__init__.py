@@ -51,3 +51,9 @@ __all__ = [
     "get_contact_not_found",
     "get_contact_default_answer",
 ]
+
+Mock.__doc__ = "Script Brevo operations, defaulting to their manifest answers."
+
+create_or_update_contact_saved.__doc__ = "Script the saved route."
+get_contact_found.__doc__ = "Script the successful found route."
+get_contact_not_found.__doc__ = "Script a missing contact."

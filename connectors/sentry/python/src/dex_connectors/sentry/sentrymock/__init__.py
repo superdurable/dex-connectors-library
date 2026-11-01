@@ -45,3 +45,14 @@ __all__ = [
     "update_issue_status_provider_rejected",
     "update_issue_status_default",
 ]
+
+Mock.__doc__ = "Script Sentry operations, defaulting to their manifest answers."
+
+list_issues_listed.__doc__ = "Script the successful listed route."
+list_issues_default.__doc__ = "Return the manifest's listIssuesDefault answer."
+get_issue_found.__doc__ = "Script the successful found route."
+get_issue_not_found.__doc__ = "Script a missing issue."
+get_issue_default.__doc__ = "Return the manifest's getIssueDefault answer."
+update_issue_status_updated.__doc__ = "Script the successful updated route."
+update_issue_status_provider_rejected.__doc__ = "Script a definite rejection of the status update."
+update_issue_status_default.__doc__ = "Return the manifest's updateIssueStatusDefault answer."

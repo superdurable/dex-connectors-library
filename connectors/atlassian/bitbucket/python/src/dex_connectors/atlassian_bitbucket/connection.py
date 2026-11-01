@@ -34,3 +34,13 @@ from .models import ListPullRequestsInput as ListPullRequestsInput
 from .models import ListRepositoriesInput as ListRepositoriesInput
 from .models import PullRequestPage as PullRequestPage
 from .models import RepositoryPage as RepositoryPage
+
+Connection.__doc__ = "Nonserializable Bitbucket operation bindings for a named project connection."
+
+new_connection.__doc__ = "Bind a client to an explicit logical connection reference."
+new_connection_with_operations.__doc__ = (
+    "Bind mock operations to the same connection identity as the real provider."
+)
+new_project_connection.__doc__ = (
+    "Open declared ordinary settings and resolve the current access token per call."
+)

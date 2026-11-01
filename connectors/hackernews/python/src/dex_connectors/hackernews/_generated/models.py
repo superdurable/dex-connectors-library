@@ -10,7 +10,7 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
     if depth == 1:
-        return value
+        return tuple(value)
     return tuple(_replace_nil_slices(item, depth - 1) for item in value)
 
 
@@ -41,6 +41,7 @@ class StoryIDs:
 
 
 StoryIDs.__annotations__['ids'] = tuple[int, ...] | None
+StoryIDs.__dataclass_fields__['ids'].type = tuple[int, ...] | None
 setattr(StoryIDs, '__module__', 'dex_connectors.hackernews.models')
 
 

@@ -35,3 +35,13 @@ from .models import EventImportResult as EventImportResult
 from .models import ExportedEvents as ExportedEvents
 from .models import ExportEventsInput as ExportEventsInput
 from .models import TrackEventInput as TrackEventInput
+
+Connection.__doc__ = "Nonserializable Mixpanel operation bindings for a named project connection."
+
+new_connection.__doc__ = "Bind a client to an explicit logical connection reference."
+new_connection_with_operations.__doc__ = (
+    "Bind mock operations to the same connection identity as the real provider."
+)
+new_project_connection.__doc__ = (
+    "Open declared ordinary settings and resolve the current service account per call."
+)

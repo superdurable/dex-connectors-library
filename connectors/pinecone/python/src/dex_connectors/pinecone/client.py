@@ -99,10 +99,6 @@ _STATUS_KINDS = {
 Output = TypeVar("Output")
 
 
-
-
-
-
 @dataclass(frozen=True, slots=True)
 class _Outcome:
     """A terminal or retry attempt whose empty value the calling operation supplies."""
@@ -409,3 +405,7 @@ def _mutation_failed(branch: str, kind: FailureKind, message: str) -> MutationAt
         Receipt(),
         Failure(kind, CONNECTOR_ID, UPSERT_VECTORS_OPERATION_ID, message),
     )
+
+
+Config.__doc__ = "Pinecone index host and HTTP settings; zero timeout or size limit uses manifest defaults."
+Credentials.__doc__ = "Pinecone API key, resolved anew for every provider attempt."

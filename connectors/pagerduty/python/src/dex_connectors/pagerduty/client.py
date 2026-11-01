@@ -87,10 +87,6 @@ _DEFAULT_MAX_RESPONSE_BYTES = 2_097_152
 Output = TypeVar("Output")
 
 
-
-
-
-
 class Client:
     """One redirect-safe HTTP client and call-time credential source."""
 
@@ -357,3 +353,7 @@ def _boolean(document: dict[str, Any], name: str) -> bool:
     if not isinstance(value, bool):
         raise ValueError
     return value
+
+
+Config.__doc__ = "PagerDuty HTTP settings; zero or blank values use manifest defaults."
+Credentials.__doc__ = "PagerDuty REST API key, resolved anew for every provider attempt."

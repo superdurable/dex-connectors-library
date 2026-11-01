@@ -38,3 +38,13 @@ from .models import IssuesPage as IssuesPage
 from .models import ListIssuesInput as ListIssuesInput
 from .models import Project as Project
 from .models import UpdateIssueLabelsInput as UpdateIssueLabelsInput
+
+Connection.__doc__ = "Nonserializable GitLab operation bindings for a named project connection."
+
+new_connection.__doc__ = "Bind a client to an explicit logical connection reference."
+new_connection_with_operations.__doc__ = (
+    "Bind mock operations to the same connection identity as the real provider."
+)
+new_project_connection.__doc__ = (
+    "Open declared ordinary settings and resolve the current access token per call."
+)

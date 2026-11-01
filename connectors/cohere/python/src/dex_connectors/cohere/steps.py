@@ -28,3 +28,6 @@ from .models import RerankInput as RerankInput
 from .models import RerankOutput as RerankOutput
 
 BranchTarget = TypeVar("BranchTarget")
+
+new_embed_step.__doc__ = "Create the typed embedding Step; unwired optional outcomes fail the Flow."
+new_rerank_step.__doc__ = "Create the typed rerank Step; unwired optional outcomes fail the Flow."

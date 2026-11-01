@@ -91,10 +91,6 @@ _MAX_PAYLOAD_BYTES = 1 << 20
 _EMAIL = re.compile(r"[A-Za-z0-9!#$%&'*+/=?^_`{|}~.-]+@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?")
 
 
-
-
-
-
 class Client:
     """One redirect-safe HTTP client and call-time credential source."""
 
@@ -371,3 +367,7 @@ def _mutation_branch(branch: str, kind: FailureKind, message: str) -> MutationAt
         Receipt(),
         _failure(CREATE_OR_UPDATE_CONTACT_OPERATION_ID, kind, message),
     )
+
+
+Config.__doc__ = "Brevo HTTP settings; zero or blank values use manifest defaults."
+Credentials.__doc__ = "Brevo API key, resolved anew for every provider attempt."

@@ -47,3 +47,8 @@ __all__ = [
     "list_monitors_listed",
     "list_monitors_default_answer",
 ]
+
+Mock.__doc__ = "Script Datadog Queries, defaulting to their manifest answers."
+
+query_metrics_queried.__doc__ = "Script the successful queried route."
+list_monitors_listed.__doc__ = "Script the successful listed route."

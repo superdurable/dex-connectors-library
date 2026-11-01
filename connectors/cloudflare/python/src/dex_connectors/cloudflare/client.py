@@ -100,10 +100,6 @@ _STATUS_KINDS = {
 Output = TypeVar("Output")
 
 
-
-
-
-
 @dataclass(frozen=True, slots=True)
 class _Outcome:
     """A terminal or retry attempt whose empty value the calling operation supplies."""
@@ -383,3 +379,7 @@ def _outcome(
     retry_after_seconds: float = 0,
 ) -> _Outcome:
     return _Outcome(branch, Failure(kind, CONNECTOR_ID, operation, message), is_retry, retry_after_seconds)
+
+
+Config.__doc__ = "Cloudflare HTTP settings; zero or blank values use manifest defaults."
+Credentials.__doc__ = "Cloudflare API token, resolved anew for every provider attempt."

@@ -20,3 +20,7 @@ IssuesPage.__doc__ = "GitLab's default issue page, possibly empty."
 UpdateIssueLabelsInput.__doc__ = (
     "Project, positive project-local issue number, and the complete label set; empty clears all labels."
 )
+
+GetProjectInput.__doc__ = "A numeric project ID or namespace path, such as meridian/web."
+Project.__doc__ = "A project's numeric ID, display name, full group and project path, and web page."
+ListIssuesInput.__doc__ = "The numeric ID or namespace path of the project whose issues are listed."

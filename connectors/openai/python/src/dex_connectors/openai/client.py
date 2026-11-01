@@ -118,10 +118,6 @@ _RATE_LIMIT_HEADER_NAMES = (
 )
 
 
-
-
-
-
 @dataclass(frozen=True, slots=True)
 class CreateResponseCheckpoint:
     """Heartbeat value that fences createResponse retries; the Go connector writes the same shape."""
@@ -849,3 +845,7 @@ def _read_back_deadline(call: Call) -> float:
 
 def _retry_after_seconds(headers: httpx.Headers) -> float:
     return parse_retry_after(headers.get("Retry-After", ""), datetime.now(UTC))
+
+
+Config.__doc__ = "OpenAI settings; blank or zero values use manifest defaults."
+Credentials.__doc__ = "OpenAI project API key, resolved anew for every provider attempt."

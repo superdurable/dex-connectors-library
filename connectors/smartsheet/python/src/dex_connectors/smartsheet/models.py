@@ -21,3 +21,8 @@ from ._generated.models import (
 SheetPage.__doc__ = "One page of sheets with Smartsheet's page number and total count."
 SheetRow.__doc__ = "Row identity and its provider cell objects as untouched JSON."
 Sheet.__doc__ = "Sheet with its columns and rows."
+
+ListSheetsInput.__doc__ = "Page of sheets; page zero means 1 and page_size zero means 100, at most 1000."
+SheetSummary.__doc__ = "Sheet identity and name from a sheet page."
+GetSheetInput.__doc__ = "Positive Smartsheet sheet ID."
+SheetColumn.__doc__ = "Column identity and title."

@@ -9,7 +9,7 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
     if depth == 1:
-        return value
+        return tuple(value)
     return tuple(_replace_nil_slices(item, depth - 1) for item in value)
 
 
@@ -26,6 +26,7 @@ class PurgeCacheByURLsInput:
 
 
 PurgeCacheByURLsInput.__annotations__['urls'] = tuple[str, ...] | None
+PurgeCacheByURLsInput.__dataclass_fields__['urls'].type = tuple[str, ...] | None
 setattr(PurgeCacheByURLsInput, '__module__', 'dex_connectors.cloudflare.models')
 
 
@@ -85,4 +86,5 @@ class ZonesPage:
 
 
 ZonesPage.__annotations__['result'] = tuple[Zone, ...] | None
+ZonesPage.__dataclass_fields__['result'].type = tuple[Zone, ...] | None
 setattr(ZonesPage, '__module__', 'dex_connectors.cloudflare.models')

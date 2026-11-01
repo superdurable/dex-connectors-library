@@ -93,10 +93,6 @@ _MAX_EVENT_PAYLOAD_BYTES = 1 << 20
 _EMAIL = re.compile(r"[A-Za-z0-9!#$%&'*+/=?^_`{|}~.-]+@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?")
 
 
-
-
-
-
 class Client:
     """One redirect-safe HTTP client and call-time credential source."""
 
@@ -373,3 +369,7 @@ def _object(value: Any) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ValueError
     return value
+
+
+Config.__doc__ = "Klaviyo HTTP settings; zero or blank values use manifest defaults."
+Credentials.__doc__ = "Klaviyo private API key, resolved anew for every provider attempt."

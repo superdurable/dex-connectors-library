@@ -9,7 +9,7 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
     if depth == 1:
-        return value
+        return tuple(value)
     return tuple(_replace_nil_slices(item, depth - 1) for item in value)
 
 
@@ -64,6 +64,7 @@ class PhotoPage:
 
 
 PhotoPage.__annotations__['photos'] = tuple[Photo, ...] | None
+PhotoPage.__dataclass_fields__['photos'].type = tuple[Photo, ...] | None
 setattr(PhotoPage, '__module__', 'dex_connectors.unsplash.models')
 
 

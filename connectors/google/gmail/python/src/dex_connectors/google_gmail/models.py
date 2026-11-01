@@ -13,11 +13,7 @@ from ._generated.config import Config as _GeneratedConfig
 
 
 class Config(_GeneratedConfig):
-    """Gmail API settings; zero-valued limits select the manifest defaults.
-
-    The endpoint, response limit, message limit, poll interval, and page size
-    inherit their defaults from the generated connection contract.
-    """
+    """Gmail API settings; zero-valued limits select the manifest defaults."""
 
     __slots__ = ()
 

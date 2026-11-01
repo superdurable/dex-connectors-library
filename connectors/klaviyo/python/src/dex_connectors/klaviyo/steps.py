@@ -31,3 +31,6 @@ from .models import GetProfileInput as GetProfileInput
 from .models import Profile as Profile
 
 BranchTarget = TypeVar("BranchTarget")
+
+new_get_profile_step.__doc__ = "Create the typed profile Step; unwired optional outcomes fail the Flow."
+new_create_event_step.__doc__ = "Create the typed event Step; unwired optional outcomes fail the Flow."

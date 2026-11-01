@@ -35,3 +35,9 @@ from .models import ListIssuesInput as ListIssuesInput
 from .models import UpdateIssueStatusInput as UpdateIssueStatusInput
 
 BranchTarget = TypeVar("BranchTarget")
+
+new_list_issues_step.__doc__ = "Create the typed issue search Step; unwired optional outcomes fail the Flow."
+new_get_issue_step.__doc__ = "Create the typed issue lookup Step; unwired optional outcomes fail the Flow."
+new_update_issue_status_step.__doc__ = (
+    "Create the typed issue status update Step; unwired optional outcomes fail the Flow."
+)

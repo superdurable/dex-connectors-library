@@ -9,7 +9,7 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
     if depth == 1:
-        return value
+        return tuple(value)
     return tuple(_replace_nil_slices(item, depth - 1) for item in value)
 
 
@@ -28,6 +28,7 @@ class EmbedInput:
 
 
 EmbedInput.__annotations__['texts'] = tuple[str, ...] | None
+EmbedInput.__dataclass_fields__['texts'].type = tuple[str, ...] | None
 setattr(EmbedInput, '__module__', 'dex_connectors.cohere.models')
 
 
@@ -44,6 +45,7 @@ class EmbedOutput:
 
 
 EmbedOutput.__annotations__['embeddings'] = tuple[tuple[float, ...] | None, ...] | None
+EmbedOutput.__dataclass_fields__['embeddings'].type = tuple[tuple[float, ...] | None, ...] | None
 setattr(EmbedOutput, '__module__', 'dex_connectors.cohere.models')
 
 
@@ -64,6 +66,7 @@ class RerankInput:
 
 
 RerankInput.__annotations__['documents'] = tuple[str, ...] | None
+RerankInput.__dataclass_fields__['documents'].type = tuple[str, ...] | None
 setattr(RerankInput, '__module__', 'dex_connectors.cohere.models')
 
 
@@ -90,4 +93,5 @@ class RerankOutput:
 
 
 RerankOutput.__annotations__['results'] = tuple[RankedDocument, ...] | None
+RerankOutput.__dataclass_fields__['results'].type = tuple[RankedDocument, ...] | None
 setattr(RerankOutput, '__module__', 'dex_connectors.cohere.models')

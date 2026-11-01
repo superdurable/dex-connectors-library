@@ -31,3 +31,8 @@ from .models import SearchInput as SearchInput
 from .models import SearchPage as SearchPage
 
 BranchTarget = TypeVar("BranchTarget")
+
+new_save_object_step.__doc__ = (
+    "Create the typed record replacement Step; unwired optional outcomes fail the Flow."
+)
+new_search_step.__doc__ = "Create the typed index search Step; unwired optional outcomes fail the Flow."

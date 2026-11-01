@@ -35,3 +35,11 @@ from .models import QueryVectorsInput as QueryVectorsInput
 from .models import QueryVectorsOutput as QueryVectorsOutput
 from .models import UpsertVectorsInput as UpsertVectorsInput
 from .models import UpsertVectorsOutput as UpsertVectorsOutput
+
+Connection.__doc__ = "Nonserializable Pinecone operation bindings for a named project connection."
+
+new_connection.__doc__ = "Bind a client to an explicit logical connection reference."
+new_connection_with_operations.__doc__ = (
+    "Bind mock operations to the same connection identity as the real provider."
+)
+new_project_connection.__doc__ = "Open declared ordinary settings and resolve the current API key per call."

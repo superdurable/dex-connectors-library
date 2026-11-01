@@ -24,3 +24,8 @@ __all__ = [
     "list_rows_default_list_rows",
     "get_row_default_get_row",
 ]
+
+Mock.__doc__ = "Script Coda Queries, defaulting to their manifest answers."
+
+list_rows_default_list_rows.__doc__ = "Return the manifest's listRows defaultListRows answer."
+get_row_default_get_row.__doc__ = "Return the manifest's getRow defaultGetRow answer."

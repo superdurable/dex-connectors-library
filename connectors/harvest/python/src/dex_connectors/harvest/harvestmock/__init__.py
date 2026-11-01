@@ -39,3 +39,12 @@ __all__ = [
     "list_time_entries_default_answer",
     "list_time_entries_invalid_key",
 ]
+
+Mock.__doc__ = "Script Harvest Queries, defaulting to their manifest answers."
+
+list_projects_listed.__doc__ = "Script the successful listed route."
+list_projects_default_answer.__doc__ = "Return the manifest's listProjects defaultAnswer."
+list_projects_invalid_key.__doc__ = "Return the manifest's listProjects invalidKey answer."
+list_time_entries_listed.__doc__ = "Script the successful listed route."
+list_time_entries_default_answer.__doc__ = "Return the manifest's listTimeEntries defaultAnswer."
+list_time_entries_invalid_key.__doc__ = "Return the manifest's listTimeEntries invalidKey answer."

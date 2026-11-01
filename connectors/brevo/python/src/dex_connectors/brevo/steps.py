@@ -31,3 +31,8 @@ from .models import CreateOrUpdateContactInput as CreateOrUpdateContactInput
 from .models import GetContactInput as GetContactInput
 
 BranchTarget = TypeVar("BranchTarget")
+
+new_get_contact_step.__doc__ = "Create the typed contact Step; unwired optional outcomes fail the Flow."
+new_create_or_update_contact_step.__doc__ = (
+    "Create the typed contact upsert Step; unwired optional outcomes fail the Flow."
+)

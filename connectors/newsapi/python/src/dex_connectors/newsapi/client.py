@@ -86,10 +86,6 @@ _DOCUMENTED_CODES = (
 )
 
 
-
-
-
-
 class Client:
     """One redirect-safe HTTP client and call-time credential source."""
 
@@ -391,3 +387,7 @@ def _nullable_string_field(document: dict[str, Any], name: str) -> str | None:
     if value is not None and not isinstance(value, str):
         raise ValueError
     return value
+
+
+Config.__doc__ = "NewsAPI HTTP settings; zero or blank values use manifest defaults."
+Credentials.__doc__ = "NewsAPI API key, resolved anew for every provider attempt."

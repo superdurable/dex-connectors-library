@@ -9,7 +9,7 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
     if depth == 1:
-        return value
+        return tuple(value)
     return tuple(_replace_nil_slices(item, depth - 1) for item in value)
 
 
@@ -40,6 +40,7 @@ class MetricSeries:
 
 
 MetricSeries.__annotations__['pointlist'] = tuple[tuple[float | None, ...] | None, ...] | None
+MetricSeries.__dataclass_fields__['pointlist'].type = tuple[tuple[float | None, ...] | None, ...] | None
 setattr(MetricSeries, '__module__', 'dex_connectors.datadog.models')
 
 
@@ -56,6 +57,7 @@ class MetricsQuery:
 
 
 MetricsQuery.__annotations__['series'] = tuple[MetricSeries, ...] | None
+MetricsQuery.__dataclass_fields__['series'].type = tuple[MetricSeries, ...] | None
 setattr(MetricsQuery, '__module__', 'dex_connectors.datadog.models')
 
 
@@ -98,4 +100,5 @@ class MonitorsPage:
 
 
 MonitorsPage.__annotations__['monitors'] = tuple[Monitor, ...] | None
+MonitorsPage.__dataclass_fields__['monitors'].type = tuple[Monitor, ...] | None
 setattr(MonitorsPage, '__module__', 'dex_connectors.datadog.models')

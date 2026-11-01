@@ -39,3 +39,12 @@ __all__ = [
     "list_transactions_not_found",
     "list_transactions_default_answer",
 ]
+
+Mock.__doc__ = "Script PayPal operations, defaulting to their manifest answers."
+
+get_order_found.__doc__ = "Script the found route."
+get_order_not_found.__doc__ = "Script a missing order."
+get_order_default_answer.__doc__ = "Return the manifest's getOrder default answer."
+list_transactions_listed.__doc__ = "Script the listed route."
+list_transactions_not_found.__doc__ = "Script a missing transaction resource."
+list_transactions_default_answer.__doc__ = "Return the manifest's listTransactions default answer."

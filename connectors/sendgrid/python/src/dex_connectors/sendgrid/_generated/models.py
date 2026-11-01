@@ -9,7 +9,7 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
     if depth == 1:
-        return value
+        return tuple(value)
     return tuple(_replace_nil_slices(item, depth - 1) for item in value)
 
 
@@ -50,6 +50,7 @@ class StatsOutput:
 
 
 StatsOutput.__annotations__['days'] = tuple[StatsDay, ...] | None
+StatsOutput.__dataclass_fields__['days'].type = tuple[StatsDay, ...] | None
 setattr(StatsOutput, '__module__', 'dex_connectors.sendgrid.models')
 
 
@@ -96,4 +97,5 @@ class TemplatesOutput:
 
 
 TemplatesOutput.__annotations__['templates'] = tuple[Template, ...] | None
+TemplatesOutput.__dataclass_fields__['templates'].type = tuple[Template, ...] | None
 setattr(TemplatesOutput, '__module__', 'dex_connectors.sendgrid.models')

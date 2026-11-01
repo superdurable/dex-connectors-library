@@ -4,6 +4,7 @@
 
 import dataclasses
 import importlib
+import json
 import sys
 import types
 import typing
@@ -38,6 +39,9 @@ COMPATIBILITY_MODELS = {
     "unsplash": {"Photo", "PhotoPage"},
     "vercel": {"DeploymentsPage"},
 }
+EXPECTED_DEVIATIONS = json.loads(
+    Path(__file__).with_name("python_model_compatibility.json").read_text()
+)
 
 
 def wire_fields(model: type) -> dict[str, dataclasses.Field]:
@@ -53,7 +57,7 @@ def wire_shape(annotation: object, seen: frozenset[type] = frozenset()) -> objec
     if origin in (typing.Union, types.UnionType):
         present = [argument for argument in arguments if argument is not type(None)]
         if len(present) == 1:
-            return wire_shape(present[0], seen)
+            return ("optional", wire_shape(present[0], seen))
         return (
             "union",
             tuple(sorted(repr(wire_shape(argument, seen)) for argument in present)),
@@ -85,6 +89,32 @@ def wire_shape(annotation: object, seen: frozenset[type] = frozenset()) -> objec
     return getattr(annotation, "__name__", str(annotation))
 
 
+def default_shape(value: object) -> object:
+    if dataclasses.is_dataclass(value) and not isinstance(value, type):
+        return (
+            "record",
+            tuple(
+                sorted(
+                    (name, default_shape(getattr(value, field.name)))
+                    for name, field in wire_fields(type(value)).items()
+                )
+            ),
+        )
+    if isinstance(value, (list, tuple)):
+        return (type(value).__name__, tuple(default_shape(item) for item in value))
+    if isinstance(value, dict):
+        return tuple(sorted((key, default_shape(item)) for key, item in value.items()))
+    return value
+
+
+def field_default_shape(field: dataclasses.Field) -> object:
+    if field.default is not dataclasses.MISSING:
+        return ("default", default_shape(field.default))
+    if field.default_factory is not dataclasses.MISSING:
+        return ("default", default_shape(field.default_factory()))
+    return ("required",)
+
+
 def compare_models(package_directory: Path) -> None:
     packages = [
         path.name
@@ -114,6 +144,7 @@ def compare_models(package_directory: Path) -> None:
         raise AssertionError(
             f"{package_name} compatibility models differ: {shadows ^ expected}"
         )
+    observed_deviations = set()
     for model_name in sorted(shadows):
         public_model = getattr(public, model_name)
         generated_model = getattr(generated, model_name)
@@ -143,10 +174,33 @@ def compare_models(package_directory: Path) -> None:
             generated_type = generated_hints.get(
                 generated_field.name, generated_field.type
             )
-            if wire_shape(public_type) != wire_shape(generated_type):
-                raise AssertionError(
-                    f"{package_name}.{model_name}.{wire_name} JSON type differs"
-                )
+            actual = {
+                "publicType": repr(wire_shape(public_type)),
+                "generatedType": repr(wire_shape(generated_type)),
+                "publicDefault": repr(field_default_shape(public_field)),
+                "generatedDefault": repr(field_default_shape(generated_field)),
+            }
+            key = f"{package_name}.{model_name}.{wire_name}"
+            if (
+                actual["publicType"] == actual["generatedType"]
+                and actual["publicDefault"] == actual["generatedDefault"]
+            ):
+                if key in EXPECTED_DEVIATIONS:
+                    raise AssertionError(
+                        f"{key} no longer needs a compatibility deviation"
+                    )
+            elif EXPECTED_DEVIATIONS.get(key) != actual:
+                raise AssertionError(f"{key} compatibility shape differs: {actual}")
+            else:
+                observed_deviations.add(key)
+    expected_deviations = {
+        key for key in EXPECTED_DEVIATIONS if key.startswith(package_name + ".")
+    }
+    if observed_deviations != expected_deviations:
+        raise AssertionError(
+            f"{package_name} compatibility deviations differ: "
+            f"{observed_deviations ^ expected_deviations}"
+        )
 
 
 if __name__ == "__main__":

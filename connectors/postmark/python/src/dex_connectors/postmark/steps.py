@@ -28,3 +28,10 @@ from .models import MessageDetails as MessageDetails
 from .models import MessagePage as MessagePage
 
 BranchTarget = TypeVar("BranchTarget")
+
+new_list_outbound_messages_step.__doc__ = (
+    "Create the typed outbound message search Step; unwired optional outcomes fail the Flow."
+)
+new_get_message_details_step.__doc__ = (
+    "Create the typed message details Step; unwired optional outcomes fail the Flow."
+)

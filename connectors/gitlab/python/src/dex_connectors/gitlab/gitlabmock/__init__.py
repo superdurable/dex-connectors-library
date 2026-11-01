@@ -67,3 +67,12 @@ __all__ = [
     "update_issue_labels_not_found",
     "update_issue_labels_default_answer",
 ]
+
+Mock.__doc__ = "Script GitLab operations, defaulting to their manifest answers."
+
+get_project_found.__doc__ = "Script the found route."
+get_project_not_found.__doc__ = "Script a missing or inaccessible project."
+list_issues_listed.__doc__ = "Script the listed route."
+list_issues_not_found.__doc__ = "Script a missing or inaccessible project."
+update_issue_labels_updated.__doc__ = "Script the updated route."
+update_issue_labels_not_found.__doc__ = "Script a missing or inaccessible issue."

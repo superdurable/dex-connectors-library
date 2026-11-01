@@ -9,7 +9,7 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
     if depth == 1:
-        return value
+        return tuple(value)
     return tuple(_replace_nil_slices(item, depth - 1) for item in value)
 
 
@@ -52,6 +52,7 @@ class SheetPage:
 
 
 SheetPage.__annotations__['sheets'] = tuple[SheetSummary, ...] | None
+SheetPage.__dataclass_fields__['sheets'].type = tuple[SheetSummary, ...] | None
 setattr(SheetPage, '__module__', 'dex_connectors.smartsheet.models')
 
 
@@ -90,6 +91,7 @@ class SheetRow:
 
 
 SheetRow.__annotations__['cells'] = tuple[Any, ...] | None
+SheetRow.__dataclass_fields__['cells'].type = tuple[Any, ...] | None
 setattr(SheetRow, '__module__', 'dex_connectors.smartsheet.models')
 
 
@@ -111,5 +113,7 @@ class Sheet:
 
 
 Sheet.__annotations__['columns'] = tuple[SheetColumn, ...] | None
+Sheet.__dataclass_fields__['columns'].type = tuple[SheetColumn, ...] | None
 Sheet.__annotations__['rows'] = tuple[SheetRow, ...] | None
+Sheet.__dataclass_fields__['rows'].type = tuple[SheetRow, ...] | None
 setattr(Sheet, '__module__', 'dex_connectors.smartsheet.models')

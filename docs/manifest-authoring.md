@@ -58,8 +58,11 @@ Step, connection, or mock component and suppresses that generated file. Do not
 edit `_generated/` files directly.
 
 Generated Python configuration uses manifest defaults, validates enum choices,
-and decodes `stringList` values as tuples. If a historical public model name
-differs from a Go inline model, add `# connectorctl: model-alias GoName=PublicName`
+and decodes `stringList` values as tuples. A missing optional field without a
+default uses its Go zero value; a missing required field without a default
+fails. Generated mock packages use the Go package name with a `mock` suffix. If
+a historical public model name differs from a Go inline model, add
+`# connectorctl: model-alias GoName=PublicName`
 to the hand-written `models.py` facade so generated mocks use the public name.
 
 Runtime arguments such as `connection`, `map_to_operation_input`/

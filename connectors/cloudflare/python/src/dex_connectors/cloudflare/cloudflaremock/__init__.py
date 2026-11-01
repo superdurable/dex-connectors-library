@@ -51,3 +51,9 @@ __all__ = [
     "purge_cache_by_urls_not_found",
     "purge_cache_by_urls_default_answer",
 ]
+
+Mock.__doc__ = "Script Cloudflare operations, defaulting to their manifest answers."
+
+list_zones_listed.__doc__ = "Script the listed route."
+purge_cache_by_urls_purged.__doc__ = "Script the purged route."
+purge_cache_by_urls_not_found.__doc__ = "Script a missing or inaccessible zone."

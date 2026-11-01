@@ -19,3 +19,10 @@ from ._generated.models import (
 
 EventsOutput.__doc__ = "Events on the first page."
 DomainsOutput.__doc__ = "Domains on the page and Mailgun's total domain count."
+
+GetEventsInput.__doc__ = "Sending domain and events per page; zero limit uses Mailgun's default, at most 300."
+Event.__doc__ = "Event ID, type such as delivered, and Unix timestamp in seconds."
+ListDomainsInput.__doc__ = (
+    "Domains per page (zero uses Mailgun's default, at most 1000) and the number to skip."
+)
+Domain.__doc__ = "Domain name and verification state such as active."

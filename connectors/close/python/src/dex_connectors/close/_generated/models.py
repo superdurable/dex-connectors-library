@@ -9,7 +9,7 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
     if depth == 1:
-        return value
+        return tuple(value)
     return tuple(_replace_nil_slices(item, depth - 1) for item in value)
 
 
@@ -50,6 +50,7 @@ class LeadPage:
 
 
 LeadPage.__annotations__['leads'] = tuple[Lead, ...] | None
+LeadPage.__dataclass_fields__['leads'].type = tuple[Lead, ...] | None
 setattr(LeadPage, '__module__', 'dex_connectors.close.models')
 
 

@@ -34,3 +34,13 @@ from .models import ListProjectsInput as ListProjectsInput
 from .models import ListTimeEntriesInput as ListTimeEntriesInput
 from .models import ProjectPage as ProjectPage
 from .models import TimeEntryPage as TimeEntryPage
+
+Connection.__doc__ = "Nonserializable Harvest operation bindings for a named project connection."
+
+new_connection.__doc__ = "Bind a client to an explicit logical connection reference."
+new_connection_with_operations.__doc__ = (
+    "Bind mock operations to the same connection identity as the real provider."
+)
+new_project_connection.__doc__ = (
+    "Open declared ordinary settings and resolve the current private key per call."
+)

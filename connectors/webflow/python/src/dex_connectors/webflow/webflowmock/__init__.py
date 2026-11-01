@@ -28,3 +28,12 @@ __all__ = [
     "list_collection_items_default_list_collection_items",
     "get_collection_item_default_get_collection_item",
 ]
+
+Mock.__doc__ = "Script Webflow Queries, defaulting to their manifest answers."
+
+list_collection_items_default_list_collection_items.__doc__ = (
+    "Return the manifest's listCollectionItems defaultListCollectionItems answer."
+)
+get_collection_item_default_get_collection_item.__doc__ = (
+    "Return the manifest's getCollectionItem defaultGetCollectionItem answer."
+)

@@ -28,3 +28,10 @@ from .models import IncidentPage as IncidentPage
 from .models import ListIncidentsInput as ListIncidentsInput
 
 BranchTarget = TypeVar("BranchTarget")
+
+new_list_incidents_step.__doc__ = (
+    "Create the typed incident list Step; unwired optional outcomes fail the Flow."
+)
+new_get_incident_step.__doc__ = (
+    "Create the typed incident lookup Step; unwired optional outcomes fail the Flow."
+)

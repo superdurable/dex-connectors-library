@@ -9,7 +9,7 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
     if depth == 1:
-        return value
+        return tuple(value)
     return tuple(_replace_nil_slices(item, depth - 1) for item in value)
 
 
@@ -58,6 +58,7 @@ class MoviePage:
 
 
 MoviePage.__annotations__['results'] = tuple[Movie, ...] | None
+MoviePage.__dataclass_fields__['results'].type = tuple[Movie, ...] | None
 setattr(MoviePage, '__module__', 'dex_connectors.tmdb.models')
 
 

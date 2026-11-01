@@ -28,3 +28,8 @@ from .models import ListStoryIDsInput as ListStoryIDsInput
 from .models import StoryIDs as StoryIDs
 
 BranchTarget = TypeVar("BranchTarget")
+
+new_list_story_ids_step.__doc__ = (
+    "Create the typed feed snapshot Step; unwired optional outcomes fail the Flow."
+)
+new_get_item_step.__doc__ = "Create the typed item Step; unwired optional outcomes fail the Flow."

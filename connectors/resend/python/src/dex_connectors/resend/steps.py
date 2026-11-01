@@ -31,3 +31,6 @@ from .models import SendEmailInput as SendEmailInput
 from .models import SentEmail as SentEmail
 
 BranchTarget = TypeVar("BranchTarget")
+
+new_send_email_step.__doc__ = "Create the typed send Step; unwired optional outcomes fail the Flow."
+new_get_email_step.__doc__ = "Create the typed lookup Step; unwired optional outcomes fail the Flow."

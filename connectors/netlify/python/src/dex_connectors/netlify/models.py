@@ -19,3 +19,8 @@ from ._generated.models import SitesPage as SitesPage
 
 SitesPage.__doc__ = "Sites visible to the token."
 DeploysPage.__doc__ = "Deploys for the site."
+
+ListSitesInput.__doc__ = "Lists every site the token can see; there are no parameters."
+Site.__doc__ = "Site identity, name, public URL, and Netlify admin URL."
+ListDeploysInput.__doc__ = "Netlify site ID whose deploys are listed."
+Deploy.__doc__ = "Deploy identity, owning site, state such as ready, and deploy URL."

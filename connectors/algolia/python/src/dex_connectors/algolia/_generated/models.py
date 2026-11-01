@@ -9,7 +9,7 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
     if depth == 1:
-        return value
+        return tuple(value)
     return tuple(_replace_nil_slices(item, depth - 1) for item in value)
 
 
@@ -78,4 +78,5 @@ class SearchPage:
 
 
 SearchPage.__annotations__['hits'] = tuple[SearchHit, ...] | None
+SearchPage.__dataclass_fields__['hits'].type = tuple[SearchHit, ...] | None
 setattr(SearchPage, '__module__', 'dex_connectors.algolia.models')

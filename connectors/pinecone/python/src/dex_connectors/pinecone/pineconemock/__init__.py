@@ -46,3 +46,8 @@ __all__ = [
     "query_vectors_queried",
     "query_vectors_default_answer",
 ]
+
+Mock.__doc__ = "Script Pinecone operations, defaulting to their manifest answers."
+
+upsert_vectors_upserted.__doc__ = "Script the upserted route."
+query_vectors_queried.__doc__ = "Script the queried route."

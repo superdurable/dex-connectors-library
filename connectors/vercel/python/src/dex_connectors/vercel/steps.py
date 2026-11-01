@@ -28,3 +28,10 @@ from .models import GetDeploymentInput as GetDeploymentInput
 from .models import ListDeploymentsInput as ListDeploymentsInput
 
 BranchTarget = TypeVar("BranchTarget")
+
+new_list_deployments_step.__doc__ = (
+    "Create the typed deployment page Step; unwired optional outcomes fail the Flow."
+)
+new_get_deployment_step.__doc__ = (
+    "Create the typed deployment lookup Step; unwired optional outcomes fail the Flow."
+)

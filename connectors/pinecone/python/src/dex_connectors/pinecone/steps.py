@@ -31,3 +31,10 @@ from .models import UpsertVectorsInput as UpsertVectorsInput
 from .models import UpsertVectorsOutput as UpsertVectorsOutput
 
 BranchTarget = TypeVar("BranchTarget")
+
+new_upsert_vectors_step.__doc__ = (
+    "Create the typed vector upsert Step; unwired optional outcomes fail the Flow."
+)
+new_query_vectors_step.__doc__ = (
+    "Create the typed vector query Step; unwired optional outcomes fail the Flow."
+)

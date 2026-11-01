@@ -1,0 +1,242 @@
+{
+  "algolia.SaveObjectInput.attributes": {
+    "generatedDefault": "('default', None)",
+    "generatedType": "('optional', ('map', 'str', 'str'))",
+    "publicDefault": "('default', ())",
+    "publicType": "('map', 'str', 'str')"
+  },
+  "google_gmail.GetMessageInput.messageId": {
+    "generatedDefault": "('default', '')",
+    "generatedType": "'str'",
+    "publicDefault": "('required',)",
+    "publicType": "'str'"
+  },
+  "google_gmail.Message.labelIds": {
+    "generatedDefault": "('default', ('tuple', ()))",
+    "generatedType": "('sequence', 'str')",
+    "publicDefault": "('default', ('list', ()))",
+    "publicType": "('sequence', 'str')"
+  },
+  "google_gmail.Message.to": {
+    "generatedDefault": "('default', ('tuple', ()))",
+    "generatedType": "('sequence', 'str')",
+    "publicDefault": "('default', ('list', ()))",
+    "publicType": "('sequence', 'str')"
+  },
+  "google_gmail.ReplyToMessageInput.messageId": {
+    "generatedDefault": "('default', '')",
+    "generatedType": "'str'",
+    "publicDefault": "('required',)",
+    "publicType": "'str'"
+  },
+  "google_gmail.ReplyToMessageInput.textBody": {
+    "generatedDefault": "('default', '')",
+    "generatedType": "'str'",
+    "publicDefault": "('required',)",
+    "publicType": "'str'"
+  },
+  "google_gmail.SendMessageInput.subject": {
+    "generatedDefault": "('default', '')",
+    "generatedType": "'str'",
+    "publicDefault": "('required',)",
+    "publicType": "'str'"
+  },
+  "google_gmail.SendMessageInput.textBody": {
+    "generatedDefault": "('default', '')",
+    "generatedType": "'str'",
+    "publicDefault": "('required',)",
+    "publicType": "'str'"
+  },
+  "google_gmail.SendMessageInput.to": {
+    "generatedDefault": "('default', ('tuple', ()))",
+    "generatedType": "('optional', ('sequence', 'str'))",
+    "publicDefault": "('required',)",
+    "publicType": "('sequence', 'str')"
+  },
+  "google_gmail.SendMessageOutput.recipients": {
+    "generatedDefault": "('default', ('tuple', ()))",
+    "generatedType": "('optional', ('sequence', 'str'))",
+    "publicDefault": "('default', ('list', ()))",
+    "publicType": "('sequence', 'str')"
+  },
+  "openai.CreateRequest.StructuredOutput": {
+    "generatedDefault": "('default', None)",
+    "generatedType": "('optional', ('record', (('description', 'str'), ('name', 'str'), ('schema', ('optional', ('map', 'str', 'any'))), ('strict', 'bool'))))",
+    "publicDefault": "('default', None)",
+    "publicType": "('optional', ('record', (('description', 'str'), ('name', 'str'), ('schema', ('map', 'str', 'any')), ('strict', 'bool'))))"
+  },
+  "openai.StructuredOutput.name": {
+    "generatedDefault": "('default', '')",
+    "generatedType": "'str'",
+    "publicDefault": "('required',)",
+    "publicType": "'str'"
+  },
+  "openai.StructuredOutput.schema": {
+    "generatedDefault": "('default', None)",
+    "generatedType": "('optional', ('map', 'str', 'any'))",
+    "publicDefault": "('required',)",
+    "publicType": "('map', 'str', 'any')"
+  },
+  "paypal.TransactionPage.transaction_details": {
+    "generatedDefault": "('default', ('tuple', ()))",
+    "generatedType": "('optional', ('sequence', ('record', (('transaction_info', ('record', (('transaction_amount', ('record', (('currency_code', 'str'), ('value', 'str')))), ('transaction_id', 'str'), ('transaction_status', 'str')))),))))",
+    "publicDefault": "('default', ('tuple', ()))",
+    "publicType": "('sequence', ('record', (('transaction_info', ('record', (('transaction_amount', ('record', (('currency_code', 'str'), ('value', 'str')))), ('transaction_id', 'str'), ('transaction_status', 'str')))),)))"
+  },
+  "resend.Email.to": {
+    "generatedDefault": "('default', ('tuple', ()))",
+    "generatedType": "('optional', ('sequence', 'str'))",
+    "publicDefault": "('default', ('tuple', ()))",
+    "publicType": "('sequence', 'str')"
+  },
+  "resend.SendEmailInput.to": {
+    "generatedDefault": "('default', ('tuple', ()))",
+    "generatedType": "('optional', ('sequence', 'str'))",
+    "publicDefault": "('default', ('tuple', ()))",
+    "publicType": "('sequence', 'str')"
+  },
+  "stripe.CheckoutSession.expiresAt": {
+    "generatedDefault": "('default', datetime.datetime(1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc))",
+    "generatedType": "'datetime'",
+    "publicDefault": "('default', None)",
+    "publicType": "('optional', 'datetime')"
+  },
+  "stripe.CreateACHCheckoutSessionInput.cancelUrl": {
+    "generatedDefault": "('default', '')",
+    "generatedType": "'str'",
+    "publicDefault": "('required',)",
+    "publicType": "'str'"
+  },
+  "stripe.CreateACHCheckoutSessionInput.clientReferenceId": {
+    "generatedDefault": "('default', '')",
+    "generatedType": "'str'",
+    "publicDefault": "('required',)",
+    "publicType": "'str'"
+  },
+  "stripe.CreateACHCheckoutSessionInput.currency": {
+    "generatedDefault": "('default', '')",
+    "generatedType": "'str'",
+    "publicDefault": "('required',)",
+    "publicType": "'str'"
+  },
+  "stripe.CreateACHCheckoutSessionInput.customerEmail": {
+    "generatedDefault": "('default', '')",
+    "generatedType": "'str'",
+    "publicDefault": "('required',)",
+    "publicType": "'str'"
+  },
+  "stripe.CreateACHCheckoutSessionInput.expiresAt": {
+    "generatedDefault": "('default', datetime.datetime(1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc))",
+    "generatedType": "'datetime'",
+    "publicDefault": "('default', None)",
+    "publicType": "('optional', 'datetime')"
+  },
+  "stripe.CreateACHCheckoutSessionInput.productName": {
+    "generatedDefault": "('default', '')",
+    "generatedType": "'str'",
+    "publicDefault": "('required',)",
+    "publicType": "'str'"
+  },
+  "stripe.CreateACHCheckoutSessionInput.successUrl": {
+    "generatedDefault": "('default', '')",
+    "generatedType": "'str'",
+    "publicDefault": "('required',)",
+    "publicType": "'str'"
+  },
+  "stripe.CreateACHCheckoutSessionInput.unitAmount": {
+    "generatedDefault": "('default', 0)",
+    "generatedType": "'int'",
+    "publicDefault": "('required',)",
+    "publicType": "'int'"
+  },
+  "stripe.CreateCardCheckoutSessionInput.cancelUrl": {
+    "generatedDefault": "('default', '')",
+    "generatedType": "'str'",
+    "publicDefault": "('required',)",
+    "publicType": "'str'"
+  },
+  "stripe.CreateCardCheckoutSessionInput.clientReferenceId": {
+    "generatedDefault": "('default', '')",
+    "generatedType": "'str'",
+    "publicDefault": "('required',)",
+    "publicType": "'str'"
+  },
+  "stripe.CreateCardCheckoutSessionInput.currency": {
+    "generatedDefault": "('default', '')",
+    "generatedType": "'str'",
+    "publicDefault": "('required',)",
+    "publicType": "'str'"
+  },
+  "stripe.CreateCardCheckoutSessionInput.customerEmail": {
+    "generatedDefault": "('default', '')",
+    "generatedType": "'str'",
+    "publicDefault": "('required',)",
+    "publicType": "'str'"
+  },
+  "stripe.CreateCardCheckoutSessionInput.expiresAt": {
+    "generatedDefault": "('default', datetime.datetime(1, 1, 1, 0, 0, tzinfo=datetime.timezone.utc))",
+    "generatedType": "'datetime'",
+    "publicDefault": "('default', None)",
+    "publicType": "('optional', 'datetime')"
+  },
+  "stripe.CreateCardCheckoutSessionInput.productName": {
+    "generatedDefault": "('default', '')",
+    "generatedType": "'str'",
+    "publicDefault": "('required',)",
+    "publicType": "'str'"
+  },
+  "stripe.CreateCardCheckoutSessionInput.successUrl": {
+    "generatedDefault": "('default', '')",
+    "generatedType": "'str'",
+    "publicDefault": "('required',)",
+    "publicType": "'str'"
+  },
+  "stripe.CreateCardCheckoutSessionInput.unitAmount": {
+    "generatedDefault": "('default', 0)",
+    "generatedType": "'int'",
+    "publicDefault": "('required',)",
+    "publicType": "'int'"
+  },
+  "stripe.CreateRefundInput.amount": {
+    "generatedDefault": "('default', 0)",
+    "generatedType": "'int'",
+    "publicDefault": "('required',)",
+    "publicType": "'int'"
+  },
+  "stripe.CreateRefundInput.paymentIntentId": {
+    "generatedDefault": "('default', '')",
+    "generatedType": "'str'",
+    "publicDefault": "('required',)",
+    "publicType": "'str'"
+  },
+  "stripe.GetCheckoutSessionInput.sessionId": {
+    "generatedDefault": "('default', '')",
+    "generatedType": "'str'",
+    "publicDefault": "('required',)",
+    "publicType": "'str'"
+  },
+  "stripe.GetPaymentIntentInput.paymentIntentId": {
+    "generatedDefault": "('default', '')",
+    "generatedType": "'str'",
+    "publicDefault": "('required',)",
+    "publicType": "'str'"
+  },
+  "supabase.UpsertRowsInput.rows": {
+    "generatedDefault": "('default', ('tuple', ()))",
+    "generatedType": "('optional', ('sequence', ('optional', ('map', 'str', 'any'))))",
+    "publicDefault": "('default', ('tuple', ()))",
+    "publicType": "('sequence', ('map', 'str', 'any'))"
+  },
+  "unsplash.PhotoPage.photos": {
+    "generatedDefault": "('default', ('tuple', ()))",
+    "generatedType": "('optional', ('sequence', ('record', (('altDescription', ('optional', 'str')), ('description', ('optional', 'str')), ('htmlUrl', 'str'), ('id', 'str'), ('photographerName', 'str'), ('photographerURL', 'str'), ('regularUrl', 'str')))))",
+    "publicDefault": "('default', ('tuple', ()))",
+    "publicType": "('sequence', ('record', (('altDescription', ('optional', 'str')), ('description', ('optional', 'str')), ('htmlUrl', 'str'), ('id', 'str'), ('photographerName', 'str'), ('photographerURL', 'str'), ('regularUrl', 'str'))))"
+  },
+  "vercel.DeploymentsPage.deployments": {
+    "generatedDefault": "('default', ('tuple', ()))",
+    "generatedType": "('optional', ('sequence', ('record', (('created', 'int'), ('id', 'str'), ('name', 'str'), ('readyState', 'str'), ('state', 'str'), ('uid', 'str'), ('url', 'str')))))",
+    "publicDefault": "('default', ('tuple', ()))",
+    "publicType": "('sequence', ('record', (('created', 'int'), ('id', 'str'), ('name', 'str'), ('readyState', 'str'), ('state', 'str'), ('uid', 'str'), ('url', 'str'))))"
+  }
+}

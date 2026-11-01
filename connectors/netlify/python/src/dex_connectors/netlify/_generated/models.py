@@ -9,7 +9,7 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
     if depth == 1:
-        return value
+        return tuple(value)
     return tuple(_replace_nil_slices(item, depth - 1) for item in value)
 
 
@@ -49,6 +49,7 @@ class SitesPage:
 
 
 SitesPage.__annotations__['sites'] = tuple[Site, ...] | None
+SitesPage.__dataclass_fields__['sites'].type = tuple[Site, ...] | None
 setattr(SitesPage, '__module__', 'dex_connectors.netlify.models')
 
 
@@ -89,4 +90,5 @@ class DeploysPage:
 
 
 DeploysPage.__annotations__['deploys'] = tuple[Deploy, ...] | None
+DeploysPage.__dataclass_fields__['deploys'].type = tuple[Deploy, ...] | None
 setattr(DeploysPage, '__module__', 'dex_connectors.netlify.models')

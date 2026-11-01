@@ -9,7 +9,7 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
     if depth == 1:
-        return value
+        return tuple(value)
     return tuple(_replace_nil_slices(item, depth - 1) for item in value)
 
 
@@ -28,6 +28,7 @@ class Vector:
 
 
 Vector.__annotations__['values'] = tuple[float, ...] | None
+Vector.__dataclass_fields__['values'].type = tuple[float, ...] | None
 setattr(Vector, '__module__', 'dex_connectors.pinecone.models')
 
 
@@ -44,6 +45,7 @@ class UpsertVectorsInput:
 
 
 UpsertVectorsInput.__annotations__['vectors'] = tuple[Vector, ...] | None
+UpsertVectorsInput.__dataclass_fields__['vectors'].type = tuple[Vector, ...] | None
 setattr(UpsertVectorsInput, '__module__', 'dex_connectors.pinecone.models')
 
 
@@ -74,6 +76,7 @@ class QueryVectorsInput:
 
 
 QueryVectorsInput.__annotations__['vector'] = tuple[float, ...] | None
+QueryVectorsInput.__dataclass_fields__['vector'].type = tuple[float, ...] | None
 setattr(QueryVectorsInput, '__module__', 'dex_connectors.pinecone.models')
 
 

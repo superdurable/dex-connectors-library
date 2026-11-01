@@ -21,3 +21,5 @@ from ._generated.steps import (
 from .connection import Connection as Connection
 from .models import ArticlePage as ArticlePage
 from .models import SearchArticlesInput as SearchArticlesInput
+
+new_search_articles_step.__doc__ = "Create the typed search Step; unwired optional outcomes fail the Flow."

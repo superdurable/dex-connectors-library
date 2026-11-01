@@ -27,3 +27,10 @@ from .models import GlobalQuoteOutput as GlobalQuoteOutput
 from .models import StockInput as StockInput
 
 BranchTarget = TypeVar("BranchTarget")
+
+new_get_global_quote_step.__doc__ = (
+    "Create the typed global quote Step; unwired optional outcomes fail the Flow."
+)
+new_get_time_series_daily_step.__doc__ = (
+    "Create the typed daily series Step; unwired optional outcomes fail the Flow."
+)

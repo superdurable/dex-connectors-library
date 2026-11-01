@@ -37,3 +37,12 @@ __all__ = [
     "get_incident_not_found",
     "get_incident_default",
 ]
+
+Mock.__doc__ = "Script PagerDuty operations, defaulting to their manifest answers."
+
+list_incidents_listed.__doc__ = "Script the successful listed route."
+list_incidents_provider_rejected.__doc__ = "Script a definite provider rejection of the list."
+list_incidents_default.__doc__ = "Return the manifest's listIncidentsDefault answer."
+get_incident_found.__doc__ = "Script the successful found route."
+get_incident_not_found.__doc__ = "Script a missing incident."
+get_incident_default.__doc__ = "Return the manifest's getIncidentDefault answer."

@@ -34,3 +34,11 @@ __all__ = [
     "get_order_not_found",
     "get_order_default_answer",
 ]
+
+Mock.__doc__ = "Script Shopify Queries, defaulting to their manifest answers."
+
+list_orders_listed.__doc__ = "Script the successful listed route."
+list_orders_default_answer.__doc__ = "Return the manifest's listPayments defaultAnswer."
+get_order_found.__doc__ = "Script the successful found route."
+get_order_not_found.__doc__ = "Script a missing order."
+get_order_default_answer.__doc__ = "Return the manifest's getPayment defaultAnswer."

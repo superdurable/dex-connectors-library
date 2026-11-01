@@ -27,3 +27,8 @@ from .models import ForecastOutput as ForecastOutput
 from .models import WeatherInput as WeatherInput
 
 BranchTarget = TypeVar("BranchTarget")
+
+new_get_current_weather_step.__doc__ = (
+    "Create the typed current weather Step; unwired optional outcomes fail the Flow."
+)
+new_get_forecast_step.__doc__ = "Create the typed forecast Step; unwired optional outcomes fail the Flow."

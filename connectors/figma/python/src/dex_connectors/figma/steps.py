@@ -28,3 +28,8 @@ from .models import GetFileCommentsInput as GetFileCommentsInput
 from .models import GetFileInput as GetFileInput
 
 BranchTarget = TypeVar("BranchTarget")
+
+new_get_file_step.__doc__ = "Create the typed file Step; unwired optional outcomes fail the Flow."
+new_get_file_comments_step.__doc__ = (
+    "Create the typed file comments Step; unwired optional outcomes fail the Flow."
+)

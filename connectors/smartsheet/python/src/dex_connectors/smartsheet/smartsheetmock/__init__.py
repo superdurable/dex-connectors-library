@@ -42,3 +42,13 @@ __all__ = [
     "get_sheet_default_answer",
     "get_sheet_invalid_key",
 ]
+
+Mock.__doc__ = "Script Smartsheet Queries, defaulting to their manifest answers."
+
+list_sheets_listed.__doc__ = "Script the successful listed route."
+list_sheets_default_answer.__doc__ = "Return the manifest's listSheets defaultAnswer."
+list_sheets_invalid_key.__doc__ = "Return the manifest's listSheets invalidKey answer."
+get_sheet_found.__doc__ = "Script the successful found route."
+get_sheet_not_found.__doc__ = "Script a missing sheet."
+get_sheet_default_answer.__doc__ = "Return the manifest's getSheet defaultAnswer."
+get_sheet_invalid_key.__doc__ = "Return the manifest's getSheet invalidKey answer."

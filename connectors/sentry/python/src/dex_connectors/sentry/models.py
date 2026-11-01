@@ -17,3 +17,8 @@ from ._generated.models import (
 )
 
 IssuePage.__doc__ = "Issues from Sentry's first result page for the query."
+
+ListIssuesInput.__doc__ = "Organization slug and optional Sentry search query, such as is:unresolved."
+GetIssueInput.__doc__ = "Organization slug and numeric issue ID text."
+UpdateIssueStatusInput.__doc__ = "Organization slug, issue ID, and status: resolved, unresolved, or ignored."
+Issue.__doc__ = "Sentry issue summary; short_id is the project-scoped label such as APP-1."

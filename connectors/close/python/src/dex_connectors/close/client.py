@@ -89,10 +89,6 @@ _SAFE_KEY = re.compile(r"[A-Za-z0-9_-]{1,128}")
 Output = TypeVar("Output")
 
 
-
-
-
-
 class Client:
     """One redirect-safe HTTP client and call-time credential source."""
 
@@ -327,3 +323,7 @@ def _string(document: dict[str, Any], name: str) -> str:
     if not isinstance(value, str):
         raise ValueError
     return value
+
+
+Config.__doc__ = "Close HTTP settings; zero or blank values use manifest defaults."
+Credentials.__doc__ = "Close API key, resolved anew for every provider attempt."

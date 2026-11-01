@@ -9,7 +9,7 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
     if depth == 1:
-        return value
+        return tuple(value)
     return tuple(_replace_nil_slices(item, depth - 1) for item in value)
 
 
@@ -70,4 +70,5 @@ class DailySeriesOutput:
 
 
 DailySeriesOutput.__annotations__['days'] = tuple[DailyPrice, ...] | None
+DailySeriesOutput.__dataclass_fields__['days'].type = tuple[DailyPrice, ...] | None
 setattr(DailySeriesOutput, '__module__', 'dex_connectors.alphavantage.models')

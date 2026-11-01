@@ -14,3 +14,11 @@ from ._generated.models import (
 )
 
 ForecastOutput.__doc__ = "City name and forecast points in provider order."
+
+WeatherInput.__doc__ = (
+    "Coordinates in decimal degrees and units: standard (kelvin, default), metric, or imperial."
+)
+CurrentWeatherOutput.__doc__ = (
+    "City name, temperature in the requested units, and the first weather description."
+)
+ForecastEntry.__doc__ = "Forecast point at a Unix timestamp in seconds."

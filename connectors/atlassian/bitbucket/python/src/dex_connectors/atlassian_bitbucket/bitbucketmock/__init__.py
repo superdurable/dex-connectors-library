@@ -35,3 +35,11 @@ __all__ = [
     "list_pull_requests_listed",
     "list_pull_requests_default_answer",
 ]
+
+Mock.__doc__ = "Script Bitbucket Queries, defaulting to their manifest answers."
+
+list_repositories_listed.__doc__ = "Script the successful listed route."
+list_repositories_not_found.__doc__ = "Script a missing workspace."
+list_repositories_default_answer.__doc__ = "Return the manifest's listRepositories defaultAnswer."
+list_pull_requests_listed.__doc__ = "Script the successful listed route."
+list_pull_requests_default_answer.__doc__ = "Return the manifest's listPullRequests defaultAnswer."

@@ -9,7 +9,7 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
     if depth == 1:
-        return value
+        return tuple(value)
     return tuple(_replace_nil_slices(item, depth - 1) for item in value)
 
 
@@ -78,6 +78,7 @@ class TransactionPage:
 
 
 TransactionPage.__annotations__['transaction_details'] = tuple[TransactionDetail, ...] | None
+TransactionPage.__dataclass_fields__['transaction_details'].type = tuple[TransactionDetail, ...] | None
 setattr(TransactionPage, '__module__', 'dex_connectors.paypal.models')
 
 

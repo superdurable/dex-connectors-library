@@ -33,3 +33,13 @@ from .client import Credentials as Credentials
 from .models import DailySeriesOutput as DailySeriesOutput
 from .models import GlobalQuoteOutput as GlobalQuoteOutput
 from .models import StockInput as StockInput
+
+Connection.__doc__ = "Nonserializable Alpha Vantage operation bindings for a named project connection."
+
+new_connection.__doc__ = "Bind a client to an explicit logical connection reference."
+new_connection_with_operations.__doc__ = (
+    "Bind mock operations to the same connection identity as the real provider."
+)
+new_project_connection.__doc__ = (
+    "Open declared ordinary settings and resolve the current private key per call."
+)

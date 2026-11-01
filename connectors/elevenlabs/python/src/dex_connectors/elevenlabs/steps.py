@@ -28,3 +28,8 @@ from .models import ListVoicesInput as ListVoicesInput
 from .models import ListVoicesOutput as ListVoicesOutput
 
 BranchTarget = TypeVar("BranchTarget")
+
+new_list_voices_step.__doc__ = "Create the typed voice listing Step; unwired optional outcomes fail the Flow."
+new_create_speech_step.__doc__ = (
+    "Create the typed speech generation Step; unwired optional outcomes fail the Flow."
+)

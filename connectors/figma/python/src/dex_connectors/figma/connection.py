@@ -34,3 +34,13 @@ from .models import File as File
 from .models import FileComments as FileComments
 from .models import GetFileCommentsInput as GetFileCommentsInput
 from .models import GetFileInput as GetFileInput
+
+Connection.__doc__ = "Nonserializable Figma operation bindings for a named project connection."
+
+new_connection.__doc__ = "Bind a client to an explicit logical connection reference."
+new_connection_with_operations.__doc__ = (
+    "Bind mock operations to the same connection identity as the real provider."
+)
+new_project_connection.__doc__ = (
+    "Open declared ordinary settings and resolve the current private key per call."
+)

@@ -9,7 +9,7 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
     if depth == 1:
-        return value
+        return tuple(value)
     return tuple(_replace_nil_slices(item, depth - 1) for item in value)
 
 
@@ -56,6 +56,7 @@ class IncidentPage:
 
 
 IncidentPage.__annotations__['incidents'] = tuple[Incident, ...] | None
+IncidentPage.__dataclass_fields__['incidents'].type = tuple[Incident, ...] | None
 setattr(IncidentPage, '__module__', 'dex_connectors.pagerduty.models')
 
 

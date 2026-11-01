@@ -99,10 +99,6 @@ _STATUS_KINDS = {
 Output = TypeVar("Output")
 
 
-
-
-
-
 @dataclass(frozen=True, slots=True)
 class _Outcome:
     """A terminal or retry attempt whose empty value the calling operation supplies."""
@@ -385,3 +381,7 @@ def _mutation_failed(branch: str, kind: FailureKind, message: str) -> MutationAt
     return MutationAttempt.branch_result(
         branch, UpsertRowsOutput(), Receipt(), Failure(kind, CONNECTOR_ID, UPSERT_ROWS_OPERATION_ID, message)
     )
+
+
+Config.__doc__ = "Supabase Data API URL and HTTP settings; zero timeout or size limit uses manifest defaults."
+Credentials.__doc__ = "Supabase server-side API key, resolved anew for every provider attempt."

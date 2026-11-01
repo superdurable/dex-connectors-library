@@ -46,3 +46,8 @@ __all__ = [
     "list_domains_listed",
     "list_domains_default_answer",
 ]
+
+Mock.__doc__ = "Script Mailgun Queries, defaulting to their manifest answers."
+
+get_events_listed.__doc__ = "Script the successful listed route."
+list_domains_listed.__doc__ = "Script the successful listed route."

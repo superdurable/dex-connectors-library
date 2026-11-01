@@ -49,3 +49,9 @@ __all__ = [
     "create_event_accepted",
     "create_event_default_answer",
 ]
+
+Mock.__doc__ = "Script Klaviyo operations, defaulting to their manifest answers."
+
+get_profile_found.__doc__ = "Script the successful found route."
+get_profile_not_found.__doc__ = "Script a missing profile."
+create_event_accepted.__doc__ = "Script the accepted route."

@@ -34,3 +34,11 @@ from .models import GetEntryInput as GetEntryInput
 from .models import GetEntryOutput as GetEntryOutput
 from .models import ListEntriesInput as ListEntriesInput
 from .models import ListEntriesOutput as ListEntriesOutput
+
+Connection.__doc__ = "Nonserializable Contentful operation bindings for a named project connection."
+
+new_connection.__doc__ = "Bind a client to an explicit logical connection reference."
+new_connection_with_operations.__doc__ = (
+    "Bind mock operations to the same connection identity as the real provider."
+)
+new_project_connection.__doc__ = "Open declared ordinary settings and resolve the current token per call."

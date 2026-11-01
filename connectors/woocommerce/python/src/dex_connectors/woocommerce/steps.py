@@ -28,3 +28,6 @@ from .models import Order as Order
 from .models import OrderPage as OrderPage
 
 BranchTarget = TypeVar("BranchTarget")
+
+new_list_orders_step.__doc__ = "Create the typed order page Step; unwired optional outcomes fail the Flow."
+new_get_order_step.__doc__ = "Create the typed order lookup Step; unwired optional outcomes fail the Flow."

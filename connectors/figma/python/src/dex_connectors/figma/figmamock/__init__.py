@@ -41,3 +41,13 @@ __all__ = [
     "get_file_comments_default_answer",
     "get_file_comments_invalid_key",
 ]
+
+Mock.__doc__ = "Script Figma Queries, defaulting to their manifest answers."
+
+get_file_found.__doc__ = "Script the successful found route."
+get_file_not_found.__doc__ = "Script a missing file."
+get_file_default_answer.__doc__ = "Return the manifest's getFile defaultAnswer."
+get_file_invalid_key.__doc__ = "Return the manifest's getFile invalidKey answer."
+get_file_comments_listed.__doc__ = "Script the successful listed route."
+get_file_comments_default_answer.__doc__ = "Return the manifest's getFileComments defaultAnswer."
+get_file_comments_invalid_key.__doc__ = "Return the manifest's getFileComments invalidKey answer."

@@ -9,7 +9,7 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
     if depth == 1:
-        return value
+        return tuple(value)
     return tuple(_replace_nil_slices(item, depth - 1) for item in value)
 
 
@@ -56,6 +56,7 @@ class RepositoryPage:
 
 
 RepositoryPage.__annotations__['values'] = tuple[Repository, ...] | None
+RepositoryPage.__dataclass_fields__['values'].type = tuple[Repository, ...] | None
 setattr(RepositoryPage, '__module__', 'dex_connectors.atlassian_bitbucket.models')
 
 
@@ -102,4 +103,5 @@ class PullRequestPage:
 
 
 PullRequestPage.__annotations__['values'] = tuple[PullRequest, ...] | None
+PullRequestPage.__dataclass_fields__['values'].type = tuple[PullRequest, ...] | None
 setattr(PullRequestPage, '__module__', 'dex_connectors.atlassian_bitbucket.models')

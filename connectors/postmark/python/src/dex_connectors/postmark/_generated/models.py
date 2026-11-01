@@ -9,7 +9,7 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
     if depth == 1:
-        return value
+        return tuple(value)
     return tuple(_replace_nil_slices(item, depth - 1) for item in value)
 
 
@@ -52,6 +52,7 @@ class MessagePage:
 
 
 MessagePage.__annotations__['messages'] = tuple[MessageDetails, ...] | None
+MessagePage.__dataclass_fields__['messages'].type = tuple[MessageDetails, ...] | None
 setattr(MessagePage, '__module__', 'dex_connectors.postmark.models')
 
 

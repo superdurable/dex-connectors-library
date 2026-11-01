@@ -9,7 +9,7 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
     if depth == 1:
-        return value
+        return tuple(value)
     return tuple(_replace_nil_slices(item, depth - 1) for item in value)
 
 
@@ -68,6 +68,7 @@ class Issue:
 
 
 Issue.__annotations__['labels'] = tuple[str, ...] | None
+Issue.__dataclass_fields__['labels'].type = tuple[str, ...] | None
 setattr(Issue, '__module__', 'dex_connectors.gitlab.models')
 
 
@@ -82,6 +83,7 @@ class IssuesPage:
 
 
 IssuesPage.__annotations__['issues'] = tuple[Issue, ...] | None
+IssuesPage.__dataclass_fields__['issues'].type = tuple[Issue, ...] | None
 setattr(IssuesPage, '__module__', 'dex_connectors.gitlab.models')
 
 
@@ -100,4 +102,5 @@ class UpdateIssueLabelsInput:
 
 
 UpdateIssueLabelsInput.__annotations__['labels'] = tuple[str, ...] | None
+UpdateIssueLabelsInput.__dataclass_fields__['labels'].type = tuple[str, ...] | None
 setattr(UpdateIssueLabelsInput, '__module__', 'dex_connectors.gitlab.models')
