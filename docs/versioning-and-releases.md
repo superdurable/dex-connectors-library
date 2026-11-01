@@ -213,6 +213,29 @@ also confirms the package name and version reported by its publish dry run.
 After a PyPI upload, release jobs wait up to 120 seconds for the JSON API to
 show every archive with its expected SHA-256 digest.
 
+New PyPI projects have a separate first-publish queue. The release workflow
+tries at most three new PyPI projects per run by default, one at a time, while
+updates to existing projects keep their parallel publish path. Set the
+`PYPI_FIRST_PUBLISH_LIMIT` repository variable or the manual workflow's
+`first_publish_limit` input to change that cap. npm first publishes share the
+serialized queue, but npm documents no comparable project-creation cap; they
+do not consume the PyPI cap. Packages beyond the cap are deferred. If PyPI
+responds `429 Too many new projects created`, the job retries after 20, 60,
+and 120 seconds, then reports a deferral without failing the release run.
+Other publish errors still fail the run. A deferred upload creates no GitHub
+tag or release until the registry artifact is verified.
+
+The same workflow runs hourly at minute 17 to drain pending first publishes,
+including a version whose registry upload succeeded but whose GitHub release
+lacks `language-release.complete`. Scheduled runs do not publish Go modules.
+The `summarize-language` job writes published, deferred, and failed tags plus
+the pending count to its job summary and `result` JSON output. To recover
+manually, run `Release Connectors and Catalog` on `main` with the affected
+`connector_directory`; leave `dry_run` disabled. For a broad backlog, set
+`drain_first_publishes` on a manual run or wait for the next hourly run. If a registry upload succeeded but GitHub release
+creation failed, rerun the original workflow at its source commit as described
+below so its archive digest still matches.
+
 If registry publication succeeds but GitHub tag or release creation fails,
 rerun the failed workflow at its original commit. If that run is unavailable,
 create the missing tag at the original source commit, then dispatch the SDK

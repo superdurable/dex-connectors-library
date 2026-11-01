@@ -3,6 +3,8 @@ name: Release Connectors and Catalog
 on:
   push:
     branches: [main]
+  schedule:
+    - cron: '17 * * * *'
   workflow_dispatch:
     inputs:
       connector_directory:
@@ -11,6 +13,16 @@ on:
         type: string
       dry_run:
         description: Build and verify without tags, releases, or registry uploads
+        required: false
+        default: false
+        type: boolean
+      first_publish_limit:
+        description: Maximum new PyPI projects to try in this run
+        required: false
+        default: 3
+        type: number
+      drain_first_publishes:
+        description: Drain the pending language publish queue without publishing Go releases
         required: false
         default: false
         type: boolean
@@ -32,6 +44,11 @@ jobs:
       count: ${{ steps.matrix.outputs.count }}
       language_matrix: ${{ steps.matrix.outputs.language_matrix }}
       language_count: ${{ steps.matrix.outputs.language_count }}
+      updates_matrix: ${{ steps.matrix.outputs.updates_matrix }}
+      updates_count: ${{ steps.matrix.outputs.updates_count }}
+      first_matrix: ${{ steps.matrix.outputs.first_matrix }}
+      first_count: ${{ steps.matrix.outputs.first_count }}
+      pending_count: ${{ steps.matrix.outputs.pending_count }}
       dex_cli_tag: ${{ steps.dex-versions.outputs.cli_tag }}
       dex_cli_asset_url: ${{ steps.dex-versions.outputs.cli_asset_url }}
       dex_cli_sha256: ${{ steps.dex-versions.outputs.cli_sha256 }}
@@ -64,18 +81,36 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           REPAIR_DIRECTORY: ${{ inputs.connector_directory }}
           SOURCE_SHA: ${{ github.sha }}
+          GH_TOKEN: ${{ github.token }}
+          FIRST_PUBLISH_LIMIT: ${{ inputs.first_publish_limit || vars.PYPI_FIRST_PUBLISH_LIMIT || '3' }}
+          DRAIN_FIRST_PUBLISHES: ${{ inputs.drain_first_publishes }}
+          LANGUAGE_SELECTION_PATH: ${{ runner.temp }}/language-selection.json
         run: |
-          if [ "${EVENT_NAME}" = workflow_dispatch ] && [ -z "${REPAIR_DIRECTORY}" ]; then
-            printf 'matrix={"include":[]}\ncount=0\nlanguage_matrix={"include":[]}\nlanguage_count=0\n' >> "${GITHUB_OUTPUT}"
+          if [ "${EVENT_NAME}" = workflow_dispatch ] && [ -z "${REPAIR_DIRECTORY}" ] && [ "${DRAIN_FIRST_PUBLISHES}" != true ]; then
+            printf 'matrix={"include":[]}\ncount=0\nlanguage_matrix={"include":[]}\nlanguage_count=0\nupdates_matrix={"include":[]}\nupdates_count=0\nfirst_matrix={"include":[]}\nfirst_count=0\npending_count=0\n' >> "${GITHUB_OUTPUT}"
             exit
           fi
-          arguments=(--catalog catalog.yaml --github-output "${GITHUB_OUTPUT}")
-          if [ "${EVENT_NAME}" = workflow_dispatch ]; then
+          arguments=(--catalog catalog.yaml --github-output "${RUNNER_TEMP}/release-matrix-output")
+          if [ "${EVENT_NAME}" = workflow_dispatch ] && [ -n "${REPAIR_DIRECTORY}" ]; then
             arguments+=(--directory "${REPAIR_DIRECTORY}" --include-published)
+          elif [ "${EVENT_NAME}" = schedule ] || [ "${DRAIN_FIRST_PUBLISHES}" = true ]; then
+            arguments+=(--include-published)
           else
             arguments+=(--include-published-at "${SOURCE_SHA}")
           fi
           GOWORK=off go run ./cmd/connectorctl release-matrix "${arguments[@]}"
+          selection_args=()
+          if [ "${EVENT_NAME}" = schedule ] || [ "${DRAIN_FIRST_PUBLISHES}" = true ]; then selection_args+=(--scheduled); fi
+          python3 script/release/language_publish.py select \
+            --matrix-output "${RUNNER_TEMP}/release-matrix-output" \
+            --github-output "${GITHUB_OUTPUT}" \
+            --first-publish-limit "${FIRST_PUBLISH_LIMIT}" "${selection_args[@]}"
+      - uses: actions/upload-artifact@v4
+        if: steps.matrix.outputs.language_count != '0' || steps.matrix.outputs.pending_count != '0'
+        with:
+          name: language-selection
+          path: ${{ runner.temp }}/language-selection.json
+          retention-days: 1
       - name: Resolve Dex CLI once for release shards
         id: dex-versions
         if: steps.matrix.outputs.count != '0'
@@ -421,7 +456,7 @@ jobs:
 
   publish-language:
     needs: [plan, release, build-language]
-    if: always() && needs.plan.result == 'success' && (needs.release.result == 'success' || needs.release.result == 'skipped') && needs.build-language.result == 'success' && needs.plan.outputs.language_count != '0' && inputs.dry_run != true
+    if: always() && needs.plan.result == 'success' && (needs.release.result == 'success' || needs.release.result == 'skipped') && needs.build-language.result == 'success' && needs.plan.outputs.updates_count != '0' && inputs.dry_run != true
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -429,7 +464,7 @@ jobs:
       issues: write
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.plan.outputs.language_matrix) }}
+      matrix: ${{ fromJSON(needs.plan.outputs.updates_matrix) }}
     env:
       COMPONENT_PATH: ${{ matrix.directory }}/${{ matrix.language }}
       TAG_PREFIX: ${{ matrix.tag_prefix }}
@@ -438,7 +473,7 @@ jobs:
       LANGUAGE: ${{ matrix.language }}
       RELEASE_DISPLAY_NAME: ${{ matrix.display_name }}
       GH_TOKEN: ${{ github.token }}
-    steps:
+    steps: &publish_language_steps
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
@@ -451,7 +486,7 @@ jobs:
           node-version: 24
       - uses: actions/download-artifact@v4
         with:
-          name: language-${{ strategy.job-index }}
+          name: language-${{ matrix.artifact_index }}
           path: ${{ runner.temp }}/language-work
       - name: Inspect language release state
         id: state
@@ -494,6 +529,7 @@ jobs:
           tag="${TAG_PREFIX}${RELEASE_VERSION}"
           cp script/release/component_release.py "${RUNNER_TEMP}/component_release.py"
           cp script/release/npm_publish.py "${RUNNER_TEMP}/npm_publish.py"
+          cp script/release/language_publish.py "${RUNNER_TEMP}/language_publish.py"
           if git show-ref --verify --quiet "refs/tags/${tag}"; then
             git merge-base --is-ancestor "${tag}" HEAD || { echo "Language tag is not reachable from main: ${tag}" >&2; exit 1; }
             git checkout --detach "$(git rev-parse "${tag}^{commit}")"
@@ -519,6 +555,7 @@ jobs:
             --language "${LANGUAGE}" --package "${PACKAGE_NAME}" --version "${RELEASE_VERSION}" \
             --tag "${tag}" --source-sha "$(git rev-parse HEAD)" "${arguments[@]}"
       - name: Publish Python package
+        id: python-publish
         if: steps.state.outputs.release_required == 'true' && matrix.language == 'python'
         env:
           UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
@@ -529,9 +566,13 @@ jobs:
           for asset in "${assets[@]}"; do arguments+=(--asset "${asset}"); done
           python3 "${RUNNER_TEMP}/component_release.py" verify-pypi-artifacts \
             --package "${PACKAGE_NAME}" --version "${RELEASE_VERSION}" "${arguments[@]}"
-          uv publish --check-url https://pypi.org/simple/ "${RUNNER_TEMP}"/language-work/dist/*.whl "${RUNNER_TEMP}"/language-work/dist/*.tar.gz
-          python3 "${RUNNER_TEMP}/component_release.py" verify-pypi-artifacts \
-            --package "${PACKAGE_NAME}" --version "${RELEASE_VERSION}" --require-all --wait-seconds 120 "${arguments[@]}"
+          python3 "${RUNNER_TEMP}/language_publish.py" publish-pypi \
+            --github-output "${GITHUB_OUTPUT}" \
+            "${RUNNER_TEMP}"/language-work/dist/*.whl "${RUNNER_TEMP}"/language-work/dist/*.tar.gz
+          if [ "$(sed -n 's/^status=//p' "${GITHUB_OUTPUT}" | tail -1)" != deferred ]; then
+            python3 "${RUNNER_TEMP}/component_release.py" verify-pypi-artifacts \
+              --package "${PACKAGE_NAME}" --version "${RELEASE_VERSION}" --require-all --wait-seconds 120 "${arguments[@]}"
+          fi
       - name: Publish npm package
         if: steps.state.outputs.release_required == 'true' && matrix.language == 'typescript'
         env:
@@ -541,7 +582,7 @@ jobs:
           python3 "${RUNNER_TEMP}/npm_publish.py" publish --package "${PACKAGE_NAME}" \
             --version "${RELEASE_VERSION}" --tarball "${package_tarball[0]}"
       - name: Create or repair language release
-        if: steps.state.outputs.release_required == 'true'
+        if: steps.state.outputs.release_required == 'true' && steps.python-publish.outputs.status != 'deferred'
         env:
           SOURCE_SHA: ${{ steps.state.outputs.source_sha }}
         run: |
@@ -557,14 +598,93 @@ jobs:
               --notes-file "${RUNNER_TEMP}/language-work/notes.md" "${RUNNER_TEMP}"/language-work/dist/*
           fi
       - name: Mark language release complete
-        if: steps.state.outputs.release_required == 'true'
+        if: steps.state.outputs.release_required == 'true' && steps.python-publish.outputs.status != 'deferred'
+        id: complete
         run: |
           printf '%s\n' "${TAG_PREFIX}${RELEASE_VERSION}" > "${RUNNER_TEMP}/language-release.complete"
           gh release upload "${TAG_PREFIX}${RELEASE_VERSION}" --clobber "${RUNNER_TEMP}/language-release.complete"
+      - name: Record language release result
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+          PYPI_STATUS: ${{ steps.python-publish.outputs.status }}
+          COMPLETE_STATUS: ${{ steps.complete.outcome }}
+        run: |
+          status=failed
+          if [ "${JOB_STATUS}" = success ]; then
+            if [ "${PYPI_STATUS}" = deferred ]; then
+              status=deferred
+            elif [ "${COMPLETE_STATUS}" = success ] || [ "${{ steps.state.outputs.release_required }}" = false ]; then
+              status=published
+            fi
+          fi
+          mkdir -p "${RUNNER_TEMP}/release-result"
+          RESULT_STATUS="${status}" python3 -c 'import json,os; print(json.dumps({"tag":os.environ["TAG_PREFIX"]+os.environ["RELEASE_VERSION"],"status":os.environ["RESULT_STATUS"]}))' \
+            > "${RUNNER_TEMP}/release-result/release-result.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: language-result-${{ matrix.artifact_index }}
+          path: ${{ runner.temp }}/release-result/release-result.json
+          retention-days: 1
+
+  publish-language-first:
+    needs: [plan, release, build-language]
+    if: always() && needs.plan.result == 'success' && (needs.release.result == 'success' || needs.release.result == 'skipped') && needs.build-language.result == 'success' && needs.plan.outputs.first_count != '0' && inputs.dry_run != true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      issues: write
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix: ${{ fromJSON(needs.plan.outputs.first_matrix) }}
+    env:
+      COMPONENT_PATH: ${{ matrix.directory }}/${{ matrix.language }}
+      TAG_PREFIX: ${{ matrix.tag_prefix }}
+      RELEASE_VERSION: ${{ matrix.version }}
+      PACKAGE_NAME: ${{ matrix.package }}
+      LANGUAGE: ${{ matrix.language }}
+      RELEASE_DISPLAY_NAME: ${{ matrix.display_name }}
+      GH_TOKEN: ${{ github.token }}
+    steps: *publish_language_steps
+
+  summarize-language:
+    needs: [plan, build-language, publish-language, publish-language-first]
+    if: always() && needs.plan.result == 'success' && (needs.plan.outputs.language_count != '0' || needs.plan.outputs.pending_count != '0') && inputs.dry_run != true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      result: ${{ steps.summary.outputs.result }}
+      pending_count: ${{ steps.summary.outputs.pending_count }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: language-selection
+          path: ${{ runner.temp }}/selection
+      - uses: actions/download-artifact@v4
+        if: needs.plan.outputs.language_count != '0'
+        continue-on-error: true
+        with:
+          pattern: language-result-*
+          path: ${{ runner.temp }}/language-results
+      - name: Summarize published, deferred, and failed releases
+        id: summary
+        run: |
+          mkdir -p "${RUNNER_TEMP}/language-results"
+          python3 script/release/language_publish.py summarize \
+            --selection "${RUNNER_TEMP}/selection/language-selection.json" \
+            --results-directory "${RUNNER_TEMP}/language-results" \
+            --github-output "${GITHUB_OUTPUT}"
 
   build-catalog:
-    needs: [plan, release, build-language, publish-language]
-    if: always() && needs.plan.result == 'success' && (needs.release.result == 'success' || needs.release.result == 'skipped') && (needs.build-language.result == 'success' || needs.build-language.result == 'skipped') && (needs.publish-language.result == 'success' || (needs.plan.outputs.language_count == '0' && needs.publish-language.result == 'skipped')) && inputs.dry_run != true
+    needs: [plan, release, build-language, publish-language, publish-language-first, summarize-language]
+    if: always() && needs.plan.result == 'success' && (needs.release.result == 'success' || needs.release.result == 'skipped') && (needs.build-language.result == 'success' || needs.build-language.result == 'skipped') && (needs.publish-language.result == 'success' || (needs.plan.outputs.updates_count == '0' && needs.publish-language.result == 'skipped')) && (needs.publish-language-first.result == 'success' || (needs.plan.outputs.first_count == '0' && needs.publish-language-first.result == 'skipped')) && (needs.summarize-language.result == 'success' || (needs.plan.outputs.pending_count == '0' && needs.summarize-language.result == 'skipped')) && inputs.dry_run != true
     runs-on: ubuntu-latest
     permissions:
       contents: read
