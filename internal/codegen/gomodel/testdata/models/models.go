@@ -5,6 +5,8 @@ package models
 
 import (
 	"encoding/json"
+	itemA "example.com/gomodel-test/a/v1"
+	itemB "example.com/gomodel-test/b/v1"
 	"example.com/gomodel-test/external"
 	"time"
 )
@@ -145,4 +147,23 @@ type RightMiddle struct{ SharedMiddle }
 type CountDepth struct {
 	LeftMiddle
 	RightMiddle
+}
+
+type ExternalSameName struct {
+	First  itemA.Item `json:"first"`
+	Second itemB.Item `json:"second"`
+}
+
+type SameFields struct {
+	Z int `json:"z"`
+}
+type OtherSameFields SameFields
+type DistinctEmbeddings struct {
+	SameFields
+	OtherSameFields
+}
+
+type NamedByte byte
+type NamedBytes struct {
+	Value []NamedByte `json:"value"`
 }

@@ -6,6 +6,7 @@ package gomodel
 import (
 	"encoding/json"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -161,5 +162,48 @@ func TestGoJSONShapeEdgeCases(t *testing.T) {
 	}
 	if string(encoded) != `{"bool":false,"number":0,"text":"","values":null}` {
 		t.Fatalf("encoding/json lost pointer presence: %s", encoded)
+	}
+}
+
+func TestDistinctEmbeddedAndExternalTypes(t *testing.T) {
+	graph, err := Load(filepath.Join("testdata", "models"), []string{"ExternalSameName", "DistinctEmbeddings", "NamedBytes"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	models := map[string]Model{}
+	for _, model := range graph.Models {
+		models[model.Name] = model
+	}
+	external := models["ExternalSameName"].Fields
+	if external[0].Type.Ref == external[1].Type.Ref {
+		t.Fatalf("external package paths collapsed: %+v", external)
+	}
+	if len(models[external[0].Type.Ref].Fields) != 1 || models[external[0].Type.Ref].Fields[0].Name != "alpha" || len(models[external[1].Type.Ref].Fields) != 1 || models[external[1].Type.Ref].Fields[0].Name != "beta" {
+		t.Fatalf("external model fields mixed: %+v %+v", models[external[0].Type.Ref], models[external[1].Type.Ref])
+	}
+	type SameFields struct {
+		Z int `json:"z"`
+	}
+	type OtherSameFields SameFields
+	structure := reflect.StructOf([]reflect.StructField{
+		{Name: "SameFields", Type: reflect.TypeOf(SameFields{}), Anonymous: true},
+		{Name: "OtherSameFields", Type: reflect.TypeOf(OtherSameFields{}), Anonymous: true},
+	})
+	encoded, err := json.Marshal(reflect.New(structure).Elem().Interface())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(encoded) != `{}` || len(models["DistinctEmbeddings"].Fields) != 0 {
+		t.Fatalf("distinct embedded types must conflict like encoding/json: %s %+v", encoded, models["DistinctEmbeddings"].Fields)
+	}
+	if field := models["NamedBytes"].Fields[0]; field.Type.Kind != Bytes {
+		t.Fatalf("named byte slice must be base64: %+v", field)
+	}
+	type namedByte byte
+	encoded, err = json.Marshal(struct {
+		Value []namedByte `json:"value"`
+	}{Value: []namedByte{0, 1}})
+	if err != nil || string(encoded) != `{"value":"AAE="}` {
+		t.Fatalf("encoding/json byte baseline: %s %v", encoded, err)
 	}
 }

@@ -14,7 +14,8 @@ import {
   type CreateRefundStepConfig as GeneratedRefundConfig,
 } from './generated/steps.js';
 import type { Connection } from './connection.js';
-import type { CreateACHCheckoutSessionInput, CreateCardCheckoutSessionInput, CreateRefundInput, GetCheckoutSessionInput, GetPaymentIntentInput } from './models.js';
+import type { MutationStep, QueryStep } from '@superdurable/connectors-sdk';
+import type { CheckoutSession, CreateACHCheckoutSessionInput, CreateCardCheckoutSessionInput, CreateRefundInput, GetCheckoutSessionInput, GetPaymentIntentInput, PaymentIntent, Refund } from './models.js';
 
 type StripeStepConfig<StepInput, GeneratedConfig, OperationInput> = Omit<GeneratedConfig, 'connection' | 'mapToOperationInput'> & {
   connection: Connection;
@@ -38,31 +39,31 @@ function validateStripeStepConnection(connection: { reference: { name: string } 
 }
 
 /** Build the card Checkout Step with Stripe's existing connection validation. */
-export function newCreateCardCheckoutSessionStep<StepInput>(configuration: CreateCardCheckoutSessionStepConfig<StepInput>) {
+export function newCreateCardCheckoutSessionStep<StepInput>(configuration: CreateCardCheckoutSessionStepConfig<StepInput>): MutationStep<StepInput, CreateCardCheckoutSessionInput, CheckoutSession> {
   validateStripeStepConnection(configuration.connection, configuration.connectionName);
-  return newGeneratedCreateCardCheckoutSessionStep(configuration);
+  return newGeneratedCreateCardCheckoutSessionStep<StepInput, CreateCardCheckoutSessionInput, CheckoutSession>(configuration);
 }
 
 /** Build the ACH Checkout Step with Stripe's existing connection validation. */
-export function newCreateACHCheckoutSessionStep<StepInput>(configuration: CreateACHCheckoutSessionStepConfig<StepInput>) {
+export function newCreateACHCheckoutSessionStep<StepInput>(configuration: CreateACHCheckoutSessionStepConfig<StepInput>): MutationStep<StepInput, CreateACHCheckoutSessionInput, CheckoutSession> {
   validateStripeStepConnection(configuration.connection, configuration.connectionName);
-  return newGeneratedCreateACHCheckoutSessionStep(configuration);
+  return newGeneratedCreateACHCheckoutSessionStep<StepInput, CreateACHCheckoutSessionInput, CheckoutSession>(configuration);
 }
 
 /** Build the Checkout lookup Step with Stripe's existing connection validation. */
-export function newGetCheckoutSessionStep<StepInput>(configuration: GetCheckoutSessionStepConfig<StepInput>) {
+export function newGetCheckoutSessionStep<StepInput>(configuration: GetCheckoutSessionStepConfig<StepInput>): QueryStep<StepInput, GetCheckoutSessionInput, CheckoutSession> {
   validateStripeStepConnection(configuration.connection, configuration.connectionName);
-  return newGeneratedGetCheckoutSessionStep(configuration);
+  return newGeneratedGetCheckoutSessionStep<StepInput, GetCheckoutSessionInput, CheckoutSession>(configuration);
 }
 
 /** Build the PaymentIntent lookup Step with Stripe's existing connection validation. */
-export function newGetPaymentIntentStep<StepInput>(configuration: GetPaymentIntentStepConfig<StepInput>) {
+export function newGetPaymentIntentStep<StepInput>(configuration: GetPaymentIntentStepConfig<StepInput>): QueryStep<StepInput, GetPaymentIntentInput, PaymentIntent> {
   validateStripeStepConnection(configuration.connection, configuration.connectionName);
-  return newGeneratedGetPaymentIntentStep(configuration);
+  return newGeneratedGetPaymentIntentStep<StepInput, GetPaymentIntentInput, PaymentIntent>(configuration);
 }
 
 /** Build the refund Step with Stripe's existing connection validation. */
-export function newCreateRefundStep<StepInput>(configuration: CreateRefundStepConfig<StepInput>) {
+export function newCreateRefundStep<StepInput>(configuration: CreateRefundStepConfig<StepInput>): MutationStep<StepInput, CreateRefundInput, Refund> {
   validateStripeStepConnection(configuration.connection, configuration.connectionName);
-  return newGeneratedCreateRefundStep(configuration);
+  return newGeneratedCreateRefundStep<StepInput, CreateRefundInput, Refund>(configuration);
 }

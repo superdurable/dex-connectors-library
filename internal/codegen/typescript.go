@@ -101,7 +101,11 @@ func generateTypeScriptModels(manifest schema.Manifest, models []gomodel.Model) 
 		if field.Required {
 			optional = ""
 		}
-		fmt.Fprintf(&output, "  /** %s */\n  %s%s: %s;\n", field.Description, name, optional, fieldType)
+		comment := field.Description
+		if field.Type == "duration" {
+			comment = "Duration in milliseconds for " + name + "; omit to use the manifest default."
+		}
+		fmt.Fprintf(&output, "  /** %s */\n  %s%s: %s;\n", typeScriptJSDoc(comment), name, optional, fieldType)
 	}
 	output.WriteString("}\n\n")
 	output.WriteString("/** Runtime schema for manifest configuration. */\nexport const ConfigSchema = z.object({\n")
@@ -162,7 +166,7 @@ func generateTypeScriptModels(manifest schema.Manifest, models []gomodel.Model) 
 		if credentialCounts[fieldName] == methodCount && field.Required {
 			optional = ""
 		}
-		fmt.Fprintf(&output, "  /** %s */\n  %s%s: %s;\n", field.Description, typeScriptFieldName(field.Name), optional, fieldType)
+		fmt.Fprintf(&output, "  /** %s */\n  %s%s: %s;\n", typeScriptJSDoc(field.Description), typeScriptFieldName(field.Name), optional, fieldType)
 	}
 	output.WriteString("}\n\n")
 	fmt.Fprintf(&output, "/** Host-owned source of private connector credentials. */\nexport type CredentialSource = %s<Credentials>;\n\n", providerType)
@@ -367,10 +371,10 @@ func generateTypeScriptSteps(operations []schema.Operation) []byte {
 	output.WriteString(typeScriptHeader())
 	output.WriteString("import { goToBranch")
 	if hasOperationKind(operations, "mutation") {
-		output.WriteString(", newMutationStep, type MutationResult, type MutationStep, type MutationStepConfig")
+		output.WriteString(", newMutationStep, type Mutation, type MutationResult, type MutationStep, type MutationStepConfig")
 	}
 	if hasOperationKind(operations, "query") {
-		output.WriteString(", newQueryStep, type QueryResult, type QueryStep, type QueryStepConfig")
+		output.WriteString(", newQueryStep, type Query, type QueryResult, type QueryStep, type QueryStepConfig")
 	}
 	output.WriteString(" } from '@superdurable/connectors-sdk';\n")
 	output.WriteString("import type { StepTarget } from '@superdurable/dex';\n")
@@ -385,17 +389,17 @@ func generateTypeScriptSteps(operations []schema.Operation) []byte {
 		if operation.Kind == "mutation" {
 			kind = "Mutation"
 		}
-		fmt.Fprintf(&output, "/** Configuration for the %s connector Step. */\nexport interface %sStepConfig<StepInput> extends Omit<%sStepConfig<StepInput, %s, %s>, 'operation' | 'connection' | 'branches'> {\n", operation.Name, operation.GoName, kind, operation.InputType, operation.OutputType)
-		output.WriteString("  /** Named connection supplying this operation. */\n  connection: Connection;\n  /** Name matching the bound connection. */\n  connectionName: string;\n")
+		fmt.Fprintf(&output, "/** Configuration for the %s connector Step. */\nexport interface %sStepConfig<StepInput, OperationInput = %s, OperationOutput = %s> extends Omit<%sStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {\n", operation.Name, operation.GoName, operation.InputType, operation.OutputType, kind)
+		fmt.Fprintf(&output, "  /** Named connection supplying this operation. */\n  connection: Connection<{ %s(): %s<OperationInput, OperationOutput> }>;\n  /** Name matching the bound connection. */\n  connectionName: string;\n", operation.Name, kind)
 		for _, branch := range operation.Branches {
 			optional := ""
 			if branch.Optional {
 				optional = "?"
 			}
-			fmt.Fprintf(&output, "  /** %s */\n  %s%s: StepTarget<%sResult<%s>>;\n", branch.Description, branch.ID, optional, kind, operation.OutputType)
+			fmt.Fprintf(&output, "  /** %s */\n  %s%s: StepTarget<%sResult<OperationOutput>>;\n", typeScriptJSDoc(branch.Description), branch.ID, optional, kind)
 		}
 		output.WriteString("}\n\n")
-		fmt.Fprintf(&output, "/** Build the %s Step from a named connection. */\nexport function new%sStep<StepInput>(configuration: %sStepConfig<StepInput>): %sStep<StepInput, %s, %s> {\n", operation.Name, operation.GoName, operation.GoName, kind, operation.InputType, operation.OutputType)
+		fmt.Fprintf(&output, "/** Build the %s Step from a named connection. */\nexport function new%sStep<StepInput, OperationInput = %s, OperationOutput = %s>(configuration: %sStepConfig<StepInput, OperationInput, OperationOutput>): %sStep<StepInput, OperationInput, OperationOutput> {\n", operation.Name, operation.GoName, operation.InputType, operation.OutputType, operation.GoName, kind)
 		output.WriteString("  const { connection, connectionName, ")
 		for _, branch := range operation.Branches {
 			fmt.Fprintf(&output, "%s, ", branch.ID)
@@ -443,7 +447,7 @@ func generateTypeScriptConnection(manifest schema.Manifest, operations []schema.
 		fmt.Fprintf(&output, "  /** Invoke %s through this connection. */\n  %s(): %s<%s, %s>;\n", operation.Name, operation.Name, kind, operation.InputType, operation.OutputType)
 	}
 	output.WriteString("}\n\n")
-	output.WriteString("/** Named connector connection kept outside Flow state. */\nexport class Connection {\n  /** Stable provider and connection name. */\n  readonly reference: ConnectionRef;\n  /** Bound provider operations. */\n  readonly operations: Operations;\n\n  /** Validate a reference and bind operations. */\n  constructor(reference: ConnectionRef, operations: Operations) {\n    this.reference = ConnectionRefSchema.parse(reference);\n")
+	output.WriteString("/** Named connector connection kept outside Flow state. */\nexport class Connection<BoundOperations = Operations> {\n  /** Stable provider and connection name. */\n  readonly reference: ConnectionRef;\n  /** Bound provider operations. */\n  readonly operations: BoundOperations;\n\n  /** Validate a reference and bind operations. */\n  constructor(reference: ConnectionRef, operations: BoundOperations) {\n    this.reference = ConnectionRefSchema.parse(reference);\n")
 	output.WriteString("    if (this.reference.provider !== ProviderID) throw new TypeError('connection provider differs from the manifest');\n    if (!operations) throw new TypeError('connector operations are required');\n    this.operations = operations;\n  }\n}\n\n")
 	output.WriteString("/** Bind a client to a named connection. */\nexport function newConnection(client: Operations, reference: ConnectionRef): Connection {\n  if (!client) throw new TypeError('connector client is required');\n  return new Connection(reference, client);\n}\n\n")
 	output.WriteString("/** Bind scripted operations to a named connection. */\nexport function newConnectionWithOperations(operations: Operations, reference: ConnectionRef): Connection {\n  return new Connection(reference, operations);\n}\n\n")

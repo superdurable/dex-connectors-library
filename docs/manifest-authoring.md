@@ -64,8 +64,10 @@ Untagged embedded structs flatten according to Go's field conflict rules, and
 tagged embedded structs remain nested. Named string enums accept every string,
 including the listed constants and future provider values; the TypeScript type
 retains the known literals for completion. Only recursion cycles use `z.lazy`,
-so ordinary model validators retain `ZodObject` methods. `time.Time` is an ISO datetime string, byte
-slices are base64 strings, and `json.RawMessage` or `any` is unknown. A named
+so ordinary model validators retain `ZodObject` methods. External model names
+include their import path identity so packages with the same name remain distinct.
+`time.Time` is an ISO datetime string, byte slices (including named byte
+elements) are base64 strings, and `json.RawMessage` or `any` is unknown. A named
 type with both `MarshalJSON` and `UnmarshalJSON` is an opaque JSON value;
 unsupported tag options and other custom marshalers stop generation.
 Go `int64` values use TypeScript `number`; applications must keep them within
@@ -75,7 +77,9 @@ Run `go run ./cmd/connectorctl generate --lang typescript <connector.yaml>`
 to update only the TypeScript files. Add `--check` before or after `--lang` to
 reject drift. The ordinary generate command updates all generated
 files. Generated TypeScript files depend only on other files in `src/generated/`
-and the connector SDK; hand-written adapters import them.
+and the connector SDK; hand-written adapters import them. Generated Step
+factories and connections accept typed operation adapters when the public
+TypeScript input or result differs from the Go JSON model.
 `make test-common` installs the Stripe compiler dependencies and runs the
 golden and catalog compile tests in CI. For a focused local run, after
 `npm ci --prefix connectors/stripe/typescript`, run

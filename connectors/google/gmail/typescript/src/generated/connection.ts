@@ -18,14 +18,14 @@ export interface Operations {
 }
 
 /** Named connector connection kept outside Flow state. */
-export class Connection {
+export class Connection<BoundOperations = Operations> {
   /** Stable provider and connection name. */
   readonly reference: ConnectionRef;
   /** Bound provider operations. */
-  readonly operations: Operations;
+  readonly operations: BoundOperations;
 
   /** Validate a reference and bind operations. */
-  constructor(reference: ConnectionRef, operations: Operations) {
+  constructor(reference: ConnectionRef, operations: BoundOperations) {
     this.reference = ConnectionRefSchema.parse(reference);
     if (this.reference.provider !== ProviderID) throw new TypeError('connection provider differs from the manifest');
     if (!operations) throw new TypeError('connector operations are required');

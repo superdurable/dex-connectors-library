@@ -33,7 +33,7 @@ async function provider(handler: RequestListener): Promise<string> {
 }
 
 function operation(baseUrl: string, key = apiKey, maxResponseBytes?: number): SearchArticlesOperation {
-  return new SearchArticlesOperation({ baseUrl, maxResponseBytes }, new StaticCredentialProvider([[connection, { apiKey: new SecretString(key) }]]));
+  return new SearchArticlesOperation({ baseUrl, ...(maxResponseBytes !== undefined ? { maxResponseBytes } : {}) }, new StaticCredentialProvider([[connection, { apiKey: new SecretString(key) }]]));
 }
 
 function branch(attempt: QueryAttempt<ArticlePage>, expected: string, kind?: string): void {

@@ -9,7 +9,7 @@ import {
 import { GetMessageDefinition, ReplyToMessageDefinition, SendMessageDefinition } from '../definitions.js';
 import type { SendMessageOutput as GeneratedSendMessageOutput } from '../generated/models.js';
 import * as generatedMock from '../generated/mock.js';
-export { getMessageCustomerQuestion, getMessageDeletedMessage, getMessageRevokedGrant, getMessageMalformedPayload, getMessageEmptyMessageID, getMessageRateLimited, getMessageDefault } from '../generated/mock.js';
+export { getMessageCustomerQuestion, getMessageDeletedMessage, getMessageRevokedGrant, getMessageMalformedPayload, getMessageEmptyMessageID, getMessageRateLimited, getMessageDefault, getMessageRetry } from '../generated/mock.js';
 
 /** Scripted Gmail connection with the manifest's happy-path defaults. */
 export class GmailMock {
@@ -50,9 +50,6 @@ function adaptGeneratedSendCase(factory: () => Case<GeneratedSendMessageOutput>)
 
 /** Script an arbitrary getMessage branch. */
 export function getMessageBranch(branch: string, value: Message, reason?: Failure): Case<Message> { return branchCase(branch, value, reason); }
-/** Script an arbitrary getMessage retry. */
-export function getMessageRetry(reason: Failure, afterMs = 0): Case<Message> { return retryCase(reason, afterMs); }
-
 /** Script an arbitrary sendMessage branch. */
 export function sendMessageBranch(branch: string, value: SendMessageOutput, reason?: Failure): Case<SendMessageOutput> { return branchCase(branch, value, reason); }
 /** Script an arbitrary sendMessage retry. */

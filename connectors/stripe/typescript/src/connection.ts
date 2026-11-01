@@ -21,6 +21,8 @@ export interface Operations {
 /** Named Stripe operation connection; this object must remain outside Flow state. */
 export class Connection extends GeneratedConnection {
 	declare private readonly stripeConnectionBrand: void;
+  /** Bound Stripe operations retain their public request types. */
+  declare readonly operations: Operations;
   /** Validate one static connection name and own its operations. */
   constructor(reference: ConnectionRef, operations: Operations) {
     ConnectionRefSchema.parse(reference);

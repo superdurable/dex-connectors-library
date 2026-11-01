@@ -12,9 +12,6 @@ import {
   newGetMessageStep as newGeneratedGetMessageStep,
   newSendMessageStep as newGeneratedSendMessageStep,
   newReplyToMessageStep as newGeneratedReplyToMessageStep,
-  type GetMessageStepConfig as GeneratedGetMessageStepConfig,
-  type SendMessageStepConfig as GeneratedSendMessageStepConfig,
-  type ReplyToMessageStepConfig as GeneratedReplyToMessageStepConfig,
 } from './generated/steps.js';
 
 /** Configuration for the public getMessage Step. */
@@ -56,17 +53,17 @@ function requireGmailConnection(connection: GmailConnection, connectionName: str
 /** Build a Gmail read Step with its typed connection. */
 export function newGetMessageStep<StepInput>(configuration: GetMessageStepConfig<StepInput>): QueryStep<StepInput, GetMessageInput, Message> {
   requireGmailConnection(configuration.connection, configuration.connectionName);
-  return newGeneratedGetMessageStep(configuration as GeneratedGetMessageStepConfig<StepInput>);
+  return newGeneratedGetMessageStep<StepInput, GetMessageInput, Message>(configuration);
 }
 
 /** Build a Gmail send Step with its typed connection. */
 export function newSendMessageStep<StepInput>(configuration: SendMessageStepConfig<StepInput>): MutationStep<StepInput, SendMessageInput, SendMessageOutput> {
   requireGmailConnection(configuration.connection, configuration.connectionName);
-  return newGeneratedSendMessageStep(configuration as GeneratedSendMessageStepConfig<StepInput>) as MutationStep<StepInput, SendMessageInput, SendMessageOutput>;
+  return newGeneratedSendMessageStep<StepInput, SendMessageInput, SendMessageOutput>(configuration);
 }
 
 /** Build a Gmail reply Step with its typed connection. */
 export function newReplyToMessageStep<StepInput>(configuration: ReplyToMessageStepConfig<StepInput>): MutationStep<StepInput, ReplyToMessageInput, SendMessageOutput> {
   requireGmailConnection(configuration.connection, configuration.connectionName);
-  return newGeneratedReplyToMessageStep(configuration as GeneratedReplyToMessageStepConfig<StepInput>) as MutationStep<StepInput, ReplyToMessageInput, SendMessageOutput>;
+  return newGeneratedReplyToMessageStep<StepInput, ReplyToMessageInput, SendMessageOutput>(configuration);
 }

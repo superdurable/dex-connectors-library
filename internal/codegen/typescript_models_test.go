@@ -31,3 +31,18 @@ func TestTypeScriptModelsKeepRequiredFieldsAndLimitLazyToCycles(t *testing.T) {
 		t.Fatalf("enum zero value fabricated a known status: %s", got)
 	}
 }
+
+func TestTypeScriptManifestDescriptionsAreSafeJSDoc(t *testing.T) {
+	manifest := schema.Manifest{Spec: schema.Spec{
+		Configuration: schema.Configuration{Fields: []schema.Field{{Name: "timeout", Type: "duration", Description: "Go duration */ unsafe"}, {Name: "label", Type: "string", Description: "Label */ unsafe"}}},
+		Auth:          schema.Auth{Fields: []schema.Field{{Name: "token", GoName: "Token", Type: "string", Description: "Token */ unsafe", Required: true}}},
+	}}
+	generated := string(generateTypeScriptModels(manifest, nil))
+	if strings.Contains(generated, "*/ unsafe") || !strings.Contains(generated, "Duration in milliseconds for timeoutMs") || !strings.Contains(generated, "Label * / unsafe") || !strings.Contains(generated, "Token * / unsafe") {
+		t.Fatalf("unsafe or misleading generated JSDoc:\n%s", generated)
+	}
+	steps := string(generateTypeScriptSteps([]schema.Operation{{Name: "read", GoName: "Read", InputType: "Input", OutputType: "Output", Branches: []schema.OperationBranch{{ID: "done", Description: "Done */ unsafe"}}}}))
+	if strings.Contains(steps, "*/ unsafe") || !strings.Contains(steps, "Done * / unsafe") {
+		t.Fatalf("branch JSDoc was not escaped:\n%s", steps)
+	}
+}

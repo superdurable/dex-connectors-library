@@ -13,7 +13,7 @@ export interface Config {
   maxResponseBytes?: number;
   /** Maximum raw signed webhook request body in bytes; enter a positive integer only to change the safety limit. Larger bodies are rejected before signature verification. */
   webhookMaxBodyBytes?: number;
-  /** Maximum accepted Stripe-Signature timestamp age, using a positive Go duration such as 5m; reduce only when clocks are synchronized and replay tolerance can be stricter. */
+  /** Duration in milliseconds for webhookSignatureToleranceMs; omit to use the manifest default. */
   webhookSignatureToleranceMs?: number;
 }
 

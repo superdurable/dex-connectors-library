@@ -8,7 +8,7 @@ import { AddressRefusal, BodyTooLargeError, MaxErrorBodyBytes, ProviderTransport
 import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
 import type { Config, Credentials } from './generated/models.js';
 import { Connection as GeneratedConnection } from './generated/connection.js';
-import { newSearchArticlesStep as newGeneratedSearchArticlesStep, type SearchArticlesStepConfig as GeneratedSearchArticlesStepConfig } from './generated/steps.js';
+import { newSearchArticlesStep as newGeneratedSearchArticlesStep } from './generated/steps.js';
 import {
   ConnectorID, SearchArticlesBranchSearched, SearchArticlesBranchProviderRejected,
   SearchArticlesBranchInvalidResponse, SearchArticlesBranchDefect,
@@ -202,10 +202,10 @@ export interface SearchArticlesStepConfig<StepInput> extends Omit<QueryStepConfi
 export function newSearchArticlesStep<StepInput>(configuration: SearchArticlesStepConfig<StepInput>): QueryStep<StepInput, SearchArticlesInput, ArticlePage> {
   const { connection, connectionName } = configuration;
   if (connection.reference.name !== connectionName) throw new TypeError('NewsAPI Step connection name differs from the bound connection');
-  const generatedConnection = new GeneratedConnection(connection.reference, { searchArticles: () => connection.operations.searchArticles });
-  // The public input accepts readonly arrays; the generated factory does not mutate them.
-  const generatedConfiguration = { ...configuration, connection: generatedConnection } as unknown as GeneratedSearchArticlesStepConfig<StepInput>;
-  return newGeneratedSearchArticlesStep(generatedConfiguration) as unknown as QueryStep<StepInput, SearchArticlesInput, ArticlePage>;
+  const generatedConnection = new GeneratedConnection<{ searchArticles(): Query<SearchArticlesInput, ArticlePage> }>(connection.reference, {
+    searchArticles: () => connection.operations.searchArticles,
+  });
+  return newGeneratedSearchArticlesStep<StepInput, SearchArticlesInput, ArticlePage>({ ...configuration, connection: generatedConnection });
 }
 
 /** Open a declared Dex Web connection; private credentials are resolved at each call. */
@@ -215,7 +215,11 @@ export function newProjectConnection(project: LoadedProject, connectionName: str
   if (!configured) throw new TypeError('NewsAPI project connection is not configured');
   const fields = z.strictObject({ baseUrl: z.string().optional(), timeout: z.union([z.string(), z.number().int()]).optional(), maxResponseBytes: z.number().int().optional() }).parse(configured.configuration);
   const timeoutMs = typeof fields.timeout === 'number' ? Math.ceil(fields.timeout / 1_000_000) : fields.timeout ? parseDurationMilliseconds(fields.timeout) : undefined;
-  const config: Config = { baseUrl: fields.baseUrl, timeoutMs, maxResponseBytes: fields.maxResponseBytes };
+  const config: Config = {
+    ...(fields.baseUrl !== undefined ? { baseUrl: fields.baseUrl } : {}),
+    ...(timeoutMs !== undefined ? { timeoutMs } : {}),
+    ...(fields.maxResponseBytes !== undefined ? { maxResponseBytes: fields.maxResponseBytes } : {}),
+  };
   const credentials: CredentialProvider<Credentials> = {
     async resolve(_call, signal) {
       const privateFields = await project.resolveCredential(ConnectorID, connectionName, signal);

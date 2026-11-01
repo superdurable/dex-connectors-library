@@ -89,11 +89,13 @@ type loader struct {
 	seen         map[string]bool
 	active       map[string]bool
 	reserved     map[string]bool
+	modelTypes   map[string]string
 	comments     map[*types.Var]string
 	typeComments map[string]string
 }
 
 type embeddedStruct struct {
+	modelType types.Type
 	structure *types.Struct
 	index     []int
 	optional  bool
@@ -120,7 +122,7 @@ func Load(goDirectory string, rootNames []string) (Graph, error) {
 	for _, problem := range loaded[0].Errors {
 		return Graph{}, fmt.Errorf("load connector Go package: %s", problem)
 	}
-	modelLoader := &loader{packageTypes: loaded[0].Types, seen: map[string]bool{}, active: map[string]bool{}, reserved: map[string]bool{}, comments: map[*types.Var]string{}, typeComments: map[string]string{}}
+	modelLoader := &loader{packageTypes: loaded[0].Types, seen: map[string]bool{}, active: map[string]bool{}, reserved: map[string]bool{}, modelTypes: map[string]string{}, comments: map[*types.Var]string{}, typeComments: map[string]string{}}
 	for _, file := range loaded[0].Syntax {
 		ast.Inspect(file, func(node ast.Node) bool {
 			switch declaration := node.(type) {
@@ -163,6 +165,11 @@ func Load(goDirectory string, rootNames []string) (Graph, error) {
 }
 
 func (modelLoader *loader) addModel(name string, modelType types.Type) error {
+	identity := types.TypeString(modelType, func(pkg *types.Package) string { return pkg.Path() })
+	if existing := modelLoader.modelTypes[name]; existing != "" && existing != identity {
+		return fmt.Errorf("Go model name %s collides between %s and %s", name, existing, identity)
+	}
+	modelLoader.modelTypes[name] = identity
 	if modelLoader.seen[name] || modelLoader.active[name] {
 		return nil
 	}
@@ -174,7 +181,7 @@ func (modelLoader *loader) addModel(name string, modelType types.Type) error {
 		return fmt.Errorf("Go model %s implements a custom JSON or text marshaler without a known mapping", name)
 	}
 	modelLoader.active[name] = true
-	candidates, err := modelLoader.jsonFields(structure)
+	candidates, err := modelLoader.jsonFields(modelType, structure)
 	if err != nil {
 		return fmt.Errorf("Go model %s: %w", name, err)
 	}
@@ -200,18 +207,18 @@ func (modelLoader *loader) addModel(name string, modelType types.Type) error {
 	return nil
 }
 
-func (modelLoader *loader) jsonFields(structure *types.Struct) ([]fieldCandidate, error) {
-	frontier := []embeddedStruct{{structure: structure, count: 1}}
-	visited := map[*types.Struct]bool{}
+func (modelLoader *loader) jsonFields(modelType types.Type, structure *types.Struct) ([]fieldCandidate, error) {
+	frontier := []embeddedStruct{{modelType: modelType, structure: structure, count: 1}}
+	visited := map[types.Type]bool{}
 	var candidates []fieldCandidate
 	for len(frontier) > 0 {
-		next := map[*types.Struct]*embeddedStruct{}
-		order := []*types.Struct{}
+		next := map[types.Type]*embeddedStruct{}
+		order := []types.Type{}
 		for _, embedded := range frontier {
-			if visited[embedded.structure] {
+			if visited[embedded.modelType] {
 				continue
 			}
-			visited[embedded.structure] = true
+			visited[embedded.modelType] = true
 			for index := range embedded.structure.NumFields() {
 				field := embedded.structure.Field(index)
 				fieldType := types.Unalias(field.Type())
@@ -240,12 +247,12 @@ func (modelLoader *loader) jsonFields(structure *types.Struct) ([]fieldCandidate
 				path := append(slices.Clone(embedded.index), index)
 				if field.Embedded() && jsonName == "" && embeddedIsStruct {
 					child := baseType.Underlying().(*types.Struct)
-					if next[child] == nil {
+					if next[baseType] == nil {
 						_, pointerEmbedded := fieldType.(*types.Pointer)
-						next[child] = &embeddedStruct{structure: child, index: path, optional: embedded.optional || pointerEmbedded, count: 1}
-						order = append(order, child)
+						next[baseType] = &embeddedStruct{modelType: baseType, structure: child, index: path, optional: embedded.optional || pointerEmbedded, count: 1}
+						order = append(order, baseType)
 					} else {
-						next[child].count++
+						next[baseType].count++
 					}
 					continue
 				}
@@ -350,7 +357,7 @@ func (modelLoader *loader) describeType(modelType types.Type, syntheticName stri
 			return Type{Kind: Float}, nil
 		}
 	case *types.Slice:
-		if basic, ok := types.Unalias(typed.Elem()).(*types.Basic); ok && basic.Kind() == types.Byte {
+		if basic, ok := types.Unalias(typed.Elem()).Underlying().(*types.Basic); ok && basic.Kind() == types.Byte {
 			return Type{Kind: Bytes, Nullable: true}, nil
 		}
 		element, err := modelLoader.describeType(typed.Elem(), syntheticName+"Item")
@@ -453,7 +460,7 @@ func (modelLoader *loader) modelName(named *types.Named) string {
 	if named.Obj().Pkg() != modelLoader.packageTypes {
 		name = named.Obj().Pkg().Name() + name
 	}
-	if named.TypeArgs().Len() > 0 {
+	if named.Obj().Pkg() != modelLoader.packageTypes || named.TypeArgs().Len() > 0 {
 		digest := sha256.Sum256([]byte(types.TypeString(named, func(pkg *types.Package) string { return pkg.Path() })))
 		name += fmt.Sprintf("_%x", digest[:4])
 	}

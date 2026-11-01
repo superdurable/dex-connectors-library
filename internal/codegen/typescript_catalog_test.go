@@ -73,15 +73,17 @@ func TestCatalogGeneratedTypeScriptCompiles(t *testing.T) {
 	if _, err := os.Stat(compiler); err != nil {
 		t.Fatal(err)
 	}
-	generatedRoot, err := os.MkdirTemp(filepath.Join(stripeDirectory, "src"), "catalog-codegen-")
-	if err != nil {
+	generatedRoot := t.TempDir()
+	if err := os.WriteFile(filepath.Join(generatedRoot, "package.json"), []byte(`{"type":"module"}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() {
-		if err := os.RemoveAll(generatedRoot); err != nil {
-			t.Error(err)
-		}
-	})
+	if err := os.Symlink(filepath.Join(stripeDirectory, "node_modules"), filepath.Join(generatedRoot, "node_modules")); err != nil {
+		t.Fatal(err)
+	}
+	config := `{"compilerOptions":{"target":"ES2022","module":"NodeNext","moduleResolution":"NodeNext","strict":true,"exactOptionalPropertyTypes":true,"skipLibCheck":true,"noEmit":true},"include":["connectors/**/*.ts"]}`
+	if err := os.WriteFile(filepath.Join(generatedRoot, "tsconfig.json"), []byte(config), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	source, err := os.ReadFile(filepath.Join(repository, "catalog.yaml"))
 	if err != nil {
 		t.Fatal(err)
@@ -128,8 +130,8 @@ func TestCatalogGeneratedTypeScriptCompiles(t *testing.T) {
 			}
 		}
 	}
-	command := exec.Command(compiler, "--noEmit")
-	command.Dir = stripeDirectory
+	command := exec.Command(compiler, "--project", generatedRoot)
+	command.Dir = generatedRoot
 	output, err := command.CombinedOutput()
 	if err != nil {
 		t.Fatalf("catalog-generated TypeScript did not compile: %v\n%s", err, output)

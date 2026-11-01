@@ -7,6 +7,9 @@ selects `searched`, `providerRejected`, `invalidResponse`, or `defect`.
 The checked-in `src/generated/` contracts come from `connector.yaml` and the
 Go operation structs. Run `go run ./cmd/connectorctl generate --lang typescript connectors/newsapi/connector.yaml` from the repository root after either source changes. Generated schemas preserve Go pointer nulls. The package consumes generated definitions, Step factories, connection contracts, and mock scenarios. The public article model and `ArticlePageSchema` retain `urlToImage` normalization and the narrower non-null page contract; the connection adapter and project credential decoder remain hand-written.
 
+The generated Step factory accepts those public types directly, so the compiler
+checks the adapter without type assertions.
+
 ## Install
 
 ```sh

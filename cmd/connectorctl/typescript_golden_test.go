@@ -94,15 +94,17 @@ func TestNonLegacyTypeScriptGoldenDefaultGeneration(t *testing.T) {
 	if _, err := os.Stat(compiler); err != nil {
 		t.Fatal(err)
 	}
-	compileDirectory, err := os.MkdirTemp(filepath.Join(stripeDirectory, "src"), "golden-codegen-")
-	if err != nil {
+	compileDirectory := t.TempDir()
+	if err := os.WriteFile(filepath.Join(compileDirectory, "package.json"), []byte(`{"type":"module"}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() {
-		if err := os.RemoveAll(compileDirectory); err != nil {
-			t.Error(err)
-		}
-	})
+	if err := os.Symlink(filepath.Join(stripeDirectory, "node_modules"), filepath.Join(compileDirectory, "node_modules")); err != nil {
+		t.Fatal(err)
+	}
+	config := `{"compilerOptions":{"target":"ES2022","module":"NodeNext","moduleResolution":"NodeNext","strict":true,"exactOptionalPropertyTypes":true,"skipLibCheck":true,"noEmit":true},"include":["*.ts"]}`
+	if err := os.WriteFile(filepath.Join(compileDirectory, "tsconfig.json"), []byte(config), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	for _, name := range []string{"models.ts", "definitions.ts", "steps.ts", "connection.ts", "mock.ts"} {
 		contents, err := os.ReadFile(filepath.Join(generatedDirectory, name))
 		if err != nil {
@@ -112,8 +114,8 @@ func TestNonLegacyTypeScriptGoldenDefaultGeneration(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	command := exec.Command(compiler, "--noEmit")
-	command.Dir = stripeDirectory
+	command := exec.Command(compiler, "--project", compileDirectory)
+	command.Dir = compileDirectory
 	output, err := command.CombinedOutput()
 	if err != nil {
 		t.Fatalf("golden TypeScript compilation: %v\n%s", err, strings.TrimSpace(string(output)))

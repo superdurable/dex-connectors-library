@@ -9,7 +9,7 @@ import type { CredentialProvider, SecretString } from '@superdurable/connectors-
 export interface Config {
   /** NewsAPI REST base URL; this is NewsAPI's fixed public v2 endpoint, so leave the field blank unless a compatible gateway or a loopback test server is being used. */
   baseUrl?: string;
-  /** Maximum duration for one NewsAPI HTTP request, using a positive Go duration such as 15s or 1m; leave blank for the displayed default. */
+  /** Duration in milliseconds for timeoutMs; omit to use the manifest default. */
   timeoutMs?: number;
   /** Maximum bytes accepted from one NewsAPI response; enter a positive integer only to change the safety limit. Oversized responses select invalidResponse. */
   maxResponseBytes?: number;

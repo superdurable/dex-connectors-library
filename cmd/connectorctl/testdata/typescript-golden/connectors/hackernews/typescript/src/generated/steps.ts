@@ -2,29 +2,29 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { goToBranch, newQueryStep, type QueryResult, type QueryStep, type QueryStepConfig } from '@superdurable/connectors-sdk';
+import { goToBranch, newQueryStep, type Query, type QueryResult, type QueryStep, type QueryStepConfig } from '@superdurable/connectors-sdk';
 import type { StepTarget } from '@superdurable/dex';
 import type { Connection } from './connection.js';
 import type { ListStoryIDsInput, StoryIDs, GetItemInput, Item } from './models.js';
 
 /** Configuration for the listStoryIDs connector Step. */
-export interface ListStoryIDsStepConfig<StepInput> extends Omit<QueryStepConfig<StepInput, ListStoryIDsInput, StoryIDs>, 'operation' | 'connection' | 'branches'> {
+export interface ListStoryIDsStepConfig<StepInput, OperationInput = ListStoryIDsInput, OperationOutput = StoryIDs> extends Omit<QueryStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
   /** Named connection supplying this operation. */
-  connection: Connection;
+  connection: Connection<{ listStoryIDs(): Query<OperationInput, OperationOutput> }>;
   /** Name matching the bound connection. */
   connectionName: string;
   /** The feed snapshot was read. */
-  listed: StepTarget<QueryResult<StoryIDs>>;
+  listed: StepTarget<QueryResult<OperationOutput>>;
   /** Hacker News rejected the request. */
-  providerRejected?: StepTarget<QueryResult<StoryIDs>>;
+  providerRejected?: StepTarget<QueryResult<OperationOutput>>;
   /** Hacker News returned malformed or oversized data. */
-  invalidResponse?: StepTarget<QueryResult<StoryIDs>>;
+  invalidResponse?: StepTarget<QueryResult<OperationOutput>>;
   /** Local input or connection configuration is invalid. */
-  defect?: StepTarget<QueryResult<StoryIDs>>;
+  defect?: StepTarget<QueryResult<OperationOutput>>;
 }
 
 /** Build the listStoryIDs Step from a named connection. */
-export function newListStoryIDsStep<StepInput>(configuration: ListStoryIDsStepConfig<StepInput>): QueryStep<StepInput, ListStoryIDsInput, StoryIDs> {
+export function newListStoryIDsStep<StepInput, OperationInput = ListStoryIDsInput, OperationOutput = StoryIDs>(configuration: ListStoryIDsStepConfig<StepInput, OperationInput, OperationOutput>): QueryStep<StepInput, OperationInput, OperationOutput> {
   const { connection, connectionName, listed, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newQueryStep({ ...stepConfiguration, operation: connection.operations.listStoryIDs(), connection: connection.reference, branches: [
@@ -36,25 +36,25 @@ export function newListStoryIDsStep<StepInput>(configuration: ListStoryIDsStepCo
 }
 
 /** Configuration for the getItem connector Step. */
-export interface GetItemStepConfig<StepInput> extends Omit<QueryStepConfig<StepInput, GetItemInput, Item>, 'operation' | 'connection' | 'branches'> {
+export interface GetItemStepConfig<StepInput, OperationInput = GetItemInput, OperationOutput = Item> extends Omit<QueryStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
   /** Named connection supplying this operation. */
-  connection: Connection;
+  connection: Connection<{ getItem(): Query<OperationInput, OperationOutput> }>;
   /** Name matching the bound connection. */
   connectionName: string;
   /** The public item was read. */
-  found: StepTarget<QueryResult<Item>>;
+  found: StepTarget<QueryResult<OperationOutput>>;
   /** The item is missing, deleted, or dead. */
-  notFound?: StepTarget<QueryResult<Item>>;
+  notFound?: StepTarget<QueryResult<OperationOutput>>;
   /** Hacker News rejected the request. */
-  providerRejected?: StepTarget<QueryResult<Item>>;
+  providerRejected?: StepTarget<QueryResult<OperationOutput>>;
   /** Hacker News returned malformed or oversized data. */
-  invalidResponse?: StepTarget<QueryResult<Item>>;
+  invalidResponse?: StepTarget<QueryResult<OperationOutput>>;
   /** Local input or connection configuration is invalid. */
-  defect?: StepTarget<QueryResult<Item>>;
+  defect?: StepTarget<QueryResult<OperationOutput>>;
 }
 
 /** Build the getItem Step from a named connection. */
-export function newGetItemStep<StepInput>(configuration: GetItemStepConfig<StepInput>): QueryStep<StepInput, GetItemInput, Item> {
+export function newGetItemStep<StepInput, OperationInput = GetItemInput, OperationOutput = Item>(configuration: GetItemStepConfig<StepInput, OperationInput, OperationOutput>): QueryStep<StepInput, OperationInput, OperationOutput> {
   const { connection, connectionName, found, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newQueryStep({ ...stepConfiguration, operation: connection.operations.getItem(), connection: connection.reference, branches: [

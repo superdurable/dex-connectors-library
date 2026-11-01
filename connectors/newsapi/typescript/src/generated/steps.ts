@@ -2,29 +2,29 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { goToBranch, newQueryStep, type QueryResult, type QueryStep, type QueryStepConfig } from '@superdurable/connectors-sdk';
+import { goToBranch, newQueryStep, type Query, type QueryResult, type QueryStep, type QueryStepConfig } from '@superdurable/connectors-sdk';
 import type { StepTarget } from '@superdurable/dex';
 import type { Connection } from './connection.js';
 import type { SearchArticlesInput, ArticlePage } from './models.js';
 
 /** Configuration for the searchArticles connector Step. */
-export interface SearchArticlesStepConfig<StepInput> extends Omit<QueryStepConfig<StepInput, SearchArticlesInput, ArticlePage>, 'operation' | 'connection' | 'branches'> {
+export interface SearchArticlesStepConfig<StepInput, OperationInput = SearchArticlesInput, OperationOutput = ArticlePage> extends Omit<QueryStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
   /** Named connection supplying this operation. */
-  connection: Connection;
+  connection: Connection<{ searchArticles(): Query<OperationInput, OperationOutput> }>;
   /** Name matching the bound connection. */
   connectionName: string;
   /** NewsAPI returned one page of matching articles, possibly empty. */
-  searched: StepTarget<QueryResult<ArticlePage>>;
+  searched: StepTarget<QueryResult<OperationOutput>>;
   /** NewsAPI conclusively rejected the search, such as an invalid or exhausted API key, a request the plan does not permit, or an unknown source. */
-  providerRejected?: StepTarget<QueryResult<ArticlePage>>;
+  providerRejected?: StepTarget<QueryResult<OperationOutput>>;
   /** NewsAPI returned malformed or oversized data. */
-  invalidResponse?: StepTarget<QueryResult<ArticlePage>>;
+  invalidResponse?: StepTarget<QueryResult<OperationOutput>>;
   /** Local input, connection configuration, or credentials are invalid. */
-  defect?: StepTarget<QueryResult<ArticlePage>>;
+  defect?: StepTarget<QueryResult<OperationOutput>>;
 }
 
 /** Build the searchArticles Step from a named connection. */
-export function newSearchArticlesStep<StepInput>(configuration: SearchArticlesStepConfig<StepInput>): QueryStep<StepInput, SearchArticlesInput, ArticlePage> {
+export function newSearchArticlesStep<StepInput, OperationInput = SearchArticlesInput, OperationOutput = ArticlePage>(configuration: SearchArticlesStepConfig<StepInput, OperationInput, OperationOutput>): QueryStep<StepInput, OperationInput, OperationOutput> {
   const { connection, connectionName, searched, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newQueryStep({ ...stepConfiguration, operation: connection.operations.searchArticles(), connection: connection.reference, branches: [

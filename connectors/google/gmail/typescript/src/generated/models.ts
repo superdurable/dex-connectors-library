@@ -13,7 +13,7 @@ export interface Config {
   maxResponseBytes?: number;
   /** Maximum base64url-encoded RFC 5322 message size in bytes accepted for send or reply operations; enter a positive integer only to change the safety limit. */
   maxMessageBytes?: number;
-  /** Delay between local Gmail Trigger polls, using a positive Go duration such as 10s or 1m; shorter intervals increase Gmail API usage. */
+  /** Duration in milliseconds for pollIntervalMs; omit to use the manifest default. */
   pollIntervalMs?: number;
   /** Positive count of recent inbox messages inspected per Trigger poll; increase only when matching mail may fall outside the displayed default window. */
   pollPageSize?: number;

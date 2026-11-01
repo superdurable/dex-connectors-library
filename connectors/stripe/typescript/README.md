@@ -8,7 +8,9 @@ Go operation structs. Run `go run ./cmd/connectorctl generate --lang typescript 
 validators; `src/connection.ts` keeps Stripe's credential decoding and public
 constructor signatures. `src/steps.ts` keeps the published connection-name
 validation error, requires the Stripe `Connection` class, and preserves the
-public refund-reason union. `src/mock.ts` re-exports generated scenarios.
+public refund-reason union and explicit Step return types. `src/mock.ts`
+re-exports generated cases and builds mock accessors with the published input
+types.
 
 ## Install
 
