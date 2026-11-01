@@ -30,10 +30,10 @@ def test_operation_inputs_and_send_output_round_trip_with_go_names() -> None:
             {"messageId": "source-1", "textBody": "Answer"},
         ),
         (
-            SendMessageOutput("owner@example.org", ["ada@example.com"], "", ""),
+            SendMessageOutput("owner@example.org", ["<ada@example.com>"], "", ""),
             {
                 "sender": "owner@example.org",
-                "recipients": ["ada@example.com"],
+                "recipients": ["<ada@example.com>"],
                 "messageId": "",
                 "threadId": "",
             },

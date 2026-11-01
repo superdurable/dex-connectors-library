@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "dex-connector-google-gmail"
-version = "0.1.0"
+version = "0.1.1"
 description = "Dex-native Python connector for Gmail"
 readme = "README.md"
 requires-python = ">=3.11"

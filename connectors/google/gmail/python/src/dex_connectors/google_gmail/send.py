@@ -26,6 +26,7 @@ from .provider import (
     GmailResponseReadFailure,
     GmailResponseTooLarge,
     ProviderTransportError,
+    _format_go_mailbox,
     build_reply_message,
     build_send_message,
     decode_message,
@@ -347,7 +348,7 @@ class SendService:
                 _receipt(execution, headers, input.message_id),
             )
         try:
-            recipient = parse_mailbox(message.reply_to or message.from_address)
+            recipient = _format_go_mailbox(parse_mailbox(message.reply_to or message.from_address))
         except ValueError:
             await self._record_not_sent(execution)
             return _branch(

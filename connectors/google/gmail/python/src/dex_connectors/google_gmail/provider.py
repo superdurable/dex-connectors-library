@@ -132,7 +132,11 @@ def decode_message(resource: object) -> Message:
 
     visit(payload)
     address_list = getaddresses([header_values.get("to", "")])
-    to = [f"{name} <{address}>" if name else address for name, address in address_list if address]
+    to = [
+        _format_go_mailbox(f"{name} <{address}>" if name else address)
+        for name, address in address_list
+        if address
+    ]
     try:
         subject = str(make_header(decode_header(header_values.get("subject", ""))))
     except (UnicodeError, LookupError):
@@ -174,6 +178,17 @@ def parse_mailbox(value: str) -> str:
     return str(address)
 
 
+def _format_go_mailbox(value: str) -> str:
+    """Format a validated mailbox like Go's mail.Address.String."""
+    name, address = parseaddr(value)
+    if not name:
+        return f"<{address}>"
+    if any(ord(character) < 32 or ord(character) > 126 for character in name):
+        return f"{header_encode(name.encode('utf-8'), charset='utf-8')} <{address}>"
+    escaped_name = name.replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{escaped_name}" <{address}>'
+
+
 def validate_send_input(input_value: SendMessageInput, sender: str) -> list[str]:
     """Validate new-mail fields and return distinct parsed recipient mailboxes."""
     if (
@@ -198,7 +213,7 @@ def validate_send_input(input_value: SendMessageInput, sender: str) -> list[str]
     canonical = [parseaddr(value)[1].lower() for value in recipients]
     if len(set(canonical)) != len(canonical):
         raise ValueError("recipient email is duplicated")
-    return recipients
+    return [_format_go_mailbox(value) for value in recipients]
 
 
 def rfc_message_id_address(call: Call, run_id: str, flow_started_at: datetime) -> str:
@@ -249,7 +264,7 @@ def _mime_message(
         return ("\r\n".join(lines) + "\r\n\r\n" + _crlf(text_body)).encode()
     boundary = "dex-" + hashlib.sha256(str(call.idempotency_key).encode()).hexdigest()[:24]
     lines.append(f'Content-Type: multipart/alternative; boundary="{boundary}"')
-    lines.extend(("", ""))
+    lines.append("")
     for media_type, body in (("text/plain", text_body), ("text/html", html_body)):
         lines.extend((f"--{boundary}", f'Content-Type: {media_type}; charset="UTF-8"', "", _crlf(body)))
     lines.extend((f"--{boundary}--", ""))
