@@ -24,7 +24,6 @@ def new_list_outbound_messages_step(
     connection_name: str,
     map_to_operation_input: Callable[[StepInput], ListOutboundMessagesInput],
     listed: dex.StepTarget[QueryResult[MessagePage]],
-    not_listed: dex.StepTarget[QueryResult[MessagePage]] | None = None,
     provider_rejected: dex.StepTarget[QueryResult[MessagePage]] | None = None,
     invalid_response: dex.StepTarget[QueryResult[MessagePage]] | None = None,
     defect: dex.StepTarget[QueryResult[MessagePage]] | None = None,
