@@ -354,6 +354,7 @@ func TestGmailAmbiguousWritesSearchSentMail(t *testing.T) {
 						require.NoError(t, result.err)
 						require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchSent, gmail.ReplyToMessageBranchSent), result.branch)
 						require.Empty(t, result.value.MessageID)
+						require.NotNil(t, result.value.Recipients)
 						if isReply {
 							require.Equal(t, "thread-1", result.value.ThreadID)
 						} else {
@@ -367,6 +368,7 @@ func TestGmailAmbiguousWritesSearchSentMail(t *testing.T) {
 					return
 				}
 				require.NoError(t, result.err)
+				require.NotNil(t, result.value.Recipients)
 				require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchSent, gmail.ReplyToMessageBranchSent), result.branch)
 				require.Equal(t, gmail.SendMessageOutput{
 					Sender: "owner@example.com", Recipients: result.value.Recipients, MessageID: "sent-1", ThreadID: "thread-1",

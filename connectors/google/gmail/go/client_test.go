@@ -179,6 +179,9 @@ func TestProviderRejectionIsTerminal(t *testing.T) {
 	require.Equal(t, gmail.SendMessageBranchProviderRejected, result.Branch)
 	require.NotNil(t, result.Failure)
 	require.Equal(t, sdkgo.FailureAuthorization, result.Failure.Kind)
+	encoded, marshalErr := json.Marshal(result.Value)
+	require.NoError(t, marshalErr)
+	require.Contains(t, string(encoded), `"recipients":[]`)
 }
 
 func TestMalformedSuccessIsSentAfterSentMailMiss(t *testing.T) {
@@ -192,6 +195,7 @@ func TestMalformedSuccessIsSentAfterSentMailMiss(t *testing.T) {
 	require.Equal(t, gmail.SendMessageBranchSent, result.Branch)
 	require.Empty(t, result.Value.MessageID)
 	require.Empty(t, result.Value.ThreadID)
+	require.NotNil(t, result.Value.Recipients)
 }
 
 func TestRejectsHeaderInjectionBeforeProviderCall(t *testing.T) {
