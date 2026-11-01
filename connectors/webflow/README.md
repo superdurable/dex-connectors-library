@@ -6,6 +6,9 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/webflow`.
 
 This Dex connector exposes `listCollectionItems`, `getCollectionItem`. The runnable [sample Flow](go/examples/sample-webflow/flow/workflow.go) uses `listCollectionItems` with the static `webflow` connection. Each operation uses the generated typed Step factory.
 
+The Python package is [`dex-connector-webflow`](python/README.md), imported as
+`dex_connectors.webflow`.
+
 ## Provider contract
 
 Both operations read staged CMS items with `CMS:read` scope. A site token is scoped to one site. The `collectionId` and `itemId` are 24-character hexadecimal IDs.
