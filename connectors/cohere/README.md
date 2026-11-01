@@ -10,6 +10,9 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/cohere`.
 
 In Dex Web Connections, create a `cohere` connection named `cohere`. Open [Cohere Dashboard > API Keys](https://dashboard.cohere.com/api-keys), create a key, and paste its opaque value into the secret `api_key` field. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
 
+The Python package is [`dex-connector-cohere`](python/README.md), imported as
+`dex_connectors.cohere`.
+
 ## Operations
 
 - [`embed`](https://docs.cohere.com/reference/embed) sends up to 96 nonempty text inputs to `POST /v2/embed`, with a required model and input type. It fixes `embedding_types` to `float` and returns one float vector per input.
