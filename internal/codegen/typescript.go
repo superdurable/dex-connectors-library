@@ -18,7 +18,7 @@ import (
 )
 
 // GenerateTypeScript writes the manifest-backed TypeScript contracts for supported operations.
-func GenerateTypeScript(manifest schema.Manifest, goDirectory string) (map[string][]byte, error) {
+func GenerateTypeScript(manifest schema.Manifest, goDirectory string, publishedModelNames ...string) (map[string][]byte, error) {
 	if manifest.Spec.Languages == nil || manifest.Spec.Languages.TypeScript == nil {
 		return nil, nil
 	}
@@ -34,7 +34,7 @@ func GenerateTypeScript(manifest schema.Manifest, goDirectory string) (map[strin
 			modelNames = append(modelNames, operation.InputType, operation.OutputType)
 		}
 	}
-	graph, err := gomodel.Load(goDirectory, modelNames)
+	graph, err := gomodel.Load(goDirectory, modelNames, publishedModelNames...)
 	if err != nil {
 		return nil, err
 	}

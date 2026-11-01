@@ -66,6 +66,11 @@ including the listed constants and future provider values; the TypeScript type
 retains the known literals for completion. Only recursion cycles use `z.lazy`,
 so ordinary model validators retain `ZodObject` methods. External model names
 use the package and type name, with an import-path hash only for collisions.
+If a new operation creates a collision with a short name in the checked-in
+generated models, generation fails before writing files and names both Go types.
+Rename the new Go package or type to preserve the published model name.
+Future emitters using `gomodel.Load` must pass their checked-in public model
+names to apply the same guard.
 `time.Time` is an ISO datetime string, and byte slices without element marshalers
 (including named byte elements) are base64 strings. `json.RawMessage` or `any` is unknown. A named
 type with both `MarshalJSON` and `UnmarshalJSON` is an opaque JSON value;

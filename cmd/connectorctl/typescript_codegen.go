@@ -39,7 +39,11 @@ func generatedTypeScriptFiles(manifestPath string, manifest schema.Manifest) (ma
 		}
 		return files, nil
 	}
-	generated, err := codegen.GenerateTypeScript(manifest, goDirectory)
+	publishedNames, err := publishedTypeScriptModelNames(codegen.TypeScriptGeneratedPath(manifestPath, "models.ts"))
+	if err != nil {
+		return nil, err
+	}
+	generated, err := codegen.GenerateTypeScript(manifest, goDirectory, publishedNames...)
 	if err != nil {
 		return nil, err
 	}
@@ -47,6 +51,28 @@ func generatedTypeScriptFiles(manifestPath string, manifest schema.Manifest) (ma
 		files[codegen.TypeScriptGeneratedPath(manifestPath, name)] = content
 	}
 	return files, nil
+}
+
+func publishedTypeScriptModelNames(path string) ([]string, error) {
+	contents, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read existing TypeScript models: %w", err)
+	}
+	var names []string
+	for _, line := range bytes.Split(contents, []byte{'\n'}) {
+		declaration, ok := bytes.CutPrefix(line, []byte("export interface "))
+		if !ok {
+			continue
+		}
+		name, ok := bytes.CutSuffix(declaration, []byte(" {"))
+		if ok {
+			names = append(names, string(name))
+		}
+	}
+	return names, nil
 }
 
 func staleTypeScriptFiles(manifestPath string, generated map[string][]byte) ([]string, error) {

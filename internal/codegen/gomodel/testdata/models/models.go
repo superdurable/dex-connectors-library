@@ -154,6 +154,10 @@ type ExternalSameName struct {
 	Second itemB.Item `json:"second"`
 }
 
+type ExternalFirstItem struct {
+	First itemA.Item `json:"first"`
+}
+
 type SameFields struct {
 	Z int `json:"z"`
 }

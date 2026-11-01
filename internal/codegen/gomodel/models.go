@@ -112,7 +112,8 @@ type fieldCandidate struct {
 }
 
 // Load resolves root Go struct names and their reachable JSON models from a connector module.
-func Load(goDirectory string, rootNames []string) (Graph, error) {
+// Published names prevent later collisions from renaming existing generated types.
+func Load(goDirectory string, rootNames []string, publishedNames ...string) (Graph, error) {
 	loaded, err := packages.Load(&packages.Config{Dir: goDirectory, Mode: packages.NeedName | packages.NeedTypes | packages.NeedCompiledGoFiles | packages.NeedSyntax | packages.NeedTypesInfo}, ".")
 	if err != nil {
 		return Graph{}, fmt.Errorf("load connector Go package: %w", err)
@@ -162,12 +163,14 @@ func Load(goDirectory string, rootNames []string) (Graph, error) {
 			return Graph{}, err
 		}
 	}
-	modelLoader.useUnambiguousExternalNames()
+	if err := modelLoader.useUnambiguousExternalNames(publishedNames); err != nil {
+		return Graph{}, err
+	}
 	return Graph{Models: modelLoader.models}, nil
 }
 
 // Keep hashed recursive references while loading; shorten names after the graph reveals collisions.
-func (modelLoader *loader) useUnambiguousExternalNames() {
+func (modelLoader *loader) useUnambiguousExternalNames(publishedNames []string) error {
 	counts := map[string]int{}
 	used := map[string]bool{}
 	for _, model := range modelLoader.models {
@@ -175,6 +178,25 @@ func (modelLoader *loader) useUnambiguousExternalNames() {
 		if preferred := modelLoader.externalPreferredNames[model.Name]; preferred != "" {
 			counts[preferred]++
 		}
+	}
+	for _, published := range publishedNames {
+		if counts[published] < 2 && !used[published] {
+			continue
+		}
+		var conflictingTypes []string
+		for hashed, preferred := range modelLoader.externalPreferredNames {
+			if preferred == published {
+				conflictingTypes = append(conflictingTypes, modelLoader.modelTypes[hashed])
+			}
+		}
+		if len(conflictingTypes) == 0 {
+			continue
+		}
+		if used[published] {
+			conflictingTypes = append(conflictingTypes, modelLoader.modelTypes[published])
+		}
+		slices.Sort(conflictingTypes)
+		return fmt.Errorf("Go model name %q conflicts between %s; the checked-in generated output already exports this short name, so generation would rename a published type; rename the new Go package or type", published, strings.Join(conflictingTypes, " and "))
 	}
 	renamed := map[string]string{}
 	for hashed, preferred := range modelLoader.externalPreferredNames {
@@ -191,6 +213,7 @@ func (modelLoader *loader) useUnambiguousExternalNames() {
 			renameModelReferences(&model.Fields[fieldIndex].Type, renamed)
 		}
 	}
+	return nil
 }
 
 func renameModelReferences(modelType *Type, renamed map[string]string) {

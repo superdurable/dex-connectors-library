@@ -251,6 +251,27 @@ func TestExternalModelNamesGolden(t *testing.T) {
 	}
 }
 
+func TestPublishedExternalModelNameCollisionFails(t *testing.T) {
+	goDirectory := filepath.Join("testdata", "models")
+	original, err := Load(goDirectory, []string{"ExternalFirstItem"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var shortName string
+	for _, model := range original.Models {
+		if model.Name == "ExternalFirstItem" {
+			shortName = model.Fields[0].Type.Ref
+		}
+	}
+	if got := shortName; got != "v1Item" {
+		t.Fatalf("original published name = %q, want v1Item", got)
+	}
+	_, err = Load(goDirectory, []string{"ExternalFirstItem", "ExternalSameName"}, "v1Item")
+	if err == nil || !strings.Contains(err.Error(), `Go model name "v1Item" conflicts`) || !strings.Contains(err.Error(), "a/v1.Item") || !strings.Contains(err.Error(), "b/v1.Item") || !strings.Contains(err.Error(), "published type") {
+		t.Fatalf("published-name collision must fail with conflicting types, got %v", err)
+	}
+}
+
 func TestMarshaledByteElementsMatchEncodingJSON(t *testing.T) {
 	for _, test := range []struct {
 		name  string
