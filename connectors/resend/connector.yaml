@@ -8,6 +8,11 @@ metadata:
   version: v0.2.0
 spec:
   provider: resend
+  languages:
+    python:
+      version: v0.1.0
+      operations: [sendEmail, getEmail]
+      triggers: []
   codegen:
     go:
       package: resend
