@@ -9,7 +9,7 @@ import type { CredentialProvider } from '@superdurable/connectors-sdk';
 export interface Config {
   /** Hacker News Firebase API base URL; this is a fixed public endpoint, so leave the field blank unless a loopback test server is being used. */
   baseUrl?: string;
-  /** Duration in milliseconds for timeoutMs; omit to use the manifest default. */
+  /** Maximum duration for one Hacker News HTTP request, using a positive Go duration such as 15s or 1m; leave blank for the displayed default. Runtime value in milliseconds. */
   timeoutMs?: number;
   /** Maximum bytes accepted from one Hacker News response; enter a positive integer only to change the safety limit. Oversized responses select invalidResponse. */
   maxResponseBytes?: number;

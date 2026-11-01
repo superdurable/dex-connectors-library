@@ -18,7 +18,9 @@ import type { MutationStep, QueryStep } from '@superdurable/connectors-sdk';
 import type { CheckoutSession, CreateACHCheckoutSessionInput, CreateCardCheckoutSessionInput, CreateRefundInput, GetCheckoutSessionInput, GetPaymentIntentInput, PaymentIntent, Refund } from './models.js';
 
 type StripeStepConfig<StepInput, GeneratedConfig, OperationInput> = Omit<GeneratedConfig, 'connection' | 'mapToOperationInput'> & {
+  /** Named Stripe connection providing the operation. */
   connection: Connection;
+  /** Map Flow input to the operation's public request type. */
   mapToOperationInput(input: StepInput): OperationInput;
 };
 

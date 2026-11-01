@@ -103,7 +103,7 @@ func generateTypeScriptModels(manifest schema.Manifest, models []gomodel.Model) 
 		}
 		comment := field.Description
 		if field.Type == "duration" {
-			comment = "Duration in milliseconds for " + name + "; omit to use the manifest default."
+			comment = strings.TrimSpace(comment) + " Runtime value in milliseconds."
 		}
 		fmt.Fprintf(&output, "  /** %s */\n  %s%s: %s;\n", typeScriptJSDoc(comment), name, optional, fieldType)
 	}

@@ -46,12 +46,13 @@
   "scripts": {
     "build": "tsup src/index.ts src/mock/index.ts --format esm,cjs --dts --clean",
     "typecheck": "npm run build && tsc --noEmit",
-    "lint": "eslint src test examples",
+    "lint": "eslint src test test-d examples",
     "test": "npm run build && vitest run test/*.test.ts",
     "test:integration": "npm run build && vitest run examples/gmail-flow/integration.test.ts",
     "example:worker": "tsx examples/gmail-flow/main.ts",
     "example:start": "tsx examples/gmail-flow/start.ts",
-    "check": "npm run typecheck && npm run lint && npm test"
+    "test-d": "tsc -p test-d/tsconfig.json",
+    "check": "npm run typecheck && npm run test-d && npm run lint && npm test"
   },
   "dependencies": {
     "@superdurable/connectors-sdk": "0.1.0",

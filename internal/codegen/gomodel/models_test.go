@@ -5,11 +5,22 @@ package gomodel
 
 import (
 	"encoding/json"
+	"fmt"
+	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 )
+
+type textMarshaledByte byte
+
+func (textMarshaledByte) MarshalText() ([]byte, error) { return []byte("marshaled"), nil }
+
+type jsonMarshaledByte byte
+
+func (jsonMarshaledByte) MarshalJSON() ([]byte, error) { return []byte(`"marshaled"`), nil }
+func (*jsonMarshaledByte) UnmarshalJSON([]byte) error  { return nil }
 
 func TestLoadJSONFieldRules(t *testing.T) {
 	graph, err := Load(filepath.Join("testdata", "models"), []string{"Parent", "Recursive", "A", "B"})
@@ -205,5 +216,73 @@ func TestDistinctEmbeddedAndExternalTypes(t *testing.T) {
 	}{Value: []namedByte{0, 1}})
 	if err != nil || string(encoded) != `{"value":"AAE="}` {
 		t.Fatalf("encoding/json byte baseline: %s %v", encoded, err)
+	}
+}
+
+func TestExternalModelNamesGolden(t *testing.T) {
+	graph, err := Load(filepath.Join("testdata", "models"), []string{"ExternalRecursive", "ExternalSameName"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	models := map[string]Model{}
+	for _, model := range graph.Models {
+		models[model.Name] = model
+	}
+	if got := models["ExternalRecursive"].Fields[0].Type.Ref; got != "externalNode" {
+		t.Fatalf("unambiguous external name = %q, want externalNode", got)
+	}
+	if got := models["externalNode"].Fields[0].Type.Ref; got != "externalNode" {
+		t.Fatalf("recursive external reference = %q, want externalNode", got)
+	}
+	first := models["ExternalSameName"].Fields[0].Type.Ref
+	second := models["ExternalSameName"].Fields[1].Type.Ref
+	if first == second || !strings.HasPrefix(first, "v1Item_") || !strings.HasPrefix(second, "v1Item_") {
+		t.Fatalf("colliding external names = %q, %q", first, second)
+	}
+	if len(models[first].Fields) != 1 || len(models[second].Fields) != 1 {
+		t.Fatalf("colliding external models lost fields: %+v %+v", models[first], models[second])
+	}
+	want, err := os.ReadFile(filepath.Join("testdata", "external_model_names.golden.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := fmt.Sprintf("%s\n%s\n%s\n", models["ExternalRecursive"].Fields[0].Type.Ref, first, second); got != string(want) {
+		t.Fatalf("external model names changed:\ngot:\n%s\nwant:\n%s", got, want)
+	}
+}
+
+func TestMarshaledByteElementsMatchEncodingJSON(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		value any
+		want  string
+	}{
+		{"MarshaledBytes", struct {
+			Value []textMarshaledByte `json:"value"`
+		}{[]textMarshaledByte{1}}, `{"value":["marshaled"]}`},
+		{"JSONBytes", struct {
+			Value []jsonMarshaledByte `json:"value"`
+		}{[]jsonMarshaledByte{1}}, `{"value":["marshaled"]}`},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			encoded, err := json.Marshal(test.value)
+			if err != nil || string(encoded) != test.want {
+				t.Fatalf("encoding/json baseline: %s %v, want %s", encoded, err, test.want)
+			}
+			graph, err := Load(filepath.Join("testdata", "models"), []string{test.name})
+			if test.name == "MarshaledBytes" {
+				if err == nil || !strings.Contains(err.Error(), "custom JSON or text marshaler") {
+					t.Fatalf("text marshaler must fail fast, got graph=%+v err=%v", graph, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			field := graph.Models[0].Fields[0]
+			if field.Type.Kind != List || field.Type.Elem == nil || field.Type.Elem.Kind != Unknown {
+				t.Fatalf("JSON marshaler must be an array of unknown values: %+v", field)
+			}
+		})
 	}
 }
