@@ -85,7 +85,7 @@ type CheckoutSession struct {
 	// AmountTotal is the total amount in the currency's minor unit.
 	AmountTotal int64 `json:"amountTotal,omitempty"`
 	// ExpiresAt is the Checkout Session expiration time when present.
-	ExpiresAt time.Time `json:"expiresAt,omitempty"`
+	ExpiresAt time.Time `json:"expiresAt,omitzero"`
 	// Metadata contains the bounded non-sensitive application metadata supplied at creation.
 	Metadata map[string]string `json:"metadata,omitempty"`
 }
@@ -109,7 +109,7 @@ type CreateACHCheckoutSessionInput struct {
 	// Metadata is bounded non-sensitive application metadata copied to the session and PaymentIntent.
 	Metadata map[string]string `json:"metadata,omitempty"`
 	// ExpiresAt optionally requests a provider expiration timestamp.
-	ExpiresAt time.Time `json:"expiresAt,omitempty"`
+	ExpiresAt time.Time `json:"expiresAt,omitzero"`
 }
 
 // GetCheckoutSessionInput identifies one Stripe Checkout Session.

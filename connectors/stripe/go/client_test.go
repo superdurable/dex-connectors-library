@@ -6,6 +6,7 @@ package stripe_test
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -64,6 +65,20 @@ func TestGetCheckoutSessionReturnsSafeNormalizedFields(t *testing.T) {
 	require.Equal(t, stripe.GetCheckoutSessionBranchFound, result.Branch)
 	require.Equal(t, "paid", result.Value.PaymentStatus)
 	require.Equal(t, "pi_123", result.Value.PaymentIntentID)
+	encoded, marshalErr := json.Marshal(result.Value)
+	require.NoError(t, marshalErr)
+	require.NotContains(t, string(encoded), `"expiresAt"`)
+}
+
+func TestCheckoutExpirationWireOmitsZeroTime(t *testing.T) {
+	for _, value := range []any{stripe.CheckoutSession{ID: "cs_test_123"}, stripe.CreateACHCheckoutSessionInput{}} {
+		encoded, err := json.Marshal(value)
+		require.NoError(t, err)
+		require.NotContains(t, string(encoded), `"expiresAt"`)
+	}
+	encoded, err := json.Marshal(stripe.CheckoutSession{ID: "cs_test_123", ExpiresAt: time.Unix(1700000000, 0).UTC()})
+	require.NoError(t, err)
+	require.Contains(t, string(encoded), `"expiresAt":"2023-11-14T22:13:20Z"`)
 }
 
 func TestGetCheckoutSessionClassifiesNotFoundAndAuthentication(t *testing.T) {
