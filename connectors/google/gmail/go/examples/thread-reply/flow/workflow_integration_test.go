@@ -106,6 +106,44 @@ func TestThreadReplyExampleCompletesAndRetriesAfterSearchMissWithRealDex(t *test
 	require.Equal(t, 5, provider.searchCount(retriedThreadID))
 }
 
+func TestThreadReplyClaimedSearchMissFailsWithoutDuplicateWithRealDex(t *testing.T) {
+	provider := newGmailProvider(t)
+	defer provider.Close()
+	flow, harness := newGmailIntegrationHarness(t, provider.URL)
+	harness.startWorker(t)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	identity := "claimed-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	threadID := "thread-" + identity
+	root := gmail.MessageEvent{
+		PrimaryEmail: "owner@example.com", MessageID: "root-" + identity, ThreadID: threadID,
+		From: "sender@example.com", Subject: "Approval request", Snippet: "request approval",
+	}
+	flowID := startGmailThreadFlow(t, ctx, harness.client, flow, "root-"+identity, root)
+	waitForGmailStatus(t, ctx, harness.client, flow, flowID, StatusWaitingForReply)
+	reply := sdkgo.TriggerEvent[gmail.MessageEvent]{
+		ID: "reply-" + identity, OccurredAt: time.Now().UTC(),
+		Payload: gmail.MessageEvent{
+			PrimaryEmail: "owner@example.com", MessageID: "reply-" + identity, ThreadID: threadID,
+			From: "sender@example.com", Subject: "Re: Approval request", Snippet: "approved", IsReply: true,
+		},
+	}
+	replyFilter, err := NewReplyTriggerFilter(gmail.ReplyReceivedTriggerConfiguration{
+		ReplyMatcher: gmail.MessageMatcher{MessageContains: "approved", SenderEmails: []string{"sender@example.com"}},
+	})
+	require.NoError(t, err)
+	replyTarget := sdkgo.NewDexRPCTriggerTarget(harness.client, flow.ReceiveEmailReply, replyFilter, ResolveFlowID, MapToReceiveEmailReplyInput)
+	require.Eventually(t, func() bool {
+		err := replyTarget.HandleTrigger(ctx, reply)
+		return err == nil || !strings.Contains(err.Error(), "attribute keys are locked")
+	}, 20*time.Second, 50*time.Millisecond)
+	result, err := harness.client.WaitForFlow(ctx, flowID, dex.WaitForFlowOptions{})
+	require.NoError(t, err)
+	require.Equal(t, dex.FlowFailed, result.Status)
+	require.Equal(t, 1, provider.sendCount(threadID))
+	require.GreaterOrEqual(t, provider.searchCount(threadID), 5)
+}
+
 func TestThreadReplyAcceptedResponseWithoutIDCompletesWithRealDex(t *testing.T) {
 	provider := newGmailProvider(t)
 	defer provider.Close()
@@ -313,8 +351,11 @@ func (provider *gmailProvider) serveSend(response http.ResponseWriter, request *
 		panic(http.ErrAbortHandler)
 	case strings.HasPrefix(threadID, "thread-accepted-"):
 		writeGmailProviderResponse(response, `{"threadId":`+strconv.Quote(threadID)+`}`)
-	case strings.HasPrefix(threadID, "thread-retried-") && provider.sendCount(threadID) == 1:
+	case strings.HasPrefix(threadID, "thread-claimed-"):
 		response.WriteHeader(http.StatusInternalServerError)
+		writeGmailProviderResponse(response, `{"error":{"message":"unavailable"}}`)
+	case strings.HasPrefix(threadID, "thread-retried-") && provider.sendCount(threadID) == 1:
+		response.WriteHeader(http.StatusServiceUnavailable)
 		writeGmailProviderResponse(response, `{"error":{"message":"unavailable"}}`)
 	default:
 		writeGmailProviderResponse(response, `{"id":"sent-success","threadId":`+strconv.Quote(threadID)+`}`)

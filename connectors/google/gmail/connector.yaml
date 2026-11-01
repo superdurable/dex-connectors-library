@@ -5,7 +5,7 @@ metadata:
   displayName: Gmail
   description: Start and update Dex Flows from received Gmail messages, read messages, and send or reply to email.
   company: Google
-  version: v0.25.0
+  version: v0.25.1
 spec:
   provider: google
   languages:
@@ -247,8 +247,9 @@ spec:
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
-        durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Gmail does not deduplicate Message-ID, and a Sent Mail search miss can cause a second send, so bound sendMessage retries to five attempts within two minutes."}}
+        durability: sync
+        dispatchFence: true
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A 429 or 503 can checkpoint canResend, and a later POST after a Sent Mail miss may duplicate a delayed Gmail send; bound sendMessage retries to five attempts within two minutes."}}
       mocks:
         - name: sentToCustomer
           branch: sent
@@ -260,7 +261,7 @@ spec:
           description: Gmail rejected the message because a recipient address is invalid.
           failure: {kind: PROVIDER_REJECTION, message: Gmail rejected the message recipients.}
         - name: connectionLost
-          description: The connection closed after dispatch and Sent Mail found nothing; retry the lookup before another send.
+          description: The connection closed after dispatch and Sent Mail found nothing; retry the lookup without another send.
           retry: {failure: {kind: TRANSPORT, message: The connection closed before Gmail answered.}}
         - name: noRecipients
           branch: defect
@@ -283,8 +284,9 @@ spec:
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
       execution:
         executeMethodTimeout: 30s
-        durability: async
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Gmail does not deduplicate Message-ID, and a Sent Mail search miss can cause a second reply, so bound replyToMessage retries to five attempts within two minutes."}}
+        durability: sync
+        dispatchFence: true
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A 429 or 503 can checkpoint canResend, and a later POST after a Sent Mail miss may duplicate a delayed Gmail reply; bound replyToMessage retries to five attempts within two minutes."}}
       mocks:
         - name: repliedInThread
           branch: sent
@@ -300,7 +302,7 @@ spec:
           description: Gmail returned a source message that cannot be decoded, so no reply is sent.
           failure: {kind: PROTOCOL, message: Gmail returned an invalid source message.}
         - name: connectionLost
-          description: The connection closed after dispatch and Sent Mail found nothing; retry the lookup before another reply.
+          description: The connection closed after dispatch and Sent Mail found nothing; retry the lookup without another reply.
           retry: {failure: {kind: TRANSPORT, message: The connection closed before Gmail answered.}}
         - name: emptyBody
           branch: defect
