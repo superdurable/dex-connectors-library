@@ -249,7 +249,7 @@ spec:
         executeMethodTimeout: 30s
         durability: sync
         dispatchFence: true
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Gmail does not deduplicate Message-ID, so bound unconfirmed sendMessage read-back retries to five attempts within two minutes."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A 429 or 503 can checkpoint canResend, and a later POST after a Sent Mail miss may duplicate a delayed Gmail send; bound sendMessage retries to five attempts within two minutes."}}
       mocks:
         - name: sentToCustomer
           branch: sent
@@ -286,7 +286,7 @@ spec:
         executeMethodTimeout: 30s
         durability: sync
         dispatchFence: true
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Gmail does not deduplicate Message-ID, so bound unconfirmed replyToMessage read-back retries to five attempts within two minutes."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A 429 or 503 can checkpoint canResend, and a later POST after a Sent Mail miss may duplicate a delayed Gmail reply; bound replyToMessage retries to five attempts within two minutes."}}
       mocks:
         - name: repliedInThread
           branch: sent

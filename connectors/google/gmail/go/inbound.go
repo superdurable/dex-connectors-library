@@ -5,6 +5,7 @@ package gmail
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
@@ -161,8 +162,19 @@ func (operation ReplyToMessageOperation) Invoke(call sdkgo.Call, input ReplyToMe
 	if strings.TrimSpace(input.MessageID) == "" || strings.TrimSpace(input.TextBody) == "" {
 		return sdkgo.NewMutationBranch(ReplyToMessageBranchDefect, SendMessageOutput{}, gmailOperationFailurePointer("replyToMessage", sdkgo.FailureValidation, "message ID and text body are required"), sdkgo.Receipt{})
 	}
+	if decision.Kind == singledispatch.ReadBackRequired && decision.Marker.ProviderID != "" {
+		if sent, isFound := operation.client.readSavedSentMessage(budget.attemptContext, call, credentials, decision.Marker.ProviderID); isFound {
+			return operation.client.sentMessage(call, budget, credentials, replyToMessageOutcomes, gmailOutgoingMessage{}, sent, operation.client.receipt(call, "", sent.ID))
+		}
+	}
 	if call.Context.Attempt() > 1 || decision.Kind == singledispatch.ReadBackRequired {
-		searchContext, cancelSearch := budget.preSendContext()
+		var searchContext context.Context
+		var cancelSearch context.CancelFunc
+		if decision.Kind == singledispatch.SendAllowed {
+			searchContext, cancelSearch = budget.preSendContext()
+		} else {
+			searchContext, cancelSearch = context.WithCancel(budget.attemptContext)
+		}
 		sent, isFound, searchErr := operation.client.findSentMessageByRFCMessageID(searchContext, call, credentials)
 		cancelSearch()
 		if isFound {

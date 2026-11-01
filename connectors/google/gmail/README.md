@@ -1,6 +1,6 @@
 # Gmail Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/gmail/go@v0.25.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/gmail/go@v0.25.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/google/gmail`.
 
@@ -150,23 +150,27 @@ uses that header for Sent Mail read-back:
   The lookup requests Spam and Trash inclusion.
   Any match is `sent` with Gmail's message and thread IDs, also when a reply
   landed in another thread. A miss or failed lookup returns Retry.
-- Every numbered attempt after the first searches Sent Mail before reading a
+- Every numbered attempt after the first tries read-back before reading a
   reply's source or posting. A match returns `sent` without another POST; for a
   reply its `recipients` can be empty because the source was never read. A miss
   permits another POST only when the preceding attempt checkpointed `notSent`
   or `canResend`. A prior `claimed` dispatch can only read back; a search miss
   or failure returns Retry without another POST.
+- When a prior checkpoint contains Gmail's message ID, the connector reads
+  that message directly before searching by RFC `Message-ID`. A matching read
+  returns `sent`; a failed read falls back to the Sent Mail search.
 - A 429 and a failure that a traced DNS, connect, or TLS error proves happened
   before a connection existed return Retry.
 
 A send or reply records a `claimed` heartbeat before the POST. Synchronous
 Execute durability carries that checkpoint across regular retries. A 429, 503,
 or proven undispatched transport failure can checkpoint `canResend`, allowing
-one later POST after a Sent Mail search miss. An ambiguous dispatch stays
-`claimed`: even if Gmail has not indexed it, later attempts only search, and
-the Flow fails when retries are exhausted. Gmail does not dedupe by
-`Message-ID`; the fence prevents a later connector POST after an ambiguous
-dispatch, although a lost heartbeat frame cannot prove exactly-once delivery.
+one later POST after a Sent Mail search miss. Gmail may have accepted a 503
+response before its message is searchable; if that poll misses, `canResend`
+permits another POST and the recipient may receive a duplicate. An ambiguous
+dispatch stays `claimed`: later attempts only read back, and the Flow fails
+when retries are exhausted. Gmail does not dedupe by `Message-ID`; a lost
+heartbeat frame also cannot prove exactly-once delivery.
 The released v0.23.1 selected `uncertain` for an ambiguous send and did not
 search Sent Mail.
 The run-specific Message-ID reduces false matches when a Flow ID is reused or
@@ -178,26 +182,24 @@ includes every failure through a `WithHTTPClient` transport that does not drive
 `net/http/httptrace`, so such a client searches after a failed POST and later
 attempts never resend after a miss.
 
-Each attempt budgets at most the manifest's 30-second Execute timeout,
-shortened by the Dex Step context deadline when that is earlier. The send ends
-by seven twelfths of that budget, the read-back and thread read by five
-sixths, and the rest covers the Result write. A reply's source read ends early
-enough to leave the send a tenth. A send that runs out of time becomes a search;
-with less than a tenth left, the attempt returns Retry before sending. With
-the default async durability, Dex first runs the Step under a much shorter
-deadline, 7 seconds on the Temporal engine, so the send gets about 4 seconds
-and the search under 2. A slower send, such as a large message, returns Retry
-when the search does not yet find it. The next attempt usually searches again
-before sending only after a `notSent` or `canResend` checkpoint.
+Each synchronous Execute attempt budgets at most 30 seconds, shortened by an
+earlier Dex Step deadline. The fenced POST ends by seven twelfths of that
+budget, and read-back and thread lookup end by five sixths; the remaining time
+covers the Result write. With the full 30 seconds, those boundaries are 17.5
+and 25 seconds. A reply's source read reserves at least a tenth of the budget
+for dispatch. If too little time remains, the attempt returns Retry before
+posting and attempts a `notSent` checkpoint. A dispatched request that times
+out searches Sent Mail; a later attempt can POST only after a `notSent` or
+`canResend` checkpoint and its own search miss.
 
 The search adds no scope: `gmail.readonly` permits
 [`messages.list`](https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.messages/list)
 with a query. Three Gmail behaviors are unverified without a live account:
 whether `messages.send` keeps the client-set `Message-ID` header, whether the
 documented query matches it, and how soon a sent message becomes searchable.
-If either of the first two fails, the search never matches, so ambiguous sends
-retry until the Flow fails without a second POST. Live provider authorization
-and indexing latency remain unverified.
+Without a saved Gmail message ID, failure of either of the first two behaviors
+leaves ambiguous sends retrying until the Flow fails without a second POST.
+Live provider authorization and indexing latency remain unverified.
 
 Every operation uses `defect` for invalid local input, connection configuration,
 or Connector contract violations. A conclusive Gmail API refusal uses
