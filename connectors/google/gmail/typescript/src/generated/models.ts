@@ -51,85 +51,117 @@ export interface Credentials {
 /** Host-owned source of private connector credentials. */
 export type CredentialSource = RefreshingCredentialProvider<Credentials>;
 
-/** JSON model GetMessageInput from the connector Go package. */
+/** GetMessageInput identifies one Gmail message. */
 export interface GetMessageInput {
+  /** MessageID is the provider message identifier. */
   "messageId": string;
 }
-/** JSON model Message from the connector Go package. */
+/** Message is one decoded Gmail message. */
 export interface Message {
+  /** MessageID is the provider message identifier. */
   "messageId": string;
+  /** ThreadID is the provider conversation thread identifier. */
   "threadId": string;
+  /** RFCMessageID is the decoded Message-ID header. */
   "rfcMessageId"?: string | undefined;
+  /** InReplyTo is the decoded In-Reply-To header. */
   "inReplyTo"?: string | undefined;
+  /** References is the decoded References header. */
   "references"?: string | undefined;
+  /** From is the sender address. */
   "from": string;
+  /** ReplyTo is the decoded Reply-To header. */
   "replyTo"?: string | undefined;
+  /** To lists recipient addresses. */
   "to"?: Array<string> | undefined;
+  /** Subject is the message subject. */
   "subject": string;
+  /** TextBody is the plain-text message body. */
   "textBody"?: string | undefined;
+  /** HTMLBody is the optional HTML message body. */
   "htmlBody"?: string | undefined;
+  /** Snippet is the snippet for message. */
   "snippet"?: string | undefined;
+  /** ReceivedAt is the received at for message. */
   "receivedAt": string;
+  /** LabelIDs lists the Gmail labels applied to the message. */
   "labelIds"?: Array<string> | undefined;
 }
-/** JSON model SendMessageInput from the connector Go package. */
+/** SendMessageInput contains the provider request fields for send message. */
 export interface SendMessageInput {
+  /** To lists recipient addresses. */
   "to": Array<string> | null;
+  /** Subject is the message subject. */
   "subject": string;
+  /** TextBody is the plain-text message body. */
   "textBody": string;
+  /** HTMLBody is the optional HTML message body. */
   "htmlBody"?: string | undefined;
 }
-/** JSON model SendMessageOutput from the connector Go package. */
+/** SendMessageOutput contains the provider response fields for send message. */
 export interface SendMessageOutput {
+  /** Sender is the authenticated sender address. */
   "sender": string;
+  /** Recipients lists resolved addresses; it is empty when an earlier reply is found before reading its source. */
   "recipients": Array<string> | null;
+  /** MessageID is the provider message identifier; empty when Gmail accepted a send but read-back found no ID. */
   "messageId": string;
+  /** ThreadID is the provider conversation thread identifier. When an accepted reply lacks IDs, it is the requested thread.
+   * When an accepted new message lacks IDs, it is empty. */
   "threadId": string;
 }
-/** JSON model ReplyToMessageInput from the connector Go package. */
+/** ReplyToMessageInput identifies a message and supplies the reply body. */
 export interface ReplyToMessageInput {
+  /** MessageID is the provider message identifier. */
   "messageId": string;
+  /** TextBody is the plain-text message body. */
   "textBody": string;
+  /** HTMLBody is the optional HTML message body. */
   "htmlBody"?: string | undefined;
 }
 
-export const GetMessageInputSchema: z.ZodType<GetMessageInput> = z.lazy(() => z.strictObject({
-  "messageId": z.string().prefault(''),
-}));
+/** Runtime validator for GetMessageInput. */
+export const GetMessageInputSchema = z.strictObject({
+  "messageId": z.string(),
+}) satisfies z.ZodType<GetMessageInput>;
 
-export const MessageSchema: z.ZodType<Message> = z.lazy(() => z.strictObject({
-  "messageId": z.string().prefault(''),
-  "threadId": z.string().prefault(''),
+/** Runtime validator for Message. */
+export const MessageSchema = z.strictObject({
+  "messageId": z.string(),
+  "threadId": z.string(),
   "rfcMessageId": z.string().optional(),
   "inReplyTo": z.string().optional(),
   "references": z.string().optional(),
-  "from": z.string().prefault(''),
+  "from": z.string(),
   "replyTo": z.string().optional(),
   "to": z.array(z.string()).optional(),
-  "subject": z.string().prefault(''),
+  "subject": z.string(),
   "textBody": z.string().optional(),
   "htmlBody": z.string().optional(),
   "snippet": z.string().optional(),
-  "receivedAt": z.iso.datetime({ offset: true }).prefault('0001-01-01T00:00:00Z'),
+  "receivedAt": z.iso.datetime({ offset: true }),
   "labelIds": z.array(z.string()).optional(),
-}));
+}) satisfies z.ZodType<Message>;
 
-export const SendMessageInputSchema: z.ZodType<SendMessageInput> = z.lazy(() => z.strictObject({
-  "to": z.array(z.string()).nullable().prefault(null),
-  "subject": z.string().prefault(''),
-  "textBody": z.string().prefault(''),
+/** Runtime validator for SendMessageInput. */
+export const SendMessageInputSchema = z.strictObject({
+  "to": z.array(z.string()).nullable(),
+  "subject": z.string(),
+  "textBody": z.string(),
   "htmlBody": z.string().optional(),
-}));
+}) satisfies z.ZodType<SendMessageInput>;
 
-export const SendMessageOutputSchema: z.ZodType<SendMessageOutput> = z.lazy(() => z.strictObject({
-  "sender": z.string().prefault(''),
-  "recipients": z.array(z.string()).nullable().prefault(null),
-  "messageId": z.string().prefault(''),
-  "threadId": z.string().prefault(''),
-}));
+/** Runtime validator for SendMessageOutput. */
+export const SendMessageOutputSchema = z.strictObject({
+  "sender": z.string(),
+  "recipients": z.array(z.string()).nullable(),
+  "messageId": z.string(),
+  "threadId": z.string(),
+}) satisfies z.ZodType<SendMessageOutput>;
 
-export const ReplyToMessageInputSchema: z.ZodType<ReplyToMessageInput> = z.lazy(() => z.strictObject({
-  "messageId": z.string().prefault(''),
-  "textBody": z.string().prefault(''),
+/** Runtime validator for ReplyToMessageInput. */
+export const ReplyToMessageInputSchema = z.strictObject({
+  "messageId": z.string(),
+  "textBody": z.string(),
   "htmlBody": z.string().optional(),
-}));
+}) satisfies z.ZodType<ReplyToMessageInput>;

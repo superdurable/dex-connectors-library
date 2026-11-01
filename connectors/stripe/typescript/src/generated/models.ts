@@ -38,90 +38,138 @@ export interface Credentials {
 /** Host-owned source of private connector credentials. */
 export type CredentialSource = CredentialProvider<Credentials>;
 
-/** JSON model CreateCardCheckoutSessionInput from the connector Go package. */
+/** CreateCardCheckoutSessionInput is one hosted card Checkout request.
+   * Its fields have the same meanings and validation as CreateACHCheckoutSessionInput. */
 export interface CreateCardCheckoutSessionInput {
+  /** ClientReferenceID correlates the session with one non-sensitive application record. */
   "clientReferenceId": string;
+  /** CustomerEmail is the plain email address Stripe pre-fills in hosted Checkout. */
   "customerEmail": string;
+  /** SuccessURL is the HTTPS location Stripe uses after Checkout succeeds. */
   "successUrl": string;
+  /** CancelURL is the HTTPS location Stripe uses when the customer cancels Checkout. */
   "cancelUrl": string;
+  /** Currency is the lowercase three-letter currency code. */
   "currency": string;
+  /** UnitAmount is the positive ticket price in the currency's minor unit. */
   "unitAmount": number;
+  /** ProductName is the ticket or event label displayed by hosted Checkout. */
   "productName": string;
+  /** Metadata is bounded non-sensitive application metadata copied to the session and PaymentIntent. */
   "metadata"?: { [key: string]: string } | undefined;
+  /** ExpiresAt optionally requests a provider expiration timestamp. */
   "expiresAt"?: string | undefined;
 }
-/** JSON model CheckoutSession from the connector Go package. */
+/** CheckoutSession is the connector-safe subset of a Stripe Checkout Session. */
 export interface CheckoutSession {
+  /** ID is Stripe's Checkout Session identifier. */
   "id": string;
+  /** URL is Stripe's hosted Checkout URL while the session is open. */
   "url"?: string | undefined;
+  /** ClientReferenceID is the non-sensitive application reference supplied at creation. */
   "clientReferenceId"?: string | undefined;
+  /** PaymentStatus is Stripe's payment status, such as unpaid or paid. */
   "paymentStatus"?: string | undefined;
+  /** Status is Stripe's Checkout Session status, such as open, complete, or expired. */
   "status"?: string | undefined;
+  /** PaymentIntentID is the safe Stripe PaymentIntent correlation identifier when present. */
   "paymentIntentId"?: string | undefined;
+  /** Currency is the lowercase three-letter settlement currency. */
   "currency"?: string | undefined;
+  /** AmountTotal is the total amount in the currency's minor unit. */
   "amountTotal"?: number | undefined;
+  /** ExpiresAt is the Checkout Session expiration time when present. */
   "expiresAt"?: string | undefined;
+  /** Metadata contains the bounded non-sensitive application metadata supplied at creation. */
   "metadata"?: { [key: string]: string } | undefined;
 }
-/** JSON model CreateACHCheckoutSessionInput from the connector Go package. */
+/** CreateACHCheckoutSessionInput contains one Stripe-hosted ACH Checkout request. */
 export interface CreateACHCheckoutSessionInput {
+  /** ClientReferenceID correlates the session with one non-sensitive application record. */
   "clientReferenceId": string;
+  /** CustomerEmail is the plain email address Stripe pre-fills in hosted Checkout. */
   "customerEmail": string;
+  /** SuccessURL is the HTTPS location Stripe uses after Checkout succeeds. */
   "successUrl": string;
+  /** CancelURL is the HTTPS location Stripe uses when the customer cancels Checkout. */
   "cancelUrl": string;
+  /** Currency is the lowercase three-letter currency code. */
   "currency": string;
+  /** UnitAmount is the positive ticket price in the currency's minor unit. */
   "unitAmount": number;
+  /** ProductName is the ticket or event label displayed by hosted Checkout. */
   "productName": string;
+  /** Metadata is bounded non-sensitive application metadata copied to the session and PaymentIntent. */
   "metadata"?: { [key: string]: string } | undefined;
+  /** ExpiresAt optionally requests a provider expiration timestamp. */
   "expiresAt"?: string | undefined;
 }
-/** JSON model GetCheckoutSessionInput from the connector Go package. */
+/** GetCheckoutSessionInput identifies one Stripe Checkout Session. */
 export interface GetCheckoutSessionInput {
+  /** SessionID is Stripe's Checkout Session identifier. */
   "sessionId": string;
 }
-/** JSON model GetPaymentIntentInput from the connector Go package. */
+/** GetPaymentIntentInput identifies one Stripe PaymentIntent. */
 export interface GetPaymentIntentInput {
+  /** PaymentIntentID is Stripe's PaymentIntent identifier, beginning with pi_. */
   "paymentIntentId": string;
 }
-/** JSON model PaymentIntent from the connector Go package. */
+/** PaymentIntent is the connector-safe subset of a Stripe PaymentIntent and its latest charge. */
 export interface PaymentIntent {
+  /** ID is Stripe's PaymentIntent identifier. */
   "id": string;
+  /** Amount is the intended payment amount in the currency's minor unit. */
   "amount": number;
+  /** Currency is the lowercase three-letter currency code. */
   "currency": string;
+  /** Status is Stripe's PaymentIntent status, such as requires_payment_method or succeeded. */
   "status": string;
+  /** AmountRefunded is the latest charge's refunded amount in minor units; zero without a charge. */
   "amountRefunded": number;
+  /** CustomerEmail is the receipt email, or the latest charge's billing email when no receipt email is set. */
   "customerEmail"?: string | undefined;
+  /** LatestChargeID is Stripe's identifier of the latest charge when one exists. */
   "latestChargeId"?: string | undefined;
 }
-/** JSON model CreateRefundInput from the connector Go package. */
+/** CreateRefundInput contains one Stripe refund request. */
 export interface CreateRefundInput {
+  /** PaymentIntentID is the Stripe PaymentIntent to refund, beginning with pi_. */
   "paymentIntentId": string;
+  /** Amount is the positive refund amount in the currency's minor unit. */
   "amount": number;
+  /** Reason optionally classifies the refund as duplicate, fraudulent, or requested_by_customer. */
   "reason"?: string | undefined;
+  /** Metadata is bounded non-sensitive application metadata stored on the refund. */
   "metadata"?: { [key: string]: string } | undefined;
 }
-/** JSON model Refund from the connector Go package. */
+/** Refund is the connector-safe subset of a Stripe refund. */
 export interface Refund {
+  /** RefundID is Stripe's refund identifier, beginning with re_. */
   "refundId": string;
+  /** Status is succeeded, pending, failed, requires_action, or canceled. */
   "status": string;
+  /** Amount is the refunded amount in the currency's minor unit. */
   "amount": number;
+  /** Currency is the lowercase three-letter currency code. */
   "currency": string;
 }
 
-export const CreateCardCheckoutSessionInputSchema: z.ZodType<CreateCardCheckoutSessionInput> = z.lazy(() => z.strictObject({
-  "clientReferenceId": z.string().prefault(''),
-  "customerEmail": z.string().prefault(''),
-  "successUrl": z.string().prefault(''),
-  "cancelUrl": z.string().prefault(''),
-  "currency": z.string().prefault(''),
-  "unitAmount": z.number().int().prefault(0),
-  "productName": z.string().prefault(''),
+/** Runtime validator for CreateCardCheckoutSessionInput. */
+export const CreateCardCheckoutSessionInputSchema = z.strictObject({
+  "clientReferenceId": z.string(),
+  "customerEmail": z.string(),
+  "successUrl": z.string(),
+  "cancelUrl": z.string(),
+  "currency": z.string(),
+  "unitAmount": z.number().int(),
+  "productName": z.string(),
   "metadata": z.record(z.string(), z.string()).optional(),
   "expiresAt": z.iso.datetime({ offset: true }).optional(),
-}));
+}) satisfies z.ZodType<CreateCardCheckoutSessionInput>;
 
-export const CheckoutSessionSchema: z.ZodType<CheckoutSession> = z.lazy(() => z.strictObject({
-  "id": z.string().prefault(''),
+/** Runtime validator for CheckoutSession. */
+export const CheckoutSessionSchema = z.strictObject({
+  "id": z.string(),
   "url": z.string().optional(),
   "clientReferenceId": z.string().optional(),
   "paymentStatus": z.string().optional(),
@@ -131,48 +179,54 @@ export const CheckoutSessionSchema: z.ZodType<CheckoutSession> = z.lazy(() => z.
   "amountTotal": z.number().int().optional(),
   "expiresAt": z.iso.datetime({ offset: true }).optional(),
   "metadata": z.record(z.string(), z.string()).optional(),
-}));
+}) satisfies z.ZodType<CheckoutSession>;
 
-export const CreateACHCheckoutSessionInputSchema: z.ZodType<CreateACHCheckoutSessionInput> = z.lazy(() => z.strictObject({
-  "clientReferenceId": z.string().prefault(''),
-  "customerEmail": z.string().prefault(''),
-  "successUrl": z.string().prefault(''),
-  "cancelUrl": z.string().prefault(''),
-  "currency": z.string().prefault(''),
-  "unitAmount": z.number().int().prefault(0),
-  "productName": z.string().prefault(''),
+/** Runtime validator for CreateACHCheckoutSessionInput. */
+export const CreateACHCheckoutSessionInputSchema = z.strictObject({
+  "clientReferenceId": z.string(),
+  "customerEmail": z.string(),
+  "successUrl": z.string(),
+  "cancelUrl": z.string(),
+  "currency": z.string(),
+  "unitAmount": z.number().int(),
+  "productName": z.string(),
   "metadata": z.record(z.string(), z.string()).optional(),
   "expiresAt": z.iso.datetime({ offset: true }).optional(),
-}));
+}) satisfies z.ZodType<CreateACHCheckoutSessionInput>;
 
-export const GetCheckoutSessionInputSchema: z.ZodType<GetCheckoutSessionInput> = z.lazy(() => z.strictObject({
-  "sessionId": z.string().prefault(''),
-}));
+/** Runtime validator for GetCheckoutSessionInput. */
+export const GetCheckoutSessionInputSchema = z.strictObject({
+  "sessionId": z.string(),
+}) satisfies z.ZodType<GetCheckoutSessionInput>;
 
-export const GetPaymentIntentInputSchema: z.ZodType<GetPaymentIntentInput> = z.lazy(() => z.strictObject({
-  "paymentIntentId": z.string().prefault(''),
-}));
+/** Runtime validator for GetPaymentIntentInput. */
+export const GetPaymentIntentInputSchema = z.strictObject({
+  "paymentIntentId": z.string(),
+}) satisfies z.ZodType<GetPaymentIntentInput>;
 
-export const PaymentIntentSchema: z.ZodType<PaymentIntent> = z.lazy(() => z.strictObject({
-  "id": z.string().prefault(''),
-  "amount": z.number().int().prefault(0),
-  "currency": z.string().prefault(''),
-  "status": z.string().prefault(''),
-  "amountRefunded": z.number().int().prefault(0),
+/** Runtime validator for PaymentIntent. */
+export const PaymentIntentSchema = z.strictObject({
+  "id": z.string(),
+  "amount": z.number().int(),
+  "currency": z.string(),
+  "status": z.string(),
+  "amountRefunded": z.number().int(),
   "customerEmail": z.string().optional(),
   "latestChargeId": z.string().optional(),
-}));
+}) satisfies z.ZodType<PaymentIntent>;
 
-export const CreateRefundInputSchema: z.ZodType<CreateRefundInput> = z.lazy(() => z.strictObject({
-  "paymentIntentId": z.string().prefault(''),
-  "amount": z.number().int().prefault(0),
+/** Runtime validator for CreateRefundInput. */
+export const CreateRefundInputSchema = z.strictObject({
+  "paymentIntentId": z.string(),
+  "amount": z.number().int(),
   "reason": z.string().optional(),
   "metadata": z.record(z.string(), z.string()).optional(),
-}));
+}) satisfies z.ZodType<CreateRefundInput>;
 
-export const RefundSchema: z.ZodType<Refund> = z.lazy(() => z.strictObject({
-  "refundId": z.string().prefault(''),
-  "status": z.string().prefault(''),
-  "amount": z.number().int().prefault(0),
-  "currency": z.string().prefault(''),
-}));
+/** Runtime validator for Refund. */
+export const RefundSchema = z.strictObject({
+  "refundId": z.string(),
+  "status": z.string(),
+  "amount": z.number().int(),
+  "currency": z.string(),
+}) satisfies z.ZodType<Refund>;

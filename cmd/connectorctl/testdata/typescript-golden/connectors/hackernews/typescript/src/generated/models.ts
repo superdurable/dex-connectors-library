@@ -29,67 +29,92 @@ export interface Credentials {
 /** Host-owned source of private connector credentials. */
 export type CredentialSource = CredentialProvider<Credentials>;
 
-/** JSON model ListStoryIDsInput from the connector Go package. */
+/** ListStoryIDsInput selects one feed snapshot. It does not select a historical time window. */
 export interface ListStoryIDsInput {
+  /** Feed is top, best, new, ask, or show. Empty selects top. */
   "feed": string;
+  /** Limit bounds returned IDs from 1 through 500. Zero selects 50. */
   "limit": number;
 }
-/** JSON model StoryIDs from the connector Go package. */
+/** StoryIDs contains the start of a feed in the provider's current display order. */
 export interface StoryIDs {
+  /** IDs contains at most the requested limit. Top stories can include jobs. */
   "ids": Array<number> | null;
+  /** HasMore reports that the API returned more IDs than this operation retained. The API has no page cursor. */
   "hasMore": boolean;
+  /** ObservedAt is the UTC time when this response was read. */
   "observedAt": string;
 }
-/** JSON model GetItemInput from the connector Go package. */
+/** GetItemInput identifies one story, comment, job, poll, or poll option. */
 export interface GetItemInput {
+  /** ID is a positive Hacker News item ID. */
   "id": number;
 }
-/** JSON model Item from the connector Go package. */
+/** Item preserves public API fields and adds the exact Hacker News permalink.
+   * TextHTML and Title are untrusted provider text. Applications must escape or sanitize them before HTML rendering. */
 export interface Item {
+  /** ID identifies this item. */
   "id": number;
+  /** Type is story, comment, job, poll, or pollopt. */
   "type": string;
+  /** By is the author's public username, when available. */
   "by"?: string | undefined;
+  /** Time is the creation time in Unix seconds, when available. */
   "time"?: number | undefined;
+  /** Title is the provider's title, which can contain HTML entities. */
   "title"?: string | undefined;
+  /** TextHTML is the submitted story or comment body. Linked article content is not included. */
   "text"?: string | undefined;
+  /** URL is the submitted external URL. Ask HN and other text posts may have no URL. */
   "url"?: string | undefined;
+  /** DiscussionURL links directly to this story or comment on Hacker News. */
   "discussionUrl": string;
+  /** Score is the story score. Hacker News does not expose comment scores. */
   "score"?: number | undefined;
+  /** Descendants is the provider's comment count for a story or poll. */
   "descendants"?: number | undefined;
+  /** Parent identifies a comment's parent item or a poll option's poll. */
   "parent"?: number | undefined;
+  /** Kids contains child IDs in the provider's ranked display order. */
   "kids"?: Array<number> | undefined;
+  /** Deleted reports a deleted item. GetItem selects notFound instead of returning a tombstone. */
   "deleted"?: boolean | undefined;
+  /** Dead reports a moderated item. GetItem selects notFound instead of returning it. */
   "dead"?: boolean | undefined;
 }
 
-export const ListStoryIDsInputSchema: z.ZodType<ListStoryIDsInput> = z.lazy(() => z.strictObject({
-  "feed": z.string().prefault(''),
-  "limit": z.number().int().prefault(0),
-}));
+/** Runtime validator for ListStoryIDsInput. */
+export const ListStoryIDsInputSchema = z.strictObject({
+  "feed": z.string(),
+  "limit": z.number().int(),
+}) satisfies z.ZodType<ListStoryIDsInput>;
 
-export const StoryIDsSchema: z.ZodType<StoryIDs> = z.lazy(() => z.strictObject({
-  "ids": z.array(z.number().int()).nullable().prefault(null),
-  "hasMore": z.boolean().prefault(false),
-  "observedAt": z.iso.datetime({ offset: true }).prefault('0001-01-01T00:00:00Z'),
-}));
+/** Runtime validator for StoryIDs. */
+export const StoryIDsSchema = z.strictObject({
+  "ids": z.array(z.number().int()).nullable(),
+  "hasMore": z.boolean(),
+  "observedAt": z.iso.datetime({ offset: true }),
+}) satisfies z.ZodType<StoryIDs>;
 
-export const GetItemInputSchema: z.ZodType<GetItemInput> = z.lazy(() => z.strictObject({
-  "id": z.number().int().prefault(0),
-}));
+/** Runtime validator for GetItemInput. */
+export const GetItemInputSchema = z.strictObject({
+  "id": z.number().int(),
+}) satisfies z.ZodType<GetItemInput>;
 
-export const ItemSchema: z.ZodType<Item> = z.lazy(() => z.strictObject({
-  "id": z.number().int().prefault(0),
-  "type": z.string().prefault(''),
+/** Runtime validator for Item. */
+export const ItemSchema = z.strictObject({
+  "id": z.number().int(),
+  "type": z.string(),
   "by": z.string().optional(),
   "time": z.number().int().optional(),
   "title": z.string().optional(),
   "text": z.string().optional(),
   "url": z.string().optional(),
-  "discussionUrl": z.string().prefault(''),
+  "discussionUrl": z.string(),
   "score": z.number().int().optional(),
   "descendants": z.number().int().optional(),
   "parent": z.number().int().optional(),
   "kids": z.array(z.number().int()).optional(),
   "deleted": z.boolean().optional(),
   "dead": z.boolean().optional(),
-}));
+}) satisfies z.ZodType<Item>;

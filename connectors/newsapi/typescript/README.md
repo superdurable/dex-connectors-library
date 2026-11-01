@@ -5,7 +5,7 @@ operation to Dex TypeScript applications. It returns a typed `ArticlePage` and
 selects `searched`, `providerRejected`, `invalidResponse`, or `defect`.
 
 The checked-in `src/generated/` contracts come from `connector.yaml` and the
-Go operation structs. Run `go run ./cmd/connectorctl generate --lang typescript connectors/newsapi/connector.yaml` from the repository root after either source changes. Generated schemas preserve Go pointer nulls. The article model and `ArticlePageSchema` remain hand-written for `urlToImage` normalization, the narrower non-null page contract, and the existing page validator; the connection adapter and project credential decoder remain hand-written.
+Go operation structs. Run `go run ./cmd/connectorctl generate --lang typescript connectors/newsapi/connector.yaml` from the repository root after either source changes. Generated schemas preserve Go pointer nulls. The package consumes generated definitions, Step factories, connection contracts, and mock scenarios. The public article model and `ArticlePageSchema` retain `urlToImage` normalization and the narrower non-null page contract; the connection adapter and project credential decoder remain hand-written.
 
 ## Install
 

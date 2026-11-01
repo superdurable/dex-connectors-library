@@ -23,6 +23,7 @@ export interface SearchArticlesStepConfig<StepInput> extends Omit<QueryStepConfi
   defect?: StepTarget<QueryResult<ArticlePage>>;
 }
 
+/** Build the searchArticles Step from a named connection. */
 export function newSearchArticlesStep<StepInput>(configuration: SearchArticlesStepConfig<StepInput>): QueryStep<StepInput, SearchArticlesInput, ArticlePage> {
   const { connection, connectionName, searched, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');

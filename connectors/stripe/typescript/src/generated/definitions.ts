@@ -4,9 +4,12 @@
 
 import type { MutationDefinition, QueryDefinition } from '@superdurable/connectors-sdk';
 
+/** Stable connector identity. */
 export const ConnectorID = "stripe";
+/** Provider identity for named connections. */
 export const ProviderID = "stripe";
 
+/** Branch IDs for createCardCheckoutSession. */
 export const CreateCardCheckoutSessionBranch = {
   Created: "created",
   ProviderRejected: "providerRejected",
@@ -14,11 +17,17 @@ export const CreateCardCheckoutSessionBranch = {
   InvalidResponse: "invalidResponse",
   Defect: "defect",
 } as const;
+/** Stripe created the Checkout Session. */
 export const CreateCardCheckoutSessionBranchCreated = CreateCardCheckoutSessionBranch.Created;
+/** Stripe conclusively rejected the Checkout Session request. */
 export const CreateCardCheckoutSessionBranchProviderRejected = CreateCardCheckoutSessionBranch.ProviderRejected;
+/** A Stripe 500 or non-retryable server response left the Checkout Session outcome unconfirmed. */
 export const CreateCardCheckoutSessionBranchUncertain = CreateCardCheckoutSessionBranch.Uncertain;
+/** Stripe returned an invalid or oversized Checkout Session response. */
 export const CreateCardCheckoutSessionBranchInvalidResponse = CreateCardCheckoutSessionBranch.InvalidResponse;
+/** Local input, connection configuration, or connector definition is invalid. */
 export const CreateCardCheckoutSessionBranchDefect = CreateCardCheckoutSessionBranch.Defect;
+/** Manifest definition for createCardCheckoutSession. */
 export const CreateCardCheckoutSessionDefinition: MutationDefinition = {
   operation: { connectorId: ConnectorID, operationId: "createCardCheckoutSession" },
   branches: [
@@ -30,8 +39,10 @@ export const CreateCardCheckoutSessionDefinition: MutationDefinition = {
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
 };
+/** Manifest metadata for createCardCheckoutSession. */
 export const CreateCardCheckoutSessionMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
 
+/** Branch IDs for createACHCheckoutSession. */
 export const CreateACHCheckoutSessionBranch = {
   Created: "created",
   ProviderRejected: "providerRejected",
@@ -39,11 +50,17 @@ export const CreateACHCheckoutSessionBranch = {
   InvalidResponse: "invalidResponse",
   Defect: "defect",
 } as const;
+/** Stripe created the Checkout Session. */
 export const CreateACHCheckoutSessionBranchCreated = CreateACHCheckoutSessionBranch.Created;
+/** Stripe conclusively rejected the Checkout Session request. */
 export const CreateACHCheckoutSessionBranchProviderRejected = CreateACHCheckoutSessionBranch.ProviderRejected;
+/** A Stripe 500 or non-retryable server response left the Checkout Session outcome unconfirmed. */
 export const CreateACHCheckoutSessionBranchUncertain = CreateACHCheckoutSessionBranch.Uncertain;
+/** Stripe returned an invalid or oversized Checkout Session response. */
 export const CreateACHCheckoutSessionBranchInvalidResponse = CreateACHCheckoutSessionBranch.InvalidResponse;
+/** Local input, connection configuration, or connector definition is invalid. */
 export const CreateACHCheckoutSessionBranchDefect = CreateACHCheckoutSessionBranch.Defect;
+/** Manifest definition for createACHCheckoutSession. */
 export const CreateACHCheckoutSessionDefinition: MutationDefinition = {
   operation: { connectorId: ConnectorID, operationId: "createACHCheckoutSession" },
   branches: [
@@ -55,8 +72,10 @@ export const CreateACHCheckoutSessionDefinition: MutationDefinition = {
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
 };
+/** Manifest metadata for createACHCheckoutSession. */
 export const CreateACHCheckoutSessionMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
 
+/** Branch IDs for getCheckoutSession. */
 export const GetCheckoutSessionBranch = {
   Found: "found",
   NotFound: "notFound",
@@ -64,11 +83,17 @@ export const GetCheckoutSessionBranch = {
   InvalidResponse: "invalidResponse",
   Defect: "defect",
 } as const;
+/** The Checkout Session exists and was returned. */
 export const GetCheckoutSessionBranchFound = GetCheckoutSessionBranch.Found;
+/** The Checkout Session does not exist. */
 export const GetCheckoutSessionBranchNotFound = GetCheckoutSessionBranch.NotFound;
+/** Stripe conclusively rejected the Checkout Session query. */
 export const GetCheckoutSessionBranchProviderRejected = GetCheckoutSessionBranch.ProviderRejected;
+/** Stripe returned an invalid or oversized Checkout Session response. */
 export const GetCheckoutSessionBranchInvalidResponse = GetCheckoutSessionBranch.InvalidResponse;
+/** Local input, connection configuration, or connector definition is invalid. */
 export const GetCheckoutSessionBranchDefect = GetCheckoutSessionBranch.Defect;
+/** Manifest definition for getCheckoutSession. */
 export const GetCheckoutSessionDefinition: QueryDefinition = {
   operation: { connectorId: ConnectorID, operationId: "getCheckoutSession" },
   branches: [
@@ -80,8 +105,10 @@ export const GetCheckoutSessionDefinition: QueryDefinition = {
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
 };
+/** Manifest metadata for getCheckoutSession. */
 export const GetCheckoutSessionMetadata = { kind: "query", idempotency: "none", authorization: "required" } as const;
 
+/** Branch IDs for getPaymentIntent. */
 export const GetPaymentIntentBranch = {
   Found: "found",
   NotFound: "notFound",
@@ -89,11 +116,17 @@ export const GetPaymentIntentBranch = {
   InvalidResponse: "invalidResponse",
   Defect: "defect",
 } as const;
+/** The PaymentIntent exists and was returned. */
 export const GetPaymentIntentBranchFound = GetPaymentIntentBranch.Found;
+/** Stripe reported resource_missing for the PaymentIntent. */
 export const GetPaymentIntentBranchNotFound = GetPaymentIntentBranch.NotFound;
+/** Stripe conclusively rejected the PaymentIntent query. */
 export const GetPaymentIntentBranchProviderRejected = GetPaymentIntentBranch.ProviderRejected;
+/** Stripe returned an invalid or oversized PaymentIntent response. */
 export const GetPaymentIntentBranchInvalidResponse = GetPaymentIntentBranch.InvalidResponse;
+/** Local input, connection configuration, or connector definition is invalid. */
 export const GetPaymentIntentBranchDefect = GetPaymentIntentBranch.Defect;
+/** Manifest definition for getPaymentIntent. */
 export const GetPaymentIntentDefinition: QueryDefinition = {
   operation: { connectorId: ConnectorID, operationId: "getPaymentIntent" },
   branches: [
@@ -105,8 +138,10 @@ export const GetPaymentIntentDefinition: QueryDefinition = {
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
 };
+/** Manifest metadata for getPaymentIntent. */
 export const GetPaymentIntentMetadata = { kind: "query", idempotency: "none", authorization: "required" } as const;
 
+/** Branch IDs for createRefund. */
 export const CreateRefundBranch = {
   Refunded: "refunded",
   ProviderRejected: "providerRejected",
@@ -114,11 +149,17 @@ export const CreateRefundBranch = {
   InvalidResponse: "invalidResponse",
   Defect: "defect",
 } as const;
+/** Stripe accepted the refund; read its status to tell succeeded from pending. */
 export const CreateRefundBranchRefunded = CreateRefundBranch.Refunded;
+/** Stripe conclusively rejected the refund with a 4xx error such as charge_already_refunded or an amount that is too large. */
 export const CreateRefundBranchProviderRejected = CreateRefundBranch.ProviderRejected;
+/** A non-retryable Stripe server response left the refund outcome unconfirmed after bounded read-back. */
 export const CreateRefundBranchUncertain = CreateRefundBranch.Uncertain;
+/** Stripe returned an invalid or oversized refund response. */
 export const CreateRefundBranchInvalidResponse = CreateRefundBranch.InvalidResponse;
+/** Local input, connection configuration, or connector definition is invalid. */
 export const CreateRefundBranchDefect = CreateRefundBranch.Defect;
+/** Manifest definition for createRefund. */
 export const CreateRefundDefinition: MutationDefinition = {
   operation: { connectorId: ConnectorID, operationId: "createRefund" },
   branches: [
@@ -130,4 +171,5 @@ export const CreateRefundDefinition: MutationDefinition = {
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
 };
+/** Manifest metadata for createRefund. */
 export const CreateRefundMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;

@@ -9,6 +9,7 @@ import { CreateCardCheckoutSessionInputSchema, CheckoutSessionSchema, CreateACHC
 import { ProviderID, ConnectorID, CreateCardCheckoutSessionDefinition, CreateACHCheckoutSessionDefinition, GetCheckoutSessionDefinition, GetPaymentIntentDefinition, CreateRefundDefinition } from './definitions.js';
 import { newConnectionWithOperations, type Connection, type Operations } from './connection.js';
 
+/** Go zero value for CreateCardCheckoutSessionInput in scripted cases. */
 export const emptyCreateCardCheckoutSessionInput: CreateCardCheckoutSessionInput = CreateCardCheckoutSessionInputSchema.parse({
   "clientReferenceId": '',
   "customerEmail": '',
@@ -18,9 +19,11 @@ export const emptyCreateCardCheckoutSessionInput: CreateCardCheckoutSessionInput
   "unitAmount": 0,
   "productName": '',
 });
+/** Go zero value for CheckoutSession in scripted cases. */
 export const emptyCheckoutSession: CheckoutSession = CheckoutSessionSchema.parse({
   "id": '',
 });
+/** Go zero value for CreateACHCheckoutSessionInput in scripted cases. */
 export const emptyCreateACHCheckoutSessionInput: CreateACHCheckoutSessionInput = CreateACHCheckoutSessionInputSchema.parse({
   "clientReferenceId": '',
   "customerEmail": '',
@@ -30,12 +33,15 @@ export const emptyCreateACHCheckoutSessionInput: CreateACHCheckoutSessionInput =
   "unitAmount": 0,
   "productName": '',
 });
+/** Go zero value for GetCheckoutSessionInput in scripted cases. */
 export const emptyGetCheckoutSessionInput: GetCheckoutSessionInput = GetCheckoutSessionInputSchema.parse({
   "sessionId": '',
 });
+/** Go zero value for GetPaymentIntentInput in scripted cases. */
 export const emptyGetPaymentIntentInput: GetPaymentIntentInput = GetPaymentIntentInputSchema.parse({
   "paymentIntentId": '',
 });
+/** Go zero value for PaymentIntent in scripted cases. */
 export const emptyPaymentIntent: PaymentIntent = PaymentIntentSchema.parse({
   "id": '',
   "amount": 0,
@@ -43,10 +49,12 @@ export const emptyPaymentIntent: PaymentIntent = PaymentIntentSchema.parse({
   "status": '',
   "amountRefunded": 0,
 });
+/** Go zero value for CreateRefundInput in scripted cases. */
 export const emptyCreateRefundInput: CreateRefundInput = CreateRefundInputSchema.parse({
   "paymentIntentId": '',
   "amount": 0,
 });
+/** Go zero value for Refund in scripted cases. */
 export const emptyRefund: Refund = RefundSchema.parse({
   "refundId": '',
   "status": '',
@@ -54,146 +62,207 @@ export const emptyRefund: Refund = RefundSchema.parse({
   "currency": '',
 });
 
+/** Script the created branch. */
 export function createCardCheckoutSessionCreated(value: CheckoutSession, failure?: Failure): Case<CheckoutSession> { return branchCase("created", value, failure); }
+/** Script the providerRejected branch. */
 export function createCardCheckoutSessionProviderRejected(value: CheckoutSession, failure?: Failure): Case<CheckoutSession> { return branchCase("providerRejected", value, failure); }
+/** Script the invalidResponse branch. */
 export function createCardCheckoutSessionInvalidResponse(value: CheckoutSession, failure?: Failure): Case<CheckoutSession> { return branchCase("invalidResponse", value, failure); }
+/** Script the defect branch. */
 export function createCardCheckoutSessionDefect(value: CheckoutSession, failure?: Failure): Case<CheckoutSession> { return branchCase("defect", value, failure); }
+/** Script a safe retry of createCardCheckoutSession. */
 export function createCardCheckoutSessionRetry(failure: Failure, retryAfterMs = 0): Case<CheckoutSession> { return retryCase(failure, retryAfterMs); }
+/** Script an uncertain createCardCheckoutSession attempt. */
 export function createCardCheckoutSessionUncertain(value: CheckoutSession, failure: Failure): Case<CheckoutSession> { return uncertainCase(value, failure); }
+/** Manifest scenario createdCardSession for createCardCheckoutSession. */
 export function createCardCheckoutSessionCreatedCardSession(): Case<CheckoutSession> {
   const value = CheckoutSessionSchema.parse({"amountTotal":7500,"clientReferenceId":"registration-card-42","currency":"usd","id":"cs_test_card123","metadata":{"registration_id":"registration-card-42"},"paymentStatus":"unpaid","status":"open","url":"https://checkout.stripe.com/c/pay/cs_test_card123"});
   return branchCase("created", value);
 }
+/** Default createCardCheckoutSession scenario. */
 export function createCardCheckoutSessionDefault(): Case<CheckoutSession> { return createCardCheckoutSessionCreatedCardSession(); }
+/** Manifest scenario invalidCardRequest for createCardCheckoutSession. */
 export function createCardCheckoutSessionInvalidCardRequest(): Case<CheckoutSession> {
   const value = emptyCheckoutSession;
   return branchCase("providerRejected", value, { kind: "PROVIDER_REJECTION", provider: ConnectorID, operation: "createCardCheckoutSession", message: "Stripe rejected the request" });
 }
+/** Manifest scenario unconfirmedCardSession for createCardCheckoutSession. */
 export function createCardCheckoutSessionUnconfirmedCardSession(): Case<CheckoutSession> {
   const value = emptyCheckoutSession;
   return uncertainCase(value, { kind: "AVAILABILITY", provider: ConnectorID, operation: "createCardCheckoutSession", message: "Stripe Checkout Session outcome cannot be confirmed after a server error" });
 }
+/** Manifest scenario malformedCardSession for createCardCheckoutSession. */
 export function createCardCheckoutSessionMalformedCardSession(): Case<CheckoutSession> {
   const value = emptyCheckoutSession;
   return branchCase("invalidResponse", value, { kind: "PROTOCOL", provider: ConnectorID, operation: "createCardCheckoutSession", message: "Stripe response is invalid: Stripe returned an invalid Checkout Session" });
 }
+/** Manifest scenario invalidCardCurrency for createCardCheckoutSession. */
 export function createCardCheckoutSessionInvalidCardCurrency(): Case<CheckoutSession> {
   const value = emptyCheckoutSession;
   return branchCase("defect", value, { kind: "VALIDATION", provider: ConnectorID, operation: "createCardCheckoutSession", message: "currency must be a lowercase three-letter code" });
 }
 
+/** Script the created branch. */
 export function createACHCheckoutSessionCreated(value: CheckoutSession, failure?: Failure): Case<CheckoutSession> { return branchCase("created", value, failure); }
+/** Script the providerRejected branch. */
 export function createACHCheckoutSessionProviderRejected(value: CheckoutSession, failure?: Failure): Case<CheckoutSession> { return branchCase("providerRejected", value, failure); }
+/** Script the invalidResponse branch. */
 export function createACHCheckoutSessionInvalidResponse(value: CheckoutSession, failure?: Failure): Case<CheckoutSession> { return branchCase("invalidResponse", value, failure); }
+/** Script the defect branch. */
 export function createACHCheckoutSessionDefect(value: CheckoutSession, failure?: Failure): Case<CheckoutSession> { return branchCase("defect", value, failure); }
+/** Script a safe retry of createACHCheckoutSession. */
 export function createACHCheckoutSessionRetry(failure: Failure, retryAfterMs = 0): Case<CheckoutSession> { return retryCase(failure, retryAfterMs); }
+/** Script an uncertain createACHCheckoutSession attempt. */
 export function createACHCheckoutSessionUncertain(value: CheckoutSession, failure: Failure): Case<CheckoutSession> { return uncertainCase(value, failure); }
+/** Manifest scenario createdSession for createACHCheckoutSession. */
 export function createACHCheckoutSessionCreatedSession(): Case<CheckoutSession> {
   const value = CheckoutSessionSchema.parse({"amountTotal":7500,"clientReferenceId":"registration-42","currency":"usd","id":"cs_test_a1b2c3","metadata":{"registration_id":"registration-42"},"paymentStatus":"unpaid","status":"open","url":"https://checkout.stripe.com/c/pay/cs_test_a1b2c3"});
   return branchCase("created", value);
 }
+/** Default createACHCheckoutSession scenario. */
 export function createACHCheckoutSessionDefault(): Case<CheckoutSession> { return createACHCheckoutSessionCreatedSession(); }
+/** Manifest scenario invalidRequest for createACHCheckoutSession. */
 export function createACHCheckoutSessionInvalidRequest(): Case<CheckoutSession> {
   const value = emptyCheckoutSession;
   return branchCase("providerRejected", value, { kind: "PROVIDER_REJECTION", provider: ConnectorID, operation: "createACHCheckoutSession", message: "Stripe rejected the request" });
 }
+/** Manifest scenario unconfirmedSession for createACHCheckoutSession. */
 export function createACHCheckoutSessionUnconfirmedSession(): Case<CheckoutSession> {
   const value = emptyCheckoutSession;
   return uncertainCase(value, { kind: "AVAILABILITY", provider: ConnectorID, operation: "createACHCheckoutSession", message: "Stripe Checkout Session outcome cannot be confirmed after a server error" });
 }
+/** Manifest scenario malformedSession for createACHCheckoutSession. */
 export function createACHCheckoutSessionMalformedSession(): Case<CheckoutSession> {
   const value = emptyCheckoutSession;
   return branchCase("invalidResponse", value, { kind: "PROTOCOL", provider: ConnectorID, operation: "createACHCheckoutSession", message: "Stripe response is invalid: Stripe returned an invalid Checkout Session" });
 }
+/** Manifest scenario invalidCurrency for createACHCheckoutSession. */
 export function createACHCheckoutSessionInvalidCurrency(): Case<CheckoutSession> {
   const value = emptyCheckoutSession;
   return branchCase("defect", value, { kind: "VALIDATION", provider: ConnectorID, operation: "createACHCheckoutSession", message: "currency must be a lowercase three-letter code" });
 }
 
+/** Script the found branch. */
 export function getCheckoutSessionFound(value: CheckoutSession, failure?: Failure): Case<CheckoutSession> { return branchCase("found", value, failure); }
+/** Script the notFound branch. */
 export function getCheckoutSessionNotFound(value: CheckoutSession, failure?: Failure): Case<CheckoutSession> { return branchCase("notFound", value, failure); }
+/** Script the providerRejected branch. */
 export function getCheckoutSessionProviderRejected(value: CheckoutSession, failure?: Failure): Case<CheckoutSession> { return branchCase("providerRejected", value, failure); }
+/** Script the invalidResponse branch. */
 export function getCheckoutSessionInvalidResponse(value: CheckoutSession, failure?: Failure): Case<CheckoutSession> { return branchCase("invalidResponse", value, failure); }
+/** Script the defect branch. */
 export function getCheckoutSessionDefect(value: CheckoutSession, failure?: Failure): Case<CheckoutSession> { return branchCase("defect", value, failure); }
+/** Script a safe retry of getCheckoutSession. */
 export function getCheckoutSessionRetry(failure: Failure, retryAfterMs = 0): Case<CheckoutSession> { return retryCase(failure, retryAfterMs); }
+/** Manifest scenario paidSession for getCheckoutSession. */
 export function getCheckoutSessionPaidSession(): Case<CheckoutSession> {
   const value = CheckoutSessionSchema.parse({"amountTotal":7500,"currency":"usd","id":"cs_test_a1b2c3","paymentIntentId":"pi_3Pabc123","paymentStatus":"paid","status":"complete"});
   return branchCase("found", value);
 }
+/** Default getCheckoutSession scenario. */
 export function getCheckoutSessionDefault(): Case<CheckoutSession> { return getCheckoutSessionPaidSession(); }
+/** Manifest scenario missingSession for getCheckoutSession. */
 export function getCheckoutSessionMissingSession(): Case<CheckoutSession> {
   const value = emptyCheckoutSession;
   return branchCase("notFound", value, { kind: "NOT_FOUND", provider: ConnectorID, operation: "getCheckoutSession", message: "Stripe Checkout Session was not found" });
 }
+/** Manifest scenario unauthorizedKey for getCheckoutSession. */
 export function getCheckoutSessionUnauthorizedKey(): Case<CheckoutSession> {
   const value = emptyCheckoutSession;
   return branchCase("providerRejected", value, { kind: "AUTHENTICATION", provider: ConnectorID, operation: "getCheckoutSession", message: "Stripe rejected the request" });
 }
+/** Manifest scenario malformedSession for getCheckoutSession. */
 export function getCheckoutSessionMalformedSession(): Case<CheckoutSession> {
   const value = emptyCheckoutSession;
   return branchCase("invalidResponse", value, { kind: "PROTOCOL", provider: ConnectorID, operation: "getCheckoutSession", message: "Stripe response is invalid: Stripe returned an invalid Checkout Session" });
 }
+/** Manifest scenario invalidSessionID for getCheckoutSession. */
 export function getCheckoutSessionInvalidSessionID(): Case<CheckoutSession> {
   const value = emptyCheckoutSession;
   return branchCase("defect", value, { kind: "VALIDATION", provider: ConnectorID, operation: "getCheckoutSession", message: "Stripe Checkout Session ID is required" });
 }
 
+/** Script the found branch. */
 export function getPaymentIntentFound(value: PaymentIntent, failure?: Failure): Case<PaymentIntent> { return branchCase("found", value, failure); }
+/** Script the notFound branch. */
 export function getPaymentIntentNotFound(value: PaymentIntent, failure?: Failure): Case<PaymentIntent> { return branchCase("notFound", value, failure); }
+/** Script the providerRejected branch. */
 export function getPaymentIntentProviderRejected(value: PaymentIntent, failure?: Failure): Case<PaymentIntent> { return branchCase("providerRejected", value, failure); }
+/** Script the invalidResponse branch. */
 export function getPaymentIntentInvalidResponse(value: PaymentIntent, failure?: Failure): Case<PaymentIntent> { return branchCase("invalidResponse", value, failure); }
+/** Script the defect branch. */
 export function getPaymentIntentDefect(value: PaymentIntent, failure?: Failure): Case<PaymentIntent> { return branchCase("defect", value, failure); }
+/** Script a safe retry of getPaymentIntent. */
 export function getPaymentIntentRetry(failure: Failure, retryAfterMs = 0): Case<PaymentIntent> { return retryCase(failure, retryAfterMs); }
+/** Manifest scenario partiallyRefundedPayment for getPaymentIntent. */
 export function getPaymentIntentPartiallyRefundedPayment(): Case<PaymentIntent> {
   const value = PaymentIntentSchema.parse({"amount":7500,"amountRefunded":2500,"currency":"usd","customerEmail":"person@example.com","id":"pi_3Pabc123","latestChargeId":"ch_3Pabc123","status":"succeeded"});
   return branchCase("found", value);
 }
+/** Default getPaymentIntent scenario. */
 export function getPaymentIntentDefault(): Case<PaymentIntent> { return getPaymentIntentPartiallyRefundedPayment(); }
+/** Manifest scenario missingPaymentIntent for getPaymentIntent. */
 export function getPaymentIntentMissingPaymentIntent(): Case<PaymentIntent> {
   const value = emptyPaymentIntent;
   return branchCase("notFound", value, { kind: "NOT_FOUND", provider: ConnectorID, operation: "getPaymentIntent", message: "Stripe PaymentIntent was not found: resource_missing" });
 }
+/** Manifest scenario unauthorizedKey for getPaymentIntent. */
 export function getPaymentIntentUnauthorizedKey(): Case<PaymentIntent> {
   const value = emptyPaymentIntent;
   return branchCase("providerRejected", value, { kind: "AUTHENTICATION", provider: ConnectorID, operation: "getPaymentIntent", message: "Stripe rejected the request" });
 }
+/** Manifest scenario malformedPaymentIntent for getPaymentIntent. */
 export function getPaymentIntentMalformedPaymentIntent(): Case<PaymentIntent> {
   const value = emptyPaymentIntent;
   return branchCase("invalidResponse", value, { kind: "PROTOCOL", provider: ConnectorID, operation: "getPaymentIntent", message: "Stripe response is invalid: Stripe returned an invalid PaymentIntent" });
 }
+/** Manifest scenario invalidPaymentIntentID for getPaymentIntent. */
 export function getPaymentIntentInvalidPaymentIntentID(): Case<PaymentIntent> {
   const value = emptyPaymentIntent;
   return branchCase("defect", value, { kind: "VALIDATION", provider: ConnectorID, operation: "getPaymentIntent", message: "Stripe PaymentIntent ID must be a pi_ identifier" });
 }
 
+/** Script the refunded branch. */
 export function createRefundRefunded(value: Refund, failure?: Failure): Case<Refund> { return branchCase("refunded", value, failure); }
+/** Script the providerRejected branch. */
 export function createRefundProviderRejected(value: Refund, failure?: Failure): Case<Refund> { return branchCase("providerRejected", value, failure); }
+/** Script the invalidResponse branch. */
 export function createRefundInvalidResponse(value: Refund, failure?: Failure): Case<Refund> { return branchCase("invalidResponse", value, failure); }
+/** Script the defect branch. */
 export function createRefundDefect(value: Refund, failure?: Failure): Case<Refund> { return branchCase("defect", value, failure); }
+/** Script a safe retry of createRefund. */
 export function createRefundRetry(failure: Failure, retryAfterMs = 0): Case<Refund> { return retryCase(failure, retryAfterMs); }
+/** Script an uncertain createRefund attempt. */
 export function createRefundUncertain(value: Refund, failure: Failure): Case<Refund> { return uncertainCase(value, failure); }
+/** Manifest scenario succeededRefund for createRefund. */
 export function createRefundSucceededRefund(): Case<Refund> {
   const value = RefundSchema.parse({"amount":2500,"currency":"usd","refundId":"re_3Pabc123","status":"succeeded"});
   return branchCase("refunded", value);
 }
+/** Default createRefund scenario. */
 export function createRefundDefault(): Case<Refund> { return createRefundSucceededRefund(); }
+/** Manifest scenario alreadyRefunded for createRefund. */
 export function createRefundAlreadyRefunded(): Case<Refund> {
   const value = emptyRefund;
   return branchCase("providerRejected", value, { kind: "PROVIDER_REJECTION", provider: ConnectorID, operation: "createRefund", message: "Stripe rejected the refund: charge_already_refunded: Charge ch_3Pabc123 has already been refunded." });
 }
+/** Manifest scenario unconfirmedRefund for createRefund. */
 export function createRefundUnconfirmedRefund(): Case<Refund> {
   const value = emptyRefund;
   return uncertainCase(value, { kind: "AVAILABILITY", provider: ConnectorID, operation: "createRefund", message: "Stripe refund outcome cannot be confirmed after a server error" });
 }
+/** Manifest scenario malformedRefund for createRefund. */
 export function createRefundMalformedRefund(): Case<Refund> {
   const value = emptyRefund;
   return branchCase("invalidResponse", value, { kind: "PROTOCOL", provider: ConnectorID, operation: "createRefund", message: "Stripe response is invalid: Stripe returned an invalid refund" });
 }
+/** Manifest scenario invalidAmount for createRefund. */
 export function createRefundInvalidAmount(): Case<Refund> {
   const value = emptyRefund;
   return branchCase("defect", value, { kind: "VALIDATION", provider: ConnectorID, operation: "createRefund", message: "refund amount must be positive" });
 }
 
+/** Scripted operations and manifest defaults for this connector. */
 export class GeneratedMock implements Operations {
   readonly #createCardCheckoutSession: MockMutation<CreateCardCheckoutSessionInput, CheckoutSession>;
   readonly #createACHCheckoutSession: MockMutation<CreateACHCheckoutSessionInput, CheckoutSession>;

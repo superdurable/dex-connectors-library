@@ -141,6 +141,9 @@ func TestCatalogGeneratedTypeScriptCompiles(t *testing.T) {
 		script.WriteString("  " + strconv.Quote("./"+filepath.ToSlash(directory)+"/mock.ts") + ",\n")
 	}
 	script.WriteString("]) {\n  const mock = await import(path);\n  for (const [name, value] of Object.entries(mock)) {\n    if (/^[a-z]/.test(name) && typeof value === 'function' && value.length === 0) value();\n  }\n}\n")
+	script.WriteString("const { TicketSchema } = await import('./connectors/zendesk/support/models.ts');\n")
+	script.WriteString("if (TicketSchema.safeParse({}).success) throw new Error('missing Zendesk status was fabricated');\n")
+	script.WriteString("for (const status of ['', 'future-provider-status']) TicketSchema.shape.status.parse(status);\n")
 	if err := os.WriteFile(filepath.Join(generatedRoot, "verify-mocks.mts"), []byte(script.String()), 0o644); err != nil {
 		t.Fatal(err)
 	}

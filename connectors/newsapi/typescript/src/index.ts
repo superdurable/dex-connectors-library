@@ -2,23 +2,23 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
-import { SecretString, goToBranch, newQueryStep, type Call, type ConnectionRef, type CredentialProvider, type Failure, type Query, type QueryAttempt, type QueryDefinition, type QueryResult, type QueryStep, type QueryStepConfig, newQueryBranch, newQueryRetry, defaultConnectorStepExecuteRetryPolicy } from '@superdurable/connectors-sdk';
+import { SecretString, type Call, type ConnectionRef, type CredentialProvider, type Failure, type Query, type QueryAttempt, type QueryDefinition, type QueryResult, type QueryStep, type QueryStepConfig, newQueryBranch, newQueryRetry, defaultConnectorStepExecuteRetryPolicy } from '@superdurable/connectors-sdk';
 import type { StepTarget } from '@superdurable/dex';
 import { AddressRefusal, BodyTooLargeError, MaxErrorBodyBytes, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, readErrorTokens, sendProviderRequest, validateBaseURL } from '@superdurable/connectors-sdk/providerhttp';
 import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
 import type { Config, Credentials } from './generated/models.js';
+import { Connection as GeneratedConnection } from './generated/connection.js';
+import { newSearchArticlesStep as newGeneratedSearchArticlesStep, type SearchArticlesStepConfig as GeneratedSearchArticlesStepConfig } from './generated/steps.js';
+import {
+  ConnectorID, SearchArticlesBranchSearched, SearchArticlesBranchProviderRejected,
+  SearchArticlesBranchInvalidResponse, SearchArticlesBranchDefect,
+  SearchArticlesDefinition as GeneratedSearchArticlesDefinition,
+} from './generated/definitions.js';
+export {
+  ConnectorID, SearchArticlesBranchSearched, SearchArticlesBranchProviderRejected,
+  SearchArticlesBranchInvalidResponse, SearchArticlesBranchDefect, SearchArticlesMetadata,
+} from './generated/definitions.js';
 export type { Config, Credentials } from './generated/models.js';
-
-/** Stable connector identity. */
-export const ConnectorID = 'newsapi';
-/** Successful article search branch. */
-export const SearchArticlesBranchSearched = 'searched';
-/** Conclusive provider rejection branch. */
-export const SearchArticlesBranchProviderRejected = 'providerRejected';
-/** Malformed or oversized provider response branch. */
-export const SearchArticlesBranchInvalidResponse = 'invalidResponse';
-/** Local validation or credential defect branch. */
-export const SearchArticlesBranchDefect = 'defect';
 
 /** Supported NewsAPI article fields. */
 export const SearchInFields = ['title', 'description', 'content'] as const;
@@ -83,18 +83,9 @@ export const ArticlePageSchema: z.ZodType<ArticlePage> = z.object({
 
 /** Manifest-defined operation routes and Dex Execute defaults. */
 export const SearchArticlesDefinition: QueryDefinition = {
-  operation: { connectorId: ConnectorID, operationId: 'searchArticles' },
-  branches: [
-    { id: SearchArticlesBranchSearched, description: 'NewsAPI returned one page of matching articles, possibly empty.' },
-    { id: SearchArticlesBranchProviderRejected, description: 'NewsAPI conclusively rejected the search, such as an invalid or exhausted API key, a request the plan does not permit, or an unknown source.', optional: true },
-    { id: SearchArticlesBranchInvalidResponse, description: 'NewsAPI returned malformed or oversized data.', optional: true },
-    { id: SearchArticlesBranchDefect, description: 'Local input, connection configuration, or credentials are invalid.', optional: true },
-  ],
-  stepDefaults: { executeMethodTimeoutMs: 30_000, executeDurability: 'async', executeRetry: defaultConnectorStepExecuteRetryPolicy() },
+  ...GeneratedSearchArticlesDefinition,
+  stepDefaults: { ...GeneratedSearchArticlesDefinition.stepDefaults, executeRetry: defaultConnectorStepExecuteRetryPolicy() },
 };
-
-/** Manifest fields outside the SDK QueryDefinition type. */
-export const SearchArticlesMetadata = { kind: 'query', idempotency: 'none', authorization: 'required' } as const;
 
 const emptyPage: ArticlePage = { totalResults: 0, articles: [], page: 0, hasMore: false };
 const documentedCodes = new Set(['apiKeyExhausted', 'rateLimited', 'unexpectedError', 'maximumResultsReached', 'apiKeyDisabled', 'apiKeyInvalid', 'apiKeyMissing', 'parameterInvalid', 'parametersMissing', 'sourcesTooMany', 'sourceDoesNotExist']);
@@ -209,14 +200,12 @@ export interface SearchArticlesStepConfig<StepInput> extends Omit<QueryStepConfi
 
 /** Build a NewsAPI Step with the existing connection and result contracts. */
 export function newSearchArticlesStep<StepInput>(configuration: SearchArticlesStepConfig<StepInput>): QueryStep<StepInput, SearchArticlesInput, ArticlePage> {
-  const { connection, connectionName, searched, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
+  const { connection, connectionName } = configuration;
   if (connection.reference.name !== connectionName) throw new TypeError('NewsAPI Step connection name differs from the bound connection');
-  return newQueryStep({ ...stepConfiguration, operation: connection.operations.searchArticles, connection: connection.reference, branches: [
-    goToBranch(SearchArticlesBranchSearched, searched),
-    ...(providerRejected ? [goToBranch(SearchArticlesBranchProviderRejected, providerRejected)] : []),
-    ...(invalidResponse ? [goToBranch(SearchArticlesBranchInvalidResponse, invalidResponse)] : []),
-    ...(defect ? [goToBranch(SearchArticlesBranchDefect, defect)] : []),
-  ] });
+  const generatedConnection = new GeneratedConnection(connection.reference, { searchArticles: () => connection.operations.searchArticles });
+  // The public input accepts readonly arrays; the generated factory does not mutate them.
+  const generatedConfiguration = { ...configuration, connection: generatedConnection } as unknown as GeneratedSearchArticlesStepConfig<StepInput>;
+  return newGeneratedSearchArticlesStep(generatedConfiguration) as unknown as QueryStep<StepInput, SearchArticlesInput, ArticlePage>;
 }
 
 /** Open a declared Dex Web connection; private credentials are resolved at each call. */

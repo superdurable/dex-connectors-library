@@ -9,9 +9,11 @@ import { GetMessageInputSchema, MessageSchema, SendMessageInputSchema, SendMessa
 import { ProviderID, ConnectorID, GetMessageDefinition, SendMessageDefinition, ReplyToMessageDefinition } from './definitions.js';
 import { newConnectionWithOperations, type Connection, type Operations } from './connection.js';
 
+/** Go zero value for GetMessageInput in scripted cases. */
 export const emptyGetMessageInput: GetMessageInput = GetMessageInputSchema.parse({
   "messageId": '',
 });
+/** Go zero value for Message in scripted cases. */
 export const emptyMessage: Message = MessageSchema.parse({
   "messageId": '',
   "threadId": '',
@@ -19,103 +21,141 @@ export const emptyMessage: Message = MessageSchema.parse({
   "subject": '',
   "receivedAt": '0001-01-01T00:00:00Z',
 });
+/** Go zero value for SendMessageInput in scripted cases. */
 export const emptySendMessageInput: SendMessageInput = SendMessageInputSchema.parse({
   "to": [],
   "subject": '',
   "textBody": '',
 });
+/** Go zero value for SendMessageOutput in scripted cases. */
 export const emptySendMessageOutput: SendMessageOutput = SendMessageOutputSchema.parse({
   "sender": '',
   "recipients": [],
   "messageId": '',
   "threadId": '',
 });
+/** Go zero value for ReplyToMessageInput in scripted cases. */
 export const emptyReplyToMessageInput: ReplyToMessageInput = ReplyToMessageInputSchema.parse({
   "messageId": '',
   "textBody": '',
 });
 
+/** Script the read branch. */
 export function getMessageRead(value: Message, failure?: Failure): Case<Message> { return branchCase("read", value, failure); }
+/** Script the notFound branch. */
 export function getMessageNotFound(value: Message, failure?: Failure): Case<Message> { return branchCase("notFound", value, failure); }
+/** Script the providerRejected branch. */
 export function getMessageProviderRejected(value: Message, failure?: Failure): Case<Message> { return branchCase("providerRejected", value, failure); }
+/** Script the invalidResponse branch. */
 export function getMessageInvalidResponse(value: Message, failure?: Failure): Case<Message> { return branchCase("invalidResponse", value, failure); }
+/** Script the defect branch. */
 export function getMessageDefect(value: Message, failure?: Failure): Case<Message> { return branchCase("defect", value, failure); }
+/** Script a safe retry of getMessage. */
 export function getMessageRetry(failure: Failure, retryAfterMs = 0): Case<Message> { return retryCase(failure, retryAfterMs); }
+/** Manifest scenario customerQuestion for getMessage. */
 export function getMessageCustomerQuestion(): Case<Message> {
   const value = MessageSchema.parse({"from":"Ada Customer \u003cada@example.com\u003e","htmlBody":"\u003cp\u003eHello, my order 1042 has not arrived yet. Can you check?\u003c/p\u003e","inReplyTo":"\u003cwelcome-1@mail.example.com\u003e","labelIds":["INBOX","UNREAD"],"messageId":"18c0a1b2c3d4e5f6","receivedAt":"2026-03-04T09:15:00Z","references":"\u003cwelcome-1@mail.example.com\u003e","replyTo":"ada.support@example.com","rfcMessageId":"\u003cquestion-1@mail.example.com\u003e","snippet":"Hello, my order 1042 has not arrived yet.","subject":"Re: Order 1042 has not arrived","textBody":"Hello, my order 1042 has not arrived yet. Can you check?","threadId":"18c0a1b2c3d4e5f0","to":["support@example.org"]});
   return branchCase("read", value);
 }
+/** Default getMessage scenario. */
 export function getMessageDefault(): Case<Message> { return getMessageCustomerQuestion(); }
+/** Manifest scenario deletedMessage for getMessage. */
 export function getMessageDeletedMessage(): Case<Message> {
   const value = emptyMessage;
   return branchCase("notFound", value, { kind: "NOT_FOUND", provider: ConnectorID, operation: "getMessage", message: "The Gmail message does not exist." });
 }
+/** Manifest scenario revokedGrant for getMessage. */
 export function getMessageRevokedGrant(): Case<Message> {
   const value = emptyMessage;
   return branchCase("providerRejected", value, { kind: "AUTHORIZATION", provider: ConnectorID, operation: "getMessage", message: "Gmail rejected the message query for the granted scopes." });
 }
+/** Manifest scenario malformedPayload for getMessage. */
 export function getMessageMalformedPayload(): Case<Message> {
   const value = emptyMessage;
   return branchCase("invalidResponse", value, { kind: "PROTOCOL", provider: ConnectorID, operation: "getMessage", message: "Gmail returned an invalid message payload." });
 }
+/** Manifest scenario emptyMessageID for getMessage. */
 export function getMessageEmptyMessageID(): Case<Message> {
   const value = emptyMessage;
   return branchCase("defect", value, { kind: "VALIDATION", provider: ConnectorID, operation: "getMessage", message: "The message ID is required." });
 }
+/** Manifest scenario rateLimited for getMessage. */
 export function getMessageRateLimited(): Case<Message> {
   return retryCase({ kind: "RATE_LIMIT", provider: ConnectorID, operation: "getMessage", message: "Gmail rate limit was reached." }, 1000);
 }
 
+/** Script the sent branch. */
 export function sendMessageSent(value: SendMessageOutput, failure?: Failure): Case<SendMessageOutput> { return branchCase("sent", value, failure); }
+/** Script the providerRejected branch. */
 export function sendMessageProviderRejected(value: SendMessageOutput, failure?: Failure): Case<SendMessageOutput> { return branchCase("providerRejected", value, failure); }
+/** Script the defect branch. */
 export function sendMessageDefect(value: SendMessageOutput, failure?: Failure): Case<SendMessageOutput> { return branchCase("defect", value, failure); }
+/** Script a safe retry of sendMessage. */
 export function sendMessageRetry(failure: Failure, retryAfterMs = 0): Case<SendMessageOutput> { return retryCase(failure, retryAfterMs); }
+/** Manifest scenario sentToCustomer for sendMessage. */
 export function sendMessageSentToCustomer(): Case<SendMessageOutput> {
   const value = SendMessageOutputSchema.parse({"messageId":"18c0a1b2c3d4e600","recipients":["ada@example.com"],"sender":"support@example.org","threadId":"18c0a1b2c3d4e600"});
   return branchCase("sent", value);
 }
+/** Default sendMessage scenario. */
 export function sendMessageDefault(): Case<SendMessageOutput> { return sendMessageSentToCustomer(); }
+/** Manifest scenario invalidRecipient for sendMessage. */
 export function sendMessageInvalidRecipient(): Case<SendMessageOutput> {
   const value = emptySendMessageOutput;
   return branchCase("providerRejected", value, { kind: "PROVIDER_REJECTION", provider: ConnectorID, operation: "sendMessage", message: "Gmail rejected the message recipients." });
 }
+/** Manifest scenario connectionLost for sendMessage. */
 export function sendMessageConnectionLost(): Case<SendMessageOutput> {
   return retryCase({ kind: "TRANSPORT", provider: ConnectorID, operation: "sendMessage", message: "The connection closed before Gmail answered." });
 }
+/** Manifest scenario noRecipients for sendMessage. */
 export function sendMessageNoRecipients(): Case<SendMessageOutput> {
   const value = emptySendMessageOutput;
   return branchCase("defect", value, { kind: "VALIDATION", provider: ConnectorID, operation: "sendMessage", message: "At least one recipient is required." });
 }
+/** Manifest scenario unavailable for sendMessage. */
 export function sendMessageUnavailable(): Case<SendMessageOutput> {
   return retryCase({ kind: "AVAILABILITY", provider: ConnectorID, operation: "sendMessage", message: "Gmail is temporarily unavailable." });
 }
 
+/** Script the sent branch. */
 export function replyToMessageSent(value: SendMessageOutput, failure?: Failure): Case<SendMessageOutput> { return branchCase("sent", value, failure); }
+/** Script the providerRejected branch. */
 export function replyToMessageProviderRejected(value: SendMessageOutput, failure?: Failure): Case<SendMessageOutput> { return branchCase("providerRejected", value, failure); }
+/** Script the invalidResponse branch. */
 export function replyToMessageInvalidResponse(value: SendMessageOutput, failure?: Failure): Case<SendMessageOutput> { return branchCase("invalidResponse", value, failure); }
+/** Script the defect branch. */
 export function replyToMessageDefect(value: SendMessageOutput, failure?: Failure): Case<SendMessageOutput> { return branchCase("defect", value, failure); }
+/** Script a safe retry of replyToMessage. */
 export function replyToMessageRetry(failure: Failure, retryAfterMs = 0): Case<SendMessageOutput> { return retryCase(failure, retryAfterMs); }
+/** Manifest scenario repliedInThread for replyToMessage. */
 export function replyToMessageRepliedInThread(): Case<SendMessageOutput> {
   const value = SendMessageOutputSchema.parse({"messageId":"18c0a1b2c3d4e700","recipients":["ada.support@example.com"],"sender":"support@example.org","threadId":"18c0a1b2c3d4e5f0"});
   return branchCase("sent", value);
 }
+/** Default replyToMessage scenario. */
 export function replyToMessageDefault(): Case<SendMessageOutput> { return replyToMessageRepliedInThread(); }
+/** Manifest scenario sourceMissing for replyToMessage. */
 export function replyToMessageSourceMissing(): Case<SendMessageOutput> {
   const value = emptySendMessageOutput;
   return branchCase("providerRejected", value, { kind: "NOT_FOUND", provider: ConnectorID, operation: "replyToMessage", message: "The source Gmail message does not exist." });
 }
+/** Manifest scenario malformedSource for replyToMessage. */
 export function replyToMessageMalformedSource(): Case<SendMessageOutput> {
   const value = emptySendMessageOutput;
   return branchCase("invalidResponse", value, { kind: "PROTOCOL", provider: ConnectorID, operation: "replyToMessage", message: "Gmail returned an invalid source message." });
 }
+/** Manifest scenario connectionLost for replyToMessage. */
 export function replyToMessageConnectionLost(): Case<SendMessageOutput> {
   return retryCase({ kind: "TRANSPORT", provider: ConnectorID, operation: "replyToMessage", message: "The connection closed before Gmail answered." });
 }
+/** Manifest scenario emptyBody for replyToMessage. */
 export function replyToMessageEmptyBody(): Case<SendMessageOutput> {
   const value = emptySendMessageOutput;
   return branchCase("defect", value, { kind: "VALIDATION", provider: ConnectorID, operation: "replyToMessage", message: "The reply body is required." });
 }
 
+/** Scripted operations and manifest defaults for this connector. */
 export class GeneratedMock implements Operations {
   readonly #getMessage: MockQuery<GetMessageInput, Message>;
   readonly #sendMessage: MockMutation<SendMessageInput, SendMessageOutput>;

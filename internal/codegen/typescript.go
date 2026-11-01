@@ -167,7 +167,11 @@ func generateTypeScriptModels(manifest schema.Manifest, models []gomodel.Model) 
 	output.WriteString("}\n\n")
 	fmt.Fprintf(&output, "/** Host-owned source of private connector credentials. */\nexport type CredentialSource = %s<Credentials>;\n\n", providerType)
 	for _, model := range models {
-		fmt.Fprintf(&output, "/** JSON model %s from the connector Go package. */\nexport interface %s {\n", model.Name, model.Name)
+		comment := "JSON model " + model.Name + " from the connector Go package."
+		if model.Comment != "" {
+			comment = model.Comment
+		}
+		fmt.Fprintf(&output, "/** %s */\nexport interface %s {\n", typeScriptJSDoc(comment), model.Name)
 		for _, field := range model.Fields {
 			optional := ""
 			fieldType := typeScriptType(field.Type)
@@ -175,23 +179,33 @@ func generateTypeScriptModels(manifest schema.Manifest, models []gomodel.Model) 
 				optional = "?"
 				fieldType += " | undefined"
 			}
+			if field.Comment != "" {
+				fmt.Fprintf(&output, "  /** %s */\n", typeScriptJSDoc(field.Comment))
+			}
 			fmt.Fprintf(&output, "  %s%s: %s;\n", strconv.Quote(field.Name), optional, fieldType)
 		}
 		output.WriteString("}\n")
 	}
 	output.WriteString("\n")
 	for _, model := range models {
-		fmt.Fprintf(&output, "export const %sSchema: z.ZodType<%s> = z.lazy(() => z.strictObject({\n", model.Name, model.Name)
+		isRecursive := typeScriptModelIsRecursive(model.Name, models)
+		if isRecursive {
+			fmt.Fprintf(&output, "/** Runtime validator for %s. */\nexport const %sSchema: z.ZodType<%s> = z.lazy(() => z.strictObject({\n", model.Name, model.Name, model.Name)
+		} else {
+			fmt.Fprintf(&output, "/** Runtime validator for %s. */\nexport const %sSchema = z.strictObject({\n", model.Name, model.Name)
+		}
 		for _, field := range model.Fields {
 			schemaExpression := typeScriptSchema(field.Type)
 			if field.Optional {
 				schemaExpression += ".optional()"
-			} else {
-				schemaExpression += ".prefault(" + defaultTypeScriptSchemaInput(field.Type) + ")"
 			}
 			fmt.Fprintf(&output, "  %s: %s,\n", strconv.Quote(field.Name), schemaExpression)
 		}
-		output.WriteString("}));\n\n")
+		if isRecursive {
+			output.WriteString("}));\n\n")
+		} else {
+			fmt.Fprintf(&output, "}) satisfies z.ZodType<%s>;\n\n", model.Name)
+		}
 	}
 	return output.Bytes()
 }
@@ -218,12 +232,21 @@ func typeScriptType(value gomodel.Type) string {
 		for _, enumValue := range value.EnumValues {
 			literals = append(literals, gomodel.EnumLiteral(enumValue, value.EnumBase))
 		}
-		result = strings.Join(literals, " | ")
+		if value.EnumBase == gomodel.String {
+			result = strings.Join(literals, " | ") + " | (string & {})"
+		} else {
+			result = strings.Join(literals, " | ") + " | (number & {})"
+		}
 	}
 	if value.Nullable {
 		result += " | null"
 	}
 	return result
+}
+
+func typeScriptJSDoc(comment string) string {
+	comment = strings.ReplaceAll(comment, "*/", "* /")
+	return strings.ReplaceAll(strings.TrimSpace(comment), "\n", "\n   * ")
 }
 
 func typeScriptSchema(value gomodel.Type) string {
@@ -250,17 +273,10 @@ func typeScriptSchema(value gomodel.Type) string {
 	case gomodel.Ref:
 		result = value.Ref + "Schema"
 	case gomodel.Enum:
-		var literals []string
-		for _, enumValue := range value.EnumValues {
-			literals = append(literals, gomodel.EnumLiteral(enumValue, value.EnumBase))
-		}
 		if value.EnumBase == gomodel.String {
-			result = "z.enum([" + strings.Join(literals, ", ") + "])"
+			result = "z.string()"
 		} else {
-			for index, literal := range literals {
-				literals[index] = "z.literal(" + literal + ")"
-			}
-			result = "z.union([" + strings.Join(literals, ", ") + "])"
+			result = "z.number().int()"
 		}
 	}
 	if value.Nullable {
@@ -294,22 +310,22 @@ func generateTypeScriptDefinitions(manifest schema.Manifest, operations []schema
 	} else {
 		output.WriteString("import type { QueryDefinition } from '@superdurable/connectors-sdk';\n\n")
 	}
-	fmt.Fprintf(&output, "export const ConnectorID = %s;\n", strconv.Quote(manifest.Metadata.Name))
-	fmt.Fprintf(&output, "export const ProviderID = %s;\n\n", strconv.Quote(manifest.Spec.Provider))
+	fmt.Fprintf(&output, "/** Stable connector identity. */\nexport const ConnectorID = %s;\n", strconv.Quote(manifest.Metadata.Name))
+	fmt.Fprintf(&output, "/** Provider identity for named connections. */\nexport const ProviderID = %s;\n\n", strconv.Quote(manifest.Spec.Provider))
 	for _, operation := range operations {
-		fmt.Fprintf(&output, "export const %sBranch = {\n", operation.GoName)
+		fmt.Fprintf(&output, "/** Branch IDs for %s. */\nexport const %sBranch = {\n", operation.Name, operation.GoName)
 		for _, branch := range operation.Branches {
 			fmt.Fprintf(&output, "  %s: %s,\n", branch.GoName, strconv.Quote(branch.ID))
 		}
 		output.WriteString("} as const;\n")
 		for _, branch := range operation.Branches {
-			fmt.Fprintf(&output, "export const %sBranch%s = %sBranch.%s;\n", operation.GoName, branch.GoName, operation.GoName, branch.GoName)
+			fmt.Fprintf(&output, "/** %s */\nexport const %sBranch%s = %sBranch.%s;\n", typeScriptJSDoc(branch.Description), operation.GoName, branch.GoName, operation.GoName, branch.GoName)
 		}
 		definitionType := "QueryDefinition"
 		if operation.Kind == "mutation" {
 			definitionType = "MutationDefinition"
 		}
-		fmt.Fprintf(&output, "export const %sDefinition: %s = {\n", operation.GoName, definitionType)
+		fmt.Fprintf(&output, "/** Manifest definition for %s. */\nexport const %sDefinition: %s = {\n", operation.Name, operation.GoName, definitionType)
 		fmt.Fprintf(&output, "  operation: { connectorId: ConnectorID, operationId: %s },\n", strconv.Quote(operation.Name))
 		output.WriteString("  branches: [\n")
 		for _, branch := range operation.Branches {
@@ -341,7 +357,7 @@ func generateTypeScriptDefinitions(manifest schema.Manifest, operations []schema
 			fmt.Fprintf(&output, ", executeRetry: { initialIntervalMs: %d, backoffCoefficient: %s, maximumIntervalMs: %d, maximumAttempts: %d, totalDurationMs: %d }", initial.Milliseconds(), strconv.FormatFloat(retry.BackoffCoefficient, 'f', -1, 64), maximum.Milliseconds(), retry.MaximumAttempts, total.Milliseconds())
 		}
 		output.WriteString(" },\n};\n")
-		fmt.Fprintf(&output, "export const %sMetadata = { kind: %s, idempotency: %s, authorization: %s } as const;\n\n", operation.GoName, strconv.Quote(operation.Kind), strconv.Quote(operation.Idempotency), strconv.Quote(operation.Authorization))
+		fmt.Fprintf(&output, "/** Manifest metadata for %s. */\nexport const %sMetadata = { kind: %s, idempotency: %s, authorization: %s } as const;\n\n", operation.Name, operation.GoName, strconv.Quote(operation.Kind), strconv.Quote(operation.Idempotency), strconv.Quote(operation.Authorization))
 	}
 	return output.Bytes(), nil
 }
@@ -379,7 +395,7 @@ func generateTypeScriptSteps(operations []schema.Operation) []byte {
 			fmt.Fprintf(&output, "  /** %s */\n  %s%s: StepTarget<%sResult<%s>>;\n", branch.Description, branch.ID, optional, kind, operation.OutputType)
 		}
 		output.WriteString("}\n\n")
-		fmt.Fprintf(&output, "export function new%sStep<StepInput>(configuration: %sStepConfig<StepInput>): %sStep<StepInput, %s, %s> {\n", operation.GoName, operation.GoName, kind, operation.InputType, operation.OutputType)
+		fmt.Fprintf(&output, "/** Build the %s Step from a named connection. */\nexport function new%sStep<StepInput>(configuration: %sStepConfig<StepInput>): %sStep<StepInput, %s, %s> {\n", operation.Name, operation.GoName, operation.GoName, kind, operation.InputType, operation.OutputType)
 		output.WriteString("  const { connection, connectionName, ")
 		for _, branch := range operation.Branches {
 			fmt.Fprintf(&output, "%s, ", branch.ID)
@@ -418,26 +434,26 @@ func generateTypeScriptConnection(manifest schema.Manifest, operations []schema.
 	}
 	output.WriteString("import type { " + strings.Join(uniqueStrings(names), ", ") + " } from './models.js';\n")
 	output.WriteString("import { ConnectorID, ProviderID } from './definitions.js';\n\n")
-	output.WriteString("export interface Operations {\n")
+	output.WriteString("/** Typed operations supplied by a client or mock. */\nexport interface Operations {\n")
 	for _, operation := range operations {
 		kind := "Query"
 		if operation.Kind == "mutation" {
 			kind = "Mutation"
 		}
-		fmt.Fprintf(&output, "  %s(): %s<%s, %s>;\n", operation.Name, kind, operation.InputType, operation.OutputType)
+		fmt.Fprintf(&output, "  /** Invoke %s through this connection. */\n  %s(): %s<%s, %s>;\n", operation.Name, operation.Name, kind, operation.InputType, operation.OutputType)
 	}
 	output.WriteString("}\n\n")
-	output.WriteString("export class Connection {\n  readonly reference: ConnectionRef;\n  readonly operations: Operations;\n\n  constructor(reference: ConnectionRef, operations: Operations) {\n    this.reference = ConnectionRefSchema.parse(reference);\n")
+	output.WriteString("/** Named connector connection kept outside Flow state. */\nexport class Connection {\n  /** Stable provider and connection name. */\n  readonly reference: ConnectionRef;\n  /** Bound provider operations. */\n  readonly operations: Operations;\n\n  /** Validate a reference and bind operations. */\n  constructor(reference: ConnectionRef, operations: Operations) {\n    this.reference = ConnectionRefSchema.parse(reference);\n")
 	output.WriteString("    if (this.reference.provider !== ProviderID) throw new TypeError('connection provider differs from the manifest');\n    if (!operations) throw new TypeError('connector operations are required');\n    this.operations = operations;\n  }\n}\n\n")
-	output.WriteString("export function newConnection(client: Operations, reference: ConnectionRef): Connection {\n  if (!client) throw new TypeError('connector client is required');\n  return new Connection(reference, client);\n}\n\n")
-	output.WriteString("export function newConnectionWithOperations(operations: Operations, reference: ConnectionRef): Connection {\n  return new Connection(reference, operations);\n}\n\n")
-	output.WriteString("export function newProjectConnection(project: LoadedProject, connectionName: string, createClient: (project: LoadedProject, connectionName: string) => Operations): Connection {\n")
+	output.WriteString("/** Bind a client to a named connection. */\nexport function newConnection(client: Operations, reference: ConnectionRef): Connection {\n  if (!client) throw new TypeError('connector client is required');\n  return new Connection(reference, client);\n}\n\n")
+	output.WriteString("/** Bind scripted operations to a named connection. */\nexport function newConnectionWithOperations(operations: Operations, reference: ConnectionRef): Connection {\n  return new Connection(reference, operations);\n}\n\n")
+	output.WriteString("/** Resolve a named connection from a loaded Dex project. */\nexport function newProjectConnection(project: LoadedProject, connectionName: string, createClient: (project: LoadedProject, connectionName: string) => Operations): Connection {\n")
 	output.WriteString("  if (!project) throw new TypeError('loaded project is required');\n")
 	output.WriteString("  const reference = ConnectionRefSchema.parse({ provider: ProviderID, name: connectionName });\n")
 	output.WriteString("  const selected = project.configuration.connections.find(entry => entry.connectorId === ConnectorID && entry.connectionName === connectionName);\n")
 	output.WriteString("  if (!selected || selected.provider !== ProviderID) throw new TypeError('project connection is not configured');\n")
 	output.WriteString("  return newConnection(createClient(project, connectionName), reference);\n}\n\n")
-	fmt.Fprintf(&output, "export const ConnectionNameProvider = %s;\n", strconv.Quote(manifest.Spec.Provider))
+	fmt.Fprintf(&output, "/** Provider expected by named connections. */\nexport const ConnectionNameProvider = %s;\n", strconv.Quote(manifest.Spec.Provider))
 	return output.Bytes()
 }
 
@@ -498,7 +514,7 @@ func generateTypeScriptMock(manifest schema.Manifest, operations []schema.Operat
 		modelByName[model.Name] = model
 	}
 	for _, model := range models {
-		fmt.Fprintf(&output, "export const empty%s: %s = %sSchema.parse({\n", model.Name, model.Name, model.Name)
+		fmt.Fprintf(&output, "/** Go zero value for %s in scripted cases. */\nexport const empty%s: %s = %sSchema.parse({\n", model.Name, model.Name, model.Name, model.Name)
 		for _, field := range model.Fields {
 			if field.Optional {
 				continue
@@ -514,15 +530,15 @@ func generateTypeScriptMock(manifest schema.Manifest, operations []schema.Operat
 			if branch.ID == "uncertain" {
 				continue
 			}
-			fmt.Fprintf(&output, "export function %s%s(value: %s, failure?: Failure): Case<%s> { return branchCase(%s, value, failure); }\n", operation.Name, branch.GoName, operation.OutputType, operation.OutputType, strconv.Quote(branch.ID))
+			fmt.Fprintf(&output, "/** Script the %s branch. */\nexport function %s%s(value: %s, failure?: Failure): Case<%s> { return branchCase(%s, value, failure); }\n", branch.ID, operation.Name, branch.GoName, operation.OutputType, operation.OutputType, strconv.Quote(branch.ID))
 		}
-		fmt.Fprintf(&output, "export function %sRetry(failure: Failure, retryAfterMs = 0): Case<%s> { return retryCase(failure, retryAfterMs); }\n", operation.Name, operation.OutputType)
+		fmt.Fprintf(&output, "/** Script a safe retry of %s. */\nexport function %sRetry(failure: Failure, retryAfterMs = 0): Case<%s> { return retryCase(failure, retryAfterMs); }\n", operation.Name, operation.Name, operation.OutputType)
 		if operation.Kind == "mutation" && operationHasBranch(operation, "uncertain") {
-			fmt.Fprintf(&output, "export function %sUncertain(value: %s, failure: Failure): Case<%s> { return uncertainCase(value, failure); }\n", operation.Name, operation.OutputType, operation.OutputType)
+			fmt.Fprintf(&output, "/** Script an uncertain %s attempt. */\nexport function %sUncertain(value: %s, failure: Failure): Case<%s> { return uncertainCase(value, failure); }\n", operation.Name, operation.Name, operation.OutputType, operation.OutputType)
 		}
 		for _, mock := range operation.Mocks {
 			functionName := operation.Name + strings.ToUpper(mock.Name[:1]) + mock.Name[1:]
-			fmt.Fprintf(&output, "export function %s(): Case<%s> {\n", functionName, operation.OutputType)
+			fmt.Fprintf(&output, "/** Manifest scenario %s for %s. */\nexport function %s(): Case<%s> {\n", mock.Name, operation.Name, functionName, operation.OutputType)
 			mockOutput := mock.Output
 			if mock.Uncertain != nil && mock.Uncertain.Output != nil {
 				mockOutput = mock.Uncertain.Output
@@ -557,12 +573,12 @@ func generateTypeScriptMock(manifest schema.Manifest, operations []schema.Operat
 			}
 			output.WriteString("}\n")
 			if mock.Default {
-				fmt.Fprintf(&output, "export function %sDefault(): Case<%s> { return %s(); }\n", operation.Name, operation.OutputType, functionName)
+				fmt.Fprintf(&output, "/** Default %s scenario. */\nexport function %sDefault(): Case<%s> { return %s(); }\n", operation.Name, operation.Name, operation.OutputType, functionName)
 			}
 		}
 		output.WriteString("\n")
 	}
-	output.WriteString("export class GeneratedMock implements Operations {\n")
+	output.WriteString("/** Scripted operations and manifest defaults for this connector. */\nexport class GeneratedMock implements Operations {\n")
 	for _, operation := range operations {
 		kind := "MockQuery"
 		if operation.Kind == "mutation" {
@@ -628,21 +644,46 @@ func emptyTypeScriptValue(value gomodel.Type) string {
 	case gomodel.Ref:
 		return "empty" + value.Ref
 	case gomodel.Enum:
-		return gomodel.EnumLiteral(value.EnumValues[0], value.EnumBase)
+		if value.EnumBase == gomodel.String {
+			return "''"
+		}
+		return "0"
 	case gomodel.Unknown:
 		return "null"
 	}
 	return "null"
 }
 
-func defaultTypeScriptSchemaInput(value gomodel.Type) string {
-	if value.Nullable {
-		return "null"
+func typeScriptModelIsRecursive(name string, models []gomodel.Model) bool {
+	byName := make(map[string]gomodel.Model, len(models))
+	for _, model := range models {
+		byName[model.Name] = model
 	}
-	if value.Kind == gomodel.Ref {
-		return "{}"
+	visited := map[string]bool{}
+	var reachesStart func(string) bool
+	reachesStart = func(current string) bool {
+		if visited[current] {
+			return false
+		}
+		visited[current] = true
+		for _, field := range byName[current].Fields {
+			var visitType func(gomodel.Type) bool
+			visitType = func(value gomodel.Type) bool {
+				if value.Kind == gomodel.Ref {
+					return value.Ref == name || reachesStart(value.Ref)
+				}
+				if value.Elem != nil {
+					return visitType(*value.Elem)
+				}
+				return false
+			}
+			if visitType(field.Type) {
+				return true
+			}
+		}
+		return false
 	}
-	return emptyTypeScriptValue(value)
+	return reachesStart(name)
 }
 
 func canonicalizeTypeScriptMockOutput(encoded, modelName string, models map[string]gomodel.Model) (string, error) {
@@ -684,6 +725,8 @@ func canonicalizeTypeScriptMockValue(value any, modelType gomodel.Type, models m
 			}
 			if present {
 				canonical[field.Name] = canonicalizeTypeScriptMockValue(fieldValue, field.Type, models)
+			} else if !field.Optional {
+				canonical[field.Name] = zeroGoJSONValue(field.Type, models)
 			}
 		}
 		return canonical
@@ -707,6 +750,38 @@ func canonicalizeTypeScriptMockValue(value any, modelType gomodel.Type, models m
 		return entries
 	}
 	return value
+}
+
+func zeroGoJSONValue(modelType gomodel.Type, models map[string]gomodel.Model) any {
+	if modelType.Nullable {
+		return nil
+	}
+	switch modelType.Kind {
+	case gomodel.String, gomodel.Enum:
+		if modelType.Kind == gomodel.Enum && modelType.EnumBase != gomodel.String {
+			return 0
+		}
+		return ""
+	case gomodel.Bool:
+		return false
+	case gomodel.Int, gomodel.Int64, gomodel.Float:
+		return 0
+	case gomodel.Time:
+		return "0001-01-01T00:00:00Z"
+	case gomodel.List:
+		return []any{}
+	case gomodel.Map:
+		return map[string]any{}
+	case gomodel.Ref:
+		value := map[string]any{}
+		for _, field := range models[modelType.Ref].Fields {
+			if !field.Optional {
+				value[field.Name] = zeroGoJSONValue(field.Type, models)
+			}
+		}
+		return value
+	}
+	return nil
 }
 
 func operationHasBranch(operation schema.Operation, branchID string) bool {

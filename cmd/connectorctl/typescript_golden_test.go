@@ -80,6 +80,9 @@ func TestNonLegacyTypeScriptGoldenDefaultGeneration(t *testing.T) {
 	if err := generate([]string{"--check", "--lang", "typescript", manifest}); err != nil {
 		t.Fatal(err)
 	}
+	if err := generate([]string{"--lang", "typescript", "--check", manifest}); err != nil {
+		t.Fatal(err)
+	}
 	if os.Getenv("TS_CODEGEN_COMPILE") != "1" {
 		return
 	}

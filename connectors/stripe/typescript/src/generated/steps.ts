@@ -25,6 +25,7 @@ export interface CreateCardCheckoutSessionStepConfig<StepInput> extends Omit<Mut
   defect?: StepTarget<MutationResult<CheckoutSession>>;
 }
 
+/** Build the createCardCheckoutSession Step from a named connection. */
 export function newCreateCardCheckoutSessionStep<StepInput>(configuration: CreateCardCheckoutSessionStepConfig<StepInput>): MutationStep<StepInput, CreateCardCheckoutSessionInput, CheckoutSession> {
   const { connection, connectionName, created, providerRejected, uncertain, invalidResponse, defect, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
@@ -55,6 +56,7 @@ export interface CreateACHCheckoutSessionStepConfig<StepInput> extends Omit<Muta
   defect?: StepTarget<MutationResult<CheckoutSession>>;
 }
 
+/** Build the createACHCheckoutSession Step from a named connection. */
 export function newCreateACHCheckoutSessionStep<StepInput>(configuration: CreateACHCheckoutSessionStepConfig<StepInput>): MutationStep<StepInput, CreateACHCheckoutSessionInput, CheckoutSession> {
   const { connection, connectionName, created, providerRejected, uncertain, invalidResponse, defect, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
@@ -85,6 +87,7 @@ export interface GetCheckoutSessionStepConfig<StepInput> extends Omit<QueryStepC
   defect?: StepTarget<QueryResult<CheckoutSession>>;
 }
 
+/** Build the getCheckoutSession Step from a named connection. */
 export function newGetCheckoutSessionStep<StepInput>(configuration: GetCheckoutSessionStepConfig<StepInput>): QueryStep<StepInput, GetCheckoutSessionInput, CheckoutSession> {
   const { connection, connectionName, found, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
@@ -115,6 +118,7 @@ export interface GetPaymentIntentStepConfig<StepInput> extends Omit<QueryStepCon
   defect?: StepTarget<QueryResult<PaymentIntent>>;
 }
 
+/** Build the getPaymentIntent Step from a named connection. */
 export function newGetPaymentIntentStep<StepInput>(configuration: GetPaymentIntentStepConfig<StepInput>): QueryStep<StepInput, GetPaymentIntentInput, PaymentIntent> {
   const { connection, connectionName, found, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
@@ -145,6 +149,7 @@ export interface CreateRefundStepConfig<StepInput> extends Omit<MutationStepConf
   defect?: StepTarget<MutationResult<Refund>>;
 }
 
+/** Build the createRefund Step from a named connection. */
 export function newCreateRefundStep<StepInput>(configuration: CreateRefundStepConfig<StepInput>): MutationStep<StepInput, CreateRefundInput, Refund> {
   const { connection, connectionName, refunded, providerRejected, uncertain, invalidResponse, defect, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');

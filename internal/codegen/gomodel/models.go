@@ -5,7 +5,9 @@
 package gomodel
 
 import (
+	"crypto/sha256"
 	"fmt"
+	"go/ast"
 	"go/constant"
 	"go/types"
 	"reflect"
@@ -59,17 +61,21 @@ type Type struct {
 	Nullable   bool
 }
 
-// Field describes a JSON key; Optional means encoding/json can omit that key.
+// Field describes a JSON key, including omission and pointer-presence semantics.
 type Field struct {
 	Name     string
 	Type     Type
 	Optional bool
+	// HasPresence distinguishes an omitted pointer or promoted field from a present zero value.
+	HasPresence bool
+	Comment     string
 }
 
 // Model describes a named or synthesized JSON object.
 type Model struct {
-	Name   string
-	Fields []Field
+	Name    string
+	Fields  []Field
+	Comment string
 }
 
 // Graph holds all models reachable from the requested root types.
@@ -83,6 +89,8 @@ type loader struct {
 	seen         map[string]bool
 	active       map[string]bool
 	reserved     map[string]bool
+	comments     map[*types.Var]string
+	typeComments map[string]string
 }
 
 type embeddedStruct struct {
@@ -102,7 +110,7 @@ type fieldCandidate struct {
 
 // Load resolves root Go struct names and their reachable JSON models from a connector module.
 func Load(goDirectory string, rootNames []string) (Graph, error) {
-	loaded, err := packages.Load(&packages.Config{Dir: goDirectory, Mode: packages.NeedName | packages.NeedTypes | packages.NeedCompiledGoFiles}, ".")
+	loaded, err := packages.Load(&packages.Config{Dir: goDirectory, Mode: packages.NeedName | packages.NeedTypes | packages.NeedCompiledGoFiles | packages.NeedSyntax | packages.NeedTypesInfo}, ".")
 	if err != nil {
 		return Graph{}, fmt.Errorf("load connector Go package: %w", err)
 	}
@@ -112,7 +120,36 @@ func Load(goDirectory string, rootNames []string) (Graph, error) {
 	for _, problem := range loaded[0].Errors {
 		return Graph{}, fmt.Errorf("load connector Go package: %s", problem)
 	}
-	modelLoader := &loader{packageTypes: loaded[0].Types, seen: map[string]bool{}, active: map[string]bool{}, reserved: map[string]bool{}}
+	modelLoader := &loader{packageTypes: loaded[0].Types, seen: map[string]bool{}, active: map[string]bool{}, reserved: map[string]bool{}, comments: map[*types.Var]string{}, typeComments: map[string]string{}}
+	for _, file := range loaded[0].Syntax {
+		ast.Inspect(file, func(node ast.Node) bool {
+			switch declaration := node.(type) {
+			case *ast.GenDecl:
+				if declaration.Doc != nil && len(declaration.Specs) == 1 {
+					if specification, ok := declaration.Specs[0].(*ast.TypeSpec); ok {
+						modelLoader.typeComments[specification.Name.Name] = strings.TrimSpace(declaration.Doc.Text())
+					}
+				}
+			case *ast.TypeSpec:
+				if declaration.Doc != nil {
+					modelLoader.typeComments[declaration.Name.Name] = strings.TrimSpace(declaration.Doc.Text())
+				}
+			case *ast.Field:
+				comment := declaration.Doc
+				if comment == nil {
+					comment = declaration.Comment
+				}
+				if comment != nil {
+					for _, name := range declaration.Names {
+						if variable, ok := loaded[0].TypesInfo.Defs[name].(*types.Var); ok {
+							modelLoader.comments[variable] = strings.TrimSpace(comment.Text())
+						}
+					}
+				}
+			}
+			return true
+		})
+	}
 	for _, rootName := range rootNames {
 		object := modelLoader.packageTypes.Scope().Lookup(rootName)
 		if object == nil {
@@ -133,12 +170,15 @@ func (modelLoader *loader) addModel(name string, modelType types.Type) error {
 	if !ok {
 		return fmt.Errorf("Go model %s is not a struct", name)
 	}
+	if hasMarshalMethod(modelType, "MarshalJSON") || hasMarshalMethod(modelType, "MarshalText") {
+		return fmt.Errorf("Go model %s implements a custom JSON or text marshaler without a known mapping", name)
+	}
 	modelLoader.active[name] = true
 	candidates, err := modelLoader.jsonFields(structure)
 	if err != nil {
 		return fmt.Errorf("Go model %s: %w", name, err)
 	}
-	model := Model{Name: name, Fields: make([]Field, 0, len(candidates))}
+	model := Model{Name: name, Comment: modelLoader.typeComments[name], Fields: make([]Field, 0, len(candidates))}
 	for _, candidate := range candidates {
 		fieldType, err := modelLoader.describeType(candidate.field.Type(), name+candidate.field.Name())
 		if err != nil {
@@ -146,11 +186,13 @@ func (modelLoader *loader) addModel(name string, modelType types.Type) error {
 		}
 		tag := reflect.StructTag(candidateTag(structure, candidate.index)).Get("json")
 		_, options := parseJSONTag(tag)
-		optional := candidate.optional || slices.Contains(options, "omitempty") || slices.Contains(options, "omitzero")
-		if optional && isNilable(candidate.field.Type()) {
+		hasOmitOption := slices.Contains(options, "omitempty") || slices.Contains(options, "omitzero")
+		optional := candidate.optional || hasOmitOption
+		hasPresence := candidate.optional || hasOmitOption && isPointer(candidate.field.Type())
+		if hasOmitOption && isNilable(candidate.field.Type()) && !canEncodeNullWhenPresent(candidate.field.Type()) {
 			fieldType.Nullable = false
 		}
-		model.Fields = append(model.Fields, Field{Name: candidate.name, Type: fieldType, Optional: optional})
+		model.Fields = append(model.Fields, Field{Name: candidate.name, Type: fieldType, Optional: optional, HasPresence: hasPresence, Comment: modelLoader.comments[candidate.field]})
 	}
 	delete(modelLoader.active, name)
 	modelLoader.seen[name] = true
@@ -191,7 +233,7 @@ func (modelLoader *loader) jsonFields(structure *types.Struct) ([]fieldCandidate
 				}
 				isTagged := jsonName != ""
 				for _, option := range options {
-					if option != "omitempty" && option != "omitzero" {
+					if option != "" && option != "omitempty" && option != "omitzero" {
 						return nil, fmt.Errorf("%s: unsupported json tag option %q", field.Name(), option)
 					}
 				}
@@ -200,10 +242,10 @@ func (modelLoader *loader) jsonFields(structure *types.Struct) ([]fieldCandidate
 					child := baseType.Underlying().(*types.Struct)
 					if next[child] == nil {
 						_, pointerEmbedded := fieldType.(*types.Pointer)
-						next[child] = &embeddedStruct{structure: child, index: path, optional: embedded.optional || pointerEmbedded, count: embedded.count}
+						next[child] = &embeddedStruct{structure: child, index: path, optional: embedded.optional || pointerEmbedded, count: 1}
 						order = append(order, child)
 					} else {
-						next[child].count += embedded.count
+						next[child].count++
 					}
 					continue
 				}
@@ -266,20 +308,21 @@ func (modelLoader *loader) describeType(modelType types.Type, syntheticName stri
 		if named.Obj().Pkg() != nil && named.Obj().Pkg().Path() == "encoding/json" && named.Obj().Name() == "RawMessage" {
 			return Type{Kind: Unknown, Nullable: true}, nil
 		}
-		if isKnownCellValue(named) {
+		// A matching decoder marks an opaque JSON value; its wire shape is intentionally unconstrained.
+		if hasMarshalMethod(named, "MarshalJSON") && hasUnmarshalJSONMethod(named) {
 			return Type{Kind: Unknown, Nullable: true}, nil
 		}
 		if hasMarshalMethod(named, "MarshalJSON") || hasMarshalMethod(named, "MarshalText") {
 			return Type{}, fmt.Errorf("%s implements a custom JSON or text marshaler without a known mapping", named.String())
 		}
-		if named.Obj().Pkg() == modelLoader.packageTypes {
-			if _, ok := named.Underlying().(*types.Struct); ok {
-				name := named.Obj().Name()
-				if err := modelLoader.addModel(name, named); err != nil {
-					return Type{}, err
-				}
-				return Type{Kind: Ref, Ref: name}, nil
+		if _, ok := named.Underlying().(*types.Struct); ok {
+			name := modelLoader.modelName(named)
+			if err := modelLoader.addModel(name, named); err != nil {
+				return Type{}, err
 			}
+			return Type{Kind: Ref, Ref: name}, nil
+		}
+		if named.Obj().Pkg() == modelLoader.packageTypes {
 			if values := enumValues(named); len(values) > 0 {
 				base, err := modelLoader.describeType(named.Underlying(), syntheticName)
 				if err != nil {
@@ -388,14 +431,46 @@ func hasMarshalMethod(modelType types.Type, methodName string) bool {
 	return false
 }
 
-func isKnownCellValue(named *types.Named) bool {
-	if named.Obj().Name() != "CellValue" || named.Obj().Pkg() == nil {
+func hasUnmarshalJSONMethod(modelType types.Type) bool {
+	method := types.NewMethodSet(types.NewPointer(modelType)).Lookup(nil, "UnmarshalJSON")
+	if method == nil {
 		return false
 	}
-	switch named.Obj().Pkg().Path() {
-	case "github.com/superdurable/dex-connectors-library/connectors/airtable/go",
-		"github.com/superdurable/dex-connectors-library/connectors/microsoft/excel/go":
-		return true
+	signature, ok := method.Obj().Type().(*types.Signature)
+	if !ok || signature.Params().Len() != 1 || signature.Results().Len() != 1 {
+		return false
+	}
+	parameter, ok := signature.Params().At(0).Type().(*types.Slice)
+	if !ok {
+		return false
+	}
+	byteType, ok := parameter.Elem().(*types.Basic)
+	return ok && byteType.Kind() == types.Byte && signature.Results().At(0).Type().String() == "error"
+}
+
+func (modelLoader *loader) modelName(named *types.Named) string {
+	name := named.Obj().Name()
+	if named.Obj().Pkg() != modelLoader.packageTypes {
+		name = named.Obj().Pkg().Name() + name
+	}
+	if named.TypeArgs().Len() > 0 {
+		digest := sha256.Sum256([]byte(types.TypeString(named, func(pkg *types.Package) string { return pkg.Path() })))
+		name += fmt.Sprintf("_%x", digest[:4])
+	}
+	return name
+}
+
+func canEncodeNullWhenPresent(modelType types.Type) bool {
+	modelType = types.Unalias(modelType)
+	if pointer, ok := modelType.(*types.Pointer); ok {
+		if hasMarshalMethod(pointer.Elem(), "MarshalJSON") && hasUnmarshalJSONMethod(pointer.Elem()) {
+			return true
+		}
+		underlying := types.Unalias(pointer.Elem()).Underlying()
+		switch underlying.(type) {
+		case *types.Slice, *types.Map, *types.Interface:
+			return true
+		}
 	}
 	return false
 }
@@ -444,6 +519,11 @@ func isNilable(modelType types.Type) bool {
 		return true
 	}
 	return false
+}
+
+func isPointer(modelType types.Type) bool {
+	_, ok := types.Unalias(modelType).(*types.Pointer)
+	return ok
 }
 
 // EnumLiteral returns the JSON literal for an enum value.

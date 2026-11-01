@@ -7,7 +7,8 @@ Go operation structs. Run `go run ./cmd/connectorctl generate --lang typescript 
 `src/models.ts` keeps the narrower refund reason enum and input
 validators; `src/connection.ts` keeps Stripe's credential decoding and public
 constructor signatures. `src/steps.ts` keeps the published connection-name
-validation error.
+validation error, requires the Stripe `Connection` class, and preserves the
+public refund-reason union. `src/mock.ts` re-exports generated scenarios.
 
 ## Install
 

@@ -25,6 +25,7 @@ export interface GetMessageStepConfig<StepInput> extends Omit<QueryStepConfig<St
   defect?: StepTarget<QueryResult<Message>>;
 }
 
+/** Build the getMessage Step from a named connection. */
 export function newGetMessageStep<StepInput>(configuration: GetMessageStepConfig<StepInput>): QueryStep<StepInput, GetMessageInput, Message> {
   const { connection, connectionName, read, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
@@ -51,6 +52,7 @@ export interface SendMessageStepConfig<StepInput> extends Omit<MutationStepConfi
   defect?: StepTarget<MutationResult<SendMessageOutput>>;
 }
 
+/** Build the sendMessage Step from a named connection. */
 export function newSendMessageStep<StepInput>(configuration: SendMessageStepConfig<StepInput>): MutationStep<StepInput, SendMessageInput, SendMessageOutput> {
   const { connection, connectionName, sent, providerRejected, defect, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
@@ -77,6 +79,7 @@ export interface ReplyToMessageStepConfig<StepInput> extends Omit<MutationStepCo
   defect?: StepTarget<MutationResult<SendMessageOutput>>;
 }
 
+/** Build the replyToMessage Step from a named connection. */
 export function newReplyToMessageStep<StepInput>(configuration: ReplyToMessageStepConfig<StepInput>): MutationStep<StepInput, ReplyToMessageInput, SendMessageOutput> {
   const { connection, connectionName, sent, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');

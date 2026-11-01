@@ -2,13 +2,20 @@
 // SPDX-License-Identifier: MIT
 
 import {
-  goToBranch, newMutationStep, newQueryStep,
   type MutationResult, type MutationStep, type MutationStepConfig,
   type QueryResult, type QueryStep, type QueryStepConfig,
 } from '@superdurable/connectors-sdk';
 import type { StepTarget } from '@superdurable/dex';
 import type { GetMessageInput, Message, ReplyToMessageInput, SendMessageInput, SendMessageOutput } from './models.js';
 import { GmailConnection } from './connection.js';
+import {
+  newGetMessageStep as newGeneratedGetMessageStep,
+  newSendMessageStep as newGeneratedSendMessageStep,
+  newReplyToMessageStep as newGeneratedReplyToMessageStep,
+  type GetMessageStepConfig as GeneratedGetMessageStepConfig,
+  type SendMessageStepConfig as GeneratedSendMessageStepConfig,
+  type ReplyToMessageStepConfig as GeneratedReplyToMessageStepConfig,
+} from './generated/steps.js';
 
 /** Configuration for the public getMessage Step. */
 export interface GetMessageStepConfig<StepInput> extends Omit<QueryStepConfig<StepInput, GetMessageInput, Message>, 'operation' | 'connection' | 'branches'> {
@@ -48,36 +55,18 @@ function requireGmailConnection(connection: GmailConnection, connectionName: str
 
 /** Build a Gmail read Step with its typed connection. */
 export function newGetMessageStep<StepInput>(configuration: GetMessageStepConfig<StepInput>): QueryStep<StepInput, GetMessageInput, Message> {
-  const { connection, connectionName, read, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
-  requireGmailConnection(connection, connectionName);
-  return newQueryStep({ ...stepConfiguration, operation: connection.operations.getMessage(), connection: connection.reference, branches: [
-    goToBranch('read', read),
-    ...(notFound ? [goToBranch('notFound', notFound)] : []),
-    ...(providerRejected ? [goToBranch('providerRejected', providerRejected)] : []),
-    ...(invalidResponse ? [goToBranch('invalidResponse', invalidResponse)] : []),
-    ...(defect ? [goToBranch('defect', defect)] : []),
-  ] });
+  requireGmailConnection(configuration.connection, configuration.connectionName);
+  return newGeneratedGetMessageStep(configuration as GeneratedGetMessageStepConfig<StepInput>);
 }
 
 /** Build a Gmail send Step with its typed connection. */
 export function newSendMessageStep<StepInput>(configuration: SendMessageStepConfig<StepInput>): MutationStep<StepInput, SendMessageInput, SendMessageOutput> {
-  const { connection, connectionName, sent, providerRejected, defect, ...stepConfiguration } = configuration;
-  requireGmailConnection(connection, connectionName);
-  return newMutationStep({ ...stepConfiguration, operation: connection.operations.sendMessage(), connection: connection.reference, branches: [
-    goToBranch('sent', sent),
-    ...(providerRejected ? [goToBranch('providerRejected', providerRejected)] : []),
-    ...(defect ? [goToBranch('defect', defect)] : []),
-  ] });
+  requireGmailConnection(configuration.connection, configuration.connectionName);
+  return newGeneratedSendMessageStep(configuration as GeneratedSendMessageStepConfig<StepInput>) as MutationStep<StepInput, SendMessageInput, SendMessageOutput>;
 }
 
 /** Build a Gmail reply Step with its typed connection. */
 export function newReplyToMessageStep<StepInput>(configuration: ReplyToMessageStepConfig<StepInput>): MutationStep<StepInput, ReplyToMessageInput, SendMessageOutput> {
-  const { connection, connectionName, sent, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
-  requireGmailConnection(connection, connectionName);
-  return newMutationStep({ ...stepConfiguration, operation: connection.operations.replyToMessage(), connection: connection.reference, branches: [
-    goToBranch('sent', sent),
-    ...(providerRejected ? [goToBranch('providerRejected', providerRejected)] : []),
-    ...(invalidResponse ? [goToBranch('invalidResponse', invalidResponse)] : []),
-    ...(defect ? [goToBranch('defect', defect)] : []),
-  ] });
+  requireGmailConnection(configuration.connection, configuration.connectionName);
+  return newGeneratedReplyToMessageStep(configuration as GeneratedReplyToMessageStepConfig<StepInput>) as MutationStep<StepInput, ReplyToMessageInput, SendMessageOutput>;
 }

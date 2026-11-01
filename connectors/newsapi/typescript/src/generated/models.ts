@@ -31,45 +31,77 @@ export interface Credentials {
 /** Host-owned source of private connector credentials. */
 export type CredentialSource = CredentialProvider<Credentials>;
 
-/** JSON model SearchArticlesInput from the connector Go package. */
+/** SearchArticlesInput selects one page of NewsAPI's everything search.
+   * Query, Sources, or Domains must be set. Empty fields are not sent, so NewsAPI applies its own defaults. */
 export interface SearchArticlesInput {
+  /** Query is NewsAPI's keyword expression, up to 500 characters. It supports quoted phrases,
+   * + and - prefixes, AND, OR, NOT, and parentheses. The connector form-encodes it. */
   "query"?: string | undefined;
+  /** SearchIn limits Query matching to title, description, or content. Empty searches all three. */
   "searchIn"?: Array<string> | undefined;
+  /** Sources lists up to 20 NewsAPI source IDs, such as bbc-news. */
   "sources"?: Array<string> | undefined;
+  /** Domains restricts results to these domains, such as techcrunch.com. */
   "domains"?: Array<string> | undefined;
+  /** ExcludeDomains removes results from these domains. */
   "excludeDomains"?: Array<string> | undefined;
+  /** From is the oldest publication time, as a date such as 2026-01-05, a UTC time such as
+   * 2026-01-05T07:00:00, or an RFC 3339 time. Empty uses the oldest article the plan allows. */
   "from"?: string | undefined;
+  /** To is the newest publication time in the same forms. Empty means now. */
   "to"?: string | undefined;
+  /** Language is one of Languages. Empty returns articles in every language. */
   "language"?: string | undefined;
+  /** SortBy is publishedAt (newest first), relevancy, or popularity. Empty uses NewsAPI's default, publishedAt. */
   "sortBy"?: string | undefined;
+  /** PageSize is the number of articles per page, from 1 through 100. Zero uses NewsAPI's default of 100. */
   "pageSize"?: number | undefined;
+  /** Page is the 1-based page number. Zero selects page 1. */
   "page"?: number | undefined;
 }
-/** JSON model ArticleSource from the connector Go package. */
+/** ArticleSource names an article's publisher. */
 export interface ArticleSource {
+  /** ID is NewsAPI's source ID, such as bbc-news, or nil for a publisher without one. */
   "id": string | null;
+  /** Name is the publisher's display name. */
   "name": string;
 }
-/** JSON model Article from the connector Go package. */
+/** Article preserves NewsAPI's article fields. A pointer field is nil when NewsAPI sends null, so an
+   * application can tell a missing value from an empty one. NewsAPI keeps a removed article in results
+   * with the title [Removed]; the connector returns it unchanged.
+   * Title, Description, and Content are untrusted provider text: escape them before rendering HTML. */
 export interface Article {
+  /** Source identifies the publisher. */
   "source": ArticleSource;
+  /** Author is the byline, or nil when NewsAPI has none. */
   "author": string | null;
+  /** Title is the headline. */
   "title": string;
+  /** Description is the article summary, or nil when NewsAPI has none. */
   "description": string | null;
+  /** URL links to the article on the publisher's site. */
   "url": string;
+  /** URLToImage links to the article's lead image, or is nil. */
   "urlToImage": string | null;
+  /** PublishedAt is the publication time in UTC. */
   "publishedAt": string;
+  /** Content is NewsAPI's excerpt of the body, truncated by NewsAPI to about 200 characters, or nil. */
   "content": string | null;
 }
-/** JSON model ArticlePage from the connector Go package. */
+/** ArticlePage is one page of matching articles in NewsAPI's order. */
 export interface ArticlePage {
+  /** TotalResults is NewsAPI's count of all matching articles. The Developer plan returns only the first 100. */
   "totalResults": number;
+  /** Articles holds this page, possibly empty. */
   "articles": Array<Article> | null;
+  /** Page is the 1-based page this result holds. */
   "page": number;
+  /** HasMore reports that TotalResults exceeds the articles up to and including this page. */
   "hasMore": boolean;
 }
 
-export const SearchArticlesInputSchema: z.ZodType<SearchArticlesInput> = z.lazy(() => z.strictObject({
+/** Runtime validator for SearchArticlesInput. */
+export const SearchArticlesInputSchema = z.strictObject({
   "query": z.string().optional(),
   "searchIn": z.array(z.string()).optional(),
   "sources": z.array(z.string()).optional(),
@@ -81,27 +113,30 @@ export const SearchArticlesInputSchema: z.ZodType<SearchArticlesInput> = z.lazy(
   "sortBy": z.string().optional(),
   "pageSize": z.number().int().optional(),
   "page": z.number().int().optional(),
-}));
+}) satisfies z.ZodType<SearchArticlesInput>;
 
-export const ArticleSourceSchema: z.ZodType<ArticleSource> = z.lazy(() => z.strictObject({
-  "id": z.string().nullable().prefault(null),
-  "name": z.string().prefault(''),
-}));
+/** Runtime validator for ArticleSource. */
+export const ArticleSourceSchema = z.strictObject({
+  "id": z.string().nullable(),
+  "name": z.string(),
+}) satisfies z.ZodType<ArticleSource>;
 
-export const ArticleSchema: z.ZodType<Article> = z.lazy(() => z.strictObject({
-  "source": ArticleSourceSchema.prefault({}),
-  "author": z.string().nullable().prefault(null),
-  "title": z.string().prefault(''),
-  "description": z.string().nullable().prefault(null),
-  "url": z.string().prefault(''),
-  "urlToImage": z.string().nullable().prefault(null),
-  "publishedAt": z.iso.datetime({ offset: true }).prefault('0001-01-01T00:00:00Z'),
-  "content": z.string().nullable().prefault(null),
-}));
+/** Runtime validator for Article. */
+export const ArticleSchema = z.strictObject({
+  "source": ArticleSourceSchema,
+  "author": z.string().nullable(),
+  "title": z.string(),
+  "description": z.string().nullable(),
+  "url": z.string(),
+  "urlToImage": z.string().nullable(),
+  "publishedAt": z.iso.datetime({ offset: true }),
+  "content": z.string().nullable(),
+}) satisfies z.ZodType<Article>;
 
-export const ArticlePageSchema: z.ZodType<ArticlePage> = z.lazy(() => z.strictObject({
-  "totalResults": z.number().int().prefault(0),
-  "articles": z.array(ArticleSchema).nullable().prefault(null),
-  "page": z.number().int().prefault(0),
-  "hasMore": z.boolean().prefault(false),
-}));
+/** Runtime validator for ArticlePage. */
+export const ArticlePageSchema = z.strictObject({
+  "totalResults": z.number().int(),
+  "articles": z.array(ArticleSchema).nullable(),
+  "page": z.number().int(),
+  "hasMore": z.boolean(),
+}) satisfies z.ZodType<ArticlePage>;

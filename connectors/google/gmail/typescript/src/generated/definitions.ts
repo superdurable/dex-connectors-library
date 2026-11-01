@@ -4,9 +4,12 @@
 
 import type { MutationDefinition, QueryDefinition } from '@superdurable/connectors-sdk';
 
+/** Stable connector identity. */
 export const ConnectorID = "gmail";
+/** Provider identity for named connections. */
 export const ProviderID = "google";
 
+/** Branch IDs for getMessage. */
 export const GetMessageBranch = {
   Read: "read",
   NotFound: "notFound",
@@ -14,11 +17,17 @@ export const GetMessageBranch = {
   InvalidResponse: "invalidResponse",
   Defect: "defect",
 } as const;
+/** The Gmail message was read. */
 export const GetMessageBranchRead = GetMessageBranch.Read;
+/** The Gmail message does not exist. */
 export const GetMessageBranchNotFound = GetMessageBranch.NotFound;
+/** Gmail conclusively rejected the message query. */
 export const GetMessageBranchProviderRejected = GetMessageBranch.ProviderRejected;
+/** Gmail returned an invalid or oversized message response. */
 export const GetMessageBranchInvalidResponse = GetMessageBranch.InvalidResponse;
+/** Local input, connection configuration, or connector definition is invalid. */
 export const GetMessageBranchDefect = GetMessageBranch.Defect;
+/** Manifest definition for getMessage. */
 export const GetMessageDefinition: QueryDefinition = {
   operation: { connectorId: ConnectorID, operationId: "getMessage" },
   branches: [
@@ -30,16 +39,22 @@ export const GetMessageDefinition: QueryDefinition = {
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
 };
+/** Manifest metadata for getMessage. */
 export const GetMessageMetadata = { kind: "query", idempotency: "none", authorization: "required" } as const;
 
+/** Branch IDs for sendMessage. */
 export const SendMessageBranch = {
   Sent: "sent",
   ProviderRejected: "providerRejected",
   Defect: "defect",
 } as const;
+/** Gmail accepted the message; its message and thread IDs can be empty when an unusable accepted response has no Sent Mail match. */
 export const SendMessageBranchSent = SendMessageBranch.Sent;
+/** Gmail conclusively rejected the message. */
 export const SendMessageBranchProviderRejected = SendMessageBranch.ProviderRejected;
+/** Local input, connection configuration, or connector definition is invalid. */
 export const SendMessageBranchDefect = SendMessageBranch.Defect;
+/** Manifest definition for sendMessage. */
 export const SendMessageDefinition: MutationDefinition = {
   operation: { connectorId: ConnectorID, operationId: "sendMessage" },
   branches: [
@@ -49,18 +64,25 @@ export const SendMessageDefinition: MutationDefinition = {
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },
 };
+/** Manifest metadata for sendMessage. */
 export const SendMessageMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;
 
+/** Branch IDs for replyToMessage. */
 export const ReplyToMessageBranch = {
   Sent: "sent",
   ProviderRejected: "providerRejected",
   InvalidResponse: "invalidResponse",
   Defect: "defect",
 } as const;
+/** Gmail accepted the reply; its message ID can be empty when an unusable accepted response has no Sent Mail match, while the requested thread ID remains. */
 export const ReplyToMessageBranchSent = ReplyToMessageBranch.Sent;
+/** Gmail conclusively rejected the reply. */
 export const ReplyToMessageBranchProviderRejected = ReplyToMessageBranch.ProviderRejected;
+/** Gmail returned an invalid or oversized source message response before sending the reply. */
 export const ReplyToMessageBranchInvalidResponse = ReplyToMessageBranch.InvalidResponse;
+/** Local input, connection configuration, or connector definition is invalid. */
 export const ReplyToMessageBranchDefect = ReplyToMessageBranch.Defect;
+/** Manifest definition for replyToMessage. */
 export const ReplyToMessageDefinition: MutationDefinition = {
   operation: { connectorId: ConnectorID, operationId: "replyToMessage" },
   branches: [
@@ -71,4 +93,5 @@ export const ReplyToMessageDefinition: MutationDefinition = {
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 5, totalDurationMs: 120000 } },
 };
+/** Manifest metadata for replyToMessage. */
 export const ReplyToMessageMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;

@@ -4,19 +4,27 @@
 
 import type { QueryDefinition } from '@superdurable/connectors-sdk';
 
+/** Stable connector identity. */
 export const ConnectorID = "hacker-news-daily";
+/** Provider identity for named connections. */
 export const ProviderID = "hacker-news";
 
+/** Branch IDs for listStoryIDs. */
 export const ListStoryIDsBranch = {
   Listed: "listed",
   ProviderRejected: "providerRejected",
   InvalidResponse: "invalidResponse",
   Defect: "defect",
 } as const;
+/** The feed snapshot was read. */
 export const ListStoryIDsBranchListed = ListStoryIDsBranch.Listed;
+/** Hacker News rejected the request. */
 export const ListStoryIDsBranchProviderRejected = ListStoryIDsBranch.ProviderRejected;
+/** Hacker News returned malformed or oversized data. */
 export const ListStoryIDsBranchInvalidResponse = ListStoryIDsBranch.InvalidResponse;
+/** Local input or connection configuration is invalid. */
 export const ListStoryIDsBranchDefect = ListStoryIDsBranch.Defect;
+/** Manifest definition for listStoryIDs. */
 export const ListStoryIDsDefinition: QueryDefinition = {
   operation: { connectorId: ConnectorID, operationId: "listStoryIDs" },
   branches: [
@@ -27,8 +35,10 @@ export const ListStoryIDsDefinition: QueryDefinition = {
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 0, totalDurationMs: 3900000 } },
 };
+/** Manifest metadata for listStoryIDs. */
 export const ListStoryIDsMetadata = { kind: "query", idempotency: "none", authorization: "none" } as const;
 
+/** Branch IDs for getItem. */
 export const GetItemBranch = {
   Found: "found",
   NotFound: "notFound",
@@ -36,11 +46,17 @@ export const GetItemBranch = {
   InvalidResponse: "invalidResponse",
   Defect: "defect",
 } as const;
+/** The public item was read. */
 export const GetItemBranchFound = GetItemBranch.Found;
+/** The item is missing, deleted, or dead. */
 export const GetItemBranchNotFound = GetItemBranch.NotFound;
+/** Hacker News rejected the request. */
 export const GetItemBranchProviderRejected = GetItemBranch.ProviderRejected;
+/** Hacker News returned malformed or oversized data. */
 export const GetItemBranchInvalidResponse = GetItemBranch.InvalidResponse;
+/** Local input or connection configuration is invalid. */
 export const GetItemBranchDefect = GetItemBranch.Defect;
+/** Manifest definition for getItem. */
 export const GetItemDefinition: QueryDefinition = {
   operation: { connectorId: ConnectorID, operationId: "getItem" },
   branches: [
@@ -52,4 +68,5 @@ export const GetItemDefinition: QueryDefinition = {
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async", executeRetry: { initialIntervalMs: 1000, backoffCoefficient: 2, maximumIntervalMs: 30000, maximumAttempts: 0, totalDurationMs: 3900000 } },
 };
+/** Manifest metadata for getItem. */
 export const GetItemMetadata = { kind: "query", idempotency: "none", authorization: "none" } as const;

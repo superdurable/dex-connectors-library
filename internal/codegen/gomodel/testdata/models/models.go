@@ -5,6 +5,7 @@ package models
 
 import (
 	"encoding/json"
+	"example.com/gomodel-test/external"
 	"time"
 )
 
@@ -13,7 +14,8 @@ type unexportedEmbedded struct {
 	Clash    string `json:"clash"`
 }
 type PointerEmbedded struct {
-	PointerPromoted string `json:"pointerPromoted"`
+	PointerPromoted string  `json:"pointerPromoted"`
+	Optional        *string `json:"optional"`
 }
 type TaggedEmbedded struct {
 	Nested string `json:"nested"`
@@ -94,4 +96,53 @@ func (CustomText) MarshalText() ([]byte, error) { return []byte("custom"), nil }
 
 type UnsupportedTextMarshaler struct {
 	Value CustomText `json:"value"`
+}
+
+type PointerSlice struct {
+	Values *[]string `json:"values,omitempty"`
+}
+
+type PointerPresence struct {
+	Bool   *bool     `json:"bool,omitempty"`
+	Number *int      `json:"number,omitempty"`
+	Text   *string   `json:"text,omitzero"`
+	Values *[]string `json:"values,omitempty"`
+}
+
+type CommaTag struct {
+	Value string `json:"v,"`
+}
+
+type Page[T any] struct {
+	Item T `json:"item"`
+}
+type Foo struct {
+	Name string `json:"name"`
+}
+type Bar struct {
+	Number int `json:"number"`
+}
+type GenericPages struct {
+	Foo Page[Foo] `json:"foo"`
+	Bar Page[Bar] `json:"bar"`
+}
+
+type ExternalRecursive struct {
+	Root external.Node `json:"root"`
+}
+
+type PromotedTime struct{ time.Time }
+type InlinePromotedTime struct {
+	Value struct{ time.Time } `json:"value"`
+}
+
+type DeepZ struct {
+	Z int `json:"z"`
+}
+type SharedMiddle struct{ DeepZ }
+type LeftMiddle struct{ SharedMiddle }
+type RightMiddle struct{ SharedMiddle }
+type CountDepth struct {
+	LeftMiddle
+	RightMiddle
 }

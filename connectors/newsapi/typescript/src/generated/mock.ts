@@ -9,12 +9,15 @@ import { SearchArticlesInputSchema, ArticleSourceSchema, ArticleSchema, ArticleP
 import { ProviderID, ConnectorID, SearchArticlesDefinition } from './definitions.js';
 import { newConnectionWithOperations, type Connection, type Operations } from './connection.js';
 
+/** Go zero value for SearchArticlesInput in scripted cases. */
 export const emptySearchArticlesInput: SearchArticlesInput = SearchArticlesInputSchema.parse({
 });
+/** Go zero value for ArticleSource in scripted cases. */
 export const emptyArticleSource: ArticleSource = ArticleSourceSchema.parse({
   "id": null,
   "name": '',
 });
+/** Go zero value for Article in scripted cases. */
 export const emptyArticle: Article = ArticleSchema.parse({
   "source": emptyArticleSource,
   "author": null,
@@ -25,6 +28,7 @@ export const emptyArticle: Article = ArticleSchema.parse({
   "publishedAt": '0001-01-01T00:00:00Z',
   "content": null,
 });
+/** Go zero value for ArticlePage in scripted cases. */
 export const emptyArticlePage: ArticlePage = ArticlePageSchema.parse({
   "totalResults": 0,
   "articles": [],
@@ -32,21 +36,30 @@ export const emptyArticlePage: ArticlePage = ArticlePageSchema.parse({
   "hasMore": false,
 });
 
+/** Script the searched branch. */
 export function searchArticlesSearched(value: ArticlePage, failure?: Failure): Case<ArticlePage> { return branchCase("searched", value, failure); }
+/** Script the providerRejected branch. */
 export function searchArticlesProviderRejected(value: ArticlePage, failure?: Failure): Case<ArticlePage> { return branchCase("providerRejected", value, failure); }
+/** Script the invalidResponse branch. */
 export function searchArticlesInvalidResponse(value: ArticlePage, failure?: Failure): Case<ArticlePage> { return branchCase("invalidResponse", value, failure); }
+/** Script the defect branch. */
 export function searchArticlesDefect(value: ArticlePage, failure?: Failure): Case<ArticlePage> { return branchCase("defect", value, failure); }
+/** Script a safe retry of searchArticles. */
 export function searchArticlesRetry(failure: Failure, retryAfterMs = 0): Case<ArticlePage> { return retryCase(failure, retryAfterMs); }
+/** Manifest scenario searchedDefaultAnswer for searchArticles. */
 export function searchArticlesSearchedDefaultAnswer(): Case<ArticlePage> {
-  const value = ArticlePageSchema.parse({"articles":[{"author":"A. Rivera","content":"Meridian opened its newest research lab.","description":"The company opens a new lab.","publishedAt":"2026-10-26T12:00:00Z","source":{"id":"meridian-news","name":"Meridian News"},"title":"Meridian opens a research lab","url":"https://news.example.test/meridian-lab"},{"author":null,"content":null,"description":null,"publishedAt":"2026-10-25T12:00:00Z","source":{"id":"meridian-news","name":"Meridian News"},"title":"Meridian reports quarterly results","url":"https://news.example.test/meridian-results"}],"hasMore":false,"page":1,"totalResults":2});
+  const value = ArticlePageSchema.parse({"articles":[{"author":"A. Rivera","content":"Meridian opened its newest research lab.","description":"The company opens a new lab.","publishedAt":"2026-10-26T12:00:00Z","source":{"id":"meridian-news","name":"Meridian News"},"title":"Meridian opens a research lab","url":"https://news.example.test/meridian-lab","urlToImage":null},{"author":null,"content":null,"description":null,"publishedAt":"2026-10-25T12:00:00Z","source":{"id":"meridian-news","name":"Meridian News"},"title":"Meridian reports quarterly results","url":"https://news.example.test/meridian-results","urlToImage":null}],"hasMore":false,"page":1,"totalResults":2});
   return branchCase("searched", value);
 }
+/** Default searchArticles scenario. */
 export function searchArticlesDefault(): Case<ArticlePage> { return searchArticlesSearchedDefaultAnswer(); }
+/** Manifest scenario invalidKey for searchArticles. */
 export function searchArticlesInvalidKey(): Case<ArticlePage> {
   const value = emptyArticlePage;
   return branchCase("providerRejected", value, { kind: "AUTHENTICATION", provider: ConnectorID, operation: "searchArticles", message: "Searching with an invalid NewsAPI key is rejected." });
 }
 
+/** Scripted operations and manifest defaults for this connector. */
 export class GeneratedMock implements Operations {
   readonly #searchArticles: MockQuery<SearchArticlesInput, ArticlePage>;
   readonly #connection: Connection;

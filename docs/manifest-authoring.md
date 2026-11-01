@@ -55,21 +55,30 @@ For every declared TypeScript package, `connectorctl generate` also writes
 Operation models come from the manifest's named types in the connector Go
 module. `internal/codegen/gomodel` loads their `encoding/json` shape into a
 language-neutral graph. `omitempty` and `omitzero` make a key optional;
-pointers and nil slices or maps without those options make its value nullable.
+the IR keeps `HasPresence` for pointer fields so a present zero value remains
+distinct from an absent key. A non-nil pointer to a nil slice or map can still
+emit `null`, as can a pointer field promoted through an embedded struct.
+Required keys stay required in generated validators; mock fixtures alone fill
+missing Go zero values before validation.
 Untagged embedded structs flatten according to Go's field conflict rules, and
-tagged embedded structs remain nested. Named string enums become `z.enum`,
-recursive models use `z.lazy`, `time.Time` is an ISO datetime string, byte
-slices are base64 strings, and `json.RawMessage` or `any` is unknown. Unsupported
-JSON tag options and custom marshalers without a known mapping stop generation.
+tagged embedded structs remain nested. Named string enums accept every string,
+including the listed constants and future provider values; the TypeScript type
+retains the known literals for completion. Only recursion cycles use `z.lazy`,
+so ordinary model validators retain `ZodObject` methods. `time.Time` is an ISO datetime string, byte
+slices are base64 strings, and `json.RawMessage` or `any` is unknown. A named
+type with both `MarshalJSON` and `UnmarshalJSON` is an opaque JSON value;
+unsupported tag options and other custom marshalers stop generation.
 Go `int64` values use TypeScript `number`; applications must keep them within
 JavaScript's exact integer range (±(2^53−1)). Generated definitions, branch IDs, operation-specific object
 factories, connection helpers, and mock cases come from `connector.yaml`.
 Run `go run ./cmd/connectorctl generate --lang typescript <connector.yaml>`
-to update only the TypeScript files. Run the same command with `--check` before
-`--lang` to reject drift. The ordinary generate command updates all generated
+to update only the TypeScript files. Add `--check` before or after `--lang` to
+reject drift. The ordinary generate command updates all generated
 files. Generated TypeScript files depend only on other files in `src/generated/`
 and the connector SDK; hand-written adapters import them.
-After `npm ci --prefix connectors/stripe/typescript`, run
+`make test-common` installs the Stripe compiler dependencies and runs the
+golden and catalog compile tests in CI. For a focused local run, after
+`npm ci --prefix connectors/stripe/typescript`, run
 `TS_CODEGEN_COMPILE=1 GOWORK=off go test ./internal/codegen ./cmd/connectorctl -run 'TestCatalogGeneratedTypeScriptCompiles|TestNonLegacyTypeScriptGoldenDefaultGeneration'`
 to compile every catalog connector's generated TypeScript and parse its mock
 scenarios without checking generated catalog output into the repository.

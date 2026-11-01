@@ -23,6 +23,7 @@ export interface ListStoryIDsStepConfig<StepInput> extends Omit<QueryStepConfig<
   defect?: StepTarget<QueryResult<StoryIDs>>;
 }
 
+/** Build the listStoryIDs Step from a named connection. */
 export function newListStoryIDsStep<StepInput>(configuration: ListStoryIDsStepConfig<StepInput>): QueryStep<StepInput, ListStoryIDsInput, StoryIDs> {
   const { connection, connectionName, listed, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
@@ -52,6 +53,7 @@ export interface GetItemStepConfig<StepInput> extends Omit<QueryStepConfig<StepI
   defect?: StepTarget<QueryResult<Item>>;
 }
 
+/** Build the getItem Step from a named connection. */
 export function newGetItemStep<StepInput>(configuration: GetItemStepConfig<StepInput>): QueryStep<StepInput, GetItemInput, Item> {
   const { connection, connectionName, found, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');

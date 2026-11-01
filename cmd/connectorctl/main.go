@@ -373,15 +373,23 @@ func readDigest(path string, expectedFile string) (string, error) {
 
 func generate(args []string) error {
 	check := false
-	if len(args) > 0 && args[0] == "--check" {
-		check = true
-		args = args[1:]
-	}
 	language := ""
-	if len(args) > 1 && args[0] == "--lang" {
-		language = args[1]
-		args = args[2:]
+	var positional []string
+	for index := 0; index < len(args); index++ {
+		switch args[index] {
+		case "--check":
+			check = true
+		case "--lang":
+			index++
+			if index >= len(args) {
+				return errors.New("--lang requires a language")
+			}
+			language = args[index]
+		default:
+			positional = append(positional, args[index])
+		}
 	}
+	args = positional
 	if language != "" && language != "typescript" {
 		return fmt.Errorf("unsupported generate language %q", language)
 	}

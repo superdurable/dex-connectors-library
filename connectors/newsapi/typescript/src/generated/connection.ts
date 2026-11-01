@@ -7,14 +7,20 @@ import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
 import type { SearchArticlesInput, ArticlePage } from './models.js';
 import { ConnectorID, ProviderID } from './definitions.js';
 
+/** Typed operations supplied by a client or mock. */
 export interface Operations {
+  /** Invoke searchArticles through this connection. */
   searchArticles(): Query<SearchArticlesInput, ArticlePage>;
 }
 
+/** Named connector connection kept outside Flow state. */
 export class Connection {
+  /** Stable provider and connection name. */
   readonly reference: ConnectionRef;
+  /** Bound provider operations. */
   readonly operations: Operations;
 
+  /** Validate a reference and bind operations. */
   constructor(reference: ConnectionRef, operations: Operations) {
     this.reference = ConnectionRefSchema.parse(reference);
     if (this.reference.provider !== ProviderID) throw new TypeError('connection provider differs from the manifest');
@@ -23,15 +29,18 @@ export class Connection {
   }
 }
 
+/** Bind a client to a named connection. */
 export function newConnection(client: Operations, reference: ConnectionRef): Connection {
   if (!client) throw new TypeError('connector client is required');
   return new Connection(reference, client);
 }
 
+/** Bind scripted operations to a named connection. */
 export function newConnectionWithOperations(operations: Operations, reference: ConnectionRef): Connection {
   return new Connection(reference, operations);
 }
 
+/** Resolve a named connection from a loaded Dex project. */
 export function newProjectConnection(project: LoadedProject, connectionName: string, createClient: (project: LoadedProject, connectionName: string) => Operations): Connection {
   if (!project) throw new TypeError('loaded project is required');
   const reference = ConnectionRefSchema.parse({ provider: ProviderID, name: connectionName });
@@ -40,4 +49,5 @@ export function newProjectConnection(project: LoadedProject, connectionName: str
   return newConnection(createClient(project, connectionName), reference);
 }
 
+/** Provider expected by named connections. */
 export const ConnectionNameProvider = "newsapi";

@@ -4,19 +4,27 @@
 
 import type { QueryDefinition } from '@superdurable/connectors-sdk';
 
+/** Stable connector identity. */
 export const ConnectorID = "newsapi";
+/** Provider identity for named connections. */
 export const ProviderID = "newsapi";
 
+/** Branch IDs for searchArticles. */
 export const SearchArticlesBranch = {
   Searched: "searched",
   ProviderRejected: "providerRejected",
   InvalidResponse: "invalidResponse",
   Defect: "defect",
 } as const;
+/** NewsAPI returned one page of matching articles, possibly empty. */
 export const SearchArticlesBranchSearched = SearchArticlesBranch.Searched;
+/** NewsAPI conclusively rejected the search, such as an invalid or exhausted API key, a request the plan does not permit, or an unknown source. */
 export const SearchArticlesBranchProviderRejected = SearchArticlesBranch.ProviderRejected;
+/** NewsAPI returned malformed or oversized data. */
 export const SearchArticlesBranchInvalidResponse = SearchArticlesBranch.InvalidResponse;
+/** Local input, connection configuration, or credentials are invalid. */
 export const SearchArticlesBranchDefect = SearchArticlesBranch.Defect;
+/** Manifest definition for searchArticles. */
 export const SearchArticlesDefinition: QueryDefinition = {
   operation: { connectorId: ConnectorID, operationId: "searchArticles" },
   branches: [
@@ -27,4 +35,5 @@ export const SearchArticlesDefinition: QueryDefinition = {
   ],
   stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "async" },
 };
+/** Manifest metadata for searchArticles. */
 export const SearchArticlesMetadata = { kind: "query", idempotency: "none", authorization: "required" } as const;

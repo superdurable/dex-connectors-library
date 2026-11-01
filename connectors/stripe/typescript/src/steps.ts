@@ -7,14 +7,30 @@ import {
   newGetCheckoutSessionStep as newGeneratedGetCheckoutSessionStep,
   newGetPaymentIntentStep as newGeneratedGetPaymentIntentStep,
   newCreateRefundStep as newGeneratedCreateRefundStep,
-  type CreateCardCheckoutSessionStepConfig,
-  type CreateACHCheckoutSessionStepConfig,
-  type GetCheckoutSessionStepConfig,
-  type GetPaymentIntentStepConfig,
-  type CreateRefundStepConfig,
+  type CreateCardCheckoutSessionStepConfig as GeneratedCardConfig,
+  type CreateACHCheckoutSessionStepConfig as GeneratedACHConfig,
+  type GetCheckoutSessionStepConfig as GeneratedCheckoutConfig,
+  type GetPaymentIntentStepConfig as GeneratedIntentConfig,
+  type CreateRefundStepConfig as GeneratedRefundConfig,
 } from './generated/steps.js';
+import type { Connection } from './connection.js';
+import type { CreateACHCheckoutSessionInput, CreateCardCheckoutSessionInput, CreateRefundInput, GetCheckoutSessionInput, GetPaymentIntentInput } from './models.js';
 
-export type { CreateCardCheckoutSessionStepConfig, CreateACHCheckoutSessionStepConfig, GetCheckoutSessionStepConfig, GetPaymentIntentStepConfig, CreateRefundStepConfig };
+type StripeStepConfig<StepInput, GeneratedConfig, OperationInput> = Omit<GeneratedConfig, 'connection' | 'mapToOperationInput'> & {
+  connection: Connection;
+  mapToOperationInput(input: StepInput): OperationInput;
+};
+
+/** Card Checkout Step configuration with the public input and typed Stripe connection. */
+export type CreateCardCheckoutSessionStepConfig<StepInput> = StripeStepConfig<StepInput, GeneratedCardConfig<StepInput>, CreateCardCheckoutSessionInput>;
+/** ACH Checkout Step configuration with the public input and typed Stripe connection. */
+export type CreateACHCheckoutSessionStepConfig<StepInput> = StripeStepConfig<StepInput, GeneratedACHConfig<StepInput>, CreateACHCheckoutSessionInput>;
+/** Checkout lookup Step configuration with the typed Stripe connection. */
+export type GetCheckoutSessionStepConfig<StepInput> = StripeStepConfig<StepInput, GeneratedCheckoutConfig<StepInput>, GetCheckoutSessionInput>;
+/** PaymentIntent lookup Step configuration with the typed Stripe connection. */
+export type GetPaymentIntentStepConfig<StepInput> = StripeStepConfig<StepInput, GeneratedIntentConfig<StepInput>, GetPaymentIntentInput>;
+/** Refund Step configuration preserving the public refund reason choices. */
+export type CreateRefundStepConfig<StepInput> = StripeStepConfig<StepInput, GeneratedRefundConfig<StepInput>, CreateRefundInput>;
 
 function validateStripeStepConnection(connection: { reference: { name: string } }, connectionName: string): void {
   if (!connection) throw new TypeError('Stripe connection is required');

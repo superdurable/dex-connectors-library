@@ -4,6 +4,7 @@
 package gomodel
 
 import (
+	"encoding/json"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -33,6 +34,9 @@ func TestLoadJSONFieldRules(t *testing.T) {
 	}
 	if !fields["pointerPromoted"].Optional {
 		t.Error("nil embedded pointer omits promoted field")
+	}
+	if field := fields["optional"]; !field.Optional || !field.Type.Nullable || !field.HasPresence {
+		t.Errorf("promoted pointer may be omitted or encode null: %+v", field)
 	}
 	if fields["clash"].Type.Kind != Int {
 		t.Error("shallow field must win")
@@ -74,12 +78,88 @@ func TestLoadJSONFieldRules(t *testing.T) {
 }
 
 func TestUnsupportedJSONEncodingsFail(t *testing.T) {
-	for _, test := range []struct{ name, want string }{{"UnsupportedOption", "unsupported json tag option"}, {"UnsupportedMarshaler", "custom JSON or text marshaler"}, {"UnsupportedTextMarshaler", "custom JSON or text marshaler"}} {
+	for _, test := range []struct{ name, want string }{{"UnsupportedOption", "unsupported json tag option"}, {"UnsupportedMarshaler", "custom JSON or text marshaler"}, {"UnsupportedTextMarshaler", "custom JSON or text marshaler"}, {"PromotedTime", "custom JSON or text marshaler"}, {"InlinePromotedTime", "custom JSON or text marshaler"}} {
 		t.Run(test.name, func(t *testing.T) {
 			_, err := Load(filepath.Join("testdata", "models"), []string{test.name})
 			if err == nil || !strings.Contains(err.Error(), test.want) {
 				t.Fatalf("got %v, want %s", err, test.want)
 			}
 		})
+	}
+}
+
+func TestGoJSONShapeEdgeCases(t *testing.T) {
+	graph, err := Load(filepath.Join("testdata", "models"), []string{"PointerSlice", "PointerPresence", "CommaTag", "GenericPages", "ExternalRecursive", "CountDepth"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	models := map[string]Model{}
+	for _, model := range graph.Models {
+		models[model.Name] = model
+	}
+	if field := models["PointerSlice"].Fields[0]; !field.Optional || !field.Type.Nullable {
+		t.Errorf("pointer to nil slice can encode null even with omitempty: %+v", field)
+	}
+	for _, field := range models["PointerPresence"].Fields {
+		if !field.Optional || !field.HasPresence {
+			t.Errorf("pointer omission must retain presence: %+v", field)
+		}
+		if isScalar := field.Name != "values"; isScalar && field.Type.Nullable {
+			t.Errorf("scalar pointer with omit option cannot encode null: %+v", field)
+		}
+	}
+	if field := models["CommaTag"].Fields[0]; field.Name != "v" {
+		t.Errorf("trailing comma must retain JSON field name: %+v", field)
+	}
+	pages := models["GenericPages"].Fields
+	if pages[0].Type.Ref == pages[1].Type.Ref || models[pages[0].Type.Ref].Name == "" || models[pages[1].Type.Ref].Name == "" {
+		t.Errorf("generic instantiations collapsed: %+v", pages)
+	}
+	root := models["ExternalRecursive"].Fields[0].Type.Ref
+	if root == "" || models[root].Fields[0].Type.Ref != root {
+		t.Errorf("external recursive model missing: %s %+v", root, models[root])
+	}
+	if fields := models["CountDepth"].Fields; len(fields) != 1 || fields[0].Name != "z" {
+		t.Errorf("repeated embedding must not multiply deeper field counts: %+v", fields)
+	}
+	type deepZ struct {
+		Z int `json:"z"`
+	}
+	type sharedMiddle struct{ deepZ }
+	type leftMiddle struct{ sharedMiddle }
+	type rightMiddle struct{ sharedMiddle }
+	encoded, err := json.Marshal(struct {
+		leftMiddle
+		rightMiddle
+	}{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(encoded) != `{"z":0}` {
+		t.Fatalf("encoding/json embedded-depth result: %s", encoded)
+	}
+	value := struct {
+		Values *[]string `json:"values,omitempty"`
+	}{Values: new([]string)}
+	encoded, err = json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(encoded) != `{"values":null}` {
+		t.Fatalf("encoding/json returned %s", encoded)
+	}
+	zeroBool, zeroInt, zeroString := false, 0, ""
+	withPresence := struct {
+		Bool   *bool     `json:"bool,omitempty"`
+		Number *int      `json:"number,omitempty"`
+		Text   *string   `json:"text,omitzero"`
+		Values *[]string `json:"values,omitempty"`
+	}{Bool: &zeroBool, Number: &zeroInt, Text: &zeroString, Values: new([]string)}
+	encoded, err = json.Marshal(withPresence)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(encoded) != `{"bool":false,"number":0,"text":"","values":null}` {
+		t.Fatalf("encoding/json lost pointer presence: %s", encoded)
 	}
 }
