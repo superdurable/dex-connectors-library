@@ -6,6 +6,9 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/datadog`.
 
 The `datadog` Go module exposes typed Dex Steps for Datadog. Its [runnable lookup Flow](go/examples/datadog-lookup/README.md) uses the static connection name `datadog`.
 
+The Python package is [`dex-connector-datadog`](python/README.md), imported as
+`dex_connectors.datadog`.
+
 ## Operations
 
 | Factory | Endpoint | Input | Output | Required branch | Optional branches |
