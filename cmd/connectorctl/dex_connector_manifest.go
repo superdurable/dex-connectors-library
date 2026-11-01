@@ -171,6 +171,9 @@ func lowerCamelToSnake(name string) string {
 		if character >= 'A' && character <= 'Z' {
 			isPreviousLowerOrDigit := index > 0 && ((characters[index-1] >= 'a' && characters[index-1] <= 'z') || (characters[index-1] >= '0' && characters[index-1] <= '9'))
 			isEndOfAcronym := index > 0 && index+1 < len(characters) && characters[index-1] >= 'A' && characters[index-1] <= 'Z' && characters[index+1] >= 'a' && characters[index+1] <= 'z'
+			// A trailing lowercase s pluralizes the acronym, as in listStoryIDs.
+			isAcronymPlural := index+1 < len(characters) && characters[index+1] == 's' && (index+2 == len(characters) || characters[index+2] < 'a' || characters[index+2] > 'z')
+			isEndOfAcronym = isEndOfAcronym && !isAcronymPlural
 			if isPreviousLowerOrDigit || isEndOfAcronym {
 				converted.WriteByte('_')
 			}

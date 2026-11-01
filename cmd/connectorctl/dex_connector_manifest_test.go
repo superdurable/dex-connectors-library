@@ -19,6 +19,9 @@ func TestOperationAndBranchNamesBecomePythonKeywords(t *testing.T) {
 	require.Equal(t, "not_found", lowerCamelToSnake("notFound"))
 	// An acronym followed by a word is one Python identifier segment.
 	require.Equal(t, "read_id_token", lowerCamelToSnake("readIDToken"))
+	require.Equal(t, "list_story_ids", lowerCamelToSnake("listStoryIDs"))
+	require.Equal(t, "read_ids_from_cache", lowerCamelToSnake("readIDsFromCache"))
+	require.Equal(t, "get_api_settings", lowerCamelToSnake("getAPISettings"))
 	require.Equal(t, "acme_data_api", pythonImportPackageName("connectors/acme/data-api"))
 }
 
