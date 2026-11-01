@@ -10,6 +10,9 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/figma`.
 
 In Dex Web Connections, create a `figma` connection named `figma`. Open [Account menu > Settings > Security > Personal access tokens > Generate new token](https://www.figma.com/settings), create the token, and paste it into the secret `api_key` field. Leave `baseUrl`, `timeout`, and `maxResponseBytes` blank for their displayed defaults. Figma needs both file_content:read and file_comments:read token scopes.
 
+The Python package is [`dex-connector-figma`](python/README.md), imported as
+`dex_connectors.figma`.
+
 ## Operations
 
 | Operation | Official API reference |
