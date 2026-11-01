@@ -6,6 +6,9 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/woocommerc
 
 Read-only Dex Query Steps for WooCommerce. The module is `github.com/superdurable/dex-connectors-library/connectors/woocommerce/go`. See the [runnable resource-read Flow](go/examples/resource-read/README.md).
 
+The Python package is [`dex-connector-woocommerce`](python/README.md), imported as
+`dex_connectors.woocommerce`.
+
 ## Operations
 
 | Factory | Input | Output | Happy branch |
