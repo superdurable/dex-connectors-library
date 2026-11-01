@@ -16,6 +16,9 @@ The `gitlab` Go module exposes typed Dex Steps for GitLab. Its [runnable lookup 
 
 `updateIssueLabels` sends the `labels` form field as a comma-separated absolute replacement. An empty list sends an empty field and clears all labels. Repeating the same set is safe; label names containing commas are rejected locally. The list operation returns GitLab’s first default page of 20 issues.
 
+The Python package is [`dex-connector-gitlab`](python/README.md), imported as
+`dex_connectors.gitlab`.
+
 ## Authorization
 
 Create a personal access token in [User Settings > Access Tokens](https://gitlab.com/-/user_settings/personal_access_tokens). Use `read_api` for read-only operations or `api` for `updateIssueLabels`. The connector sends it in the `PRIVATE-TOKEN` header. Set `baseUrl` to a self-managed instance’s HTTPS `/api/v4` URL when needed.
