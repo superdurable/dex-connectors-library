@@ -32,7 +32,6 @@ def new_list_issues_step(
     connection_name: str,
     map_to_operation_input: Callable[[StepInput], ListIssuesInput],
     listed: dex.StepTarget[QueryResult[IssuePage]],
-    not_listed: dex.StepTarget[QueryResult[IssuePage]] | None = None,
     provider_rejected: dex.StepTarget[QueryResult[IssuePage]] | None = None,
     invalid_response: dex.StepTarget[QueryResult[IssuePage]] | None = None,
     defect: dex.StepTarget[QueryResult[IssuePage]] | None = None,
