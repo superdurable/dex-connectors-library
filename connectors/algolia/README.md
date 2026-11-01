@@ -13,6 +13,9 @@ Algolia index search and repeat-safe record replacement for Dex. The connector u
 
 `saveObject` replaces the complete record with the supplied absolute attributes. The explicit `objectID` makes retrying safe for that record; omitted old attributes are removed. The HTTP 200 response means an indexing task was queued, not that the record is searchable yet. `search` returns only `objectID` and optional `name` from each hit to avoid leaking arbitrary record fields into Flow state.
 
+The Python package is [`dex-connector-algolia`](python/README.md), imported as
+`dex_connectors.algolia`.
+
 ## Authorization
 
 Sign in to the [Algolia API Keys page](https://www.algolia.com/account/api-keys/all) under **Settings > Team and Access > API Keys**. Copy your uppercase alphanumeric **Application ID** into `application_id`. Open [Restricted API Keys](https://www.algolia.com/account/api-keys/restricted), choose **Create API Key**, grant `search` and `addObject` ACLs for the intended index, and paste its secret key into `api_key`. Blank fields prevent requests. The key travels only in `x-algolia-api-key`; the application ID travels in `x-algolia-application-id` and the public host.

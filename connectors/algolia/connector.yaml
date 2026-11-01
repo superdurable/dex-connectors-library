@@ -8,6 +8,11 @@ metadata:
   version: v0.2.0
 spec:
   provider: algolia
+  languages:
+    python:
+      version: v0.1.0
+      operations: [search, saveObject]
+      triggers: []
   codegen:
     go:
       package: algolia
