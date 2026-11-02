@@ -185,6 +185,40 @@ h1, h2, h3 { text-wrap: balance; }
   font-weight: 500;
 }
 
+.sd-github-link {
+  display: inline-flex;
+  align-items: stretch;
+  min-height: 2rem;
+  border: 1px solid var(--sd-rule-strong);
+  border-radius: 999px;
+  color: var(--sd-text);
+  font-weight: 500;
+  white-space: nowrap;
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+.sd-github-link:hover {
+  border-color: var(--sd-text);
+  background: var(--sd-bg-alt);
+}
+
+.sd-github-link-name,
+.sd-github-link-stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0 0.75rem;
+}
+
+.sd-github-link-stars {
+  border-left: 1px solid var(--sd-rule-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.sd-github-link-stars svg {
+  color: #e3b341;
+}
+
 .sd-header-actions {
   display: flex;
   align-items: center;
