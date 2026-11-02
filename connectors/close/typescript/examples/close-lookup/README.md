@@ -3,7 +3,8 @@
 `CloseLookupFlow` lists ten leads from a selected zero-based offset, then reads
 the first lead by ID. The static Dex Web connection name is `close`.
 
-Start `dexcli dev` and set `DEX_FLOW_SERVICE_ADDRESS` to its gRPC address.
+Start `dexcli dev` and set `DEX_FLOW_SERVICE_ADDRESS` to its gRPC address
+for both the Worker and the Flow starter. The example requires this variable.
 Configure the private Dex Web `close` connection using a token created at
 [Settings > Developer > API Keys](https://app.close.com/settings/api/).
 Set `DEX_CONNECTOR_CONFIG_FILE` to the mode-0600 local Dex Web
@@ -24,7 +25,7 @@ The real Dex integration test uses a local Close HTTP fixture and covers both
 provider reads plus a failed Flow from an unwired provider rejection:
 
 ```sh
-DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:21240 npm run test:integration
+DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:23740 npm run test:integration
 ```
 
 Generate and lint the strict Flow Definition Graph 2.0 with Dex CLI 1.28.0 or

@@ -3,6 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { SecretString, type Call } from '@superdurable/connectors-sdk';
+import { AddressRefusal } from '@superdurable/connectors-sdk/providerhttp';
 import { CloseClient } from '../src/client.js';
 
 const call = { id: 'close-test', context: { cancellationSignal: new AbortController().signal } } as Call;
@@ -29,5 +30,15 @@ describe('Close operations', () => {
     expect(result.kind).toBe('branch');
     if (result.kind !== 'branch') throw new Error('expected a defect branch');
     expect(result.branch).toBe('defect');
+  });
+
+  it('retries a refused provider address', async () => {
+    const client = new CloseClient({}, {
+      resolve: async () => ({ apiKey: new SecretString('test-secret-key') }),
+    }, { send: async () => { throw new AddressRefusal('host has no resolved address'); } });
+    const result = await client.listLeads().invoke(call, { skip: 0 });
+    expect(result.kind).toBe('retry');
+    if (result.kind !== 'retry') throw new Error('expected a retry');
+    expect(result.failure.kind).toBe('AVAILABILITY');
   });
 });

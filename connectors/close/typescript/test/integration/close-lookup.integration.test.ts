@@ -33,11 +33,13 @@ it('lists and fetches a Close lead through real Dex, then fails an unwired rejec
     }
     response.writeHead(403).end();
   });
-  server.listen(21243, '127.0.0.1');
+  server.listen(0, '127.0.0.1');
   await once(server, 'listening');
+  const providerAddress = server.address();
+  if (!providerAddress || typeof providerAddress === 'string') throw new Error('Close fixture has no TCP address');
   const directory = await mkdtemp(join(tmpdir(), 'dex-close-integration-'));
   const cache = openBlobCache({ directory, maxBytes: 64 * 1024 * 1024 });
-  const provider = new CloseClient({ baseUrl: 'http://127.0.0.1:21243/api/v1' }, {
+  const provider = new CloseClient({ baseUrl: `http://${providerAddress.address}:${providerAddress.port}/api/v1` }, {
     resolve: async () => ({ apiKey: new SecretString('test-secret-key') }),
   });
   const flow = new CloseLookupFlow(newConnection(provider, { provider: 'close', name: ConnectionName }));

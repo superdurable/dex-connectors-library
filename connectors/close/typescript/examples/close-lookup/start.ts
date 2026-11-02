@@ -11,6 +11,8 @@ import { newProjectConnection } from '@superdurable/connector-close';
 import { ConnectionName, CloseLookupFlow, type CloseLookupOutcome, type CloseLookupRequest } from './flow/workflow.js';
 
 async function startCloseLookup(): Promise<void> {
+  const dexAddress = process.env.DEX_FLOW_SERVICE_ADDRESS;
+  if (!dexAddress) throw new TypeError('DEX_FLOW_SERVICE_ADDRESS is required');
   const inputFile = process.argv[2];
   if (!inputFile) throw new TypeError('Close lookup input JSON file is required');
   const input = JSON.parse(await readFile(inputFile, 'utf8')) as CloseLookupRequest;
@@ -21,7 +23,7 @@ async function startCloseLookup(): Promise<void> {
   let client: Client | undefined;
   try {
     cache = openBlobCache({ directory, maxBytes: 64 * 1024 * 1024 });
-    client = new Client(new Registry([flow]), cache, { serverAddress: process.env.DEX_FLOW_SERVICE_ADDRESS || '127.0.0.1:8801' });
+    client = new Client(new Registry([flow]), cache, { serverAddress: dexAddress });
     const flowId = `close-lookup-${randomUUID()}`;
     await client.startFlow(flow, flowId, input);
     const result = await client.waitForFlow(flowId, 90_000);

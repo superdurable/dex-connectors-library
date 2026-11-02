@@ -33,10 +33,12 @@ into failures.
 ```sh
 npm ci
 npm run check
-DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:21240 npm run test:integration
+DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:23740 npm run test:integration
 ```
 
-The integration test needs a running `dexcli dev` on port 21240 and uses a
-local provider fixture on port 21243. Recorded Go conformance scenarios verify
+The integration test needs a running `dexcli dev` at the address in
+`DEX_FLOW_SERVICE_ADDRESS` and uses a local provider fixture on an assigned port.
+The example Worker and starter also require `DEX_FLOW_SERVICE_ADDRESS`.
+Recorded Go conformance scenarios verify
 the provider request, response branches, retries, and exact SDK output.
 Live Close authorization and provider responses have not been exercised.

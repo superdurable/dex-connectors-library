@@ -5,9 +5,10 @@
 import sys
 from pathlib import Path
 
-import dex_connectors.close as close
 import dex_connectors.sdk as sdk
 import pytest
+
+import dex_connectors.close as close
 
 ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))

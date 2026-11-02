@@ -3,7 +3,7 @@
 
 import { SecretString, type Call, type CredentialProvider, type Failure, type QueryAttempt } from '@superdurable/connectors-sdk';
 import { newQueryBranch, newQueryRetry } from '@superdurable/connectors-sdk';
-import { AddressRefusal, BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, ProviderTransportError, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import type { Config, Credentials, Lead, LeadPage } from './generated/models.js';
 import { GetLeadOperation, ListLeadsOperation } from './operations.js';
 
@@ -64,8 +64,6 @@ export class CloseClient {
         if (error.status !== undefined && error.status !== 200) return this.classify(operation, error.status, error.headers?.['retry-after'], notFoundBranch, zero);
         return this.failed(operation, 'invalidResponse', 'RESPONSE_TOO_LARGE', 'provider response exceeded configured limit', zero);
       }
-      if (error instanceof AddressRefusal) return this.failed(operation, 'defect', 'LOCAL_DEFECT', 'request cannot be built', zero);
-      if (error instanceof ProviderTransportError) return this.retry(operation, 'AVAILABILITY', 'provider request failed');
       return this.retry(operation, 'AVAILABILITY', 'provider request failed');
     }
     if (response.status !== 200) return this.classify(operation, response.status, response.headers['retry-after'], notFoundBranch, zero);

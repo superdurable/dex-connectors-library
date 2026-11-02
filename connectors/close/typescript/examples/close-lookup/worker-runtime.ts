@@ -9,12 +9,14 @@ import { CloseLookupFlow } from './flow/workflow.js';
 
 /** Run the Close lookup Worker until the host aborts. */
 export async function runCloseLookupWorker(flow: CloseLookupFlow, signal: AbortSignal): Promise<void> {
+  const dexAddress = process.env.DEX_FLOW_SERVICE_ADDRESS;
+  if (!dexAddress) throw new TypeError('DEX_FLOW_SERVICE_ADDRESS is required');
   const directory = await mkdtemp(join(tmpdir(), 'dex-close-worker-'));
   let cache: BlobCache | undefined;
   let worker: Worker | undefined;
   try {
     cache = openBlobCache({ directory, maxBytes: 64 * 1024 * 1024 });
-    worker = new Worker(new Registry([flow]), cache, { serverAddress: process.env.DEX_FLOW_SERVICE_ADDRESS || '127.0.0.1:8801' });
+    worker = new Worker(new Registry([flow]), cache, { serverAddress: dexAddress });
     await worker.start();
     await worker.waitPullRegistered({ timeoutMs: 30_000, signal });
     await new Promise<void>(resolve => {
