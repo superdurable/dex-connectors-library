@@ -595,5 +595,158 @@
       }
     },
     "expectedMismatches": []
+  },
+  {
+    "name": "multipart-utf8-filename-binary-folded-header",
+    "requestPath": "/matcher",
+    "requestHeaders": {
+      "Content-Type": [
+        "multipart/form-data; boundary=utf8-boundary"
+      ]
+    },
+    "requestBody": "--utf8-boundary\r\ncontent-disposition: form-data; name=\"file\";\r\n\tfilename=\"r\u00e9sum\u00e9.pdf\" \t\r\ncontent-type: application/octet-stream \t\r\n\r\n\u0080\u00ff\r\n--utf8-boundary--\r\n",
+    "exchange": {
+      "method": "POST",
+      "path": "/matcher",
+      "keyMode": "absent",
+      "status": 200,
+      "headers": {},
+      "body": "",
+      "requestHeaders": {
+        "Content-Type": "multipart/form-data"
+      },
+      "requestBody": {
+        "$multipart": [
+          {
+            "headers": {
+              "Content-Disposition": [
+                "form-data; name=\"file\"; filename=\"r\u00e9sum\u00e9.pdf\""
+              ],
+              "Content-Type": [
+                "application/octet-stream"
+              ]
+            },
+            "bodyBase64": "woDDvw=="
+          }
+        ]
+      }
+    },
+    "expectedMismatches": []
+  },
+  {
+    "name": "multipart-invalid-header-line",
+    "requestPath": "/matcher",
+    "requestHeaders": {
+      "Content-Type": [
+        "multipart/form-data; boundary=utf8-boundary"
+      ]
+    },
+    "requestBody": "--utf8-boundary\r\ncontent-disposition: form-data; name=\"file\";\r\n\tfilename=\"r\u00e9sum\u00e9.pdf\" \t\r\ngarbage\r\nX-Unasserted: anything\r\ncontent-type: application/octet-stream \t\r\n\r\n\u0080\u00ff\r\n--utf8-boundary--\r\n",
+    "exchange": {
+      "method": "POST",
+      "path": "/matcher",
+      "keyMode": "absent",
+      "status": 200,
+      "headers": {},
+      "body": "",
+      "requestHeaders": {
+        "Content-Type": "multipart/form-data"
+      },
+      "requestBody": {
+        "$multipart": [
+          {
+            "headers": {
+              "Content-Disposition": [
+                "form-data; name=\"file\"; filename=\"r\u00e9sum\u00e9.pdf\""
+              ],
+              "Content-Type": [
+                "application/octet-stream"
+              ]
+            },
+            "bodyBase64": "woDDvw=="
+          }
+        ]
+      }
+    },
+    "expectedMismatches": [
+      "multipart body"
+    ]
+  },
+  {
+    "name": "multipart-duplicate-boundary-parameter",
+    "requestPath": "/matcher",
+    "requestHeaders": {
+      "Content-Type": [
+        "multipart/form-data; boundary=utf8-boundary; boundary=another"
+      ]
+    },
+    "requestBody": "--utf8-boundary\r\ncontent-disposition: form-data; name=\"file\";\r\n\tfilename=\"r\u00e9sum\u00e9.pdf\" \t\r\ncontent-type: application/octet-stream \t\r\n\r\n\u0080\u00ff\r\n--utf8-boundary--\r\n",
+    "exchange": {
+      "method": "POST",
+      "path": "/matcher",
+      "keyMode": "absent",
+      "status": 200,
+      "headers": {},
+      "body": "",
+      "requestHeaders": {
+        "Content-Type": "multipart/form-data"
+      },
+      "requestBody": {
+        "$multipart": [
+          {
+            "headers": {
+              "Content-Disposition": [
+                "form-data; name=\"file\"; filename=\"r\u00e9sum\u00e9.pdf\""
+              ],
+              "Content-Type": [
+                "application/octet-stream"
+              ]
+            },
+            "bodyBase64": "woDDvw=="
+          }
+        ]
+      }
+    },
+    "expectedMismatches": [
+      "multipart body",
+      "header Content-Type"
+    ]
+  },
+  {
+    "name": "multipart-epilogue-ignored",
+    "requestPath": "/matcher",
+    "requestHeaders": {
+      "Content-Type": [
+        "multipart/form-data; boundary=utf8-boundary"
+      ]
+    },
+    "requestBody": "--utf8-boundary\r\ncontent-disposition: form-data; name=\"file\";\r\n\tfilename=\"r\u00e9sum\u00e9.pdf\" \t\r\ncontent-type: application/octet-stream \t\r\n\r\n\u0080\u00ff\r\n--utf8-boundary--\r\nepilogue bytes\r\n",
+    "exchange": {
+      "method": "POST",
+      "path": "/matcher",
+      "keyMode": "absent",
+      "status": 200,
+      "headers": {},
+      "body": "",
+      "requestHeaders": {
+        "Content-Type": "multipart/form-data"
+      },
+      "requestBody": {
+        "$multipart": [
+          {
+            "headers": {
+              "Content-Disposition": [
+                "form-data; name=\"file\"; filename=\"r\u00e9sum\u00e9.pdf\""
+              ],
+              "Content-Type": [
+                "application/octet-stream"
+              ]
+            },
+            "bodyBase64": "woDDvw=="
+          }
+        ]
+      }
+    },
+    "expectedMismatches": []
   }
 ]

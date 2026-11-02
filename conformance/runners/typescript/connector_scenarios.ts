@@ -184,6 +184,7 @@ function multipartContentType(contentType: string): { mediaType: string; paramet
     const separator = rawParameter.indexOf('=');
     if (separator < 0) continue;
     const name = rawParameter.slice(0, separator).trim().toLowerCase();
+    if (Object.hasOwn(parameters, name)) throw new Error('duplicate multipart media type parameter');
     const rawValue = rawParameter.slice(separator + 1).trim();
     parameters[name] = rawValue.startsWith('"') && rawValue.endsWith('"')
       ? rawValue.slice(1, -1).replace(/\\(.)/g, '$1') : rawValue;
@@ -216,11 +217,19 @@ function multipartBody(contentType: string, body: Buffer): RecordValue {
     const headerEnd = body.indexOf(Buffer.from('\r\n\r\n'), headerStart);
     if (headerEnd < 0) throw new Error('missing multipart part headers');
     const headers: Record<string, string[]> = {};
-    for (const line of body.subarray(headerStart, headerEnd).toString('latin1').split('\r\n')) {
+    let lastName = '';
+    for (const line of new TextDecoder('utf-8', { fatal: true }).decode(body.subarray(headerStart, headerEnd)).split('\r\n')) {
+      if (/[\r\n]/.test(line)) throw new Error('invalid multipart part header');
+      if (/^[ \t]/.test(line)) {
+        if (!lastName) throw new Error('invalid multipart part header');
+        headers[lastName]![headers[lastName]!.length - 1] += ` ${line.trim()}`;
+        continue;
+      }
       const separator = line.indexOf(':');
-      if (separator < 0) throw new Error('invalid multipart part header');
+      if (separator < 0 || !/^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/.test(line.slice(0, separator))) throw new Error('invalid multipart part header');
       const name = line.slice(0, separator).toLowerCase().replace(/(^|-)[a-z]/g, letter => letter.toUpperCase());
       (headers[name] ??= []).push(line.slice(separator + 1).trim());
+      lastName = name;
     }
     const contentStart = headerEnd + 4;
     const partDelimiter = Buffer.concat([Buffer.from('\r\n'), delimiter]);
@@ -305,7 +314,8 @@ export class ExchangeRecorder {
       const actual = headerValues(name);
       const expected = Array.isArray(value) ? value : [value];
       if (name.toLowerCase() === 'content-type' && actual.length === 1 && expected.length === 1 && isMultipart(expected[0] ?? '')) {
-        this.equal(index, `header ${name}`, multipartMediaType(actual[0] ?? ''), multipartMediaType(expected[0] ?? ''));
+        try { this.equal(index, `header ${name}`, multipartMediaType(actual[0] ?? ''), multipartMediaType(expected[0] ?? '')); }
+        catch (error) { this.mismatches.push(`request ${index}: invalid header ${name}: ${String(error)}`); }
       } else this.equal(index, `header ${name}`, actual, expected);
     }
     const assertedHeaders = new Set(Object.keys(exchange.requestHeaders ?? {}).map(name => name.toLowerCase()));

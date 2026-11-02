@@ -11,9 +11,7 @@ import re
 from collections.abc import Awaitable, Callable
 from dataclasses import fields
 from datetime import UTC, datetime, timedelta
-from email import policy
 from email.message import Message
-from email.parser import BytesHeaderParser
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs
@@ -147,6 +145,9 @@ def load_scenarios(path: Path) -> list[dict[str, Any]]:
 def _multipart_media_type(content_type: str) -> tuple[str, tuple[tuple[str, str], ...]]:
     message = Message()
     message["Content-Type"] = content_type
+    parameter_names = [name.lower() for name, _ in (message.get_params() or [])[1:]]
+    if len(parameter_names) != len(set(parameter_names)):
+        raise ValueError("duplicate multipart media type parameter")
     media_type = message.get_content_type()
     parameters = tuple(sorted((name, value) for name, value in (message.get_params() or [])[1:]
                               if name != "boundary"))
@@ -177,10 +178,23 @@ def _multipart_body(content_type: str, body: bytes) -> dict[str, object]:
         header_end = body.find(b"\r\n\r\n", header_start)
         if header_end < 0:
             raise ValueError("missing multipart part headers")
-        headers = BytesHeaderParser(policy=policy.default).parsebytes(body[header_start:header_end] + b"\r\n\r\n")
         part_headers: dict[str, list[str]] = {}
-        for name, value in headers.raw_items():
-            part_headers.setdefault(name.title(), []).append(value)
+        last_name = ""
+        for raw_line in body[header_start:header_end].split(b"\r\n"):
+            if b"\r" in raw_line or b"\n" in raw_line:
+                raise ValueError("invalid multipart part header")
+            if raw_line.startswith((b" ", b"\t")):
+                if not last_name:
+                    raise ValueError("invalid multipart part header")
+                part_headers[last_name][-1] += " " + raw_line.strip(b" \t").decode("utf-8")
+                continue
+            name_bytes, separator, value_bytes = raw_line.partition(b":")
+            if not separator or not re.fullmatch(rb"[!#$%&'*+.^_`|~0-9A-Za-z-]+", name_bytes):
+                raise ValueError("invalid multipart part header")
+            name = "-".join(component[:1].upper() + component[1:].lower()
+                            for component in name_bytes.decode("ascii").split("-"))
+            part_headers.setdefault(name, []).append(value_bytes.strip(b" \t").decode("utf-8"))
+            last_name = name
         content_start = header_end + 4
         part_delimiter = b"\r\n" + delimiter
         content_end = body.find(part_delimiter, content_start)
@@ -276,7 +290,10 @@ class ExchangeRecorder:
             expected_values = value if isinstance(value, list) else [value]
             actual_values = request.headers.get_list(name)
             if name.lower() == "content-type" and len(expected_values) == len(actual_values) == 1 and _is_multipart(expected_values[0]):
-                self._equal(index, f"header {name}", _multipart_media_type(actual_values[0]), _multipart_media_type(expected_values[0]))
+                try:
+                    self._equal(index, f"header {name}", _multipart_media_type(actual_values[0]), _multipart_media_type(expected_values[0]))
+                except ValueError as error:
+                    self.mismatches.append(f"request {index}: invalid header {name}: {error}")
             else:
                 self._equal(index, f"header {name}", actual_values, expected_values)
         ignored_headers = {"host", "accept-encoding", "connection", "content-length"}

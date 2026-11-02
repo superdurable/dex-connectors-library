@@ -22,6 +22,7 @@ import (
  "sync"
  "testing"
  "time"
+ "unicode/utf8"
 
  "github.com/stretchr/testify/require"
  "github.com/superdurable/dex-connectors-library/sdkgo"
@@ -598,7 +599,7 @@ func conformanceMultipartBody(contentType string, body []byte) (map[string]any, 
   headers := map[string]any{}
   for name, values := range part.Header {
    items := make([]any, len(values))
-   for index, value := range values { items[index] = value }
+   for index, value := range values { if !utf8.ValidString(value) { return nil, errors.New("invalid UTF-8 multipart part header") }; items[index] = value }
    headers[name] = items
   }
   parts = append(parts, map[string]any{"headers": headers, "bodyBase64": base64.StdEncoding.EncodeToString(content)})
@@ -684,6 +685,21 @@ func decodeConformanceScenarios(data []byte) ([]conformanceScenario, error) {
    if rawBody, ok := exchangeFields["requestBody"]; ok {
     var matcher map[string]json.RawMessage
     if json.Unmarshal(rawBody, &matcher) == nil {
+     if rawParts, isMultipart := matcher["$multipart"]; isMultipart {
+      if len(matcher) != 1 { return nil, errors.New("invalid multipart expectation") }
+      var parts []json.RawMessage
+      if json.Unmarshal(rawParts, &parts) != nil || parts == nil { return nil, errors.New("invalid multipart parts") }
+      for _, rawPart := range parts {
+       fields, err := conformanceObject(rawPart, []string{"headers", "bodyBase64"}, nil)
+       if err != nil { return nil, fmt.Errorf("invalid multipart part: %w", err) }
+       var headers map[string][]string
+       if json.Unmarshal(fields["headers"], &headers) != nil || headers == nil { return nil, errors.New("invalid multipart headers") }
+       for name, values := range headers { if name == "" || len(values) == 0 { return nil, errors.New("invalid multipart header") } }
+       var encoded string
+       if json.Unmarshal(fields["bodyBase64"], &encoded) != nil { return nil, errors.New("invalid multipart body encoding") }
+       if _, err := base64.StdEncoding.DecodeString(encoded); err != nil { return nil, fmt.Errorf("invalid multipart body encoding: %w", err) }
+      }
+     }
      if rawFragments, isMIME := matcher["$rawMimeContains"]; isMIME {
       var fragments []string
       if len(matcher) > 2 || json.Unmarshal(rawFragments, &fragments) != nil || len(fragments) == 0 { return nil, errors.New("invalid raw MIME assertions") }
