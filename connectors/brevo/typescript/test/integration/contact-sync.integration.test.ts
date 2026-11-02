@@ -38,11 +38,13 @@ it('syncs a contact through real Dex and fails an unwired rejection', async () =
     }
     response.writeHead(404).end();
   });
-  server.listen(21067, '127.0.0.1');
+  server.listen(0, '127.0.0.1');
   await once(server, 'listening');
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('Brevo fixture has no TCP address');
   const directory = await mkdtemp(join(tmpdir(), 'dex-brevo-integration-'));
   const cache = openBlobCache({ directory, maxBytes: 64 * 1024 * 1024 });
-  const provider = new BrevoClient({ baseUrl: 'http://127.0.0.1:21067/v3' }, {
+  const provider = new BrevoClient({ baseUrl: `http://127.0.0.1:${address.port}/v3` }, {
     resolve: async () => ({ apiKey: new SecretString('brevo-test-key') }),
   });
   const flow = new ContactSyncFlow(newConnection(provider, { provider: 'brevo', name: ConnectionName }));

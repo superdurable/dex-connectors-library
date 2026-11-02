@@ -3,6 +3,7 @@
 Install `@superdurable/connector-brevo@0.1.0` for Dex TypeScript applications.
 The package implements `createOrUpdateContact` and `getContact`, and exports
 typed Step factories, connection helpers, generated models, and manifest mocks.
+Both operations accept plain RFC 5322 addresses using the same parsed-address check as the Go connector.
 
 The [contact sync example](examples/contact-sync) is the runnable application.
 It binds a Dex Web connection named `brevo-contacts`, writes a contact by email,

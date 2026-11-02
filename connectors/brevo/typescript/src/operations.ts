@@ -55,7 +55,7 @@ export class GetContactOperation implements Query<GetContactInput, Contact> {
   async invoke(call: Call, input: GetContactInput): Promise<QueryAttempt<Contact>> {
     const operation = 'getContact';
     if (!isPlainEmail(input.email)) return newQueryBranch('defect', emptyContact, {}, brevoFailure(operation, 'VALIDATION', 'a plain email address is required'));
-    const exchange = await this.client.exchange(call, operation, 'GET', `/contacts/${encodeURIComponent(input.email).replace(/%40/gi, '@').replace(/%2B/gi, '+')}`);
+    const exchange = await this.client.exchange(call, operation, 'GET', `/contacts/${escapeContactEmailPath(input.email)}`);
     if ('failure' in exchange) {
       if (exchange.classification === 'retry') return newQueryRetry(exchange.failure);
       return newQueryBranch(exchange.classification === 'invalidResponse' ? 'invalidResponse' : 'defect', emptyContact, {}, exchange.failure);
@@ -70,4 +70,10 @@ export class GetContactOperation implements Query<GetContactInput, Contact> {
       return newQueryBranch('found', { id: decoded.id, email: decoded.email });
     } catch { return newQueryBranch('invalidResponse', emptyContact, {}, brevoFailure(operation, 'PROTOCOL', 'Brevo returned an invalid contact')); }
   }
+}
+
+function escapeContactEmailPath(email: string): string {
+  return encodeURIComponent(email)
+    .replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`)
+    .replace(/%(24|26|2B|3A|3D|40)/gi, encoded => String.fromCharCode(Number.parseInt(encoded.slice(1), 16)));
 }

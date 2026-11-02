@@ -3,6 +3,7 @@
 
 import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { SecretString, type Call, type CredentialProvider, type Failure } from '@superdurable/connectors-sdk';
+import emailAddresses from 'email-addresses';
 import type { Config, Credentials } from './generated/models.js';
 import { CreateOrUpdateContactOperation, GetContactOperation } from './operations.js';
 
@@ -100,7 +101,8 @@ export function brevoFailure(operation: string, kind: Failure['kind'], message: 
 
 /** Accept only a plain address, never a display name. */
 export function isPlainEmail(value: string): boolean {
-  return /^[^\s<>@,;]+@[^\s<>@,;]+$/.test(value) && !/[\r\n]/.test(value);
+  const address = emailAddresses.parseOneAddress({ input: value, rfc6532: true });
+  return address?.type === 'mailbox' && address.address === value && value.includes('@');
 }
 
 /** Statuses safe to retry for both reads and the repeat-safe upsert. */
