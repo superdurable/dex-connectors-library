@@ -393,6 +393,10 @@ Breaking changes use the exact lowercase `(breaking)` marker in a PR title,
 PR body, or direct commit message. A v0 breaking release cannot use a patch
 bump. At v1 or later, a breaking release requires a major bump and the Go
 module path must be migrated before publishing v2 or later.
+For a Python or TypeScript connector release, a marked commit is breaking for
+that language only when it changes the language package beyond its generated
+`dex-connector.json`. Descriptor-only changes appear under Changes. Package
+source, other generated code, and shared-manifest-only changes still count.
 
 ## Release candidates
 
