@@ -60,7 +60,7 @@ function serveCompanyLogos(): Plugin {
 }
 
 export default defineConfig(({ command }) => ({
-  base: command === "serve" ? "/" : "/dex-connectors-library/",
+  base: command === "serve" ? "/" : "./",
   plugins: [react(), serveLocalCatalog(), serveCompanyLogos()],
   build: { outDir: "dist", emptyOutDir: true },
 }));
