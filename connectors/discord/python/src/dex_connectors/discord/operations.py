@@ -501,7 +501,7 @@ class AddReactionOperation:
                 and all(
                     (ord(character) >= 128 or character.isdigit() or character in "#*")
                     and not character.isspace()
-                    and not unicodedata.category(character).startswith("C")
+                    and unicodedata.category(character) != "Cc"
                     for character in emoji
                 )
             )
@@ -513,7 +513,7 @@ class AddReactionOperation:
             )
         path = (
             f"/channels/{input.channel_id}/messages/{input.message_id}/reactions/"
-            f"{quote(input.emoji, safe='')}/@me"
+            f"{quote(input.emoji, safe='$&+=:@')}/@me"
         )
         branch, response, failure, delay, receipt = await _invoke(
             self.client, call, "addReaction", "PUT", path, input.message_id
