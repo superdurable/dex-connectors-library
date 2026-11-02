@@ -5,6 +5,8 @@
 branches, connection bindings, mock cases, and `dex-connector.json`; `src/client.ts`
 owns the provider HTTP behavior.
 
+Import the mock entry point from `@superdurable/connector-contentful/mock`.
+
 ## Setup
 
 Install `@superdurable/connector-contentful@0.1.0` and the matching released
@@ -41,7 +43,8 @@ or input select `defect`. A malformed, incomplete, or oversized 200 response
 selects `invalidResponse`. HTTP 408, 409, 429, 5xx, and transport failures
 retry under the Connector SDK's default one-hour budget. Both operations are
 Queries; they have no uncertainty path. Provider error bodies are not copied
-to Failure messages.
+to Failure messages. Successful outputs preserve provider JSON numeric literals,
+including integers outside JavaScript's safe range and large exponents.
 
 From this directory, run `npm ci && npm run check`. With `dexcli dev` running,
 set `DEX_FLOW_SERVICE_ADDRESS` and run `npm run test:integration`. The integration

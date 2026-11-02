@@ -10,6 +10,15 @@ import { ExchangeRecorder, loadScenarios, replay, withScenarioHTTPServer, type S
 const scenarios = loadScenarios(new URL('../../../../conformance/connectors/contentful/scenarios.json', import.meta.url));
 const connection = { provider: 'contentful', name: 'contentful' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeContentful));
+it('preserves the large integer from the Go-recorded response', async () => {
+  const scenario = scenarios.find(candidate => candidate.name === 'getEntry-large-integer');
+  if (!scenario) throw new Error('missing large integer conformance scenario');
+  const recorder = new ExchangeRecorder(scenario);
+  const attempt = await invokeContentful(scenario, recorder);
+  recorder.finish();
+  if (attempt.kind !== 'branch') throw new Error('expected a successful Query branch');
+  if (!JSON.stringify(attempt.value).includes('"large":9007199254740994')) throw new Error('provider integer changed');
+});
 
 async function invokeContentful(scenario: Scenario, recorder: ExchangeRecorder) {
   return withScenarioHTTPServer(recorder, async baseUrl => {

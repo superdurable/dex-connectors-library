@@ -55,6 +55,56 @@
       "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
       "exchanges": [
         {
+          "body": "{\"sys\":{\"id\":\"entry-meridian\",\"type\":\"Entry\"},\"fields\":{\"large\":9007199254740994}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/spaces/space123/environments/master/entries/entry-meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-contentful/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "data": {
+            "fields": {
+              "large": 9007199254740994
+            },
+            "sys": {
+              "id": "entry-meridian",
+              "type": "Entry"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "entryId": "entry-meridian",
+        "environmentId": "master",
+        "spaceId": "space123"
+      },
+      "name": "getEntry-large-integer",
+      "operation": "getEntry"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
           "body": "{\"message\":\"missing\"}",
           "headers": {},
           "keyMode": "absent",

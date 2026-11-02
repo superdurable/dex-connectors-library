@@ -19,9 +19,9 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./contentfulmock": {
-      "types": "./dist/contentfulmock.d.ts",
-      "import": "./dist/contentfulmock.js"
+    "./mock": {
+      "types": "./dist/mock.d.ts",
+      "import": "./dist/mock.js"
     }
   },
   "files": [
@@ -32,7 +32,7 @@
   ],
   "scripts": {
     "prepack": "npm run build",
-    "build": "tsup src/index.ts src/contentfulmock.ts --format esm --dts --clean",
+    "build": "tsup src/index.ts src/mock.ts --format esm --dts --clean",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src test examples",
     "test": "vitest run --exclude test/integration/**",

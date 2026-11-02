@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { SecretString, newQueryBranch, newQueryRetry, type Call, type CredentialProvider, type Failure, type Query, type QueryAttempt, type QueryDefinition } from '@superdurable/connectors-sdk';
-import { AddressRefusal, BodyTooLargeError, MaxErrorBodyBytes, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, MaxErrorBodyBytes, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { GetEntryDefinition, ListEntriesDefinition } from './generated/definitions.js';
 import type { Config, Credentials, GetEntryInput, GetEntryOutput, ListEntriesInput, ListEntriesOutput } from './generated/models.js';
 
@@ -67,8 +67,6 @@ export class ContentfulClient {
       if (error instanceof BodyTooLargeError && error.status !== undefined) {
         response = { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() };
         if (response.status === 200) return { branch: 'invalidResponse', failure: failure(operation, 'RESPONSE_TOO_LARGE', 'provider response exceeded the configured limit') };
-      } else if (error instanceof AddressRefusal) {
-        return { branch: 'defect', failure: failure(operation, 'LOCAL_DEFECT', 'request could not be built') };
       } else return { retry: true, failure: failure(operation, 'AVAILABILITY', 'provider request failed') };
     }
     const status = response.status;
@@ -101,9 +99,10 @@ export class GetEntryOperation implements Query<GetEntryInput, GetEntryOutput> {
     const result = await this.client.exchange(call, 'getEntry', `/spaces/${input.spaceId}/environments/${input.environmentId}/entries/${input.entryId}`, true);
     if (result.retry) return newQueryRetry(result.failure!, result.retryAfterMs);
     if (result.failure) return newQueryBranch(result.branch!, emptyOutput, {}, result.failure);
-    const data = JSON.parse(Buffer.from(result.body!).toString('utf8')) as unknown;
-    if (!isObject(data) || !isObject(data.sys)) return terminal('getEntry', 'invalidResponse', 'PROTOCOL', 'provider returned an incomplete response');
-    return newQueryBranch('found', { data });
+    const responseJSON = Buffer.from(result.body!).toString('utf8');
+    const responseValue = parseProviderJSON(responseJSON);
+    if (!isObject(responseValue) || !isObject(responseValue.sys)) return terminal('getEntry', 'invalidResponse', 'PROTOCOL', 'provider returned an incomplete response');
+    return newQueryBranch('found', { data: responseValue });
   }
 }
 
@@ -123,13 +122,19 @@ export class ListEntriesOperation implements Query<ListEntriesInput, ListEntries
     const result = await this.client.exchange(call, 'listEntries', `/spaces/${input.spaceId}/environments/${input.environmentId}/entries${suffix}`, false);
     if (result.retry) return newQueryRetry(result.failure!, result.retryAfterMs);
     if (result.failure) return newQueryBranch(result.branch!, emptyOutput, {}, result.failure);
-    const data = JSON.parse(Buffer.from(result.body!).toString('utf8')) as unknown;
-    if (!isObject(data) || !Array.isArray(data.items)) return terminal('listEntries', 'invalidResponse', 'PROTOCOL', 'provider returned an incomplete response');
-    return newQueryBranch('listed', { data });
+    const responseJSON = Buffer.from(result.body!).toString('utf8');
+    const responseValue = parseProviderJSON(responseJSON);
+    if (!isObject(responseValue) || !Array.isArray(responseValue.items)) return terminal('listEntries', 'invalidResponse', 'PROTOCOL', 'provider returned an incomplete response');
+    return newQueryBranch('listed', { data: responseValue });
   }
 }
 
 function failure(operation: string, kind: Failure['kind'], message: string): Failure { return { provider: 'contentful', operation, kind, message }; }
+function parseProviderJSON(value: string): unknown {
+  const rawJSON = (JSON as typeof JSON & { rawJSON(text: string): unknown }).rawJSON;
+  return JSON.parse(value, (_key, parsedValue: unknown, context?: { source?: string }) =>
+    typeof parsedValue === 'number' && context?.source ? rawJSON(context.source) : parsedValue) as unknown;
+}
 function terminal(operation: string, branch: string, kind: Failure['kind'], message: string): QueryAttempt<{ data: null }> {
   return newQueryBranch(branch, emptyOutput, {}, failure(operation, kind, message));
 }
