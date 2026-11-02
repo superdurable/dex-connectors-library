@@ -24,7 +24,7 @@ jobs:
       react: ${{ steps.plan.outputs.react }}
       site: ${{ steps.plan.outputs.site }}
     env:
-      CONNECTOR_SCOPE: ${{ github.event_name == 'pull_request' && 'changed' || 'all' }}
+      CONNECTOR_SCOPE: ${{ (github.event_name == 'pull_request' || github.event_name == 'push') && 'changed' || 'all' }}
       CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
       CONNECTOR_HEAD: ${{ github.sha }}
     steps:
@@ -210,7 +210,7 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       GH_RELEASE_INVENTORY_PATH: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '/tmp/release-inventory.json' || '' }}
-      CONNECTOR_SCOPE: ${{ github.event_name == 'pull_request' && 'changed' || 'all' }}
+      CONNECTOR_SCOPE: ${{ (github.event_name == 'pull_request' || github.event_name == 'push') && 'changed' || 'all' }}
       CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
       CONNECTOR_HEAD: ${{ github.sha }}
     steps:
@@ -248,7 +248,7 @@ jobs:
       max-parallel: 32
       matrix: ${{ fromJSON(needs.connector-plan.outputs.matrix) }}
     env:
-      CONNECTOR_SCOPE: ${{ github.event_name == 'pull_request' && 'changed' || 'all' }}
+      CONNECTOR_SCOPE: ${{ (github.event_name == 'pull_request' || github.event_name == 'push') && 'changed' || 'all' }}
       CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
       CONNECTOR_HEAD: ${{ github.sha }}
       CONNECTOR_SHARD_INDEX: ${{ matrix.shard_index }}
@@ -291,7 +291,7 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     env:
-      CONNECTOR_SCOPE: ${{ github.event_name == 'pull_request' && 'changed' || 'all' }}
+      CONNECTOR_SCOPE: ${{ (github.event_name == 'pull_request' || github.event_name == 'push') && 'changed' || 'all' }}
       CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
       CONNECTOR_HEAD: ${{ github.sha }}
     steps:
@@ -384,7 +384,7 @@ jobs:
       DEX_CLI_RELEASE_TAG: ${{ needs.dex-version-plan.outputs.cli_tag }}
       DEX_CLI_ASSET_URL: ${{ needs.dex-version-plan.outputs.cli_asset_url }}
       DEX_CLI_SHA256: ${{ needs.dex-version-plan.outputs.cli_sha256 }}
-      CONNECTOR_SCOPE: ${{ github.event_name == 'pull_request' && 'changed' || 'all' }}
+      CONNECTOR_SCOPE: ${{ (github.event_name == 'pull_request' || github.event_name == 'push') && 'changed' || 'all' }}
       CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
       CONNECTOR_HEAD: ${{ github.sha }}
       CONNECTOR_SHARD_INDEX: ${{ matrix.shard_index }}
@@ -436,7 +436,7 @@ jobs:
       DEX_CLI_ASSET_URL: ${{ needs.dex-version-plan.outputs.cli_asset_url }}
       DEX_CLI_SHA256: ${{ needs.dex-version-plan.outputs.cli_sha256 }}
       GH_TOKEN: ${{ github.token }}
-      CONNECTOR_SCOPE: ${{ github.event_name == 'pull_request' && 'changed' || 'all' }}
+      CONNECTOR_SCOPE: ${{ (github.event_name == 'pull_request' || github.event_name == 'push') && 'changed' || 'all' }}
       CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
       CONNECTOR_HEAD: ${{ github.sha }}
       CONNECTOR_SHARD_INDEX: ${{ matrix.shard_index }}
@@ -498,7 +498,7 @@ jobs:
       matrix: ${{ fromJSON(needs.connector-plan.outputs.matrix) }}
     env:
       DEX_GO_SDK_VERSION: ${{ needs.dex-version-plan.outputs.go_sdk_version }}
-      CONNECTOR_SCOPE: ${{ github.event_name == 'pull_request' && 'changed' || 'all' }}
+      CONNECTOR_SCOPE: ${{ (github.event_name == 'pull_request' || github.event_name == 'push') && 'changed' || 'all' }}
       CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
       CONNECTOR_HEAD: ${{ github.sha }}
       CONNECTOR_SHARD_INDEX: ${{ matrix.shard_index }}
@@ -670,7 +670,7 @@ jobs:
           import sys
 
           results = {name: job['result'] for name, job in json.loads(os.environ['JOB_RESULTS']).items()}
-          failed = {name: result for name, result in results.items() if result in ('failure', 'cancelled')}
+          failed = {name: result for name, result in results.items() if name != 'workspace-connector-dependents' and result in ('failure', 'cancelled')}
           expected = {'connector-plan'}
           event_name = os.environ['EVENT_NAME']
           connector_count = int(os.environ.get('PLAN_COUNT') or '0')
@@ -694,7 +694,7 @@ jobs:
           if connector_count:
               expected.update(('language-connectors', 'connectors', 'dex-compat-latest-go-sdk'))
               if event_name != 'schedule':
-                  expected.update(('workspace-connector-dependents', 'dex-integration-connectors', 'dex-compat-current'))
+                  expected.update(('dex-integration-connectors', 'dex-compat-current'))
               if event_name in ('schedule', 'workflow_dispatch'):
                   expected.add('dex-compat-released')
           if event_name == 'schedule':

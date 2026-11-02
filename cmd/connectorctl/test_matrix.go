@@ -217,7 +217,7 @@ func selectCIJobsForPaths(scope string, changedPaths []string) ciJobSelection {
 	for _, path := range changedPaths {
 		switch {
 		case strings.HasPrefix(path, "sdkgo/"):
-			jobs.Common, jobs.SDKGoIntegration = true, true
+			jobs.Common, jobs.SDKPython, jobs.SDKTypeScript, jobs.SDKGoIntegration = true, true, true, true
 		case strings.HasPrefix(path, "sdkpython/"):
 			jobs.SDKPython = true
 		case strings.HasPrefix(path, "sdkts/"):
@@ -226,12 +226,16 @@ func selectCIJobsForPaths(scope string, changedPaths []string) ciJobSelection {
 			jobs.React = true
 		case strings.HasPrefix(path, "site/") || path == "catalog.yaml":
 			jobs.Site = true
-		case strings.HasPrefix(path, "connectors/") || strings.HasPrefix(path, "conformance/connectors/") || strings.HasPrefix(path, "docs/") || strings.HasPrefix(path, "examples/") || strings.HasPrefix(path, ".cursor/") || strings.HasPrefix(path, ".codex/"):
+		case strings.HasPrefix(path, "connectors/stripe/typescript/"):
+			jobs.Common = true
+		case strings.HasPrefix(path, "docs/") || strings.HasPrefix(path, ".cursor/") || strings.HasPrefix(path, ".codex/") || path == "README.md" || path == "AGENTS.md" || path == "CLAUDE.md":
+			jobs.Common = true
+		case strings.HasPrefix(path, "connectors/") || strings.HasPrefix(path, "conformance/connectors/") || strings.HasPrefix(path, "examples/"):
 			continue
-		case path == "README.md" || path == "AGENTS.md" || path == "CLAUDE.md" || path == ".gitignore" || path == "CODE_OF_CONDUCT.md" || path == "CONTRIBUTING.md":
+		case path == ".gitignore" || path == "CODE_OF_CONDUCT.md" || path == "CONTRIBUTING.md":
 			continue
 		default:
-			jobs.Common = true
+			return ciJobSelection{true, true, true, true, true, true}
 		}
 	}
 	return jobs

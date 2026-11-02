@@ -58,13 +58,13 @@ omission.
 
 CI behavior is accepted when:
 
-- pull requests test affected connector shards and their dependents;
-- pushes to `main`, scheduled runs, and manual runs test the full catalog;
+- pull requests and pushes to `main` test affected connector shards and their dependents;
+- scheduled and manual runs test the full catalog;
 - shared contract changes select the complete catalog;
-- documentation and agent-rule-only changes run the CI summary without connector
-  module jobs; directory-site-only changes also run the site suite;
-- common, SDK, React, and site suites run only when their inputs change on a
-  pull request;
+- documentation and agent-rule-only changes run common and the CI summary
+  without connector module jobs; directory-site-only changes also run the site suite;
+- common, SDK, React, and site suites run when their inputs change on a
+  pull request or push to `main`;
 - the `ci-summary` check reports a result even when a matrix is empty;
 - scheduled compatibility selects the complete catalog;
 - no matrix creates more than 256 jobs and Connector jobs cap parallelism at 32.

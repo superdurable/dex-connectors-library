@@ -129,18 +129,46 @@ func TestEmptyConnectorTestMatrixHasNoJobs(t *testing.T) {
 }
 
 func TestCIJobsSelectOnlyChangedInputs(t *testing.T) {
-	require.Equal(t, ciJobSelection{}, selectCIJobsForPaths("changed", []string{
-		"connectors/atlassian/bitbucket/typescript/src/index.ts",
-		"conformance/connectors/atlassian/bitbucket/scenarios.json",
-	}))
-	require.Equal(t, ciJobSelection{Common: true, Site: true}, selectCIJobsForPaths("changed", []string{
-		"cmd/connectorctl/test_matrix.go", "catalog.yaml",
-	}))
-	require.Equal(t, ciJobSelection{SDKPython: true, SDKTypeScript: true, SDKGoIntegration: true, Common: true, React: true, Site: true},
-		selectCIJobsForPaths("all", nil))
-	require.Equal(t, ciJobSelection{SDKPython: true}, selectCIJobsForPaths("changed", []string{"sdkpython/src/sdk.py"}))
-	require.Equal(t, ciJobSelection{React: true}, selectCIJobsForPaths("changed", []string{"sdk/react/src/index.ts"}))
-	require.Equal(t, ciJobSelection{Site: true}, selectCIJobsForPaths("changed", []string{"site/src/App.tsx"}))
+	allJobs := ciJobSelection{Common: true, SDKPython: true, SDKTypeScript: true, SDKGoIntegration: true, React: true, Site: true}
+	testCases := []struct {
+		name     string
+		path     string
+		expected ciJobSelection
+	}{
+		{"Makefile", "Makefile", allJobs},
+		{"script", "script/x.py", allJobs},
+		{"workflow", ".github/workflows/ci.yml", allJobs},
+		{"schema", "schema/x", allJobs},
+		{"internal", "internal/x.go", allJobs},
+		{"command", "cmd/connectorctl/x.go", allJobs},
+		{"root Go module", "go.mod", allJobs},
+		{"agent rules", "AGENTS.md", ciJobSelection{Common: true}},
+		{"Claude rules", "CLAUDE.md", ciJobSelection{Common: true}},
+		{"Cursor rules", ".cursor/rules/x.mdc", ciJobSelection{Common: true}},
+		{"Codex rules", ".codex/rules/x.md", ciJobSelection{Common: true}},
+		{"documentation", "docs/x.md", ciJobSelection{Common: true}},
+		{"root conformance", "conformance/x.json", allJobs},
+		{"connector conformance", "conformance/connectors/x/scenarios.json", ciJobSelection{}},
+		{"Go SDK", "sdkgo/x.go", ciJobSelection{Common: true, SDKPython: true, SDKTypeScript: true, SDKGoIntegration: true}},
+		{"Python SDK", "sdkpython/src/sdk.py", ciJobSelection{SDKPython: true}},
+		{"TypeScript SDK", "sdkts/src/sdk.ts", ciJobSelection{SDKTypeScript: true}},
+		{"React SDK", "sdk/react/src/index.ts", ciJobSelection{React: true}},
+		{"site", "site/src/App.tsx", ciJobSelection{Site: true}},
+		{"catalog", "catalog.yaml", ciJobSelection{Site: true}},
+		{"Stripe TypeScript", "connectors/stripe/typescript/x.ts", ciJobSelection{Common: true}},
+		{"connector Go", "connectors/foo/go/x.go", ciJobSelection{}},
+		{"README", "README.md", ciJobSelection{Common: true}},
+		{"gitignore", ".gitignore", ciJobSelection{}},
+		{"code of conduct", "CODE_OF_CONDUCT.md", ciJobSelection{}},
+		{"contributing", "CONTRIBUTING.md", ciJobSelection{}},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			require.Equal(t, testCase.expected, selectCIJobsForPaths("changed", []string{testCase.path}))
+		})
+	}
+	require.Equal(t, allJobs, selectCIJobsForPaths("all", nil))
+	require.Equal(t, ciJobSelection{Common: true, Site: true}, selectCIJobsForPaths("changed", []string{"AGENTS.md", "catalog.yaml"}))
 }
 
 func TestConnectorTestSelectionIncludesTransitiveDependents(t *testing.T) {
