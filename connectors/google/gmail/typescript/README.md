@@ -12,6 +12,7 @@ The checked-in `src/generated/` contracts come from `connector.yaml` and the
 Go operation structs. Run `go run ./cmd/connectorctl generate --lang typescript connectors/google/gmail/connector.yaml` from the repository root after either source changes. `src/models.ts` keeps credential requirements specific to Google OAuth and Workspace delegation, plus the public non-null send recipient arrays. `src/steps.ts` delegates to generated factories while requiring `GmailConnection` at compile time; `src/mock/index.ts` re-exports matching generated scenarios and validates send scenarios against the public result type. `src/project.ts` keeps the refresh codec and public connection constructor.
 
 Send and reply recipients are validated as mailboxes and returned in canonical header form, such as `<ada@example.com>` or `"Ada" <ada@example.com>`.
+Decoded messages omit absent optional metadata and body fields, matching the Go connector's JSON output.
 
 ## Configure a connection
 

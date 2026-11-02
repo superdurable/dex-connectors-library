@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-google-gmail",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "MIT",
   "description": "Dex Gmail connector for TypeScript",
   "repository": {

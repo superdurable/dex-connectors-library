@@ -32,6 +32,13 @@ describe('Gmail message conversion', () => {
     expect(() => decodeGmailMessage(GmailMessageResourceSchema.parse({ ...base, id: '' }))).toThrow();
   });
 
+  it('omits absent optional message fields in the Go JSON shape', () => {
+    const resource = GmailMessageResourceSchema.parse({ id: 'one', threadId: 'thread', internalDate: '1772615700000' });
+    expect(decodeGmailMessage(resource)).toEqual({
+      messageId: 'one', threadId: 'thread', from: '', subject: '', receivedAt: '2026-03-04T09:15:00Z',
+    });
+  });
+
   it('validates sender and recipients before creating a raw message', () => {
     const recipients = ['Ada <ada@example.com>'];
     const validated = validateSendInput({ to: recipients, subject: 'Hello', textBody: 'Body' }, 'owner@example.com');

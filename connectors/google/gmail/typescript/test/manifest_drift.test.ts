@@ -68,7 +68,7 @@ function durationMs(value: string): number {
 describe('connector.yaml remains the source of Gmail TypeScript definitions and mocks', () => {
   it('matches every operation identity, branch, and Execute default', async () => {
     const manifest = ManifestSchema.parse(parse(await readFile(new URL('../../connector.yaml', import.meta.url), 'utf8')) as unknown);
-    expect(manifest.spec.languages.typescript.version).toBe('v0.1.0');
+    expect(manifest.spec.languages.typescript.version).toBe('v0.1.1');
     expect(manifest.spec.operations.map(operation => operation.name).sort()).toEqual(Object.keys(definitionByOperation).sort());
     for (const operation of manifest.spec.operations) {
       expect(operation.kind).toBe(operation.name === 'getMessage' ? 'query' : 'mutation');
