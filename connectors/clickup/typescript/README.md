@@ -18,6 +18,8 @@ Install Node.js 22 or 24 and Dex TypeScript SDK 1.28.0 or later. Create a person
 
 Unwired optional branches fail the Flow. `createTask` and `addComment` record a Dex heartbeat before their unkeyed write, then read back after an unconfirmed attempt. A result becomes uncertain when read back cannot identify exactly one earlier write. The other mutations repeat safely using absolute changes or tag membership.
 
+Task writes reject duplicate assignee or custom field IDs, non-JSON custom field values, and invalid status names before contacting ClickUp. Tags must be unique names of 1–100 UTF-8 bytes without surrounding whitespace, slashes, control characters, or dot segments (`.` and `..`). `updateTaskTags` bounds the entire write and read-back sequence to 25 seconds.
+
 ## Verify
 
 ```sh
@@ -25,4 +27,4 @@ npm ci
 npm run check
 ```
 
-Run `npm run test:integration` against a local `dexcli dev` on ports 21100–21199 with `DEX_FLOW_SERVICE_ADDRESS` set. The integration test runs the example through a real Dex Worker and Client against a local HTTP fixture. The Go recorded conformance suite checks 63 scenarios covering each operation's branches, retries, transport failure, request shape, idempotency key, and uncertain read back. Live ClickUp authorization and provider behavior have not been verified.
+Run `npm run test:integration` against a local `dexcli dev` with `DEX_FLOW_SERVICE_ADDRESS` set. The integration test runs the example through a real Dex Worker and Client against a local HTTP fixture. The Go recorded conformance suite checks 82 scenarios covering each operation's branches, retries, transport failure, request shape, idempotency key, unsafe tag paths, input validation, and uncertain read back. Live ClickUp authorization and provider behavior have not been verified.

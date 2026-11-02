@@ -62,11 +62,11 @@ export class ClickUpClient {
   /** Return the current time for retry and reconciliation decisions. */
   currentTime(): Date { return this.now(); }
 
-  /** Send a bounded API request and classify its response. */
-  async exchange(call: Call, operation: string, method: string, path: string, query?: URLSearchParams, payload?: unknown): Promise<Exchange> {
+  /** Send a bounded API request and classify its response; signal can bound a multi-request operation. */
+  async exchange(call: Call, operation: string, method: string, path: string, query?: URLSearchParams, payload?: unknown, signal = call.context.cancellationSignal): Promise<Exchange> {
     let token: string;
     try {
-      const credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
+      const credentials = await this.credentials.resolve(call, signal);
       if (!(credentials.apiToken instanceof SecretString)) throw new TypeError('missing token');
       token = credentials.apiToken.reveal();
       if (!isHeaderSafeCredential(token) || !token.startsWith('pk_') || token.length <= 3) throw new TypeError('invalid token');
@@ -82,7 +82,7 @@ export class ClickUpClient {
         headers: { Authorization: token, Accept: 'application/json', ...(body ? { 'Content-Type': 'application/json' } : {}) },
         ...(body ? { body } : {}), maxResponseBytes: this.maxResponseBytes,
         addressPolicy: this.endpoint === apiBaseURL ? 'publicHTTPS' : 'privateNetworkHTTP',
-        timeoutMs: 9_000, signal: call.context.cancellationSignal });
+        timeoutMs: 9_000, signal });
     } catch (error) {
       if (error instanceof BodyTooLargeError) return this.outcome('invalid', operation, 'RESPONSE_TOO_LARGE', 'ClickUp response exceeds the configured maxResponseBytes limit');
       if (error instanceof ProviderTransportError && error.isProvablyNotSent) return this.outcome('notSent', operation, 'TRANSPORT', 'ClickUp could not be reached; no request was sent');

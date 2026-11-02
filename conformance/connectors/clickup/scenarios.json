@@ -4133,6 +4133,655 @@
       ],
       "name": "addComment-readback-retry",
       "operation": "addComment"
+    },
+    {
+      "callId": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "appliedChanges": 0,
+          "tags": [],
+          "taskId": "86b2x4k7q"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "input": {
+        "removeTags": [
+          "."
+        ],
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTaskTags-tag-dot",
+      "operation": "updateTaskTags"
+    },
+    {
+      "callId": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "appliedChanges": 0,
+          "tags": [],
+          "taskId": "86b2x4k7q"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "input": {
+        "removeTags": [
+          ".."
+        ],
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTaskTags-tag-dot-dot",
+      "operation": "updateTaskTags"
+    },
+    {
+      "callId": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "appliedChanges": 0,
+          "tags": [],
+          "taskId": "86b2x4k7q"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "input": {
+        "removeTags": [
+          "a/b"
+        ],
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTaskTags-tag-slash",
+      "operation": "updateTaskTags"
+    },
+    {
+      "callId": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "appliedChanges": 0,
+          "tags": [],
+          "taskId": "86b2x4k7q"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "input": {
+        "removeTags": [
+          " a"
+        ],
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTaskTags-tag-leading-space",
+      "operation": "updateTaskTags"
+    },
+    {
+      "callId": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "appliedChanges": 0,
+          "tags": [],
+          "taskId": "86b2x4k7q"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "input": {
+        "removeTags": [
+          "a "
+        ],
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTaskTags-tag-trailing-space",
+      "operation": "updateTaskTags"
+    },
+    {
+      "callId": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "appliedChanges": 0,
+          "tags": [],
+          "taskId": "86b2x4k7q"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "input": {
+        "removeTags": [
+          "a\u0000b"
+        ],
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTaskTags-tag-nul",
+      "operation": "updateTaskTags"
+    },
+    {
+      "callId": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "appliedChanges": 0,
+          "tags": [],
+          "taskId": "86b2x4k7q"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "input": {
+        "removeTags": [
+          "a\rb"
+        ],
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTaskTags-tag-cr",
+      "operation": "updateTaskTags"
+    },
+    {
+      "callId": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "appliedChanges": 0,
+          "tags": [],
+          "taskId": "86b2x4k7q"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "input": {
+        "removeTags": [
+          "a\nb"
+        ],
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTaskTags-tag-lf",
+      "operation": "updateTaskTags"
+    },
+    {
+      "callId": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "appliedChanges": 0,
+          "tags": [],
+          "taskId": "86b2x4k7q"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "input": {
+        "removeTags": [
+          "a\tb"
+        ],
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTaskTags-tag-tab",
+      "operation": "updateTaskTags"
+    },
+    {
+      "callId": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "appliedChanges": 0,
+          "tags": [],
+          "taskId": "86b2x4k7q"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "input": {
+        "addTags": [
+          "same",
+          "same"
+        ],
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTaskTags-duplicate-tags",
+      "operation": "updateTaskTags"
+    },
+    {
+      "callId": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "appliedChanges": 0,
+          "tags": [],
+          "taskId": "86b2x4k7q"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "input": {
+        "addTags": [
+          "same"
+        ],
+        "removeTags": [
+          "same"
+        ],
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTaskTags-cross-list-duplicate",
+      "operation": "updateTaskTags"
+    },
+    {
+      "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "listId": "901410000001",
+          "name": "Task",
+          "task": {
+            "assignees": [],
+            "id": "",
+            "name": "",
+            "status": {
+              "name": ""
+            },
+            "tags": []
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "input": {
+        "assigneeIds": [
+          183,
+          183
+        ],
+        "listId": "901410000001",
+        "name": "Task"
+      },
+      "name": "createTask-duplicate-assignees",
+      "operation": "createTask"
+    },
+    {
+      "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "listId": "901410000001",
+          "name": "Task",
+          "task": {
+            "assignees": [],
+            "id": "",
+            "name": "",
+            "status": {
+              "name": ""
+            },
+            "tags": []
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "input": {
+        "customFields": [
+          {
+            "id": "field1",
+            "value": 1
+          },
+          {
+            "id": "field1",
+            "value": 2
+          }
+        ],
+        "listId": "901410000001",
+        "name": "Task"
+      },
+      "name": "createTask-duplicate-custom-fields",
+      "operation": "createTask"
+    },
+    {
+      "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "listId": "901410000001",
+          "name": "Task",
+          "task": {
+            "assignees": [],
+            "id": "",
+            "name": "",
+            "status": {
+              "name": ""
+            },
+            "tags": []
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "input": {
+        "listId": "901410000001",
+        "name": "Task",
+        "status": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "name": "createTask-long-status",
+      "operation": "createTask"
+    },
+    {
+      "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "listId": "901410000001",
+          "name": "Task",
+          "task": {
+            "assignees": [],
+            "id": "",
+            "name": "",
+            "status": {
+              "name": ""
+            },
+            "tags": []
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "input": {
+        "listId": "901410000001",
+        "name": "Task",
+        "status": " "
+      },
+      "name": "createTask-blank-status",
+      "operation": "createTask"
+    },
+    {
+      "callId": "70ff3e18-db2c-54f5-86ca-cb4cf864ea24",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "task": {
+            "assignees": [],
+            "id": "",
+            "name": "",
+            "status": {
+              "name": ""
+            },
+            "tags": []
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "70ff3e18-db2c-54f5-86ca-cb4cf864ea24",
+      "input": {
+        "status": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTask-long-status",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "70ff3e18-db2c-54f5-86ca-cb4cf864ea24",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "task": {
+            "assignees": [],
+            "id": "",
+            "name": "",
+            "status": {
+              "name": ""
+            },
+            "tags": []
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "70ff3e18-db2c-54f5-86ca-cb4cf864ea24",
+      "input": {
+        "addAssigneeIds": [
+          183,
+          183
+        ],
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTask-duplicate-assignees",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "4c20bc7e-4e00-5f12-af53-c6578242db5a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "page": 0,
+          "tasks": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "tags": [
+          ".."
+        ],
+        "workspaceId": "9014123456"
+      },
+      "name": "searchTasks-dot-tag",
+      "operation": "searchTasks"
+    },
+    {
+      "attempts": 2,
+      "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/list/901410000001/task",
+          "requestBody": {
+            "assignees": [
+              183
+            ],
+            "custom_fields": [
+              {
+                "id": "d2ab17e0-41d3-4d28-bdbb-f3f0f2c62f8b",
+                "value": "blue"
+              }
+            ],
+            "due_date": 1767484800000,
+            "due_date_time": true,
+            "markdown_content": "Blocked task: **Fix login**",
+            "name": "Escalation: Fix login [86b2x4k00]",
+            "notify_all": true,
+            "parent": "86b2x4k00",
+            "priority": 1,
+            "status": "to do",
+            "tags": [
+              "escalation"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "body": "{\"tasks\":[{\"id\":\"86b2x4k7q\",\"name\":\"Escalation:  Fix login [86b2x4k00]\",\"url\":\"https://app.clickup.com/t/86b2x4k7q\",\"status\":{\"status\":\"open\",\"type\":\"open\"},\"priority\":{\"id\":\"1\",\"priority\":\"urgent\"},\"date_created\":\"1767225601000\",\"date_updated\":\"1767225602000\",\"team_id\":\"9014123456\",\"list\":{\"id\":\"901410000001\",\"name\":\"Tasks\"},\"assignees\":[{\"id\":183,\"username\":\"Ada Lovelace\"}],\"tags\":[{\"name\":\"escalation\"}],\"parent\":\"86b2x4k00\"}],\"last_page\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/list/901410000001/task",
+          "query": {
+            "date_created_gt": [
+              "1767225300000"
+            ],
+            "include_closed": [
+              "true"
+            ],
+            "page": [
+              "0"
+            ],
+            "subtasks": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "listId": "901410000001",
+          "name": "Escalation: Fix login [86b2x4k00]",
+          "task": {
+            "assignees": [],
+            "id": "",
+            "name": "",
+            "status": {
+              "name": ""
+            },
+            "tags": []
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "input": {
+        "assigneeIds": [
+          183
+        ],
+        "customFields": [
+          {
+            "id": "d2ab17e0-41d3-4d28-bdbb-f3f0f2c62f8b",
+            "value": "blue"
+          }
+        ],
+        "dueAt": "2026-01-04T00:00:00Z",
+        "isCreatorNotified": true,
+        "listId": "901410000001",
+        "markdownDescription": "Blocked task: **Fix login**",
+        "name": "Escalation: Fix login [86b2x4k00]",
+        "parentTaskId": "86b2x4k00",
+        "priority": 1,
+        "status": "to do",
+        "tags": [
+          "escalation"
+        ]
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createTask-whitespace-uncertain",
+      "operation": "createTask"
     }
   ],
   "schemaVersion": 1

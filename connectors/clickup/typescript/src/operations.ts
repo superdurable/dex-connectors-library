@@ -97,11 +97,27 @@ function validateTaskId(id: string): void { if (!taskIdPattern.test(id)) throw n
 function validateNumericId(id: string): void { if (!numericIdPattern.test(id)) throw new TypeError('ID must be numeric'); }
 function dateMilliseconds(value: string | null | undefined): number | undefined { if (!value) return undefined; if (!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?(?:Z|[+-]\d\d:\d\d)$/.test(value)) throw new TypeError('date must be RFC 3339'); const ms = Date.parse(value); if (!Number.isSafeInteger(ms) || ms <= 0) throw new TypeError('date must be after the Unix epoch'); return ms; }
 function validatePriority(value: number | undefined): void { if (value && ![1, 2, 3, 4].includes(value)) throw new TypeError('priority must be 1 through 4'); }
-function validateUserIds(values: number[] | undefined): void { if ((values?.length ?? 0) > 50 || values?.some(value => !Number.isSafeInteger(value) || value <= 0)) throw new TypeError('invalid user ID'); }
-function validateTags(values: string[] | undefined): void { if (values?.some(tag => !tag.trim() || Buffer.byteLength(tag) > 100)) throw new TypeError('invalid tag name'); }
+function hasDuplicate<Value>(values: Value[] | undefined): boolean { return values !== undefined && new Set(values).size !== values.length; }
+function isValidUnicode(value: string): boolean { return Buffer.from(value).toString('utf8') === value; }
+function validateUserIds(values: number[] | undefined): void { if ((values?.length ?? 0) > 50 || values?.some(value => !Number.isSafeInteger(value) || value <= 0) || hasDuplicate(values)) throw new TypeError('invalid user ID'); }
+function validateTags(values: string[] | undefined): void {
+  if (values?.some(tag => !tag || tag.trim() !== tag || Buffer.byteLength(tag) > 100 || !isValidUnicode(tag) || tag.includes('/') || /[\0\r\n\t]/.test(tag) || tag === '.' || tag === '..') || hasDuplicate(values)) throw new TypeError('invalid tag name');
+}
+function validateStatusName(status: string | undefined): void { if (status && (!status.trim() || Buffer.byteLength(status) > 255 || !isValidUnicode(status))) throw new TypeError('invalid status name'); }
+function isJSONValue(value: unknown, seen = new Set<object>()): boolean {
+  if (value === null || typeof value === 'boolean') return true;
+  if (typeof value === 'string') return isValidUnicode(value);
+  if (typeof value === 'number') return Number.isFinite(value);
+  if (typeof value !== 'object' || seen.has(value)) return false;
+  seen.add(value);
+  const valid = Array.isArray(value) ? value.every(item => isJSONValue(item, seen)) : Object.getPrototypeOf(value) === Object.prototype && Object.entries(value).every(([key, item]) => isValidUnicode(key) && isJSONValue(item, seen));
+  seen.delete(value);
+  return valid;
+}
 function validateName(name: string): void { if (!name.trim() || Buffer.byteLength(name) > 1024) throw new TypeError('invalid task name'); }
 function receipt(client: ClickUpClient, call: Call, objectId: string): ReceiptDraft { return client.receipt(call, objectId); }
-function path(id: string): string { return `/task/${encodeURIComponent(id)}`; }
+function pathEscape(value: string): string { return encodeURIComponent(value).replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`).replace(/%(?:24|26|2B|3A|3D|40)/g, escape => String.fromCharCode(Number.parseInt(escape.slice(1), 16))); }
+function path(id: string): string { return `/task/${pathEscape(id)}`; }
 function failedDecode<T>(operation: string, output: T, responseReceipt: ReceiptDraft): QueryAttempt<T> {
   const cause = failure('PROTOCOL', operation, `ClickUp returned an invalid ${operation === 'searchTasks' ? 'page of tasks' : operation === 'findMemberByEmail' ? 'list of Workspaces' : 'task'}`);
   return newQueryBranch('invalidResponse', output, responseReceipt, cause);
@@ -116,7 +132,7 @@ export class SearchTasksOperation implements Query<SearchTasksInput, SearchTasks
     const output: SearchTasksOutput = { tasks: [], page: input.page ?? 0 };
     try { validateNumericId(input.workspaceId); for (const ids of [input.listIds, input.folderIds, input.spaceIds]) { if ((ids?.length ?? 0) > 50) throw new TypeError('too many IDs'); ids?.forEach(validateNumericId); }
       if ([input.statuses, input.assigneeIds, input.tags].some(values => (values?.length ?? 0) > 50)) throw new TypeError('too many filters');
-      validateUserIds(input.assigneeIds); validateTags(input.tags); if (input.statuses?.some(status => !status.trim())) throw new TypeError('invalid status');
+      validateUserIds(input.assigneeIds); validateTags(input.tags); input.statuses?.forEach(validateStatusName);
       if (input.orderBy && !['created', 'updated', 'due_date', 'id'].includes(input.orderBy)) throw new TypeError('invalid orderBy');
       if (!Number.isInteger(output.page) || output.page < 0 || output.page > 1000) throw new TypeError('invalid page'); dateMilliseconds(input.updatedAfter);
     } catch (error) { return defect('searchTasks', output, String(error)); }
@@ -190,7 +206,7 @@ export class UpdateTaskOperation implements Mutation<UpdateTaskInput, UpdateTask
     const output = { task: zeroTask };
     try { validateTaskId(input.taskId); if (input.name === undefined && input.markdownDescription === undefined && !input.status && !input.priority && !input.dueAt && !(input.addAssigneeIds?.length || input.removeAssigneeIds?.length)) throw new TypeError('no changes');
       if (input.name !== undefined) validateName(input.name); if (input.markdownDescription !== undefined && Buffer.byteLength(input.markdownDescription) > 65_536) throw new TypeError('description too long');
-      validatePriority(input.priority); dateMilliseconds(input.dueAt); validateUserIds(input.addAssigneeIds); validateUserIds(input.removeAssigneeIds);
+      validateStatusName(input.status); validatePriority(input.priority); dateMilliseconds(input.dueAt); validateUserIds(input.addAssigneeIds); validateUserIds(input.removeAssigneeIds);
       if ((input.addAssigneeIds?.length ?? 0) + (input.removeAssigneeIds?.length ?? 0) > 50 || input.addAssigneeIds?.some(id => input.removeAssigneeIds?.includes(id))) throw new TypeError('invalid assignees');
     } catch (error) { return defect('updateTask', output, String(error)); }
     const payload: Record<string, unknown> = {};
@@ -215,15 +231,16 @@ export class UpdateTaskTagsOperation implements Mutation<UpdateTaskTagsInput, Up
   /** Apply repeat safe tag membership changes. */
   async invoke(call: Call, input: UpdateTaskTagsInput): Promise<MutationAttempt<UpdateTaskTagsOutput>> {
     const output: UpdateTaskTagsOutput = { taskId: input.taskId, tags: [], appliedChanges: 0 };
-    try { validateTaskId(input.taskId); const tags = [...(input.addTags ?? []), ...(input.removeTags ?? [])]; if (!tags.length || tags.length > 10 || new Set(tags).size !== tags.length) throw new TypeError('invalid tag changes'); validateTags(tags); }
+    try { validateTaskId(input.taskId); const tags = [...(input.addTags ?? []), ...(input.removeTags ?? [])]; if (!tags.length || tags.length > 10) throw new TypeError('invalid tag changes'); validateTags(tags); }
     catch (error) { return defect('updateTaskTags', output, String(error)); }
     const changes = [...(input.addTags ?? []).map(tag => ({ method: 'POST', tag })), ...(input.removeTags ?? []).map(tag => ({ method: 'DELETE', tag }))];
     const responseReceipt = receipt(this.client, call, input.taskId);
-    for (const change of changes) { const result = await this.client.exchange(call, 'updateTaskTags', change.method, `${path(input.taskId)}/tag/${encodeURIComponent(change.tag)}`);
+    const operationSignal = AbortSignal.any([call.context.cancellationSignal, AbortSignal.timeout(25_000)]);
+    for (const change of changes) { const result = await this.client.exchange(call, 'updateTaskTags', change.method, `${path(input.taskId)}/tag/${pathEscape(change.tag)}`, undefined, undefined, operationSignal);
       if (result.kind === 'succeeded' || result.kind === 'invalid') { output.appliedChanges++; continue; }
       return mutationExchange(result, output, responseReceipt);
     }
-    const result = await this.client.exchange(call, 'updateTaskTags', 'GET', path(input.taskId));
+    const result = await this.client.exchange(call, 'updateTaskTags', 'GET', path(input.taskId), undefined, undefined, operationSignal);
     if (result.kind !== 'succeeded') return mutationExchange(result, output, responseReceipt);
     try { output.tags = taskBody(result.response.body, false).tags; return newMutationBranch('updated', output, responseReceipt); }
     catch { return failedDecode('updateTaskTags', output, responseReceipt); }
@@ -251,10 +268,10 @@ export class CreateTaskOperation implements Mutation<CreateTaskInput, CreateTask
   async invoke(call: Call, input: CreateTaskInput): Promise<MutationAttempt<CreateTaskOutput>> {
     const output: CreateTaskOutput = { listId: input.listId, name: input.name, task: zeroTask };
     try { validateNumericId(input.listId); validateName(input.name); if (Buffer.byteLength(input.markdownDescription ?? '') > 65_536) throw new TypeError('description too long');
-      validatePriority(input.priority); dateMilliseconds(input.dueAt); validateUserIds(input.assigneeIds); validateTags(input.tags);
+      validateStatusName(input.status); validatePriority(input.priority); dateMilliseconds(input.dueAt); validateUserIds(input.assigneeIds); validateTags(input.tags);
       if ((input.tags?.length ?? 0) > 20 || (input.customFields?.length ?? 0) > 50) throw new TypeError('too many values');
       if (input.parentTaskId) validateTaskId(input.parentTaskId);
-      if (input.customFields?.some(field => !taskIdPattern.test(field.id) || field.value === undefined)) throw new TypeError('invalid custom field');
+      if (input.customFields?.some(field => !taskIdPattern.test(field.id) || !isJSONValue(field.value)) || hasDuplicate(input.customFields?.map(field => field.id))) throw new TypeError('invalid custom field');
     } catch (error) { return defect('createTask', output, String(error)); }
     const prior = previousDispatch(call);
     if (prior) return this.reconcile(call, input, output, prior);
@@ -293,7 +310,7 @@ export class CreateTaskOperation implements Mutation<CreateTaskInput, CreateTask
       return newMutationUncertain(output, failure(result.failure.kind, 'createTask', 'an earlier attempt of this Step sent the create, and the List could not be read back: ' + result.failure.message), responseReceipt);
     }
     let matches: Task[];
-    try { matches = (searchPage(result.response.body, 0).tasks ?? []).filter(task => matchText(task.name) === matchText(input.name) && (task.parentTaskId ?? '') === (input.parentTaskId ?? '') && (!since || (task.createdAt !== undefined && Date.parse(task.createdAt) >= since))); }
+    try { matches = (searchPage(result.response.body, 0).tasks ?? []).filter(task => task.name.trim() === input.name.trim() && (task.parentTaskId ?? '') === (input.parentTaskId ?? '') && (!since || (task.createdAt !== undefined && Date.parse(task.createdAt) >= since))); }
     catch { return newMutationUncertain(output, failure('PROTOCOL', 'createTask', 'an earlier attempt of this Step sent the create, and the List read back is invalid'), responseReceipt); }
     if (matches.length !== 1) return newMutationUncertain(output, failure('TRANSPORT', 'createTask', `an earlier attempt of this Step sent the create without a confirmed outcome, and the List shows ${matches.length} tasks with the name created since, so it is not sent again`), responseReceipt);
     const task = matches[0]!;

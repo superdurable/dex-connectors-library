@@ -25,12 +25,14 @@ it('reads a task through real Dex and fails an unwired provider rejection', asyn
     if (request.method !== 'GET' || !request.url?.startsWith('/api/v2/task/86b2x4k7q?')) { response.writeHead(404).end(); return; }
     response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ id: '86b2x4k7q', name: 'Fix login', status: { status: 'open', type: 'open' }, assignees: [], tags: [] }));
   });
-  server.listen(21178, '127.0.0.1');
+  server.listen(0, '127.0.0.1');
   await once(server, 'listening');
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('ClickUp fixture has no TCP address');
   const directory = await mkdtemp(join(tmpdir(), 'dex-clickup-get-task-'));
   const cache = openBlobCache({ directory, maxBytes: 64 * 1024 * 1024 });
   const provider = new ClickUpClient({}, { resolve: async () => ({ apiToken: new SecretString('pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ') }) },
-    { apiBaseURL: 'http://127.0.0.1:21178/api/v2' });
+    { apiBaseURL: `http://127.0.0.1:${address.port}/api/v2` });
   const flow = new GetTaskFlow(newConnection(provider, { provider: 'clickup', name: ConnectionName }));
   const registry = new Registry([flow]);
   const worker = new Worker(registry, cache, { serverAddress: dexAddress });
