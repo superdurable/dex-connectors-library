@@ -13,6 +13,11 @@ spec:
       version: v0.1.0
       operations: [embed, rerank]
       triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-cohere"
+      operations: [embed, rerank]
+      triggers: []
   codegen:
     go:
       package: cohere
