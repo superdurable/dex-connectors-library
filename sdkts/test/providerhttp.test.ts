@@ -89,4 +89,27 @@ describe('provider HTTP', () => {
     if (!address || typeof address === 'string') throw new Error('server address unavailable');
     await expect(sendProviderRequest({ url: `http://127.0.0.1:${address.port}/`, method: 'POST', body: Buffer.from('write'), maxResponseBytes: 16, addressPolicy: 'privateNetworkHTTP' })).rejects.toMatchObject({ name: ProviderTransportError.name, isProvablyNotSent: false });
   });
+
+  it('proves refused connections, DNS failures, and pre-connect timeouts did not send a request', async () => {
+    const server = createServer();
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('server address unavailable');
+    await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+    const request = { method: 'POST', body: Buffer.from('write'), maxResponseBytes: 16, addressPolicy: 'privateNetworkHTTP' as const };
+    await expect(sendProviderRequest({ ...request, url: `http://127.0.0.1:${address.port}/` })).rejects.toMatchObject({ name: ProviderTransportError.name, isProvablyNotSent: true });
+    await expect(sendProviderRequest({ ...request, url: 'https://nonexistent.invalid/' })).rejects.toMatchObject({ name: ProviderTransportError.name, isProvablyNotSent: true });
+    const timeout = new AbortController();
+    timeout.abort(new DOMException('deadline elapsed', 'TimeoutError'));
+    await expect(sendProviderRequest({ ...request, url: `http://127.0.0.1:${address.port}/`, signal: timeout.signal })).rejects.toMatchObject({ name: ProviderTransportError.name, isProvablyNotSent: true });
+  });
+
+  it('proves a TLS handshake failure did not send HTTP request bytes', async () => {
+    const server = createServer((_request, response) => response.end());
+    servers.push(server);
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('server address unavailable');
+    await expect(sendProviderRequest({ url: `https://127.0.0.1:${address.port}/`, method: 'POST', body: Buffer.from('write'), maxResponseBytes: 16, addressPolicy: 'privateNetworkHTTP' })).rejects.toMatchObject({ name: ProviderTransportError.name, isProvablyNotSent: true });
+  });
 });

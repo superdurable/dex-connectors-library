@@ -19,3 +19,16 @@ try {
 } finally {
   await new Promise(resolve => server.close(resolve));
 }
+const refusedServer = createServer();
+await new Promise(resolve => refusedServer.listen(0, '127.0.0.1', resolve));
+const refusedAddress = refusedServer.address();
+await new Promise(resolve => refusedServer.close(resolve));
+try {
+  await sendProviderRequest({
+    url: `http://127.0.0.1:${refusedAddress.port}/`, method: 'POST', body: Buffer.from('write'),
+    maxResponseBytes: 1024, addressPolicy: 'privateNetworkHTTP',
+  });
+  throw new Error('expected refused connection');
+} catch (error) {
+  if (error?.name !== 'ProviderTransportError' || !error.isProvablyNotSent) throw error;
+}
