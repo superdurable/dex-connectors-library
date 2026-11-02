@@ -289,6 +289,15 @@ Limits of this design:
 under `reports/<reportId>.md`, reads its metadata and text back, and lists the
 archive folder.
 
+The [TypeScript package](typescript/) implements all four operations at its
+independent `v0.1.0` package version. Its [report archive
+example](typescript/examples/report-archive/) writes a create-only text object,
+then inspects, reads, and lists it through a real Dex Flow. The TypeScript
+conformance fixture replays Go-verified provider responses for every branch,
+429, 5xx, transport failure, and create-only read-back. The example integration
+test runs against a real `dexcli dev` stack and a local S3 fixture; live Amazon
+S3, Cloudflare R2, and MinIO behavior remains unverified for TypeScript.
+
 ## Verification
 
 ```bash
