@@ -4,6 +4,7 @@
 package webhook_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptrace"
@@ -20,7 +21,9 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, _ string,
 		transport.Transport = conformanceWrittenRequestTransport{transport.Transport}
 	}
 	var decodedInput any
-	require.NoError(t, json.Unmarshal(scenario.Input, &decodedInput))
+	decoder := json.NewDecoder(bytes.NewReader(scenario.Input))
+	decoder.UseNumber()
+	require.NoError(t, decoder.Decode(&decodedInput))
 	canonicalInput, err := json.Marshal(decodedInput)
 	require.NoError(t, err)
 	client := newSendingClient(t, "https://127.0.0.1:12345/hooks?tenant=forms", standardSecret, transport)

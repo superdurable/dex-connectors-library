@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import base64
+import binascii
 import hashlib
 import hmac
 import json
@@ -48,12 +49,11 @@ class SendEventOperation:
         if not self.client.delivery_url:
             return _defect(output, FailureKind.VALIDATION, "the connection has no deliveryUrl")
         try:
-            payload = json.dumps(
-                input.payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False
-            ).encode()
-        except (TypeError, ValueError, UnicodeEncodeError):
-            return _defect(output, FailureKind.VALIDATION, "sendEvent payload must be one valid JSON value")
-        if input.payload is None:
+            payload = (bytes(input.payload) if isinstance(input.payload, (bytes, bytearray)) else
+                       json.dumps(input.payload, ensure_ascii=False, separators=(",", ":"),
+                                  allow_nan=False).encode())
+            json.loads(payload.decode("utf-8"), parse_constant=lambda value: _reject_json_constant(value))
+        except (TypeError, ValueError, UnicodeDecodeError, UnicodeEncodeError):
             return _defect(output, FailureKind.VALIDATION, "sendEvent payload must be one valid JSON value")
         if len(payload) > self.client.max_body_bytes:
             return _defect(output, FailureKind.VALIDATION, "sendEvent payload exceeds maxBodyBytes")
@@ -61,15 +61,15 @@ class SendEventOperation:
             credentials = await self.client.credentials.resolve(call)
         except CredentialBrokerUnavailableError:
             return MutationAttempt.retry(_failure(FailureKind.AVAILABILITY, "credential broker unavailable"))
-        except (OSError, ValueError, LookupError):
+        except Exception:
             return _defect(output, FailureKind.AUTHENTICATION, "webhook signing secret unavailable")
         secret = credentials.signing_secret.reveal()
         if not secret:
             return _defect(output, FailureKind.AUTHENTICATION, "webhook signing secret unavailable")
         if secret.startswith("whsec_"):
             try:
-                key = base64.b64decode(secret[6:], validate=True)
-            except ValueError:
+                key = base64.b64decode(secret[6:].replace("\r", "").replace("\n", ""), validate=True)
+            except (ValueError, binascii.Error, UnicodeEncodeError):
                 return _defect(output, FailureKind.VALIDATION, "whsec_ signing secret is invalid")
             if not key:
                 return _defect(output, FailureKind.VALIDATION, "whsec_ signing secret is invalid")
@@ -89,6 +89,9 @@ class SendEventOperation:
             request = self.client.http_client.build_request(
                 "POST", self.client.delivery_url, headers=headers, content=payload
             )
+        except Exception:
+            return _defect(output, FailureKind.LOCAL_DEFECT, "the sendEvent request could not be built")
+        try:
             response, _ = await send_traced(self.client.http_client, request)
         except ProviderTransportError as error:
             kind = FailureKind.AVAILABILITY if error.provably_not_sent else FailureKind.TRANSPORT
@@ -125,6 +128,10 @@ class SendEventOperation:
 
 def _failure(kind: FailureKind, message: str) -> Failure:
     return Failure(kind, "webhook", "sendEvent", message)
+
+
+def _reject_json_constant(value: str) -> None:
+    raise ValueError(f"invalid JSON constant {value}")
 
 
 def _defect(output: SendEventOutput, kind: FailureKind, message: str) -> MutationAttempt[SendEventOutput]:

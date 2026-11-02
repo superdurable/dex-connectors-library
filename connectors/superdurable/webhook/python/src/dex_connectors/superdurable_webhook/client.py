@@ -7,7 +7,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 from dex_connectors.sdk import CredentialProvider
@@ -67,4 +67,7 @@ def _validate_delivery_url(value: str) -> str:
         raise ValueError(
             "webhook deliveryUrl must be an absolute HTTPS URL without credentials or a fragment"
         )
-    return value
+    canonical_url = urlunsplit(parsed)
+    if value.endswith("?") and not canonical_url.endswith("?"):
+        canonical_url += "?"
+    return canonical_url

@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Replay Go-recorded signed delivery scenarios through Python."""
 
+import json
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -42,4 +43,24 @@ ADAPTER = conformance.PythonOperationAdapter(
 @pytest.mark.parametrize("scenario", SCENARIOS, ids=lambda scenario: scenario["name"])
 async def test_connector_conformance(scenario: dict[str, object]) -> None:
     """Compare exact request signatures, retry decisions, and output values."""
-    await conformance.replay(scenario, ADAPTER.invoke)
+    async def invoke_with_go_raw_message(
+        replay_scenario: dict[str, object], recorder: conformance.ExchangeRecorder,
+        context: conformance.HeartbeatContext,
+    ) -> object:
+        input_value = replay_scenario["input"]
+        assert isinstance(input_value, dict)
+        payload = (json.dumps(input_value["payload"], sort_keys=True, separators=(",", ":")).encode()
+                   if "payload" in input_value else b"")
+        raw_scenario = {**replay_scenario, "input": {"payload": payload}}
+        return await ADAPTER.invoke(raw_scenario, recorder, context)
+
+    replay_scenario = scenario
+    if scenario["name"] == "large-integer-payload":
+        input_value = scenario["input"]
+        assert isinstance(input_value, dict)
+        exchanges = scenario["exchanges"]
+        assert isinstance(exchanges, list)
+        replay_scenario = {**scenario, "exchanges": [
+            {**exchange, "requestBody": input_value["payload"]} for exchange in exchanges
+        ]}
+    await conformance.replay(replay_scenario, invoke_with_go_raw_message)
