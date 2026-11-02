@@ -9,6 +9,7 @@ import type { AddReactionInput, AddedReaction, Channel, CreateMessageInput, GetC
 
 const snowflake = /^[0-9]{17,20}$/;
 const customEmoji = /^[A-Za-z0-9_]{2,32}:[0-9]{17,20}$/;
+const goWhitespace = /^\p{White_Space}+|\p{White_Space}+$/gu;
 const zeroChannel: Channel = { id: '', type: 0 };
 const zeroMessage: Message = { id: '', channelId: '', author: { id: '', username: '', isBot: false }, content: '', timestamp: '0001-01-01T00:00:00Z', type: 0 };
 const zeroPage: MessagePage = { messages: [], isFull: false };
@@ -84,7 +85,7 @@ export class CreateMessageOperation implements Mutation<CreateMessageInput, Mess
     let body: Record<string, unknown>;
     try {
       validateSnowflake('channelId', input.channelId);
-      if (!input.content.trim()) throw new Error('content must not be blank');
+      if (!trimGoWhitespace(input.content)) throw new Error('content must not be blank');
       if ([...input.content].length > 2000 || /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u.test(input.content)) throw new Error('content must be valid UTF-8 of at most 2000 characters');
       if (!call.idempotencyKey) throw new Error('createMessage requires an idempotency key');
       body = { content: input.content, nonce: createNonce(call.idempotencyKey), enforce_nonce: true, allowed_mentions: { parse: [] } };
@@ -121,8 +122,9 @@ export class AddReactionOperation implements Mutation<AddReactionInput, AddedRea
 }
 
 function validateSnowflake(name: string, value: string): void { if (!snowflake.test(value)) throw new Error(`${name} must be a Discord snowflake ID of 17 to 20 digits`); }
+function trimGoWhitespace(value: string): string { return value.replace(goWhitespace, ''); }
 function isUnicodeEmojiCandidate(value: string): boolean {
-  if (!value || Buffer.byteLength(value, 'utf8') > 64 || value.trim() !== value || /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u.test(value)) return false;
+  if (!value || Buffer.byteLength(value, 'utf8') > 64 || trimGoWhitespace(value) !== value || /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u.test(value)) return false;
   return [...value].every(character => !/[\p{Cc}\p{Zs}\p{Zl}\p{Zp}]/u.test(character) && (character.codePointAt(0)! >= 128 || /[0-9#*]/.test(character)));
 }
 function pathEscape(value: string): string { return encodeURIComponent(value).replace(/%3A/gi, ':').replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`); }

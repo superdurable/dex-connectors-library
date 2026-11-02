@@ -47,6 +47,38 @@ it('uses Go PathEscape for Unicode reactions and retries a refused local connect
   if (attempt.kind === 'retry') expect(attempt.failure.kind).toBe('TRANSPORT');
 });
 
+it('matches Go TrimSpace for message content and reaction emoji', async () => {
+  let requestCount = 0;
+  const client = new DiscordClient({}, credential, { send: async request => {
+    requestCount++;
+    if (request.method === 'POST') return { status: 200, headers: {}, body: Buffer.from(JSON.stringify({
+      id: messageId, channel_id: channelId, content: '\uFEFF', type: 0,
+      author: { id: channelId }, timestamp: '2026-01-01T00:00:00Z',
+    })) };
+    return { status: 204, headers: {}, body: Buffer.alloc(0) };
+  } });
+
+  const blank = await client.createMessage().invoke(call, { channelId, content: '\u0085' });
+  expect(blank.kind).toBe('branch');
+  if (blank.kind === 'branch') expect(blank.branch).toBe('defect');
+  expect(requestCount).toBe(0);
+
+  const message = await client.createMessage().invoke(call, { channelId, content: '\uFEFF' });
+  expect(message.kind).toBe('branch');
+  if (message.kind === 'branch') expect(message.branch).toBe('created');
+  expect(requestCount).toBe(1);
+
+  const spacedEmoji = await client.addReaction().invoke(call, { channelId, messageId, emoji: '\u0085📣' });
+  expect(spacedEmoji.kind).toBe('branch');
+  if (spacedEmoji.kind === 'branch') expect(spacedEmoji.branch).toBe('defect');
+  expect(requestCount).toBe(1);
+
+  const emoji = await client.addReaction().invoke(call, { channelId, messageId, emoji: '\uFEFF📣' });
+  expect(emoji.kind).toBe('branch');
+  if (emoji.kind === 'branch') expect(emoji.branch).toBe('added');
+  expect(requestCount).toBe(2);
+});
+
 it('classifies an oversized 403 body from status without retaining provider text', async () => {
   const server = createServer((_request, response) => { response.writeHead(403).end('secret provider text '.repeat(10_000)); });
   server.listen(0, '127.0.0.1');

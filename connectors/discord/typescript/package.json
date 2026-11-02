@@ -1,6 +1,7 @@
 {
   "name": "@superdurable/connector-discord",
   "version": "0.1.0",
+  "license": "MIT",
   "description": "Discord channel and message operations for Dex Flows",
   "repository": {
     "type": "git",
