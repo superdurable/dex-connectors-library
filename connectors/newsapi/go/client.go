@@ -186,7 +186,9 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 }
 
 // SearchArticles returns the search query bound to this client.
-func (client *Client) SearchArticles() SearchArticlesOperation { return SearchArticlesOperation{client} }
+func (client *Client) SearchArticles() SearchArticlesOperation {
+	return SearchArticlesOperation{client}
+}
 
 // Definition returns the manifest-generated search query contract.
 func (SearchArticlesOperation) Definition() sdkgo.QueryDefinition { return SearchArticlesDefinition }
@@ -200,7 +202,7 @@ func (operation SearchArticlesOperation) Invoke(call sdkgo.Call, input SearchArt
 	}
 	request, failure := operation.client.newSearchRequest(call, query)
 	if failure != nil {
-		return sdkgo.NewQueryBranch(SearchArticlesBranchDefect, ArticlePage{}, failure, sdkgo.Receipt{})
+		return sdkgo.NewQueryBranch(SearchArticlesBranchDefect, ArticlePage{Articles: []Article{}}, failure, sdkgo.Receipt{})
 	}
 	response, err := operation.client.httpClient.Do(request)
 	if err != nil {
@@ -398,7 +400,7 @@ func decodeArticlePage(body []byte, input SearchArticlesInput) sdkgo.QueryAttemp
 }
 
 func failedBranch(branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.QueryAttempt[ArticlePage] {
-	return sdkgo.NewQueryBranch(branch, ArticlePage{}, failurePointer(kind, message), sdkgo.Receipt{})
+	return sdkgo.NewQueryBranch(branch, ArticlePage{Articles: []Article{}}, failurePointer(kind, message), sdkgo.Receipt{})
 }
 
 func failurePointer(kind sdkgo.FailureKind, message string) *sdkgo.Failure {
