@@ -20,6 +20,10 @@ Install a published component release:
 go get github.com/superdurable/dex-connectors-library/connectors/google/gemini/go@v0.23.0
 ```
 
+## TypeScript
+
+The independent [`@superdurable/connector-google-gemini`](typescript/README.md) package implements the native `generateContent` Query at v0.1.0. Its [generate-summary example](typescript/examples/generate-summary/flow/workflow.ts) runs as a Dex TypeScript Flow with the static `gemini-summary` Connection. The package has no Trigger.
+
 ## Connection
 
 The connection kind is `gemini-api-key`. Its one secret field, `api_key`, is a
