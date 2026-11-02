@@ -456,13 +456,14 @@ async def test_reply_reads_source_then_sends_threaded_payload() -> None:
         assert payload["threadId"] == "thread-1"
         raw = base64.urlsafe_b64decode(payload["raw"] + "=" * (-len(payload["raw"]) % 4))
         assert b"In-Reply-To: <source@example.com>" in raw
+        assert b"To: <ada.reply@example.com>\r\n" in raw
         return httpx.Response(200, json={"id": "reply-1", "threadId": "thread-1"})
 
     result = await service(run, httpx.MockTransport(answer)).reply_to_message(
         run, ReplyToMessageInput("source-1", "Answer")
     )
     assert result.branch == "sent" and result.value is not None
-    assert result.value.recipients == ["ada.reply@example.com"]
+    assert result.value.recipients == ["<ada.reply@example.com>"]
     assert methods == ["GET", "POST"]
 
 

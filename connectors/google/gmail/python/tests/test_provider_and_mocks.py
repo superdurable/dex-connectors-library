@@ -34,8 +34,10 @@ from dex_connectors.google_gmail.gmailmock import (
 )
 from dex_connectors.google_gmail.models import Message
 from dex_connectors.google_gmail.provider import (
+    _format_go_mailbox,
     build_reply_message,
     build_send_message,
+    decode_message,
     parse_mailbox,
     rfc_message_id_address,
     sent_message_search_query,
@@ -72,8 +74,23 @@ def test_send_message_has_stable_headers_and_base64url_request(call: Call) -> No
     assert parsed["X-Dex-Call-ID"] == call.id
     assert parsed["From"] == "owner@example.org"
     assert parsed["To"] == "Ada <ada@example.com>"
+    assert b'To: "Ada" <ada@example.com>\r\n' in raw
+    assert b'\r\n\r\n--dex-' in raw
+    assert b'\r\n\r\n\r\n--dex-' not in raw
     assert parsed.get_body(preferencelist=("plain",)).get_content() == "Line one\r\nLine two"
     assert sent_message_search_query(call, "run-1", started_at).startswith("in:sent rfc822msgid:")
+
+
+def test_mailbox_output_matches_go_header_shape() -> None:
+    """Keep angle brackets, quoted names, and UTF-8 display names in Go form."""
+    assert _format_go_mailbox("ada@example.com") == "<ada@example.com>"
+    assert _format_go_mailbox("Ada <ada@example.com>") == '"Ada" <ada@example.com>'
+    assert _format_go_mailbox("José <jose@example.com>") == "=?utf-8?q?Jos=C3=A9?= <jose@example.com>"
+    message = decode_message({
+        "id": "message-1", "threadId": "thread-1", "internalDate": "1772615700000",
+        "payload": {"headers": [{"name": "To", "value": "ada@example.com, Ada <other@example.com>"}]},
+    })
+    assert message.to == ["<ada@example.com>", '"Ada" <other@example.com>']
 
 
 def test_reply_message_preserves_thread_headers(call: Call) -> None:
