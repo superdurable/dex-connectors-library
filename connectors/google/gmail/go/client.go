@@ -309,32 +309,32 @@ func (SendMessageOperation) IdempotencyKey(callID sdkgo.CallID, _ SendMessageInp
 func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageInput) sdkgo.MutationAttempt[SendMessageOutput] {
 	fence, err := singledispatch.NewFence(call, SendMessageDefinition.StepDefaults.ExecuteMethodTimeout)
 	if err != nil {
-		return sdkgo.NewMutationBranch(SendMessageBranchDefect, SendMessageOutput{}, gmailFailurePointer(sdkgo.FailureLocalDefect, "Gmail send checkpoint could not be initialized"), sdkgo.Receipt{})
+		return sdkgo.NewMutationBranch(SendMessageBranchDefect, emptySendMessageOutput(), gmailFailurePointer(sdkgo.FailureLocalDefect, "Gmail send checkpoint could not be initialized"), sdkgo.Receipt{})
 	}
 	decision := fence.Decide()
 	if decision.Kind == singledispatch.FailClosed {
-		return sdkgo.NewMutationBranch(SendMessageBranchDefect, SendMessageOutput{}, gmailFailurePointer(sdkgo.FailureLocalDefect, "Gmail send checkpoint is invalid"), sdkgo.Receipt{})
+		return sdkgo.NewMutationBranch(SendMessageBranchDefect, emptySendMessageOutput(), gmailFailurePointer(sdkgo.FailureLocalDefect, "Gmail send checkpoint is invalid"), sdkgo.Receipt{})
 	}
 	budget := newSendAttemptBudget(call.Context, SendMessageDefinition.StepDefaults.ExecuteMethodTimeout)
 	defer budget.cancel()
 	credential, err := operation.client.resolveCredentials(budget.attemptContext, call)
 	if err != nil {
-		return sdkgo.NewMutationBranch(SendMessageBranchDefect, SendMessageOutput{}, gmailFailurePointer(sdkgo.FailureAuthentication, "connection credentials are unavailable"), sdkgo.Receipt{})
+		return sdkgo.NewMutationBranch(SendMessageBranchDefect, emptySendMessageOutput(), gmailFailurePointer(sdkgo.FailureAuthentication, "connection credentials are unavailable"), sdkgo.Receipt{})
 	}
 	recipients, validationFailure := validateSendInput(input, credential.PrimaryEmail)
 	if validationFailure != nil {
-		return sdkgo.NewMutationBranch(SendMessageBranchDefect, SendMessageOutput{}, validationFailure, sdkgo.Receipt{})
+		return sdkgo.NewMutationBranch(SendMessageBranchDefect, emptySendMessageOutput(), validationFailure, sdkgo.Receipt{})
 	}
 	raw, err := buildMIMEMessage(call, credential.PrimaryEmail, recipients, input)
 	if err != nil {
-		return sdkgo.NewMutationBranch(SendMessageBranchDefect, SendMessageOutput{}, gmailFailurePointer(sdkgo.FailureValidation, "message could not be encoded"), sdkgo.Receipt{})
+		return sdkgo.NewMutationBranch(SendMessageBranchDefect, emptySendMessageOutput(), gmailFailurePointer(sdkgo.FailureValidation, "message could not be encoded"), sdkgo.Receipt{})
 	}
 	if int64(len(raw)) > operation.client.maxMessageBytes {
-		return sdkgo.NewMutationBranch(SendMessageBranchDefect, SendMessageOutput{}, gmailFailurePointer(sdkgo.FailureValidation, "message exceeds configured size limit"), sdkgo.Receipt{})
+		return sdkgo.NewMutationBranch(SendMessageBranchDefect, emptySendMessageOutput(), gmailFailurePointer(sdkgo.FailureValidation, "message exceeds configured size limit"), sdkgo.Receipt{})
 	}
 	payload, err := json.Marshal(map[string]string{"raw": base64.RawURLEncoding.EncodeToString(raw)})
 	if err != nil {
-		return sdkgo.NewMutationBranch(SendMessageBranchDefect, SendMessageOutput{}, gmailFailurePointer(sdkgo.FailureLocalDefect, "message request could not be encoded"), sdkgo.Receipt{})
+		return sdkgo.NewMutationBranch(SendMessageBranchDefect, emptySendMessageOutput(), gmailFailurePointer(sdkgo.FailureLocalDefect, "message request could not be encoded"), sdkgo.Receipt{})
 	}
 	return operation.client.sendAndConfirm(call, fence, decision, budget, credential, sendMessageOutcomes, gmailOutgoingMessage{payload: payload, recipients: recipients})
 }
@@ -420,7 +420,7 @@ func (client *Client) sendAndConfirm(
 				return client.sentAfterDispatch(call, budget, credentials, operation, message, sent, receipt, fence)
 			}
 		}
-		return sdkgo.NewMutationBranch(operation.providerRejectedBranch, SendMessageOutput{},
+		return sdkgo.NewMutationBranch(operation.providerRejectedBranch, emptySendMessageOutput(),
 			gmailOperationFailurePointer(operation.operationID, statusFailureKind(response.StatusCode), operation.rejectionMessage), receipt)
 	}
 	content, err := readAndCloseGmailResponse(response, client.maxResponseBytes)
@@ -504,9 +504,17 @@ func (client *Client) sentMessage(
 		}
 	}
 	receipt.ProviderObjectID = sent.ID
+	recipients := message.recipients
+	if recipients == nil {
+		recipients = []string{}
+	}
 	return sdkgo.NewMutationBranch(operation.sentBranch, SendMessageOutput{
-		Sender: credentials.PrimaryEmail, Recipients: message.recipients, MessageID: sent.ID, ThreadID: threadID,
+		Sender: credentials.PrimaryEmail, Recipients: recipients, MessageID: sent.ID, ThreadID: threadID,
 	}, nil, receipt)
+}
+
+func emptySendMessageOutput() SendMessageOutput {
+	return SendMessageOutput{Recipients: []string{}}
 }
 
 func (client *Client) pollSentMessageByRFCMessageID(

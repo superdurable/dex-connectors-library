@@ -1,6 +1,6 @@
 # Gmail Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/gmail/go@v0.25.1`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/gmail/go@v0.25.2`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/google/gmail`.
 
@@ -156,6 +156,9 @@ uses that header for Sent Mail read-back:
   permits another POST only when the preceding attempt checkpointed `notSent`
   or `canResend`. A prior `claimed` dispatch can only read back; a search miss
   or failure returns Retry without another POST.
+
+The Go send result marshals an empty recipient list as JSON `[]` on every
+terminal branch, including an early read-back and a provider rejection.
 - When a prior checkpoint contains Gmail's message ID, the connector reads
   that message directly before searching by RFC `Message-ID`. A matching read
   returns `sent`; a failed read falls back to the Sent Mail search.
