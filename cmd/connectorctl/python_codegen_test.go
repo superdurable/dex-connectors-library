@@ -47,6 +47,79 @@ func TestPythonCodegenGoldenBitbucketMockUsesProviderIdentity(t *testing.T) {
 	}
 }
 
+func TestPythonCodegenMultiAuthGolden(t *testing.T) {
+	manifestPath := filepath.Join("..", "..", "schema", "testdata", "multi-auth.yaml")
+	manifest, err := load(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest.Spec.Languages = &schema.Languages{Python: &schema.LanguagePackage{Operations: []string{"getThing"}}}
+	manifest.Spec.Auth.Methods[0].Configuration = &schema.Configuration{Fields: []schema.Field{{Name: "workspaceId", GoName: "WorkspaceID", Type: "string", Description: "Workspace for the selected method.", Required: true}}}
+	generated, err := renderPythonCodegen(pythonCodegenInput{Manifest: manifest, PackageName: "multi_auth_fixture", MockPackageName: "multiauthfixturemock"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"config.py", "connection.py"} {
+		goldenPath := filepath.Join("testdata", "multi-auth-golden", name)
+		if os.Getenv("UPDATE_MULTI_AUTH_GOLDEN") == "1" {
+			if err := os.MkdirAll(filepath.Dir(goldenPath), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(goldenPath, []byte(generated[name]), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		want, err := os.ReadFile(goldenPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if generated[name] != string(want) {
+			t.Errorf("%s differs from multi-auth golden output", name)
+		}
+	}
+	command := exec.Command("python3", "-c", multiAuthPythonRuntimeTest)
+	command.Stdin = strings.NewReader(generated["connection.py"])
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("generated multi-auth credential behavior: %v\n%s", err, output)
+	}
+}
+
+const multiAuthPythonRuntimeTest = `
+import ast, asyncio, sys
+from typing import Any
+source = sys.stdin.read()
+tree = ast.parse(source)
+credential_source = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == '_ProjectCredentialSource')
+config_decoder = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == '_decode_config')
+class SecretString:
+    def __init__(self, value): self.value = value
+class Credentials:
+    def __init__(self, **values): self.__dict__.update(values)
+class Config:
+    def __init__(self, **values): self.__dict__.update(values)
+class Project:
+    def __init__(self, values): self.values = values
+    async def resolve_credential(self, key, call_id): return self.values
+namespace = {'Any': Any, 'Call': object, 'LoadedProject': object, 'ConnectionKey': object, 'Credentials': Credentials, 'Config': Config, 'SecretString': SecretString}
+exec(compile(ast.Module(body=[credential_source, config_decoder], type_ignores=[]), '<generated>', 'exec'), namespace)
+Source = namespace['_ProjectCredentialSource']
+assert namespace['_decode_config']({}).workspace_id == ''
+assert namespace['_decode_config']({'workspaceId':'workspace'}).workspace_id == 'workspace'
+class Call:
+    id = 'call'
+def resolve(values, method=''):
+    return asyncio.run(Source(Project(values), object(), method).resolve(Call()))
+default = resolve({'oauth_client_id':'id', 'oauth_client_secret':'secret', 'access_token':'access', 'refresh_token':'refresh', 'service_account_key':17})
+assert default.auth_method_id == 'google-oauth' and not hasattr(default, 'service_account_key')
+alternate = resolve({'service_account_key':'key', 'delegated_user':'user', 'oauth_client_id':17}, 'workspace-service-account')
+assert alternate.auth_method_id == 'workspace-service-account' and alternate.service_account_key.value == 'key'
+assert not hasattr(alternate, 'oauth_client_id')
+for values in ({'auth_method':'workspace-service-account', 'delegated_user':'user'}, {'auth_method':'unknown'}, {'auth_method':0}):
+    try: resolve(values)
+    except ValueError: pass
+    else: raise AssertionError('invalid selected method was accepted')
+`
+
 func TestPythonCodegenKeepsMockScenariosDistinctFromBranchHelpers(t *testing.T) {
 	connectorDirectory := filepath.Join("..", "..", "connectors", "google", "calendar")
 	manifest, err := load(filepath.Join(connectorDirectory, "connector.yaml"))

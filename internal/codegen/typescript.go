@@ -83,9 +83,13 @@ func generateTypeScriptModels(manifest schema.Manifest, models []gomodel.Model) 
 	if usesSecretString {
 		credentialImports += ", SecretString"
 	}
+	if len(manifest.Spec.Auth.Methods) > 0 && usesSecretString {
+		output.WriteString("import { SecretString } from '@superdurable/connectors-sdk';\n")
+		credentialImports = providerType
+	}
 	output.WriteString("import type { " + credentialImports + " } from '@superdurable/connectors-sdk';\n\n")
 	output.WriteString("/** Connector configuration; omitted fields use manifest defaults. */\nexport interface Config {\n")
-	for _, field := range manifest.Spec.Configuration.Fields {
+	for _, field := range generatedConfigFields(manifest) {
 		name := field.Name
 		fieldType := "string"
 		if field.Type == "integer" || field.Type == "number" || field.Type == "duration" {
@@ -93,6 +97,9 @@ func generateTypeScriptModels(manifest schema.Manifest, models []gomodel.Model) 
 		}
 		if field.Type == "boolean" {
 			fieldType = "boolean"
+		}
+		if field.Type == "stringList" {
+			fieldType = "string[]"
 		}
 		if field.Type == "duration" {
 			name += "Ms"
@@ -109,7 +116,7 @@ func generateTypeScriptModels(manifest schema.Manifest, models []gomodel.Model) 
 	}
 	output.WriteString("}\n\n")
 	output.WriteString("/** Runtime schema for manifest configuration. */\nexport const ConfigSchema = z.object({\n")
-	for _, field := range manifest.Spec.Configuration.Fields {
+	for _, field := range generatedConfigFields(manifest) {
 		name := field.Name
 		expression := "z.string()"
 		if field.Type == "integer" || field.Type == "duration" {
@@ -118,6 +125,8 @@ func generateTypeScriptModels(manifest schema.Manifest, models []gomodel.Model) 
 			expression = "z.number()"
 		} else if field.Type == "boolean" {
 			expression = "z.boolean()"
+		} else if field.Type == "stringList" {
+			expression = "z.array(z.string())"
 		}
 		if field.Type == "duration" {
 			name += "Ms"
@@ -169,6 +178,30 @@ func generateTypeScriptModels(manifest schema.Manifest, models []gomodel.Model) 
 		fmt.Fprintf(&output, "  /** %s */\n  %s%s: %s;\n", typeScriptJSDoc(field.Description), typeScriptFieldName(field.Name), optional, fieldType)
 	}
 	output.WriteString("}\n\n")
+	if len(manifest.Spec.Auth.Methods) > 0 {
+		output.WriteString("/** Decode private credential fields for the selected authorization method. */\nexport function decodeCredentials(value: unknown, authMethodId = ''): Credentials {\n")
+		output.WriteString("  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');\n")
+		output.WriteString("  const fields = value as { [key: string]: unknown };\n")
+		output.WriteString("  const selectedMethod = fields['auth_method'] ?? '';\n")
+		output.WriteString("  if (typeof selectedMethod !== 'string') throw new TypeError('credential auth_method is invalid');\n")
+		fmt.Fprintf(&output, "  const method = selectedMethod || authMethodId || %s;\n", strconv.Quote(manifest.Spec.Auth.DefaultMethod))
+		output.WriteString("  const credentials = { authMethodId: method } as Credentials;\n")
+		for index, method := range manifest.Spec.Auth.Methods {
+			if index == 0 {
+				fmt.Fprintf(&output, "  if (method === %s) {\n", strconv.Quote(method.ID))
+			} else {
+				fmt.Fprintf(&output, "  } else if (method === %s) {\n", strconv.Quote(method.ID))
+			}
+			for _, field := range method.Fields {
+				fmt.Fprintf(&output, "    if (fields[%s] !== undefined && typeof fields[%s] !== 'string') throw new TypeError(%s);\n", strconv.Quote(field.Name), strconv.Quote(field.Name), strconv.Quote("credential "+field.Name+" has an invalid type"))
+				if field.Required {
+					fmt.Fprintf(&output, "    if (!fields[%s]) throw new TypeError(%s);\n", strconv.Quote(field.Name), strconv.Quote("credential "+field.Name+" is required"))
+				}
+				fmt.Fprintf(&output, "    if (fields[%s]) credentials.%s = %s;\n", strconv.Quote(field.Name), typeScriptFieldName(field.Name), typeScriptCredentialValue(field))
+			}
+		}
+		output.WriteString("  } else {\n    throw new TypeError('credential auth_method is invalid');\n  }\n  return credentials;\n}\n\n")
+	}
 	fmt.Fprintf(&output, "/** Host-owned source of private connector credentials. */\nexport type CredentialSource = %s<Credentials>;\n\n", providerType)
 	for _, model := range models {
 		comment := "JSON model " + model.Name + " from the connector Go package."
@@ -313,6 +346,14 @@ func typeScriptFieldName(wireName string) string {
 		name += strings.ToUpper(part[:1]) + part[1:]
 	}
 	return name
+}
+
+func typeScriptCredentialValue(field schema.Field) string {
+	value := "fields[" + strconv.Quote(field.Name) + "] as string"
+	if field.Type == "secretString" {
+		return "new SecretString(" + value + ")"
+	}
+	return value
 }
 
 func generateTypeScriptDefinitions(manifest schema.Manifest, operations []schema.Operation) ([]byte, error) {

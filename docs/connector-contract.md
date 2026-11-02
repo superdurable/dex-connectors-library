@@ -415,6 +415,13 @@ func (credentials Credentials) Validate() error {
 }
 ```
 
+Generated Python project connections and TypeScript `decodeCredentials` also
+select one method from the stored `auth_method`, then the connection's
+`authMethodId`, then the manifest default. They require only the selected
+method's credential fields and leave other methods' fields unset. Generated
+Python `Config` and TypeScript `ConfigSchema` include method-specific settings
+as optional fields; Dex Web enforces their selected-method requirements.
+
 `SecretString` has private storage, redacted formatting, and rejects JSON,
 YAML, and text serialization. Connector-specific credential types prevent a
 Google Sheets connection from being accidentally passed to Gmail, even when
