@@ -50,7 +50,7 @@ GO_VET_BUILD_TAG_SETS = ("", "integration", "live")
 GITHUB_REQUEST_ATTEMPTS = 5
 TRANSIENT_HTTP_STATUSES = frozenset({429, 500, 502, 503, 504})
 # A rate limit whose reset is further away than this fails the request instead of waiting for it.
-GITHUB_RATE_LIMIT_MAX_WAIT_SECONDS = 60
+GITHUB_RATE_LIMIT_MAX_WAIT_SECONDS = 1200
 GO_MODULE_COPY_IGNORED_NAMES = ("node_modules", "dist", ".git")
 
 
@@ -270,6 +270,7 @@ def with_transient_retries(operation):
                         f"GitHub rate limit (HTTP {error.code}): retry in {int(wait)} s, "
                         f"beyond the {GITHUB_RATE_LIMIT_MAX_WAIT_SECONDS} s this gate waits"
                     ) from error
+                print(f"GitHub rate limit (HTTP {error.code}); waiting {int(wait)} s for reset", flush=True)
                 # Jitter spreads the retries of the jobs that the same limit stopped.
                 delay = wait + random.uniform(0, delay)
         except (urllib.error.URLError, http.client.IncompleteRead, ConnectionError, TimeoutError):
@@ -367,6 +368,22 @@ def stable_cli_tags(repository: str) -> dict[str, str]:
 
 def published_release(repository: str, tag: str) -> dict[str, object] | None:
     """Returns tag's published, non-prerelease GitHub release, or None when tag has none."""
+    inventory_path = os.environ.get("GH_RELEASE_INVENTORY_PATH")
+    if repository == REPOSITORY and inventory_path:
+        inventory = json.loads(Path(inventory_path).read_text(encoding="utf-8"))
+        if os.environ.get("CONNECTOR_RELEASE_TAG") == tag:
+            # This job uploaded the release after its run-level inventory was captured.
+            assets = ["connector-release.json", "connector-release.json.sha256", "connector-release.complete",
+                      "connector-ui.tgz", "connector-ui.tgz.sha256"]
+        elif inventory.get("_inventory_unavailable"):
+            assets = None
+        else:
+            assets = inventory.get(tag)
+        if assets is None:
+            return None
+        return {"tag_name": tag, "assets": [
+            {"name": name, "browser_download_url": f"https://github.com/{repository}/releases/download/{tag}/{name}"}
+            for name in assets]}
     try:
         release = github_json(f"https://api.github.com/repos/{repository}/releases/tags/{tag}")
     except urllib.error.HTTPError as error:
