@@ -49,7 +49,7 @@ mkdir -p /tmp/newsapi-release
 go run ./cmd/connectorctl release-artifact \
   --manifest connectors/newsapi/connector.yaml \
   --module-path github.com/superdurable/dex-connectors-library/connectors/newsapi/go \
-  --version v0.23.0 --tag connectors/newsapi/go/v0.23.0 \
+  --version v0.23.1 --tag connectors/newsapi/go/v0.23.1 \
   --source-sha "$(git rev-parse HEAD)" \
   --output /tmp/newsapi-release/connector-release.json \
   --digest-output /tmp/newsapi-release/connector-release.json.sha256
