@@ -9,6 +9,11 @@ metadata:
 spec:
   provider: harvest
   languages:
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-harvest'
+      operations: [listProjects, listTimeEntries]
+      triggers: []
     python:
       version: v0.1.0
       operations: [listProjects, listTimeEntries]
