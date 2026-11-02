@@ -20,6 +20,7 @@ export interface ClientCredentials {
 
 /** Successful replacement material from one OAuth grant. */
 export class TokenResponse {
+  readonly #responseFields: Readonly<Record<string, unknown>>;
   /** Replacement access token. */ readonly accessToken: SecretString;
   /** Rotated refresh token, empty when the provider retained it. */ readonly refreshToken: SecretString;
   /** Access lifetime in milliseconds; zero only when explicitly accepted. */ readonly expiresInMs: number;
@@ -29,7 +30,7 @@ export class TokenResponse {
   /** Only explicitly retained non-standard response fields. */ readonly retainedFields: Readonly<Record<string, unknown>>;
 
   /** Capture validated provider response fields. */
-  constructor(fields: { accessToken: SecretString; refreshToken: SecretString; expiresInMs: number; refreshTokenExpiresInMs: number; scope: string; tokenType: string; retainedFields: Record<string, unknown> }) {
+  constructor(fields: { accessToken: SecretString; refreshToken: SecretString; expiresInMs: number; refreshTokenExpiresInMs: number; scope: string; tokenType: string; retainedFields: Record<string, unknown>; responseFields?: Record<string, unknown> }) {
     this.accessToken = fields.accessToken;
     this.refreshToken = fields.refreshToken;
     this.expiresInMs = fields.expiresInMs;
@@ -37,10 +38,21 @@ export class TokenResponse {
     this.scope = fields.scope;
     this.tokenType = fields.tokenType;
     this.retainedFields = fields.retainedFields;
+    this.#responseFields = fields.responseFields ?? {};
   }
 
   /** Keep the previous refresh token when no rotated value was returned. */
   nextRefreshToken(prior: SecretString): SecretString { return this.refreshToken.reveal() ? this.refreshToken : prior; }
+
+  /** Read one manifest-mapped string without exposing the token response in object fields. */
+  credentialValue(path: string): string | undefined {
+    let value: unknown = this.#responseFields;
+    for (const member of path.split('.')) {
+      if (!value || typeof value !== 'object' || Array.isArray(value) || !Object.hasOwn(value, member)) return undefined;
+      value = (value as Record<string, unknown>)[member];
+    }
+    return typeof value === 'string' ? value : undefined;
+  }
 }
 
 /** One provider token endpoint and its declared response rules. */
@@ -156,7 +168,7 @@ export class TokenEndpoint {
     for (const field of options.retainedResponseFields ?? []) if (Object.hasOwn(decoded, field)) retainedFields[field] = decoded[field];
     const refreshToken = typeof decoded.refresh_token === 'string' ? decoded.refresh_token : '';
     const refreshTokenExpiry = typeof decoded.refresh_token_expires_in === 'number' && decoded.refresh_token_expires_in > 0 ? decoded.refresh_token_expires_in : 0;
-    return new TokenResponse({ accessToken: new SecretString(accessToken), refreshToken: new SecretString(refreshToken), expiresInMs: (expiresIn as number | undefined ?? 0) * 1000, refreshTokenExpiresInMs: refreshTokenExpiry * 1000, scope: typeof decoded.scope === 'string' ? decoded.scope : '', tokenType: typeof tokenType === 'string' ? tokenType : '', retainedFields });
+    return new TokenResponse({ accessToken: new SecretString(accessToken), refreshToken: new SecretString(refreshToken), expiresInMs: (expiresIn as number | undefined ?? 0) * 1000, refreshTokenExpiresInMs: refreshTokenExpiry * 1000, scope: typeof decoded.scope === 'string' ? decoded.scope : '', tokenType: typeof tokenType === 'string' ? tokenType : '', retainedFields, responseFields: decoded });
   }
 }
 
@@ -218,6 +230,8 @@ export function hasExactScopes(returnedScope: string, requiredScopes: readonly s
   const granted = new Set(returnedScope.split(/[ ,]+/).filter(Boolean));
   return granted.size === new Set(requiredScopes).size && hasAllScopes(returnedScope, requiredScopes);
 }
+
+export { ManifestCredentialRefreshDriver } from './manifest_refresh.js';
 
 function lifetimeShare(maximumMs: number, issuedAt?: Date, expiresAt?: Date): number {
   const lifetimeMs = issuedAt && expiresAt ? expiresAt.getTime() - issuedAt.getTime() : 0;

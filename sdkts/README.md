@@ -1,6 +1,6 @@
 # Connector TypeScript SDK
 
-`@superdurable/connectors-sdk` is the provider-neutral TypeScript SDK for Dex connectors. It provides stable value contracts, typed Query and Mutation operations, Dex Step factories, credential refresh, OAuth token exchanges, HTTP safety helpers, project configuration loading, scripted mocks, and single-dispatch marker decisions. The package is at version `0.1.0`, requires Node 22 or 24, and uses `@superdurable/dex` 1.28.0 or newer. It is ESM-only, matching Dex: use `import`; direct `require()` fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`.
+`@superdurable/connectors-sdk` is the provider-neutral TypeScript SDK for Dex connectors. It provides stable value contracts, typed Query and Mutation operations, Dex Step factories, credential refresh, OAuth token exchanges, HTTP safety helpers, project configuration loading, scripted mocks, and single-dispatch marker decisions. The package is at version `0.2.0`, requires Node 22 or 24, and uses `@superdurable/dex` 1.28.0 or newer. It is ESM-only, matching Dex: use `import`; direct `require()` fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`.
 
 Install dependencies and verify the package from this directory:
 
@@ -17,6 +17,7 @@ node examples/refreshing_project.mjs
 node examples/shared_project.mjs
 node examples/connectormock.mjs
 node examples/oauthtoken.mjs
+node examples/manifest_refresh.mjs
 node examples/singledispatch.mjs
 node examples/fence.mjs
 ```
@@ -212,7 +213,7 @@ mutation.assertNoFailures();
 
 ## OAuth token refresh
 
-The [runnable OAuth exchange example](examples/oauthtoken.mjs) shows a provider-neutral refresh-token grant. The injected `fetch` returns a local fixture; a connector normally uses the provider's fixed HTTPS token endpoint. `TokenEndpoint` also supports client-credentials and JWT-bearer grants, optional Basic authentication, declared response fields, bounded responses, and terminal OAuth error-code classification. A connector-specific `CredentialRefreshDriver` owns the credential shape; the host owns serialized persistence and must keep an old refresh token when the provider omits a replacement.
+The [runnable OAuth exchange example](examples/oauthtoken.mjs) shows a provider-neutral refresh-token grant. The injected `fetch` returns a local fixture; a connector normally uses the provider's fixed HTTPS token endpoint. `TokenEndpoint` also supports client-credentials and JWT-bearer grants, optional Basic authentication, declared response fields, bounded responses, and terminal OAuth error-code classification. The [manifest refresh example](examples/manifest_refresh.mjs) uses `ManifestCredentialRefreshDriver` with a generated authorization declaration and field map to exchange refresh-token, client-credentials, or JWT-bearer grants, preserve rotated material, check scopes, and replace only mapped fields. The host still owns serialized persistence. The current project provider rejects a result without future expiry, including a grant whose manifest says `missingExpiry: keep`.
 
 ```js
 import { SecretString } from '../dist/index.js';
