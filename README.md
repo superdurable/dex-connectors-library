@@ -2,11 +2,11 @@
 
 [Dex main repository](https://github.com/superdurable/dex) ·
 [Documentation](https://docs.superdurable.io) ·
-[Connector directory](https://superdurable.github.io/dex-connectors-library/)
+[Connector directory](https://connectors.superdurable.io/)
 
 ## Overview
 
-[![Dex Connectors directory](https://superdurable.github.io/dex-connectors-library/card.png)](https://superdurable.github.io/dex-connectors-library/)
+[![Dex Connectors directory](https://connectors.superdurable.io/card.png)](https://connectors.superdurable.io/)
 
 Dex Connectors Library is the open-source library that connects Dex
 applications to products and services across the internet.

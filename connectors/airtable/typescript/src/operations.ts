@@ -9,10 +9,10 @@ import type { FieldEqualityFilter, GetRecordInput, ListRecordsInput, Record as A
 const baseIdPattern = /^app[0-9A-Za-z]{14}$/;
 const recordIdPattern = /^rec[0-9A-Za-z]{14}$/;
 const zeroTime = '0001-01-01T00:00:00Z';
-const zeroRecord: AirtableRecord = { id: '', createdTime: zeroTime, fields: null };
-const zeroPage: RecordPage = { records: null };
-const zeroUpserted: UpsertedRecords = { records: null, createdRecordIds: null, updatedRecordIds: null };
-const zeroUpdated: UpdatedRecords = { records: null };
+const zeroRecord: AirtableRecord = { id: '', createdTime: zeroTime, fields: {} };
+const zeroPage: RecordPage = { records: [] };
+const zeroUpserted: UpsertedRecords = { records: [], createdRecordIds: [], updatedRecordIds: [] };
+const zeroUpdated: UpdatedRecords = { records: [] };
 
 /** Query one bounded Airtable record page. */
 export class ListRecordsOperation implements Query<ListRecordsInput, RecordPage> {
