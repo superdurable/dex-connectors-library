@@ -14,6 +14,7 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/internal/codegen/gomodel"
 	"github.com/superdurable/dex-connectors-library/schema"
+	"gopkg.in/yaml.v3"
 )
 
 func TestPythonCodegenGoldenBitbucketMockUsesProviderIdentity(t *testing.T) {
@@ -168,6 +169,28 @@ func TestPythonCodegenPreservesOptionalPointerPresence(t *testing.T) {
 func TestPythonGenerateCheckDetectsModelDrift(t *testing.T) {
 	manifestSource := filepath.Join("..", "..", "connectors", "atlassian", "bitbucket", "connector.yaml")
 	manifestContents, err := os.ReadFile(manifestSource)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var manifestDocument map[string]any
+	if err := yaml.Unmarshal(manifestContents, &manifestDocument); err != nil {
+		t.Fatal(err)
+	}
+	manifestSpecification, ok := manifestDocument["spec"].(map[string]any)
+	if !ok {
+		t.Fatal("Bitbucket manifest has no spec")
+	}
+	languageDeclarations, ok := manifestSpecification["languages"].(map[string]any)
+	if !ok {
+		t.Fatal("Bitbucket manifest has no language declarations")
+	}
+	pythonDeclaration, ok := languageDeclarations["python"]
+	if !ok {
+		t.Fatal("Bitbucket manifest has no Python declaration")
+	}
+	// Keep the Python drift fixture independent of the real connector's other language packages.
+	manifestSpecification["languages"] = map[string]any{"python": pythonDeclaration}
+	manifestContents, err = yaml.Marshal(manifestDocument)
 	if err != nil {
 		t.Fatal(err)
 	}
