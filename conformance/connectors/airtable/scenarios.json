@@ -141,7 +141,7 @@
         "branch": "offsetExpired",
         "failureKind": "NOT_FOUND",
         "output": {
-          "records": null
+          "records": []
         },
         "requestCount": 1,
         "retry": false,
@@ -226,7 +226,7 @@
         "branch": "providerRejected",
         "failureKind": "AUTHORIZATION",
         "output": {
-          "records": null
+          "records": []
         },
         "requestCount": 1,
         "retry": false,
@@ -311,7 +311,7 @@
         "branch": "invalidResponse",
         "failureKind": "PROTOCOL",
         "output": {
-          "records": null
+          "records": []
         },
         "requestCount": 1,
         "retry": false,
@@ -360,7 +360,7 @@
         "branch": "defect",
         "failureKind": "VALIDATION",
         "output": {
-          "records": null
+          "records": []
         },
         "requestCount": 0,
         "retry": false,
@@ -716,7 +716,7 @@
         "failureKind": "NOT_FOUND",
         "output": {
           "createdTime": "0001-01-01T00:00:00Z",
-          "fields": null,
+          "fields": {},
           "id": ""
         },
         "requestCount": 1,
@@ -757,7 +757,7 @@
         "failureKind": "AUTHORIZATION",
         "output": {
           "createdTime": "0001-01-01T00:00:00Z",
-          "fields": null,
+          "fields": {},
           "id": ""
         },
         "requestCount": 1,
@@ -798,7 +798,7 @@
         "failureKind": "PROTOCOL",
         "output": {
           "createdTime": "0001-01-01T00:00:00Z",
-          "fields": null,
+          "fields": {},
           "id": ""
         },
         "requestCount": 1,
@@ -822,7 +822,7 @@
         "failureKind": "VALIDATION",
         "output": {
           "createdTime": "0001-01-01T00:00:00Z",
-          "fields": null,
+          "fields": {},
           "id": ""
         },
         "requestCount": 0,
@@ -1071,9 +1071,9 @@
         "branch": "providerRejected",
         "failureKind": "AUTHORIZATION",
         "output": {
-          "createdRecordIds": null,
-          "records": null,
-          "updatedRecordIds": null
+          "createdRecordIds": [],
+          "records": [],
+          "updatedRecordIds": []
         },
         "requestCount": 1,
         "retry": false,
@@ -1143,9 +1143,9 @@
         "branch": "invalidResponse",
         "failureKind": "PROTOCOL",
         "output": {
-          "createdRecordIds": null,
-          "records": null,
-          "updatedRecordIds": null
+          "createdRecordIds": [],
+          "records": [],
+          "updatedRecordIds": []
         },
         "requestCount": 1,
         "retry": false,
@@ -1179,9 +1179,9 @@
         "branch": "defect",
         "failureKind": "VALIDATION",
         "output": {
-          "createdRecordIds": null,
-          "records": null,
-          "updatedRecordIds": null
+          "createdRecordIds": [],
+          "records": [],
+          "updatedRecordIds": []
         },
         "requestCount": 0,
         "retry": false,
@@ -1517,7 +1517,7 @@
         "branch": "notFound",
         "failureKind": "NOT_FOUND",
         "output": {
-          "records": null
+          "records": []
         },
         "requestCount": 1,
         "retry": false,
@@ -1579,7 +1579,7 @@
         "branch": "providerRejected",
         "failureKind": "AUTHORIZATION",
         "output": {
-          "records": null
+          "records": []
         },
         "requestCount": 1,
         "retry": false,
@@ -1641,7 +1641,7 @@
         "branch": "invalidResponse",
         "failureKind": "PROTOCOL",
         "output": {
-          "records": null
+          "records": []
         },
         "requestCount": 1,
         "retry": false,
@@ -1672,7 +1672,7 @@
         "branch": "defect",
         "failureKind": "VALIDATION",
         "output": {
-          "records": null
+          "records": []
         },
         "requestCount": 0,
         "retry": false,
