@@ -136,7 +136,7 @@ class Client:
             ):
                 raise ValueError("invalid Gorgias credential")
             return credentials, None
-        except (ValueError, LookupError, OSError, AttributeError):
+        except Exception:
             return None, failure(
                 FailureKind.AUTHENTICATION, operation, "connection credentials are unavailable"
             )

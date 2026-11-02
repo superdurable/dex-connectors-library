@@ -6,7 +6,7 @@ import html
 import json
 import re
 from dataclasses import replace
-from datetime import datetime
+from functools import cmp_to_key
 from typing import Any
 
 from dex_connectors.sdk import (
@@ -113,16 +113,23 @@ def _query_exchange(
 
 
 def _mutation_exchange(
-    exchange: Exchange, receipt: Receipt, zero: Any, has_not_found: bool = False
+    exchange: Exchange,
+    receipt: Receipt,
+    zero: Any,
+    has_not_found: bool = False,
+    retry_invalid: bool = False,
+    reject_invalid: bool = False,
 ) -> MutationAttempt[Any] | None:
     if exchange.outcome == "success":
         return None
     assert exchange.failure is not None
-    if exchange.outcome in _RETRY_OUTCOMES:
+    if exchange.outcome in _RETRY_OUTCOMES or (retry_invalid and exchange.outcome == "invalid"):
         return MutationAttempt.retry(exchange.failure, exchange.retry_after)
     branch = (
         defs.NOT_FOUND
         if has_not_found and exchange.outcome == "notFound"
+        else defs.PROVIDER_REJECTED
+        if reject_invalid and exchange.outcome == "invalid"
         else defs.INVALID_RESPONSE
         if exchange.outcome == "invalid"
         else defs.DEFECT
@@ -670,7 +677,7 @@ class CreateTicketOperation:
                         result.retry_after,
                         result.outcome in ("rateLimited", "notSent", "unavailable", "invalid"),
                     )
-                terminal = _mutation_exchange(result, receipt, zero)
+                terminal = _mutation_exchange(result, receipt, zero, retry_invalid=True)
                 assert terminal is not None
                 return terminal
             if ticket is not None:
@@ -735,7 +742,7 @@ class CreateTicketOperation:
             return MutationAttempt.retry(result.failure, result.retry_after)
         if result.outcome in ("unavailable", "invalid"):
             assert result.failure is not None
-            return MutationAttempt.retry(result.failure, max(result.retry_after, 2))
+            return MutationAttempt.retry(result.failure, min(max(result.retry_after, 2), 60))
         if result.outcome != "success":
             branch = defs.DEFECT if result.outcome == "defect" else defs.PROVIDER_REJECTED
             return MutationAttempt.branch_result(branch, zero, receipt, result.failure)
@@ -830,7 +837,7 @@ class AddNoteOperation:
                         result.retry_after,
                         result.outcome in ("rateLimited", "notSent", "unavailable", "invalid"),
                     )
-                terminal = _mutation_exchange(result, receipt, zero, True)
+                terminal = _mutation_exchange(result, receipt, zero, True, retry_invalid=True)
                 assert terminal is not None
                 return terminal
             if message is not None:
@@ -856,12 +863,24 @@ class AddNoteOperation:
         if input.is_public_reply:
             route_exchange = await self.client.exchange(call, credentials, operation, "GET", path)
             receipt = self.client.receipt(call, route_exchange, input.ticket_id)
-            terminal = _mutation_exchange(route_exchange, receipt, zero, True)
+            terminal = _mutation_exchange(route_exchange, receipt, zero, True, reject_invalid=True)
             if terminal:
                 return terminal
             try:
                 ticket_wire = json.loads(route_exchange.body)
                 ticket = decode_ticket(ticket_wire, input.ticket_id)
+            except (ValueError, TypeError, KeyError, AttributeError) as error:
+                return MutationAttempt.branch_result(
+                    defs.PROVIDER_REJECTED,
+                    zero,
+                    receipt,
+                    failure(
+                        FailureKind.PROTOCOL,
+                        operation,
+                        "Gorgias returned an invalid ticket, so the reply could not be routed: " + str(error),
+                    ),
+                )
+            try:
                 route = _reply_route(list(ticket_wire.get("messages") or ()), ticket.subject)
             except (ValueError, TypeError, KeyError, AttributeError) as error:
                 return MutationAttempt.branch_result(
@@ -902,7 +921,7 @@ class AddNoteOperation:
             return MutationAttempt.retry(result.failure, result.retry_after)
         if result.outcome in ("unavailable", "invalid"):
             assert result.failure is not None
-            return MutationAttempt.retry(result.failure, max(result.retry_after, 2))
+            return MutationAttempt.retry(result.failure, min(max(result.retry_after, 2), 60))
         if result.outcome != "success":
             branch = (
                 defs.NOT_FOUND
@@ -937,11 +956,17 @@ class AddNoteOperation:
 def _reply_route(messages: list[dict[str, Any]], ticket_subject: str) -> tuple[int, str, str, str]:
     """Select the newest customer email and a known helpdesk sender address."""
 
-    def message_order(message: dict[str, Any]) -> tuple[datetime, int]:
+    def message_order(candidate: dict[str, Any], current: dict[str, Any]) -> int:
+        candidate_id = candidate.get("id", 0)
+        current_id = current.get("id", 0)
         try:
-            return parse_time(message["created_datetime"]), message.get("id", 0)
+            candidate_at = parse_time(candidate["created_datetime"])
+            current_at = parse_time(current["created_datetime"])
         except (ValueError, KeyError, TypeError):
-            return datetime.min, message.get("id", 0)
+            return int(candidate_id > current_id) - int(candidate_id < current_id)
+        if candidate_at == current_at:
+            return int(candidate_id > current_id) - int(candidate_id < current_id)
+        return (candidate_at > current_at) - (candidate_at < current_at)
 
     customer_messages = [
         message
@@ -955,7 +980,7 @@ def _reply_route(messages: list[dict[str, Any]], ticket_subject: str) -> tuple[i
         raise ValueError(
             "the ticket has no email from the customer to reply to; add an internal note instead"
         )
-    newest = max(customer_messages, key=message_order)
+    newest = max(customer_messages, key=cmp_to_key(message_order))
     integration_id = newest.get("integration_id") or 0
     agent_messages = (
         [
@@ -970,7 +995,7 @@ def _reply_route(messages: list[dict[str, Any]], ticket_subject: str) -> tuple[i
         else []
     )
     if agent_messages:
-        support_address = max(agent_messages, key=message_order)["source"]["from"]["address"]
+        support_address = max(agent_messages, key=cmp_to_key(message_order))["source"]["from"]["address"]
     else:
         recipients = _recipient_addresses(newest)
         if len(recipients) != 1:

@@ -5,10 +5,21 @@
 from datetime import UTC, datetime
 
 import pytest
-from dex_connectors.sdk import ConnectionRef, SecretString, StaticCredentialProvider
+from dex_connectors.sdk import (
+    Call,
+    CallID,
+    ConnectionRef,
+    FailureKind,
+    IdempotencyKey,
+    OperationRef,
+    ReauthorizationRequiredError,
+    SecretString,
+    StaticCredentialProvider,
+)
 
 from dex_connectors.gorgias import Client, Config, Credentials
 from dex_connectors.gorgias.client import bare_email, decode_ticket, describe_error, parse_time
+from dex_connectors.gorgias.models import CreateTicketInput, TicketRequesterInput
 from dex_connectors.gorgias.operations import _reply_route
 
 
@@ -59,6 +70,56 @@ def test_reply_route_rejects_ambiguous_support_address() -> None:
     }
     with pytest.raises(ValueError, match="several addresses"):
         _reply_route([message], "Question")
+
+
+def test_reply_route_uses_ids_when_a_timestamp_is_invalid() -> None:
+    def customer_message(message_id: int, timestamp: str, address: str) -> dict[str, object]:
+        return {
+            "id": message_id,
+            "channel": "email",
+            "from_agent": False,
+            "created_datetime": timestamp,
+            "source": {
+                "from": {"address": address},
+                "to": [{"address": "help@example.com"}],
+            },
+        }
+
+    messages = [
+        customer_message(2, "2026-01-20T09:00:00Z", "older@example.com"),
+        customer_message(3, "invalid", "newer@example.com"),
+    ]
+    assert _reply_route(messages, "Question")[2] == "newer@example.com"
+
+
+@pytest.mark.parametrize("error", [ReauthorizationRequiredError(), RuntimeError("private detail")])
+async def test_resolve_credentials_maps_all_provider_errors(error: Exception) -> None:
+    class FailingCredentialProvider:
+        async def resolve(self, call: Call) -> Credentials:
+            raise error
+
+    client = Client(Config("acme"), FailingCredentialProvider())
+    call = Call(
+        CallID("call"),
+        ConnectionRef("gorgias", "gorgias"),
+        OperationRef("gorgias", "createTicket"),
+        IdempotencyKey("key"),
+    )
+    credentials, failure = await client.resolve_credentials(call, "createTicket")
+    assert credentials is None
+    assert failure is not None and failure.kind == FailureKind.AUTHENTICATION
+    assert "private detail" not in failure.message
+    attempt = await client.create_ticket().invoke(
+        call,
+        CreateTicketInput(
+            subject="Question",
+            description="Please help",
+            requester=TicketRequesterInput(email="ada@example.com"),
+        ),
+    )
+    assert attempt.kind == "uncertain"
+    assert attempt.failure is not None and attempt.failure.kind == FailureKind.AUTHENTICATION
+    await client.aclose()
 
 
 def test_client_rejects_non_loopback_http_endpoint() -> None:

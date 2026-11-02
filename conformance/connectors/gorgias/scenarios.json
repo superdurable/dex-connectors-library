@@ -2630,6 +2630,394 @@
         "callId": "54e5d380-4f04-50c6-b51c-d82a8f243943",
         "state": "claimed"
       }
+    },
+    {
+      "attempts": 2,
+      "callId": "3e3a7a5b-fac4-5d1b-a1bf-06bd4a3a9269",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"msg\":\"temporarily_unavailable\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tickets",
+          "requestBody": {
+            "assignee_team": {
+              "id": 8
+            },
+            "assignee_user": {
+              "id": 7
+            },
+            "channel": "api",
+            "customer": {
+              "email": "ada@example.com",
+              "name": "Ada"
+            },
+            "external_id": "dex-3e3a7a5b-fac4-5d1b-a1bf-06bd4a3a9269",
+            "from_agent": false,
+            "messages": [
+              {
+                "body_html": "Please help",
+                "body_text": "Please help",
+                "channel": "api",
+                "from_agent": false,
+                "sender": {
+                  "email": "ada@example.com",
+                  "name": "Ada"
+                },
+                "stripped_text": "Please help",
+                "subject": "New ticket",
+                "via": "api"
+              }
+            ],
+            "priority": "high",
+            "status": "open",
+            "subject": "New ticket",
+            "tags": [
+              {
+                "name": "new"
+              }
+            ],
+            "via": "api"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbTpnb3JnaWFzVGVzdEtleTAxMjM0NTY3ODlhYmNkZWY="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        },
+        {
+          "body": "{\"data\": {\"id\": 1}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tickets",
+          "query": {
+            "external_id": [
+              "dex-3e3a7a5b-fac4-5d1b-a1bf-06bd4a3a9269"
+            ],
+            "limit": [
+              "5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbTpnb3JnaWFzVGVzdEtleTAxMjM0NTY3ODlhYmNkZWY="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-3e3a7a5b-fac4-5d1b-a1bf-06bd4a3a9269",
+      "input": {
+        "assigneeTeamId": 8,
+        "assigneeUserId": 7,
+        "description": "Please help",
+        "priority": "high",
+        "requester": {
+          "email": "ada@example.com",
+          "name": "Ada"
+        },
+        "status": "open",
+        "subject": "New ticket",
+        "tags": [
+          "new"
+        ]
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "RATE_LIMIT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createTicket-rate-limit-then-malformed-lookup",
+      "operation": "createTicket"
+    },
+    {
+      "attempts": 2,
+      "callId": "54e5d380-4f04-50c6-b51c-d82a8f243943",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"msg\":\"temporarily_unavailable\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tickets/7001/messages",
+          "requestBody": {
+            "body_html": "Follow up",
+            "body_text": "Follow up",
+            "channel": "internal-note",
+            "external_id": "dex-54e5d380-4f04-50c6-b51c-d82a8f243943",
+            "from_agent": true,
+            "public": false,
+            "sender": {
+              "email": "agent@acme.example.com"
+            },
+            "via": "api"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbTpnb3JnaWFzVGVzdEtleTAxMjM0NTY3ODlhYmNkZWY="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        },
+        {
+          "body": "{\"id\":7001,\"status\":\"open\",\"messages\":\"bad\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tickets/7001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbTpnb3JnaWFzVGVzdEtleTAxMjM0NTY3ODlhYmNkZWY="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-54e5d380-4f04-50c6-b51c-d82a8f243943",
+      "input": {
+        "body": "Follow up",
+        "ticketId": 7001
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "RATE_LIMIT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "addNote-rate-limit-then-malformed-lookup",
+      "operation": "addNote"
+    },
+    {
+      "callId": "3e3a7a5b-fac4-5d1b-a1bf-06bd4a3a9269",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"msg\":\"temporarily_unavailable\"}}",
+          "headers": {
+            "Retry-After": "600"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tickets",
+          "requestBody": {
+            "assignee_team": {
+              "id": 8
+            },
+            "assignee_user": {
+              "id": 7
+            },
+            "channel": "api",
+            "customer": {
+              "email": "ada@example.com",
+              "name": "Ada"
+            },
+            "external_id": "dex-3e3a7a5b-fac4-5d1b-a1bf-06bd4a3a9269",
+            "from_agent": false,
+            "messages": [
+              {
+                "body_html": "Please help",
+                "body_text": "Please help",
+                "channel": "api",
+                "from_agent": false,
+                "sender": {
+                  "email": "ada@example.com",
+                  "name": "Ada"
+                },
+                "stripped_text": "Please help",
+                "subject": "New ticket",
+                "via": "api"
+              }
+            ],
+            "priority": "high",
+            "status": "open",
+            "subject": "New ticket",
+            "tags": [
+              {
+                "name": "new"
+              }
+            ],
+            "via": "api"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbTpnb3JnaWFzVGVzdEtleTAxMjM0NTY3ODlhYmNkZWY="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 60000,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-3e3a7a5b-fac4-5d1b-a1bf-06bd4a3a9269",
+      "input": {
+        "assigneeTeamId": 8,
+        "assigneeUserId": 7,
+        "description": "Please help",
+        "priority": "high",
+        "requester": {
+          "email": "ada@example.com",
+          "name": "Ada"
+        },
+        "status": "open",
+        "subject": "New ticket",
+        "tags": [
+          "new"
+        ]
+      },
+      "name": "createTicket-server-error-retry-cap",
+      "operation": "createTicket"
+    },
+    {
+      "callId": "54e5d380-4f04-50c6-b51c-d82a8f243943",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"msg\":\"temporarily_unavailable\"}}",
+          "headers": {
+            "Retry-After": "600"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tickets/7001/messages",
+          "requestBody": {
+            "body_html": "Follow up",
+            "body_text": "Follow up",
+            "channel": "internal-note",
+            "external_id": "dex-54e5d380-4f04-50c6-b51c-d82a8f243943",
+            "from_agent": true,
+            "public": false,
+            "sender": {
+              "email": "agent@acme.example.com"
+            },
+            "via": "api"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbTpnb3JnaWFzVGVzdEtleTAxMjM0NTY3ODlhYmNkZWY="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 60000,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-54e5d380-4f04-50c6-b51c-d82a8f243943",
+      "input": {
+        "body": "Follow up",
+        "ticketId": 7001
+      },
+      "name": "addNote-server-error-retry-cap",
+      "operation": "addNote"
+    },
+    {
+      "callId": "54e5d380-4f04-50c6-b51c-d82a8f243943",
+      "exchanges": [
+        {
+          "body": "{\"id\":7001,\"status\":\"open\",\"messages\":\"bad\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tickets/7001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbTpnb3JnaWFzVGVzdEtleTAxMjM0NTY3ODlhYmNkZWY="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "message": {
+            "body": "",
+            "channel": "",
+            "createdAt": "0001-01-01T00:00:00Z",
+            "id": 0,
+            "isFromAgent": false,
+            "isPublic": false,
+            "ticketId": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dex-54e5d380-4f04-50c6-b51c-d82a8f243943",
+      "input": {
+        "body": "Follow up",
+        "isPublicReply": true,
+        "ticketId": 7001
+      },
+      "name": "addNote-public-reply-invalid-route-page",
+      "operation": "addNote"
     }
   ],
   "schemaVersion": 1
