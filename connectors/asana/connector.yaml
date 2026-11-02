@@ -7,6 +7,11 @@ metadata:
   company: Asana
   version: v0.23.0
 spec:
+  languages:
+    typescript:
+      version: v0.1.0
+      operations: [listTasks, getTask, createTask, updateTask, addComment]
+      triggers: []
   provider: asana
   codegen:
     go:
