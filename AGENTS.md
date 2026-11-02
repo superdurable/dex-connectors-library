@@ -184,6 +184,19 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
   defers release.
 - `spec.languages.python.version` and `spec.languages.typescript.version` release their packages independently of Go and each other. Their package metadata must match the manifest.
 - A Python or TypeScript package lists exactly the operations and Triggers it implements in `spec.languages.<language>`; the catalog and site show per-capability language support.
+- Every Python and TypeScript connector package must replay Go-verified provider
+  scenarios from `conformance/connectors/<directory>/scenarios.json`. Cover each
+  Go-tested operation branch, Retry, uncertainty, request count, and provider
+  idempotency-key behavior. CI requires fixtures for new or changed Python and
+  TypeScript packages and any connector with existing fixtures. Existing packages
+  without fixtures report `missing conformance (legacy)` on Go-only changes.
+  Porters write scenario inputs, prior state, and provider responses; Go record
+  mode writes complete requests, exact outputs, production idempotency keys,
+  and retry decisions. CI verifies a nonzero value for every input field, each
+  declared branch, separate final-attempt 429 and 5xx Retry scenarios and a
+  transport failure per operation, uncertainty when declared, SDK-encoded exact
+  outputs, and exact Go recordings. Pending scenarios are rejected; other recovery paths
+  remain a review requirement.
 - A connector PR that should release moves only that connector's version one
   step from its latest tag: patch for a fix, minor for an addition such as an
   operation or mocks, and for a breaking change `(breaking)` with a minor bump
@@ -236,8 +249,13 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
 ## PR, Commit, and Branch Rules
 
 - Use one released module per PR unless a repository-wide mechanical change
-  requires several.
-- Use `sdkgo:`, `sdkpython:`, `sdkts:`, `connector(<slug>):`, `tooling:`, or `docs:` subjects.
+  requires several. A connector batch port PR may contain 5-8 connectors of one
+  language when every package is a first `v0.1.0` release and passes conformance.
+  The coordinator merges one batch at a time and confirms its Release run,
+  including first publish of new PyPI or npm projects, succeeded before merging
+  the next batch because PyPI limits new-project creation rates.
+- Use `sdkgo:`, `sdkpython:`, `sdkts:`, `connector(<slug>):`,
+  `connectors(python):`, `connectors(typescript):`, `tooling:`, or `docs:` subjects.
 - Put the exact lowercase token `(breaking)` in the PR title or body and final
   commit message for every public breaking change.
 - Fetch and branch from the latest `origin/main`. See

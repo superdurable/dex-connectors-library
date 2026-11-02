@@ -1,4 +1,4 @@
-.PHONY: check test test-common test-conformance test-connectors test-sdkpython test-sdkpython-integration test-sdkts test-python-connectors test-typescript-connectors catalog-check test-integration test-sdk-integration test-projectconfig-s3-integration test-connector-integration test-dex-compat-current test-dex-compat-released test-dex-compat-latest-go-sdk studio-bundle-theme react react-sdk react-connectors workspace githooks
+.PHONY: check test test-common test-conformance test-connector-conformance test-connectors test-sdkpython test-sdkpython-integration test-sdkts test-python-connectors test-typescript-connectors catalog-check test-integration test-sdk-integration test-projectconfig-s3-integration test-connector-integration test-dex-compat-current test-dex-compat-released test-dex-compat-latest-go-sdk studio-bundle-theme react react-sdk react-connectors workspace githooks
 
 CONNECTOR_CATALOG ?= catalog.yaml
 CONNECTOR_SCOPE ?= all
@@ -19,13 +19,20 @@ test: test-common test-connectors catalog-check
 test-common:
 	cd sdkgo && GOWORK=off go test -race -count=1 ./...
 	cd sdkgo && GOWORK=off go vet ./...
-	python3 -m unittest script/release/component_release_test.py script/release/github_release_inventory_test.py script/release/language_publish_test.py script/release/npm_publish_test.py script/release/retitle_connector_releases_test.py script/dex_compatibility_test.py script/branch_off_main_policy_test.py script/agent_rules_test.py script/studio_bundle_theme_check_test.py script/verify_go_subdir_migration_test.py
+	python3 -m unittest script/release/component_release_test.py script/release/github_release_inventory_test.py script/release/language_publish_test.py script/release/npm_publish_test.py script/release/retitle_connector_releases_test.py script/dex_compatibility_test.py script/branch_off_main_policy_test.py script/agent_rules_test.py script/connector_conformance_test.py script/studio_bundle_theme_check_test.py script/verify_go_subdir_migration_test.py
 	npm ci --prefix connectors/stripe/typescript
 	TS_CODEGEN_COMPILE=1 GOWORK=off go test -race ./...
 	GOWORK=off go vet ./...
 
 test-conformance:
 	cd sdkgo && GOWORK=off go test ./... -run '^TestConformance' -count=1
+
+test-connector-conformance:
+	@if [ -n "$(CONNECTOR_DIRECTORY)" ]; then \
+		python3 script/connector_conformance.py --connector "$(CONNECTOR_DIRECTORY)"; \
+	else \
+		python3 script/connector_conformance.py --base "$(CONNECTOR_BASE)" --head "$(CONNECTOR_HEAD)"; \
+	fi
 
 test-connectors:
 	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))"; \

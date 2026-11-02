@@ -35,7 +35,7 @@ func main() {
 
 func run(args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: connectorctl <validate|language-capabilities|catalog|release-matrix|release-candidate|test-matrix|generate|mocks|ui-artifact|release-artifact> [path ...]")
+		return errors.New("usage: connectorctl <validate|language-capabilities|conformance-operations|catalog|release-matrix|release-candidate|test-matrix|generate|mocks|ui-artifact|release-artifact> [path ...]")
 	}
 	switch args[0] {
 	case "validate":
@@ -60,6 +60,11 @@ func run(args []string) error {
 			return errors.New("usage: connectorctl language-capabilities <manifest> <python|typescript>")
 		}
 		return languageCapabilitiesCommand(args[1], args[2], os.Stdout)
+	case "conformance-operations":
+		if len(args) != 2 {
+			return errors.New("usage: connectorctl conformance-operations <manifest>")
+		}
+		return conformanceOperationsCommand(args[1], os.Stdout)
 	case "release-matrix":
 		return releaseMatrixCommand(args[1:])
 	case "test-matrix":
@@ -461,6 +466,10 @@ func generate(args []string) error {
 	if err != nil {
 		return err
 	}
+	conformanceTestFiles, err := generatedConformanceTestFiles(args[0])
+	if err != nil {
+		return err
+	}
 	languageManifestFiles, err := generatedLanguageManifestFiles(args[0], manifest)
 	if err != nil {
 		return err
@@ -489,6 +498,9 @@ func generate(args []string) error {
 		mockFiles[path] = contents
 	}
 	for path, contents := range sharedCredentialFiles {
+		mockFiles[path] = contents
+	}
+	for path, contents := range conformanceTestFiles {
 		mockFiles[path] = contents
 	}
 	for path, contents := range languageManifestFiles {

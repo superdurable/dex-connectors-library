@@ -4,9 +4,32 @@
 or a connector's `python/` directory, and TypeScript packages in `sdkts/` or a
 connector's `typescript/` directory. Their manifest language versions, package
 metadata, and tags are independent of Go and each other. Release the matching
-SDK first. Use `sdkpython:`, `sdkts:`, or `connector(<slug>):` subjects.
+SDK first. Use `sdkpython:`, `sdkts:`, or `connector(<slug>):` subjects for
+single modules.
 
 A Python or TypeScript package lists exactly the operations and Triggers it implements in `spec.languages.<language>`; the catalog and site show per-capability language support.
+
+Every Python and TypeScript connector package must replay Go-verified provider
+scenarios from `conformance/connectors/<directory>/scenarios.json`. Cover each
+Go-tested operation branch, Retry, uncertainty, request count, and provider
+idempotency-key behavior. CI requires fixtures for new or changed Python and
+TypeScript packages and any connector with existing fixtures. Existing packages
+without fixtures report `missing conformance (legacy)` on Go-only changes.
+Porters write scenario inputs, prior state, and provider responses; Go record
+mode writes complete requests, exact outputs, production idempotency keys,
+and retry decisions. CI verifies a nonzero value for every input field, each
+declared branch, separate final-attempt 429 and 5xx Retry scenarios and a
+transport failure per operation, uncertainty when declared, SDK-encoded exact
+outputs, and exact Go recordings. Pending scenarios are rejected; other recovery paths
+remain a review requirement.
+
+A connector batch port PR may contain 5-8 connectors of one language when every
+package is a first `v0.1.0` release and passes conformance. The coordinator
+merges one batch at a time and confirms its Release run, including first publish
+of new PyPI or npm projects, succeeded before merging the next batch because
+PyPI limits new-project creation rates. Other PRs follow the one released module
+rule in `AGENTS.md`. Use `connectors(python):` or `connectors(typescript):`
+subjects for batch ports.
 
 The first npm publish uses the scoped CI token; later publishes use trusted
 publishing when configured. Keep token rotation and optional trust setup in

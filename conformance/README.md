@@ -1,5 +1,9 @@
 # Cross-language connector wire fixtures
 
+Provider operation scenarios live in [connector conformance](connectors/README.md).
+Their shared Python and TypeScript runners are test-only files under `runners/`;
+connector releases do not package them.
+
 These JSON files are generated from sdkgo types and production storage writes. Python and TypeScript ports should decode and re-encode each fixture using **JSON value equality, not bytes**: key order, whitespace, and equivalent string escapes may differ. Field names, array order, nulls, and omissions must match. All credential-looking values are inert `REDACTED_*` placeholders.
 
 Run `cd sdkgo && UPDATE_CONFORMANCE_FIXTURES=1 GOWORK=off go test ./... -run '^TestConformance' -count=1` to regenerate. `make test-common` checks committed fixtures for drift.

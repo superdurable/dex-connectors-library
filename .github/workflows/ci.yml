@@ -260,6 +260,12 @@ jobs:
         with:
           node-version: 24
       - run: make test-python-connectors test-typescript-connectors
+      - name: Replay Go-verified scenarios for directly changed connectors
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
+        run: make test-connector-conformance
+      - name: Prove connector conformance runners reject fixture mutations
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
+        run: python3 script/connector_conformance.py --mutation-self-test
 
   connectors:
     needs: connector-plan
