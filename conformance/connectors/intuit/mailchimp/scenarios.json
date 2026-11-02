@@ -1,0 +1,2515 @@
+{
+  "connector": "intuit/mailchimp",
+  "scenarios": [
+    {
+      "callId": "76aa8474-c963-57bd-944d-8dbc845c462a",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"cb63c7306d1853af527b11f0cb244d45\", \"email_address\": \"Urist.McVankab@example.com\", \"contact_id\": \"contact-urist\", \"full_name\": \"Urist McVankab\", \"web_id\": 17, \"email_type\": \"html\", \"status\": \"unsubscribed\", \"merge_fields\": {\"FNAME\": \"Urist\"}, \"vip\": true, \"language\": \"en\", \"timestamp_signup\": \"2026-10-01T12:00:00Z\", \"timestamp_opt\": \"2026-10-02T12:00:00Z\", \"last_changed\": \"2026-10-25T10:00:00Z\", \"tags_count\": 2, \"tags\": [{\"name\": \"spring-launch\"}, {\"name\": \"vip\"}], \"list_id\": \"57afe96172\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members/cb63c7306d1853af527b11f0cb244d45",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "contactId": "contact-urist",
+          "emailAddress": "Urist.McVankab@example.com",
+          "emailType": "html",
+          "fullName": "Urist McVankab",
+          "isVip": true,
+          "language": "en",
+          "lastChangedAt": "2026-10-25T10:00:00Z",
+          "listId": "57afe96172",
+          "mergeFields": {
+            "FNAME": "Urist"
+          },
+          "optedInAt": "2026-10-02T12:00:00Z",
+          "signedUpAt": "2026-10-01T12:00:00Z",
+          "status": "unsubscribed",
+          "subscriberHash": "cb63c7306d1853af527b11f0cb244d45",
+          "tagCount": 2,
+          "tags": [
+            "spring-launch",
+            "vip"
+          ],
+          "webId": 17
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "Urist.McVankab@example.com",
+        "listId": "57afe96172"
+      },
+      "name": "getMember-happy",
+      "operation": "getMember"
+    },
+    {
+      "callId": "76aa8474-c963-57bd-944d-8dbc845c462a",
+      "exchanges": [
+        {
+          "body": "{\"title\":\"Resource Not Found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members/cb63c7306d1853af527b11f0cb244d45",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "emailAddress": "",
+          "listId": "",
+          "status": "",
+          "subscriberHash": "",
+          "tagCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "Urist.McVankab@example.com",
+        "listId": "57afe96172"
+      },
+      "name": "getMember-not-found",
+      "operation": "getMember"
+    },
+    {
+      "callId": "76aa8474-c963-57bd-944d-8dbc845c462a",
+      "exchanges": [
+        {
+          "body": "{\"title\":\"Unauthorized\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members/cb63c7306d1853af527b11f0cb244d45",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "emailAddress": "",
+          "listId": "",
+          "status": "",
+          "subscriberHash": "",
+          "tagCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "Urist.McVankab@example.com",
+        "listId": "57afe96172"
+      },
+      "name": "getMember-rejected",
+      "operation": "getMember"
+    },
+    {
+      "callId": "76aa8474-c963-57bd-944d-8dbc845c462a",
+      "exchanges": [
+        {
+          "body": "{\"bad\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members/cb63c7306d1853af527b11f0cb244d45",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "emailAddress": "",
+          "listId": "",
+          "status": "",
+          "subscriberHash": "",
+          "tagCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "Urist.McVankab@example.com",
+        "listId": "57afe96172"
+      },
+      "name": "getMember-invalid",
+      "operation": "getMember"
+    },
+    {
+      "callId": "76aa8474-c963-57bd-944d-8dbc845c462a",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members/cb63c7306d1853af527b11f0cb244d45",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "Urist.McVankab@example.com",
+        "listId": "57afe96172"
+      },
+      "name": "getMember-rate-limit",
+      "operation": "getMember"
+    },
+    {
+      "callId": "76aa8474-c963-57bd-944d-8dbc845c462a",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members/cb63c7306d1853af527b11f0cb244d45",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "Urist.McVankab@example.com",
+        "listId": "57afe96172"
+      },
+      "name": "getMember-unavailable",
+      "operation": "getMember"
+    },
+    {
+      "callId": "76aa8474-c963-57bd-944d-8dbc845c462a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members/cb63c7306d1853af527b11f0cb244d45",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "Urist.McVankab@example.com",
+        "listId": "57afe96172"
+      },
+      "name": "getMember-transport",
+      "operation": "getMember"
+    },
+    {
+      "callId": "76aa8474-c963-57bd-944d-8dbc845c462a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "emailAddress": "",
+          "listId": "",
+          "status": "",
+          "subscriberHash": "",
+          "tagCount": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "Urist.McVankab@example.com",
+        "listId": "bad!"
+      },
+      "name": "getMember-defect",
+      "operation": "getMember"
+    },
+    {
+      "callId": "beda088e-96a5-560d-b1aa-14bbf925b979",
+      "exchanges": [
+        {
+          "body": "{\"members\": [{\"id\": \"cb63c7306d1853af527b11f0cb244d45\", \"email_address\": \"Urist.McVankab@example.com\", \"contact_id\": \"contact-urist\", \"full_name\": \"Urist McVankab\", \"web_id\": 17, \"email_type\": \"html\", \"status\": \"unsubscribed\", \"merge_fields\": {\"FNAME\": \"Urist\"}, \"vip\": true, \"language\": \"en\", \"timestamp_signup\": \"2026-10-01T12:00:00Z\", \"timestamp_opt\": \"2026-10-02T12:00:00Z\", \"last_changed\": \"2026-10-25T10:00:00Z\", \"tags_count\": 2, \"tags\": [{\"name\": \"spring-launch\"}, {\"name\": \"vip\"}], \"list_id\": \"57afe96172\"}], \"total_items\": 5}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "fields": [
+              "members.id,members.email_address,members.contact_id,members.full_name,members.web_id,members.email_type,members.status,members.merge_fields,members.vip,members.language,members.timestamp_signup,members.timestamp_opt,members.last_changed,members.tags_count,members.tags,members.list_id,list_id,total_items"
+            ],
+            "offset": [
+              "1"
+            ],
+            "since_last_changed": [
+              "2026-10-01T12:00:00+00:00"
+            ],
+            "since_timestamp_opt": [
+              "2026-10-02T12:00:00+00:00"
+            ],
+            "sort_dir": [
+              "ASC"
+            ],
+            "sort_field": [
+              "last_changed"
+            ],
+            "status": [
+              "unsubscribed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "members": [
+            {
+              "contactId": "contact-urist",
+              "emailAddress": "Urist.McVankab@example.com",
+              "emailType": "html",
+              "fullName": "Urist McVankab",
+              "isVip": true,
+              "language": "en",
+              "lastChangedAt": "2026-10-25T10:00:00Z",
+              "listId": "57afe96172",
+              "mergeFields": {
+                "FNAME": "Urist"
+              },
+              "optedInAt": "2026-10-02T12:00:00Z",
+              "signedUpAt": "2026-10-01T12:00:00Z",
+              "status": "unsubscribed",
+              "subscriberHash": "cb63c7306d1853af527b11f0cb244d45",
+              "tagCount": 2,
+              "tags": [
+                "spring-launch",
+                "vip"
+              ],
+              "webId": 17
+            }
+          ],
+          "nextOffset": 2,
+          "totalItems": 5
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "changedSince": "2026-10-01T12:00:00Z",
+        "listId": "57afe96172",
+        "offset": 1,
+        "optedInSince": "2026-10-02T12:00:00Z",
+        "pageSize": 2,
+        "status": "unsubscribed"
+      },
+      "name": "listMembers-happy",
+      "operation": "listMembers"
+    },
+    {
+      "callId": "beda088e-96a5-560d-b1aa-14bbf925b979",
+      "exchanges": [
+        {
+          "body": "{\"title\":\"Resource Not Found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "fields": [
+              "members.id,members.email_address,members.contact_id,members.full_name,members.web_id,members.email_type,members.status,members.merge_fields,members.vip,members.language,members.timestamp_signup,members.timestamp_opt,members.last_changed,members.tags_count,members.tags,members.list_id,list_id,total_items"
+            ],
+            "offset": [
+              "1"
+            ],
+            "since_last_changed": [
+              "2026-10-01T12:00:00+00:00"
+            ],
+            "since_timestamp_opt": [
+              "2026-10-02T12:00:00+00:00"
+            ],
+            "sort_dir": [
+              "ASC"
+            ],
+            "sort_field": [
+              "last_changed"
+            ],
+            "status": [
+              "unsubscribed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "members": [],
+          "totalItems": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "changedSince": "2026-10-01T12:00:00Z",
+        "listId": "57afe96172",
+        "offset": 1,
+        "optedInSince": "2026-10-02T12:00:00Z",
+        "pageSize": 2,
+        "status": "unsubscribed"
+      },
+      "name": "listMembers-not-found",
+      "operation": "listMembers"
+    },
+    {
+      "callId": "beda088e-96a5-560d-b1aa-14bbf925b979",
+      "exchanges": [
+        {
+          "body": "{\"title\":\"Unauthorized\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "fields": [
+              "members.id,members.email_address,members.contact_id,members.full_name,members.web_id,members.email_type,members.status,members.merge_fields,members.vip,members.language,members.timestamp_signup,members.timestamp_opt,members.last_changed,members.tags_count,members.tags,members.list_id,list_id,total_items"
+            ],
+            "offset": [
+              "1"
+            ],
+            "since_last_changed": [
+              "2026-10-01T12:00:00+00:00"
+            ],
+            "since_timestamp_opt": [
+              "2026-10-02T12:00:00+00:00"
+            ],
+            "sort_dir": [
+              "ASC"
+            ],
+            "sort_field": [
+              "last_changed"
+            ],
+            "status": [
+              "unsubscribed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "members": [],
+          "totalItems": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "changedSince": "2026-10-01T12:00:00Z",
+        "listId": "57afe96172",
+        "offset": 1,
+        "optedInSince": "2026-10-02T12:00:00Z",
+        "pageSize": 2,
+        "status": "unsubscribed"
+      },
+      "name": "listMembers-rejected",
+      "operation": "listMembers"
+    },
+    {
+      "callId": "beda088e-96a5-560d-b1aa-14bbf925b979",
+      "exchanges": [
+        {
+          "body": "{\"bad\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "fields": [
+              "members.id,members.email_address,members.contact_id,members.full_name,members.web_id,members.email_type,members.status,members.merge_fields,members.vip,members.language,members.timestamp_signup,members.timestamp_opt,members.last_changed,members.tags_count,members.tags,members.list_id,list_id,total_items"
+            ],
+            "offset": [
+              "1"
+            ],
+            "since_last_changed": [
+              "2026-10-01T12:00:00+00:00"
+            ],
+            "since_timestamp_opt": [
+              "2026-10-02T12:00:00+00:00"
+            ],
+            "sort_dir": [
+              "ASC"
+            ],
+            "sort_field": [
+              "last_changed"
+            ],
+            "status": [
+              "unsubscribed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "members": [],
+          "totalItems": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "changedSince": "2026-10-01T12:00:00Z",
+        "listId": "57afe96172",
+        "offset": 1,
+        "optedInSince": "2026-10-02T12:00:00Z",
+        "pageSize": 2,
+        "status": "unsubscribed"
+      },
+      "name": "listMembers-invalid",
+      "operation": "listMembers"
+    },
+    {
+      "callId": "beda088e-96a5-560d-b1aa-14bbf925b979",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "fields": [
+              "members.id,members.email_address,members.contact_id,members.full_name,members.web_id,members.email_type,members.status,members.merge_fields,members.vip,members.language,members.timestamp_signup,members.timestamp_opt,members.last_changed,members.tags_count,members.tags,members.list_id,list_id,total_items"
+            ],
+            "offset": [
+              "1"
+            ],
+            "since_last_changed": [
+              "2026-10-01T12:00:00+00:00"
+            ],
+            "since_timestamp_opt": [
+              "2026-10-02T12:00:00+00:00"
+            ],
+            "sort_dir": [
+              "ASC"
+            ],
+            "sort_field": [
+              "last_changed"
+            ],
+            "status": [
+              "unsubscribed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "changedSince": "2026-10-01T12:00:00Z",
+        "listId": "57afe96172",
+        "offset": 1,
+        "optedInSince": "2026-10-02T12:00:00Z",
+        "pageSize": 2,
+        "status": "unsubscribed"
+      },
+      "name": "listMembers-rate-limit",
+      "operation": "listMembers"
+    },
+    {
+      "callId": "beda088e-96a5-560d-b1aa-14bbf925b979",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "fields": [
+              "members.id,members.email_address,members.contact_id,members.full_name,members.web_id,members.email_type,members.status,members.merge_fields,members.vip,members.language,members.timestamp_signup,members.timestamp_opt,members.last_changed,members.tags_count,members.tags,members.list_id,list_id,total_items"
+            ],
+            "offset": [
+              "1"
+            ],
+            "since_last_changed": [
+              "2026-10-01T12:00:00+00:00"
+            ],
+            "since_timestamp_opt": [
+              "2026-10-02T12:00:00+00:00"
+            ],
+            "sort_dir": [
+              "ASC"
+            ],
+            "sort_field": [
+              "last_changed"
+            ],
+            "status": [
+              "unsubscribed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "changedSince": "2026-10-01T12:00:00Z",
+        "listId": "57afe96172",
+        "offset": 1,
+        "optedInSince": "2026-10-02T12:00:00Z",
+        "pageSize": 2,
+        "status": "unsubscribed"
+      },
+      "name": "listMembers-unavailable",
+      "operation": "listMembers"
+    },
+    {
+      "callId": "beda088e-96a5-560d-b1aa-14bbf925b979",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "fields": [
+              "members.id,members.email_address,members.contact_id,members.full_name,members.web_id,members.email_type,members.status,members.merge_fields,members.vip,members.language,members.timestamp_signup,members.timestamp_opt,members.last_changed,members.tags_count,members.tags,members.list_id,list_id,total_items"
+            ],
+            "offset": [
+              "1"
+            ],
+            "since_last_changed": [
+              "2026-10-01T12:00:00+00:00"
+            ],
+            "since_timestamp_opt": [
+              "2026-10-02T12:00:00+00:00"
+            ],
+            "sort_dir": [
+              "ASC"
+            ],
+            "sort_field": [
+              "last_changed"
+            ],
+            "status": [
+              "unsubscribed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "changedSince": "2026-10-01T12:00:00Z",
+        "listId": "57afe96172",
+        "offset": 1,
+        "optedInSince": "2026-10-02T12:00:00Z",
+        "pageSize": 2,
+        "status": "unsubscribed"
+      },
+      "name": "listMembers-transport",
+      "operation": "listMembers"
+    },
+    {
+      "callId": "beda088e-96a5-560d-b1aa-14bbf925b979",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "members": [],
+          "totalItems": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "changedSince": "2026-10-01T12:00:00Z",
+        "listId": "bad!",
+        "offset": 1,
+        "optedInSince": "2026-10-02T12:00:00Z",
+        "pageSize": 2,
+        "status": "unsubscribed"
+      },
+      "name": "listMembers-defect",
+      "operation": "listMembers"
+    },
+    {
+      "callId": "2b931676-b663-5a16-bd69-9d43a17efc7f",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"cb63c7306d1853af527b11f0cb244d45\", \"email_address\": \"Urist.McVankab@example.com\", \"contact_id\": \"contact-urist\", \"full_name\": \"Urist McVankab\", \"web_id\": 17, \"email_type\": \"html\", \"status\": \"unsubscribed\", \"merge_fields\": {\"FNAME\": \"Urist\"}, \"vip\": true, \"language\": \"en\", \"timestamp_signup\": \"2026-10-01T12:00:00Z\", \"timestamp_opt\": \"2026-10-02T12:00:00Z\", \"last_changed\": \"2026-10-25T10:00:00Z\", \"tags_count\": 2, \"tags\": [{\"name\": \"spring-launch\"}, {\"name\": \"vip\"}], \"list_id\": \"57afe96172\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/lists/57afe96172/members/cb63c7306d1853af527b11f0cb244d45",
+          "query": {
+            "skip_merge_validation": [
+              "true"
+            ]
+          },
+          "requestBody": {
+            "email_address": "Urist.McVankab@example.com",
+            "marketing_permissions": [
+              {
+                "enabled": true,
+                "marketing_permission_id": "permission1"
+              }
+            ],
+            "merge_fields": {
+              "ADDRESS": {
+                "addr1": "1 Main",
+                "city": "Portland"
+              },
+              "AGE": 30,
+              "FNAME": "Urist"
+            },
+            "status": "unsubscribed",
+            "status_if_new": "pending"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "upserted",
+        "failureKind": "",
+        "output": {
+          "member": {
+            "contactId": "contact-urist",
+            "emailAddress": "Urist.McVankab@example.com",
+            "emailType": "html",
+            "fullName": "Urist McVankab",
+            "isVip": true,
+            "language": "en",
+            "lastChangedAt": "2026-10-25T10:00:00Z",
+            "listId": "57afe96172",
+            "mergeFields": {
+              "FNAME": "Urist"
+            },
+            "optedInAt": "2026-10-02T12:00:00Z",
+            "signedUpAt": "2026-10-01T12:00:00Z",
+            "status": "unsubscribed",
+            "subscriberHash": "cb63c7306d1853af527b11f0cb244d45",
+            "tagCount": 2,
+            "tags": [
+              "spring-launch",
+              "vip"
+            ],
+            "webId": 17
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b931676-b663-5a16-bd69-9d43a17efc7f",
+      "input": {
+        "emailAddress": "Urist.McVankab@example.com",
+        "isResubscribeAllowed": true,
+        "listId": "57afe96172",
+        "marketingPermissions": [
+          {
+            "isEnabled": true,
+            "marketingPermissionId": "permission1"
+          }
+        ],
+        "mergeFields": {
+          "ADDRESS": {
+            "addr1": "1 Main",
+            "city": "Portland"
+          },
+          "AGE": 30,
+          "FNAME": "Urist"
+        },
+        "shouldSkipMergeValidation": true,
+        "status": "unsubscribed",
+        "statusIfNew": "pending"
+      },
+      "name": "upsertMember-happy",
+      "operation": "upsertMember"
+    },
+    {
+      "callId": "2b931676-b663-5a16-bd69-9d43a17efc7f",
+      "exchanges": [
+        {
+          "body": "{\"title\":\"Resource Not Found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/lists/57afe96172/members/cb63c7306d1853af527b11f0cb244d45",
+          "query": {
+            "skip_merge_validation": [
+              "true"
+            ]
+          },
+          "requestBody": {
+            "email_address": "Urist.McVankab@example.com",
+            "marketing_permissions": [
+              {
+                "enabled": true,
+                "marketing_permission_id": "permission1"
+              }
+            ],
+            "merge_fields": {
+              "ADDRESS": {
+                "addr1": "1 Main",
+                "city": "Portland"
+              },
+              "AGE": 30,
+              "FNAME": "Urist"
+            },
+            "status": "unsubscribed",
+            "status_if_new": "pending"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "member": {
+            "emailAddress": "",
+            "listId": "",
+            "status": "",
+            "subscriberHash": "",
+            "tagCount": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b931676-b663-5a16-bd69-9d43a17efc7f",
+      "input": {
+        "emailAddress": "Urist.McVankab@example.com",
+        "isResubscribeAllowed": true,
+        "listId": "57afe96172",
+        "marketingPermissions": [
+          {
+            "isEnabled": true,
+            "marketingPermissionId": "permission1"
+          }
+        ],
+        "mergeFields": {
+          "ADDRESS": {
+            "addr1": "1 Main",
+            "city": "Portland"
+          },
+          "AGE": 30,
+          "FNAME": "Urist"
+        },
+        "shouldSkipMergeValidation": true,
+        "status": "unsubscribed",
+        "statusIfNew": "pending"
+      },
+      "name": "upsertMember-not-found",
+      "operation": "upsertMember"
+    },
+    {
+      "callId": "2b931676-b663-5a16-bd69-9d43a17efc7f",
+      "exchanges": [
+        {
+          "body": "{\"title\":\"Unauthorized\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/lists/57afe96172/members/cb63c7306d1853af527b11f0cb244d45",
+          "query": {
+            "skip_merge_validation": [
+              "true"
+            ]
+          },
+          "requestBody": {
+            "email_address": "Urist.McVankab@example.com",
+            "marketing_permissions": [
+              {
+                "enabled": true,
+                "marketing_permission_id": "permission1"
+              }
+            ],
+            "merge_fields": {
+              "ADDRESS": {
+                "addr1": "1 Main",
+                "city": "Portland"
+              },
+              "AGE": 30,
+              "FNAME": "Urist"
+            },
+            "status": "unsubscribed",
+            "status_if_new": "pending"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "member": {
+            "emailAddress": "",
+            "listId": "",
+            "status": "",
+            "subscriberHash": "",
+            "tagCount": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b931676-b663-5a16-bd69-9d43a17efc7f",
+      "input": {
+        "emailAddress": "Urist.McVankab@example.com",
+        "isResubscribeAllowed": true,
+        "listId": "57afe96172",
+        "marketingPermissions": [
+          {
+            "isEnabled": true,
+            "marketingPermissionId": "permission1"
+          }
+        ],
+        "mergeFields": {
+          "ADDRESS": {
+            "addr1": "1 Main",
+            "city": "Portland"
+          },
+          "AGE": 30,
+          "FNAME": "Urist"
+        },
+        "shouldSkipMergeValidation": true,
+        "status": "unsubscribed",
+        "statusIfNew": "pending"
+      },
+      "name": "upsertMember-rejected",
+      "operation": "upsertMember"
+    },
+    {
+      "callId": "2b931676-b663-5a16-bd69-9d43a17efc7f",
+      "exchanges": [
+        {
+          "body": "{\"bad\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/lists/57afe96172/members/cb63c7306d1853af527b11f0cb244d45",
+          "query": {
+            "skip_merge_validation": [
+              "true"
+            ]
+          },
+          "requestBody": {
+            "email_address": "Urist.McVankab@example.com",
+            "marketing_permissions": [
+              {
+                "enabled": true,
+                "marketing_permission_id": "permission1"
+              }
+            ],
+            "merge_fields": {
+              "ADDRESS": {
+                "addr1": "1 Main",
+                "city": "Portland"
+              },
+              "AGE": 30,
+              "FNAME": "Urist"
+            },
+            "status": "unsubscribed",
+            "status_if_new": "pending"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "member": {
+            "emailAddress": "",
+            "listId": "",
+            "status": "",
+            "subscriberHash": "",
+            "tagCount": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b931676-b663-5a16-bd69-9d43a17efc7f",
+      "input": {
+        "emailAddress": "Urist.McVankab@example.com",
+        "isResubscribeAllowed": true,
+        "listId": "57afe96172",
+        "marketingPermissions": [
+          {
+            "isEnabled": true,
+            "marketingPermissionId": "permission1"
+          }
+        ],
+        "mergeFields": {
+          "ADDRESS": {
+            "addr1": "1 Main",
+            "city": "Portland"
+          },
+          "AGE": 30,
+          "FNAME": "Urist"
+        },
+        "shouldSkipMergeValidation": true,
+        "status": "unsubscribed",
+        "statusIfNew": "pending"
+      },
+      "name": "upsertMember-invalid",
+      "operation": "upsertMember"
+    },
+    {
+      "callId": "2b931676-b663-5a16-bd69-9d43a17efc7f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/lists/57afe96172/members/cb63c7306d1853af527b11f0cb244d45",
+          "query": {
+            "skip_merge_validation": [
+              "true"
+            ]
+          },
+          "requestBody": {
+            "email_address": "Urist.McVankab@example.com",
+            "marketing_permissions": [
+              {
+                "enabled": true,
+                "marketing_permission_id": "permission1"
+              }
+            ],
+            "merge_fields": {
+              "ADDRESS": {
+                "addr1": "1 Main",
+                "city": "Portland"
+              },
+              "AGE": 30,
+              "FNAME": "Urist"
+            },
+            "status": "unsubscribed",
+            "status_if_new": "pending"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b931676-b663-5a16-bd69-9d43a17efc7f",
+      "input": {
+        "emailAddress": "Urist.McVankab@example.com",
+        "isResubscribeAllowed": true,
+        "listId": "57afe96172",
+        "marketingPermissions": [
+          {
+            "isEnabled": true,
+            "marketingPermissionId": "permission1"
+          }
+        ],
+        "mergeFields": {
+          "ADDRESS": {
+            "addr1": "1 Main",
+            "city": "Portland"
+          },
+          "AGE": 30,
+          "FNAME": "Urist"
+        },
+        "shouldSkipMergeValidation": true,
+        "status": "unsubscribed",
+        "statusIfNew": "pending"
+      },
+      "name": "upsertMember-rate-limit",
+      "operation": "upsertMember"
+    },
+    {
+      "callId": "2b931676-b663-5a16-bd69-9d43a17efc7f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/lists/57afe96172/members/cb63c7306d1853af527b11f0cb244d45",
+          "query": {
+            "skip_merge_validation": [
+              "true"
+            ]
+          },
+          "requestBody": {
+            "email_address": "Urist.McVankab@example.com",
+            "marketing_permissions": [
+              {
+                "enabled": true,
+                "marketing_permission_id": "permission1"
+              }
+            ],
+            "merge_fields": {
+              "ADDRESS": {
+                "addr1": "1 Main",
+                "city": "Portland"
+              },
+              "AGE": 30,
+              "FNAME": "Urist"
+            },
+            "status": "unsubscribed",
+            "status_if_new": "pending"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b931676-b663-5a16-bd69-9d43a17efc7f",
+      "input": {
+        "emailAddress": "Urist.McVankab@example.com",
+        "isResubscribeAllowed": true,
+        "listId": "57afe96172",
+        "marketingPermissions": [
+          {
+            "isEnabled": true,
+            "marketingPermissionId": "permission1"
+          }
+        ],
+        "mergeFields": {
+          "ADDRESS": {
+            "addr1": "1 Main",
+            "city": "Portland"
+          },
+          "AGE": 30,
+          "FNAME": "Urist"
+        },
+        "shouldSkipMergeValidation": true,
+        "status": "unsubscribed",
+        "statusIfNew": "pending"
+      },
+      "name": "upsertMember-unavailable",
+      "operation": "upsertMember"
+    },
+    {
+      "callId": "2b931676-b663-5a16-bd69-9d43a17efc7f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/lists/57afe96172/members/cb63c7306d1853af527b11f0cb244d45",
+          "query": {
+            "skip_merge_validation": [
+              "true"
+            ]
+          },
+          "requestBody": {
+            "email_address": "Urist.McVankab@example.com",
+            "marketing_permissions": [
+              {
+                "enabled": true,
+                "marketing_permission_id": "permission1"
+              }
+            ],
+            "merge_fields": {
+              "ADDRESS": {
+                "addr1": "1 Main",
+                "city": "Portland"
+              },
+              "AGE": 30,
+              "FNAME": "Urist"
+            },
+            "status": "unsubscribed",
+            "status_if_new": "pending"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b931676-b663-5a16-bd69-9d43a17efc7f",
+      "input": {
+        "emailAddress": "Urist.McVankab@example.com",
+        "isResubscribeAllowed": true,
+        "listId": "57afe96172",
+        "marketingPermissions": [
+          {
+            "isEnabled": true,
+            "marketingPermissionId": "permission1"
+          }
+        ],
+        "mergeFields": {
+          "ADDRESS": {
+            "addr1": "1 Main",
+            "city": "Portland"
+          },
+          "AGE": 30,
+          "FNAME": "Urist"
+        },
+        "shouldSkipMergeValidation": true,
+        "status": "unsubscribed",
+        "statusIfNew": "pending"
+      },
+      "name": "upsertMember-transport",
+      "operation": "upsertMember"
+    },
+    {
+      "callId": "2b931676-b663-5a16-bd69-9d43a17efc7f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "member": {
+            "emailAddress": "",
+            "listId": "",
+            "status": "",
+            "subscriberHash": "",
+            "tagCount": 0
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b931676-b663-5a16-bd69-9d43a17efc7f",
+      "input": {
+        "emailAddress": "Urist.McVankab@example.com",
+        "isResubscribeAllowed": true,
+        "listId": "bad!",
+        "marketingPermissions": [
+          {
+            "isEnabled": true,
+            "marketingPermissionId": "permission1"
+          }
+        ],
+        "mergeFields": {
+          "ADDRESS": {
+            "addr1": "1 Main",
+            "city": "Portland"
+          },
+          "AGE": 30,
+          "FNAME": "Urist"
+        },
+        "shouldSkipMergeValidation": true,
+        "status": "unsubscribed",
+        "statusIfNew": "pending"
+      },
+      "name": "upsertMember-defect",
+      "operation": "upsertMember"
+    },
+    {
+      "callId": "e25ce930-a423-596f-b992-602689b73e65",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/57afe96172/members/cb63c7306d1853af527b11f0cb244d45/tags",
+          "requestBody": {
+            "is_syncing": true,
+            "tags": [
+              {
+                "name": "spring-launch",
+                "status": "active"
+              },
+              {
+                "name": "old-tag",
+                "status": "inactive"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "activeTags": [
+            "spring-launch"
+          ],
+          "inactiveTags": [
+            "old-tag"
+          ],
+          "subscriberHash": "cb63c7306d1853af527b11f0cb244d45"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e25ce930-a423-596f-b992-602689b73e65",
+      "input": {
+        "addTags": [
+          "spring-launch"
+        ],
+        "emailAddress": "Urist.McVankab@example.com",
+        "listId": "57afe96172",
+        "removeTags": [
+          "old-tag"
+        ],
+        "shouldSuppressAutomations": true
+      },
+      "name": "updateMemberTags-happy",
+      "operation": "updateMemberTags"
+    },
+    {
+      "callId": "e25ce930-a423-596f-b992-602689b73e65",
+      "exchanges": [
+        {
+          "body": "{\"title\":\"Resource Not Found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/57afe96172/members/cb63c7306d1853af527b11f0cb244d45/tags",
+          "requestBody": {
+            "is_syncing": true,
+            "tags": [
+              {
+                "name": "spring-launch",
+                "status": "active"
+              },
+              {
+                "name": "old-tag",
+                "status": "inactive"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "subscriberHash": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e25ce930-a423-596f-b992-602689b73e65",
+      "input": {
+        "addTags": [
+          "spring-launch"
+        ],
+        "emailAddress": "Urist.McVankab@example.com",
+        "listId": "57afe96172",
+        "removeTags": [
+          "old-tag"
+        ],
+        "shouldSuppressAutomations": true
+      },
+      "name": "updateMemberTags-not-found",
+      "operation": "updateMemberTags"
+    },
+    {
+      "callId": "e25ce930-a423-596f-b992-602689b73e65",
+      "exchanges": [
+        {
+          "body": "{\"title\":\"Unauthorized\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/57afe96172/members/cb63c7306d1853af527b11f0cb244d45/tags",
+          "requestBody": {
+            "is_syncing": true,
+            "tags": [
+              {
+                "name": "spring-launch",
+                "status": "active"
+              },
+              {
+                "name": "old-tag",
+                "status": "inactive"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "subscriberHash": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e25ce930-a423-596f-b992-602689b73e65",
+      "input": {
+        "addTags": [
+          "spring-launch"
+        ],
+        "emailAddress": "Urist.McVankab@example.com",
+        "listId": "57afe96172",
+        "removeTags": [
+          "old-tag"
+        ],
+        "shouldSuppressAutomations": true
+      },
+      "name": "updateMemberTags-rejected",
+      "operation": "updateMemberTags"
+    },
+    {
+      "callId": "e25ce930-a423-596f-b992-602689b73e65",
+      "exchanges": [
+        {
+          "body": "TESTKEY1-us6",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/57afe96172/members/cb63c7306d1853af527b11f0cb244d45/tags",
+          "requestBody": {
+            "is_syncing": true,
+            "tags": [
+              {
+                "name": "spring-launch",
+                "status": "active"
+              },
+              {
+                "name": "old-tag",
+                "status": "inactive"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "subscriberHash": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e25ce930-a423-596f-b992-602689b73e65",
+      "input": {
+        "addTags": [
+          "spring-launch"
+        ],
+        "emailAddress": "Urist.McVankab@example.com",
+        "listId": "57afe96172",
+        "removeTags": [
+          "old-tag"
+        ],
+        "shouldSuppressAutomations": true
+      },
+      "name": "updateMemberTags-invalid",
+      "operation": "updateMemberTags"
+    },
+    {
+      "callId": "e25ce930-a423-596f-b992-602689b73e65",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/57afe96172/members/cb63c7306d1853af527b11f0cb244d45/tags",
+          "requestBody": {
+            "is_syncing": true,
+            "tags": [
+              {
+                "name": "spring-launch",
+                "status": "active"
+              },
+              {
+                "name": "old-tag",
+                "status": "inactive"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e25ce930-a423-596f-b992-602689b73e65",
+      "input": {
+        "addTags": [
+          "spring-launch"
+        ],
+        "emailAddress": "Urist.McVankab@example.com",
+        "listId": "57afe96172",
+        "removeTags": [
+          "old-tag"
+        ],
+        "shouldSuppressAutomations": true
+      },
+      "name": "updateMemberTags-rate-limit",
+      "operation": "updateMemberTags"
+    },
+    {
+      "callId": "e25ce930-a423-596f-b992-602689b73e65",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/57afe96172/members/cb63c7306d1853af527b11f0cb244d45/tags",
+          "requestBody": {
+            "is_syncing": true,
+            "tags": [
+              {
+                "name": "spring-launch",
+                "status": "active"
+              },
+              {
+                "name": "old-tag",
+                "status": "inactive"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e25ce930-a423-596f-b992-602689b73e65",
+      "input": {
+        "addTags": [
+          "spring-launch"
+        ],
+        "emailAddress": "Urist.McVankab@example.com",
+        "listId": "57afe96172",
+        "removeTags": [
+          "old-tag"
+        ],
+        "shouldSuppressAutomations": true
+      },
+      "name": "updateMemberTags-unavailable",
+      "operation": "updateMemberTags"
+    },
+    {
+      "callId": "e25ce930-a423-596f-b992-602689b73e65",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/57afe96172/members/cb63c7306d1853af527b11f0cb244d45/tags",
+          "requestBody": {
+            "is_syncing": true,
+            "tags": [
+              {
+                "name": "spring-launch",
+                "status": "active"
+              },
+              {
+                "name": "old-tag",
+                "status": "inactive"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e25ce930-a423-596f-b992-602689b73e65",
+      "input": {
+        "addTags": [
+          "spring-launch"
+        ],
+        "emailAddress": "Urist.McVankab@example.com",
+        "listId": "57afe96172",
+        "removeTags": [
+          "old-tag"
+        ],
+        "shouldSuppressAutomations": true
+      },
+      "name": "updateMemberTags-transport",
+      "operation": "updateMemberTags"
+    },
+    {
+      "callId": "e25ce930-a423-596f-b992-602689b73e65",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "subscriberHash": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e25ce930-a423-596f-b992-602689b73e65",
+      "input": {
+        "addTags": [
+          "spring-launch"
+        ],
+        "emailAddress": "Urist.McVankab@example.com",
+        "listId": "bad!",
+        "removeTags": [
+          "old-tag"
+        ],
+        "shouldSuppressAutomations": true
+      },
+      "name": "updateMemberTags-defect",
+      "operation": "updateMemberTags"
+    },
+    {
+      "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"42694e9e57\", \"web_id\": 42, \"type\": \"regular\", \"status\": \"save\", \"emails_sent\": 0, \"create_time\": \"2026-10-25T10:00:00Z\", \"send_time\": \"\", \"settings\": {\"title\": \"Spring Launch\", \"subject_line\": \"Hello\"}, \"recipients\": {\"list_id\": \"57afe96172\", \"list_name\": \"Audience\", \"recipient_count\": 100}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/42694e9e57/actions/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "output": {
+          "campaign": {
+            "createdAt": "2026-10-25T10:00:00Z",
+            "emailsSent": 0,
+            "id": "42694e9e57",
+            "listId": "57afe96172",
+            "listName": "Audience",
+            "recipientCount": 100,
+            "status": "save",
+            "subjectLine": "Hello",
+            "title": "Spring Launch",
+            "type": "regular",
+            "webId": 42
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "input": {
+        "campaignId": "42694e9e57",
+        "expectedListId": "57afe96172"
+      },
+      "name": "sendCampaign-sent",
+      "operation": "sendCampaign"
+    },
+    {
+      "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"42694e9e57\", \"web_id\": 42, \"type\": \"regular\", \"status\": \"sent\", \"emails_sent\": 100, \"create_time\": \"2026-10-25T10:00:00Z\", \"send_time\": \"2026-10-26T10:00:00Z\", \"settings\": {\"title\": \"Spring Launch\", \"subject_line\": \"Hello\"}, \"recipients\": {\"list_id\": \"57afe96172\", \"list_name\": \"Audience\", \"recipient_count\": 100}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "alreadySent",
+        "failureKind": "",
+        "output": {
+          "campaign": {
+            "createdAt": "2026-10-25T10:00:00Z",
+            "emailsSent": 100,
+            "id": "42694e9e57",
+            "listId": "57afe96172",
+            "listName": "Audience",
+            "recipientCount": 100,
+            "sentAt": "2026-10-26T10:00:00Z",
+            "status": "sent",
+            "subjectLine": "Hello",
+            "title": "Spring Launch",
+            "type": "regular",
+            "webId": 42
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "input": {
+        "campaignId": "42694e9e57",
+        "expectedListId": "57afe96172"
+      },
+      "name": "sendCampaign-already-sent",
+      "operation": "sendCampaign"
+    },
+    {
+      "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"42694e9e57\", \"web_id\": 42, \"type\": \"regular\", \"status\": \"paused\", \"emails_sent\": 0, \"create_time\": \"2026-10-25T10:00:00Z\", \"send_time\": \"\", \"settings\": {\"title\": \"Spring Launch\", \"subject_line\": \"Hello\"}, \"recipients\": {\"list_id\": \"57afe96172\", \"list_name\": \"Audience\", \"recipient_count\": 100}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notSendable",
+        "failureKind": "CONFLICT",
+        "output": {
+          "campaign": {
+            "createdAt": "2026-10-25T10:00:00Z",
+            "emailsSent": 0,
+            "id": "42694e9e57",
+            "listId": "57afe96172",
+            "listName": "Audience",
+            "recipientCount": 100,
+            "status": "paused",
+            "subjectLine": "Hello",
+            "title": "Spring Launch",
+            "type": "regular",
+            "webId": 42
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "input": {
+        "campaignId": "42694e9e57",
+        "expectedListId": "57afe96172"
+      },
+      "name": "sendCampaign-not-sendable",
+      "operation": "sendCampaign"
+    },
+    {
+      "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"42694e9e57\", \"web_id\": 42, \"type\": \"regular\", \"status\": \"save\", \"emails_sent\": 0, \"create_time\": \"2026-10-25T10:00:00Z\", \"send_time\": \"\", \"settings\": {\"title\": \"Spring Launch\", \"subject_line\": \"Hello\"}, \"recipients\": {\"list_id\": \"57afe96172\", \"list_name\": \"Audience\", \"recipient_count\": 100}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/42694e9e57/actions/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "campaign": {
+            "createdAt": "2026-10-25T10:00:00Z",
+            "emailsSent": 0,
+            "id": "42694e9e57",
+            "listId": "57afe96172",
+            "listName": "Audience",
+            "recipientCount": 100,
+            "status": "save",
+            "subjectLine": "Hello",
+            "title": "Spring Launch",
+            "type": "regular",
+            "webId": 42
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "input": {
+        "campaignId": "42694e9e57",
+        "expectedListId": "57afe96172"
+      },
+      "name": "sendCampaign-uncertain",
+      "operation": "sendCampaign"
+    },
+    {
+      "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "exchanges": [
+        {
+          "body": "{\"title\":\"Resource Not Found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "campaign": {
+            "emailsSent": 0,
+            "id": "",
+            "recipientCount": 0,
+            "status": "",
+            "type": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "input": {
+        "campaignId": "42694e9e57",
+        "expectedListId": "57afe96172"
+      },
+      "name": "sendCampaign-not-found",
+      "operation": "sendCampaign"
+    },
+    {
+      "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "exchanges": [
+        {
+          "body": "{\"title\":\"Unauthorized\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "campaign": {
+            "emailsSent": 0,
+            "id": "",
+            "recipientCount": 0,
+            "status": "",
+            "type": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "input": {
+        "campaignId": "42694e9e57",
+        "expectedListId": "57afe96172"
+      },
+      "name": "sendCampaign-rejected",
+      "operation": "sendCampaign"
+    },
+    {
+      "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "exchanges": [
+        {
+          "body": "{\"bad\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "campaign": {
+            "emailsSent": 0,
+            "id": "",
+            "recipientCount": 0,
+            "status": "",
+            "type": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "input": {
+        "campaignId": "42694e9e57",
+        "expectedListId": "57afe96172"
+      },
+      "name": "sendCampaign-invalid",
+      "operation": "sendCampaign"
+    },
+    {
+      "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "input": {
+        "campaignId": "42694e9e57",
+        "expectedListId": "57afe96172"
+      },
+      "name": "sendCampaign-rate-limit",
+      "operation": "sendCampaign"
+    },
+    {
+      "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "input": {
+        "campaignId": "42694e9e57",
+        "expectedListId": "57afe96172"
+      },
+      "name": "sendCampaign-unavailable",
+      "operation": "sendCampaign"
+    },
+    {
+      "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "input": {
+        "campaignId": "42694e9e57",
+        "expectedListId": "57afe96172"
+      },
+      "name": "sendCampaign-transport",
+      "operation": "sendCampaign"
+    },
+    {
+      "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "campaign": {
+            "emailsSent": 0,
+            "id": "",
+            "recipientCount": 0,
+            "status": "",
+            "type": ""
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "input": {
+        "campaignId": "bad!",
+        "expectedListId": "57afe96172"
+      },
+      "name": "sendCampaign-defect",
+      "operation": "sendCampaign"
+    }
+  ],
+  "schemaVersion": 1
+}
