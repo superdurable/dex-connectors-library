@@ -1,6 +1,6 @@
 # Stripe Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/stripe/go@v0.25.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/stripe/go@v0.25.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/stripe`.
 
@@ -173,6 +173,9 @@ retry under the generated Dex policy. `GetCheckoutSession` and
 `GetPaymentIntent` classify an oversized error response by its status, so an
 oversized 429 or 5xx retries; only an oversized successful response selects
 `invalidResponse`.
+
+When Stripe omits a Checkout Session expiration, the Go result omits
+`expiresAt` from JSON. A zero `ExpiresAt` in Checkout input is omitted too.
 
 `GetPaymentIntent` reads one PaymentIntent (`pi_...`) with its latest charge
 expanded and returns `id`, `amount` and `currency` (minor units),
