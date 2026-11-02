@@ -6,7 +6,7 @@ import { Client } from './client.js';
 import { SaveObjectDefinition, SearchDefinition } from './generated/definitions.js';
 import { SaveObjectInputSchema, SearchInputSchema, type SavedObject, type SaveObjectInput, type SearchInput, type SearchPage } from './generated/models.js';
 
-const emptyPage: SearchPage = { nbHits: 0, hits: null };
+const emptyPage: SearchPage = { nbHits: 0, hits: [] };
 const emptySavedObject: SavedObject = { objectID: '', taskID: 0 };
 function failure(operation: string, kind: Failure['kind'], message: string): Failure { return { kind, provider: 'algolia', operation, message }; }
 function validPathPart(value: string): boolean { return value.trim() !== '' && !/[/?&#]/.test(value); }

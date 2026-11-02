@@ -88,7 +88,7 @@
         "branch": "providerRejected",
         "failureKind": "AUTHORIZATION",
         "output": {
-          "hits": null,
+          "hits": [],
           "nbHits": 0
         },
         "requestCount": 1,
@@ -137,7 +137,7 @@
         "branch": "invalidResponse",
         "failureKind": "PROTOCOL",
         "output": {
-          "hits": null,
+          "hits": [],
           "nbHits": 0
         },
         "requestCount": 1,
@@ -295,7 +295,7 @@
         "branch": "defect",
         "failureKind": "VALIDATION",
         "output": {
-          "hits": null,
+          "hits": [],
           "nbHits": 0
         },
         "requestCount": 0,
