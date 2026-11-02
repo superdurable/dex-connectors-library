@@ -278,9 +278,9 @@ rejects the second start.
 
 A non-2xx response never exposes BambooHR's `X-BambooHR-Error-Message`
 header or any message field. A Failure repeats only a machine-readable code
-from `error.code` or `code`, such as
+from `error.code` first, then `code` if the first value is unusable, such as
 `BambooHR rejected the request (HTTP 422) [BadRequest]`. A code that contains
-the API key is dropped.
+the API key is dropped. An oversized error body contributes no code.
 
 | Response | Reads and updateEmployee | addEmployee |
 | --- | --- | --- |

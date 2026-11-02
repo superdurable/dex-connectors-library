@@ -7,7 +7,6 @@ import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
-from urllib.parse import urlsplit
 
 import httpx
 from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, Receipt
@@ -73,9 +72,6 @@ class Client:
         if config.max_response_bytes < 1:
             raise ValueError("BambooHR response limit must be positive")
         endpoint = validate_base_url(api_base_url or f"https://{config.company_domain}.bamboohr.com/api/v1")
-        parsed = urlsplit(endpoint)
-        if parsed.scheme != "https" and parsed.hostname not in ("localhost", "127.0.0.1"):
-            raise ValueError("BambooHR API URL must use HTTPS")
         self.config = config
         self._endpoint = endpoint.rstrip("/")
         self._credentials = credentials
@@ -216,8 +212,13 @@ class Client:
     def _classify_status(
         self, operation: str, status: int, headers: httpx.Headers, body: bytes, key: str
     ) -> Exchange:
-        error_code = next(iter(read_error_tokens(body, ("/error/code", "/code"))), "")
-        suffix = f" [{error_code}]" if _ERROR_CODE.fullmatch(error_code) and key not in error_code else ""
+        error_code = ""
+        for pointer in ("/error/code", "/code"):
+            tokens = read_error_tokens(body, (pointer,))
+            if len(tokens) == 1 and _ERROR_CODE.fullmatch(tokens[0]) and key not in tokens[0]:
+                error_code = tokens[0]
+                break
+        suffix = f" [{error_code}]" if error_code else ""
         retry_after = parse_retry_after(headers.get("Retry-After", ""), datetime.now(UTC))
         if status == 429:
             return Exchange(
