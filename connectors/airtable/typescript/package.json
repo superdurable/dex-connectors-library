@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-airtable",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Airtable record operations for Dex Flows",
   "repository": {
     "type": "git",
