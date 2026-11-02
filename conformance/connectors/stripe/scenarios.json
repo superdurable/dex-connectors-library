@@ -1,0 +1,4551 @@
+{
+  "connector": "stripe",
+  "scenarios": [
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"cs_test_123\",\"object\":\"checkout.session\",\"url\":\"https://checkout.stripe.com/c/pay/cs_test_123\",\"payment_status\":\"unpaid\",\"status\":\"open\",\"currency\":\"usd\",\"amount_total\":7500}",
+          "derivedKey": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+          "form": {
+            "cancel_url": [
+              "https://events.example.com/cancel"
+            ],
+            "client_reference_id": [
+              "registration-123"
+            ],
+            "customer_email": [
+              "attendee@example.com"
+            ],
+            "expires_at": [
+              "1793491200"
+            ],
+            "line_items[0][price_data][currency]": [
+              "usd"
+            ],
+            "line_items[0][price_data][product_data][name]": [
+              "Community Event"
+            ],
+            "line_items[0][price_data][unit_amount]": [
+              "7500"
+            ],
+            "line_items[0][quantity]": [
+              "1"
+            ],
+            "metadata[registration_id]": [
+              "registration-123"
+            ],
+            "mode": [
+              "payment"
+            ],
+            "payment_intent_data[metadata][registration_id]": [
+              "registration-123"
+            ],
+            "payment_method_types[0]": [
+              "card"
+            ],
+            "success_url": [
+              "https://events.example.com/success"
+            ]
+          },
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/checkout/sessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "amountTotal": 7500,
+          "currency": "usd",
+          "id": "cs_test_123",
+          "paymentStatus": "unpaid",
+          "status": "open",
+          "url": "https://checkout.stripe.com/c/pay/cs_test_123"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "input": {
+        "cancelUrl": "https://events.example.com/cancel",
+        "clientReferenceId": "registration-123",
+        "currency": "usd",
+        "customerEmail": "attendee@example.com",
+        "expiresAt": "2026-11-01T00:00:00Z",
+        "metadata": {
+          "registration_id": "registration-123"
+        },
+        "productName": "Community Event",
+        "successUrl": "https://events.example.com/success",
+        "unitAmount": 7500
+      },
+      "name": "createCardCheckoutSession-success",
+      "operation": "createCardCheckoutSession"
+    },
+    {
+      "attempts": 2,
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "",
+          "derivedKey": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+          "form": {
+            "cancel_url": [
+              "https://events.example.com/cancel"
+            ],
+            "client_reference_id": [
+              "registration-123"
+            ],
+            "customer_email": [
+              "attendee@example.com"
+            ],
+            "line_items[0][price_data][currency]": [
+              "usd"
+            ],
+            "line_items[0][price_data][product_data][name]": [
+              "Community Event"
+            ],
+            "line_items[0][price_data][unit_amount]": [
+              "7500"
+            ],
+            "line_items[0][quantity]": [
+              "1"
+            ],
+            "metadata[registration_id]": [
+              "registration-123"
+            ],
+            "mode": [
+              "payment"
+            ],
+            "payment_intent_data[metadata][registration_id]": [
+              "registration-123"
+            ],
+            "payment_method_types[0]": [
+              "card"
+            ],
+            "success_url": [
+              "https://events.example.com/success"
+            ]
+          },
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/checkout/sessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{\"id\":\"cs_test_123\",\"object\":\"checkout.session\",\"url\":\"https://checkout.stripe.com/c/pay/cs_test_123\",\"payment_status\":\"unpaid\",\"status\":\"open\",\"currency\":\"usd\",\"amount_total\":7500}",
+          "derivedKey": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+          "form": {
+            "cancel_url": [
+              "https://events.example.com/cancel"
+            ],
+            "client_reference_id": [
+              "registration-123"
+            ],
+            "customer_email": [
+              "attendee@example.com"
+            ],
+            "line_items[0][price_data][currency]": [
+              "usd"
+            ],
+            "line_items[0][price_data][product_data][name]": [
+              "Community Event"
+            ],
+            "line_items[0][price_data][unit_amount]": [
+              "7500"
+            ],
+            "line_items[0][quantity]": [
+              "1"
+            ],
+            "metadata[registration_id]": [
+              "registration-123"
+            ],
+            "mode": [
+              "payment"
+            ],
+            "payment_intent_data[metadata][registration_id]": [
+              "registration-123"
+            ],
+            "payment_method_types[0]": [
+              "card"
+            ],
+            "success_url": [
+              "https://events.example.com/success"
+            ]
+          },
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/checkout/sessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "amountTotal": 7500,
+          "currency": "usd",
+          "id": "cs_test_123",
+          "paymentStatus": "unpaid",
+          "status": "open",
+          "url": "https://checkout.stripe.com/c/pay/cs_test_123"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "input": {
+        "cancelUrl": "https://events.example.com/cancel",
+        "clientReferenceId": "registration-123",
+        "currency": "usd",
+        "customerEmail": "attendee@example.com",
+        "metadata": {
+          "registration_id": "registration-123"
+        },
+        "productName": "Community Event",
+        "successUrl": "https://events.example.com/success",
+        "unitAmount": 7500
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createCardCheckoutSession-retry-reuses-key",
+      "operation": "createCardCheckoutSession"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "input": {
+        "cancelUrl": "https://events.example.com/cancel",
+        "clientReferenceId": "registration-123",
+        "currency": "USD",
+        "customerEmail": "attendee@example.com",
+        "metadata": {
+          "registration_id": "registration-123"
+        },
+        "productName": "Community Event",
+        "successUrl": "https://events.example.com/success",
+        "unitAmount": 7500
+      },
+      "name": "createCardCheckoutSession-defect",
+      "operation": "createCardCheckoutSession"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"invalid_request_error\"}}",
+          "derivedKey": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+          "form": {
+            "cancel_url": [
+              "https://events.example.com/cancel"
+            ],
+            "client_reference_id": [
+              "registration-123"
+            ],
+            "customer_email": [
+              "attendee@example.com"
+            ],
+            "line_items[0][price_data][currency]": [
+              "usd"
+            ],
+            "line_items[0][price_data][product_data][name]": [
+              "Community Event"
+            ],
+            "line_items[0][price_data][unit_amount]": [
+              "7500"
+            ],
+            "line_items[0][quantity]": [
+              "1"
+            ],
+            "metadata[registration_id]": [
+              "registration-123"
+            ],
+            "mode": [
+              "payment"
+            ],
+            "payment_intent_data[metadata][registration_id]": [
+              "registration-123"
+            ],
+            "payment_method_types[0]": [
+              "card"
+            ],
+            "success_url": [
+              "https://events.example.com/success"
+            ]
+          },
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/checkout/sessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "input": {
+        "cancelUrl": "https://events.example.com/cancel",
+        "clientReferenceId": "registration-123",
+        "currency": "usd",
+        "customerEmail": "attendee@example.com",
+        "metadata": {
+          "registration_id": "registration-123"
+        },
+        "productName": "Community Event",
+        "successUrl": "https://events.example.com/success",
+        "unitAmount": 7500
+      },
+      "name": "createCardCheckoutSession-rejected",
+      "operation": "createCardCheckoutSession"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+          "form": {
+            "cancel_url": [
+              "https://events.example.com/cancel"
+            ],
+            "client_reference_id": [
+              "registration-123"
+            ],
+            "customer_email": [
+              "attendee@example.com"
+            ],
+            "line_items[0][price_data][currency]": [
+              "usd"
+            ],
+            "line_items[0][price_data][product_data][name]": [
+              "Community Event"
+            ],
+            "line_items[0][price_data][unit_amount]": [
+              "7500"
+            ],
+            "line_items[0][quantity]": [
+              "1"
+            ],
+            "metadata[registration_id]": [
+              "registration-123"
+            ],
+            "mode": [
+              "payment"
+            ],
+            "payment_intent_data[metadata][registration_id]": [
+              "registration-123"
+            ],
+            "payment_method_types[0]": [
+              "card"
+            ],
+            "success_url": [
+              "https://events.example.com/success"
+            ]
+          },
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/checkout/sessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "input": {
+        "cancelUrl": "https://events.example.com/cancel",
+        "clientReferenceId": "registration-123",
+        "currency": "usd",
+        "customerEmail": "attendee@example.com",
+        "metadata": {
+          "registration_id": "registration-123"
+        },
+        "productName": "Community Event",
+        "successUrl": "https://events.example.com/success",
+        "unitAmount": 7500
+      },
+      "name": "createCardCheckoutSession-invalid-response",
+      "operation": "createCardCheckoutSession"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "",
+          "derivedKey": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+          "form": {
+            "cancel_url": [
+              "https://events.example.com/cancel"
+            ],
+            "client_reference_id": [
+              "registration-123"
+            ],
+            "customer_email": [
+              "attendee@example.com"
+            ],
+            "line_items[0][price_data][currency]": [
+              "usd"
+            ],
+            "line_items[0][price_data][product_data][name]": [
+              "Community Event"
+            ],
+            "line_items[0][price_data][unit_amount]": [
+              "7500"
+            ],
+            "line_items[0][quantity]": [
+              "1"
+            ],
+            "metadata[registration_id]": [
+              "registration-123"
+            ],
+            "mode": [
+              "payment"
+            ],
+            "payment_intent_data[metadata][registration_id]": [
+              "registration-123"
+            ],
+            "payment_method_types[0]": [
+              "card"
+            ],
+            "success_url": [
+              "https://events.example.com/success"
+            ]
+          },
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/checkout/sessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "input": {
+        "cancelUrl": "https://events.example.com/cancel",
+        "clientReferenceId": "registration-123",
+        "currency": "usd",
+        "customerEmail": "attendee@example.com",
+        "metadata": {
+          "registration_id": "registration-123"
+        },
+        "productName": "Community Event",
+        "successUrl": "https://events.example.com/success",
+        "unitAmount": 7500
+      },
+      "name": "createCardCheckoutSession-rate-limit",
+      "operation": "createCardCheckoutSession"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "",
+          "derivedKey": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+          "form": {
+            "cancel_url": [
+              "https://events.example.com/cancel"
+            ],
+            "client_reference_id": [
+              "registration-123"
+            ],
+            "customer_email": [
+              "attendee@example.com"
+            ],
+            "line_items[0][price_data][currency]": [
+              "usd"
+            ],
+            "line_items[0][price_data][product_data][name]": [
+              "Community Event"
+            ],
+            "line_items[0][price_data][unit_amount]": [
+              "7500"
+            ],
+            "line_items[0][quantity]": [
+              "1"
+            ],
+            "metadata[registration_id]": [
+              "registration-123"
+            ],
+            "mode": [
+              "payment"
+            ],
+            "payment_intent_data[metadata][registration_id]": [
+              "registration-123"
+            ],
+            "payment_method_types[0]": [
+              "card"
+            ],
+            "success_url": [
+              "https://events.example.com/success"
+            ]
+          },
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/checkout/sessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "input": {
+        "cancelUrl": "https://events.example.com/cancel",
+        "clientReferenceId": "registration-123",
+        "currency": "usd",
+        "customerEmail": "attendee@example.com",
+        "metadata": {
+          "registration_id": "registration-123"
+        },
+        "productName": "Community Event",
+        "successUrl": "https://events.example.com/success",
+        "unitAmount": 7500
+      },
+      "name": "createCardCheckoutSession-uncertain",
+      "operation": "createCardCheckoutSession"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "",
+          "derivedKey": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+          "form": {
+            "cancel_url": [
+              "https://events.example.com/cancel"
+            ],
+            "client_reference_id": [
+              "registration-123"
+            ],
+            "customer_email": [
+              "attendee@example.com"
+            ],
+            "line_items[0][price_data][currency]": [
+              "usd"
+            ],
+            "line_items[0][price_data][product_data][name]": [
+              "Community Event"
+            ],
+            "line_items[0][price_data][unit_amount]": [
+              "7500"
+            ],
+            "line_items[0][quantity]": [
+              "1"
+            ],
+            "metadata[registration_id]": [
+              "registration-123"
+            ],
+            "mode": [
+              "payment"
+            ],
+            "payment_intent_data[metadata][registration_id]": [
+              "registration-123"
+            ],
+            "payment_method_types[0]": [
+              "card"
+            ],
+            "success_url": [
+              "https://events.example.com/success"
+            ]
+          },
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/checkout/sessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "input": {
+        "cancelUrl": "https://events.example.com/cancel",
+        "clientReferenceId": "registration-123",
+        "currency": "usd",
+        "customerEmail": "attendee@example.com",
+        "metadata": {
+          "registration_id": "registration-123"
+        },
+        "productName": "Community Event",
+        "successUrl": "https://events.example.com/success",
+        "unitAmount": 7500
+      },
+      "name": "createCardCheckoutSession-unavailable",
+      "operation": "createCardCheckoutSession"
+    },
+    {
+      "callId": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"cs_test_123\",\"object\":\"checkout.session\",\"url\":\"https://checkout.stripe.com/c/pay/cs_test_123\",\"payment_status\":\"unpaid\",\"status\":\"open\",\"currency\":\"usd\",\"amount_total\":7500}",
+          "derivedKey": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+          "form": {
+            "cancel_url": [
+              "https://events.example.com/cancel"
+            ],
+            "client_reference_id": [
+              "registration-123"
+            ],
+            "customer_email": [
+              "attendee@example.com"
+            ],
+            "expires_at": [
+              "1793491200"
+            ],
+            "line_items[0][price_data][currency]": [
+              "usd"
+            ],
+            "line_items[0][price_data][product_data][name]": [
+              "Community Event"
+            ],
+            "line_items[0][price_data][unit_amount]": [
+              "7500"
+            ],
+            "line_items[0][quantity]": [
+              "1"
+            ],
+            "metadata[registration_id]": [
+              "registration-123"
+            ],
+            "mode": [
+              "payment"
+            ],
+            "payment_intent_data[metadata][registration_id]": [
+              "registration-123"
+            ],
+            "payment_method_types[0]": [
+              "us_bank_account"
+            ],
+            "success_url": [
+              "https://events.example.com/success"
+            ]
+          },
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/checkout/sessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "amountTotal": 7500,
+          "currency": "usd",
+          "id": "cs_test_123",
+          "paymentStatus": "unpaid",
+          "status": "open",
+          "url": "https://checkout.stripe.com/c/pay/cs_test_123"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+      "input": {
+        "cancelUrl": "https://events.example.com/cancel",
+        "clientReferenceId": "registration-123",
+        "currency": "usd",
+        "customerEmail": "attendee@example.com",
+        "expiresAt": "2026-11-01T00:00:00Z",
+        "metadata": {
+          "registration_id": "registration-123"
+        },
+        "productName": "Community Event",
+        "successUrl": "https://events.example.com/success",
+        "unitAmount": 7500
+      },
+      "name": "createACHCheckoutSession-success",
+      "operation": "createACHCheckoutSession"
+    },
+    {
+      "callId": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+      "input": {
+        "cancelUrl": "https://events.example.com/cancel",
+        "clientReferenceId": "registration-123",
+        "currency": "USD",
+        "customerEmail": "attendee@example.com",
+        "metadata": {
+          "registration_id": "registration-123"
+        },
+        "productName": "Community Event",
+        "successUrl": "https://events.example.com/success",
+        "unitAmount": 7500
+      },
+      "name": "createACHCheckoutSession-defect",
+      "operation": "createACHCheckoutSession"
+    },
+    {
+      "callId": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"invalid_request_error\"}}",
+          "derivedKey": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+          "form": {
+            "cancel_url": [
+              "https://events.example.com/cancel"
+            ],
+            "client_reference_id": [
+              "registration-123"
+            ],
+            "customer_email": [
+              "attendee@example.com"
+            ],
+            "line_items[0][price_data][currency]": [
+              "usd"
+            ],
+            "line_items[0][price_data][product_data][name]": [
+              "Community Event"
+            ],
+            "line_items[0][price_data][unit_amount]": [
+              "7500"
+            ],
+            "line_items[0][quantity]": [
+              "1"
+            ],
+            "metadata[registration_id]": [
+              "registration-123"
+            ],
+            "mode": [
+              "payment"
+            ],
+            "payment_intent_data[metadata][registration_id]": [
+              "registration-123"
+            ],
+            "payment_method_types[0]": [
+              "us_bank_account"
+            ],
+            "success_url": [
+              "https://events.example.com/success"
+            ]
+          },
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/checkout/sessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+      "input": {
+        "cancelUrl": "https://events.example.com/cancel",
+        "clientReferenceId": "registration-123",
+        "currency": "usd",
+        "customerEmail": "attendee@example.com",
+        "metadata": {
+          "registration_id": "registration-123"
+        },
+        "productName": "Community Event",
+        "successUrl": "https://events.example.com/success",
+        "unitAmount": 7500
+      },
+      "name": "createACHCheckoutSession-rejected",
+      "operation": "createACHCheckoutSession"
+    },
+    {
+      "callId": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+          "form": {
+            "cancel_url": [
+              "https://events.example.com/cancel"
+            ],
+            "client_reference_id": [
+              "registration-123"
+            ],
+            "customer_email": [
+              "attendee@example.com"
+            ],
+            "line_items[0][price_data][currency]": [
+              "usd"
+            ],
+            "line_items[0][price_data][product_data][name]": [
+              "Community Event"
+            ],
+            "line_items[0][price_data][unit_amount]": [
+              "7500"
+            ],
+            "line_items[0][quantity]": [
+              "1"
+            ],
+            "metadata[registration_id]": [
+              "registration-123"
+            ],
+            "mode": [
+              "payment"
+            ],
+            "payment_intent_data[metadata][registration_id]": [
+              "registration-123"
+            ],
+            "payment_method_types[0]": [
+              "us_bank_account"
+            ],
+            "success_url": [
+              "https://events.example.com/success"
+            ]
+          },
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/checkout/sessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+      "input": {
+        "cancelUrl": "https://events.example.com/cancel",
+        "clientReferenceId": "registration-123",
+        "currency": "usd",
+        "customerEmail": "attendee@example.com",
+        "metadata": {
+          "registration_id": "registration-123"
+        },
+        "productName": "Community Event",
+        "successUrl": "https://events.example.com/success",
+        "unitAmount": 7500
+      },
+      "name": "createACHCheckoutSession-invalid-response",
+      "operation": "createACHCheckoutSession"
+    },
+    {
+      "callId": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+      "exchanges": [
+        {
+          "body": "",
+          "derivedKey": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+          "form": {
+            "cancel_url": [
+              "https://events.example.com/cancel"
+            ],
+            "client_reference_id": [
+              "registration-123"
+            ],
+            "customer_email": [
+              "attendee@example.com"
+            ],
+            "line_items[0][price_data][currency]": [
+              "usd"
+            ],
+            "line_items[0][price_data][product_data][name]": [
+              "Community Event"
+            ],
+            "line_items[0][price_data][unit_amount]": [
+              "7500"
+            ],
+            "line_items[0][quantity]": [
+              "1"
+            ],
+            "metadata[registration_id]": [
+              "registration-123"
+            ],
+            "mode": [
+              "payment"
+            ],
+            "payment_intent_data[metadata][registration_id]": [
+              "registration-123"
+            ],
+            "payment_method_types[0]": [
+              "us_bank_account"
+            ],
+            "success_url": [
+              "https://events.example.com/success"
+            ]
+          },
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/checkout/sessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+      "input": {
+        "cancelUrl": "https://events.example.com/cancel",
+        "clientReferenceId": "registration-123",
+        "currency": "usd",
+        "customerEmail": "attendee@example.com",
+        "metadata": {
+          "registration_id": "registration-123"
+        },
+        "productName": "Community Event",
+        "successUrl": "https://events.example.com/success",
+        "unitAmount": 7500
+      },
+      "name": "createACHCheckoutSession-rate-limit",
+      "operation": "createACHCheckoutSession"
+    },
+    {
+      "callId": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+      "exchanges": [
+        {
+          "body": "",
+          "derivedKey": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+          "form": {
+            "cancel_url": [
+              "https://events.example.com/cancel"
+            ],
+            "client_reference_id": [
+              "registration-123"
+            ],
+            "customer_email": [
+              "attendee@example.com"
+            ],
+            "line_items[0][price_data][currency]": [
+              "usd"
+            ],
+            "line_items[0][price_data][product_data][name]": [
+              "Community Event"
+            ],
+            "line_items[0][price_data][unit_amount]": [
+              "7500"
+            ],
+            "line_items[0][quantity]": [
+              "1"
+            ],
+            "metadata[registration_id]": [
+              "registration-123"
+            ],
+            "mode": [
+              "payment"
+            ],
+            "payment_intent_data[metadata][registration_id]": [
+              "registration-123"
+            ],
+            "payment_method_types[0]": [
+              "us_bank_account"
+            ],
+            "success_url": [
+              "https://events.example.com/success"
+            ]
+          },
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/checkout/sessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+      "input": {
+        "cancelUrl": "https://events.example.com/cancel",
+        "clientReferenceId": "registration-123",
+        "currency": "usd",
+        "customerEmail": "attendee@example.com",
+        "metadata": {
+          "registration_id": "registration-123"
+        },
+        "productName": "Community Event",
+        "successUrl": "https://events.example.com/success",
+        "unitAmount": 7500
+      },
+      "name": "createACHCheckoutSession-uncertain",
+      "operation": "createACHCheckoutSession"
+    },
+    {
+      "callId": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+      "exchanges": [
+        {
+          "body": "",
+          "derivedKey": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+          "form": {
+            "cancel_url": [
+              "https://events.example.com/cancel"
+            ],
+            "client_reference_id": [
+              "registration-123"
+            ],
+            "customer_email": [
+              "attendee@example.com"
+            ],
+            "line_items[0][price_data][currency]": [
+              "usd"
+            ],
+            "line_items[0][price_data][product_data][name]": [
+              "Community Event"
+            ],
+            "line_items[0][price_data][unit_amount]": [
+              "7500"
+            ],
+            "line_items[0][quantity]": [
+              "1"
+            ],
+            "metadata[registration_id]": [
+              "registration-123"
+            ],
+            "mode": [
+              "payment"
+            ],
+            "payment_intent_data[metadata][registration_id]": [
+              "registration-123"
+            ],
+            "payment_method_types[0]": [
+              "us_bank_account"
+            ],
+            "success_url": [
+              "https://events.example.com/success"
+            ]
+          },
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/checkout/sessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+      "input": {
+        "cancelUrl": "https://events.example.com/cancel",
+        "clientReferenceId": "registration-123",
+        "currency": "usd",
+        "customerEmail": "attendee@example.com",
+        "metadata": {
+          "registration_id": "registration-123"
+        },
+        "productName": "Community Event",
+        "successUrl": "https://events.example.com/success",
+        "unitAmount": 7500
+      },
+      "name": "createACHCheckoutSession-unavailable",
+      "operation": "createACHCheckoutSession"
+    },
+    {
+      "callId": "1b890722-84a3-5712-be7b-45ac6cff9bb6",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"cs_test_123\",\"object\":\"checkout.session\",\"payment_status\":\"paid\",\"status\":\"complete\",\"currency\":\"usd\",\"amount_total\":7500}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/checkout/sessions/cs_test_123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "amountTotal": 7500,
+          "currency": "usd",
+          "id": "cs_test_123",
+          "paymentStatus": "paid",
+          "status": "complete"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "sessionId": "cs_test_123"
+      },
+      "name": "getCheckoutSession-success",
+      "operation": "getCheckoutSession"
+    },
+    {
+      "callId": "1b890722-84a3-5712-be7b-45ac6cff9bb6",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "sessionId": "bad"
+      },
+      "name": "getCheckoutSession-defect",
+      "operation": "getCheckoutSession"
+    },
+    {
+      "callId": "1b890722-84a3-5712-be7b-45ac6cff9bb6",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"invalid_request_error\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/checkout/sessions/cs_test_123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "sessionId": "cs_test_123"
+      },
+      "name": "getCheckoutSession-rejected",
+      "operation": "getCheckoutSession"
+    },
+    {
+      "callId": "1b890722-84a3-5712-be7b-45ac6cff9bb6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/checkout/sessions/cs_test_123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "sessionId": "cs_test_123"
+      },
+      "name": "getCheckoutSession-invalid-response",
+      "operation": "getCheckoutSession"
+    },
+    {
+      "callId": "1b890722-84a3-5712-be7b-45ac6cff9bb6",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/checkout/sessions/cs_test_123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "sessionId": "cs_test_123"
+      },
+      "name": "getCheckoutSession-rate-limit",
+      "operation": "getCheckoutSession"
+    },
+    {
+      "callId": "1b890722-84a3-5712-be7b-45ac6cff9bb6",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"invalid_request_error\",\"code\":\"resource_missing\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/checkout/sessions/cs_test_123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "sessionId": "cs_test_123"
+      },
+      "name": "getCheckoutSession-not-found",
+      "operation": "getCheckoutSession"
+    },
+    {
+      "callId": "9fa0d2e1-9a8d-53d8-9eb0-bbac421cc419",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"pi_test_123\",\"object\":\"payment_intent\",\"status\":\"succeeded\",\"currency\":\"usd\",\"amount\":7500,\"receipt_email\":null,\"latest_charge\":{\"id\":\"ch_test_123\",\"object\":\"charge\",\"amount_refunded\":2500,\"billing_details\":{\"email\":\"billing@example.com\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payment_intents/pi_test_123",
+          "query": {
+            "expand[]": [
+              "latest_charge"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "amount": 7500,
+          "amountRefunded": 2500,
+          "currency": "usd",
+          "customerEmail": "billing@example.com",
+          "id": "pi_test_123",
+          "latestChargeId": "ch_test_123",
+          "status": "succeeded"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentIntentId": "pi_test_123"
+      },
+      "name": "getPaymentIntent-success",
+      "operation": "getPaymentIntent"
+    },
+    {
+      "callId": "9fa0d2e1-9a8d-53d8-9eb0-bbac421cc419",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "amount": 0,
+          "amountRefunded": 0,
+          "currency": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentIntentId": "bad"
+      },
+      "name": "getPaymentIntent-defect",
+      "operation": "getPaymentIntent"
+    },
+    {
+      "callId": "9fa0d2e1-9a8d-53d8-9eb0-bbac421cc419",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"invalid_request_error\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payment_intents/pi_test_123",
+          "query": {
+            "expand[]": [
+              "latest_charge"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "amount": 0,
+          "amountRefunded": 0,
+          "currency": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentIntentId": "pi_test_123"
+      },
+      "name": "getPaymentIntent-rejected",
+      "operation": "getPaymentIntent"
+    },
+    {
+      "callId": "9fa0d2e1-9a8d-53d8-9eb0-bbac421cc419",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payment_intents/pi_test_123",
+          "query": {
+            "expand[]": [
+              "latest_charge"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "amount": 0,
+          "amountRefunded": 0,
+          "currency": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentIntentId": "pi_test_123"
+      },
+      "name": "getPaymentIntent-invalid-response",
+      "operation": "getPaymentIntent"
+    },
+    {
+      "callId": "9fa0d2e1-9a8d-53d8-9eb0-bbac421cc419",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payment_intents/pi_test_123",
+          "query": {
+            "expand[]": [
+              "latest_charge"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "paymentIntentId": "pi_test_123"
+      },
+      "name": "getPaymentIntent-rate-limit",
+      "operation": "getPaymentIntent"
+    },
+    {
+      "callId": "9fa0d2e1-9a8d-53d8-9eb0-bbac421cc419",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"invalid_request_error\",\"code\":\"resource_missing\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payment_intents/pi_test_123",
+          "query": {
+            "expand[]": [
+              "latest_charge"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "amount": 0,
+          "amountRefunded": 0,
+          "currency": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentIntentId": "pi_test_123"
+      },
+      "name": "getPaymentIntent-not-found",
+      "operation": "getPaymentIntent"
+    },
+    {
+      "callId": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"re_test_123\",\"object\":\"refund\",\"status\":\"pending\",\"currency\":\"usd\",\"amount\":2500}",
+          "derivedKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+          "form": {
+            "amount": [
+              "2500"
+            ],
+            "metadata[case]": [
+              "case-123"
+            ],
+            "metadata[dex_call_id]": [
+              "44d43e04-97c1-58d5-8a6e-3f17c695076c"
+            ],
+            "payment_intent": [
+              "pi_123"
+            ],
+            "reason": [
+              "requested_by_customer"
+            ]
+          },
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/refunds",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "refunded",
+        "failureKind": "",
+        "output": {
+          "amount": 2500,
+          "currency": "usd",
+          "refundId": "re_test_123",
+          "status": "pending"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+      "input": {
+        "amount": 2500,
+        "metadata": {
+          "case": "case-123"
+        },
+        "paymentIntentId": "pi_123",
+        "reason": "requested_by_customer"
+      },
+      "name": "createRefund-success",
+      "operation": "createRefund"
+    },
+    {
+      "callId": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "amount": 0,
+          "currency": "",
+          "refundId": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+      "input": {
+        "amount": 0,
+        "paymentIntentId": "bad"
+      },
+      "name": "createRefund-defect",
+      "operation": "createRefund"
+    },
+    {
+      "callId": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"invalid_request_error\"}}",
+          "derivedKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+          "form": {
+            "amount": [
+              "2500"
+            ],
+            "metadata[dex_call_id]": [
+              "44d43e04-97c1-58d5-8a6e-3f17c695076c"
+            ],
+            "payment_intent": [
+              "pi_123"
+            ]
+          },
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/refunds",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "amount": 0,
+          "currency": "",
+          "refundId": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+      "input": {
+        "amount": 2500,
+        "paymentIntentId": "pi_123"
+      },
+      "name": "createRefund-rejected",
+      "operation": "createRefund"
+    },
+    {
+      "callId": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+          "form": {
+            "amount": [
+              "2500"
+            ],
+            "metadata[dex_call_id]": [
+              "44d43e04-97c1-58d5-8a6e-3f17c695076c"
+            ],
+            "payment_intent": [
+              "pi_123"
+            ]
+          },
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/refunds",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "amount": 0,
+          "currency": "",
+          "refundId": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+      "input": {
+        "amount": 2500,
+        "paymentIntentId": "pi_123"
+      },
+      "name": "createRefund-invalid-response",
+      "operation": "createRefund"
+    },
+    {
+      "callId": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+      "exchanges": [
+        {
+          "body": "",
+          "derivedKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+          "form": {
+            "amount": [
+              "2500"
+            ],
+            "metadata[dex_call_id]": [
+              "44d43e04-97c1-58d5-8a6e-3f17c695076c"
+            ],
+            "payment_intent": [
+              "pi_123"
+            ]
+          },
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/refunds",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+      "input": {
+        "amount": 2500,
+        "paymentIntentId": "pi_123"
+      },
+      "name": "createRefund-rate-limit",
+      "operation": "createRefund"
+    },
+    {
+      "callId": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+      "exchanges": [
+        {
+          "body": "",
+          "derivedKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+          "form": {
+            "amount": [
+              "2500"
+            ],
+            "metadata[dex_call_id]": [
+              "44d43e04-97c1-58d5-8a6e-3f17c695076c"
+            ],
+            "payment_intent": [
+              "pi_123"
+            ]
+          },
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/refunds",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"object\":\"list\",\"data\":[],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds",
+          "query": {
+            "limit": [
+              "100"
+            ],
+            "payment_intent": [
+              "pi_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "amount": 0,
+          "currency": "",
+          "refundId": "",
+          "status": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+      "input": {
+        "amount": 2500,
+        "paymentIntentId": "pi_123"
+      },
+      "name": "createRefund-uncertain",
+      "operation": "createRefund"
+    },
+    {
+      "callId": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+      "exchanges": [
+        {
+          "body": "",
+          "derivedKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+          "form": {
+            "amount": [
+              "2500"
+            ],
+            "metadata[dex_call_id]": [
+              "44d43e04-97c1-58d5-8a6e-3f17c695076c"
+            ],
+            "payment_intent": [
+              "pi_123"
+            ]
+          },
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/refunds",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+      "input": {
+        "amount": 2500,
+        "paymentIntentId": "pi_123"
+      },
+      "name": "createRefund-unavailable",
+      "operation": "createRefund"
+    },
+    {
+      "attempts": 2,
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"idempotency_key_in_use\",\"message\":\"There is currently another in-progress request using this idempotency key.\"}}",
+          "derivedKey": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+          "form": {
+            "cancel_url": [
+              "https://events.example.com/cancel"
+            ],
+            "client_reference_id": [
+              "registration-123"
+            ],
+            "customer_email": [
+              "attendee@example.com"
+            ],
+            "line_items[0][price_data][currency]": [
+              "usd"
+            ],
+            "line_items[0][price_data][product_data][name]": [
+              "Community Event"
+            ],
+            "line_items[0][price_data][unit_amount]": [
+              "7500"
+            ],
+            "line_items[0][quantity]": [
+              "1"
+            ],
+            "metadata[registration_id]": [
+              "registration-123"
+            ],
+            "mode": [
+              "payment"
+            ],
+            "payment_intent_data[metadata][registration_id]": [
+              "registration-123"
+            ],
+            "payment_method_types[0]": [
+              "card"
+            ],
+            "success_url": [
+              "https://events.example.com/success"
+            ]
+          },
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/checkout/sessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{\"id\":\"cs_test_123\",\"object\":\"checkout.session\",\"url\":\"https://checkout.stripe.com/c/pay/cs_test_123\",\"payment_status\":\"unpaid\",\"status\":\"open\",\"currency\":\"usd\",\"amount_total\":7500}",
+          "derivedKey": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+          "form": {
+            "cancel_url": [
+              "https://events.example.com/cancel"
+            ],
+            "client_reference_id": [
+              "registration-123"
+            ],
+            "customer_email": [
+              "attendee@example.com"
+            ],
+            "line_items[0][price_data][currency]": [
+              "usd"
+            ],
+            "line_items[0][price_data][product_data][name]": [
+              "Community Event"
+            ],
+            "line_items[0][price_data][unit_amount]": [
+              "7500"
+            ],
+            "line_items[0][quantity]": [
+              "1"
+            ],
+            "metadata[registration_id]": [
+              "registration-123"
+            ],
+            "mode": [
+              "payment"
+            ],
+            "payment_intent_data[metadata][registration_id]": [
+              "registration-123"
+            ],
+            "payment_method_types[0]": [
+              "card"
+            ],
+            "success_url": [
+              "https://events.example.com/success"
+            ]
+          },
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/checkout/sessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "amountTotal": 7500,
+          "currency": "usd",
+          "id": "cs_test_123",
+          "paymentStatus": "unpaid",
+          "status": "open",
+          "url": "https://checkout.stripe.com/c/pay/cs_test_123"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "input": {
+        "cancelUrl": "https://events.example.com/cancel",
+        "clientReferenceId": "registration-123",
+        "currency": "usd",
+        "customerEmail": "attendee@example.com",
+        "metadata": {
+          "registration_id": "registration-123"
+        },
+        "productName": "Community Event",
+        "successUrl": "https://events.example.com/success",
+        "unitAmount": 7500
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "CONFLICT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createCardCheckoutSession-key-in-use-then-success",
+      "operation": "createCardCheckoutSession"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"idempotency_key_in_use\",\"message\":\"There is currently another in-progress request using this idempotency key.\"}}",
+          "derivedKey": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+          "form": {
+            "cancel_url": [
+              "https://events.example.com/cancel"
+            ],
+            "client_reference_id": [
+              "registration-123"
+            ],
+            "customer_email": [
+              "attendee@example.com"
+            ],
+            "line_items[0][price_data][currency]": [
+              "usd"
+            ],
+            "line_items[0][price_data][product_data][name]": [
+              "Community Event"
+            ],
+            "line_items[0][price_data][unit_amount]": [
+              "7500"
+            ],
+            "line_items[0][quantity]": [
+              "1"
+            ],
+            "metadata[registration_id]": [
+              "registration-123"
+            ],
+            "mode": [
+              "payment"
+            ],
+            "payment_intent_data[metadata][registration_id]": [
+              "registration-123"
+            ],
+            "payment_method_types[0]": [
+              "card"
+            ],
+            "success_url": [
+              "https://events.example.com/success"
+            ]
+          },
+          "headers": {
+            "Retry-After": "5"
+          },
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/checkout/sessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "CONFLICT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 5000,
+        "uncertain": false
+      },
+      "idempotencyKey": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "input": {
+        "cancelUrl": "https://events.example.com/cancel",
+        "clientReferenceId": "registration-123",
+        "currency": "usd",
+        "customerEmail": "attendee@example.com",
+        "metadata": {
+          "registration_id": "registration-123"
+        },
+        "productName": "Community Event",
+        "successUrl": "https://events.example.com/success",
+        "unitAmount": 7500
+      },
+      "name": "createCardCheckoutSession-conflict-retry-after-5",
+      "operation": "createCardCheckoutSession"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"idempotency_key_in_use\",\"message\":\"There is currently another in-progress request using this idempotency key.\"}}",
+          "derivedKey": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+          "form": {
+            "cancel_url": [
+              "https://events.example.com/cancel"
+            ],
+            "client_reference_id": [
+              "registration-123"
+            ],
+            "customer_email": [
+              "attendee@example.com"
+            ],
+            "line_items[0][price_data][currency]": [
+              "usd"
+            ],
+            "line_items[0][price_data][product_data][name]": [
+              "Community Event"
+            ],
+            "line_items[0][price_data][unit_amount]": [
+              "7500"
+            ],
+            "line_items[0][quantity]": [
+              "1"
+            ],
+            "metadata[registration_id]": [
+              "registration-123"
+            ],
+            "mode": [
+              "payment"
+            ],
+            "payment_intent_data[metadata][registration_id]": [
+              "registration-123"
+            ],
+            "payment_method_types[0]": [
+              "card"
+            ],
+            "success_url": [
+              "https://events.example.com/success"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7200"
+          },
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/checkout/sessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "CONFLICT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3600000,
+        "uncertain": false
+      },
+      "idempotencyKey": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "input": {
+        "cancelUrl": "https://events.example.com/cancel",
+        "clientReferenceId": "registration-123",
+        "currency": "usd",
+        "customerEmail": "attendee@example.com",
+        "metadata": {
+          "registration_id": "registration-123"
+        },
+        "productName": "Community Event",
+        "successUrl": "https://events.example.com/success",
+        "unitAmount": 7500
+      },
+      "name": "createCardCheckoutSession-conflict-retry-after-7200",
+      "operation": "createCardCheckoutSession"
+    },
+    {
+      "attempts": 2,
+      "callId": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"idempotency_key_in_use\",\"message\":\"There is currently another in-progress request using this idempotency key.\"}}",
+          "derivedKey": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+          "form": {
+            "cancel_url": [
+              "https://events.example.com/cancel"
+            ],
+            "client_reference_id": [
+              "registration-123"
+            ],
+            "customer_email": [
+              "attendee@example.com"
+            ],
+            "line_items[0][price_data][currency]": [
+              "usd"
+            ],
+            "line_items[0][price_data][product_data][name]": [
+              "Community Event"
+            ],
+            "line_items[0][price_data][unit_amount]": [
+              "7500"
+            ],
+            "line_items[0][quantity]": [
+              "1"
+            ],
+            "metadata[registration_id]": [
+              "registration-123"
+            ],
+            "mode": [
+              "payment"
+            ],
+            "payment_intent_data[metadata][registration_id]": [
+              "registration-123"
+            ],
+            "payment_method_types[0]": [
+              "us_bank_account"
+            ],
+            "success_url": [
+              "https://events.example.com/success"
+            ]
+          },
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/checkout/sessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{\"id\":\"cs_test_123\",\"object\":\"checkout.session\",\"url\":\"https://checkout.stripe.com/c/pay/cs_test_123\",\"payment_status\":\"unpaid\",\"status\":\"open\",\"currency\":\"usd\",\"amount_total\":7500}",
+          "derivedKey": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+          "form": {
+            "cancel_url": [
+              "https://events.example.com/cancel"
+            ],
+            "client_reference_id": [
+              "registration-123"
+            ],
+            "customer_email": [
+              "attendee@example.com"
+            ],
+            "line_items[0][price_data][currency]": [
+              "usd"
+            ],
+            "line_items[0][price_data][product_data][name]": [
+              "Community Event"
+            ],
+            "line_items[0][price_data][unit_amount]": [
+              "7500"
+            ],
+            "line_items[0][quantity]": [
+              "1"
+            ],
+            "metadata[registration_id]": [
+              "registration-123"
+            ],
+            "mode": [
+              "payment"
+            ],
+            "payment_intent_data[metadata][registration_id]": [
+              "registration-123"
+            ],
+            "payment_method_types[0]": [
+              "us_bank_account"
+            ],
+            "success_url": [
+              "https://events.example.com/success"
+            ]
+          },
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/checkout/sessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "amountTotal": 7500,
+          "currency": "usd",
+          "id": "cs_test_123",
+          "paymentStatus": "unpaid",
+          "status": "open",
+          "url": "https://checkout.stripe.com/c/pay/cs_test_123"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+      "input": {
+        "cancelUrl": "https://events.example.com/cancel",
+        "clientReferenceId": "registration-123",
+        "currency": "usd",
+        "customerEmail": "attendee@example.com",
+        "metadata": {
+          "registration_id": "registration-123"
+        },
+        "productName": "Community Event",
+        "successUrl": "https://events.example.com/success",
+        "unitAmount": 7500
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "CONFLICT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createACHCheckoutSession-key-in-use-then-success",
+      "operation": "createACHCheckoutSession"
+    },
+    {
+      "callId": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"idempotency_key_in_use\",\"message\":\"There is currently another in-progress request using this idempotency key.\"}}",
+          "derivedKey": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+          "form": {
+            "cancel_url": [
+              "https://events.example.com/cancel"
+            ],
+            "client_reference_id": [
+              "registration-123"
+            ],
+            "customer_email": [
+              "attendee@example.com"
+            ],
+            "line_items[0][price_data][currency]": [
+              "usd"
+            ],
+            "line_items[0][price_data][product_data][name]": [
+              "Community Event"
+            ],
+            "line_items[0][price_data][unit_amount]": [
+              "7500"
+            ],
+            "line_items[0][quantity]": [
+              "1"
+            ],
+            "metadata[registration_id]": [
+              "registration-123"
+            ],
+            "mode": [
+              "payment"
+            ],
+            "payment_intent_data[metadata][registration_id]": [
+              "registration-123"
+            ],
+            "payment_method_types[0]": [
+              "us_bank_account"
+            ],
+            "success_url": [
+              "https://events.example.com/success"
+            ]
+          },
+          "headers": {
+            "Retry-After": "5"
+          },
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/checkout/sessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "CONFLICT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 5000,
+        "uncertain": false
+      },
+      "idempotencyKey": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+      "input": {
+        "cancelUrl": "https://events.example.com/cancel",
+        "clientReferenceId": "registration-123",
+        "currency": "usd",
+        "customerEmail": "attendee@example.com",
+        "metadata": {
+          "registration_id": "registration-123"
+        },
+        "productName": "Community Event",
+        "successUrl": "https://events.example.com/success",
+        "unitAmount": 7500
+      },
+      "name": "createACHCheckoutSession-conflict-retry-after-5",
+      "operation": "createACHCheckoutSession"
+    },
+    {
+      "callId": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"idempotency_key_in_use\",\"message\":\"There is currently another in-progress request using this idempotency key.\"}}",
+          "derivedKey": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+          "form": {
+            "cancel_url": [
+              "https://events.example.com/cancel"
+            ],
+            "client_reference_id": [
+              "registration-123"
+            ],
+            "customer_email": [
+              "attendee@example.com"
+            ],
+            "line_items[0][price_data][currency]": [
+              "usd"
+            ],
+            "line_items[0][price_data][product_data][name]": [
+              "Community Event"
+            ],
+            "line_items[0][price_data][unit_amount]": [
+              "7500"
+            ],
+            "line_items[0][quantity]": [
+              "1"
+            ],
+            "metadata[registration_id]": [
+              "registration-123"
+            ],
+            "mode": [
+              "payment"
+            ],
+            "payment_intent_data[metadata][registration_id]": [
+              "registration-123"
+            ],
+            "payment_method_types[0]": [
+              "us_bank_account"
+            ],
+            "success_url": [
+              "https://events.example.com/success"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7200"
+          },
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/checkout/sessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "CONFLICT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3600000,
+        "uncertain": false
+      },
+      "idempotencyKey": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+      "input": {
+        "cancelUrl": "https://events.example.com/cancel",
+        "clientReferenceId": "registration-123",
+        "currency": "usd",
+        "customerEmail": "attendee@example.com",
+        "metadata": {
+          "registration_id": "registration-123"
+        },
+        "productName": "Community Event",
+        "successUrl": "https://events.example.com/success",
+        "unitAmount": 7500
+      },
+      "name": "createACHCheckoutSession-conflict-retry-after-7200",
+      "operation": "createACHCheckoutSession"
+    },
+    {
+      "attempts": 2,
+      "callId": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"idempotency_key_in_use\",\"message\":\"There is currently another in-progress request using this idempotency key.\"}}",
+          "derivedKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+          "form": {
+            "amount": [
+              "2500"
+            ],
+            "metadata[dex_call_id]": [
+              "44d43e04-97c1-58d5-8a6e-3f17c695076c"
+            ],
+            "payment_intent": [
+              "pi_123"
+            ]
+          },
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/refunds",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{\"id\":\"re_test_123\",\"object\":\"refund\",\"status\":\"pending\",\"currency\":\"usd\",\"amount\":2500}",
+          "derivedKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+          "form": {
+            "amount": [
+              "2500"
+            ],
+            "metadata[dex_call_id]": [
+              "44d43e04-97c1-58d5-8a6e-3f17c695076c"
+            ],
+            "payment_intent": [
+              "pi_123"
+            ]
+          },
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/refunds",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "refunded",
+        "failureKind": "",
+        "output": {
+          "amount": 2500,
+          "currency": "usd",
+          "refundId": "re_test_123",
+          "status": "pending"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+      "input": {
+        "amount": 2500,
+        "paymentIntentId": "pi_123"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "CONFLICT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createRefund-key-in-use-then-success",
+      "operation": "createRefund"
+    },
+    {
+      "callId": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"idempotency_key_in_use\",\"message\":\"There is currently another in-progress request using this idempotency key.\"}}",
+          "derivedKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+          "form": {
+            "amount": [
+              "2500"
+            ],
+            "metadata[dex_call_id]": [
+              "44d43e04-97c1-58d5-8a6e-3f17c695076c"
+            ],
+            "payment_intent": [
+              "pi_123"
+            ]
+          },
+          "headers": {
+            "Retry-After": "5"
+          },
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/refunds",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "CONFLICT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 5000,
+        "uncertain": false
+      },
+      "idempotencyKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+      "input": {
+        "amount": 2500,
+        "paymentIntentId": "pi_123"
+      },
+      "name": "createRefund-conflict-retry-after-5",
+      "operation": "createRefund"
+    },
+    {
+      "callId": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"idempotency_key_in_use\",\"message\":\"There is currently another in-progress request using this idempotency key.\"}}",
+          "derivedKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+          "form": {
+            "amount": [
+              "2500"
+            ],
+            "metadata[dex_call_id]": [
+              "44d43e04-97c1-58d5-8a6e-3f17c695076c"
+            ],
+            "payment_intent": [
+              "pi_123"
+            ]
+          },
+          "headers": {
+            "Retry-After": "7200"
+          },
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/refunds",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "CONFLICT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3600000,
+        "uncertain": false
+      },
+      "idempotencyKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+      "input": {
+        "amount": 2500,
+        "paymentIntentId": "pi_123"
+      },
+      "name": "createRefund-conflict-retry-after-7200",
+      "operation": "createRefund"
+    },
+    {
+      "callId": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+      "exchanges": [
+        {
+          "body": "",
+          "derivedKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+          "form": {
+            "amount": [
+              "2500"
+            ],
+            "metadata[dex_call_id]": [
+              "44d43e04-97c1-58d5-8a6e-3f17c695076c"
+            ],
+            "payment_intent": [
+              "pi_123"
+            ]
+          },
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/refunds",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"id\":\"re_found\",\"object\":\"refund\",\"status\":\"pending\",\"amount\":2500,\"currency\":\"usd\",\"metadata\":{\"dex_call_id\":\"44d43e04-97c1-58d5-8a6e-3f17c695076c\"}}],\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds",
+          "query": {
+            "limit": [
+              "100"
+            ],
+            "payment_intent": [
+              "pi_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "refunded",
+        "failureKind": "",
+        "output": {
+          "amount": 2500,
+          "currency": "usd",
+          "refundId": "re_found",
+          "status": "pending"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+      "input": {
+        "amount": 2500,
+        "paymentIntentId": "pi_123"
+      },
+      "name": "createRefund-readback-found",
+      "operation": "createRefund"
+    },
+    {
+      "callId": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+      "exchanges": [
+        {
+          "body": "",
+          "derivedKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+          "form": {
+            "amount": [
+              "2500"
+            ],
+            "metadata[dex_call_id]": [
+              "44d43e04-97c1-58d5-8a6e-3f17c695076c"
+            ],
+            "payment_intent": [
+              "pi_123"
+            ]
+          },
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/refunds",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"id\":\"re_page_1\",\"object\":\"refund\",\"status\":\"pending\",\"amount\":2500,\"currency\":\"usd\",\"metadata\":{\"dex_call_id\":\"other-call\"}}],\"has_more\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds",
+          "query": {
+            "limit": [
+              "100"
+            ],
+            "payment_intent": [
+              "pi_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"id\":\"re_page_2\",\"object\":\"refund\",\"status\":\"pending\",\"amount\":2500,\"currency\":\"usd\",\"metadata\":{\"dex_call_id\":\"44d43e04-97c1-58d5-8a6e-3f17c695076c\"}}],\"has_more\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds",
+          "query": {
+            "limit": [
+              "100"
+            ],
+            "payment_intent": [
+              "pi_123"
+            ],
+            "starting_after": [
+              "re_page_1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "refunded",
+        "failureKind": "",
+        "output": {
+          "amount": 2500,
+          "currency": "usd",
+          "refundId": "re_page_2",
+          "status": "pending"
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+      "input": {
+        "amount": 2500,
+        "paymentIntentId": "pi_123"
+      },
+      "name": "createRefund-readback-page-two",
+      "operation": "createRefund"
+    },
+    {
+      "callId": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+      "exchanges": [
+        {
+          "body": "",
+          "derivedKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+          "form": {
+            "amount": [
+              "2500"
+            ],
+            "metadata[dex_call_id]": [
+              "44d43e04-97c1-58d5-8a6e-3f17c695076c"
+            ],
+            "payment_intent": [
+              "pi_123"
+            ]
+          },
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/refunds",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"id\":\"re_page_1\",\"object\":\"refund\",\"status\":\"pending\",\"amount\":2500,\"currency\":\"usd\",\"metadata\":{\"dex_call_id\":\"other-call\"}}],\"has_more\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds",
+          "query": {
+            "limit": [
+              "100"
+            ],
+            "payment_intent": [
+              "pi_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"id\":\"re_page_2\",\"object\":\"refund\",\"status\":\"pending\",\"amount\":2500,\"currency\":\"usd\",\"metadata\":{\"dex_call_id\":\"other-call\"}}],\"has_more\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds",
+          "query": {
+            "limit": [
+              "100"
+            ],
+            "payment_intent": [
+              "pi_123"
+            ],
+            "starting_after": [
+              "re_page_1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"object\":\"list\",\"data\":[{\"id\":\"re_page_3\",\"object\":\"refund\",\"status\":\"pending\",\"amount\":2500,\"currency\":\"usd\",\"metadata\":{\"dex_call_id\":\"other-call\"}}],\"has_more\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds",
+          "query": {
+            "limit": [
+              "100"
+            ],
+            "payment_intent": [
+              "pi_123"
+            ],
+            "starting_after": [
+              "re_page_2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "amount": 0,
+          "currency": "",
+          "refundId": "",
+          "status": ""
+        },
+        "requestCount": 4,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+      "input": {
+        "amount": 2500,
+        "paymentIntentId": "pi_123"
+      },
+      "name": "createRefund-readback-page-bound",
+      "operation": "createRefund"
+    },
+    {
+      "callId": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+      "exchanges": [
+        {
+          "body": "",
+          "derivedKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+          "form": {
+            "amount": [
+              "2500"
+            ],
+            "metadata[dex_call_id]": [
+              "44d43e04-97c1-58d5-8a6e-3f17c695076c"
+            ],
+            "payment_intent": [
+              "pi_123"
+            ]
+          },
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/refunds",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds",
+          "query": {
+            "limit": [
+              "100"
+            ],
+            "payment_intent": [
+              "pi_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+      "input": {
+        "amount": 2500,
+        "paymentIntentId": "pi_123"
+      },
+      "name": "createRefund-readback-unavailable",
+      "operation": "createRefund"
+    },
+    {
+      "callId": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+      "exchanges": [
+        {
+          "body": "",
+          "derivedKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+          "form": {
+            "amount": [
+              "2500"
+            ],
+            "metadata[dex_call_id]": [
+              "44d43e04-97c1-58d5-8a6e-3f17c695076c"
+            ],
+            "payment_intent": [
+              "pi_123"
+            ]
+          },
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/refunds",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"error\":{\"type\":\"invalid_request_error\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds",
+          "query": {
+            "limit": [
+              "100"
+            ],
+            "payment_intent": [
+              "pi_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "amount": 0,
+          "currency": "",
+          "refundId": "",
+          "status": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+      "input": {
+        "amount": 2500,
+        "paymentIntentId": "pi_123"
+      },
+      "name": "createRefund-readback-forbidden",
+      "operation": "createRefund"
+    },
+    {
+      "callId": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+      "exchanges": [
+        {
+          "body": "",
+          "derivedKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+          "form": {
+            "amount": [
+              "2500"
+            ],
+            "metadata[dex_call_id]": [
+              "44d43e04-97c1-58d5-8a6e-3f17c695076c"
+            ],
+            "payment_intent": [
+              "pi_123"
+            ]
+          },
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/refunds",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"error\":{\"type\":\"invalid_request_error\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/refunds",
+          "query": {
+            "limit": [
+              "100"
+            ],
+            "payment_intent": [
+              "pi_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "amount": 0,
+          "currency": "",
+          "refundId": "",
+          "status": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+      "input": {
+        "amount": 2500,
+        "paymentIntentId": "pi_123"
+      },
+      "name": "createRefund-readback-unauthenticated",
+      "operation": "createRefund"
+    },
+    {
+      "attempts": 2,
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "derivedKey": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+          "form": {
+            "cancel_url": [
+              "https://events.example.com/cancel"
+            ],
+            "client_reference_id": [
+              "registration-123"
+            ],
+            "customer_email": [
+              "attendee@example.com"
+            ],
+            "line_items[0][price_data][currency]": [
+              "usd"
+            ],
+            "line_items[0][price_data][product_data][name]": [
+              "Community Event"
+            ],
+            "line_items[0][price_data][unit_amount]": [
+              "7500"
+            ],
+            "line_items[0][quantity]": [
+              "1"
+            ],
+            "metadata[registration_id]": [
+              "registration-123"
+            ],
+            "mode": [
+              "payment"
+            ],
+            "payment_intent_data[metadata][registration_id]": [
+              "registration-123"
+            ],
+            "payment_method_types[0]": [
+              "card"
+            ],
+            "success_url": [
+              "https://events.example.com/success"
+            ]
+          },
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/checkout/sessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "before-send"
+        },
+        {
+          "body": "{\"id\":\"cs_test_123\",\"object\":\"checkout.session\",\"url\":\"https://checkout.stripe.com/c/pay/cs_test_123\",\"payment_status\":\"unpaid\",\"status\":\"open\",\"currency\":\"usd\",\"amount_total\":7500}",
+          "derivedKey": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+          "form": {
+            "cancel_url": [
+              "https://events.example.com/cancel"
+            ],
+            "client_reference_id": [
+              "registration-123"
+            ],
+            "customer_email": [
+              "attendee@example.com"
+            ],
+            "line_items[0][price_data][currency]": [
+              "usd"
+            ],
+            "line_items[0][price_data][product_data][name]": [
+              "Community Event"
+            ],
+            "line_items[0][price_data][unit_amount]": [
+              "7500"
+            ],
+            "line_items[0][quantity]": [
+              "1"
+            ],
+            "metadata[registration_id]": [
+              "registration-123"
+            ],
+            "mode": [
+              "payment"
+            ],
+            "payment_intent_data[metadata][registration_id]": [
+              "registration-123"
+            ],
+            "payment_method_types[0]": [
+              "card"
+            ],
+            "success_url": [
+              "https://events.example.com/success"
+            ]
+          },
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/checkout/sessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "amountTotal": 7500,
+          "currency": "usd",
+          "id": "cs_test_123",
+          "paymentStatus": "unpaid",
+          "status": "open",
+          "url": "https://checkout.stripe.com/c/pay/cs_test_123"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "input": {
+        "cancelUrl": "https://events.example.com/cancel",
+        "clientReferenceId": "registration-123",
+        "currency": "usd",
+        "customerEmail": "attendee@example.com",
+        "metadata": {
+          "registration_id": "registration-123"
+        },
+        "productName": "Community Event",
+        "successUrl": "https://events.example.com/success",
+        "unitAmount": 7500
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createCardCheckoutSession-before-send-transport-retry",
+      "operation": "createCardCheckoutSession"
+    },
+    {
+      "attempts": 2,
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "derivedKey": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+          "form": {
+            "cancel_url": [
+              "https://events.example.com/cancel"
+            ],
+            "client_reference_id": [
+              "registration-123"
+            ],
+            "customer_email": [
+              "attendee@example.com"
+            ],
+            "line_items[0][price_data][currency]": [
+              "usd"
+            ],
+            "line_items[0][price_data][product_data][name]": [
+              "Community Event"
+            ],
+            "line_items[0][price_data][unit_amount]": [
+              "7500"
+            ],
+            "line_items[0][quantity]": [
+              "1"
+            ],
+            "metadata[registration_id]": [
+              "registration-123"
+            ],
+            "mode": [
+              "payment"
+            ],
+            "payment_intent_data[metadata][registration_id]": [
+              "registration-123"
+            ],
+            "payment_method_types[0]": [
+              "card"
+            ],
+            "success_url": [
+              "https://events.example.com/success"
+            ]
+          },
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/checkout/sessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "body": "{\"id\":\"cs_test_123\",\"object\":\"checkout.session\",\"url\":\"https://checkout.stripe.com/c/pay/cs_test_123\",\"payment_status\":\"unpaid\",\"status\":\"open\",\"currency\":\"usd\",\"amount_total\":7500}",
+          "derivedKey": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+          "form": {
+            "cancel_url": [
+              "https://events.example.com/cancel"
+            ],
+            "client_reference_id": [
+              "registration-123"
+            ],
+            "customer_email": [
+              "attendee@example.com"
+            ],
+            "line_items[0][price_data][currency]": [
+              "usd"
+            ],
+            "line_items[0][price_data][product_data][name]": [
+              "Community Event"
+            ],
+            "line_items[0][price_data][unit_amount]": [
+              "7500"
+            ],
+            "line_items[0][quantity]": [
+              "1"
+            ],
+            "metadata[registration_id]": [
+              "registration-123"
+            ],
+            "mode": [
+              "payment"
+            ],
+            "payment_intent_data[metadata][registration_id]": [
+              "registration-123"
+            ],
+            "payment_method_types[0]": [
+              "card"
+            ],
+            "success_url": [
+              "https://events.example.com/success"
+            ]
+          },
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/checkout/sessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "amountTotal": 7500,
+          "currency": "usd",
+          "id": "cs_test_123",
+          "paymentStatus": "unpaid",
+          "status": "open",
+          "url": "https://checkout.stripe.com/c/pay/cs_test_123"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "input": {
+        "cancelUrl": "https://events.example.com/cancel",
+        "clientReferenceId": "registration-123",
+        "currency": "usd",
+        "customerEmail": "attendee@example.com",
+        "metadata": {
+          "registration_id": "registration-123"
+        },
+        "productName": "Community Event",
+        "successUrl": "https://events.example.com/success",
+        "unitAmount": 7500
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createCardCheckoutSession-after-send-transport-retry",
+      "operation": "createCardCheckoutSession"
+    },
+    {
+      "attempts": 2,
+      "callId": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+      "exchanges": [
+        {
+          "derivedKey": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+          "form": {
+            "cancel_url": [
+              "https://events.example.com/cancel"
+            ],
+            "client_reference_id": [
+              "registration-123"
+            ],
+            "customer_email": [
+              "attendee@example.com"
+            ],
+            "line_items[0][price_data][currency]": [
+              "usd"
+            ],
+            "line_items[0][price_data][product_data][name]": [
+              "Community Event"
+            ],
+            "line_items[0][price_data][unit_amount]": [
+              "7500"
+            ],
+            "line_items[0][quantity]": [
+              "1"
+            ],
+            "metadata[registration_id]": [
+              "registration-123"
+            ],
+            "mode": [
+              "payment"
+            ],
+            "payment_intent_data[metadata][registration_id]": [
+              "registration-123"
+            ],
+            "payment_method_types[0]": [
+              "us_bank_account"
+            ],
+            "success_url": [
+              "https://events.example.com/success"
+            ]
+          },
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/checkout/sessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "before-send"
+        },
+        {
+          "body": "{\"id\":\"cs_test_123\",\"object\":\"checkout.session\",\"url\":\"https://checkout.stripe.com/c/pay/cs_test_123\",\"payment_status\":\"unpaid\",\"status\":\"open\",\"currency\":\"usd\",\"amount_total\":7500}",
+          "derivedKey": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+          "form": {
+            "cancel_url": [
+              "https://events.example.com/cancel"
+            ],
+            "client_reference_id": [
+              "registration-123"
+            ],
+            "customer_email": [
+              "attendee@example.com"
+            ],
+            "line_items[0][price_data][currency]": [
+              "usd"
+            ],
+            "line_items[0][price_data][product_data][name]": [
+              "Community Event"
+            ],
+            "line_items[0][price_data][unit_amount]": [
+              "7500"
+            ],
+            "line_items[0][quantity]": [
+              "1"
+            ],
+            "metadata[registration_id]": [
+              "registration-123"
+            ],
+            "mode": [
+              "payment"
+            ],
+            "payment_intent_data[metadata][registration_id]": [
+              "registration-123"
+            ],
+            "payment_method_types[0]": [
+              "us_bank_account"
+            ],
+            "success_url": [
+              "https://events.example.com/success"
+            ]
+          },
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/checkout/sessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "amountTotal": 7500,
+          "currency": "usd",
+          "id": "cs_test_123",
+          "paymentStatus": "unpaid",
+          "status": "open",
+          "url": "https://checkout.stripe.com/c/pay/cs_test_123"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+      "input": {
+        "cancelUrl": "https://events.example.com/cancel",
+        "clientReferenceId": "registration-123",
+        "currency": "usd",
+        "customerEmail": "attendee@example.com",
+        "metadata": {
+          "registration_id": "registration-123"
+        },
+        "productName": "Community Event",
+        "successUrl": "https://events.example.com/success",
+        "unitAmount": 7500
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createACHCheckoutSession-before-send-transport-retry",
+      "operation": "createACHCheckoutSession"
+    },
+    {
+      "attempts": 2,
+      "callId": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+      "exchanges": [
+        {
+          "derivedKey": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+          "form": {
+            "cancel_url": [
+              "https://events.example.com/cancel"
+            ],
+            "client_reference_id": [
+              "registration-123"
+            ],
+            "customer_email": [
+              "attendee@example.com"
+            ],
+            "line_items[0][price_data][currency]": [
+              "usd"
+            ],
+            "line_items[0][price_data][product_data][name]": [
+              "Community Event"
+            ],
+            "line_items[0][price_data][unit_amount]": [
+              "7500"
+            ],
+            "line_items[0][quantity]": [
+              "1"
+            ],
+            "metadata[registration_id]": [
+              "registration-123"
+            ],
+            "mode": [
+              "payment"
+            ],
+            "payment_intent_data[metadata][registration_id]": [
+              "registration-123"
+            ],
+            "payment_method_types[0]": [
+              "us_bank_account"
+            ],
+            "success_url": [
+              "https://events.example.com/success"
+            ]
+          },
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/checkout/sessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "body": "{\"id\":\"cs_test_123\",\"object\":\"checkout.session\",\"url\":\"https://checkout.stripe.com/c/pay/cs_test_123\",\"payment_status\":\"unpaid\",\"status\":\"open\",\"currency\":\"usd\",\"amount_total\":7500}",
+          "derivedKey": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+          "form": {
+            "cancel_url": [
+              "https://events.example.com/cancel"
+            ],
+            "client_reference_id": [
+              "registration-123"
+            ],
+            "customer_email": [
+              "attendee@example.com"
+            ],
+            "line_items[0][price_data][currency]": [
+              "usd"
+            ],
+            "line_items[0][price_data][product_data][name]": [
+              "Community Event"
+            ],
+            "line_items[0][price_data][unit_amount]": [
+              "7500"
+            ],
+            "line_items[0][quantity]": [
+              "1"
+            ],
+            "metadata[registration_id]": [
+              "registration-123"
+            ],
+            "mode": [
+              "payment"
+            ],
+            "payment_intent_data[metadata][registration_id]": [
+              "registration-123"
+            ],
+            "payment_method_types[0]": [
+              "us_bank_account"
+            ],
+            "success_url": [
+              "https://events.example.com/success"
+            ]
+          },
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/checkout/sessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "amountTotal": 7500,
+          "currency": "usd",
+          "id": "cs_test_123",
+          "paymentStatus": "unpaid",
+          "status": "open",
+          "url": "https://checkout.stripe.com/c/pay/cs_test_123"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "98579cf2-8c5c-59f2-8682-3fe2717c8c14",
+      "input": {
+        "cancelUrl": "https://events.example.com/cancel",
+        "clientReferenceId": "registration-123",
+        "currency": "usd",
+        "customerEmail": "attendee@example.com",
+        "metadata": {
+          "registration_id": "registration-123"
+        },
+        "productName": "Community Event",
+        "successUrl": "https://events.example.com/success",
+        "unitAmount": 7500
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createACHCheckoutSession-after-send-transport-retry",
+      "operation": "createACHCheckoutSession"
+    },
+    {
+      "attempts": 2,
+      "callId": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+      "exchanges": [
+        {
+          "derivedKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+          "form": {
+            "amount": [
+              "2500"
+            ],
+            "metadata[dex_call_id]": [
+              "44d43e04-97c1-58d5-8a6e-3f17c695076c"
+            ],
+            "payment_intent": [
+              "pi_123"
+            ]
+          },
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/refunds",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "before-send"
+        },
+        {
+          "body": "{\"id\":\"re_test_123\",\"object\":\"refund\",\"status\":\"pending\",\"currency\":\"usd\",\"amount\":2500}",
+          "derivedKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+          "form": {
+            "amount": [
+              "2500"
+            ],
+            "metadata[dex_call_id]": [
+              "44d43e04-97c1-58d5-8a6e-3f17c695076c"
+            ],
+            "payment_intent": [
+              "pi_123"
+            ]
+          },
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/refunds",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "refunded",
+        "failureKind": "",
+        "output": {
+          "amount": 2500,
+          "currency": "usd",
+          "refundId": "re_test_123",
+          "status": "pending"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+      "input": {
+        "amount": 2500,
+        "paymentIntentId": "pi_123"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createRefund-before-send-transport-retry",
+      "operation": "createRefund"
+    },
+    {
+      "attempts": 2,
+      "callId": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+      "exchanges": [
+        {
+          "derivedKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+          "form": {
+            "amount": [
+              "2500"
+            ],
+            "metadata[dex_call_id]": [
+              "44d43e04-97c1-58d5-8a6e-3f17c695076c"
+            ],
+            "payment_intent": [
+              "pi_123"
+            ]
+          },
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/refunds",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "body": "{\"id\":\"re_test_123\",\"object\":\"refund\",\"status\":\"pending\",\"currency\":\"usd\",\"amount\":2500}",
+          "derivedKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+          "form": {
+            "amount": [
+              "2500"
+            ],
+            "metadata[dex_call_id]": [
+              "44d43e04-97c1-58d5-8a6e-3f17c695076c"
+            ],
+            "payment_intent": [
+              "pi_123"
+            ]
+          },
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/refunds",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "refunded",
+        "failureKind": "",
+        "output": {
+          "amount": 2500,
+          "currency": "usd",
+          "refundId": "re_test_123",
+          "status": "pending"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "44d43e04-97c1-58d5-8a6e-3f17c695076c",
+      "input": {
+        "amount": 2500,
+        "paymentIntentId": "pi_123"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createRefund-after-send-transport-retry",
+      "operation": "createRefund"
+    },
+    {
+      "callId": "1b890722-84a3-5712-be7b-45ac6cff9bb6",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/checkout/sessions/cs_test_123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "sessionId": "cs_test_123"
+      },
+      "name": "getCheckoutSession-server-error",
+      "operation": "getCheckoutSession"
+    },
+    {
+      "callId": "9fa0d2e1-9a8d-53d8-9eb0-bbac421cc419",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payment_intents/pi_test_123",
+          "query": {
+            "expand[]": [
+              "latest_charge"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentIntentId": "pi_test_123"
+      },
+      "name": "getPaymentIntent-server-error",
+      "operation": "getPaymentIntent"
+    },
+    {
+      "callId": "06000e68-c608-5c47-bf61-4e3b36df695b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/checkout/sessions/cs_test_123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "sessionId": "cs_test_123"
+      },
+      "name": "getCheckoutSession-transport-before-send",
+      "operation": "getCheckoutSession"
+    },
+    {
+      "callId": "b9acca32-3284-5cfd-97d8-d7efccb4b600",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payment_intents/pi_test_123",
+          "query": {
+            "expand[]": [
+              "latest_charge"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2tfdGVzdF9leGFtcGxlOg=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentIntentId": "pi_test_123"
+      },
+      "name": "getPaymentIntent-transport-before-send",
+      "operation": "getPaymentIntent"
+    }
+  ],
+  "schemaVersion": 1
+}

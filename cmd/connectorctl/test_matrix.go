@@ -139,6 +139,13 @@ func selectConnectorDirectoriesForPaths(
 	shouldSelectAll := false
 	for _, changedPath := range changedPaths {
 		changedPath = filepath.ToSlash(changedPath)
+		if strings.HasPrefix(changedPath, "conformance/connectors/") {
+			connectorPath := "connectors/" + strings.TrimPrefix(changedPath, "conformance/connectors/")
+			if directory := longestConnectorDirectoryPrefix(directories, connectorPath); directory != "" {
+				selected[directory] = true
+			}
+			continue
+		}
 		if changedPath == catalogPath {
 			for _, directory := range directories {
 				if !previous[directory] {

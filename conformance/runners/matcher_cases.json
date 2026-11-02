@@ -1,0 +1,168 @@
+[
+  {
+    "name": "empty-values-and-json-array",
+    "requestPath": "/matcher?q=",
+    "requestHeaders": {
+      "X-Empty": [
+        ""
+      ]
+    },
+    "requestBody": "[1,{\"x\":\"y\"}]",
+    "exchange": {
+      "method": "POST",
+      "path": "/matcher",
+      "keyMode": "absent",
+      "status": 200,
+      "headers": {},
+      "body": "",
+      "query": {
+        "q": ""
+      },
+      "requestHeaders": {
+        "X-Empty": ""
+      },
+      "requestBody": [
+        1,
+        {
+          "x": "y"
+        }
+      ]
+    },
+    "expectedMismatches": []
+  },
+  {
+    "name": "missing-is-not-empty",
+    "requestPath": "/matcher",
+    "requestHeaders": {},
+    "requestBody": "",
+    "exchange": {
+      "method": "POST",
+      "path": "/matcher",
+      "keyMode": "absent",
+      "status": 200,
+      "headers": {},
+      "body": "",
+      "query": {
+        "q": ""
+      },
+      "requestHeaders": {
+        "X-Empty": ""
+      }
+    },
+    "expectedMismatches": [
+      "query q",
+      "header X-Empty"
+    ]
+  },
+  {
+    "name": "repeated-values",
+    "requestPath": "/matcher?q=one&q=two",
+    "requestHeaders": {
+      "X-Tag": [
+        "one",
+        "two"
+      ]
+    },
+    "requestBody": "x=one&x=two",
+    "exchange": {
+      "method": "POST",
+      "path": "/matcher",
+      "keyMode": "absent",
+      "status": 200,
+      "headers": {},
+      "body": "",
+      "query": {
+        "q": "one"
+      },
+      "form": {
+        "x": "one"
+      },
+      "requestHeaders": {
+        "X-Tag": "one"
+      }
+    },
+    "expectedMismatches": [
+      "query q",
+      "form x",
+      "header X-Tag"
+    ]
+  },
+  {
+    "name": "present-empty-idempotency-key",
+    "requestPath": "/matcher",
+    "requestHeaders": {
+      "Idempotency-Key": [
+        ""
+      ]
+    },
+    "requestBody": "",
+    "exchange": {
+      "method": "POST",
+      "path": "/matcher",
+      "keyMode": "absent",
+      "status": 200,
+      "headers": {},
+      "body": ""
+    },
+    "expectedMismatches": [
+      "Idempotency-Key"
+    ]
+  },
+  {
+    "name": "json-array-mismatch",
+    "requestPath": "/matcher",
+    "requestHeaders": {},
+    "requestBody": "[1,3]",
+    "exchange": {
+      "method": "POST",
+      "path": "/matcher",
+      "keyMode": "absent",
+      "status": 200,
+      "headers": {},
+      "body": "",
+      "requestBody": [
+        1,
+        2
+      ]
+    },
+    "expectedMismatches": [
+      "body"
+    ]
+  },
+  {
+    "name": "decoded-mime-fragments",
+    "requestPath": "/matcher",
+    "requestHeaders": {},
+    "requestBody": "{\"raw\": \"TWVzc2FnZS1JRDogPGZpeHR1cmVAZGV4LnN1cGVyZHVyYWJsZS5kZXY-DQpYLURleC1DYWxsLUlEOiBjYWxsDQo\"}",
+    "exchange": {
+      "method": "POST",
+      "path": "/matcher",
+      "keyMode": "absent",
+      "status": 200,
+      "headers": {},
+      "body": "",
+      "requestBody": {
+        "$rawMime": "Message-ID: <fixture@dex.superdurable.dev>\r\nX-Dex-Call-ID: call\r\n"
+      }
+    },
+    "expectedMismatches": []
+  },
+  {
+    "name": "decoded-mime-fragments-padded",
+    "requestPath": "/matcher",
+    "requestHeaders": {},
+    "requestBody": "{\"raw\": \"TWVzc2FnZS1JRDogPGZpeHR1cmVAZGV4LnN1cGVyZHVyYWJsZS5kZXY-DQpYLURleC1DYWxsLUlEOiBjYWxsDQo=\"}",
+    "exchange": {
+      "method": "POST",
+      "path": "/matcher",
+      "keyMode": "absent",
+      "status": 200,
+      "headers": {},
+      "body": "",
+      "requestBody": {
+        "$rawMime": "Message-ID: <fixture@dex.superdurable.dev>\r\nX-Dex-Call-ID: call\r\n"
+      }
+    },
+    "expectedMismatches": []
+  }
+]

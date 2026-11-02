@@ -40,6 +40,10 @@ func TestConnectorTestSelectionUsesLocalAndCatalogChanges(t *testing.T) {
 			paths: []string{"connectors/acme/mail/client.go"}, expected: []string{"connectors/acme/mail"},
 		},
 		{
+			name: "one connector conformance fixture", previous: directories,
+			paths: []string{"conformance/connectors/acme/mail/scenarios.json"}, expected: []string{"connectors/acme/mail"},
+		},
+		{
 			name: "catalog addition", previous: directories[:2],
 			paths: []string{"catalog.yaml"}, expected: []string{"connectors/other/payments"},
 		},

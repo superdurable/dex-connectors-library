@@ -230,6 +230,7 @@ type gmailDexContext struct {
 	attempt       int32
 	runID         string
 	flowStartedAt time.Time
+	lastHeartbeat json.RawMessage
 }
 
 func newGmailDexContext(step string) *gmailDexContext {
@@ -258,11 +259,22 @@ func (ctx *gmailDexContext) Attempt() int32 {
 	}
 	return 1
 }
-func (*gmailDexContext) HasTimerFired() bool                             { return false }
-func (*gmailDexContext) HasTimerFiredByIndex(int) bool                   { return false }
-func (*gmailDexContext) WaitForMethodFailed() bool                       { return false }
-func (*gmailDexContext) RecordHeartbeat(any) error                       { return nil }
-func (*gmailDexContext) GetLastHeartbeatValue(any) (bool, error)         { return false, nil }
+func (*gmailDexContext) HasTimerFired() bool           { return false }
+func (*gmailDexContext) HasTimerFiredByIndex(int) bool { return false }
+func (*gmailDexContext) WaitForMethodFailed() bool     { return false }
+func (context *gmailDexContext) RecordHeartbeat(value any) error {
+	encoded, err := json.Marshal(value)
+	if err == nil {
+		context.lastHeartbeat = encoded
+	}
+	return err
+}
+func (context *gmailDexContext) GetLastHeartbeatValue(value any) (bool, error) {
+	if len(context.lastHeartbeat) == 0 {
+		return false, nil
+	}
+	return true, json.Unmarshal(context.lastHeartbeat, value)
+}
 func (*gmailDexContext) SetStepExecutionLocal(string, any) error         { return nil }
 func (*gmailDexContext) GetStepExecutionLocal(string, any) (bool, error) { return false, nil }
 func (*gmailDexContext) RecordEvent(string, any) error                   { return nil }

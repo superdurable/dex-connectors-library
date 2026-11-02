@@ -39,7 +39,23 @@ separate release sources. Each must match its `pyproject.toml` or `package.json`
 version without the leading `v`. A change to one language version releases only
 that language. The same patch, minor, major, and `(breaking)` rules apply to
 each language independently. Use `sdkpython:` and `sdkts:` commit and PR subjects
-for their SDKs; connector changes in any language use `connector(<slug>):`.
+for their SDKs; single-connector changes use `connector(<slug>):`.
+
+A connector batch port PR may include five to eight connectors of one language
+when each package is a first `v0.1.0` release and passes the shared
+[provider conformance scenarios](../conformance/connectors/README.md). Other
+release PRs keep one released module per PR. Each language package under review
+must cover its declared operation branches against the Go-verified scenarios.
+The porter supplies inputs and provider responses, records complete expectations
+from Go, and commits the recording. CI verifies exact Go output, every Input
+field, and separate 5xx and 429 Retry coverage for each operation.
+New or edited Python and TypeScript packages must add these fixtures. Existing
+packages without fixtures receive a `missing conformance (legacy)` warning on
+Go-only edits; fixture-backed connectors always replay their scenarios.
+The coordinator merges one batch at a time and confirms its Release run,
+including first publish of new PyPI or npm projects, succeeded before merging
+the next batch because PyPI limits new-project creation rates. Use
+`connectors(python):` or `connectors(typescript):` for a batch commit and PR.
 
 GitHub Release titles are human-readable labels. SDK releases use
 `Go SDK vMAJOR.MINOR.PATCH`, `Python SDK vMAJOR.MINOR.PATCH`, or

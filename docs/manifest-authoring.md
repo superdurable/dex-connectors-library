@@ -1069,3 +1069,41 @@ constructor per branch and per manifest mock, `<Operation>Retry`, and
 `<Operation>Default`. A connector with mocks shows its use in its
 `examples/` tree. Scripting and case semantics belong to
 [`sdkgo/connectormock`](../sdkgo/README.md#connector-mocks).
+
+# Cross-language connector conformance
+
+Python and TypeScript connector packages replay the Go-verified provider
+[scenarios](../conformance/connectors/README.md). Create
+`conformance/connectors/<directory>/scenarios.json` with every Go-tested branch,
+retry, duplicate-safety path, read-back outcome, and uncertainty path. Author
+only scenario inputs, optional prior state and attempt count, and ordered provider
+responses or transport failures. From the connector's `go/` directory, run
+`CONNECTOR_CONFORMANCE_MODE=record GOWORK=off go test . -run '^TestConnectorConformance$' -count=1`.
+The Go test writes the complete expected method, path, query, form, full JSON or
+decoded Gmail MIME body, connector-sent headers, production idempotency key,
+intermediate and final decisions, request count, and exact Go-marshaled output.
+Commit its recording; do not hand-edit expectations. Keep credentials inert.
+
+CI runs Go in verify mode and requires the committed recording to match exactly.
+It rejects `pending`, requires the union of inputs to set every Go operation
+`Input` field to a nonzero value, and requires an exact output for every
+non-retry branch and every declared branch. Each operation needs separate 429
+and 5xx Retry scenarios whose classified status is the first exchange of the
+final attempt, plus a transport-failure scenario. Operations declaring
+uncertainty need an uncertainty scenario. Python and TypeScript compare the
+complete recorded requests and exact outputs through their production Dex SDK
+codecs, and derive mutation idempotency keys through their production SDK paths.
+Other recovery paths remain a review requirement.
+
+Keep the language runners in `conformance/runners/`, outside published packages.
+Connector Python and TypeScript tests import them by repository path and only
+map operations to typed inputs and construct a client. The connector's Go test
+is generated from `conformance_adapter_test.go` by `connectorctl generate`;
+`generate --check` catches drift. Run `make test-connector-conformance
+CONNECTOR_DIRECTORY=connectors/<directory>` after editing the fixture. CI also
+mutates classification, output, exchange, optional query, form, MIME, production
+idempotency key, read 5xx, and rejected pending cases to prove
+every applicable runner fails. Legacy packages without fixtures warn on Go-only
+edits; new or edited language packages require fixtures. A shared matcher fixture checks missing, empty, repeated,
+JSON array, and decoded MIME request fields in all three languages.
+Existing runnable examples remain the end-to-end verification path.
