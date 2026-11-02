@@ -26,12 +26,11 @@ it('lists zones through a real Dex Worker and fails an unwired rejection', async
     response.writeHead(shouldReject ? 403 : 200, { 'Content-Type': 'application/json' });
     response.end(shouldReject ? '{"success":false}' : '{"success":true,"result":[{"id":"zone-meridian","name":"meridian.example","status":"active"}]}');
   });
-  let providerPort = 0;
-  for (let port = 21201; port <= 21299; port++) {
-    try { server.listen(port, '127.0.0.1'); await once(server, 'listening'); providerPort = port; break; }
-    catch (error) { if ((error as NodeJS.ErrnoException).code !== 'EADDRINUSE') throw error; }
-  }
-  if (!providerPort) throw new Error('no available Cloudflare fixture port in 21201-21299');
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('Cloudflare fixture has no TCP address');
+  const providerPort = address.port;
   const directory = await mkdtemp(join(tmpdir(), 'dex-cloudflare-integration-'));
   const cache = openBlobCache({ directory, maxBytes: 64 * 1024 * 1024 });
   const provider = new CloudflareClient({ baseUrl: `http://127.0.0.1:${providerPort}` }, {

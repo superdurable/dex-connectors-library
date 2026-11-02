@@ -1,6 +1,7 @@
 {
   "name": "@superdurable/connector-cloudflare",
   "version": "0.1.0",
+  "license": "MIT",
   "description": "Cloudflare zone and cache operations for Dex Flows",
   "repository": {
     "type": "git",
@@ -33,6 +34,7 @@
     "README.md"
   ],
   "scripts": {
+    "prepack": "npm run build",
     "build": "tsup src/index.ts src/mock.ts --format esm --dts --clean",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src test examples",

@@ -61,10 +61,20 @@ function failure(operation: string, kind: 'VALIDATION' | 'PROTOCOL', message: st
   return { kind, provider: 'cloudflare', operation, message } as const;
 }
 function isAbsoluteHTTPURL(rawURL: string): boolean {
-  if ([...rawURL].some(character => character.charCodeAt(0) <= 32 || character.charCodeAt(0) === 127)) return false;
+  if ([...rawURL].some(character => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127)) return false;
+  if (/%(?![0-9a-fA-F]{2})/.test(rawURL)) return false;
+  const authority = /^(https?):\/\/([^/?#]+)/.exec(rawURL);
+  const scheme = authority?.[1];
+  const host = authority?.[2];
+  if (!scheme || !host || host.includes('@')) return false;
+  const portStart = host.startsWith('[') ? host.lastIndexOf(']') + 1 : host.indexOf(':');
+  if (host.startsWith('[') && portStart === 0) return false;
+  const hostname = portStart > 0 ? host.slice(0, portStart) : host;
+  const port = portStart > 0 ? host.slice(portStart) : '';
+  if (port && !/^:[0-9]*$/.test(port)) return false;
   try {
-    const url = new URL(rawURL);
-    return (url.protocol === 'https:' || url.protocol === 'http:') && !!url.host && !url.username && !url.password;
+    const url = new URL(`${scheme}://${hostname}/`);
+    return !!url.host;
   } catch { return false; }
 }
 

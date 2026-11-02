@@ -27,6 +27,25 @@ it('rejects malformed purge inputs before a provider request', async () => {
   expect(requests).toBe(0);
 });
 
+it('matches Go URL validation for purge inputs', async () => {
+  const acceptedURLs = ['https://meridian.example/a b', 'http://meridian.example/?q=a b', 'https://meridian.example:/', 'https://meridian.example:99999/'];
+  const rejectedURLs = ['https:///x', 'https:example.com', 'https://@meridian.example/x', 'https://meridian.example/%zz', 'https://meridian.example:abc/x', 'https://meri dian.example/x'];
+  const requests: string[] = [];
+  const operation = client(async request => {
+    requests.push(Buffer.from(request.body ?? []).toString('utf8'));
+    return { status: 200, headers: {}, body: Buffer.from('{"success":true,"result":{"id":"purge-id"}}') };
+  }).purgeCacheByURLs();
+  for (const url of acceptedURLs) {
+    const result = await operation.invoke(call, { zoneId: 'zone-meridian', urls: [url] });
+    expect(result.kind === 'branch' && result.branch, url).toBe('purged');
+  }
+  for (const url of rejectedURLs) {
+    const result = await operation.invoke(call, { zoneId: 'zone-meridian', urls: [url] });
+    expect(result.kind === 'branch' && result.branch, url).toBe('defect');
+  }
+  expect(requests.map(request => JSON.parse(request) as unknown)).toEqual(acceptedURLs.map(url => ({ files: [url] })));
+});
+
 it('keeps provider rejection details out of failures', async () => {
   const operation = client(async () => ({ status: 200, headers: {}, body: Buffer.from('{"success":false,"errors":[{"message":"SENTINEL"}]}') })).purgeCacheByURLs();
   const result = await operation.invoke(call, { zoneId: 'zone-meridian', urls: ['https://meridian.example/'] });
