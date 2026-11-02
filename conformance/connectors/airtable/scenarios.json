@@ -1,0 +1,2109 @@
+{
+  "connector": "airtable",
+  "scenarios": [
+    {
+      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "exchanges": [
+        {
+          "body": "{\"records\":[{\"id\":\"recPolicyStandard\",\"createdTime\":\"2026-09-01T09:00:00Z\",\"fields\":{\"Policy Key\":\"refund-standard\",\"Approval Limit USD\":250,\"Active\":true}}],\"offset\":\"next-page-2\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v0/appRefundBase0001/tblPolicies000001/listRecords",
+          "requestBody": {
+            "fields": [
+              "Policy Key",
+              "Approval Limit USD"
+            ],
+            "filterByFormula": "AND({Policy Key} = \"refund-standard\", {Approval Limit USD} = 250, {Active} = TRUE(), ({Policy Key} != \"\"))",
+            "offset": "next-page",
+            "pageSize": 2,
+            "sort": [
+              {
+                "direction": "asc",
+                "field": "Policy Key"
+              }
+            ],
+            "view": "All Policies"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "filterFormula": "AND({Policy Key} = \"refund-standard\", {Approval Limit USD} = 250, {Active} = TRUE(), ({Policy Key} != \"\"))",
+          "offset": "next-page-2",
+          "records": [
+            {
+              "createdTime": "2026-09-01T09:00:00Z",
+              "fields": {
+                "Active": true,
+                "Approval Limit USD": 250,
+                "Policy Key": "refund-standard"
+              },
+              "id": "recPolicyStandard"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "baseId": "appRefundBase0001",
+        "fields": [
+          "Policy Key",
+          "Approval Limit USD"
+        ],
+        "filters": [
+          {
+            "field": "Policy Key",
+            "text": "refund-standard"
+          },
+          {
+            "field": "Approval Limit USD",
+            "number": 250
+          },
+          {
+            "checkbox": true,
+            "field": "Active"
+          }
+        ],
+        "formula": "{Policy Key} != \"\"",
+        "offset": "next-page",
+        "pageSize": 2,
+        "sort": [
+          {
+            "direction": "asc",
+            "field": "Policy Key"
+          }
+        ],
+        "tableIdOrName": "tblPolicies000001",
+        "viewIdOrName": "All Policies"
+      },
+      "name": "listRecords-success",
+      "operation": "listRecords"
+    },
+    {
+      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"LIST_RECORDS_ITERATOR_NOT_AVAILABLE\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v0/appRefundBase0001/tblPolicies000001/listRecords",
+          "requestBody": {
+            "fields": [
+              "Policy Key",
+              "Approval Limit USD"
+            ],
+            "filterByFormula": "AND({Policy Key} = \"refund-standard\", {Approval Limit USD} = 250, {Active} = TRUE(), ({Policy Key} != \"\"))",
+            "offset": "next-page",
+            "pageSize": 2,
+            "sort": [
+              {
+                "direction": "asc",
+                "field": "Policy Key"
+              }
+            ],
+            "view": "All Policies"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "offsetExpired",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "records": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "baseId": "appRefundBase0001",
+        "fields": [
+          "Policy Key",
+          "Approval Limit USD"
+        ],
+        "filters": [
+          {
+            "field": "Policy Key",
+            "text": "refund-standard"
+          },
+          {
+            "field": "Approval Limit USD",
+            "number": 250
+          },
+          {
+            "checkbox": true,
+            "field": "Active"
+          }
+        ],
+        "formula": "{Policy Key} != \"\"",
+        "offset": "next-page",
+        "pageSize": 2,
+        "sort": [
+          {
+            "direction": "asc",
+            "field": "Policy Key"
+          }
+        ],
+        "tableIdOrName": "tblPolicies000001",
+        "viewIdOrName": "All Policies"
+      },
+      "name": "listRecords-offset-expired",
+      "operation": "listRecords"
+    },
+    {
+      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"INVALID_PERMISSIONS\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v0/appRefundBase0001/tblPolicies000001/listRecords",
+          "requestBody": {
+            "fields": [
+              "Policy Key",
+              "Approval Limit USD"
+            ],
+            "filterByFormula": "AND({Policy Key} = \"refund-standard\", {Approval Limit USD} = 250, {Active} = TRUE(), ({Policy Key} != \"\"))",
+            "offset": "next-page",
+            "pageSize": 2,
+            "sort": [
+              {
+                "direction": "asc",
+                "field": "Policy Key"
+              }
+            ],
+            "view": "All Policies"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "records": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "baseId": "appRefundBase0001",
+        "fields": [
+          "Policy Key",
+          "Approval Limit USD"
+        ],
+        "filters": [
+          {
+            "field": "Policy Key",
+            "text": "refund-standard"
+          },
+          {
+            "field": "Approval Limit USD",
+            "number": 250
+          },
+          {
+            "checkbox": true,
+            "field": "Active"
+          }
+        ],
+        "formula": "{Policy Key} != \"\"",
+        "offset": "next-page",
+        "pageSize": 2,
+        "sort": [
+          {
+            "direction": "asc",
+            "field": "Policy Key"
+          }
+        ],
+        "tableIdOrName": "tblPolicies000001",
+        "viewIdOrName": "All Policies"
+      },
+      "name": "listRecords-provider-rejected",
+      "operation": "listRecords"
+    },
+    {
+      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "exchanges": [
+        {
+          "body": "{\"records\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v0/appRefundBase0001/tblPolicies000001/listRecords",
+          "requestBody": {
+            "fields": [
+              "Policy Key",
+              "Approval Limit USD"
+            ],
+            "filterByFormula": "AND({Policy Key} = \"refund-standard\", {Approval Limit USD} = 250, {Active} = TRUE(), ({Policy Key} != \"\"))",
+            "offset": "next-page",
+            "pageSize": 2,
+            "sort": [
+              {
+                "direction": "asc",
+                "field": "Policy Key"
+              }
+            ],
+            "view": "All Policies"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "records": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "baseId": "appRefundBase0001",
+        "fields": [
+          "Policy Key",
+          "Approval Limit USD"
+        ],
+        "filters": [
+          {
+            "field": "Policy Key",
+            "text": "refund-standard"
+          },
+          {
+            "field": "Approval Limit USD",
+            "number": 250
+          },
+          {
+            "checkbox": true,
+            "field": "Active"
+          }
+        ],
+        "formula": "{Policy Key} != \"\"",
+        "offset": "next-page",
+        "pageSize": 2,
+        "sort": [
+          {
+            "direction": "asc",
+            "field": "Policy Key"
+          }
+        ],
+        "tableIdOrName": "tblPolicies000001",
+        "viewIdOrName": "All Policies"
+      },
+      "name": "listRecords-invalid-response",
+      "operation": "listRecords"
+    },
+    {
+      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "records": null
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "baseId": "bad-base-id",
+        "fields": [
+          "Policy Key",
+          "Approval Limit USD"
+        ],
+        "filters": [
+          {
+            "field": "Policy Key",
+            "text": "refund-standard"
+          },
+          {
+            "field": "Approval Limit USD",
+            "number": 250
+          },
+          {
+            "checkbox": true,
+            "field": "Active"
+          }
+        ],
+        "formula": "{Policy Key} != \"\"",
+        "offset": "next-page",
+        "pageSize": 2,
+        "sort": [
+          {
+            "direction": "asc",
+            "field": "Policy Key"
+          }
+        ],
+        "tableIdOrName": "tblPolicies000001",
+        "viewIdOrName": "All Policies"
+      },
+      "name": "listRecords-defect",
+      "operation": "listRecords"
+    },
+    {
+      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"RATE_LIMIT_REACHED\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v0/appRefundBase0001/tblPolicies000001/listRecords",
+          "requestBody": {
+            "fields": [
+              "Policy Key",
+              "Approval Limit USD"
+            ],
+            "filterByFormula": "AND({Policy Key} = \"refund-standard\", {Approval Limit USD} = 250, {Active} = TRUE(), ({Policy Key} != \"\"))",
+            "offset": "next-page",
+            "pageSize": 2,
+            "sort": [
+              {
+                "direction": "asc",
+                "field": "Policy Key"
+              }
+            ],
+            "view": "All Policies"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 30000,
+        "uncertain": false
+      },
+      "input": {
+        "baseId": "appRefundBase0001",
+        "fields": [
+          "Policy Key",
+          "Approval Limit USD"
+        ],
+        "filters": [
+          {
+            "field": "Policy Key",
+            "text": "refund-standard"
+          },
+          {
+            "field": "Approval Limit USD",
+            "number": 250
+          },
+          {
+            "checkbox": true,
+            "field": "Active"
+          }
+        ],
+        "formula": "{Policy Key} != \"\"",
+        "offset": "next-page",
+        "pageSize": 2,
+        "sort": [
+          {
+            "direction": "asc",
+            "field": "Policy Key"
+          }
+        ],
+        "tableIdOrName": "tblPolicies000001",
+        "viewIdOrName": "All Policies"
+      },
+      "name": "listRecords-retry-429",
+      "operation": "listRecords"
+    },
+    {
+      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"SERVER_ERROR\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v0/appRefundBase0001/tblPolicies000001/listRecords",
+          "requestBody": {
+            "fields": [
+              "Policy Key",
+              "Approval Limit USD"
+            ],
+            "filterByFormula": "AND({Policy Key} = \"refund-standard\", {Approval Limit USD} = 250, {Active} = TRUE(), ({Policy Key} != \"\"))",
+            "offset": "next-page",
+            "pageSize": 2,
+            "sort": [
+              {
+                "direction": "asc",
+                "field": "Policy Key"
+              }
+            ],
+            "view": "All Policies"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "baseId": "appRefundBase0001",
+        "fields": [
+          "Policy Key",
+          "Approval Limit USD"
+        ],
+        "filters": [
+          {
+            "field": "Policy Key",
+            "text": "refund-standard"
+          },
+          {
+            "field": "Approval Limit USD",
+            "number": 250
+          },
+          {
+            "checkbox": true,
+            "field": "Active"
+          }
+        ],
+        "formula": "{Policy Key} != \"\"",
+        "offset": "next-page",
+        "pageSize": 2,
+        "sort": [
+          {
+            "direction": "asc",
+            "field": "Policy Key"
+          }
+        ],
+        "tableIdOrName": "tblPolicies000001",
+        "viewIdOrName": "All Policies"
+      },
+      "name": "listRecords-retry-503",
+      "operation": "listRecords"
+    },
+    {
+      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v0/appRefundBase0001/tblPolicies000001/listRecords",
+          "requestBody": {
+            "fields": [
+              "Policy Key",
+              "Approval Limit USD"
+            ],
+            "filterByFormula": "AND({Policy Key} = \"refund-standard\", {Approval Limit USD} = 250, {Active} = TRUE(), ({Policy Key} != \"\"))",
+            "offset": "next-page",
+            "pageSize": 2,
+            "sort": [
+              {
+                "direction": "asc",
+                "field": "Policy Key"
+              }
+            ],
+            "view": "All Policies"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "baseId": "appRefundBase0001",
+        "fields": [
+          "Policy Key",
+          "Approval Limit USD"
+        ],
+        "filters": [
+          {
+            "field": "Policy Key",
+            "text": "refund-standard"
+          },
+          {
+            "field": "Approval Limit USD",
+            "number": 250
+          },
+          {
+            "checkbox": true,
+            "field": "Active"
+          }
+        ],
+        "formula": "{Policy Key} != \"\"",
+        "offset": "next-page",
+        "pageSize": 2,
+        "sort": [
+          {
+            "direction": "asc",
+            "field": "Policy Key"
+          }
+        ],
+        "tableIdOrName": "tblPolicies000001",
+        "viewIdOrName": "All Policies"
+      },
+      "name": "listRecords-transport-before-send",
+      "operation": "listRecords"
+    },
+    {
+      "callId": "d62fd65f-c643-5f49-b30e-5102f5897db2",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"recPolicyStandard\",\"createdTime\":\"2026-09-01T09:00:00Z\",\"fields\":{\"Policy Key\":\"refund-standard\",\"Approval Limit USD\":250,\"Active\":true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v0/appRefundBase0001/tblPolicies000001/recPolicyStandard",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "createdTime": "2026-09-01T09:00:00Z",
+          "fields": {
+            "Active": true,
+            "Approval Limit USD": 250,
+            "Policy Key": "refund-standard"
+          },
+          "id": "recPolicyStandard"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "baseId": "appRefundBase0001",
+        "recordId": "recPolicyStandard",
+        "tableIdOrName": "tblPolicies000001"
+      },
+      "name": "getRecord-success",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "d62fd65f-c643-5f49-b30e-5102f5897db2",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"NOT_FOUND\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v0/appRefundBase0001/tblPolicies000001/recPolicyStandard",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "createdTime": "0001-01-01T00:00:00Z",
+          "fields": null,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "baseId": "appRefundBase0001",
+        "recordId": "recPolicyStandard",
+        "tableIdOrName": "tblPolicies000001"
+      },
+      "name": "getRecord-not-found",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "d62fd65f-c643-5f49-b30e-5102f5897db2",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"INVALID_PERMISSIONS\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v0/appRefundBase0001/tblPolicies000001/recPolicyStandard",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "createdTime": "0001-01-01T00:00:00Z",
+          "fields": null,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "baseId": "appRefundBase0001",
+        "recordId": "recPolicyStandard",
+        "tableIdOrName": "tblPolicies000001"
+      },
+      "name": "getRecord-provider-rejected",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "d62fd65f-c643-5f49-b30e-5102f5897db2",
+      "exchanges": [
+        {
+          "body": "{\"records\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v0/appRefundBase0001/tblPolicies000001/recPolicyStandard",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "createdTime": "0001-01-01T00:00:00Z",
+          "fields": null,
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "baseId": "appRefundBase0001",
+        "recordId": "recPolicyStandard",
+        "tableIdOrName": "tblPolicies000001"
+      },
+      "name": "getRecord-invalid-response",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "d62fd65f-c643-5f49-b30e-5102f5897db2",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "createdTime": "0001-01-01T00:00:00Z",
+          "fields": null,
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "baseId": "bad-base-id",
+        "recordId": "recPolicyStandard",
+        "tableIdOrName": "tblPolicies000001"
+      },
+      "name": "getRecord-defect",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "d62fd65f-c643-5f49-b30e-5102f5897db2",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"RATE_LIMIT_REACHED\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v0/appRefundBase0001/tblPolicies000001/recPolicyStandard",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 30000,
+        "uncertain": false
+      },
+      "input": {
+        "baseId": "appRefundBase0001",
+        "recordId": "recPolicyStandard",
+        "tableIdOrName": "tblPolicies000001"
+      },
+      "name": "getRecord-retry-429",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "d62fd65f-c643-5f49-b30e-5102f5897db2",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"SERVER_ERROR\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v0/appRefundBase0001/tblPolicies000001/recPolicyStandard",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "baseId": "appRefundBase0001",
+        "recordId": "recPolicyStandard",
+        "tableIdOrName": "tblPolicies000001"
+      },
+      "name": "getRecord-retry-503",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "d62fd65f-c643-5f49-b30e-5102f5897db2",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v0/appRefundBase0001/tblPolicies000001/recPolicyStandard",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "baseId": "appRefundBase0001",
+        "recordId": "recPolicyStandard",
+        "tableIdOrName": "tblPolicies000001"
+      },
+      "name": "getRecord-transport-before-send",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "aeff8a4d-5caa-5cf5-bf62-d8fc38044c10",
+      "exchanges": [
+        {
+          "body": "{\"records\":[{\"id\":\"recPolicyStandard\",\"createdTime\":\"2026-09-01T09:00:00Z\",\"fields\":{\"Policy Key\":\"refund-standard\",\"Approval Limit USD\":250,\"Active\":true}}],\"createdRecords\":[\"recPolicyStandard\"],\"updatedRecords\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v0/appRefundBase0001/tblPolicies000001",
+          "requestBody": {
+            "performUpsert": {
+              "fieldsToMergeOn": [
+                "Policy Key"
+              ]
+            },
+            "records": [
+              {
+                "fields": {
+                  "Approval Limit USD": 250,
+                  "Policy Key": "refund-standard"
+                }
+              }
+            ],
+            "typecast": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "upserted",
+        "failureKind": "",
+        "output": {
+          "createdRecordIds": [
+            "recPolicyStandard"
+          ],
+          "records": [
+            {
+              "createdTime": "2026-09-01T09:00:00Z",
+              "fields": {
+                "Active": true,
+                "Approval Limit USD": 250,
+                "Policy Key": "refund-standard"
+              },
+              "id": "recPolicyStandard"
+            }
+          ],
+          "updatedRecordIds": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "aeff8a4d-5caa-5cf5-bf62-d8fc38044c10",
+      "input": {
+        "baseId": "appRefundBase0001",
+        "fieldsToMergeOn": [
+          "Policy Key"
+        ],
+        "records": [
+          {
+            "fields": {
+              "Approval Limit USD": 250,
+              "Policy Key": "refund-standard"
+            }
+          }
+        ],
+        "tableIdOrName": "tblPolicies000001",
+        "typecast": true
+      },
+      "name": "upsertRecords-success",
+      "operation": "upsertRecords"
+    },
+    {
+      "callId": "aeff8a4d-5caa-5cf5-bf62-d8fc38044c10",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"INVALID_PERMISSIONS\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v0/appRefundBase0001/tblPolicies000001",
+          "requestBody": {
+            "performUpsert": {
+              "fieldsToMergeOn": [
+                "Policy Key"
+              ]
+            },
+            "records": [
+              {
+                "fields": {
+                  "Approval Limit USD": 250,
+                  "Policy Key": "refund-standard"
+                }
+              }
+            ],
+            "typecast": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "createdRecordIds": null,
+          "records": null,
+          "updatedRecordIds": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "aeff8a4d-5caa-5cf5-bf62-d8fc38044c10",
+      "input": {
+        "baseId": "appRefundBase0001",
+        "fieldsToMergeOn": [
+          "Policy Key"
+        ],
+        "records": [
+          {
+            "fields": {
+              "Approval Limit USD": 250,
+              "Policy Key": "refund-standard"
+            }
+          }
+        ],
+        "tableIdOrName": "tblPolicies000001",
+        "typecast": true
+      },
+      "name": "upsertRecords-provider-rejected",
+      "operation": "upsertRecords"
+    },
+    {
+      "callId": "aeff8a4d-5caa-5cf5-bf62-d8fc38044c10",
+      "exchanges": [
+        {
+          "body": "{\"records\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v0/appRefundBase0001/tblPolicies000001",
+          "requestBody": {
+            "performUpsert": {
+              "fieldsToMergeOn": [
+                "Policy Key"
+              ]
+            },
+            "records": [
+              {
+                "fields": {
+                  "Approval Limit USD": 250,
+                  "Policy Key": "refund-standard"
+                }
+              }
+            ],
+            "typecast": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "createdRecordIds": null,
+          "records": null,
+          "updatedRecordIds": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "aeff8a4d-5caa-5cf5-bf62-d8fc38044c10",
+      "input": {
+        "baseId": "appRefundBase0001",
+        "fieldsToMergeOn": [
+          "Policy Key"
+        ],
+        "records": [
+          {
+            "fields": {
+              "Approval Limit USD": 250,
+              "Policy Key": "refund-standard"
+            }
+          }
+        ],
+        "tableIdOrName": "tblPolicies000001",
+        "typecast": true
+      },
+      "name": "upsertRecords-invalid-response",
+      "operation": "upsertRecords"
+    },
+    {
+      "callId": "aeff8a4d-5caa-5cf5-bf62-d8fc38044c10",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "createdRecordIds": null,
+          "records": null,
+          "updatedRecordIds": null
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "aeff8a4d-5caa-5cf5-bf62-d8fc38044c10",
+      "input": {
+        "baseId": "bad-base-id",
+        "fieldsToMergeOn": [
+          "Policy Key"
+        ],
+        "records": [
+          {
+            "fields": {
+              "Approval Limit USD": 250,
+              "Policy Key": "refund-standard"
+            }
+          }
+        ],
+        "tableIdOrName": "tblPolicies000001",
+        "typecast": true
+      },
+      "name": "upsertRecords-defect",
+      "operation": "upsertRecords"
+    },
+    {
+      "callId": "aeff8a4d-5caa-5cf5-bf62-d8fc38044c10",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"RATE_LIMIT_REACHED\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v0/appRefundBase0001/tblPolicies000001",
+          "requestBody": {
+            "performUpsert": {
+              "fieldsToMergeOn": [
+                "Policy Key"
+              ]
+            },
+            "records": [
+              {
+                "fields": {
+                  "Approval Limit USD": 250,
+                  "Policy Key": "refund-standard"
+                }
+              }
+            ],
+            "typecast": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 30000,
+        "uncertain": false
+      },
+      "idempotencyKey": "aeff8a4d-5caa-5cf5-bf62-d8fc38044c10",
+      "input": {
+        "baseId": "appRefundBase0001",
+        "fieldsToMergeOn": [
+          "Policy Key"
+        ],
+        "records": [
+          {
+            "fields": {
+              "Approval Limit USD": 250,
+              "Policy Key": "refund-standard"
+            }
+          }
+        ],
+        "tableIdOrName": "tblPolicies000001",
+        "typecast": true
+      },
+      "name": "upsertRecords-retry-429",
+      "operation": "upsertRecords"
+    },
+    {
+      "callId": "aeff8a4d-5caa-5cf5-bf62-d8fc38044c10",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"SERVER_ERROR\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v0/appRefundBase0001/tblPolicies000001",
+          "requestBody": {
+            "performUpsert": {
+              "fieldsToMergeOn": [
+                "Policy Key"
+              ]
+            },
+            "records": [
+              {
+                "fields": {
+                  "Approval Limit USD": 250,
+                  "Policy Key": "refund-standard"
+                }
+              }
+            ],
+            "typecast": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "aeff8a4d-5caa-5cf5-bf62-d8fc38044c10",
+      "input": {
+        "baseId": "appRefundBase0001",
+        "fieldsToMergeOn": [
+          "Policy Key"
+        ],
+        "records": [
+          {
+            "fields": {
+              "Approval Limit USD": 250,
+              "Policy Key": "refund-standard"
+            }
+          }
+        ],
+        "tableIdOrName": "tblPolicies000001",
+        "typecast": true
+      },
+      "name": "upsertRecords-retry-503",
+      "operation": "upsertRecords"
+    },
+    {
+      "callId": "aeff8a4d-5caa-5cf5-bf62-d8fc38044c10",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v0/appRefundBase0001/tblPolicies000001",
+          "requestBody": {
+            "performUpsert": {
+              "fieldsToMergeOn": [
+                "Policy Key"
+              ]
+            },
+            "records": [
+              {
+                "fields": {
+                  "Approval Limit USD": 250,
+                  "Policy Key": "refund-standard"
+                }
+              }
+            ],
+            "typecast": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "aeff8a4d-5caa-5cf5-bf62-d8fc38044c10",
+      "input": {
+        "baseId": "appRefundBase0001",
+        "fieldsToMergeOn": [
+          "Policy Key"
+        ],
+        "records": [
+          {
+            "fields": {
+              "Approval Limit USD": 250,
+              "Policy Key": "refund-standard"
+            }
+          }
+        ],
+        "tableIdOrName": "tblPolicies000001",
+        "typecast": true
+      },
+      "name": "upsertRecords-transport-before-send",
+      "operation": "upsertRecords"
+    },
+    {
+      "callId": "b7f87fb5-aab1-59fa-b3c9-f77bd95eebb7",
+      "exchanges": [
+        {
+          "body": "{\"records\":[{\"id\":\"recPolicyStandard\",\"createdTime\":\"2026-09-01T09:00:00Z\",\"fields\":{\"Policy Key\":\"refund-standard\",\"Approval Limit USD\":250,\"Active\":true}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v0/appRefundBase0001/tblPolicies000001",
+          "requestBody": {
+            "records": [
+              {
+                "fields": {
+                  "Last Decided Case": "case-approved"
+                },
+                "id": "recPolicyStandard"
+              }
+            ],
+            "typecast": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "records": [
+            {
+              "createdTime": "2026-09-01T09:00:00Z",
+              "fields": {
+                "Active": true,
+                "Approval Limit USD": 250,
+                "Policy Key": "refund-standard"
+              },
+              "id": "recPolicyStandard"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b7f87fb5-aab1-59fa-b3c9-f77bd95eebb7",
+      "input": {
+        "baseId": "appRefundBase0001",
+        "records": [
+          {
+            "fields": {
+              "Last Decided Case": "case-approved"
+            },
+            "id": "recPolicyStandard"
+          }
+        ],
+        "tableIdOrName": "tblPolicies000001",
+        "typecast": true
+      },
+      "name": "updateRecords-success",
+      "operation": "updateRecords"
+    },
+    {
+      "callId": "b7f87fb5-aab1-59fa-b3c9-f77bd95eebb7",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"NOT_FOUND\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v0/appRefundBase0001/tblPolicies000001",
+          "requestBody": {
+            "records": [
+              {
+                "fields": {
+                  "Last Decided Case": "case-approved"
+                },
+                "id": "recPolicyStandard"
+              }
+            ],
+            "typecast": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "records": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b7f87fb5-aab1-59fa-b3c9-f77bd95eebb7",
+      "input": {
+        "baseId": "appRefundBase0001",
+        "records": [
+          {
+            "fields": {
+              "Last Decided Case": "case-approved"
+            },
+            "id": "recPolicyStandard"
+          }
+        ],
+        "tableIdOrName": "tblPolicies000001",
+        "typecast": true
+      },
+      "name": "updateRecords-not-found",
+      "operation": "updateRecords"
+    },
+    {
+      "callId": "b7f87fb5-aab1-59fa-b3c9-f77bd95eebb7",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"INVALID_PERMISSIONS\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v0/appRefundBase0001/tblPolicies000001",
+          "requestBody": {
+            "records": [
+              {
+                "fields": {
+                  "Last Decided Case": "case-approved"
+                },
+                "id": "recPolicyStandard"
+              }
+            ],
+            "typecast": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "records": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b7f87fb5-aab1-59fa-b3c9-f77bd95eebb7",
+      "input": {
+        "baseId": "appRefundBase0001",
+        "records": [
+          {
+            "fields": {
+              "Last Decided Case": "case-approved"
+            },
+            "id": "recPolicyStandard"
+          }
+        ],
+        "tableIdOrName": "tblPolicies000001",
+        "typecast": true
+      },
+      "name": "updateRecords-provider-rejected",
+      "operation": "updateRecords"
+    },
+    {
+      "callId": "b7f87fb5-aab1-59fa-b3c9-f77bd95eebb7",
+      "exchanges": [
+        {
+          "body": "{\"records\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v0/appRefundBase0001/tblPolicies000001",
+          "requestBody": {
+            "records": [
+              {
+                "fields": {
+                  "Last Decided Case": "case-approved"
+                },
+                "id": "recPolicyStandard"
+              }
+            ],
+            "typecast": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "records": null
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b7f87fb5-aab1-59fa-b3c9-f77bd95eebb7",
+      "input": {
+        "baseId": "appRefundBase0001",
+        "records": [
+          {
+            "fields": {
+              "Last Decided Case": "case-approved"
+            },
+            "id": "recPolicyStandard"
+          }
+        ],
+        "tableIdOrName": "tblPolicies000001",
+        "typecast": true
+      },
+      "name": "updateRecords-invalid-response",
+      "operation": "updateRecords"
+    },
+    {
+      "callId": "b7f87fb5-aab1-59fa-b3c9-f77bd95eebb7",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "records": null
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b7f87fb5-aab1-59fa-b3c9-f77bd95eebb7",
+      "input": {
+        "baseId": "bad-base-id",
+        "records": [
+          {
+            "fields": {
+              "Last Decided Case": "case-approved"
+            },
+            "id": "recPolicyStandard"
+          }
+        ],
+        "tableIdOrName": "tblPolicies000001",
+        "typecast": true
+      },
+      "name": "updateRecords-defect",
+      "operation": "updateRecords"
+    },
+    {
+      "callId": "b7f87fb5-aab1-59fa-b3c9-f77bd95eebb7",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"RATE_LIMIT_REACHED\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v0/appRefundBase0001/tblPolicies000001",
+          "requestBody": {
+            "records": [
+              {
+                "fields": {
+                  "Last Decided Case": "case-approved"
+                },
+                "id": "recPolicyStandard"
+              }
+            ],
+            "typecast": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 30000,
+        "uncertain": false
+      },
+      "idempotencyKey": "b7f87fb5-aab1-59fa-b3c9-f77bd95eebb7",
+      "input": {
+        "baseId": "appRefundBase0001",
+        "records": [
+          {
+            "fields": {
+              "Last Decided Case": "case-approved"
+            },
+            "id": "recPolicyStandard"
+          }
+        ],
+        "tableIdOrName": "tblPolicies000001",
+        "typecast": true
+      },
+      "name": "updateRecords-retry-429",
+      "operation": "updateRecords"
+    },
+    {
+      "callId": "b7f87fb5-aab1-59fa-b3c9-f77bd95eebb7",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"SERVER_ERROR\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v0/appRefundBase0001/tblPolicies000001",
+          "requestBody": {
+            "records": [
+              {
+                "fields": {
+                  "Last Decided Case": "case-approved"
+                },
+                "id": "recPolicyStandard"
+              }
+            ],
+            "typecast": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b7f87fb5-aab1-59fa-b3c9-f77bd95eebb7",
+      "input": {
+        "baseId": "appRefundBase0001",
+        "records": [
+          {
+            "fields": {
+              "Last Decided Case": "case-approved"
+            },
+            "id": "recPolicyStandard"
+          }
+        ],
+        "tableIdOrName": "tblPolicies000001",
+        "typecast": true
+      },
+      "name": "updateRecords-retry-503",
+      "operation": "updateRecords"
+    },
+    {
+      "callId": "b7f87fb5-aab1-59fa-b3c9-f77bd95eebb7",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v0/appRefundBase0001/tblPolicies000001",
+          "requestBody": {
+            "records": [
+              {
+                "fields": {
+                  "Last Decided Case": "case-approved"
+                },
+                "id": "recPolicyStandard"
+              }
+            ],
+            "typecast": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b7f87fb5-aab1-59fa-b3c9-f77bd95eebb7",
+      "input": {
+        "baseId": "appRefundBase0001",
+        "records": [
+          {
+            "fields": {
+              "Last Decided Case": "case-approved"
+            },
+            "id": "recPolicyStandard"
+          }
+        ],
+        "tableIdOrName": "tblPolicies000001",
+        "typecast": true
+      },
+      "name": "updateRecords-transport-before-send",
+      "operation": "updateRecords"
+    },
+    {
+      "attempts": 2,
+      "callId": "aeff8a4d-5caa-5cf5-bf62-d8fc38044c10",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v0/appRefundBase0001/tblPolicies000001",
+          "requestBody": {
+            "performUpsert": {
+              "fieldsToMergeOn": [
+                "Policy Key"
+              ]
+            },
+            "records": [
+              {
+                "fields": {
+                  "Approval Limit USD": 250,
+                  "Policy Key": "refund-standard"
+                }
+              }
+            ],
+            "typecast": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "body": "{\"records\":[{\"id\":\"recPolicyStandard\",\"createdTime\":\"2026-09-01T09:00:00Z\",\"fields\":{\"Policy Key\":\"refund-standard\",\"Approval Limit USD\":250,\"Active\":true}}],\"createdRecords\":[],\"updatedRecords\":[\"recPolicyStandard\"]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v0/appRefundBase0001/tblPolicies000001",
+          "requestBody": {
+            "performUpsert": {
+              "fieldsToMergeOn": [
+                "Policy Key"
+              ]
+            },
+            "records": [
+              {
+                "fields": {
+                  "Approval Limit USD": 250,
+                  "Policy Key": "refund-standard"
+                }
+              }
+            ],
+            "typecast": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "upserted",
+        "failureKind": "",
+        "output": {
+          "createdRecordIds": [],
+          "records": [
+            {
+              "createdTime": "2026-09-01T09:00:00Z",
+              "fields": {
+                "Active": true,
+                "Approval Limit USD": 250,
+                "Policy Key": "refund-standard"
+              },
+              "id": "recPolicyStandard"
+            }
+          ],
+          "updatedRecordIds": [
+            "recPolicyStandard"
+          ]
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "aeff8a4d-5caa-5cf5-bf62-d8fc38044c10",
+      "input": {
+        "baseId": "appRefundBase0001",
+        "fieldsToMergeOn": [
+          "Policy Key"
+        ],
+        "records": [
+          {
+            "fields": {
+              "Approval Limit USD": 250,
+              "Policy Key": "refund-standard"
+            }
+          }
+        ],
+        "tableIdOrName": "tblPolicies000001",
+        "typecast": true
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "upsertRecords-transport-after-send-converges",
+      "operation": "upsertRecords"
+    },
+    {
+      "attempts": 2,
+      "callId": "b7f87fb5-aab1-59fa-b3c9-f77bd95eebb7",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v0/appRefundBase0001/tblPolicies000001",
+          "requestBody": {
+            "records": [
+              {
+                "fields": {
+                  "Last Decided Case": "case-approved"
+                },
+                "id": "recPolicyStandard"
+              }
+            ],
+            "typecast": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "body": "{\"records\":[{\"id\":\"recPolicyStandard\",\"createdTime\":\"2026-09-01T09:00:00Z\",\"fields\":{\"Policy Key\":\"refund-standard\",\"Approval Limit USD\":250,\"Active\":true}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v0/appRefundBase0001/tblPolicies000001",
+          "requestBody": {
+            "records": [
+              {
+                "fields": {
+                  "Last Decided Case": "case-approved"
+                },
+                "id": "recPolicyStandard"
+              }
+            ],
+            "typecast": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer patTESTtoken.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "records": [
+            {
+              "createdTime": "2026-09-01T09:00:00Z",
+              "fields": {
+                "Active": true,
+                "Approval Limit USD": 250,
+                "Policy Key": "refund-standard"
+              },
+              "id": "recPolicyStandard"
+            }
+          ]
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b7f87fb5-aab1-59fa-b3c9-f77bd95eebb7",
+      "input": {
+        "baseId": "appRefundBase0001",
+        "records": [
+          {
+            "fields": {
+              "Last Decided Case": "case-approved"
+            },
+            "id": "recPolicyStandard"
+          }
+        ],
+        "tableIdOrName": "tblPolicies000001",
+        "typecast": true
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "updateRecords-transport-after-send-converges",
+      "operation": "updateRecords"
+    }
+  ],
+  "schemaVersion": 1
+}

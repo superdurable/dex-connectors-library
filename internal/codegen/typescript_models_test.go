@@ -46,3 +46,10 @@ func TestTypeScriptManifestDescriptionsAreSafeJSDoc(t *testing.T) {
 		t.Fatalf("branch JSDoc was not escaped:\n%s", steps)
 	}
 }
+
+func TestTypeScriptJSDocBlankLinesHaveNoTrailingWhitespace(t *testing.T) {
+	comment := typeScriptJSDoc("First line\n\nSecond line")
+	if comment != "First line\n   *\n   * Second line" {
+		t.Fatalf("blank JSDoc line has unexpected formatting: %q", comment)
+	}
+}
