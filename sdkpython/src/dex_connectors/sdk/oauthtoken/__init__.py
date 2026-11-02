@@ -104,11 +104,21 @@ class TokenResponse:
     refresh_token_expires_in: timedelta
     scope: str
     token_type: str
-    retained_fields: dict[str, object] = field(default_factory=dict)
+    retained_fields: dict[str, object] = field(default_factory=dict, repr=False)
+    _response_fields: dict[str, object] = field(default_factory=dict, repr=False)
 
     def next_refresh_token(self, prior: SecretString) -> SecretString:
         """Use rotated refresh material when present, otherwise retain the prior token."""
         return self.refresh_token if self.refresh_token.reveal() else prior
+
+    def credential_value(self, path: str) -> str | None:
+        """Read one manifest-mapped string without exposing the token response in repr."""
+        value: object = self._response_fields
+        for member in path.split("."):
+            if not isinstance(value, dict) or member not in value:
+                return None
+            value = value[member]
+        return value if isinstance(value, str) else None
 
 
 @dataclass(frozen=True, slots=True)
@@ -250,6 +260,7 @@ class TokenEndpoint:
             SecretString(access_token), SecretString(refresh_token), timedelta(seconds=expires_in),
             timedelta(seconds=max(0, refresh_expiry)), scope, token_type,
             {name: decoded[name] for name in self.retained_response_fields if name in decoded},
+            decoded,
         )
 
 
@@ -296,3 +307,6 @@ def sign_jwt_bearer_assertion(assertion: JWTBearerAssertion, private_key: rsa.RS
     unsigned = f"{encode(header)}.{encode(claims)}"
     signature = private_key.sign(unsigned.encode(), padding.PKCS1v15(), hashes.SHA256())
     return SecretString(f"{unsigned}.{base64.urlsafe_b64encode(signature).rstrip(b'=').decode()}")
+
+
+from .manifest_refresh import ManifestCredentialRefreshDriver as ManifestCredentialRefreshDriver  # noqa: E402
