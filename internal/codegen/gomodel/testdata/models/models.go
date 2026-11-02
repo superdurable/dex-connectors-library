@@ -154,6 +154,10 @@ type ExternalSameName struct {
 	Second itemB.Item `json:"second"`
 }
 
+type ExternalFirstItem struct {
+	First itemA.Item `json:"first"`
+}
+
 type SameFields struct {
 	Z int `json:"z"`
 }
@@ -166,4 +170,21 @@ type DistinctEmbeddings struct {
 type NamedByte byte
 type NamedBytes struct {
 	Value []NamedByte `json:"value"`
+}
+
+type MarshaledByte byte
+
+func (MarshaledByte) MarshalText() ([]byte, error) { return []byte("marshaled"), nil }
+
+type MarshaledBytes struct {
+	Value []MarshaledByte `json:"value"`
+}
+
+type JSONByte byte
+
+func (JSONByte) MarshalJSON() ([]byte, error) { return []byte(`"marshaled"`), nil }
+func (*JSONByte) UnmarshalJSON([]byte) error  { return nil }
+
+type JSONBytes struct {
+	Value []JSONByte `json:"value"`
 }

@@ -84,14 +84,15 @@ type Graph struct {
 }
 
 type loader struct {
-	packageTypes *types.Package
-	models       []Model
-	seen         map[string]bool
-	active       map[string]bool
-	reserved     map[string]bool
-	modelTypes   map[string]string
-	comments     map[*types.Var]string
-	typeComments map[string]string
+	packageTypes           *types.Package
+	models                 []Model
+	seen                   map[string]bool
+	active                 map[string]bool
+	reserved               map[string]bool
+	modelTypes             map[string]string
+	externalPreferredNames map[string]string
+	comments               map[*types.Var]string
+	typeComments           map[string]string
 }
 
 type embeddedStruct struct {
@@ -111,7 +112,8 @@ type fieldCandidate struct {
 }
 
 // Load resolves root Go struct names and their reachable JSON models from a connector module.
-func Load(goDirectory string, rootNames []string) (Graph, error) {
+// Published names prevent later collisions from renaming existing generated types.
+func Load(goDirectory string, rootNames []string, publishedNames ...string) (Graph, error) {
 	loaded, err := packages.Load(&packages.Config{Dir: goDirectory, Mode: packages.NeedName | packages.NeedTypes | packages.NeedCompiledGoFiles | packages.NeedSyntax | packages.NeedTypesInfo}, ".")
 	if err != nil {
 		return Graph{}, fmt.Errorf("load connector Go package: %w", err)
@@ -122,7 +124,7 @@ func Load(goDirectory string, rootNames []string) (Graph, error) {
 	for _, problem := range loaded[0].Errors {
 		return Graph{}, fmt.Errorf("load connector Go package: %s", problem)
 	}
-	modelLoader := &loader{packageTypes: loaded[0].Types, seen: map[string]bool{}, active: map[string]bool{}, reserved: map[string]bool{}, modelTypes: map[string]string{}, comments: map[*types.Var]string{}, typeComments: map[string]string{}}
+	modelLoader := &loader{packageTypes: loaded[0].Types, seen: map[string]bool{}, active: map[string]bool{}, reserved: map[string]bool{}, modelTypes: map[string]string{}, externalPreferredNames: map[string]string{}, comments: map[*types.Var]string{}, typeComments: map[string]string{}}
 	for _, file := range loaded[0].Syntax {
 		ast.Inspect(file, func(node ast.Node) bool {
 			switch declaration := node.(type) {
@@ -161,7 +163,69 @@ func Load(goDirectory string, rootNames []string) (Graph, error) {
 			return Graph{}, err
 		}
 	}
+	if err := modelLoader.useUnambiguousExternalNames(publishedNames); err != nil {
+		return Graph{}, err
+	}
 	return Graph{Models: modelLoader.models}, nil
+}
+
+// Keep hashed recursive references while loading; shorten names after the graph reveals collisions.
+func (modelLoader *loader) useUnambiguousExternalNames(publishedNames []string) error {
+	counts := map[string]int{}
+	used := map[string]bool{}
+	for _, model := range modelLoader.models {
+		used[model.Name] = true
+		if preferred := modelLoader.externalPreferredNames[model.Name]; preferred != "" {
+			counts[preferred]++
+		}
+	}
+	for _, published := range publishedNames {
+		if counts[published] < 2 && !used[published] {
+			continue
+		}
+		var conflictingTypes []string
+		for hashed, preferred := range modelLoader.externalPreferredNames {
+			if preferred == published {
+				conflictingTypes = append(conflictingTypes, modelLoader.modelTypes[hashed])
+			}
+		}
+		if len(conflictingTypes) == 0 {
+			continue
+		}
+		if used[published] {
+			conflictingTypes = append(conflictingTypes, modelLoader.modelTypes[published])
+		}
+		slices.Sort(conflictingTypes)
+		return fmt.Errorf("Go model name %q conflicts between %s; the checked-in generated output already exports this short name, so generation would rename a published type; rename the new Go package or type", published, strings.Join(conflictingTypes, " and "))
+	}
+	renamed := map[string]string{}
+	for hashed, preferred := range modelLoader.externalPreferredNames {
+		if counts[preferred] == 1 && !used[preferred] {
+			renamed[hashed] = preferred
+		}
+	}
+	for index := range modelLoader.models {
+		model := &modelLoader.models[index]
+		if preferred := renamed[model.Name]; preferred != "" {
+			model.Name = preferred
+		}
+		for fieldIndex := range model.Fields {
+			renameModelReferences(&model.Fields[fieldIndex].Type, renamed)
+		}
+	}
+	return nil
+}
+
+func renameModelReferences(modelType *Type, renamed map[string]string) {
+	if preferred := renamed[modelType.Ref]; preferred != "" {
+		modelType.Ref = preferred
+	}
+	if modelType.Elem != nil {
+		renameModelReferences(modelType.Elem, renamed)
+	}
+	if modelType.Key != nil {
+		renameModelReferences(modelType.Key, renamed)
+	}
 }
 
 func (modelLoader *loader) addModel(name string, modelType types.Type) error {
@@ -357,7 +421,7 @@ func (modelLoader *loader) describeType(modelType types.Type, syntheticName stri
 			return Type{Kind: Float}, nil
 		}
 	case *types.Slice:
-		if basic, ok := types.Unalias(typed.Elem()).Underlying().(*types.Basic); ok && basic.Kind() == types.Byte {
+		if basic, ok := types.Unalias(typed.Elem()).Underlying().(*types.Basic); ok && basic.Kind() == types.Byte && !hasMarshalMethod(typed.Elem(), "MarshalJSON") && !hasMarshalMethod(typed.Elem(), "MarshalText") {
 			return Type{Kind: Bytes, Nullable: true}, nil
 		}
 		element, err := modelLoader.describeType(typed.Elem(), syntheticName+"Item")
@@ -457,12 +521,17 @@ func hasUnmarshalJSONMethod(modelType types.Type) bool {
 
 func (modelLoader *loader) modelName(named *types.Named) string {
 	name := named.Obj().Name()
-	if named.Obj().Pkg() != modelLoader.packageTypes {
+	isExternal := named.Obj().Pkg() != modelLoader.packageTypes
+	if isExternal {
 		name = named.Obj().Pkg().Name() + name
 	}
-	if named.Obj().Pkg() != modelLoader.packageTypes || named.TypeArgs().Len() > 0 {
+	if isExternal || named.TypeArgs().Len() > 0 {
 		digest := sha256.Sum256([]byte(types.TypeString(named, func(pkg *types.Package) string { return pkg.Path() })))
-		name += fmt.Sprintf("_%x", digest[:4])
+		hashed := name + fmt.Sprintf("_%x", digest[:4])
+		if isExternal {
+			modelLoader.externalPreferredNames[hashed] = name
+		}
+		name = hashed
 	}
 	return name
 }
