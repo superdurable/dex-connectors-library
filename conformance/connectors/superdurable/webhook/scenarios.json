@@ -1,0 +1,650 @@
+{
+  "connector": "webhook",
+  "scenarios": [
+    {
+      "callId": "1df9f2d3-800f-54dc-898c-77640b04c7c3",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/hooks",
+          "query": {
+            "tenant": [
+              "forms"
+            ]
+          },
+          "requestBody": {
+            "data": {
+              "submissionId": "evt_123"
+            },
+            "type": "form.submitted"
+          },
+          "requestHeaders": {
+            "Content-Type": [
+              "application/json"
+            ],
+            "Webhook-Id": [
+              "msg_1df9f2d3800f54dc898c77640b04c7c3"
+            ],
+            "Webhook-Signature": [
+              "v1,JKGbT7wLozk28YJuzKh8tnezyMp3FAJfMc1yY2edRQE="
+            ],
+            "Webhook-Timestamp": [
+              "1790769600"
+            ]
+          },
+          "status": 202
+        }
+      ],
+      "expected": {
+        "branch": "delivered",
+        "failureKind": "",
+        "output": {
+          "statusCode": 202,
+          "webhookId": "msg_1df9f2d3800f54dc898c77640b04c7c3"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "msg_1df9f2d3800f54dc898c77640b04c7c3",
+      "input": {
+        "payload": {
+          "data": {
+            "submissionId": "evt_123"
+          },
+          "type": "form.submitted"
+        }
+      },
+      "name": "delivered",
+      "operation": "sendEvent"
+    },
+    {
+      "callId": "1df9f2d3-800f-54dc-898c-77640b04c7c3",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/hooks",
+          "query": {
+            "tenant": [
+              "forms"
+            ]
+          },
+          "requestBody": {
+            "type": "form.submitted"
+          },
+          "requestHeaders": {
+            "Content-Type": [
+              "application/json"
+            ],
+            "Webhook-Id": [
+              "msg_1df9f2d3800f54dc898c77640b04c7c3"
+            ],
+            "Webhook-Signature": [
+              "v1,sfIbll7/HJ4L/EITCs+Wd89Wz3dNl9L2b1TlZuWEyyQ="
+            ],
+            "Webhook-Timestamp": [
+              "1790769600"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "rejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "statusCode": 422,
+          "webhookId": "msg_1df9f2d3800f54dc898c77640b04c7c3"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "msg_1df9f2d3800f54dc898c77640b04c7c3",
+      "input": {
+        "payload": {
+          "type": "form.submitted"
+        }
+      },
+      "name": "rejected",
+      "operation": "sendEvent"
+    },
+    {
+      "callId": "1df9f2d3-800f-54dc-898c-77640b04c7c3",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "webhookId": "msg_1df9f2d3800f54dc898c77640b04c7c3"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "msg_1df9f2d3800f54dc898c77640b04c7c3",
+      "input": {},
+      "name": "defect",
+      "operation": "sendEvent"
+    },
+    {
+      "callId": "1df9f2d3-800f-54dc-898c-77640b04c7c3",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/hooks",
+          "query": {
+            "tenant": [
+              "forms"
+            ]
+          },
+          "requestBody": {
+            "type": "form.submitted"
+          },
+          "requestHeaders": {
+            "Content-Type": [
+              "application/json"
+            ],
+            "Webhook-Id": [
+              "msg_1df9f2d3800f54dc898c77640b04c7c3"
+            ],
+            "Webhook-Signature": [
+              "v1,sfIbll7/HJ4L/EITCs+Wd89Wz3dNl9L2b1TlZuWEyyQ="
+            ],
+            "Webhook-Timestamp": [
+              "1790769600"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "idempotencyKey": "msg_1df9f2d3800f54dc898c77640b04c7c3",
+      "input": {
+        "payload": {
+          "type": "form.submitted"
+        }
+      },
+      "name": "rate-limit-final-429",
+      "operation": "sendEvent"
+    },
+    {
+      "callId": "1df9f2d3-800f-54dc-898c-77640b04c7c3",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "5"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/hooks",
+          "query": {
+            "tenant": [
+              "forms"
+            ]
+          },
+          "requestBody": {
+            "type": "form.submitted"
+          },
+          "requestHeaders": {
+            "Content-Type": [
+              "application/json"
+            ],
+            "Webhook-Id": [
+              "msg_1df9f2d3800f54dc898c77640b04c7c3"
+            ],
+            "Webhook-Signature": [
+              "v1,sfIbll7/HJ4L/EITCs+Wd89Wz3dNl9L2b1TlZuWEyyQ="
+            ],
+            "Webhook-Timestamp": [
+              "1790769600"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 5000,
+        "uncertain": false
+      },
+      "idempotencyKey": "msg_1df9f2d3800f54dc898c77640b04c7c3",
+      "input": {
+        "payload": {
+          "type": "form.submitted"
+        }
+      },
+      "name": "unavailable-final-503",
+      "operation": "sendEvent"
+    },
+    {
+      "callId": "1df9f2d3-800f-54dc-898c-77640b04c7c3",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/hooks",
+          "query": {
+            "tenant": [
+              "forms"
+            ]
+          },
+          "requestBody": {
+            "type": "form.submitted"
+          },
+          "requestHeaders": {
+            "Content-Type": [
+              "application/json"
+            ],
+            "Webhook-Id": [
+              "msg_1df9f2d3800f54dc898c77640b04c7c3"
+            ],
+            "Webhook-Signature": [
+              "v1,sfIbll7/HJ4L/EITCs+Wd89Wz3dNl9L2b1TlZuWEyyQ="
+            ],
+            "Webhook-Timestamp": [
+              "1790769600"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "msg_1df9f2d3800f54dc898c77640b04c7c3",
+      "input": {
+        "payload": {
+          "type": "form.submitted"
+        }
+      },
+      "name": "transport-after-send",
+      "operation": "sendEvent"
+    },
+    {
+      "callId": "1df9f2d3-800f-54dc-898c-77640b04c7c3",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/hooks",
+          "query": {
+            "tenant": [
+              "forms"
+            ]
+          },
+          "requestBody": {
+            "type": "form.submitted"
+          },
+          "requestHeaders": {
+            "Content-Type": [
+              "application/json"
+            ],
+            "Webhook-Id": [
+              "msg_1df9f2d3800f54dc898c77640b04c7c3"
+            ],
+            "Webhook-Signature": [
+              "v1,sfIbll7/HJ4L/EITCs+Wd89Wz3dNl9L2b1TlZuWEyyQ="
+            ],
+            "Webhook-Timestamp": [
+              "1790769600"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "msg_1df9f2d3800f54dc898c77640b04c7c3",
+      "input": {
+        "payload": {
+          "type": "form.submitted"
+        }
+      },
+      "name": "transport-before-send",
+      "operation": "sendEvent"
+    },
+    {
+      "callId": "1df9f2d3-800f-54dc-898c-77640b04c7c3",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/hooks",
+          "query": {
+            "tenant": [
+              "forms"
+            ]
+          },
+          "requestBody": {
+            "type": "form.submitted"
+          },
+          "requestHeaders": {
+            "Content-Type": [
+              "application/json"
+            ],
+            "Webhook-Id": [
+              "msg_1df9f2d3800f54dc898c77640b04c7c3"
+            ],
+            "Webhook-Signature": [
+              "v1,sfIbll7/HJ4L/EITCs+Wd89Wz3dNl9L2b1TlZuWEyyQ="
+            ],
+            "Webhook-Timestamp": [
+              "1790769600"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "CONFLICT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "msg_1df9f2d3800f54dc898c77640b04c7c3",
+      "input": {
+        "payload": {
+          "type": "form.submitted"
+        }
+      },
+      "name": "conflict-409",
+      "operation": "sendEvent"
+    },
+    {
+      "callId": "1df9f2d3-800f-54dc-898c-77640b04c7c3",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/hooks",
+          "query": {
+            "tenant": [
+              "forms"
+            ]
+          },
+          "requestBody": {
+            "type": "form.submitted"
+          },
+          "requestHeaders": {
+            "Content-Type": [
+              "application/json"
+            ],
+            "Webhook-Id": [
+              "msg_1df9f2d3800f54dc898c77640b04c7c3"
+            ],
+            "Webhook-Signature": [
+              "v1,sfIbll7/HJ4L/EITCs+Wd89Wz3dNl9L2b1TlZuWEyyQ="
+            ],
+            "Webhook-Timestamp": [
+              "1790769600"
+            ]
+          },
+          "status": 425
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "msg_1df9f2d3800f54dc898c77640b04c7c3",
+      "input": {
+        "payload": {
+          "type": "form.submitted"
+        }
+      },
+      "name": "too-early-425",
+      "operation": "sendEvent"
+    },
+    {
+      "attempts": 2,
+      "callId": "1df9f2d3-800f-54dc-898c-77640b04c7c3",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/hooks",
+          "query": {
+            "tenant": [
+              "forms"
+            ]
+          },
+          "requestBody": {
+            "type": "form.submitted"
+          },
+          "requestHeaders": {
+            "Content-Type": [
+              "application/json"
+            ],
+            "Webhook-Id": [
+              "msg_1df9f2d3800f54dc898c77640b04c7c3"
+            ],
+            "Webhook-Signature": [
+              "v1,sfIbll7/HJ4L/EITCs+Wd89Wz3dNl9L2b1TlZuWEyyQ="
+            ],
+            "Webhook-Timestamp": [
+              "1790769600"
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/hooks",
+          "query": {
+            "tenant": [
+              "forms"
+            ]
+          },
+          "requestBody": {
+            "type": "form.submitted"
+          },
+          "requestHeaders": {
+            "Content-Type": [
+              "application/json"
+            ],
+            "Webhook-Id": [
+              "msg_1df9f2d3800f54dc898c77640b04c7c3"
+            ],
+            "Webhook-Signature": [
+              "v1,sfIbll7/HJ4L/EITCs+Wd89Wz3dNl9L2b1TlZuWEyyQ="
+            ],
+            "Webhook-Timestamp": [
+              "1790769600"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "delivered",
+        "failureKind": "",
+        "output": {
+          "statusCode": 204,
+          "webhookId": "msg_1df9f2d3800f54dc898c77640b04c7c3"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "msg_1df9f2d3800f54dc898c77640b04c7c3",
+      "input": {
+        "payload": {
+          "type": "form.submitted"
+        }
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "retry-then-deliver",
+      "operation": "sendEvent"
+    },
+    {
+      "callId": "1df9f2d3-800f-54dc-898c-77640b04c7c3",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/hooks",
+          "query": {
+            "tenant": [
+              "forms"
+            ]
+          },
+          "requestBody": {
+            "type": "form.submitted"
+          },
+          "requestHeaders": {
+            "Content-Type": [
+              "application/json"
+            ],
+            "Webhook-Id": [
+              "msg_1df9f2d3800f54dc898c77640b04c7c3"
+            ],
+            "Webhook-Signature": [
+              "v1,sfIbll7/HJ4L/EITCs+Wd89Wz3dNl9L2b1TlZuWEyyQ="
+            ],
+            "Webhook-Timestamp": [
+              "1790769600"
+            ]
+          },
+          "status": 302
+        }
+      ],
+      "expected": {
+        "branch": "rejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "statusCode": 302,
+          "webhookId": "msg_1df9f2d3800f54dc898c77640b04c7c3"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "msg_1df9f2d3800f54dc898c77640b04c7c3",
+      "input": {
+        "payload": {
+          "type": "form.submitted"
+        }
+      },
+      "name": "redirect-rejected",
+      "operation": "sendEvent"
+    },
+    {
+      "callId": "1df9f2d3-800f-54dc-898c-77640b04c7c3",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/hooks",
+          "query": {
+            "tenant": [
+              "forms"
+            ]
+          },
+          "requestBody": {
+            "type": "form.submitted"
+          },
+          "requestHeaders": {
+            "Content-Type": [
+              "application/json"
+            ],
+            "Webhook-Id": [
+              "msg_1df9f2d3800f54dc898c77640b04c7c3"
+            ],
+            "Webhook-Signature": [
+              "v1,sfIbll7/HJ4L/EITCs+Wd89Wz3dNl9L2b1TlZuWEyyQ="
+            ],
+            "Webhook-Timestamp": [
+              "1790769600"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "rejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "statusCode": 401,
+          "webhookId": "msg_1df9f2d3800f54dc898c77640b04c7c3"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "msg_1df9f2d3800f54dc898c77640b04c7c3",
+      "input": {
+        "payload": {
+          "type": "form.submitted"
+        }
+      },
+      "name": "authentication-rejected",
+      "operation": "sendEvent"
+    }
+  ],
+  "schemaVersion": 1
+}
