@@ -1,0 +1,710 @@
+{
+  "connector": "klaviyo",
+  "scenarios": [
+    {
+      "callId": "1e5ce0c8-02cd-4db3-94af-e108d8d28f4a",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"type\":\"profile\",\"id\":\"profile-1\",\"attributes\":{\"email\":\"member@meridian.co\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/profiles/profile-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.api+json"
+            ],
+            "Authorization": [
+              "Klaviyo-API-Key pk_test_key"
+            ],
+            "Content-Type": [
+              "application/vnd.api+json"
+            ],
+            "Revision": [
+              "2026-10-15"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "email": "member@meridian.co",
+          "id": "profile-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "profile-1"
+      },
+      "name": "profile-found",
+      "operation": "getProfile"
+    },
+    {
+      "callId": "1e5ce0c8-02cd-4db3-94af-e108d8d28f4a",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/profiles/profile-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.api+json"
+            ],
+            "Authorization": [
+              "Klaviyo-API-Key pk_test_key"
+            ],
+            "Content-Type": [
+              "application/vnd.api+json"
+            ],
+            "Revision": [
+              "2026-10-15"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "profile-1"
+      },
+      "name": "profile-not-found",
+      "operation": "getProfile"
+    },
+    {
+      "callId": "1e5ce0c8-02cd-4db3-94af-e108d8d28f4a",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/profiles/profile-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.api+json"
+            ],
+            "Authorization": [
+              "Klaviyo-API-Key pk_test_key"
+            ],
+            "Content-Type": [
+              "application/vnd.api+json"
+            ],
+            "Revision": [
+              "2026-10-15"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "profile-1"
+      },
+      "name": "profile-rejected",
+      "operation": "getProfile"
+    },
+    {
+      "callId": "1e5ce0c8-02cd-4db3-94af-e108d8d28f4a",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"type\":\"metric\",\"id\":\"bad\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/profiles/profile-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.api+json"
+            ],
+            "Authorization": [
+              "Klaviyo-API-Key pk_test_key"
+            ],
+            "Content-Type": [
+              "application/vnd.api+json"
+            ],
+            "Revision": [
+              "2026-10-15"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "profile-1"
+      },
+      "name": "profile-invalid-response",
+      "operation": "getProfile"
+    },
+    {
+      "callId": "1e5ce0c8-02cd-4db3-94af-e108d8d28f4a",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/profiles/profile-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.api+json"
+            ],
+            "Authorization": [
+              "Klaviyo-API-Key pk_test_key"
+            ],
+            "Content-Type": [
+              "application/vnd.api+json"
+            ],
+            "Revision": [
+              "2026-10-15"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3000,
+        "uncertain": false
+      },
+      "input": {
+        "id": "profile-1"
+      },
+      "name": "profile-rate-limited",
+      "operation": "getProfile"
+    },
+    {
+      "callId": "1e5ce0c8-02cd-4db3-94af-e108d8d28f4a",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/profiles/profile-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.api+json"
+            ],
+            "Authorization": [
+              "Klaviyo-API-Key pk_test_key"
+            ],
+            "Content-Type": [
+              "application/vnd.api+json"
+            ],
+            "Revision": [
+              "2026-10-15"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "profile-1"
+      },
+      "name": "profile-unavailable",
+      "operation": "getProfile"
+    },
+    {
+      "callId": "1e5ce0c8-02cd-4db3-94af-e108d8d28f4a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/profiles/profile-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.api+json"
+            ],
+            "Authorization": [
+              "Klaviyo-API-Key pk_test_key"
+            ],
+            "Content-Type": [
+              "application/vnd.api+json"
+            ],
+            "Revision": [
+              "2026-10-15"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "profile-1"
+      },
+      "name": "profile-transport",
+      "operation": "getProfile"
+    },
+    {
+      "callId": "1e5ce0c8-02cd-4db3-94af-e108d8d28f4a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "bad/segment"
+      },
+      "name": "profile-defect",
+      "operation": "getProfile"
+    },
+    {
+      "callId": "76658bff-4c7c-547c-a04d-0ceef7e8b1c4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/events",
+          "requestBody": {
+            "data": {
+              "attributes": {
+                "metric": {
+                  "data": {
+                    "attributes": {
+                      "name": "Signed Up"
+                    },
+                    "type": "metric"
+                  }
+                },
+                "profile": {
+                  "data": {
+                    "attributes": {
+                      "email": "member@meridian.co"
+                    },
+                    "type": "profile"
+                  }
+                },
+                "properties": {
+                  "source": "newsletter"
+                },
+                "unique_id": "eb6a0e6cbfa0b5baab38b23d5c66e57f480c67b730fa1c901be1df748a301538"
+              },
+              "type": "event"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.api+json"
+            ],
+            "Authorization": [
+              "Klaviyo-API-Key pk_test_key"
+            ],
+            "Content-Type": [
+              "application/vnd.api+json"
+            ],
+            "Revision": [
+              "2026-10-15"
+            ]
+          },
+          "status": 202
+        }
+      ],
+      "expected": {
+        "branch": "accepted",
+        "failureKind": "",
+        "output": {
+          "accepted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "eb6a0e6cbfa0b5baab38b23d5c66e57f480c67b730fa1c901be1df748a301538",
+      "input": {
+        "email": "member@meridian.co",
+        "metricName": "Signed Up",
+        "properties": {
+          "source": "newsletter"
+        }
+      },
+      "name": "event-accepted",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "76658bff-4c7c-547c-a04d-0ceef7e8b1c4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/events",
+          "requestBody": {
+            "data": {
+              "attributes": {
+                "metric": {
+                  "data": {
+                    "attributes": {
+                      "name": "Signed Up"
+                    },
+                    "type": "metric"
+                  }
+                },
+                "profile": {
+                  "data": {
+                    "attributes": {
+                      "email": "member@meridian.co"
+                    },
+                    "type": "profile"
+                  }
+                },
+                "properties": {
+                  "source": "newsletter"
+                },
+                "unique_id": "eb6a0e6cbfa0b5baab38b23d5c66e57f480c67b730fa1c901be1df748a301538"
+              },
+              "type": "event"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.api+json"
+            ],
+            "Authorization": [
+              "Klaviyo-API-Key pk_test_key"
+            ],
+            "Content-Type": [
+              "application/vnd.api+json"
+            ],
+            "Revision": [
+              "2026-10-15"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "accepted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "eb6a0e6cbfa0b5baab38b23d5c66e57f480c67b730fa1c901be1df748a301538",
+      "input": {
+        "email": "member@meridian.co",
+        "metricName": "Signed Up",
+        "properties": {
+          "source": "newsletter"
+        }
+      },
+      "name": "event-rejected",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "76658bff-4c7c-547c-a04d-0ceef7e8b1c4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/events",
+          "requestBody": {
+            "data": {
+              "attributes": {
+                "metric": {
+                  "data": {
+                    "attributes": {
+                      "name": "Signed Up"
+                    },
+                    "type": "metric"
+                  }
+                },
+                "profile": {
+                  "data": {
+                    "attributes": {
+                      "email": "member@meridian.co"
+                    },
+                    "type": "profile"
+                  }
+                },
+                "properties": {
+                  "source": "newsletter"
+                },
+                "unique_id": "eb6a0e6cbfa0b5baab38b23d5c66e57f480c67b730fa1c901be1df748a301538"
+              },
+              "type": "event"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.api+json"
+            ],
+            "Authorization": [
+              "Klaviyo-API-Key pk_test_key"
+            ],
+            "Content-Type": [
+              "application/vnd.api+json"
+            ],
+            "Revision": [
+              "2026-10-15"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3000,
+        "uncertain": false
+      },
+      "idempotencyKey": "eb6a0e6cbfa0b5baab38b23d5c66e57f480c67b730fa1c901be1df748a301538",
+      "input": {
+        "email": "member@meridian.co",
+        "metricName": "Signed Up",
+        "properties": {
+          "source": "newsletter"
+        }
+      },
+      "name": "event-rate-limited",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "76658bff-4c7c-547c-a04d-0ceef7e8b1c4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/events",
+          "requestBody": {
+            "data": {
+              "attributes": {
+                "metric": {
+                  "data": {
+                    "attributes": {
+                      "name": "Signed Up"
+                    },
+                    "type": "metric"
+                  }
+                },
+                "profile": {
+                  "data": {
+                    "attributes": {
+                      "email": "member@meridian.co"
+                    },
+                    "type": "profile"
+                  }
+                },
+                "properties": {
+                  "source": "newsletter"
+                },
+                "unique_id": "eb6a0e6cbfa0b5baab38b23d5c66e57f480c67b730fa1c901be1df748a301538"
+              },
+              "type": "event"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.api+json"
+            ],
+            "Authorization": [
+              "Klaviyo-API-Key pk_test_key"
+            ],
+            "Content-Type": [
+              "application/vnd.api+json"
+            ],
+            "Revision": [
+              "2026-10-15"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "eb6a0e6cbfa0b5baab38b23d5c66e57f480c67b730fa1c901be1df748a301538",
+      "input": {
+        "email": "member@meridian.co",
+        "metricName": "Signed Up",
+        "properties": {
+          "source": "newsletter"
+        }
+      },
+      "name": "event-unavailable",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "76658bff-4c7c-547c-a04d-0ceef7e8b1c4",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/events",
+          "requestBody": {
+            "data": {
+              "attributes": {
+                "metric": {
+                  "data": {
+                    "attributes": {
+                      "name": "Signed Up"
+                    },
+                    "type": "metric"
+                  }
+                },
+                "profile": {
+                  "data": {
+                    "attributes": {
+                      "email": "member@meridian.co"
+                    },
+                    "type": "profile"
+                  }
+                },
+                "properties": {
+                  "source": "newsletter"
+                },
+                "unique_id": "eb6a0e6cbfa0b5baab38b23d5c66e57f480c67b730fa1c901be1df748a301538"
+              },
+              "type": "event"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.api+json"
+            ],
+            "Authorization": [
+              "Klaviyo-API-Key pk_test_key"
+            ],
+            "Content-Type": [
+              "application/vnd.api+json"
+            ],
+            "Revision": [
+              "2026-10-15"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "eb6a0e6cbfa0b5baab38b23d5c66e57f480c67b730fa1c901be1df748a301538",
+      "input": {
+        "email": "member@meridian.co",
+        "metricName": "Signed Up",
+        "properties": {
+          "source": "newsletter"
+        }
+      },
+      "name": "event-transport",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "76658bff-4c7c-547c-a04d-0ceef7e8b1c4",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accepted": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "eb6a0e6cbfa0b5baab38b23d5c66e57f480c67b730fa1c901be1df748a301538",
+      "input": {
+        "email": "invalid",
+        "metricName": "Signed Up",
+        "properties": {
+          "source": "newsletter"
+        }
+      },
+      "name": "event-defect",
+      "operation": "createEvent"
+    }
+  ],
+  "schemaVersion": 1
+}
