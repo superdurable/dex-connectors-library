@@ -2,7 +2,7 @@
 
 `dex-connectors-sdk` is the Python core for Dex-native provider connectors. It
 uses the PEP 420 `dex_connectors` namespace and imports as `dex_connectors.sdk`.
-Version `0.1.0` supplies the models, provider
+Version `0.2.0` supplies the models, provider
 operation contracts, credential helpers, OAuth token exchanges, and
 single-dispatch checkpoint values below. Query and Mutation Step factories
 use the released Dex SDK's instance-addressed async Steps.
@@ -16,6 +16,8 @@ Runnable examples are [`examples/core.py`](examples/core.py),
 [`examples/credentials_and_project.py`](examples/credentials_and_project.py),
 [`examples/operations_and_oauth.py`](examples/operations_and_oauth.py),
 and [`examples/single_dispatch.py`](examples/single_dispatch.py).
+[`examples/manifest_refresh.py`](examples/manifest_refresh.py) demonstrates
+manifest-declared refresh with an inert provider endpoint.
 Run each with `uv run python examples/<name>.py`.
 
 ## Core values, failures, and retry policy
@@ -134,6 +136,33 @@ error below HTTP 500 raises `ReauthorizationRequiredError`; server outages and
 other failures stay retryable. `TokenResponse.next_refresh_token` retains the
 prior refresh token when a provider does not rotate it. The package also has
 RS256 JWT assertion signing, scope checks, and proportional expiry skew.
+
+`ManifestCredentialRefreshDriver` reads the generated manifest authorization
+declaration and the generated credential field map. It performs refresh-token,
+client-credentials, and JWT-bearer grants, retains rotated refresh material,
+checks returned scopes, and replaces only mapped credential fields. The caller
+supplies an `httpx.AsyncClient` and startup-pinned connection settings; project
+credential providers still own admission and persistence. Its constructor takes
+`provider_name`, the manifest `spec.auth` object, a mapping from manifest field
+names to frozen dataclass attributes, and the caller-owned HTTP client. Optional
+`settings` resolves manifest setting sources, and optional `now` supplies a UTC
+clock for expiry and JWT claims. A credential dataclass for an authorization
+declaration with several `methods` must carry a nonempty `auth_method_id`.
+
+The manifest's `missingExpiry` declaration controls the decision when stored
+expiry is absent: `keep` (the default) leaves a present access token in place,
+and a declared lifetime refreshes it. The driver accepts
+`acceptsMissingTokenType: true` in a refresh declaration for a provider that
+omits `token_type`. A provider such as Slack that returns `bot` or `user` must
+declare grant `acceptedTokenTypes`. Schema and codegen support for both fields
+is pending before connector migration. The default requires `Bearer`.
+Only an optional
+client secret field may send a public-client refresh request when blank.
+Missing grant material and declared terminal provider errors raise
+`ReauthorizationRequiredError`; transport, invalid response, and undeclared
+provider errors preserve the stored credential for retry. A response without
+`expires_in` returns an expired result when the manifest declares `keep`; the
+current project provider rejects that result without changing stored material.
 
 From the runnable example:
 
