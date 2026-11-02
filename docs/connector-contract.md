@@ -415,10 +415,11 @@ func (credentials Credentials) Validate() error {
 }
 ```
 
-Generated Python project connections and TypeScript `decodeCredentials` also
-select one method from the stored `auth_method`, then the connection's
-`authMethodId`, then the manifest default. They require only the selected
-method's credential fields and leave other methods' fields unset. Generated
+Generated Python project connections and TypeScript `decodeCredentials` select
+one method from the stored `auth_method`, then the manifest default when that
+field is absent, null, or empty. The connection's `authMethodId` does not select
+the method. They require only the selected method's credential fields, treat
+null as missing, and leave other methods' fields unset. Generated
 Python `Config` and TypeScript `ConfigSchema` include method-specific settings
 as optional fields; Dex Web enforces their selected-method requirements.
 

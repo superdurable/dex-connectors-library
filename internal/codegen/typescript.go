@@ -179,12 +179,12 @@ func generateTypeScriptModels(manifest schema.Manifest, models []gomodel.Model) 
 	}
 	output.WriteString("}\n\n")
 	if len(manifest.Spec.Auth.Methods) > 0 {
-		output.WriteString("/** Decode private credential fields for the selected authorization method. */\nexport function decodeCredentials(value: unknown, authMethodId = ''): Credentials {\n")
+		output.WriteString("/** Decode private credential fields for the selected authorization method. */\nexport function decodeCredentials(value: unknown): Credentials {\n")
 		output.WriteString("  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');\n")
 		output.WriteString("  const fields = value as { [key: string]: unknown };\n")
 		output.WriteString("  const selectedMethod = fields['auth_method'] ?? '';\n")
 		output.WriteString("  if (typeof selectedMethod !== 'string') throw new TypeError('credential auth_method is invalid');\n")
-		fmt.Fprintf(&output, "  const method = selectedMethod || authMethodId || %s;\n", strconv.Quote(manifest.Spec.Auth.DefaultMethod))
+		fmt.Fprintf(&output, "  const method = selectedMethod || %s;\n", strconv.Quote(manifest.Spec.Auth.DefaultMethod))
 		output.WriteString("  const credentials = { authMethodId: method } as Credentials;\n")
 		for index, method := range manifest.Spec.Auth.Methods {
 			if index == 0 {
@@ -193,7 +193,7 @@ func generateTypeScriptModels(manifest schema.Manifest, models []gomodel.Model) 
 				fmt.Fprintf(&output, "  } else if (method === %s) {\n", strconv.Quote(method.ID))
 			}
 			for _, field := range method.Fields {
-				fmt.Fprintf(&output, "    if (fields[%s] !== undefined && typeof fields[%s] !== 'string') throw new TypeError(%s);\n", strconv.Quote(field.Name), strconv.Quote(field.Name), strconv.Quote("credential "+field.Name+" has an invalid type"))
+				fmt.Fprintf(&output, "    if (fields[%s] != null && typeof fields[%s] !== 'string') throw new TypeError(%s);\n", strconv.Quote(field.Name), strconv.Quote(field.Name), strconv.Quote("credential "+field.Name+" has an invalid type"))
 				if field.Required {
 					fmt.Fprintf(&output, "    if (!fields[%s]) throw new TypeError(%s);\n", strconv.Quote(field.Name), strconv.Quote("credential "+field.Name+" is required"))
 				}

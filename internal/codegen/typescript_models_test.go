@@ -25,7 +25,12 @@ func TestTypeScriptMultiAuthModelsGolden(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	manifest.Spec.Configuration.Fields = []schema.Field{
+		{Name: "region", GoName: "Region", Type: "string", Description: "Optional region.", Required: false},
+		{Name: "accountId", GoName: "AccountID", Type: "string", Description: "Required account ID.", Required: true},
+	}
 	manifest.Spec.Auth.Methods[0].Configuration = &schema.Configuration{Fields: []schema.Field{{Name: "workspaceId", GoName: "WorkspaceID", Type: "string", Description: "Workspace for the selected method.", Required: true}}}
+	manifest.Spec.Auth.Methods[1].Fields = append(manifest.Spec.Auth.Methods[1].Fields, schema.Field{Name: "session_note", GoName: "SessionNote", Type: "string", Description: "Optional session note.", Required: false})
 	got := append(bytes.TrimRight(generateTypeScriptModels(manifest, nil), "\n"), '\n')
 	goldenPath := filepath.Join("testdata", "multi-auth-models.ts")
 	if os.Getenv("UPDATE_MULTI_AUTH_GOLDEN") == "1" {
@@ -70,15 +75,19 @@ func TestTypeScriptMultiAuthModelsGolden(t *testing.T) {
 const multiAuthTypeScriptRuntimeTest = `
 import assert from 'node:assert/strict';
 import { ConfigSchema, decodeCredentials } from './models.js';
-assert.deepEqual(ConfigSchema.parse({}), {});
-assert.equal(ConfigSchema.parse({ workspaceId: 'workspace' }).workspaceId, 'workspace');
-const oauth = decodeCredentials({ oauth_client_id: 'id', oauth_client_secret: 'secret', access_token: 'access', refresh_token: 'refresh', service_account_key: 17 });
+assert.deepEqual(ConfigSchema.parse({ accountId: 'account' }), { accountId: 'account' });
+assert.equal(ConfigSchema.parse({ accountId: 'account', region: 'west', workspaceId: 'workspace' }).region, 'west');
+assert.throws(() => ConfigSchema.parse({}));
+const oauth = decodeCredentials({ auth_method: null, oauth_client_id: 'id', oauth_client_secret: 'secret', access_token: 'access', refresh_token: 'refresh', service_account_key: 17 });
 assert.equal(oauth.authMethodId, 'google-oauth');
 assert.equal(oauth.serviceAccountKey, undefined);
-const service = decodeCredentials({ service_account_key: 'key', delegated_user: 'user', oauth_client_id: 17 }, 'workspace-service-account');
+const service = decodeCredentials({ auth_method: 'workspace-service-account', service_account_key: 'key', delegated_user: 'user', session_note: 'note', oauth_client_id: 17 });
 assert.equal(service.authMethodId, 'workspace-service-account');
 assert.equal(service.serviceAccountKey?.reveal(), 'key');
+assert.equal(service.sessionNote, 'note');
 assert.equal(service.oauthClientId, undefined);
+assert.equal(decodeCredentials({ auth_method: 'workspace-service-account', service_account_key: 'key', delegated_user: 'user', session_note: null }).sessionNote, undefined);
+assert.throws(() => decodeCredentials({ auth_method: 'workspace-service-account', service_account_key: null, delegated_user: 'user' }), /credential service_account_key is required/);
 assert.throws(() => decodeCredentials({ auth_method: 'workspace-service-account', delegated_user: 'user' }));
 assert.throws(() => decodeCredentials({ auth_method: 'unknown' }));
 assert.throws(() => decodeCredentials({ auth_method: 0 }));

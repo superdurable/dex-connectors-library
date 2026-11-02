@@ -50,39 +50,39 @@ export interface Credentials {
 }
 
 /** Decode private credential fields for the selected authorization method. */
-export function decodeCredentials(value: unknown, authMethodId = ''): Credentials {
+export function decodeCredentials(value: unknown): Credentials {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
   const selectedMethod = fields['auth_method'] ?? '';
   if (typeof selectedMethod !== 'string') throw new TypeError('credential auth_method is invalid');
-  const method = selectedMethod || authMethodId || "google-oauth";
+  const method = selectedMethod || "google-oauth";
   const credentials = { authMethodId: method } as Credentials;
   if (method === "google-oauth") {
-    if (fields["oauth_client_id"] !== undefined && typeof fields["oauth_client_id"] !== 'string') throw new TypeError("credential oauth_client_id has an invalid type");
+    if (fields["oauth_client_id"] != null && typeof fields["oauth_client_id"] !== 'string') throw new TypeError("credential oauth_client_id has an invalid type");
     if (!fields["oauth_client_id"]) throw new TypeError("credential oauth_client_id is required");
     if (fields["oauth_client_id"]) credentials.oauthClientId = fields["oauth_client_id"] as string;
-    if (fields["oauth_client_secret"] !== undefined && typeof fields["oauth_client_secret"] !== 'string') throw new TypeError("credential oauth_client_secret has an invalid type");
+    if (fields["oauth_client_secret"] != null && typeof fields["oauth_client_secret"] !== 'string') throw new TypeError("credential oauth_client_secret has an invalid type");
     if (!fields["oauth_client_secret"]) throw new TypeError("credential oauth_client_secret is required");
     if (fields["oauth_client_secret"]) credentials.oauthClientSecret = new SecretString(fields["oauth_client_secret"] as string);
-    if (fields["access_token"] !== undefined && typeof fields["access_token"] !== 'string') throw new TypeError("credential access_token has an invalid type");
+    if (fields["access_token"] != null && typeof fields["access_token"] !== 'string') throw new TypeError("credential access_token has an invalid type");
     if (!fields["access_token"]) throw new TypeError("credential access_token is required");
     if (fields["access_token"]) credentials.accessToken = new SecretString(fields["access_token"] as string);
-    if (fields["refresh_token"] !== undefined && typeof fields["refresh_token"] !== 'string') throw new TypeError("credential refresh_token has an invalid type");
+    if (fields["refresh_token"] != null && typeof fields["refresh_token"] !== 'string') throw new TypeError("credential refresh_token has an invalid type");
     if (!fields["refresh_token"]) throw new TypeError("credential refresh_token is required");
     if (fields["refresh_token"]) credentials.refreshToken = new SecretString(fields["refresh_token"] as string);
-    if (fields["primary_email"] !== undefined && typeof fields["primary_email"] !== 'string') throw new TypeError("credential primary_email has an invalid type");
+    if (fields["primary_email"] != null && typeof fields["primary_email"] !== 'string') throw new TypeError("credential primary_email has an invalid type");
     if (!fields["primary_email"]) throw new TypeError("credential primary_email is required");
     if (fields["primary_email"]) credentials.primaryEmail = fields["primary_email"] as string;
   } else if (method === "workspace-domain-delegation") {
-    if (fields["service_account_key"] !== undefined && typeof fields["service_account_key"] !== 'string') throw new TypeError("credential service_account_key has an invalid type");
+    if (fields["service_account_key"] != null && typeof fields["service_account_key"] !== 'string') throw new TypeError("credential service_account_key has an invalid type");
     if (!fields["service_account_key"]) throw new TypeError("credential service_account_key is required");
     if (fields["service_account_key"]) credentials.serviceAccountKey = new SecretString(fields["service_account_key"] as string);
-    if (fields["delegated_user"] !== undefined && typeof fields["delegated_user"] !== 'string') throw new TypeError("credential delegated_user has an invalid type");
+    if (fields["delegated_user"] != null && typeof fields["delegated_user"] !== 'string') throw new TypeError("credential delegated_user has an invalid type");
     if (!fields["delegated_user"]) throw new TypeError("credential delegated_user is required");
     if (fields["delegated_user"]) credentials.delegatedUser = fields["delegated_user"] as string;
-    if (fields["access_token"] !== undefined && typeof fields["access_token"] !== 'string') throw new TypeError("credential access_token has an invalid type");
+    if (fields["access_token"] != null && typeof fields["access_token"] !== 'string') throw new TypeError("credential access_token has an invalid type");
     if (fields["access_token"]) credentials.accessToken = new SecretString(fields["access_token"] as string);
-    if (fields["primary_email"] !== undefined && typeof fields["primary_email"] !== 'string') throw new TypeError("credential primary_email has an invalid type");
+    if (fields["primary_email"] != null && typeof fields["primary_email"] !== 'string') throw new TypeError("credential primary_email has an invalid type");
     if (fields["primary_email"]) credentials.primaryEmail = fields["primary_email"] as string;
   } else {
     throw new TypeError('credential auth_method is invalid');

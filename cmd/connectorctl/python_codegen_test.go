@@ -54,7 +54,12 @@ func TestPythonCodegenMultiAuthGolden(t *testing.T) {
 		t.Fatal(err)
 	}
 	manifest.Spec.Languages = &schema.Languages{Python: &schema.LanguagePackage{Operations: []string{"getThing"}}}
+	manifest.Spec.Configuration.Fields = []schema.Field{
+		{Name: "region", GoName: "Region", Type: "string", Description: "Optional region.", Required: false},
+		{Name: "accountId", GoName: "AccountID", Type: "string", Description: "Required account ID.", Required: true},
+	}
 	manifest.Spec.Auth.Methods[0].Configuration = &schema.Configuration{Fields: []schema.Field{{Name: "workspaceId", GoName: "WorkspaceID", Type: "string", Description: "Workspace for the selected method.", Required: true}}}
+	manifest.Spec.Auth.Methods[1].Fields = append(manifest.Spec.Auth.Methods[1].Fields, schema.Field{Name: "session_note", GoName: "SessionNote", Type: "string", Description: "Optional session note.", Required: false})
 	generated, err := renderPythonCodegen(pythonCodegenInput{Manifest: manifest, PackageName: "multi_auth_fixture", MockPackageName: "multiauthfixturemock"})
 	if err != nil {
 		t.Fatal(err)
@@ -77,17 +82,28 @@ func TestPythonCodegenMultiAuthGolden(t *testing.T) {
 			t.Errorf("%s differs from multi-auth golden output", name)
 		}
 	}
+	pythonSources, err := json.Marshal(map[string]string{"config.py": generated["config.py"], "connection.py": generated["connection.py"]})
+	if err != nil {
+		t.Fatal(err)
+	}
 	command := exec.Command("python3", "-c", multiAuthPythonRuntimeTest)
-	command.Stdin = strings.NewReader(generated["connection.py"])
+	command.Stdin = bytes.NewReader(pythonSources)
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("generated multi-auth credential behavior: %v\n%s", err, output)
 	}
 }
 
 const multiAuthPythonRuntimeTest = `
-import ast, asyncio, sys
+import ast, asyncio, json, sys
+from dataclasses import dataclass
 from typing import Any
-source = sys.stdin.read()
+sources = json.load(sys.stdin)
+config_tree = ast.parse(sources['config.py'])
+config_class = next(node for node in config_tree.body if isinstance(node, ast.ClassDef) and node.name == 'Config')
+config_namespace = {'__name__': '__main__', 'dataclass': dataclass}
+exec(compile(ast.Module(body=[config_class], type_ignores=[]), '<generated-config>', 'exec'), config_namespace)
+assert config_namespace['Config'](account_id='account').region == ''
+source = sources['connection.py']
 tree = ast.parse(source)
 credential_source = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == '_ProjectCredentialSource')
 config_decoder = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == '_decode_config')
@@ -103,20 +119,27 @@ class Project:
 namespace = {'Any': Any, 'Call': object, 'LoadedProject': object, 'ConnectionKey': object, 'Credentials': Credentials, 'Config': Config, 'SecretString': SecretString}
 exec(compile(ast.Module(body=[credential_source, config_decoder], type_ignores=[]), '<generated>', 'exec'), namespace)
 Source = namespace['_ProjectCredentialSource']
-assert namespace['_decode_config']({}).workspace_id == ''
-assert namespace['_decode_config']({'workspaceId':'workspace'}).workspace_id == 'workspace'
+assert namespace['_decode_config']({'accountId':'account'}).workspace_id == ''
+assert namespace['_decode_config']({'accountId':'account', 'workspaceId':'workspace'}).workspace_id == 'workspace'
 class Call:
     id = 'call'
-def resolve(values, method=''):
-    return asyncio.run(Source(Project(values), object(), method).resolve(Call()))
-default = resolve({'oauth_client_id':'id', 'oauth_client_secret':'secret', 'access_token':'access', 'refresh_token':'refresh', 'service_account_key':17})
+def resolve(values):
+    return asyncio.run(Source(Project(values), object()).resolve(Call()))
+default = resolve({'auth_method':None, 'oauth_client_id':'id', 'oauth_client_secret':'secret', 'access_token':'access', 'refresh_token':'refresh', 'service_account_key':17})
 assert default.auth_method_id == 'google-oauth' and not hasattr(default, 'service_account_key')
-alternate = resolve({'service_account_key':'key', 'delegated_user':'user', 'oauth_client_id':17}, 'workspace-service-account')
+alternate = resolve({'auth_method':'workspace-service-account', 'service_account_key':'key', 'delegated_user':'user', 'session_note':'note', 'oauth_client_id':17})
 assert alternate.auth_method_id == 'workspace-service-account' and alternate.service_account_key.value == 'key'
+assert alternate.session_note == 'note'
 assert not hasattr(alternate, 'oauth_client_id')
-for values in ({'auth_method':'workspace-service-account', 'delegated_user':'user'}, {'auth_method':'unknown'}, {'auth_method':0}):
+optional_null = resolve({'auth_method':'workspace-service-account', 'service_account_key':'key', 'delegated_user':'user', 'session_note':None})
+assert not hasattr(optional_null, 'session_note')
+for values, message in (
+    ({'auth_method':'workspace-service-account', 'service_account_key':None, 'delegated_user':'user'}, 'credential service_account_key is required'),
+    ({'auth_method':'unknown'}, 'credential auth_method is invalid'),
+    ({'auth_method':0}, 'credential auth_method is invalid'),
+):
     try: resolve(values)
-    except ValueError: pass
+    except ValueError as error: assert message in str(error), str(error)
     else: raise AssertionError('invalid selected method was accepted')
 `
 

@@ -65,17 +65,18 @@ setattr(new_connection_with_operations, '__module__', 'dex_connectors.multi_auth
 
 class _ProjectCredentialSource:
 
-    def __init__(self, project: LoadedProject, key: ConnectionKey, auth_method_id: str) -> None:
+    def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
         self.project = project
         self.key = key
-        self.auth_method_id = auth_method_id
 
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
-        selected_method = material.get('auth_method', '')
+        selected_method = material.get('auth_method')
+        if selected_method is None:
+            selected_method = ''
         if not isinstance(selected_method, str):
             raise ValueError("Multi Auth Fixture credential auth_method is invalid")
-        method = selected_method or self.auth_method_id or "google-oauth"
+        method = selected_method or "google-oauth"
         values: dict[str, Any] = {'auth_method_id': method}
         if method == "google-oauth":
             oauth_client_id = material.get("oauth_client_id")
@@ -121,6 +122,11 @@ class _ProjectCredentialSource:
                 raise ValueError("Multi Auth Fixture credential delegated_user is required")
             if delegated_user:
                 values["delegated_user"] = delegated_user
+            session_note = material.get("session_note")
+            if session_note is not None and not isinstance(session_note, str):
+                raise ValueError("Multi Auth Fixture credential session_note has an invalid type")
+            if session_note:
+                values["session_note"] = session_note
         else:
             raise ValueError("Multi Auth Fixture credential auth_method is invalid")
         return Credentials(**values)
@@ -144,16 +150,30 @@ def new_project_connection(
     if matching[0].provider != CONNECTOR_ID:
         raise ValueError("Multi Auth Fixture project connection provider differs")
     config = _decode_config(matching[0].configuration)
-    client = Client(config, _ProjectCredentialSource(project, key, matching[0].auth_method_id), http_client)
+    client = Client(config, _ProjectCredentialSource(project, key), http_client)
     return new_connection(client, reference)
 
 setattr(new_project_connection, '__module__', 'dex_connectors.multi_auth_fixture.connection')
 
 
 def _decode_config(value: dict[str, Any]) -> Config:
-    if set(value) - {"workspaceId"}:
+    if set(value) - {"region", "accountId", "workspaceId"}:
         raise ValueError("Multi Auth Fixture configuration has unknown fields")
     config_arguments: dict[str, Any] = {}
+    if "region" in value:
+        region = value["region"]
+        if not (isinstance(region, str)):
+            raise ValueError("Multi Auth Fixture configuration region has an invalid type")
+        config_arguments['region'] = region
+    else:
+        config_arguments['region'] = ''
+    if "accountId" in value:
+        account_id = value["accountId"]
+        if not (isinstance(account_id, str)):
+            raise ValueError("Multi Auth Fixture configuration accountId has an invalid type")
+        config_arguments['account_id'] = account_id
+    else:
+        raise ValueError("Multi Auth Fixture configuration accountId is required")
     if "workspaceId" in value:
         workspace_id = value["workspaceId"]
         if not (isinstance(workspace_id, str)):

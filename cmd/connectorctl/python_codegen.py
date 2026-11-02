@@ -435,9 +435,9 @@ def render_config():
         "",
     ]
     config_fields = configuration_fields()
-    config_fields = sorted(config_fields, key=lambda field_info: "default" in field_info)
     if not config_fields:
         lines.append("    pass")
+    rendered_config_fields = []
     for field_info in config_fields:
         name = snake(field_info["name"])
         if field_info["type"] == "duration":
@@ -473,6 +473,10 @@ def render_config():
                 "string": "''", "url": "''", "enum": "''", "stringList": "()",
                 "integer": "0", "number": "0.0", "boolean": "False", "duration": "0.0",
             }[field_info["type"]]
+        rendered_config_fields.append((name, field_type, default))
+    for name, field_type, default in sorted(
+        rendered_config_fields, key=lambda field: field[2] is not None
+    ):
         lines.append(
             f"    {name}: {field_type}"
             + (f" = {default}" if default is not None else "")
@@ -771,13 +775,10 @@ def render_connection():
             "",
             "class _ProjectCredentialSource:",
             "",
-            "    def __init__(self, project: LoadedProject, key: ConnectionKey"
-            + (", auth_method_id: str" if auth_methods else "") + ") -> None:",
+            "    def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:",
             "        self.project = project",
             "        self.key = key",
         ]
-        if auth_methods:
-            lines.append("        self.auth_method_id = auth_method_id")
         lines += [
             "",
             "    async def resolve(self, call: Call) -> Credentials:",
@@ -785,10 +786,12 @@ def render_connection():
         ]
         if auth_methods:
             lines += [
-                "        selected_method = material.get('auth_method', '')",
+                "        selected_method = material.get('auth_method')",
+                "        if selected_method is None:",
+                "            selected_method = ''",
                 "        if not isinstance(selected_method, str):",
                 f"            raise ValueError({quoted(connection_label + ' credential auth_method is invalid')})",
-                "        method = selected_method or self.auth_method_id or "
+                "        method = selected_method or "
                 + quoted(spec["auth"]["defaultMethod"]),
                 "        values: dict[str, Any] = {'auth_method_id': method}",
             ]
@@ -852,9 +855,7 @@ def render_connection():
         "    config = _decode_config(matching[0].configuration)",
     ]
     client_args = (
-        "config, _ProjectCredentialSource(project, key"
-        + (", matching[0].auth_method_id" if auth_methods else "")
-        + "), http_client"
+        "config, _ProjectCredentialSource(project, key), http_client"
         if credential_fields
         else "config, http_client"
     )
