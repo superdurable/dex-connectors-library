@@ -260,6 +260,7 @@ jobs:
         run: |
           git fetch --no-tags origin main:refs/remotes/origin/main
           git show origin/main:script/release/component_release.py > "${RUNNER_TEMP}/component_release.py"
+          git show origin/main:script/release/github_release_inventory.py > "${RUNNER_TEMP}/github_release_inventory.py"
           python3 "${RUNNER_TEMP}/component_release.py" validate-language-package \
             --component-path "${COMPONENT_PATH}" --language "${RELEASE_LANGUAGE}"
       - name: Test and build Python candidate
@@ -296,6 +297,7 @@ jobs:
         run: |
           git fetch --no-tags origin main:refs/remotes/origin/main
           git show origin/main:script/release/component_release.py > "${RUNNER_TEMP}/component_release.py"
+          git show origin/main:script/release/github_release_inventory.py > "${RUNNER_TEMP}/github_release_inventory.py"
           if [ "${RELEASE_LANGUAGE}" = python ]; then
             assets=("${RUNNER_TEMP}"/language-dist/*.whl "${RUNNER_TEMP}"/language-dist/*.tar.gz)
           else

@@ -293,23 +293,16 @@ class ComponentReleaseTest(unittest.TestCase):
         runner_temp = self.repository / "runner"
         (runner_temp / "language-work").mkdir(parents=True)
         (runner_temp / "language-work/skip").touch()
-        fake_bin = self.repository / "bin"
-        fake_bin.mkdir()
-        fake_gh = fake_bin / "gh"
-        fake_gh.write_text("#!/bin/sh\nprintf '%s\\n' \"${RELEASE_ASSETS}\"\n", encoding="utf-8")
-        fake_gh.chmod(0o755)
         github_output = self.repository / "github-output"
         environment = dict(os.environ, RUNNER_TEMP=str(runner_temp), GITHUB_OUTPUT=str(github_output),
                            TAG_PREFIX="connectors/newsapi/python/", RELEASE_VERSION="v0.1.0",
                            GITHUB_SHA=self.git("rev-parse", "HEAD"))
-        environment["PATH"] = f"{fake_bin}{os.pathsep}{environment['PATH']}"
-        environment["RELEASE_ASSETS"] = "language-release.json"
         failed = subprocess.run(("bash", "-e", "-o", "pipefail", "-c", state_script), cwd=self.repository,
                                 env=environment, capture_output=True, text=True, check=False)
         self.assertNotEqual(failed.returncode, 0)
         self.assertIn("without a completed release", failed.stderr)
         self.assertFalse(github_output.exists())
-        environment["RELEASE_ASSETS"] = "language-release.complete"
+        (runner_temp / "language-work/completed-release").touch()
         complete = subprocess.run(("bash", "-e", "-o", "pipefail", "-c", state_script), cwd=self.repository,
                                   env=environment, capture_output=True, text=True, check=False)
         self.assertEqual(complete.returncode, 0, complete.stderr)
@@ -613,14 +606,12 @@ class ComponentReleaseTest(unittest.TestCase):
 
     def test_missing_release_lookup_is_allowed_only_in_pending_mode(self) -> None:
         lookup = release.DependencyReleaseLookup("origin/main")
-        missing = subprocess.CompletedProcess([], 1, stdout="", stderr="release not found\n")
-        with mock.patch.object(release.subprocess, "run", return_value=missing):
+        with mock.patch.object(release, "release_assets", return_value=None):
             self.assertEqual(lookup.release_asset_names("connectors/newsapi/go/v0.23.0", allow_missing=True), frozenset())
             with self.assertRaisesRegex(ValueError, "cannot read the GitHub release"):
                 lookup.release_asset_names("connectors/newsapi/go/v0.23.0")
-        denied = subprocess.CompletedProcess([], 1, stdout="", stderr="HTTP 403\n")
-        with mock.patch.object(release.subprocess, "run", return_value=denied):
-            with self.assertRaisesRegex(ValueError, "HTTP 403"):
+        with mock.patch.object(release, "release_assets", side_effect=RuntimeError("GitHub API rate limit (HTTP 403)")):
+            with self.assertRaisesRegex(ValueError, "rate limit"):
                 lookup.release_asset_names("connectors/newsapi/go/v0.23.0", allow_missing=True)
 
     def test_language_capability_coverage_rejects_missing_factories_and_triggers(self) -> None:
@@ -1153,21 +1144,11 @@ class ComponentReleaseTest(unittest.TestCase):
         self.assertTrue(release.DependencyReleaseLookup("main").is_tag_reachable_from_main("sdkgo/v0.1.0"))
 
     def test_dependency_lookup_reads_github_release_assets(self) -> None:
-        fake_gh = self.repository / "fake-gh"
-        fake_gh.write_text(
-            "#!/bin/sh\n"
-            'if [ "$1 $2 $4 $5 $6 $7" != "release view --json assets --jq .assets[].name" ]; then exit 2; fi\n'
-            'if [ "$3" = connectors/openai/v0.7.0 ]; then\n'
-            "  printf 'connector-release.json\\nconnector-release.complete\\n'\n"
-            "  exit 0\n"
-            "fi\n"
-            "echo 'release not found' >&2\n"
-            "exit 1\n",
-            encoding="utf-8",
-        )
-        fake_gh.chmod(0o755)
+        inventory = self.repository / "release-inventory.json"
+        inventory.write_text(json.dumps({"connectors/openai/v0.7.0": [
+            "connector-release.json", "connector-release.complete"]}), encoding="utf-8")
         lookup = release.DependencyReleaseLookup("main")
-        with mock.patch.dict(os.environ, {"GH_BIN": str(fake_gh)}):
+        with mock.patch.dict(os.environ, {"GH_RELEASE_INVENTORY_PATH": str(inventory)}):
             self.assertEqual(
                 lookup.release_asset_names("connectors/openai/v0.7.0"),
                 frozenset({"connector-release.json", "connector-release.complete"}),

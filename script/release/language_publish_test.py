@@ -78,20 +78,12 @@ class RegistryLookupTests(unittest.TestCase):
             response.close()
         self.assertEqual([1], delays)
 
-    def test_batches_release_completeness_with_bounded_retry(self) -> None:
-        attempts = []
-
-        def run(command, **_kwargs):
-            attempts.append(command)
-            if len(attempts) == 1:
-                return subprocess.CompletedProcess(command, 1, "", "rate limit")
-            return subprocess.CompletedProcess(command, 0, "connectors/one/python/v0.1.0\n", "")
-
-        delays = []
-        self.assertEqual({"connectors/one/python/v0.1.0"},
-                         language_publish.list_completed_language_tags(run=run, sleep=delays.append))
-        self.assertEqual(2, len(attempts))
-        self.assertEqual([1], delays)
+    def test_reads_completed_language_tags_from_one_inventory(self) -> None:
+        inventory = {"connectors/one/python/v0.1.0": ["language-release.complete"],
+                     "connectors/two/python/v0.1.0": ["language-release.json"]}
+        with patch.object(language_publish, "release_inventory", return_value=inventory) as fetch:
+            self.assertEqual({"connectors/one/python/v0.1.0"}, language_publish.list_completed_language_tags())
+        fetch.assert_called_once_with()
 
     def test_release_inventory_failure_retains_pending_go_matrix(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -112,20 +104,18 @@ class RegistryLookupTests(unittest.TestCase):
             selection = json.loads((directory / "selection.json").read_text(encoding="utf-8"))
             self.assertEqual("release_inventory_unavailable", selection["deferred"][0]["defer_reason"])
 
-    def test_project_limit_artifact_lookup_retries_and_paginates(self) -> None:
+    def test_project_limit_artifact_lookup_paginates(self) -> None:
         attempts = []
 
-        def run(command, **_kwargs):
-            attempts.append(command)
+        def fetch(url):
+            attempts.append(url)
             if len(attempts) == 1:
-                return subprocess.CompletedProcess(command, 1, "", "rate limit")
-            return subprocess.CompletedProcess(command, 0, "another-artifact\npypi-project-limit-42\n", "")
+                return {"artifacts": [{"name": "another-artifact"}]}, '<https://api.github.com/next>; rel="next"'
+            return {"artifacts": [{"name": "pypi-project-limit-42"}]}, ""
 
-        delays = []
         self.assertTrue(language_publish.has_run_project_limit_artifact(
-            "superdurable/dex-connectors-library", "42", run=run, sleep=delays.append))
-        self.assertIn("--paginate", attempts[0])
-        self.assertEqual([1], delays)
+            "superdurable/dex-connectors-library", "42", fetch=fetch))
+        self.assertEqual("https://api.github.com/next", attempts[1])
 
 
 class PublishPypiTests(unittest.TestCase):

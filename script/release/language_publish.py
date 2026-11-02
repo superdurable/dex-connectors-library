@@ -16,6 +16,11 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
+if __package__:
+    from .github_release_inventory import github_json, next_page_url, release_inventory
+else:
+    from github_release_inventory import github_json, next_page_url, release_inventory
+
 PYPI_FIRST_PUBLISH_LIMIT = 3
 PYPI_RETRY_DELAYS = (20, 60, 120)
 LOOKUP_RETRY_DELAYS = (1, 3, 7)
@@ -52,31 +57,24 @@ def has_registry_url(url: str, description: str, *, sleep=time.sleep) -> bool:
     raise AssertionError("unreachable")
 
 
-def list_completed_language_tags(*, run=subprocess.run, sleep=time.sleep) -> set[str]:
-    command = ("gh", "api", "--paginate", "repos/{owner}/{repo}/releases?per_page=100", "--jq",
-               '.[] | select(any(.assets[]; .name == "language-release.complete")) | .tag_name')
-    for attempt in range(len(LOOKUP_RETRY_DELAYS) + 1):
-        result = run(command, capture_output=True, text=True, check=False)
-        if result.returncode == 0:
-            return set(result.stdout.splitlines())
-        if attempt == len(LOOKUP_RETRY_DELAYS):
-            raise RuntimeError(f"GitHub release inventory failed after retries: {result.stderr.strip()}")
-        sleep(LOOKUP_RETRY_DELAYS[attempt])
-    raise AssertionError("unreachable")
+def list_completed_language_tags() -> set[str]:
+    inventory_path = os.environ.get("GH_RELEASE_INVENTORY_PATH")
+    inventory = (json.loads(Path(inventory_path).read_text(encoding="utf-8"))
+                 if inventory_path else release_inventory())
+    return {tag for tag, assets in inventory.items() if "language-release.complete" in assets}
 
 
-def has_run_project_limit_artifact(repository: str, run_id: str, *, run=subprocess.run, sleep=time.sleep) -> bool:
+def has_run_project_limit_artifact(repository: str, run_id: str, *, fetch=github_json) -> bool:
     artifact_name = f"pypi-project-limit-{run_id}"
-    command = ("gh", "api", "--paginate", f"repos/{repository}/actions/runs/{run_id}/artifacts?per_page=100",
-               "--jq", ".artifacts[].name")
-    for attempt in range(len(LOOKUP_RETRY_DELAYS) + 1):
-        result = run(command, capture_output=True, text=True, check=False)
-        if result.returncode == 0:
-            return artifact_name in result.stdout.splitlines()
-        if attempt == len(LOOKUP_RETRY_DELAYS):
-            raise RuntimeError(f"PyPI project-limit artifact lookup failed after retries: {result.stderr.strip()}")
-        sleep(LOOKUP_RETRY_DELAYS[attempt])
-    raise AssertionError("unreachable")
+    url = f"https://api.github.com/repos/{repository}/actions/runs/{run_id}/artifacts?per_page=100"
+    while url:
+        response, links = fetch(url)
+        if not isinstance(response, dict):
+            raise RuntimeError("PyPI project-limit artifact lookup returned invalid data")
+        if any(artifact.get("name") == artifact_name for artifact in response.get("artifacts", [])):
+            return True
+        url = next_page_url(links)
+    return False
 
 
 def is_release_complete(item: dict[str, str], completed_tags: set[str]) -> bool:

@@ -51,7 +51,7 @@ jobs:
       - name: Plan SDK release or repair
         id: plan
         run: |
-          cp script/release/component_release.py "${RUNNER_TEMP}/component_release.py"
+          cp script/release/component_release.py script/release/github_release_inventory.py "${RUNNER_TEMP}/"
           if [ -n "${REPAIR_VERSION}" ]; then
             repair_tag="sdkpython/${REPAIR_VERSION}"
             git merge-base --is-ancestor "${repair_tag}" HEAD || { echo "SDK tag is not reachable from main: ${repair_tag}" >&2; exit 1; }
@@ -132,7 +132,7 @@ jobs:
             --language python --package "${PACKAGE_NAME}" --version "${RELEASE_VERSION}" "${arguments[@]}"
       - name: Regenerate trusted SDK release metadata
         run: |
-          cp script/release/component_release.py "${RUNNER_TEMP}/component_release.py"
+          cp script/release/component_release.py script/release/github_release_inventory.py "${RUNNER_TEMP}/"
           if git show-ref --verify --quiet "refs/tags/${RELEASE_TAG}"; then
             git merge-base --is-ancestor "${RELEASE_TAG}" HEAD || { echo "SDK tag is not reachable from main: ${RELEASE_TAG}" >&2; exit 1; }
             git checkout --detach "$(git rev-parse "${RELEASE_TAG}^{commit}")"

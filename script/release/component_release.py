@@ -22,6 +22,12 @@ import zipfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+if __package__:
+    from .github_release_inventory import github_json, release_assets
+else:
+    sys.path.insert(0, str(Path(__file__).parent))
+    from github_release_inventory import github_json, release_assets
+
 VERSION_PATTERN = re.compile(r"^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
 RELEASE_ARTIFACT_VERSION_PATTERN = re.compile(r"^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-rc\.[1-9][0-9]*)?$")
 LIBRARY_MODULE_PATH = "github.com/superdurable/dex-connectors-library"
@@ -66,19 +72,15 @@ class DependencyReleaseLookup:
         return git("merge-base", "--is-ancestor", tag, self.main_ref, check=False).returncode == 0
 
     def release_asset_names(self, tag: str, allow_missing: bool = False) -> frozenset[str]:
-        gh_binary = os.environ.get("GH_BIN", "gh")
-        result = subprocess.run(
-            (gh_binary, "release", "view", tag, "--json", "assets", "--jq", ".assets[].name"),
-            check=False,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-        if result.returncode != 0:
-            if allow_missing and result.stderr.strip() == "release not found":
+        try:
+            assets = release_assets(tag, os.environ.get("GH_RELEASE_INVENTORY_PATH"))
+        except RuntimeError as error:
+            raise ValueError(f"cannot read the GitHub release for {tag}: {error}") from error
+        if assets is None:
+            if allow_missing:
                 return frozenset()
-            raise ValueError(f"cannot read the GitHub release for {tag}: {result.stderr.strip()}")
-        return frozenset(line for line in result.stdout.splitlines() if line)
+            raise ValueError(f"cannot read the GitHub release for {tag}: release not found (HTTP 404)")
+        return assets
 
     def is_language_sdk_published(self, language: str, version: str) -> bool:
         if language == "python":
@@ -352,23 +354,9 @@ def commit_message(commit: str) -> str:
 
 
 def associated_pull_request(repository: str, commit: str) -> dict[str, object] | None:
-    gh_binary = os.environ.get("GH_BIN", "gh")
-    result = subprocess.run(
-        (
-            gh_binary,
-            "api",
-            f"repos/{repository}/commits/{commit}/pulls",
-            "--method",
-            "GET",
-        ),
-        check=False,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-    if result.returncode != 0:
-        return None
-    pulls = json.loads(result.stdout)
+    pulls, _ = github_json(f"https://api.github.com/repos/{repository}/commits/{commit}/pulls")
+    if not isinstance(pulls, list):
+        raise ValueError(f"GitHub pull request lookup returned invalid data for {commit}")
     return pulls[0] if pulls else None
 
 
@@ -1039,7 +1027,7 @@ def main() -> int:
                 DependencyReleaseLookup(arguments.main_ref),
             )
             print(f"{arguments.component_path}: {', '.join(tags)}")
-    except (OSError, ValueError, subprocess.CalledProcessError, json.JSONDecodeError, tarfile.TarError, zipfile.BadZipFile, KeyError) as error:
+    except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError, json.JSONDecodeError, tarfile.TarError, zipfile.BadZipFile, KeyError) as error:
         print(error, file=sys.stderr)
         return 1
     return 0
