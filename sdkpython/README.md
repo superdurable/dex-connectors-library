@@ -214,8 +214,10 @@ disabled so authorization headers are never replayed to another host.
 `read_bounded_body` rejects an oversized response. `read_error_tokens` extracts
 only safe machine tokens from bounded JSON error bodies, and
 `parse_retry_after` accepts delta seconds or HTTP dates capped at one hour.
-`send_traced` reports `ProviderTransportError.provably_not_sent` only after a
-traced pre-send connection failure; all other transport failures fail closed.
+`send_traced` reports `ProviderTransportError.provably_not_sent` after a traced
+DNS, TCP connect, or TLS handshake failure before HTTP request headers are sent.
+Failures after header dispatch stay possibly sent, matching the Go connectors'
+DNS, connect, TLS, and obtained-connection trace.
 `BodyTooLargeError` retains the response status and headers for classification
 without putting header values in its message.
 The caller closes the streaming response returned by `send_traced`; the bounded
