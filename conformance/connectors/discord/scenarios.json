@@ -1,0 +1,1665 @@
+{
+  "connector": "discord",
+  "scenarios": [
+    {
+      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"100000000000000001\",\"type\":0,\"guild_id\":\"200000000000000001\",\"name\":\"announcements\",\"topic\":\"Release news\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/channels/100000000000000001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "guildId": "200000000000000001",
+          "id": "100000000000000001",
+          "name": "announcements",
+          "topic": "Release news",
+          "type": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "channelId": "100000000000000001"
+      },
+      "name": "getChannel-success",
+      "operation": "getChannel"
+    },
+    {
+      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "exchanges": [
+        {
+          "body": "{\"code\":10003}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/channels/100000000000000001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "type": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "channelId": "100000000000000001"
+      },
+      "name": "getChannel-notFound",
+      "operation": "getChannel"
+    },
+    {
+      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "exchanges": [
+        {
+          "body": "{\"code\":50013}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/channels/100000000000000001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": "",
+          "type": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "channelId": "100000000000000001"
+      },
+      "name": "getChannel-providerRejected",
+      "operation": "getChannel"
+    },
+    {
+      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "exchanges": [
+        {
+          "body": "{\"malformed\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/channels/100000000000000001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "type": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "channelId": "100000000000000001"
+      },
+      "name": "getChannel-invalidResponse",
+      "operation": "getChannel"
+    },
+    {
+      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "type": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "channelId": "invalid"
+      },
+      "name": "getChannel-defect",
+      "operation": "getChannel"
+    },
+    {
+      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "exchanges": [
+        {
+          "body": "{\"retry_after\":0.25}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/channels/100000000000000001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 250,
+        "uncertain": false
+      },
+      "input": {
+        "channelId": "100000000000000001"
+      },
+      "name": "getChannel-rateLimit",
+      "operation": "getChannel"
+    },
+    {
+      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "exchanges": [
+        {
+          "body": "{\"code\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/channels/100000000000000001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "channelId": "100000000000000001"
+      },
+      "name": "getChannel-unavailable",
+      "operation": "getChannel"
+    },
+    {
+      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/channels/100000000000000001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "channelId": "100000000000000001"
+      },
+      "name": "getChannel-transport",
+      "operation": "getChannel"
+    },
+    {
+      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "exchanges": [
+        {
+          "body": "[{\"id\":\"300000000000000001\",\"channel_id\":\"100000000000000001\",\"author\":{\"id\":\"400000000000000001\",\"username\":\"releasebot\",\"bot\":true},\"content\":\"Release today @everyone\",\"timestamp\":\"2026-10-26T12:00:00Z\",\"type\":0}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/channels/100000000000000001/messages",
+          "query": {
+            "before": [
+              "300000000000000001"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "isFull": false,
+          "messages": [
+            {
+              "author": {
+                "id": "400000000000000001",
+                "isBot": true,
+                "username": "releasebot"
+              },
+              "channelId": "100000000000000001",
+              "content": "Release today @everyone",
+              "id": "300000000000000001",
+              "timestamp": "2026-10-26T12:00:00Z",
+              "type": 0
+            }
+          ],
+          "oldestMessageId": "300000000000000001"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "beforeMessageId": "300000000000000001",
+        "channelId": "100000000000000001",
+        "limit": 2
+      },
+      "name": "listChannelMessages-success",
+      "operation": "listChannelMessages"
+    },
+    {
+      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "exchanges": [
+        {
+          "body": "{\"code\":10003}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/channels/100000000000000001/messages",
+          "query": {
+            "before": [
+              "300000000000000001"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "isFull": false,
+          "messages": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "beforeMessageId": "300000000000000001",
+        "channelId": "100000000000000001",
+        "limit": 2
+      },
+      "name": "listChannelMessages-notFound",
+      "operation": "listChannelMessages"
+    },
+    {
+      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "exchanges": [
+        {
+          "body": "{\"code\":50013}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/channels/100000000000000001/messages",
+          "query": {
+            "before": [
+              "300000000000000001"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "isFull": false,
+          "messages": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "beforeMessageId": "300000000000000001",
+        "channelId": "100000000000000001",
+        "limit": 2
+      },
+      "name": "listChannelMessages-providerRejected",
+      "operation": "listChannelMessages"
+    },
+    {
+      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "exchanges": [
+        {
+          "body": "{\"malformed\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/channels/100000000000000001/messages",
+          "query": {
+            "before": [
+              "300000000000000001"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "isFull": false,
+          "messages": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "beforeMessageId": "300000000000000001",
+        "channelId": "100000000000000001",
+        "limit": 2
+      },
+      "name": "listChannelMessages-invalidResponse",
+      "operation": "listChannelMessages"
+    },
+    {
+      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "isFull": false,
+          "messages": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "beforeMessageId": "300000000000000001",
+        "channelId": "invalid",
+        "limit": 2
+      },
+      "name": "listChannelMessages-defect",
+      "operation": "listChannelMessages"
+    },
+    {
+      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "exchanges": [
+        {
+          "body": "{\"retry_after\":0.25}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/channels/100000000000000001/messages",
+          "query": {
+            "before": [
+              "300000000000000001"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 250,
+        "uncertain": false
+      },
+      "input": {
+        "beforeMessageId": "300000000000000001",
+        "channelId": "100000000000000001",
+        "limit": 2
+      },
+      "name": "listChannelMessages-rateLimit",
+      "operation": "listChannelMessages"
+    },
+    {
+      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "exchanges": [
+        {
+          "body": "{\"code\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/channels/100000000000000001/messages",
+          "query": {
+            "before": [
+              "300000000000000001"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "beforeMessageId": "300000000000000001",
+        "channelId": "100000000000000001",
+        "limit": 2
+      },
+      "name": "listChannelMessages-unavailable",
+      "operation": "listChannelMessages"
+    },
+    {
+      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/channels/100000000000000001/messages",
+          "query": {
+            "before": [
+              "300000000000000001"
+            ],
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "beforeMessageId": "300000000000000001",
+        "channelId": "100000000000000001",
+        "limit": 2
+      },
+      "name": "listChannelMessages-transport",
+      "operation": "listChannelMessages"
+    },
+    {
+      "callId": "9e237e1d-1296-5851-b23a-ee559a9b4208",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"300000000000000001\",\"channel_id\":\"100000000000000001\",\"author\":{\"id\":\"400000000000000001\",\"username\":\"releasebot\",\"bot\":true},\"content\":\"Release today @everyone\",\"timestamp\":\"2026-10-26T12:00:00Z\",\"type\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/channels/100000000000000001/messages",
+          "requestBody": {
+            "allowed_mentions": {
+              "parse": []
+            },
+            "content": "Release today @everyone",
+            "enforce_nonce": true,
+            "message_reference": {
+              "fail_if_not_exists": true,
+              "message_id": "300000000000000001"
+            },
+            "nonce": "1xBAW2beLoZF-e64DhADbMNkO"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "author": {
+            "id": "400000000000000001",
+            "isBot": true,
+            "username": "releasebot"
+          },
+          "channelId": "100000000000000001",
+          "content": "Release today @everyone",
+          "id": "300000000000000001",
+          "timestamp": "2026-10-26T12:00:00Z",
+          "type": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9e237e1d-1296-5851-b23a-ee559a9b4208",
+      "input": {
+        "channelId": "100000000000000001",
+        "content": "Release today @everyone",
+        "replyToMessageId": "300000000000000001"
+      },
+      "name": "createMessage-success",
+      "operation": "createMessage"
+    },
+    {
+      "callId": "9e237e1d-1296-5851-b23a-ee559a9b4208",
+      "exchanges": [
+        {
+          "body": "{\"code\":10003}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/channels/100000000000000001/messages",
+          "requestBody": {
+            "allowed_mentions": {
+              "parse": []
+            },
+            "content": "Release today @everyone",
+            "enforce_nonce": true,
+            "message_reference": {
+              "fail_if_not_exists": true,
+              "message_id": "300000000000000001"
+            },
+            "nonce": "1xBAW2beLoZF-e64DhADbMNkO"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "author": {
+            "id": "",
+            "isBot": false,
+            "username": ""
+          },
+          "channelId": "",
+          "content": "",
+          "id": "",
+          "timestamp": "0001-01-01T00:00:00Z",
+          "type": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9e237e1d-1296-5851-b23a-ee559a9b4208",
+      "input": {
+        "channelId": "100000000000000001",
+        "content": "Release today @everyone",
+        "replyToMessageId": "300000000000000001"
+      },
+      "name": "createMessage-notFound",
+      "operation": "createMessage"
+    },
+    {
+      "callId": "9e237e1d-1296-5851-b23a-ee559a9b4208",
+      "exchanges": [
+        {
+          "body": "{\"code\":50013}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/channels/100000000000000001/messages",
+          "requestBody": {
+            "allowed_mentions": {
+              "parse": []
+            },
+            "content": "Release today @everyone",
+            "enforce_nonce": true,
+            "message_reference": {
+              "fail_if_not_exists": true,
+              "message_id": "300000000000000001"
+            },
+            "nonce": "1xBAW2beLoZF-e64DhADbMNkO"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "author": {
+            "id": "",
+            "isBot": false,
+            "username": ""
+          },
+          "channelId": "",
+          "content": "",
+          "id": "",
+          "timestamp": "0001-01-01T00:00:00Z",
+          "type": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9e237e1d-1296-5851-b23a-ee559a9b4208",
+      "input": {
+        "channelId": "100000000000000001",
+        "content": "Release today @everyone",
+        "replyToMessageId": "300000000000000001"
+      },
+      "name": "createMessage-providerRejected",
+      "operation": "createMessage"
+    },
+    {
+      "callId": "9e237e1d-1296-5851-b23a-ee559a9b4208",
+      "exchanges": [
+        {
+          "body": "{\"malformed\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/channels/100000000000000001/messages",
+          "requestBody": {
+            "allowed_mentions": {
+              "parse": []
+            },
+            "content": "Release today @everyone",
+            "enforce_nonce": true,
+            "message_reference": {
+              "fail_if_not_exists": true,
+              "message_id": "300000000000000001"
+            },
+            "nonce": "1xBAW2beLoZF-e64DhADbMNkO"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "author": {
+            "id": "",
+            "isBot": false,
+            "username": ""
+          },
+          "channelId": "",
+          "content": "",
+          "id": "",
+          "timestamp": "0001-01-01T00:00:00Z",
+          "type": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9e237e1d-1296-5851-b23a-ee559a9b4208",
+      "input": {
+        "channelId": "100000000000000001",
+        "content": "Release today @everyone",
+        "replyToMessageId": "300000000000000001"
+      },
+      "name": "createMessage-invalidResponse",
+      "operation": "createMessage"
+    },
+    {
+      "callId": "9e237e1d-1296-5851-b23a-ee559a9b4208",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "author": {
+            "id": "",
+            "isBot": false,
+            "username": ""
+          },
+          "channelId": "",
+          "content": "",
+          "id": "",
+          "timestamp": "0001-01-01T00:00:00Z",
+          "type": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9e237e1d-1296-5851-b23a-ee559a9b4208",
+      "input": {
+        "channelId": "invalid",
+        "content": "Release today @everyone",
+        "replyToMessageId": "300000000000000001"
+      },
+      "name": "createMessage-defect",
+      "operation": "createMessage"
+    },
+    {
+      "callId": "9e237e1d-1296-5851-b23a-ee559a9b4208",
+      "exchanges": [
+        {
+          "body": "{\"retry_after\":0.25}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/channels/100000000000000001/messages",
+          "requestBody": {
+            "allowed_mentions": {
+              "parse": []
+            },
+            "content": "Release today @everyone",
+            "enforce_nonce": true,
+            "message_reference": {
+              "fail_if_not_exists": true,
+              "message_id": "300000000000000001"
+            },
+            "nonce": "1xBAW2beLoZF-e64DhADbMNkO"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 250,
+        "uncertain": false
+      },
+      "idempotencyKey": "9e237e1d-1296-5851-b23a-ee559a9b4208",
+      "input": {
+        "channelId": "100000000000000001",
+        "content": "Release today @everyone",
+        "replyToMessageId": "300000000000000001"
+      },
+      "name": "createMessage-rateLimit",
+      "operation": "createMessage"
+    },
+    {
+      "callId": "9e237e1d-1296-5851-b23a-ee559a9b4208",
+      "exchanges": [
+        {
+          "body": "{\"code\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/channels/100000000000000001/messages",
+          "requestBody": {
+            "allowed_mentions": {
+              "parse": []
+            },
+            "content": "Release today @everyone",
+            "enforce_nonce": true,
+            "message_reference": {
+              "fail_if_not_exists": true,
+              "message_id": "300000000000000001"
+            },
+            "nonce": "1xBAW2beLoZF-e64DhADbMNkO"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9e237e1d-1296-5851-b23a-ee559a9b4208",
+      "input": {
+        "channelId": "100000000000000001",
+        "content": "Release today @everyone",
+        "replyToMessageId": "300000000000000001"
+      },
+      "name": "createMessage-unavailable",
+      "operation": "createMessage"
+    },
+    {
+      "callId": "9e237e1d-1296-5851-b23a-ee559a9b4208",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/channels/100000000000000001/messages",
+          "requestBody": {
+            "allowed_mentions": {
+              "parse": []
+            },
+            "content": "Release today @everyone",
+            "enforce_nonce": true,
+            "message_reference": {
+              "fail_if_not_exists": true,
+              "message_id": "300000000000000001"
+            },
+            "nonce": "1xBAW2beLoZF-e64DhADbMNkO"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9e237e1d-1296-5851-b23a-ee559a9b4208",
+      "input": {
+        "channelId": "100000000000000001",
+        "content": "Release today @everyone",
+        "replyToMessageId": "300000000000000001"
+      },
+      "name": "createMessage-transport",
+      "operation": "createMessage"
+    },
+    {
+      "callId": "78f6ce78-0b9a-5d24-979e-99d2e4b2ba33",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/channels/100000000000000001/messages/300000000000000001/reactions/party_blob:123456789012345678/@me",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "channelId": "100000000000000001",
+          "emoji": "party_blob:123456789012345678",
+          "messageId": "300000000000000001"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "78f6ce78-0b9a-5d24-979e-99d2e4b2ba33",
+      "input": {
+        "channelId": "100000000000000001",
+        "emoji": "party_blob:123456789012345678",
+        "messageId": "300000000000000001"
+      },
+      "name": "addReaction-success",
+      "operation": "addReaction"
+    },
+    {
+      "callId": "78f6ce78-0b9a-5d24-979e-99d2e4b2ba33",
+      "exchanges": [
+        {
+          "body": "{\"code\":10003}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/channels/100000000000000001/messages/300000000000000001/reactions/party_blob:123456789012345678/@me",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "channelId": "",
+          "emoji": "",
+          "messageId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "78f6ce78-0b9a-5d24-979e-99d2e4b2ba33",
+      "input": {
+        "channelId": "100000000000000001",
+        "emoji": "party_blob:123456789012345678",
+        "messageId": "300000000000000001"
+      },
+      "name": "addReaction-notFound",
+      "operation": "addReaction"
+    },
+    {
+      "callId": "78f6ce78-0b9a-5d24-979e-99d2e4b2ba33",
+      "exchanges": [
+        {
+          "body": "{\"code\":50013}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/channels/100000000000000001/messages/300000000000000001/reactions/party_blob:123456789012345678/@me",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "channelId": "",
+          "emoji": "",
+          "messageId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "78f6ce78-0b9a-5d24-979e-99d2e4b2ba33",
+      "input": {
+        "channelId": "100000000000000001",
+        "emoji": "party_blob:123456789012345678",
+        "messageId": "300000000000000001"
+      },
+      "name": "addReaction-providerRejected",
+      "operation": "addReaction"
+    },
+    {
+      "callId": "78f6ce78-0b9a-5d24-979e-99d2e4b2ba33",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "channelId": "",
+          "emoji": "",
+          "messageId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "78f6ce78-0b9a-5d24-979e-99d2e4b2ba33",
+      "input": {
+        "channelId": "invalid",
+        "emoji": "party_blob:123456789012345678",
+        "messageId": "300000000000000001"
+      },
+      "name": "addReaction-defect",
+      "operation": "addReaction"
+    },
+    {
+      "callId": "78f6ce78-0b9a-5d24-979e-99d2e4b2ba33",
+      "exchanges": [
+        {
+          "body": "{\"retry_after\":0.25}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/channels/100000000000000001/messages/300000000000000001/reactions/party_blob:123456789012345678/@me",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 250,
+        "uncertain": false
+      },
+      "idempotencyKey": "78f6ce78-0b9a-5d24-979e-99d2e4b2ba33",
+      "input": {
+        "channelId": "100000000000000001",
+        "emoji": "party_blob:123456789012345678",
+        "messageId": "300000000000000001"
+      },
+      "name": "addReaction-rateLimit",
+      "operation": "addReaction"
+    },
+    {
+      "callId": "78f6ce78-0b9a-5d24-979e-99d2e4b2ba33",
+      "exchanges": [
+        {
+          "body": "{\"code\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/channels/100000000000000001/messages/300000000000000001/reactions/party_blob:123456789012345678/@me",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "78f6ce78-0b9a-5d24-979e-99d2e4b2ba33",
+      "input": {
+        "channelId": "100000000000000001",
+        "emoji": "party_blob:123456789012345678",
+        "messageId": "300000000000000001"
+      },
+      "name": "addReaction-unavailable",
+      "operation": "addReaction"
+    },
+    {
+      "callId": "78f6ce78-0b9a-5d24-979e-99d2e4b2ba33",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/channels/100000000000000001/messages/300000000000000001/reactions/party_blob:123456789012345678/@me",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "78f6ce78-0b9a-5d24-979e-99d2e4b2ba33",
+      "input": {
+        "channelId": "100000000000000001",
+        "emoji": "party_blob:123456789012345678",
+        "messageId": "300000000000000001"
+      },
+      "name": "addReaction-transport",
+      "operation": "addReaction"
+    },
+    {
+      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "exchanges": [
+        {
+          "body": "[{\"id\":\"300000000000000001\",\"channel_id\":\"100000000000000001\",\"author\":{\"id\":\"400000000000000001\",\"username\":\"releasebot\",\"bot\":true},\"content\":\"Release today @everyone\",\"timestamp\":\"2026-10-26T12:00:00Z\",\"type\":0}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/channels/100000000000000001/messages",
+          "query": {
+            "after": [
+              "300000000000000001"
+            ],
+            "limit": [
+              "50"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "isFull": false,
+          "messages": [
+            {
+              "author": {
+                "id": "400000000000000001",
+                "isBot": true,
+                "username": "releasebot"
+              },
+              "channelId": "100000000000000001",
+              "content": "Release today @everyone",
+              "id": "300000000000000001",
+              "timestamp": "2026-10-26T12:00:00Z",
+              "type": 0
+            }
+          ],
+          "oldestMessageId": "300000000000000001"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "afterMessageId": "300000000000000001",
+        "channelId": "100000000000000001"
+      },
+      "name": "listChannelMessages-after",
+      "operation": "listChannelMessages"
+    },
+    {
+      "attempts": 2,
+      "callId": "9e237e1d-1296-5851-b23a-ee559a9b4208",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/channels/100000000000000001/messages",
+          "requestBody": {
+            "allowed_mentions": {
+              "parse": []
+            },
+            "content": "Release today @everyone",
+            "enforce_nonce": true,
+            "message_reference": {
+              "fail_if_not_exists": true,
+              "message_id": "300000000000000001"
+            },
+            "nonce": "1xBAW2beLoZF-e64DhADbMNkO"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "body": "{\"id\":\"300000000000000001\",\"channel_id\":\"100000000000000001\",\"author\":{\"id\":\"400000000000000001\",\"username\":\"releasebot\",\"bot\":true},\"content\":\"Release today @everyone\",\"timestamp\":\"2026-10-26T12:00:00Z\",\"type\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/channels/100000000000000001/messages",
+          "requestBody": {
+            "allowed_mentions": {
+              "parse": []
+            },
+            "content": "Release today @everyone",
+            "enforce_nonce": true,
+            "message_reference": {
+              "fail_if_not_exists": true,
+              "message_id": "300000000000000001"
+            },
+            "nonce": "1xBAW2beLoZF-e64DhADbMNkO"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "author": {
+            "id": "400000000000000001",
+            "isBot": true,
+            "username": "releasebot"
+          },
+          "channelId": "100000000000000001",
+          "content": "Release today @everyone",
+          "id": "300000000000000001",
+          "timestamp": "2026-10-26T12:00:00Z",
+          "type": 0
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9e237e1d-1296-5851-b23a-ee559a9b4208",
+      "input": {
+        "channelId": "100000000000000001",
+        "content": "Release today @everyone",
+        "replyToMessageId": "300000000000000001"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createMessage-after-send-retry",
+      "operation": "createMessage"
+    },
+    {
+      "attempts": 2,
+      "callId": "78f6ce78-0b9a-5d24-979e-99d2e4b2ba33",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/channels/100000000000000001/messages/300000000000000001/reactions/party_blob:123456789012345678/@me",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/channels/100000000000000001/messages/300000000000000001/reactions/party_blob:123456789012345678/@me",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "channelId": "100000000000000001",
+          "emoji": "party_blob:123456789012345678",
+          "messageId": "300000000000000001"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "78f6ce78-0b9a-5d24-979e-99d2e4b2ba33",
+      "input": {
+        "channelId": "100000000000000001",
+        "emoji": "party_blob:123456789012345678",
+        "messageId": "300000000000000001"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "addReaction-after-send-retry",
+      "operation": "addReaction"
+    }
+  ],
+  "schemaVersion": 1
+}
