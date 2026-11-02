@@ -38,3 +38,14 @@ it('retries a refused provider connection and keeps the token out of the failure
   expect(result).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
   expect(JSON.stringify(result)).not.toContain('secret-value');
 });
+
+it('retains Figma document number literals and field order when encoded', async () => {
+  const document = '{"z":1.0,"a":9007199254740993,"nested":{"later":2.00,"first":1}}';
+  const client = new FigmaClient({}, { resolve: async () => ({ apiKey: new SecretString('secret-value') }) }, {
+    send: async () => ({ status: 200, headers: {}, body: Buffer.from(`{"name":"Design","document":${document}}`) }),
+  });
+  const result = await client.getFile().invoke(call, { fileKey: 'fileA' });
+  expect(result.kind).toBe('branch');
+  if (result.kind !== 'branch') return;
+  expect(JSON.stringify(result.value.document)).toBe(document);
+});

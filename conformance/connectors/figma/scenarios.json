@@ -48,6 +48,52 @@
       "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
       "exchanges": [
         {
+          "body": "{\"name\":\"Numeric Design\",\"document\":{\"z\":1.0,\"a\":100000000000000000000,\"nested\":{\"later\":2.00,\"first\":1}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/files/fileA",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Figma-Token": [
+              "test-secret-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "document": {
+            "a": 100000000000000000000,
+            "nested": {
+              "first": 1,
+              "later": 2
+            },
+            "z": 1
+          },
+          "lastModified": "",
+          "name": "Numeric Design"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileKey": "fileA"
+      },
+      "name": "getFile-raw-document-numbers",
+      "operation": "getFile"
+    },
+    {
+      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "exchanges": [
+        {
           "body": "{\"error\":\"not found\"}",
           "headers": {},
           "keyMode": "absent",

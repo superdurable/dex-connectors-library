@@ -117,7 +117,12 @@ function objectBody(body: Uint8Array): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 function decodeFile(body: Uint8Array): File {
-  const value = objectBody(body);
+  // Raw number fragments survive JSON encoding; object whitespace and string escape spellings remain canonicalized.
+  const parseWithSource = JSON.parse as (source: string, reviver: (key: string, value: unknown, context: { source?: string }) => unknown) => unknown;
+  const rawJSON = (JSON as typeof JSON & { rawJSON(source: string): unknown }).rawJSON;
+  const value = parseWithSource(Buffer.from(body).toString('utf8'), (_key, parsed, context) =>
+    typeof parsed === 'number' && context.source ? rawJSON(context.source) : parsed) as Record<string, unknown>;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('invalid object');
   if (value.name != null && typeof value.name !== 'string' || value.lastModified != null && typeof value.lastModified !== 'string') throw new TypeError('invalid file');
   const name = typeof value.name === 'string' ? value.name : '';
   const lastModified = typeof value.lastModified === 'string' ? value.lastModified : '';

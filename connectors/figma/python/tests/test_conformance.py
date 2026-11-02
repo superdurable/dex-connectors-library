@@ -19,7 +19,7 @@ CONNECTION = sdk.ConnectionRef("figma", "figma")
 ADAPTER = conformance.PythonOperationAdapter(
     "figma", CONNECTION, figma,
     lambda http_client, _: figma.Client(
-        figma.Config(base_url="http://127.0.0.1:21105/v1"),
+        figma.Config(base_url="http://127.0.0.1/v1"),
         conformance.static_credentials(CONNECTION, figma.Credentials(sdk.SecretString("test-secret-key"))),
         http_client,
     ),
