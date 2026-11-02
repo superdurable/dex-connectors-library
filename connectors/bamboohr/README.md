@@ -30,6 +30,23 @@ It uses sync durability for its dispatch fence; see
 Install this connector release with `go get github.com/superdurable/dex-connectors-library/connectors/bamboohr/go@v0.23.0`.
 The module requires Connector Go SDK v0.33.0 for the shared single-dispatch fence.
 
+## Python package
+
+The independent `dex-connector-bamboohr` Python package starts at `v0.1.0` and
+implements all six operations above with the same branch IDs and provider
+request behavior as the Go connector. It includes generated typed inputs,
+outputs, operation-specific Step factories, named project connections, and
+mock outcomes. `addEmployee` uses the Python Connector SDK's single-dispatch
+fence and sync Execute durability. The Python package has no Triggers.
+
+The [Python employee lookup example](python/examples/get_employee/README.md)
+uses the static `bamboohr` connection name, a Worker entrypoint, and a start
+command. Its real Dex integration test uses an inert BambooHR stand-in and
+checks retry and unwired optional-branch failure. Go-recorded provider
+scenarios are replayed by the Python package. A live BambooHR account has not
+been used for this Python port, so live authorization and provider behavior
+remain unverified.
+
 This release has no Triggers, no Studio pickers, and no OAuth; see
 [Not in this release](#not-in-this-release).
 
