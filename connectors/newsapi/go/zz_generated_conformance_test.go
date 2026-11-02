@@ -16,6 +16,7 @@ import (
 	"net/url"
 	"os"
 	"reflect"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -155,6 +156,7 @@ func newConformanceMutationInvocation[Input, Output any](t *testing.T, raw json.
 }
 
 func (invocation conformanceMutationInvocation[Input, Output]) Invoke() conformanceOutcome {
+	invocation.context.lastHeartbeat = nil
 	outcome := invokeConformanceMutation(invocation.t, invocation.raw, invocation.context, invocation.operation, invocation.connection, invocation.callID)
 	outcome.Heartbeat = append(json.RawMessage(nil), invocation.context.lastHeartbeat...)
 	return outcome
@@ -390,6 +392,13 @@ func recordConformanceScenario(scenario conformanceScenario, recorder *conforman
 		delete(recorded, "idempotencyKey")
 	}
 	decision := map[string]any{"branch": string(outcome.Branch), "failureKind": "", "retry": false, "retryAfterMs": 0, "uncertain": outcome.Branch == sdkgo.UncertainBranchID, "requestCount": recorder.providerRequestCount}
+	if len(outcome.Heartbeat) > 0 {
+		var heartbeat any
+		if err := json.Unmarshal(outcome.Heartbeat, &heartbeat); err != nil {
+			return nil, err
+		}
+		decision["heartbeat"] = heartbeat
+	}
 	if outcome.Err != nil {
 		var retry *sdkgo.RetryError
 		if !errors.As(outcome.Err, &retry) {
@@ -914,6 +923,9 @@ func decodeConformanceScenarios(data []byte) ([]conformanceScenario, error) {
 			return nil, errors.New("scenario identity is missing")
 		}
 		if _, hasFixedClock := fields["fixedClock"]; hasFixedClock {
+			if !regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$`).MatchString(scenario.FixedClock) {
+				return nil, errors.New("invalid fixed clock")
+			}
 			if _, err := time.Parse(time.RFC3339Nano, scenario.FixedClock); err != nil {
 				return nil, fmt.Errorf("invalid fixed clock: %w", err)
 			}
@@ -1006,7 +1018,7 @@ func decodeConformanceScenarios(data []byte) ([]conformanceScenario, error) {
 			}
 		}
 		if rawExpected, ok := fields["expected"]; ok {
-			if _, err := conformanceObject(rawExpected, []string{"branch", "failureKind", "retry", "retryAfterMs", "uncertain", "requestCount"}, []string{"output"}); err != nil {
+			if _, err := conformanceObject(rawExpected, []string{"branch", "failureKind", "retry", "retryAfterMs", "uncertain", "requestCount"}, []string{"output", "heartbeat"}); err != nil {
 				return nil, err
 			}
 		} else if os.Getenv("CONNECTOR_CONFORMANCE_MODE") != "record" {

@@ -15,6 +15,7 @@ import (
  "net/http/httptrace"
  "net/url"
  "os"
+ "regexp"
  "reflect"
  "strings"
  "sync"
@@ -141,6 +142,7 @@ func newConformanceMutationInvocation[Input, Output any](t *testing.T, raw json.
 }
 
 func (invocation conformanceMutationInvocation[Input, Output]) Invoke() conformanceOutcome {
+ invocation.context.lastHeartbeat = nil
  outcome := invokeConformanceMutation(invocation.t, invocation.raw, invocation.context, invocation.operation, invocation.connection, invocation.callID)
  outcome.Heartbeat = append(json.RawMessage(nil), invocation.context.lastHeartbeat...)
  return outcome
@@ -307,6 +309,7 @@ func recordConformanceScenario(scenario conformanceScenario, recorder *conforman
  if len(intermediate) > 0 { recorded["intermediate"] = intermediate } else { delete(recorded, "intermediate") }
  if outcome.IdempotencyKey != "" { recorded["idempotencyKey"] = outcome.IdempotencyKey } else { delete(recorded, "idempotencyKey") }
  decision := map[string]any{"branch": string(outcome.Branch), "failureKind": "", "retry": false, "retryAfterMs": 0, "uncertain": outcome.Branch == sdkgo.UncertainBranchID, "requestCount": recorder.providerRequestCount}
+ if len(outcome.Heartbeat) > 0 { var heartbeat any; if err := json.Unmarshal(outcome.Heartbeat, &heartbeat); err != nil { return nil, err }; decision["heartbeat"] = heartbeat }
  if outcome.Err != nil {
   var retry *sdkgo.RetryError
   if !errors.As(outcome.Err, &retry) { return nil, outcome.Err }
@@ -618,7 +621,7 @@ func decodeConformanceScenarios(data []byte) ([]conformanceScenario, error) {
   if err := json.Unmarshal(rawScenario, &scenario); err != nil { return nil, err }
   scenario.Raw = rawScenario
   if scenario.Name == "" || scenario.Operation == "" || scenario.CallID == "" { return nil, errors.New("scenario identity is missing") }
-  if _, hasFixedClock := fields["fixedClock"]; hasFixedClock { if _, err := time.Parse(time.RFC3339Nano, scenario.FixedClock); err != nil { return nil, fmt.Errorf("invalid fixed clock: %w", err) } }
+  if _, hasFixedClock := fields["fixedClock"]; hasFixedClock { if !regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$`).MatchString(scenario.FixedClock) { return nil, errors.New("invalid fixed clock") }; if _, err := time.Parse(time.RFC3339Nano, scenario.FixedClock); err != nil { return nil, fmt.Errorf("invalid fixed clock: %w", err) } }
   var rawExchanges []json.RawMessage
   if err := json.Unmarshal(fields["exchanges"], &rawExchanges); err != nil { return nil, err }
   for _, rawExchange := range rawExchanges {
@@ -659,7 +662,7 @@ func decodeConformanceScenarios(data []byte) ([]conformanceScenario, error) {
     }
    }
   }
-  if rawExpected, ok := fields["expected"]; ok { if _, err := conformanceObject(rawExpected, []string{"branch", "failureKind", "retry", "retryAfterMs", "uncertain", "requestCount"}, []string{"output"}); err != nil { return nil, err } } else if os.Getenv("CONNECTOR_CONFORMANCE_MODE") != "record" { return nil, errors.New("missing recorded expected decision") }
+  if rawExpected, ok := fields["expected"]; ok { if _, err := conformanceObject(rawExpected, []string{"branch", "failureKind", "retry", "retryAfterMs", "uncertain", "requestCount"}, []string{"output", "heartbeat"}); err != nil { return nil, err } } else if os.Getenv("CONNECTOR_CONFORMANCE_MODE") != "record" { return nil, errors.New("missing recorded expected decision") }
   if rawIntermediate, ok := fields["intermediate"]; ok {
    var values []json.RawMessage
    if err := json.Unmarshal(rawIntermediate, &values); err != nil { return nil, err }

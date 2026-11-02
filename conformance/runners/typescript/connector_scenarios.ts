@@ -18,7 +18,7 @@ export interface Exchange {
 }
 export interface Expected {
   branch: string; failureKind: string; retry: boolean; retryAfterMs: number;
-  uncertain: boolean; requestCount: number; output?: unknown;
+  uncertain: boolean; requestCount: number; output?: unknown; heartbeat?: unknown;
 }
 export interface Scenario {
   name: string; operation: string; callId: string; idempotencyKey?: string; input: RecordValue;
@@ -31,6 +31,7 @@ export interface Scenario {
 export class HeartbeatContext {
   attempt: number;
   marker: unknown;
+  hasWrittenHeartbeat = false;
   readonly runId = 'run';
   readonly flowStartedAt: Date;
   readonly fixedClock: Date;
@@ -39,7 +40,7 @@ export class HeartbeatContext {
   readonly flowId = 'conformance-flow';
   constructor(priorHeartbeat: unknown, fixedClock?: string) {
     this.fixedClock = new Date(fixedClock ?? '1970-01-01T00:00:01Z');
-    this.flowStartedAt = this.fixedClock;
+    this.flowStartedAt = new Date('1970-01-01T00:00:01Z');
     this.marker = priorHeartbeat && typeof priorHeartbeat === 'object' && 'value' in priorHeartbeat
       ? (priorHeartbeat as { value: unknown }).value : priorHeartbeat;
     this.attempt = priorHeartbeat === undefined ? 1 : Number((priorHeartbeat as { attempt: number }).attempt) + 1;
@@ -49,6 +50,7 @@ export class HeartbeatContext {
   async recordHeartbeat(value: unknown): Promise<void> {
     this.marker = process.env.CONNECTOR_CONFORMANCE_MUTATE_HEARTBEAT === '1'
       ? { __wrong_heartbeat_shape__: true } : value;
+    this.hasWrittenHeartbeat = true;
   }
 }
 
@@ -100,7 +102,7 @@ export function loadScenarios(url: URL): Scenario[] {
             fragments.some(fragment => typeof fragment !== 'string' || !fragment)) throw new Error('invalid raw MIME assertions');
       }
     }
-    const expected = record(scenario.expected, ['branch', 'failureKind', 'retry', 'retryAfterMs', 'uncertain', 'requestCount'], ['output'], String(scenario.name));
+    const expected = record(scenario.expected, ['branch', 'failureKind', 'retry', 'retryAfterMs', 'uncertain', 'requestCount'], ['output', 'heartbeat'], String(scenario.name));
     if (typeof expected.branch !== 'string' || typeof expected.failureKind !== 'string' || typeof expected.retry !== 'boolean' ||
         typeof expected.uncertain !== 'boolean' || !Number.isInteger(expected.retryAfterMs) ||
         !Number.isInteger(expected.requestCount)) throw new Error('invalid expected decision');
@@ -120,7 +122,7 @@ export function loadScenarios(url: URL): Scenario[] {
       }
     }
     if ('fixedClock' in scenario && (typeof scenario.fixedClock !== 'string' ||
-        !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(scenario.fixedClock) ||
+        !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(scenario.fixedClock) ||
         !Number.isFinite(Date.parse(scenario.fixedClock)))) throw new Error('invalid fixed clock');
   }
   return document.scenarios as Scenario[];
@@ -293,6 +295,21 @@ function assertAttempt(attempt: { kind: string; branch?: string; failure?: { kin
   }
 }
 
+function assertHeartbeat(scenario: Scenario, context: HeartbeatContext, expected: { heartbeat?: unknown }, outputCodec: ScenarioOutputCodec): void {
+  if (context.hasWrittenHeartbeat !== ('heartbeat' in expected)) {
+    throw new Error(`${scenario.name}: heartbeat write differs from Go recording`);
+  }
+  if ('heartbeat' in expected) {
+    const encoded = outputCodec.encode(context.marker);
+    if (encoded.kind !== 'json' || typeof encoded.data !== 'string') throw new Error('SDK heartbeat codec did not encode JSON');
+    const heartbeat = JSON.parse(encoded.data);
+    if (!isDeepStrictEqual(heartbeat, expected.heartbeat)) {
+      throw new Error(`${scenario.name}: heartbeat ${JSON.stringify(heartbeat)} differs from Go recording ${JSON.stringify(expected.heartbeat)}`);
+    }
+    context.marker = expected.heartbeat;
+  }
+}
+
 export async function replay(
   scenario: Scenario,
   invoke: (scenario: Scenario, recorder: ExchangeRecorder, context: HeartbeatContext) => Promise<{ kind: string; branch?: string; failure?: { kind: string }; retryAfterMs?: number; value?: unknown }>,
@@ -311,17 +328,22 @@ export async function replay(
   const recorder = new ExchangeRecorder(scenario, pathPrefix);
   const context = new HeartbeatContext(scenario.priorHeartbeat, scenario.fixedClock);
   for (const intermediate of scenario.intermediate ?? []) {
+    context.hasWrittenHeartbeat = false;
     const attempt = await invoke(scenario, recorder, context);
     assertAttempt(attempt, { retry: true, uncertain: false, branch: '', requestCount: 0, ...intermediate }, outputCodec);
     if (recorder.requestCount !== intermediate.exchangeCount) throw new Error('intermediate exchange count differs');
-    if ('heartbeat' in intermediate) {
-      const heartbeat = JSON.parse(JSON.stringify(context.marker));
-      if (!isDeepStrictEqual(heartbeat, intermediate.heartbeat)) throw new Error(`${scenario.name}: heartbeat differs from Go recording`);
-      context.marker = intermediate.heartbeat;
+    if (process.env.CONNECTOR_CONFORMANCE_MUTATE_EXTRA_HEARTBEAT === scenario.name && !('heartbeat' in intermediate)) {
+      await context.recordHeartbeat({ __extra_heartbeat__: true });
     }
+    assertHeartbeat(scenario, context, intermediate, outputCodec);
     context.attempt++;
   }
+  context.hasWrittenHeartbeat = false;
   const attempt = await invoke(scenario, recorder, context);
   recorder.finish();
   assertAttempt(attempt, scenario.expected, outputCodec);
+  if (process.env.CONNECTOR_CONFORMANCE_MUTATE_EXTRA_HEARTBEAT === scenario.name && !('heartbeat' in scenario.expected)) {
+    await context.recordHeartbeat({ __extra_heartbeat__: true });
+  }
+  assertHeartbeat(scenario, context, scenario.expected, outputCodec);
 }
