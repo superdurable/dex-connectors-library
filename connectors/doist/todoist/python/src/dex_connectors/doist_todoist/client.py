@@ -30,11 +30,11 @@ from dex_connectors.sdk import (
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
+    RequestTrace,
     is_header_safe_credential,
     new_provider_http_client,
     parse_retry_after,
     read_bounded_body,
-    send_traced,
     validate_base_url,
 )
 
@@ -61,6 +61,25 @@ from .models import (
 _TASK_ID = re.compile(r"^[A-Za-z0-9_-]{1,128}$")
 _CURSOR = re.compile(r"^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$")
 _REQUEST_ID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+_GO_WHITESPACE = (
+    " \t\n\v\f\r\u0085\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007"
+    "\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000"
+)
+
+
+class _RequestDispatchTrace(RequestTrace):
+    def __init__(self) -> None:
+        super().__init__()
+        self.connection_started = False
+
+    async def observe(self, event: str, info: dict[str, Any]) -> None:
+        if event.endswith("connect_tcp.started") or event.endswith("connect_unix_socket.started"):
+            self.connection_started = True
+        await super().observe(event, info)
+
+    @property
+    def connect_timed_out_before_send(self) -> bool:
+        return self.connection_started and not self.request_headers_started
 
 
 @dataclass(frozen=True, slots=True)
@@ -255,15 +274,23 @@ class Client:
                 undispatched=True,
             )
         try:
+            trace = _RequestDispatchTrace()
             return await asyncio.wait_for(
-                self._send_raw(operation, token, method, path, payload, request_id), remaining
+                self._send_raw(operation, token, method, path, payload, request_id, trace), remaining
             )
         except TimeoutError:
             return _Exchange(
                 failure=_failure(
-                    operation, FailureKind.TRANSPORT, "Todoist request did not return a complete response"
+                    operation,
+                    FailureKind.TRANSPORT,
+                    (
+                        "Todoist could not be reached, so the request was not sent"
+                        if trace.connect_timed_out_before_send
+                        else "Todoist request did not return a complete response"
+                    ),
                 ),
                 transient=True,
+                undispatched=trace.connect_timed_out_before_send,
             )
 
     async def _send_raw(
@@ -274,6 +301,7 @@ class Client:
         path: str,
         payload: dict[str, Any] | None = None,
         request_id: str = "",
+        trace: _RequestDispatchTrace | None = None,
     ) -> _Exchange:
         headers = {"Authorization": "Bearer " + token, "Accept": "application/json"}
         if method == "POST":
@@ -295,17 +323,20 @@ class Client:
                 local_defect=True,
             )
         try:
-            response, _ = await send_traced(self.http_client, request)
-        except ProviderTransportError as error:
+            request_trace = trace if trace is not None else _RequestDispatchTrace()
+            request.extensions["trace"] = request_trace.observe
+            response = await self.http_client.send(request, follow_redirects=False, stream=True)
+        except httpx.TransportError:
+            was_undispatched = request_trace.provably_not_sent
             message = (
                 "Todoist could not be reached, so the request was not sent"
-                if error.provably_not_sent
+                if was_undispatched
                 else "Todoist request did not return a complete response"
             )
             return _Exchange(
                 failure=_failure(operation, FailureKind.TRANSPORT, message),
                 transient=True,
-                undispatched=error.provably_not_sent,
+                undispatched=was_undispatched,
             )
         status = response.status_code
         if method == "DELETE" and 200 <= status < 300:
@@ -467,7 +498,7 @@ class UpdateTaskOperation:
             or input.content is None
             and input.description is None
             or input.content is not None
-            and (not _valid_text(input.content) or not input.content.strip())
+            and (not _valid_text(input.content) or not input.content.strip(_GO_WHITESPACE))
             or input.description is not None
             and not _valid_text(input.description)
         ):
@@ -522,6 +553,9 @@ class UpdateTaskOperation:
             )
             if read.failure is None and read_matches:
                 return MutationAttempt.branch_result("updated", read_task or Task(), Receipt())
+            if read.local_defect:
+                assert read.failure is not None
+                return MutationAttempt.branch_result("defect", Task(), Receipt(), read.failure)
             if read.status == 404:
                 return MutationAttempt.branch_result(
                     "notFound",
@@ -654,7 +688,7 @@ class CreateTaskOperation:
         operation = "createTask"
         if (
             not _valid_text(input.content)
-            or not input.content.strip()
+            or not input.content.strip(_GO_WHITESPACE)
             or not _valid_text(input.description)
             or input.project_id
             and not _valid_task_id(input.project_id)
