@@ -390,3 +390,19 @@ func TestPythonCodegenUsesHistoricalInlineModelNames(t *testing.T) {
 		})
 	}
 }
+
+func TestPythonPublishedModelNamesPreventExternalNameCollision(t *testing.T) {
+	modelPath := filepath.Join(t.TempDir(), "models.py")
+	if err := os.WriteFile(modelPath, []byte("class ExternalFirstItem:\n    pass\n\nclass v1Item:\n    pass\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	publishedNames, err := publishedPythonModelNames(modelPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	goDirectory := filepath.Join("..", "..", "internal", "codegen", "gomodel", "testdata", "models")
+	_, err = gomodel.Load(goDirectory, []string{"ExternalFirstItem", "ExternalSameName"}, publishedNames...)
+	if err == nil || !strings.Contains(err.Error(), `Go model name "v1Item" conflicts`) {
+		t.Fatalf("published Python model name was renamed: %v", err)
+	}
+}

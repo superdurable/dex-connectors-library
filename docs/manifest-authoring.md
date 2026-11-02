@@ -42,7 +42,9 @@ The default `generate` and `generate --check` include them. The manifest selects
 the Python operations in the order used by generated connection constructors,
 and defines their identities, branches, settings, and
 mock scenarios. The named Go input and output structs define model fields and
-JSON names. `omitempty` and `omitzero` make a key optional; a nilable Go value
+JSON names. Existing generated Python model names remain reserved when Go types
+are added; a collision fails generation instead of renaming a published class.
+`omitempty` and `omitzero` make a key optional; a nilable Go value
 without either option remains a required key that may be null. Embedded structs
 follow `encoding/json` field selection, and named constants use open string or
 integer types so unknown provider values remain decodable. An optional Go

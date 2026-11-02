@@ -29,6 +29,7 @@ type pythonCodegenInput struct {
 }
 
 var pythonModelAliasPattern = regexp.MustCompile(`(?m)^# connectorctl: model-alias ([A-Za-z_][A-Za-z_0-9]*)=([A-Za-z_][A-Za-z_0-9]*)$`)
+var pythonPublishedModelPattern = regexp.MustCompile(`(?m)^class ([A-Za-z][A-Za-z_0-9]*):$`)
 
 func generatedPythonFiles(manifestPath string, manifest schema.Manifest) (map[string][]byte, error) {
 	files := make(map[string][]byte)
@@ -55,7 +56,11 @@ func generatedPythonFiles(manifestPath string, manifest schema.Manifest) (map[st
 			}
 		}
 	}
-	models, err := gomodel.Load(filepath.Join(filepath.Dir(manifestPath), "go"), rootNames)
+	publishedNames, err := publishedPythonModelNames(filepath.Join(packageDirectory, "_generated", "models.py"))
+	if err != nil {
+		return nil, err
+	}
+	models, err := gomodel.Load(filepath.Join(filepath.Dir(manifestPath), "go"), rootNames, publishedNames...)
 	if err != nil {
 		return nil, err
 	}
@@ -111,6 +116,21 @@ func generatedPythonFiles(manifestPath string, manifest schema.Manifest) (map[st
 		}
 	}
 	return files, nil
+}
+
+func publishedPythonModelNames(path string) ([]string, error) {
+	contents, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read existing Python models: %w", err)
+	}
+	var names []string
+	for _, match := range pythonPublishedModelPattern.FindAllSubmatch(contents, -1) {
+		names = append(names, string(match[1]))
+	}
+	return names, nil
 }
 
 func renderPythonCodegen(input pythonCodegenInput) (map[string]string, error) {
