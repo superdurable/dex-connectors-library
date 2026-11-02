@@ -390,7 +390,15 @@ func canonicalConformanceCollections(value reflect.Value, output any) any {
 	if !value.IsValid() {
 		return output
 	}
-	for value.Kind() == reflect.Interface || value.Kind() == reflect.Pointer {
+	for {
+		if value.CanInterface() {
+			if _, isMarshaler := value.Interface().(json.Marshaler); isMarshaler {
+				return output
+			}
+		}
+		if value.Kind() != reflect.Interface && value.Kind() != reflect.Pointer {
+			break
+		}
 		if value.IsNil() {
 			return output
 		}
@@ -398,6 +406,9 @@ func canonicalConformanceCollections(value reflect.Value, output any) any {
 	}
 	switch value.Kind() {
 	case reflect.Slice:
+		if value.Type().Elem().Kind() == reflect.Uint8 {
+			return output
+		}
 		if value.IsNil() && output == nil {
 			return []any{}
 		}
@@ -453,6 +464,10 @@ func canonicalConformanceCollections(value reflect.Value, output any) any {
 	return output
 }
 
+type conformanceMarshaledSlice []string
+
+func (conformanceMarshaledSlice) MarshalJSON() ([]byte, error) { return []byte("null"), nil }
+
 func TestConformanceOutputCanonicalization(t *testing.T) {
 	type nested struct {
 		Items   []string          `json:"items"`
@@ -482,6 +497,19 @@ func TestConformanceOutputCanonicalization(t *testing.T) {
 	emptyMap, err := canonicalConformanceOutput(map[string]string(nil))
 	require.NoError(t, err)
 	require.Equal(t, map[string]any{}, emptyMap)
+	type Embedded struct {
+		Items []string `json:"embeddedItems"`
+	}
+	embeddedOutput, err := canonicalConformanceOutput(struct {
+		*Embedded
+		Bytes  []byte                    `json:"bytes"`
+		Raw    json.RawMessage           `json:"raw"`
+		Custom conformanceMarshaledSlice `json:"custom"`
+	}{Embedded: &Embedded{}})
+	require.NoError(t, err)
+	require.Equal(t, map[string]any{
+		"embeddedItems": []any{}, "bytes": nil, "raw": nil, "custom": nil,
+	}, embeddedOutput)
 }
 
 func conformanceInputFields[Input any]() []string {

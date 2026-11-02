@@ -1084,8 +1084,9 @@ decoded Gmail MIME body, connector-sent headers, production idempotency key,
 intermediate and final decisions, request count, and canonical Go-marshaled output.
 For output fields present in JSON, nil Go slices and maps record as `[]` and `{}`
 at every nesting depth, matching generated Python and TypeScript empty collection
-defaults. `omitempty` and `omitzero` fields remain omitted; all other output
-values still compare exactly.
+defaults. Byte slices, including `json.RawMessage`, and types implementing
+`json.Marshaler` keep their exact JSON representation. `omitempty` and
+`omitzero` fields remain omitted; all other output values still compare exactly.
 Commit its recording; do not hand-edit expectations. Keep credentials inert.
 
 CI runs Go in verify mode and requires the committed recording to match exactly.
