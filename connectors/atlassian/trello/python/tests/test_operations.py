@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Check local validation and secret-safe provider response handling."""
 
+import json
 from uuid import UUID
 
 import httpx
@@ -24,7 +25,9 @@ from dex_connectors.atlassian_trello import (
     GetCardInput,
     ListCardsInput,
     UpdateCardInput,
+    operations,
 )
+from dex_connectors.atlassian_trello.client import ProviderResponse
 
 CONNECTION = ConnectionRef("trello", "trello-test")
 CARD_ID = "6512f0a1c2d3e4f5a6b7c8d9"
@@ -113,4 +116,54 @@ async def test_quote_breaking_token_is_rejected_before_http() -> None:
     attempt = await client.get_card().invoke(make_call("getCard"), GetCardInput(CARD_ID))
     assert attempt.branch == "defect"
     assert not requests
+    await client.http_client.aclose()
+
+
+@pytest.mark.parametrize("position", ["1_0", "１２", "1e", "0x1", "1e9999", "-1", "NaN"])
+def test_invalid_position_syntax_is_rejected(position: str) -> None:
+    """Reject syntax Python float accepts but Trello's position contract does not."""
+    with pytest.raises(ValueError, match="position must be"):
+        operations._position(position)
+
+
+@pytest.mark.parametrize(
+    "position,expected",
+    [("1e2", 100.0), ("0x1p2", 4.0), (".5", 0.5), ("top", "top")],
+)
+def test_valid_position_syntax(position: str, expected: str | float) -> None:
+    """Keep decimal, hexadecimal, and named positions compatible with Go."""
+    assert operations._position(position) == expected
+
+
+@pytest.mark.parametrize(
+    "board_id,short_link,expected_board_id,expected_short_link",
+    [
+        ("Z" * 24, "A!cD1234", "", ""),
+        ("a" * 24, "AbCd1234", "a" * 24, "AbCd1234"),
+    ],
+)
+async def test_created_card_references_match_go_patterns(
+    monkeypatch: pytest.MonkeyPatch,
+    board_id: str,
+    short_link: str,
+    expected_board_id: str,
+    expected_short_link: str,
+) -> None:
+    """Omit malformed optional references from a successful create response."""
+    async def dispatch(*_args: object) -> tuple[ProviderResponse, None]:
+        response = ProviderResponse(
+            200,
+            httpx.Headers(),
+            json.dumps({"id": CARD_ID, "idBoard": board_id, "shortLink": short_link}).encode(),
+        )
+        return response, None
+
+    monkeypatch.setattr(operations, "_single_dispatch", dispatch)
+    client = make_client(httpx.MockTransport(lambda _: httpx.Response(500)))
+    attempt = await client.create_card().invoke(
+        make_call("createCard"), CreateCardInput(CARD_ID, "Example")
+    )
+    assert attempt.branch == "created"
+    assert attempt.value.board_id == expected_board_id
+    assert attempt.value.short_link == expected_short_link
     await client.http_client.aclose()

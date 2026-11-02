@@ -4,6 +4,7 @@
 
 import json
 import math
+import re
 from datetime import timedelta
 from typing import Any
 
@@ -29,6 +30,8 @@ from dex_connectors.sdk.singledispatch import (
 
 from ._generated import definitions as definitions
 from .client import (
+    _ID,
+    _SHORT_LINK,
     DETAIL_FIELDS,
     SUMMARY_FIELDS,
     Client,
@@ -55,6 +58,11 @@ from .models import (
     UpdateCardOutput,
 )
 
+_DECIMAL_POSITION = re.compile(r"[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?")
+_HEX_POSITION = re.compile(
+    r"[+-]?0[xX](?:[0-9a-fA-F]+(?:\.[0-9a-fA-F]*)?|\.[0-9a-fA-F]+)[pP][+-]?[0-9]+"
+)
+
 
 def _validate_text(value: str, field: str, required: bool = False) -> None:
     if required and not value.strip():
@@ -74,8 +82,13 @@ def _position(value: str) -> str | float | None:
     if value in ("top", "bottom"):
         return value
     try:
-        number = float(value)
-    except ValueError:
+        if _DECIMAL_POSITION.fullmatch(value):
+            number = float(value)
+        elif _HEX_POSITION.fullmatch(value):
+            number = float.fromhex(value)
+        else:
+            number = 0
+    except (ValueError, OverflowError):
         number = 0
     if not math.isfinite(number) or number <= 0:
         raise ValueError("position must be top, bottom, or a positive number such as 16384")
@@ -439,10 +452,10 @@ class CreateCardOperation:
             requested.name,
             requested.list_id,
             resource.get("idBoard", "")
-            if isinstance(resource.get("idBoard"), str) and len(resource["idBoard"]) == 24
+            if isinstance(resource.get("idBoard"), str) and _ID.fullmatch(resource["idBoard"])
             else "",
             resource.get("shortLink", "")
-            if isinstance(resource.get("shortLink"), str) and len(resource["shortLink"]) == 8
+            if isinstance(resource.get("shortLink"), str) and _SHORT_LINK.fullmatch(resource["shortLink"])
             else "",
             resource.get("url", ""),
             resource.get("shortUrl", ""),
