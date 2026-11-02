@@ -1557,6 +1557,11 @@
         {
           "exchangeCount": 5,
           "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+            "state": "canResend"
+          },
           "retryAfterMs": 0
         }
       ],
@@ -2617,6 +2622,11 @@
         {
           "exchangeCount": 6,
           "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+            "state": "canResend"
+          },
           "retryAfterMs": 0
         }
       ],

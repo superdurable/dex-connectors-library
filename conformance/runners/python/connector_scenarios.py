@@ -16,34 +16,46 @@ from typing import Any
 from urllib.parse import parse_qs
 
 import httpx
-from dex import CodecRegistry
+from dex import CodecRegistry, Value, WireKind
 from dex_connectors import sdk
 from dex_connectors.sdk.singledispatch import Marker
 
 
 class HeartbeatContext:
-    """Persist a non-secret dispatch marker across fixture attempts."""
+    """Persist the connector's encoded heartbeat across fixture attempts."""
 
-    def __init__(self, prior_heartbeat: dict[str, Any] | None = None) -> None:
+    def __init__(self, prior_heartbeat: dict[str, Any] | None = None,
+                 fixed_clock: str | None = None) -> None:
         self.attempt = prior_heartbeat["attempt"] + 1 if prior_heartbeat is not None else 1
         self.run_id = "run"
-        self.flow_started_at = datetime.fromtimestamp(1, UTC)
+        self.fixed_clock = (datetime.fromisoformat(fixed_clock)
+                            if fixed_clock is not None else datetime.fromtimestamp(1, UTC))
+        self.flow_started_at = self.fixed_clock
         self.deadline = datetime.now(UTC) + timedelta(seconds=30)
-        self.marker = Marker.from_wire(prior_heartbeat) if prior_heartbeat is not None else None
+        self.heartbeat_payload = (prior_heartbeat.get("value", prior_heartbeat)
+                                  if prior_heartbeat is not None else None)
 
     def has_last_heartbeat_value(self) -> bool:
-        """Report whether a prior Dex attempt persisted a marker."""
-        return self.marker is not None
+        """Report whether a prior Dex attempt persisted a heartbeat."""
+        return self.heartbeat_payload is not None
 
     def get_last_heartbeat_value(self, value_type: type[object]) -> object:
-        """Return the marker in the SDK's typed heartbeat shape."""
-        assert value_type is Marker and self.marker is not None
-        return self.marker
+        """Decode the exact Go-recorded payload into the requested heartbeat type."""
+        if self.heartbeat_payload is None:
+            return None
+        if value_type is Marker:
+            return Marker.from_wire(self.heartbeat_payload)
+        return CodecRegistry().resolve(value_type).decode(
+            Value(WireKind.JSON, json.dumps(self.heartbeat_payload))
+        )
 
     async def heartbeat(self, value: object) -> None:
-        """Record the last marker for the next fixture invocation."""
-        assert isinstance(value, Marker)
-        self.marker = value
+        """Record the last heartbeat for the next fixture invocation."""
+        encoded = (value.to_wire() if isinstance(value, Marker)
+                   else json.loads(CodecRegistry().resolve(type(value)).encode(value).data))
+        if os.environ.get("CONNECTOR_CONFORMANCE_MUTATE_HEARTBEAT") == "1":
+            encoded = {"__wrong_heartbeat_shape__": True}
+        self.heartbeat_payload = encoded
 
 
 def _keys(value: object, required: set[str], optional: set[str], where: str) -> dict[str, Any]:
@@ -63,7 +75,7 @@ def load_scenarios(path: Path) -> list[dict[str, Any]]:
         raise ValueError(f"{path}: scenarios must be nonempty")
     for scenario in scenarios:
         _keys(scenario, {"name", "operation", "callId", "input", "exchanges", "expected"},
-              {"idempotencyKey", "attempts", "intermediate", "priorHeartbeat"}, str(path))
+              {"idempotencyKey", "attempts", "intermediate", "priorHeartbeat", "fixedClock"}, str(path))
         if any(not isinstance(scenario[field], str) or not scenario[field]
                for field in ("name", "operation", "callId")):
             raise ValueError(f"{scenario['name']}: invalid Call ID")
@@ -118,12 +130,26 @@ def load_scenarios(path: Path) -> list[dict[str, Any]]:
                 or any(type(expected[field]) is not int for field in ("retryAfterMs", "requestCount"))):
             raise ValueError(f"{scenario['name']}: invalid expected decision")
         for intermediate in scenario.get("intermediate", []):
-            _keys(intermediate, {"failureKind", "retryAfterMs", "exchangeCount"}, set(), scenario["name"])
+            _keys(intermediate, {"failureKind", "retryAfterMs", "exchangeCount"}, {"heartbeat"}, scenario["name"])
         if "priorHeartbeat" in scenario:
-            _keys(scenario["priorHeartbeat"], {"callId", "attempt", "state"}, {"providerId"}, scenario["name"])
-            if scenario["priorHeartbeat"]["callId"] != scenario["callId"]:
-                raise ValueError(f"{scenario['name']}: prior heartbeat Call ID differs")
-            Marker.from_wire(scenario["priorHeartbeat"])
+            prior = _keys(scenario["priorHeartbeat"], {"attempt"},
+                          {"value", "callId", "state", "providerId"}, scenario["name"])
+            if type(prior["attempt"]) is not int or prior["attempt"] < 1:
+                raise ValueError(f"{scenario['name']}: invalid prior heartbeat attempt")
+            if "value" in prior:
+                if set(prior) != {"attempt", "value"} or prior["value"] is None:
+                    raise ValueError(f"{scenario['name']}: invalid prior heartbeat value")
+            else:
+                _keys(prior, {"callId", "attempt", "state"}, {"providerId"}, scenario["name"])
+                if prior["callId"] != scenario["callId"]:
+                    raise ValueError(f"{scenario['name']}: prior heartbeat Call ID differs")
+                Marker.from_wire(prior)
+        if "fixedClock" in scenario:
+            if (not isinstance(scenario["fixedClock"], str)
+                    or re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})",
+                                    scenario["fixedClock"]) is None):
+                raise ValueError(f"{scenario['name']}: invalid fixed clock")
+            datetime.fromisoformat(scenario["fixedClock"])
         if scenario.get("attempts", 1) != len(scenario.get("intermediate", [])) + 1:
             raise ValueError(f"{scenario['name']}: inconsistent attempts")
         if "idempotencyKey" in scenario and not isinstance(scenario["idempotencyKey"], str):
@@ -373,11 +399,17 @@ async def replay(
 ) -> None:
     """Replay all attempts, then check transport mismatches and the final decision."""
     recorder = ExchangeRecorder(scenario, scenario["callId"], path_prefix)
-    context = HeartbeatContext(scenario.get("priorHeartbeat"))
+    context = HeartbeatContext(scenario.get("priorHeartbeat"), scenario.get("fixedClock"))
     for intermediate in scenario.get("intermediate", []):
         attempt = await invoke(scenario, recorder, context)
         assert_attempt(attempt, {"retry": True, "uncertain": False, "branch": "", **intermediate})
         assert recorder.request_count == intermediate["exchangeCount"]
+        if "heartbeat" in intermediate:
+            assert context.heartbeat_payload == intermediate["heartbeat"], (
+                f"{scenario['name']}: heartbeat {context.heartbeat_payload!r} "
+                f"differs from Go recording {intermediate['heartbeat']!r}"
+            )
+            context.heartbeat_payload = intermediate["heartbeat"]
         context.attempt += 1
     attempt = await invoke(scenario, recorder, context)
     recorder.assert_complete()

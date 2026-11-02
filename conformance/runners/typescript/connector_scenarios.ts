@@ -23,25 +23,33 @@ export interface Expected {
 export interface Scenario {
   name: string; operation: string; callId: string; idempotencyKey?: string; input: RecordValue;
   exchanges: Exchange[]; expected: Expected; attempts?: number;
-  intermediate?: Array<{ failureKind: string; retryAfterMs: number; exchangeCount: number }>;
+  intermediate?: Array<{ failureKind: string; retryAfterMs: number; exchangeCount: number; heartbeat?: unknown }>;
   priorHeartbeat?: unknown;
+  fixedClock?: string;
 }
 
 export class HeartbeatContext {
   attempt: number;
   marker: unknown;
   readonly runId = 'run';
-  readonly flowStartedAt = new Date('1970-01-01T00:00:01Z');
+  readonly flowStartedAt: Date;
+  readonly fixedClock: Date;
   readonly deadline = new Date(Date.now() + 30_000);
   readonly cancellationSignal = new AbortController().signal;
   readonly flowId = 'conformance-flow';
-  constructor(priorHeartbeat: unknown) {
-    this.marker = priorHeartbeat;
+  constructor(priorHeartbeat: unknown, fixedClock?: string) {
+    this.fixedClock = new Date(fixedClock ?? '1970-01-01T00:00:01Z');
+    this.flowStartedAt = this.fixedClock;
+    this.marker = priorHeartbeat && typeof priorHeartbeat === 'object' && 'value' in priorHeartbeat
+      ? (priorHeartbeat as { value: unknown }).value : priorHeartbeat;
     this.attempt = priorHeartbeat === undefined ? 1 : Number((priorHeartbeat as { attempt: number }).attempt) + 1;
   }
   hasLastHeartbeatValue(): boolean { return this.marker !== undefined; }
   getLastHeartbeatValue(): unknown { return this.marker; }
-  async recordHeartbeat(value: unknown): Promise<void> { this.marker = value; }
+  async recordHeartbeat(value: unknown): Promise<void> {
+    this.marker = process.env.CONNECTOR_CONFORMANCE_MUTATE_HEARTBEAT === '1'
+      ? { __wrong_heartbeat_shape__: true } : value;
+  }
 }
 
 function record(value: unknown, required: string[], optional: string[], location: string): RecordValue {
@@ -59,7 +67,7 @@ export function loadScenarios(url: URL): Scenario[] {
   if (document.schemaVersion !== 1 || typeof document.connector !== 'string' || !document.connector ||
       !Array.isArray(document.scenarios) || document.scenarios.length === 0) throw new Error('invalid scenario document');
   for (const item of document.scenarios) {
-    const scenario = record(item, ['name', 'operation', 'callId', 'input', 'exchanges', 'expected'], ['idempotencyKey', 'attempts', 'intermediate', 'priorHeartbeat'], url.pathname);
+    const scenario = record(item, ['name', 'operation', 'callId', 'input', 'exchanges', 'expected'], ['idempotencyKey', 'attempts', 'intermediate', 'priorHeartbeat', 'fixedClock'], url.pathname);
     if (typeof scenario.name !== 'string' || !scenario.name || typeof scenario.operation !== 'string' || !scenario.operation ||
         typeof scenario.callId !== 'string' || !scenario.callId || !Array.isArray(scenario.exchanges)) throw new Error('invalid scenario identity or exchanges');
     if ('idempotencyKey' in scenario && typeof scenario.idempotencyKey !== 'string') throw new Error('invalid optional scenario identity');
@@ -98,14 +106,22 @@ export function loadScenarios(url: URL): Scenario[] {
         !Number.isInteger(expected.requestCount)) throw new Error('invalid expected decision');
     const intermediate = scenario.intermediate ?? [];
     if (!Array.isArray(intermediate) || (scenario.attempts ?? 1) !== intermediate.length + 1) throw new Error(`${scenario.name}: inconsistent attempts`);
-    for (const value of intermediate) record(value, ['failureKind', 'retryAfterMs', 'exchangeCount'], [], String(scenario.name));
+    for (const value of intermediate) record(value, ['failureKind', 'retryAfterMs', 'exchangeCount'], ['heartbeat'], String(scenario.name));
     if ('priorHeartbeat' in scenario) {
-      const prior = record(scenario.priorHeartbeat, ['callId', 'attempt', 'state'], ['providerId'], String(scenario.name));
-      if (prior.callId !== scenario.callId) throw new Error('prior heartbeat Call ID differs');
-      if (!Number.isInteger(prior.attempt) || Number(prior.attempt) < 1 ||
-          !['notSent', 'claimed', 'canResend'].includes(String(prior.state)) ||
-          ('providerId' in prior && typeof prior.providerId !== 'string')) throw new Error('invalid prior heartbeat');
+      const prior = record(scenario.priorHeartbeat, ['attempt'], ['value', 'callId', 'state', 'providerId'], String(scenario.name));
+      if (!Number.isInteger(prior.attempt) || Number(prior.attempt) < 1) throw new Error('invalid prior heartbeat attempt');
+      if ('value' in prior) {
+        if (Object.keys(prior).length !== 2 || prior.value === null) throw new Error('invalid prior heartbeat value');
+      } else {
+        record(prior, ['callId', 'attempt', 'state'], ['providerId'], String(scenario.name));
+        if (prior.callId !== scenario.callId) throw new Error('prior heartbeat Call ID differs');
+        if (!['notSent', 'claimed', 'canResend'].includes(String(prior.state)) ||
+            ('providerId' in prior && typeof prior.providerId !== 'string')) throw new Error('invalid prior heartbeat');
+      }
     }
+    if ('fixedClock' in scenario && (typeof scenario.fixedClock !== 'string' ||
+        !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(scenario.fixedClock) ||
+        !Number.isFinite(Date.parse(scenario.fixedClock)))) throw new Error('invalid fixed clock');
   }
   return document.scenarios as Scenario[];
 }
@@ -293,11 +309,16 @@ export async function replay(
   };
   const outputCodec = dexSDK.jsonCodec();
   const recorder = new ExchangeRecorder(scenario, pathPrefix);
-  const context = new HeartbeatContext(scenario.priorHeartbeat);
+  const context = new HeartbeatContext(scenario.priorHeartbeat, scenario.fixedClock);
   for (const intermediate of scenario.intermediate ?? []) {
     const attempt = await invoke(scenario, recorder, context);
     assertAttempt(attempt, { retry: true, uncertain: false, branch: '', requestCount: 0, ...intermediate }, outputCodec);
     if (recorder.requestCount !== intermediate.exchangeCount) throw new Error('intermediate exchange count differs');
+    if ('heartbeat' in intermediate) {
+      const heartbeat = JSON.parse(JSON.stringify(context.marker));
+      if (!isDeepStrictEqual(heartbeat, intermediate.heartbeat)) throw new Error(`${scenario.name}: heartbeat differs from Go recording`);
+      context.marker = intermediate.heartbeat;
+    }
     context.attempt++;
   }
   const attempt = await invoke(scenario, recorder, context);
