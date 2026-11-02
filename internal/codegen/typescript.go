@@ -250,7 +250,18 @@ func typeScriptType(value gomodel.Type) string {
 
 func typeScriptJSDoc(comment string) string {
 	comment = strings.ReplaceAll(comment, "*/", "* /")
-	return strings.ReplaceAll(strings.TrimSpace(comment), "\n", "\n   * ")
+	lines := strings.Split(strings.TrimSpace(comment), "\n")
+	for index, line := range lines {
+		line = strings.TrimRight(line, " \t")
+		if index > 0 {
+			if line == "" {
+				lines[index] = "   *"
+				continue
+			}
+			lines[index] = "   * " + line
+		}
+	}
+	return strings.Join(lines, "\n")
 }
 
 func typeScriptSchema(value gomodel.Type) string {
