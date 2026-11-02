@@ -372,7 +372,8 @@ the original push commit, retaining its release matrix. The workflow:
     language build or release blocks the catalog publish, including Go entries.
     The site is
     `https://connectors.superdurable.io/` and the README
-    preview is `card.png` beside `catalog.yaml`.
+    preview is `card.png` beside `catalog.yaml`: a fixed-size image of the
+    site's catalog totals row.
 
 The workflow uploads `connector-release.complete` only after both publication
 checks pass. A rerun repairs any release without that marker before publishing
