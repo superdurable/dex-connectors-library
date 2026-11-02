@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 import time
 import urllib.error
 import urllib.parse
@@ -52,7 +53,8 @@ def github_json(url: str, *, sleep=time.sleep, clock=time.time) -> tuple[object,
                 if clock() + wait > deadline:
                     raise RuntimeError(f"GitHub API rate limit (HTTP {error.code}); reset in {int(wait)} s "
                                        f"exceeds the {MAXIMUM_RATE_LIMIT_WAIT_SECONDS} s wait budget") from error
-                print(f"GitHub API rate limit (HTTP {error.code}); waiting {int(wait)} s for reset", flush=True)
+                print(f"GitHub API rate limit (HTTP {error.code}); waiting {int(wait)} s for reset",
+                      file=sys.stderr, flush=True)
                 sleep(wait)
                 continue
             if error.code in (500, 502, 503, 504) and attempts < 4:
@@ -89,8 +91,9 @@ def release_assets(tag: str, inventory_path: str | None = None, *, fetch=github_
         inventory = json.loads(Path(inventory_path).read_text(encoding="utf-8"))
         if not isinstance(inventory, dict):
             raise RuntimeError("GitHub release inventory must be an object")
-        assets = inventory.get(tag)
-        return frozenset(assets) if assets is not None else None
+        if not inventory.get("_inventory_unavailable"):
+            assets = inventory.get(tag)
+            return frozenset(assets) if assets is not None else None
     url = f"https://api.github.com/repos/{REPOSITORY}/releases/tags/{urllib.parse.quote(tag, safe='')}"
     try:
         release, _ = fetch(url)
@@ -103,8 +106,15 @@ def release_assets(tag: str, inventory_path: str | None = None, *, fetch=github_
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--output", type=Path, required=True)
+    destination = parser.add_mutually_exclusive_group(required=True)
+    destination.add_argument("--output", type=Path)
+    destination.add_argument("--tag")
+    parser.add_argument("--live", action="store_true", help="ignore a run-level inventory for a fresh release lookup")
     args = parser.parse_args()
+    if args.tag:
+        assets = release_assets(args.tag, None if args.live else os.environ.get("GH_RELEASE_INVENTORY_PATH"))
+        print(json.dumps(sorted(assets) if assets is not None else None))
+        return
     inventory = release_inventory()
     args.output.write_text(json.dumps(inventory, sort_keys=True) + "\n", encoding="utf-8")
     print(f"GitHub release inventory: {len(inventory)} releases", flush=True)

@@ -477,7 +477,7 @@ class ReleasedArtifactLayoutTest(unittest.TestCase):
         tag = "connectors/acme/mail/go/v0.2.0"
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "releases.json"
-            path.write_text("{}")
+            path.write_text(json.dumps({tag: ["connector-release.json"]}))
             with patch.dict(os.environ, {"GH_RELEASE_INVENTORY_PATH": str(path), "CONNECTOR_RELEASE_TAG": tag}), \
                     patch("script.dex_compatibility.github_json") as fetch:
                 release = published_release("superdurable/dex-connectors-library", tag)

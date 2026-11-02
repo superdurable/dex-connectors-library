@@ -58,7 +58,9 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version: '1.24'
+          check-latest: false
+          token: ''
           cache-dependency-path: |
             go.sum
             sdkgo/go.sum
@@ -75,9 +77,16 @@ jobs:
           GOWORK=off go run ./cmd/connectorctl catalog --check --catalog catalog.yaml
           GOWORK=off go run ./cmd/connectorctl release-matrix --catalog catalog.yaml
       - name: Resolve release inventory once for planning and release jobs
+        id: release-inventory
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 script/release/github_release_inventory.py --output "${RUNNER_TEMP}/release-inventory.json"
+      - name: Defer language releases when the inventory is unavailable
+        if: steps.release-inventory.outcome == 'failure'
+        run: |
+          printf '{"_inventory_unavailable":true}\n' > "${RUNNER_TEMP}/release-inventory.json"
+          echo '::warning::Release inventory unavailable; Go release jobs will check their tags directly and language releases will be deferred.'
       - name: Build pending or targeted repair matrix
         id: matrix
         env:
@@ -161,7 +170,9 @@ jobs:
           path: /tmp
       - uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version: '1.24'
+          check-latest: false
+          token: ''
           cache-dependency-path: |
             go.sum
             sdkgo/go.sum
@@ -174,12 +185,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          cp script/release/github_release_inventory.py "${RUNNER_TEMP}/"
           release_tag="${TAG_PREFIX}${RELEASE_VERSION}"
           required_assets=(connector-release.json connector-release.json.sha256 connector-release.complete)
           if grep -q '^  studio:' "${MANIFEST_PATH}"; then
             required_assets+=(connector-ui.tgz connector-ui.tgz.sha256)
           fi
+          tag_exists=false
           if git show-ref --verify --quiet "refs/tags/${release_tag}"; then
+            tag_exists=true
             git merge-base --is-ancestor "${release_tag}" HEAD || {
               echo "Release tag is not reachable from main: ${release_tag}" >&2
               exit 1
@@ -189,8 +203,12 @@ jobs:
             source_sha="${GITHUB_SHA}"
           fi
           release_required=true
-          if jq -e --arg tag "${release_tag}" 'has($tag)' "${GH_RELEASE_INVENTORY_PATH}" >/dev/null; then
-            published_assets="$(jq -r --arg tag "${release_tag}" '.[$tag][]' "${GH_RELEASE_INVENTORY_PATH}")"
+          published_assets_json=null
+          if [ "${tag_exists}" = true ]; then
+            published_assets_json="$(python3 "${RUNNER_TEMP}/github_release_inventory.py" --tag "${release_tag}")"
+          fi
+          if [ "${published_assets_json}" != null ]; then
+            published_assets="$(jq -r '.[]' <<< "${published_assets_json}")"
             release_required=false
             for asset in "${required_assets[@]}"; do
               if ! grep -Fxq "${asset}" <<<"${published_assets}"; then
@@ -307,7 +325,11 @@ jobs:
           if [ -f /tmp/connector-ui.tgz ]; then
             assets+=(/tmp/connector-ui.tgz /tmp/connector-ui.tgz.sha256)
           fi
-          if jq -e --arg tag "${RELEASE_TAG}" 'has($tag)' "${GH_RELEASE_INVENTORY_PATH}" >/dev/null; then
+          release_assets=null
+          if git show-ref --verify --quiet "refs/tags/${RELEASE_TAG}"; then
+            release_assets="$(python3 "${RUNNER_TEMP}/github_release_inventory.py" --tag "${RELEASE_TAG}" --live)"
+          fi
+          if [ "${release_assets}" != null ]; then
             gh release edit "${RELEASE_TAG}" \
               --title "${RELEASE_TITLE}" \
               --notes-file /tmp/connector-release-notes.md
@@ -402,7 +424,9 @@ jobs:
           PY
       - uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version: '1.24'
+          check-latest: false
+          token: ''
       - uses: astral-sh/setup-uv@v7
         if: matrix.language == 'python'
       - uses: actions/setup-node@v6
@@ -425,9 +449,6 @@ jobs:
           required=true
           if jq -e --arg tag "${tag}" '.[$tag] | index("language-release.complete") != null' "${GH_RELEASE_INVENTORY_PATH}" >/dev/null; then
             required=false
-          fi
-          if jq -e --arg tag "${tag}" 'has($tag)' "${GH_RELEASE_INVENTORY_PATH}" >/dev/null; then
-            touch "${RUNNER_TEMP}/language-work/release-exists"
           fi
           if [ "${RELEASE_DRY_RUN}" = true ]; then required=true; fi
           if [ "${required}" = false ]; then
@@ -539,15 +560,11 @@ jobs:
         id: state
         run: |
           tag="${TAG_PREFIX}${RELEASE_VERSION}"
-          release_complete=false
           if [ -f "${RUNNER_TEMP}/language-work/skip" ]; then
-            release_complete=true
-          fi
-          if [ -f "${RUNNER_TEMP}/language-work/skip" ] && [ ! -f "${RUNNER_TEMP}/language-work/completed-release" ]; then
-            echo "Build artifact requests a skip without a completed release: ${tag}" >&2
-            exit 1
-          fi
-          if [ "${release_complete}" = true ]; then
+            if [ ! -f "${RUNNER_TEMP}/language-work/completed-release" ]; then
+              echo "Build artifact requests a skip without a completed release: ${tag}" >&2
+              exit 1
+            fi
             echo 'release_required=false' >> "${GITHUB_OUTPUT}"
             exit 0
           fi
@@ -642,7 +659,11 @@ jobs:
           tag="${TAG_PREFIX}${RELEASE_VERSION}"
           title="$(python3 "${RUNNER_TEMP}/component_release.py" release-title \
             --display-name "${RELEASE_DISPLAY_NAME}" --language "${LANGUAGE}" --version "${RELEASE_VERSION}")"
-          if [ -f "${RUNNER_TEMP}/language-work/release-exists" ]; then
+          release_assets=null
+          if git show-ref --verify --quiet "refs/tags/${tag}"; then
+            release_assets="$(python3 "${RUNNER_TEMP}/github_release_inventory.py" --tag "${tag}" --live)"
+          fi
+          if [ "${release_assets}" != null ]; then
             gh release edit "${tag}" --title "${title}"
             gh release upload "${tag}" --clobber "${RUNNER_TEMP}"/language-work/dist/*
           else
@@ -762,7 +783,9 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version: '1.24'
+          check-latest: false
+          token: ''
       - uses: actions/setup-node@v6
         with:
           node-version: 24

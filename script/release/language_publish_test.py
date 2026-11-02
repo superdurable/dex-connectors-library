@@ -86,6 +86,10 @@ class RegistryLookupTests(unittest.TestCase):
         fetch.assert_called_once_with()
 
     def test_release_inventory_failure_retains_pending_go_matrix(self) -> None:
+        workflow = (Path(__file__).resolve().parents[2] / ".github/workflows/release-connector.yml").read_text()
+        inventory_step = workflow.split("      - name: Resolve release inventory once for planning and release jobs\n", 1)[1]
+        self.assertIn("continue-on-error: true", inventory_step.split("      - name:", 1)[0])
+        self.assertIn('printf \'{"_inventory_unavailable":true}', inventory_step)
         with tempfile.TemporaryDirectory() as temporary:
             directory = Path(temporary)
             matrix_output = directory / "matrix"
@@ -103,6 +107,14 @@ class RegistryLookupTests(unittest.TestCase):
             self.assertIn("deferred_count=1\n", output)
             selection = json.loads((directory / "selection.json").read_text(encoding="utf-8"))
             self.assertEqual("release_inventory_unavailable", selection["deferred"][0]["defer_reason"])
+
+    def test_unavailable_inventory_marker_defers_languages(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            inventory_path = Path(temporary) / "inventory.json"
+            inventory_path.write_text('{"_inventory_unavailable":true}')
+            with patch.dict(os.environ, {"GH_RELEASE_INVENTORY_PATH": str(inventory_path)}):
+                with self.assertRaisesRegex(RuntimeError, "inventory is unavailable"):
+                    language_publish.list_completed_language_tags()
 
     def test_project_limit_artifact_lookup_paginates(self) -> None:
         attempts = []

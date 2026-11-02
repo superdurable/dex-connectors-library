@@ -3,6 +3,7 @@
 
 import io
 import json
+import os
 import tempfile
 import unittest
 import urllib.error
@@ -60,6 +61,32 @@ class GitHubReleaseInventoryTests(unittest.TestCase):
             self.assertEqual(frozenset({"connector-release.complete"}),
                              inventory.release_assets("connectors/acme/go/v0.1.0", str(path)))
             self.assertIsNone(inventory.release_assets("connectors/acme/go/v0.2.0", str(path)))
+
+    def test_unavailable_inventory_falls_back_to_exact_release_lookup(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "releases.json"
+            path.write_text('{"_inventory_unavailable":true}')
+            calls = []
+
+            def fetch(url):
+                calls.append(url)
+                return {"assets": [{"name": "connector-release.complete"}]}, ""
+
+            self.assertEqual(frozenset({"connector-release.complete"}),
+                             inventory.release_assets("connectors/acme/go/v0.1.0", str(path), fetch=fetch))
+            self.assertEqual(1, len(calls))
+
+    def test_live_tag_cli_ignores_stale_inventory(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "releases.json"
+            path.write_text('{"connectors/acme/go/v0.1.0":[]}')
+            with patch.dict(os.environ, {"GH_RELEASE_INVENTORY_PATH": str(path)}), \
+                    patch.object(inventory, "release_assets", return_value=frozenset({"connector-release.complete"})) as lookup, \
+                    patch("sys.argv", ["inventory", "--tag", "connectors/acme/go/v0.1.0", "--live"]), \
+                    patch("sys.stdout", new_callable=io.StringIO) as output:
+                inventory.main()
+            lookup.assert_called_once_with("connectors/acme/go/v0.1.0", None)
+            self.assertEqual('["connector-release.complete"]', output.getvalue().strip())
 
     def test_direct_lookup_treats_only_http_404_as_missing(self) -> None:
         missing = urllib.error.HTTPError("https://api.github.com/test", 404, "Not Found", {}, io.BytesIO(b"{}"))

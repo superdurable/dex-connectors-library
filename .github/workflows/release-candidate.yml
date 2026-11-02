@@ -67,7 +67,9 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version: '1.24'
+          check-latest: false
+          token: ''
       - name: Validate the candidate with main's tooling
         id: candidate
         run: |
@@ -96,7 +98,9 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version: '1.24'
+          check-latest: false
+          token: ''
           cache-dependency-path: |
             go.sum
             sdkgo/go.sum
@@ -167,7 +171,9 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version: '1.24'
+          check-latest: false
+          token: ''
       - uses: actions/download-artifact@v4
         continue-on-error: true
         with:
@@ -247,7 +253,9 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version: '1.24'
+          check-latest: false
+          token: ''
       - uses: astral-sh/setup-uv@v7
         if: needs.plan.outputs.language == 'python'
       - uses: actions/setup-node@v6

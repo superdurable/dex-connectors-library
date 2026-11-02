@@ -61,6 +61,8 @@ def list_completed_language_tags() -> set[str]:
     inventory_path = os.environ.get("GH_RELEASE_INVENTORY_PATH")
     inventory = (json.loads(Path(inventory_path).read_text(encoding="utf-8"))
                  if inventory_path else release_inventory())
+    if inventory.get("_inventory_unavailable"):
+        raise RuntimeError("GitHub release inventory is unavailable")
     return {tag for tag, assets in inventory.items() if "language-release.complete" in assets}
 
 

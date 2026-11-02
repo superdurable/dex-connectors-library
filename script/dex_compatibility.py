@@ -371,11 +371,14 @@ def published_release(repository: str, tag: str) -> dict[str, object] | None:
     inventory_path = os.environ.get("GH_RELEASE_INVENTORY_PATH")
     if repository == REPOSITORY and inventory_path:
         inventory = json.loads(Path(inventory_path).read_text(encoding="utf-8"))
-        assets = inventory.get(tag)
-        if assets is None and os.environ.get("CONNECTOR_RELEASE_TAG") == tag:
+        if os.environ.get("CONNECTOR_RELEASE_TAG") == tag:
             # This job uploaded the release after its run-level inventory was captured.
             assets = ["connector-release.json", "connector-release.json.sha256", "connector-release.complete",
                       "connector-ui.tgz", "connector-ui.tgz.sha256"]
+        elif inventory.get("_inventory_unavailable"):
+            assets = None
+        else:
+            assets = inventory.get(tag)
         if assets is None:
             return None
         return {"tag_name": tag, "assets": [
