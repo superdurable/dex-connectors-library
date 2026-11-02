@@ -364,18 +364,152 @@ func recordConformanceScenario(scenario conformanceScenario, recorder *conforman
 		if outcome.Failure != nil {
 			decision["failureKind"] = string(outcome.Failure.Kind)
 		}
-		encoded, err := json.Marshal(outcome.Value)
+		output, err := canonicalConformanceOutput(outcome.Value)
 		if err != nil {
-			return nil, err
-		}
-		var output any
-		if err := json.Unmarshal(encoded, &output); err != nil {
 			return nil, err
 		}
 		decision["output"] = output
 	}
 	recorded["expected"] = decision
 	return recorded, nil
+}
+
+func canonicalConformanceOutput(value any) (any, error) {
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return nil, err
+	}
+	var output any
+	if err := json.Unmarshal(encoded, &output); err != nil {
+		return nil, err
+	}
+	return canonicalConformanceCollections(reflect.ValueOf(value), output), nil
+}
+
+func canonicalConformanceCollections(value reflect.Value, output any) any {
+	if !value.IsValid() {
+		return output
+	}
+	for {
+		if value.CanInterface() {
+			if _, isMarshaler := value.Interface().(json.Marshaler); isMarshaler {
+				return output
+			}
+		}
+		if value.Kind() != reflect.Interface && value.Kind() != reflect.Pointer {
+			break
+		}
+		if value.IsNil() {
+			return output
+		}
+		value = value.Elem()
+	}
+	switch value.Kind() {
+	case reflect.Slice:
+		if value.Type().Elem().Kind() == reflect.Uint8 {
+			return output
+		}
+		if value.IsNil() && output == nil {
+			return []any{}
+		}
+		fallthrough
+	case reflect.Array:
+		items, ok := output.([]any)
+		if !ok || len(items) != value.Len() {
+			return output
+		}
+		for index := range items {
+			items[index] = canonicalConformanceCollections(value.Index(index), items[index])
+		}
+	case reflect.Map:
+		if value.IsNil() && output == nil {
+			return map[string]any{}
+		}
+		fields, ok := output.(map[string]any)
+		if !ok {
+			return output
+		}
+		for iterator := value.MapRange(); iterator.Next(); {
+			name := fmt.Sprint(iterator.Key().Interface())
+			if item, exists := fields[name]; exists {
+				fields[name] = canonicalConformanceCollections(iterator.Value(), item)
+			}
+		}
+	case reflect.Struct:
+		fields, ok := output.(map[string]any)
+		if !ok {
+			return output
+		}
+		for index := 0; index < value.NumField(); index++ {
+			field := value.Type().Field(index)
+			if !field.IsExported() {
+				continue
+			}
+			name := strings.Split(field.Tag.Get("json"), ",")[0]
+			if name == "-" {
+				continue
+			}
+			if name == "" && field.Anonymous {
+				canonicalConformanceCollections(value.Field(index), fields)
+				continue
+			}
+			if name == "" {
+				name = field.Name
+			}
+			if item, exists := fields[name]; exists {
+				fields[name] = canonicalConformanceCollections(value.Field(index), item)
+			}
+		}
+	}
+	return output
+}
+
+type conformanceMarshaledSlice []string
+
+func (conformanceMarshaledSlice) MarshalJSON() ([]byte, error) { return []byte("null"), nil }
+
+func TestConformanceOutputCanonicalization(t *testing.T) {
+	type nested struct {
+		Items   []string          `json:"items"`
+		Omitted []string          `json:"omitted,omitempty"`
+		Zero    []string          `json:"zero,omitzero"`
+		Entries map[string]string `json:"entries"`
+	}
+	type collection struct {
+		Nested   nested            `json:"nested"`
+		Pages    []nested          `json:"pages"`
+		Lookup   map[string]nested `json:"lookup"`
+		Nonempty []string          `json:"nonempty"`
+	}
+	output, err := canonicalConformanceOutput(collection{
+		Nested: nested{}, Pages: []nested{{}}, Lookup: map[string]nested{"record": {}}, Nonempty: []string{"keep"},
+	})
+	require.NoError(t, err)
+	require.Equal(t, map[string]any{
+		"nested":   map[string]any{"items": []any{}, "entries": map[string]any{}},
+		"pages":    []any{map[string]any{"items": []any{}, "entries": map[string]any{}}},
+		"lookup":   map[string]any{"record": map[string]any{"items": []any{}, "entries": map[string]any{}}},
+		"nonempty": []any{"keep"},
+	}, output)
+	emptySlice, err := canonicalConformanceOutput([]string(nil))
+	require.NoError(t, err)
+	require.Equal(t, []any{}, emptySlice)
+	emptyMap, err := canonicalConformanceOutput(map[string]string(nil))
+	require.NoError(t, err)
+	require.Equal(t, map[string]any{}, emptyMap)
+	type Embedded struct {
+		Items []string `json:"embeddedItems"`
+	}
+	embeddedOutput, err := canonicalConformanceOutput(struct {
+		*Embedded
+		Bytes  []byte                    `json:"bytes"`
+		Raw    json.RawMessage           `json:"raw"`
+		Custom conformanceMarshaledSlice `json:"custom"`
+	}{Embedded: &Embedded{}})
+	require.NoError(t, err)
+	require.Equal(t, map[string]any{
+		"embeddedItems": []any{}, "bytes": nil, "raw": nil, "custom": nil,
+	}, embeddedOutput)
 }
 
 func conformanceInputFields[Input any]() []string {

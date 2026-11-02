@@ -21,7 +21,7 @@ export const GetGlobalQuoteDefinition: QueryDefinition = { ...GeneratedGlobalQuo
 export const GetTimeSeriesDailyDefinition: QueryDefinition = { ...GeneratedTimeSeriesDailyDefinition, stepDefaults: { ...GeneratedTimeSeriesDailyDefinition.stepDefaults, executeRetry: defaultConnectorStepExecuteRetryPolicy() } };
 
 const emptyQuote: GlobalQuoteOutput = { symbol: '', price: '', latestTradingDay: '' };
-const emptyDailySeries: DailySeriesOutput = { symbol: '', days: null };
+const emptyDailySeries: DailySeriesOutput = { symbol: '', days: [] };
 const symbolPattern = /^[A-Za-z0-9][A-Za-z0-9._-]{0,24}$/;
 
 type Branches = { found: string; notFound: string; providerRejected: string; invalidResponse: string; defect: string };
