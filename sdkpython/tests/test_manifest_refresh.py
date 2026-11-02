@@ -8,6 +8,7 @@ import pickle
 from copy import deepcopy
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs
 
@@ -72,6 +73,127 @@ AUTH = {
 FIELDS = {
     name: name for name in ("access_token", "refresh_token", "client_id", "client_secret", "instance_url")
 }
+
+
+@pytest.mark.asyncio
+async def test_schema_decoded_jira_and_slack_auth_refresh_with_planned_fields() -> None:
+    """Real decoded declarations accept Jira's omitted type and Slack's bot/user types."""
+    # schema.Decode(connector.yaml) JSON-encodes Spec.Auth; add planned token-type fields.
+    fixture_dir = Path(__file__).parent / "fixtures"
+    jira_auth = json.loads((fixture_dir / "jira-auth.json").read_text())
+    slack_auth = json.loads((fixture_dir / "slack-auth.json").read_text())
+
+    @dataclass(frozen=True)
+    class JiraCredentials:
+        oauth_client_id: str
+        oauth_client_secret: SecretString
+        access_token: SecretString
+        refresh_token: SecretString
+
+    jira_credentials = JiraCredentials(
+        "client", SecretString("secret"), SecretString("old"), SecretString("jira-old")
+    )
+    jira_fields = {name: name for name in (
+        "oauth_client_id", "oauth_client_secret", "access_token", "refresh_token"
+    )}
+
+    def jira_response(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={
+            "access_token": "jira-new", "refresh_token": "jira-rotated", "expires_in": 3600,
+            "scope": "read:jira-work write:jira-work",
+        })
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(jira_response)) as client:
+        jira_driver = ManifestCredentialRefreshDriver[JiraCredentials]("Jira", jira_auth, jira_fields, client)
+        jira_result = await jira_driver.refresh(
+            CredentialRefreshState(jira_credentials, None, datetime.now(UTC))
+        )
+        assert jira_result.credentials.refresh_token.reveal() == "jira-rotated"
+
+    @dataclass(frozen=True)
+    class SlackCredentials:
+        oauth_client_id: str
+        oauth_client_secret: SecretString
+        bot_token: SecretString
+        bot_refresh_token: SecretString
+        user_token: SecretString
+        user_refresh_token: SecretString
+
+    slack_credentials = SlackCredentials(
+        "client", SecretString("secret"), SecretString("old"), SecretString("bot-old"),
+        SecretString("old"), SecretString("user-old"),
+    )
+    slack_fields = {name: name for name in (
+        "oauth_client_id", "oauth_client_secret", "bot_token", "bot_refresh_token",
+        "user_token", "user_refresh_token",
+    )}
+    scopes = slack_auth["oauth2"]["scopes"]
+    user_scopes = slack_auth["oauth2"]["userScopes"]
+    requests: list[str] = []
+
+    def slack_response(request: httpx.Request) -> httpx.Response:
+        prior = parse_qs(request.content.decode())["refresh_token"][0]
+        requests.append(prior)
+        if prior == "bot-old":
+            return httpx.Response(200, json={
+                "access_token": "bot-new", "refresh_token": "bot-rotated", "expires_in": 3600,
+                "token_type": "bot", "scope": ",".join(scopes),
+            })
+        return httpx.Response(200, json={
+            "access_token": "user-new", "refresh_token": "user-rotated", "expires_in": 3600,
+            "token_type": "user", "scope": ",".join(user_scopes),
+        })
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(slack_response)) as client:
+        slack_driver = ManifestCredentialRefreshDriver[SlackCredentials](
+            "Slack", slack_auth, slack_fields, client
+        )
+        slack_result = await slack_driver.refresh(
+            CredentialRefreshState(slack_credentials, None, datetime.now(UTC))
+        )
+        assert requests == ["bot-old", "user-old"]
+        assert slack_result.credentials.user_refresh_token.reveal() == "user-rotated"
+
+
+@pytest.mark.asyncio
+async def test_manifest_validates_all_grants_and_go_durations_before_exchange() -> None:
+    """A local mapping or lifetime error cannot consume a one-use refresh token."""
+    auth: dict[str, Any] = deepcopy(AUTH)
+    refresh = auth["methods"][0]["oauth2"]["refresh"]
+    refresh["missingExpiry"] = {"lifetime": "1h2m3.5s4ms5us6ns"}
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json={
+            "access_token": "next", "refresh_token": "rotated", "token_type": "Bearer",
+        })
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+        driver = ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)
+        now = datetime.now(UTC)
+        state = CredentialRefreshState(
+            Credentials(SecretString("old"), SecretString("prior")), None, now
+        )
+        result = await driver.refresh(state)
+        assert result.credentials.refresh_token.reveal() == "rotated"
+        assert result.expires_at > now + timedelta(seconds=3723)
+        refresh["missingExpiry"] = {"lifetime": "1fortnight"}
+        with pytest.raises(ValueError, match="duration"):
+            await driver.refresh(state)
+        assert len(requests) == 1
+        refresh["missingExpiry"] = "keep"
+        refresh["grants"] = [
+            {"refreshTokenCredential": "refresh_token", "credentialMappings": [
+                {"credential": "access_token", "source": "access_token"},
+            ]},
+            {"refreshTokenCredential": "refresh_token", "credentialMappings": [
+                {"credential": "unknown", "source": "access_token"},
+            ]},
+        ]
+        with pytest.raises(ValueError, match="mapped"):
+            await driver.refresh(state)
+        assert len(requests) == 1
 
 
 @pytest.mark.asyncio
@@ -563,3 +685,24 @@ async def test_manifest_jwt_bearer_resolves_key_sources_and_copies_identity() ->
     assert decoded_claims["aud"] == "https://oauth.example.test/token"
     assert decoded_claims["scope"] == "mail.read offline_access"
     assert decoded_claims["exp"] - decoded_claims["iat"] == 3600
+
+    invalid_auth: dict[str, Any] = deepcopy(auth)
+    invalid_auth["serviceAccount"]["jwtBearer"]["lifetime"] = "invalid"
+    invalid_requests: list[httpx.Request] = []
+
+    def reject_request(request: httpx.Request) -> httpx.Response:
+        invalid_requests.append(request)
+        raise httpx.ConnectError("temporary network failure")
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(reject_request)) as client:
+        invalid = ManifestCredentialRefreshDriver[DelegatedCredentials](
+            "Example", invalid_auth, fields, client
+        )
+        with pytest.raises(ValueError, match="duration"):
+            await invalid.refresh(CredentialRefreshState(credentials, None, datetime.now(UTC)))
+        assert not invalid_requests
+        retryable = ManifestCredentialRefreshDriver[DelegatedCredentials](
+            "Example", auth, fields, client
+        )
+        with pytest.raises(OSError, match="unavailable"):
+            await retryable.refresh(CredentialRefreshState(credentials, None, datetime.now(UTC)))
