@@ -142,7 +142,24 @@ declaration and the generated credential field map. It performs refresh-token,
 client-credentials, and JWT-bearer grants, retains rotated refresh material,
 checks returned scopes, and replaces only mapped credential fields. The caller
 supplies an `httpx.AsyncClient` and startup-pinned connection settings; project
-credential providers still own admission and persistence. A response without
+credential providers still own admission and persistence. Its constructor takes
+`provider_name`, the manifest `spec.auth` object, a mapping from manifest field
+names to frozen dataclass attributes, and the caller-owned HTTP client. Optional
+`settings` resolves manifest setting sources, and optional `now` supplies a UTC
+clock for expiry and JWT claims. A credential dataclass for an authorization
+declaration with `methods` must expose `auth_method_id`; an empty value selects
+the manifest's `defaultMethod`.
+
+The manifest's `missingExpiry` declaration controls the decision when stored
+expiry is absent: `keep` (the default) leaves a present access token in place,
+and a declared lifetime refreshes it. The driver accepts
+`acceptsMissingTokenType: true` in a refresh declaration for a provider that
+omits `token_type`; the current manifest schema does not yet expose this key.
+The default requires `token_type`. Only an optional
+client secret field may send a public-client refresh request when blank.
+Missing grant material and declared terminal provider errors raise
+`ReauthorizationRequiredError`; transport, invalid response, and undeclared
+provider errors preserve the stored credential for retry. A response without
 `expires_in` returns an expired result when the manifest declares `keep`; the
 current project provider rejects that result without changing stored material.
 

@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from typing import Any
-from urllib.parse import urlsplit
+from urllib.parse import urlencode, urlsplit
 
 import httpx
 from cryptography.hazmat.primitives import hashes, serialization
@@ -105,20 +105,16 @@ class TokenResponse:
     scope: str
     token_type: str
     retained_fields: dict[str, object] = field(default_factory=dict, repr=False)
-    _response_fields: dict[str, object] = field(default_factory=dict, repr=False)
+    _response_fields: dict[str, SecretString] = field(default_factory=dict, repr=False)
 
     def next_refresh_token(self, prior: SecretString) -> SecretString:
         """Use rotated refresh material when present, otherwise retain the prior token."""
         return self.refresh_token if self.refresh_token.reveal() else prior
 
-    def credential_value(self, path: str) -> str | None:
-        """Read one manifest-mapped string without exposing the token response in repr."""
-        value: object = self._response_fields
-        for member in path.split("."):
-            if not isinstance(value, dict) or member not in value:
-                return None
-            value = value[member]
-        return value if isinstance(value, str) else None
+    def mapped_response_string(self, path: str) -> str | None:
+        """Read a manifest-mapped string from redacted response material."""
+        value = self._response_fields.get(path)
+        return value.reveal() if value is not None else None
 
 
 @dataclass(frozen=True, slots=True)
@@ -207,8 +203,13 @@ class TokenEndpoint:
         request = self.http_client.build_request(
             "POST", self.url,
             json=parameters if self.uses_json_request_body else None,
-            data=None if self.uses_json_request_body else parameters,
-            headers={"Accept": "application/json"},
+            content=None if self.uses_json_request_body else urlencode(sorted(parameters.items())),
+            headers={
+                "Accept": "application/json",
+                **({} if self.uses_json_request_body else {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                }),
+            },
         )
         if basic_client is not None:
             request.headers["Authorization"] = httpx.BasicAuth(
@@ -260,8 +261,22 @@ class TokenEndpoint:
             SecretString(access_token), SecretString(refresh_token), timedelta(seconds=expires_in),
             timedelta(seconds=max(0, refresh_expiry)), scope, token_type,
             {name: decoded[name] for name in self.retained_response_fields if name in decoded},
-            decoded,
+            _redact_response_strings(decoded),
         )
+
+
+def _redact_response_strings(response: dict[str, object]) -> dict[str, SecretString]:
+    redacted: dict[str, SecretString] = {}
+    pending: list[tuple[str, object]] = [("", response)]
+    while pending:
+        path, value = pending.pop()
+        if isinstance(value, str):
+            redacted[path] = SecretString(value)
+        elif isinstance(value, dict):
+            for member, nested in value.items():
+                if isinstance(member, str):
+                    pending.append((f"{path}.{member}" if path else member, nested))
+    return redacted
 
 
 @dataclass(frozen=True, slots=True)
