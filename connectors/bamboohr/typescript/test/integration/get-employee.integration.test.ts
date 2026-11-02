@@ -26,13 +26,15 @@ it('reads an employee through a real Dex Worker and fails an unwired rejection',
     response.writeHead(200, { 'Content-Type': 'application/json' });
     response.end(JSON.stringify({ id: '123', firstName: 'Ava', workEmail: 'ava@example.com' }));
   });
-  server.listen(21152, '127.0.0.1');
+  server.listen(0, '127.0.0.1');
   await once(server, 'listening');
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('BambooHR fixture port unavailable');
   const directory = await mkdtemp(join(tmpdir(), 'dex-bamboohr-integration-'));
   const cache = openBlobCache({ directory, maxBytes: 64 * 1024 * 1024 });
   const provider = new BambooHRClient({ companyDomain: 'acme' }, {
     resolve: async () => ({ apiKey: new SecretString('0123456789abcdef' + '0123456789abcdef01234567') }),
-  }, { apiBaseURL: 'http://127.0.0.1:21152/api/v1' });
+  }, { apiBaseURL: `http://127.0.0.1:${address.port}/api/v1` });
   const flow = new GetEmployeeFlow(newConnection(provider, { provider: 'bamboohr', name: ConnectionName }));
   const registry = new Registry([flow]);
   const worker = new Worker(registry, cache, { serverAddress: dexAddress });

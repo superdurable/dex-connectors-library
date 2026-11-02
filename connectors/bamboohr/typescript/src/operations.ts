@@ -28,8 +28,9 @@ export class GetEmployeeOperation implements Query<GetEmployeeInput, EmployeeRec
   async invoke(call: Call, input: GetEmployeeInput): Promise<QueryAttempt<EmployeeRecord>> {
     try { requireEmployeeId(input.employeeId); validateRequestedFields(input.fields, 1, 400); }
     catch { return defectQuery('getEmployee', zeroRecord); }
-    const key = await this.client.resolveKey(call);
-    if (!key) return defectQuery('getEmployee', zeroRecord, 'AUTHENTICATION');
+    const credential = await this.client.resolveKey(call);
+    if (credential.kind !== 'resolved') return defectQuery('getEmployee', zeroRecord, 'AUTHENTICATION');
+    const key = credential.key;
     const query = new URLSearchParams({ fields: input.fields!.join(',') });
     if (input.includeFutureValues) query.set('onlyCurrent', 'false');
     const result = await this.client.exchange(call, 'getEmployee', key, 'GET', `/employees/${input.employeeId}`, query);
@@ -48,8 +49,9 @@ export class FindEmployeeByEmailOperation implements Query<FindEmployeeByEmailIn
   async invoke(call: Call, input: FindEmployeeByEmailInput): Promise<QueryAttempt<FindEmployeeByEmailOutput>> {
     const emailField = input.emailField || 'workEmail';
     if (!isBareEmail(input.email) || !['workEmail', 'homeEmail'].includes(emailField) || (input.status && !['active', 'inactive'].includes(input.status)) || (input.fields?.length ?? 0) > 20 || input.fields?.some(field => !fieldNamePattern.test(field))) return defectQuery('findEmployeeByEmail', zeroFind);
-    const key = await this.client.resolveKey(call);
-    if (!key) return defectQuery('findEmployeeByEmail', zeroFind, 'AUTHENTICATION');
+    const credential = await this.client.resolveKey(call);
+    if (credential.kind !== 'resolved') return defectQuery('findEmployeeByEmail', zeroFind, 'AUTHENTICATION');
+    const key = credential.key;
     const fields = ['workEmail', 'homeEmail', ...(input.fields ?? []).filter(field => !summaryFields.has(field) && !['workEmail', 'homeEmail'].includes(field))];
     const query = new URLSearchParams({ [`filter[${emailField}]`]: input.email, fields: fields.join(','), sort: 'employeeId', 'page[limit]': '100' });
     if (input.status) query.set('filter[status]', input.status);
@@ -83,8 +85,9 @@ export class ListEmployeeChangesOperation implements Query<ListEmployeeChangesIn
     const limit = input.limit || 100;
     const sinceMs = Date.parse(input.since);
     if (!Number.isFinite(sinceMs) || sinceMs <= 0 || (input.afterEmployeeId && !employeeIdPattern.test(input.afterEmployeeId)) || (input.changeType && !['inserted', 'updated', 'deleted'].includes(input.changeType)) || !Number.isInteger(limit) || limit < 1 || limit > 1000) return defectQuery('listEmployeeChanges', zeroChanges);
-    const key = await this.client.resolveKey(call);
-    if (!key) return defectQuery('listEmployeeChanges', zeroChanges, 'AUTHENTICATION');
+    const credential = await this.client.resolveKey(call);
+    if (credential.kind !== 'resolved') return defectQuery('listEmployeeChanges', zeroChanges, 'AUTHENTICATION');
+    const key = credential.key;
     const query = new URLSearchParams({ since: isoSeconds(sinceMs - 1000) });
     if (input.changeType) query.set('type', input.changeType);
     const result = await this.client.exchange(call, 'listEmployeeChanges', key, 'GET', '/employees/changed', query);
@@ -120,8 +123,9 @@ export class ListTimeOffRequestsOperation implements Query<ListTimeOffRequestsIn
     const page = input.page || 1;
     const pageSize = input.pageSize || 100;
     if (!isCivilDate(input.startDate) || !isCivilDate(input.endDate) || input.endDate < input.startDate || (input.employeeId && !employeeIdPattern.test(input.employeeId)) || input.statuses?.some(status => !['REQUESTED', 'APPROVED', 'DENIED', 'CANCELED'].includes(status)) || !Number.isInteger(page) || page < 1 || page > 2147483647 || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 200) return defectQuery('listTimeOffRequests', zeroTimeOff);
-    const key = await this.client.resolveKey(call);
-    if (!key) return defectQuery('listTimeOffRequests', zeroTimeOff, 'AUTHENTICATION');
+    const credential = await this.client.resolveKey(call);
+    if (credential.kind !== 'resolved') return defectQuery('listTimeOffRequests', zeroTimeOff, 'AUTHENTICATION');
+    const key = credential.key;
     const query = new URLSearchParams({ filter: buildTimeOffRequestFilter(input), page: String(page), pageSize: String(pageSize) });
     const result = await this.client.exchange(call, 'listTimeOffRequests', key, 'GET', '/time-off/requests', query);
     const branch = exchangeQuery(this.client, call, result, zeroTimeOff, input.employeeId ?? '');
@@ -154,8 +158,9 @@ export class UpdateEmployeeOperation implements Mutation<UpdateEmployeeInput, Up
   async invoke(call: Call, input: UpdateEmployeeInput): Promise<MutationAttempt<UpdateEmployeeOutput>> {
     try { requireEmployeeId(input.employeeId); validateWrittenFields(input.fields, 1, new Set([...historyFields, ...ignoredFields])); }
     catch { return defectMutation('updateEmployee', zeroUpdate); }
-    const key = await this.client.resolveKey(call);
-    if (!key) return defectMutation('updateEmployee', zeroUpdate, 'AUTHENTICATION');
+    const credential = await this.client.resolveKey(call);
+    if (credential.kind !== 'resolved') return defectMutation('updateEmployee', zeroUpdate, 'AUTHENTICATION');
+    const key = credential.key;
     const fieldNames = Object.keys(input.fields!).sort();
     const receipt = this.client.receipt(call, input.employeeId);
     const read = async (value: UpdateEmployeeOutput): Promise<EmployeeRecord | MutationAttempt<UpdateEmployeeOutput>> => {
@@ -199,8 +204,9 @@ export class AddEmployeeOperation implements Mutation<AddEmployeeInput, AddEmplo
     if (decision.kind === 'readBackRequired') {
       const employeeId = decision.marker?.providerId;
       if (!employeeId || decision.marker?.callId !== call.id || !employeeIdPattern.test(employeeId)) return newMutationUncertain(zeroAdd, failure('addEmployee', 'TRANSPORT', 'an earlier attempt may have sent the request; no employee ID is available for read-back'), receipt);
-      const key = await this.client.resolveKey(call);
-      if (!key) return newMutationRetry(failure('addEmployee', 'AUTHENTICATION', 'connection credentials are unavailable'));
+      const credential = await this.client.resolveKey(call);
+      if (credential.kind !== 'resolved') return newMutationRetry(failure('addEmployee', 'AUTHENTICATION', 'connection credentials are unavailable'));
+      const key = credential.key;
       const result = await this.client.exchange(call, 'addEmployee', key, 'GET', `/employees/${employeeId}`);
       if (result.kind === 'success') {
         try { if (decodeEmployeeId(asObject(parseBody(result)).id) === employeeId) return newMutationBranch('created', { employeeId }, this.client.receipt(call, employeeId)); }
@@ -210,12 +216,13 @@ export class AddEmployeeOperation implements Mutation<AddEmployeeInput, AddEmplo
       if (result.kind === 'notFound' || result.kind === 'rejected') return newMutationUncertain(zeroAdd, result.failure, this.client.receipt(call, employeeId));
       return newMutationRetry(result.failure, result.retryAfterMs);
     }
-    const key = await this.client.resolveKey(call);
-    if (!key) {
+    const credential = await this.client.resolveKey(call);
+    if (credential.kind !== 'resolved') {
       try { await fence.recordNotSent(); }
       catch { return newMutationRetry(failure('addEmployee', 'AVAILABILITY', 'credentials and not-sent checkpoint are unavailable')); }
-      return defectMutation('addEmployee', zeroAdd, 'AUTHENTICATION');
+      return credential.kind === 'terminal' ? defectMutation('addEmployee', zeroAdd, 'AUTHENTICATION') : newMutationRetry(failure('addEmployee', 'AVAILABILITY', 'connection credentials could not be read'));
     }
+    const key = credential.key;
     const payload: Record<string, string> = { ...(input.fields ?? {}), firstName: input.firstName, lastName: input.lastName };
     for (const field of ['preferredName', 'workEmail', 'homeEmail', 'hireDate'] as const) if (input[field]) payload[field] = input[field]!;
     let result: BambooHRExchange;

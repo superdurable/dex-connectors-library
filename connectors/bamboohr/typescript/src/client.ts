@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 import { BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
 import type { Config, Credentials } from './generated/models.js';
 import { AddEmployeeOperation, FindEmployeeByEmailOperation, GetEmployeeOperation, ListEmployeeChangesOperation, ListTimeOffRequestsOperation, UpdateEmployeeOperation } from './operations.js';
 
@@ -20,6 +21,9 @@ export interface BambooHRClientOptions {
 export type BambooHRExchange =
   | { kind: 'success'; response: ProviderResponse }
   | { kind: 'notFound' | 'rateLimited' | 'notSent' | 'unavailable' | 'rejected' | 'invalid' | 'defect'; failure: Failure; retryAfterMs: number };
+
+/** Credential outcome before any provider request. */
+export type BambooHRCredentialResult = { kind: 'resolved'; key: string } | { kind: 'terminal' | 'transient' };
 
 /** Authenticated BambooHR API v1 client. */
 export class BambooHRClient {
@@ -54,17 +58,20 @@ export class BambooHRClient {
   }
 
   /** Resolve credentials before every request. */
-  async resolveKey(call: Call): Promise<string | undefined> {
+  async resolveKey(call: Call): Promise<BambooHRCredentialResult> {
     try {
       const credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
-      if (!(credentials.apiKey instanceof SecretString)) return undefined;
+      if (!(credentials.apiKey instanceof SecretString)) return { kind: 'terminal' };
       const key = credentials.apiKey.reveal();
-      return key && isHeaderSafeCredential(key) && !key.includes(':') ? key : undefined;
-    } catch { return undefined; }
+      return key && isHeaderSafeCredential(key) && !key.includes(':') ? { kind: 'resolved', key } : { kind: 'terminal' };
+    } catch (error) {
+      return { kind: error instanceof ReauthorizationRequiredError || error instanceof ObjectNotFoundError || error instanceof ConnectionNotSelectedError || error instanceof CredentialBrokerRejectedError ? 'terminal' : 'transient' };
+    }
   }
 
   /** Send one bounded request and classify the provider result. */
   async exchange(call: Call, operation: string, key: string, method: string, path: string, query?: URLSearchParams, payload?: unknown, signal?: AbortSignal): Promise<BambooHRExchange> {
+    const endpointURL = new URL(this.endpoint);
     const url = this.endpoint + path + (query && [...query].length ? `?${query.toString()}` : '');
     const headers: Record<string, string> = { Accept: 'application/json', Authorization: `Basic ${Buffer.from(`${key}:x`).toString('base64')}` };
     let body: Uint8Array | undefined;
@@ -75,7 +82,7 @@ export class BambooHRClient {
     let response: ProviderResponse;
     try {
       response = await this.send({ url, method, headers, ...(body ? { body } : {}), maxResponseBytes: this.maxResponseBytes,
-        addressPolicy: this.endpoint.startsWith('https://') && !this.endpoint.includes('localhost') && !this.endpoint.includes('127.0.0.1') ? 'publicHTTPS' : 'privateNetworkHTTP',
+        addressPolicy: endpointURL.protocol === 'https:' && !['localhost', '127.0.0.1', '[::1]'].includes(endpointURL.hostname) ? 'publicHTTPS' : 'privateNetworkHTTP',
         timeoutMs: 9_000, signal: signal ?? call.context.cancellationSignal });
     } catch (error) {
       if (error instanceof BodyTooLargeError) {
