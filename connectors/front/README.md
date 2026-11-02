@@ -8,6 +8,8 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/front`.
 > [verification status](../../docs/verification-status.md) for what is and
 > is not verified.
 
+The [TypeScript package](typescript/README.md) implements all five operations at v0.1.0. Its [find-contact example](typescript/examples/find-contact/) runs through a real Dex Worker and Client against a local provider fixture; live Front behavior remains unverified.
+
 The Front connector connects a Dex application to the
 [Front Core API](https://dev.frontapp.com/reference/introduction):
 
