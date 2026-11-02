@@ -43,6 +43,7 @@ test("development reads the local catalog and production reads the site copy", (
     catalogDocumentUrl(false, "/dex-connectors-library/"),
     "/dex-connectors-library/catalog.yaml",
   );
+  assert.equal(catalogDocumentUrl(false, "./"), "./catalog.yaml");
 });
 
 test("catalog text exposes company, UI units, operations, and triggers", () => {
