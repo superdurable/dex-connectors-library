@@ -1,82 +1,36 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Manifest-backed Smartsheet scripts for consuming Flow tests."""
+"""Public manifest-backed mock helpers."""
 
-from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
-from dex_connectors.sdk.connectormock import Case, Query
+from dex_connectors.sdk import ConnectionRef as ConnectionRef
+from dex_connectors.sdk import Failure as Failure
+from dex_connectors.sdk import FailureKind as FailureKind
+from dex_connectors.sdk.connectormock import Case as Case
+from dex_connectors.sdk.connectormock import Query as Query
 
-from ..client import (
-    CONNECTOR_ID,
-    FOUND,
-    GET_SHEET_DEFINITION,
-    LIST_SHEETS_DEFINITION,
-    LISTED,
-    NOT_FOUND,
-    PROVIDER_REJECTED,
-)
-from ..connection import Connection, new_connection_with_operations
-from ..models import GetSheetInput, ListSheetsInput, Sheet, SheetColumn, SheetPage, SheetSummary
-
-
-def list_sheets_listed(value: SheetPage, failure: Failure | None = None) -> Case[SheetPage]:
-    """Script the successful listed route."""
-    return Case.branch_result(LISTED, value, failure)
-
-
-def list_sheets_default_answer() -> Case[SheetPage]:
-    """Return the manifest's listSheets defaultAnswer."""
-    return list_sheets_listed(SheetPage((SheetSummary(1001, "Meridian Planning"),), 1, 1))
-
-
-def list_sheets_invalid_key() -> Case[SheetPage]:
-    """Return the manifest's listSheets invalidKey answer."""
-    return Case.branch_result(
-        PROVIDER_REJECTED,
-        SheetPage(),
-        Failure(FailureKind.AUTHENTICATION, CONNECTOR_ID, "listSheets", "Smartsheet rejected the token."),
-    )
-
-
-def get_sheet_found(value: Sheet, failure: Failure | None = None) -> Case[Sheet]:
-    """Script the successful found route."""
-    return Case.branch_result(FOUND, value, failure)
-
-
-def get_sheet_not_found(value: Sheet, failure: Failure | None = None) -> Case[Sheet]:
-    """Script a missing sheet."""
-    return Case.branch_result(NOT_FOUND, value, failure)
-
-
-def get_sheet_default_answer() -> Case[Sheet]:
-    """Return the manifest's getSheet defaultAnswer."""
-    return get_sheet_found(Sheet(1001, "Meridian Planning", (SheetColumn(2001, "Task"),), ()))
-
-
-def get_sheet_invalid_key() -> Case[Sheet]:
-    """Return the manifest's getSheet invalidKey answer."""
-    return Case.branch_result(
-        PROVIDER_REJECTED,
-        Sheet(),
-        Failure(FailureKind.AUTHENTICATION, CONNECTOR_ID, "getSheet", "Smartsheet rejected the token."),
-    )
-
-
-class Mock:
-    """Script Smartsheet Queries, defaulting to their manifest answers."""
-
-    def __init__(self, connection_name: str = "smartsheet") -> None:
-        self.list_sheets_script: Query[ListSheetsInput, SheetPage] = Query(LIST_SHEETS_DEFINITION)
-        self.list_sheets_script.default(list_sheets_default_answer())
-        self.get_sheet_script: Query[GetSheetInput, Sheet] = Query(GET_SHEET_DEFINITION)
-        self.get_sheet_script.default(get_sheet_default_answer())
-        self._connection = new_connection_with_operations(
-            self.list_sheets_script, self.get_sheet_script, ConnectionRef(CONNECTOR_ID, connection_name)
-        )
-
-    def connection(self) -> Connection:
-        """Return this mock's named connection for Step registration."""
-        return self._connection
-
+from .._generated.mock import Mock as Mock
+from .._generated.mock import get_sheet_default_answer as get_sheet_default_answer
+from .._generated.mock import get_sheet_found as get_sheet_found
+from .._generated.mock import get_sheet_invalid_key as get_sheet_invalid_key
+from .._generated.mock import get_sheet_not_found as get_sheet_not_found
+from .._generated.mock import list_sheets_default_answer as list_sheets_default_answer
+from .._generated.mock import list_sheets_invalid_key as list_sheets_invalid_key
+from .._generated.mock import list_sheets_listed as list_sheets_listed
+from ..client import CONNECTOR_ID as CONNECTOR_ID
+from ..client import FOUND as FOUND
+from ..client import GET_SHEET_DEFINITION as GET_SHEET_DEFINITION
+from ..client import LIST_SHEETS_DEFINITION as LIST_SHEETS_DEFINITION
+from ..client import LISTED as LISTED
+from ..client import NOT_FOUND as NOT_FOUND
+from ..client import PROVIDER_REJECTED as PROVIDER_REJECTED
+from ..connection import Connection as Connection
+from ..connection import new_connection_with_operations as new_connection_with_operations
+from ..models import GetSheetInput as GetSheetInput
+from ..models import ListSheetsInput as ListSheetsInput
+from ..models import Sheet as Sheet
+from ..models import SheetColumn as SheetColumn
+from ..models import SheetPage as SheetPage
+from ..models import SheetSummary as SheetSummary
 
 __all__ = [
     "Mock",
@@ -88,3 +42,13 @@ __all__ = [
     "get_sheet_default_answer",
     "get_sheet_invalid_key",
 ]
+
+Mock.__doc__ = "Script Smartsheet Queries, defaulting to their manifest answers."
+
+list_sheets_listed.__doc__ = "Script the successful listed route."
+list_sheets_default_answer.__doc__ = "Return the manifest's listSheets defaultAnswer."
+list_sheets_invalid_key.__doc__ = "Return the manifest's listSheets invalidKey answer."
+get_sheet_found.__doc__ = "Script the successful found route."
+get_sheet_not_found.__doc__ = "Script a missing sheet."
+get_sheet_default_answer.__doc__ = "Return the manifest's getSheet defaultAnswer."
+get_sheet_invalid_key.__doc__ = "Return the manifest's getSheet invalidKey answer."

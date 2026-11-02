@@ -4,25 +4,26 @@
 
 import json
 import re
-from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from dataclasses import dataclass as dataclass
+from datetime import UTC, datetime
+from datetime import timedelta as timedelta
 from typing import Any
 
 import httpx
+from dex_connectors.sdk import BranchDefinition as BranchDefinition
 from dex_connectors.sdk import (
-    BranchDefinition,
     Call,
     CredentialProvider,
     Failure,
     FailureKind,
-    OperationRef,
     QueryAttempt,
     QueryDefinition,
     ReauthorizationRequiredError,
     Receipt,
-    SecretString,
-    StepDefaults,
 )
+from dex_connectors.sdk import OperationRef as OperationRef
+from dex_connectors.sdk import SecretString as SecretString
+from dex_connectors.sdk import StepDefaults as StepDefaults
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -35,16 +36,39 @@ from dex_connectors.sdk.providerhttp import (
     send_traced,
     validate_base_url,
 )
-from dex_connectors.sdk.retry_policy import default_connector_step_execute_retry_policy
+from dex_connectors.sdk.retry_policy import (
+    default_connector_step_execute_retry_policy as default_connector_step_execute_retry_policy,
+)
 
+from ._generated.config import (
+    Config as Config,
+)
+from ._generated.config import (
+    Credentials as Credentials,
+)
+from ._generated.definitions import (
+    CONNECTOR_ID as CONNECTOR_ID,
+)
+from ._generated.definitions import (
+    DEFECT as DEFECT,
+)
+from ._generated.definitions import (
+    INVALID_RESPONSE as INVALID_RESPONSE,
+)
+from ._generated.definitions import (
+    PROVIDER_REJECTED as PROVIDER_REJECTED,
+)
+from ._generated.definitions import (
+    SEARCH_ARTICLES_DEFINITION as SEARCH_ARTICLES_DEFINITION,
+)
+from ._generated.definitions import (
+    SEARCH_ARTICLES_OPERATION_ID as SEARCH_ARTICLES_OPERATION_ID,
+)
+from ._generated.definitions import (
+    SEARCHED as SEARCHED,
+)
 from .models import Article, ArticlePage, ArticleSource, SearchArticlesInput
 
-CONNECTOR_ID = "newsapi"
-SEARCH_ARTICLES_OPERATION_ID = "searchArticles"
-SEARCHED = "searched"
-PROVIDER_REJECTED = "providerRejected"
-INVALID_RESPONSE = "invalidResponse"
-DEFECT = "defect"
 SEARCH_IN_FIELDS = ("title", "description", "content")
 LANGUAGES = ("ar", "de", "en", "es", "fr", "he", "it", "nl", "no", "pt", "ru", "sv", "ud", "zh")
 SORT_ORDERS = ("publishedAt", "relevancy", "popularity")
@@ -60,37 +84,6 @@ _DOCUMENTED_CODES = (
     *_AUTHENTICATION_CODES,
     *_PARAMETER_CODES,
 )
-SEARCH_ARTICLES_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, SEARCH_ARTICLES_OPERATION_ID),
-    (
-        BranchDefinition(SEARCHED, "NewsAPI returned one page of matching articles, possibly empty."),
-        BranchDefinition(
-            PROVIDER_REJECTED,
-            "NewsAPI conclusively rejected the search, such as an invalid or exhausted API key, "
-            "a request the plan does not permit, or an unknown source.",
-            True,
-        ),
-        BranchDefinition(INVALID_RESPONSE, "NewsAPI returned malformed or oversized data.", True),
-        BranchDefinition(DEFECT, "Local input, connection configuration, or credentials are invalid.", True),
-    ),
-    StepDefaults(timedelta(seconds=30), 2, execute_retry=default_connector_step_execute_retry_policy()),
-)
-
-
-@dataclass(frozen=True, slots=True)
-class Config:
-    """NewsAPI HTTP settings; zero or blank values use manifest defaults."""
-
-    base_url: str = "https://newsapi.org/v2"
-    timeout_seconds: float = 15
-    max_response_bytes: int = 2_097_152
-
-
-@dataclass(frozen=True, slots=True)
-class Credentials:
-    """NewsAPI API key, resolved anew for every provider attempt."""
-
-    api_key: SecretString
 
 
 class Client:
@@ -394,3 +387,7 @@ def _nullable_string_field(document: dict[str, Any], name: str) -> str | None:
     if value is not None and not isinstance(value, str):
         raise ValueError
     return value
+
+
+Config.__doc__ = "NewsAPI HTTP settings; zero or blank values use manifest defaults."
+Credentials.__doc__ = "NewsAPI API key, resolved anew for every provider attempt."

@@ -3,7 +3,10 @@
 """Typed NewsAPI search inputs and article pages."""
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+
+from ._generated.models import Article as Article
+from ._generated.models import ArticlePage as ArticlePage
+from ._generated.models import ArticleSource as ArticleSource
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,36 +30,6 @@ class SearchArticlesInput:
     page: int = field(default=0, metadata={"dex_json_omit_default": True})
 
 
-@dataclass(frozen=True, slots=True)
-class ArticleSource:
-    """NewsAPI publisher identity; ID can be absent."""
-
-    id: str | None = None
-    name: str = ""
-
-
-@dataclass(frozen=True, slots=True)
-class Article:
-    """Provider article, including nullable fields and untrusted display text."""
-
-    source: ArticleSource = field(default_factory=ArticleSource)
-    author: str | None = None
-    title: str = ""
-    description: str | None = None
-    url: str = ""
-    url_to_image: str | None = field(default=None, metadata={"dex_json_name": "urlToImage"})
-    published_at: datetime = field(
-        default_factory=lambda: datetime.min.replace(tzinfo=UTC),
-        metadata={"dex_json_name": "publishedAt", "dex_json_format": "rfc3339"},
-    )
-    content: str | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class ArticlePage:
-    """One page of article matches and NewsAPI's total result count."""
-
-    total_results: int = field(default=0, metadata={"dex_json_name": "totalResults"})
-    articles: tuple[Article, ...] = ()
-    page: int = 0
-    has_more: bool = field(default=False, metadata={"dex_json_name": "hasMore"})
+ArticleSource.__doc__ = "NewsAPI publisher identity; ID can be absent."
+Article.__doc__ = "Provider article, including nullable fields and untrusted display text."
+ArticlePage.__doc__ = "One page of article matches and NewsAPI's total result count."

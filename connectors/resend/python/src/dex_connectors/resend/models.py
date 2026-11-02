@@ -4,6 +4,9 @@
 
 from dataclasses import dataclass, field
 
+from ._generated.models import GetEmailInput as GetEmailInput
+from ._generated.models import SentEmail as SentEmail
+
 
 @dataclass(frozen=True, slots=True)
 class SendEmailInput:
@@ -16,20 +19,6 @@ class SendEmailInput:
 
 
 @dataclass(frozen=True, slots=True)
-class SentEmail:
-    """Resend's identifier for an accepted email."""
-
-    id: str = ""
-
-
-@dataclass(frozen=True, slots=True)
-class GetEmailInput:
-    """Resend email identifier returned by sendEmail."""
-
-    id: str = ""
-
-
-@dataclass(frozen=True, slots=True)
 class Email:
     """Stored Resend email summary; created_at is Resend's timestamp text."""
 
@@ -38,3 +27,7 @@ class Email:
     to: tuple[str, ...] = ()
     subject: str = ""
     created_at: str = ""
+
+
+SentEmail.__doc__ = "Resend's identifier for an accepted email."
+GetEmailInput.__doc__ = "Resend email identifier returned by sendEmail."

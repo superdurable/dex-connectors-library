@@ -1,52 +1,42 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Manifest-backed Supabase scripts for consuming Flow tests."""
+"""Public manifest-backed mock helpers."""
 
-from dex_connectors.sdk import ConnectionRef, Failure
-from dex_connectors.sdk.connectormock import Case, Mutation, Query
+from dex_connectors.sdk import ConnectionRef as ConnectionRef
+from dex_connectors.sdk import Failure as Failure
+from dex_connectors.sdk.connectormock import Case as Case
+from dex_connectors.sdk.connectormock import Case as _Case
+from dex_connectors.sdk.connectormock import Mutation as Mutation
+from dex_connectors.sdk.connectormock import Query as Query
 
-from ..client import CONNECTOR_ID, SELECT_ROWS_DEFINITION, SELECTED, UPSERT_ROWS_DEFINITION, UPSERTED
-from ..connection import Connection, new_connection_with_operations
-from ..models import SelectRowsInput, SelectRowsOutput, UpsertRowsInput, UpsertRowsOutput
+from .._generated.mock import Mock as Mock
+from .._generated.mock import select_rows_default_select_rows as _select_rows_default_select_rows
+from .._generated.mock import select_rows_selected as select_rows_selected
+from .._generated.mock import upsert_rows_default_upsert_rows as _upsert_rows_default_upsert_rows
+from .._generated.mock import upsert_rows_upserted as upsert_rows_upserted
+from ..client import CONNECTOR_ID as CONNECTOR_ID
+from ..client import SELECT_ROWS_DEFINITION as SELECT_ROWS_DEFINITION
+from ..client import SELECTED as SELECTED
+from ..client import UPSERT_ROWS_DEFINITION as UPSERT_ROWS_DEFINITION
+from ..client import UPSERTED as UPSERTED
+from ..connection import Connection as Connection
+from ..connection import new_connection_with_operations as new_connection_with_operations
+from ..models import SelectRowsInput as SelectRowsInput
+from ..models import SelectRowsOutput as SelectRowsOutput
+from ..models import SelectRowsOutput as _SelectRowsOutput
+from ..models import UpsertRowsInput as UpsertRowsInput
+from ..models import UpsertRowsOutput as UpsertRowsOutput
+from ..models import UpsertRowsOutput as _UpsertRowsOutput
 
 
-def select_rows_selected(value: SelectRowsOutput, failure: Failure | None = None) -> Case[SelectRowsOutput]:
-    """Script the selected route."""
-    return Case.branch_result(SELECTED, value, failure)
-
-
-def select_rows_default_answer() -> Case[SelectRowsOutput]:
+def select_rows_default_answer() -> _Case[_SelectRowsOutput]:
     """Return the manifest's selectRows default answer."""
-    return select_rows_selected(SelectRowsOutput([{"id": 1, "name": "Meridian"}]))
+    return _select_rows_default_select_rows()
 
 
-def upsert_rows_upserted(value: UpsertRowsOutput, failure: Failure | None = None) -> Case[UpsertRowsOutput]:
-    """Script the upserted route."""
-    return Case.branch_result(UPSERTED, value, failure)
-
-
-def upsert_rows_default_answer() -> Case[UpsertRowsOutput]:
+def upsert_rows_default_answer() -> _Case[_UpsertRowsOutput]:
     """Return the manifest's upsertRows default answer."""
-    return upsert_rows_upserted(UpsertRowsOutput([{"id": 1, "name": "Meridian"}]))
-
-
-class Mock:
-    """Script Supabase operations, defaulting to their manifest answers."""
-
-    def __init__(self, connection_name: str = "supabase") -> None:
-        self.select_rows_script: Query[SelectRowsInput, SelectRowsOutput] = Query(SELECT_ROWS_DEFINITION)
-        self.select_rows_script.default(select_rows_default_answer())
-        self.upsert_rows_script: Mutation[UpsertRowsInput, UpsertRowsOutput] = Mutation(
-            UPSERT_ROWS_DEFINITION
-        )
-        self.upsert_rows_script.default(upsert_rows_default_answer())
-        self._connection = new_connection_with_operations(
-            self.upsert_rows_script, self.select_rows_script, ConnectionRef(CONNECTOR_ID, connection_name)
-        )
-
-    def connection(self) -> Connection:
-        """Return this mock's named connection for Step registration."""
-        return self._connection
+    return _upsert_rows_default_upsert_rows()
 
 
 __all__ = [
@@ -56,3 +46,8 @@ __all__ = [
     "upsert_rows_upserted",
     "upsert_rows_default_answer",
 ]
+
+Mock.__doc__ = "Script Supabase operations, defaulting to their manifest answers."
+
+select_rows_selected.__doc__ = "Script the selected route."
+upsert_rows_upserted.__doc__ = "Script the upserted route."

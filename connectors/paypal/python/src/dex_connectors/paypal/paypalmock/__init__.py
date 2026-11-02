@@ -1,81 +1,34 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Manifest-backed PayPal scripts for consuming Flow tests."""
+"""Public manifest-backed mock helpers."""
 
-from dex_connectors.sdk import ConnectionRef, Failure
-from dex_connectors.sdk.connectormock import Case, Query
+from dex_connectors.sdk import ConnectionRef as ConnectionRef
+from dex_connectors.sdk import Failure as Failure
+from dex_connectors.sdk.connectormock import Case as Case
+from dex_connectors.sdk.connectormock import Query as Query
 
-from ..client import (
-    CONNECTOR_ID,
-    FOUND,
-    GET_ORDER_DEFINITION,
-    LIST_TRANSACTIONS_DEFINITION,
-    LISTED,
-    NOT_FOUND,
-)
-from ..connection import Connection, new_connection_with_operations
-from ..models import (
-    GetOrderInput,
-    ListTransactionsInput,
-    Order,
-    TransactionAmount,
-    TransactionDetail,
-    TransactionInfo,
-    TransactionPage,
-)
-
-
-def get_order_found(value: Order, failure: Failure | None = None) -> Case[Order]:
-    """Script the found route."""
-    return Case.branch_result(FOUND, value, failure)
-
-
-def get_order_not_found(value: Order, failure: Failure | None = None) -> Case[Order]:
-    """Script a missing order."""
-    return Case.branch_result(NOT_FOUND, value, failure)
-
-
-def get_order_default_answer() -> Case[Order]:
-    """Return the manifest's getOrder default answer."""
-    return get_order_found(Order("ORDER101", "COMPLETED"))
-
-
-def list_transactions_listed(value: TransactionPage, failure: Failure | None = None) -> Case[TransactionPage]:
-    """Script the listed route."""
-    return Case.branch_result(LISTED, value, failure)
-
-
-def list_transactions_not_found(
-    value: TransactionPage, failure: Failure | None = None
-) -> Case[TransactionPage]:
-    """Script a missing transaction resource."""
-    return Case.branch_result(NOT_FOUND, value, failure)
-
-
-def list_transactions_default_answer() -> Case[TransactionPage]:
-    """Return the manifest's listTransactions default answer."""
-    detail = TransactionDetail(TransactionInfo("TXN101", "S", TransactionAmount("USD", "29.00")))
-    return list_transactions_listed(TransactionPage((detail,), 1, 1))
-
-
-class Mock:
-    """Script PayPal operations, defaulting to their manifest answers."""
-
-    def __init__(self, connection_name: str = "paypal") -> None:
-        self.get_order_script: Query[GetOrderInput, Order] = Query(GET_ORDER_DEFINITION)
-        self.get_order_script.default(get_order_default_answer())
-        self.list_transactions_script: Query[ListTransactionsInput, TransactionPage] = Query(
-            LIST_TRANSACTIONS_DEFINITION
-        )
-        self.list_transactions_script.default(list_transactions_default_answer())
-        self._connection = new_connection_with_operations(
-            self.list_transactions_script, self.get_order_script, ConnectionRef(CONNECTOR_ID, connection_name)
-        )
-
-    def connection(self) -> Connection:
-        """Return this mock's named connection for Step registration."""
-        return self._connection
-
+from .._generated.mock import Mock as Mock
+from .._generated.mock import get_order_default_answer as get_order_default_answer
+from .._generated.mock import get_order_found as get_order_found
+from .._generated.mock import get_order_not_found as get_order_not_found
+from .._generated.mock import list_transactions_default_answer as list_transactions_default_answer
+from .._generated.mock import list_transactions_listed as list_transactions_listed
+from .._generated.mock import list_transactions_not_found as list_transactions_not_found
+from ..client import CONNECTOR_ID as CONNECTOR_ID
+from ..client import FOUND as FOUND
+from ..client import GET_ORDER_DEFINITION as GET_ORDER_DEFINITION
+from ..client import LIST_TRANSACTIONS_DEFINITION as LIST_TRANSACTIONS_DEFINITION
+from ..client import LISTED as LISTED
+from ..client import NOT_FOUND as NOT_FOUND
+from ..connection import Connection as Connection
+from ..connection import new_connection_with_operations as new_connection_with_operations
+from ..models import GetOrderInput as GetOrderInput
+from ..models import ListTransactionsInput as ListTransactionsInput
+from ..models import Order as Order
+from ..models import TransactionAmount as TransactionAmount
+from ..models import TransactionDetail as TransactionDetail
+from ..models import TransactionInfo as TransactionInfo
+from ..models import TransactionPage as TransactionPage
 
 __all__ = [
     "Mock",
@@ -86,3 +39,12 @@ __all__ = [
     "list_transactions_not_found",
     "list_transactions_default_answer",
 ]
+
+Mock.__doc__ = "Script PayPal operations, defaulting to their manifest answers."
+
+get_order_found.__doc__ = "Script the found route."
+get_order_not_found.__doc__ = "Script a missing order."
+get_order_default_answer.__doc__ = "Return the manifest's getOrder default answer."
+list_transactions_listed.__doc__ = "Script the listed route."
+list_transactions_not_found.__doc__ = "Script a missing transaction resource."
+list_transactions_default_answer.__doc__ = "Return the manifest's listTransactions default answer."

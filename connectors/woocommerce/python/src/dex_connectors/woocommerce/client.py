@@ -6,25 +6,26 @@ import base64
 import json
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
+from datetime import timedelta as timedelta
 from typing import Any, TypeVar
 from urllib.parse import urlencode
 
 import httpx
+from dex_connectors.sdk import BranchDefinition as BranchDefinition
 from dex_connectors.sdk import (
-    BranchDefinition,
     Call,
     CredentialProvider,
     Failure,
     FailureKind,
-    OperationRef,
     QueryAttempt,
     QueryDefinition,
     ReauthorizationRequiredError,
     Receipt,
-    SecretString,
-    StepDefaults,
 )
+from dex_connectors.sdk import OperationRef as OperationRef
+from dex_connectors.sdk import SecretString as SecretString
+from dex_connectors.sdk import StepDefaults as StepDefaults
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -35,60 +36,43 @@ from dex_connectors.sdk.providerhttp import (
     send_traced,
     validate_base_url,
 )
-from dex_connectors.sdk.retry_policy import default_connector_step_execute_retry_policy
+from dex_connectors.sdk.retry_policy import (
+    default_connector_step_execute_retry_policy as default_connector_step_execute_retry_policy,
+)
 
+from ._generated.config import Config as _GeneratedConfig
+from ._generated.config import Credentials as _GeneratedCredentials
+from ._generated.definitions import CONNECTOR_ID as CONNECTOR_ID
+from ._generated.definitions import DEFECT as DEFECT
+from ._generated.definitions import FOUND as FOUND
+from ._generated.definitions import GET_ORDER_DEFINITION as GET_ORDER_DEFINITION
+from ._generated.definitions import GET_ORDER_OPERATION_ID as GET_ORDER_OPERATION_ID
+from ._generated.definitions import INVALID_RESPONSE as INVALID_RESPONSE
+from ._generated.definitions import LIST_ORDERS_DEFINITION as LIST_ORDERS_DEFINITION
+from ._generated.definitions import LIST_ORDERS_OPERATION_ID as LIST_ORDERS_OPERATION_ID
+from ._generated.definitions import LISTED as LISTED
+from ._generated.definitions import NOT_FOUND as NOT_FOUND
+from ._generated.definitions import PROVIDER_REJECTED as PROVIDER_REJECTED
 from .models import GetOrderInput, ListOrdersInput, Order, OrderPage
 
-CONNECTOR_ID = "woocommerce"
-LIST_ORDERS_OPERATION_ID = "listOrders"
-GET_ORDER_OPERATION_ID = "getOrder"
-LISTED = "listed"
-FOUND = "found"
-NOT_FOUND = "notFound"
-PROVIDER_REJECTED = "providerRejected"
-INVALID_RESPONSE = "invalidResponse"
-DEFECT = "defect"
 _API_PATH = "/wp-json/wc/v3"
 _DEFAULT_TIMEOUT_SECONDS = 15
 _DEFAULT_MAX_RESPONSE_BYTES = 2_097_152
-_STEP_DEFAULTS = StepDefaults(
-    timedelta(seconds=30), 2, execute_retry=default_connector_step_execute_retry_policy()
-)
-_SHARED_BRANCHES = (
-    BranchDefinition(NOT_FOUND, "The requested resource was not found.", True),
-    BranchDefinition(PROVIDER_REJECTED, "The provider conclusively rejected the request.", True),
-    BranchDefinition(INVALID_RESPONSE, "The provider returned malformed or oversized JSON.", True),
-    BranchDefinition(DEFECT, "Local input or connection credentials are invalid.", True),
-)
-LIST_ORDERS_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, LIST_ORDERS_OPERATION_ID),
-    (BranchDefinition(LISTED, "List one page of WooCommerce orders."), *_SHARED_BRANCHES),
-    _STEP_DEFAULTS,
-)
-GET_ORDER_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, GET_ORDER_OPERATION_ID),
-    (BranchDefinition(FOUND, "Read one WooCommerce order."), *_SHARED_BRANCHES),
-    _STEP_DEFAULTS,
-)
 
 Output = TypeVar("Output")
 
 
 @dataclass(frozen=True, slots=True)
-class Config:
+class Config(_GeneratedConfig):
     """WooCommerce settings; store_url is the WordPress Site Address, other zero values use defaults."""
 
     store_url: str = ""
-    timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS
-    max_response_bytes: int = _DEFAULT_MAX_RESPONSE_BYTES
 
 
-@dataclass(frozen=True, slots=True)
-class Credentials:
+class Credentials(_GeneratedCredentials):
     """WooCommerce REST API consumer key pair, resolved anew for every provider attempt."""
 
-    consumer_key: SecretString
-    consumer_secret: SecretString
+    __slots__ = ()
 
 
 class Client:

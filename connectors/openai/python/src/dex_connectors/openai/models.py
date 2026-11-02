@@ -5,6 +5,10 @@
 from dataclasses import dataclass, field
 from typing import Any
 
+from ._generated.models import Response as Response
+from ._generated.models import RetrieveRequest as RetrieveRequest
+from ._generated.models import Usage as Usage
+
 
 @dataclass(frozen=True, slots=True)
 class StructuredOutput:
@@ -32,30 +36,6 @@ class CreateRequest:
     )
 
 
-@dataclass(frozen=True, slots=True)
-class RetrieveRequest:
-    """Provider response ID returned by createResponse, such as resp_..."""
-
-    response_id: str = field(default="", metadata={"dex_json_name": "ResponseID"})
-
-
-@dataclass(frozen=True, slots=True)
-class Usage:
-    """Token counts reported by OpenAI for one response."""
-
-    input_tokens: int = field(default=0, metadata={"dex_json_name": "inputTokens"})
-    cached_input_tokens: int = field(default=0, metadata={"dex_json_name": "cachedInputTokens"})
-    output_tokens: int = field(default=0, metadata={"dex_json_name": "outputTokens"})
-    reasoning_output_tokens: int = field(default=0, metadata={"dex_json_name": "reasoningOutputTokens"})
-    total_tokens: int = field(default=0, metadata={"dex_json_name": "totalTokens"})
-
-
-@dataclass(frozen=True, slots=True)
-class Response:
-    """Stored OpenAI response; output_text joins every output_text content part."""
-
-    id: str = ""
-    model: str = ""
-    status: str = ""
-    output_text: str = field(default="", metadata={"dex_json_name": "outputText"})
-    usage: Usage = field(default_factory=Usage)
+RetrieveRequest.__doc__ = "Provider response ID returned by createResponse, such as resp_..."
+Usage.__doc__ = "Token counts reported by OpenAI for one response."
+Response.__doc__ = "Stored OpenAI response; output_text joins every output_text content part."

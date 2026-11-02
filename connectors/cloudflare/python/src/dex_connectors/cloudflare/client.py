@@ -5,13 +5,14 @@
 import json
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
+from datetime import timedelta as timedelta
 from typing import Any, TypeVar
 from urllib.parse import quote, urlsplit
 
 import httpx
+from dex_connectors.sdk import BranchDefinition as BranchDefinition
 from dex_connectors.sdk import (
-    BranchDefinition,
     Call,
     CallID,
     CredentialProvider,
@@ -20,14 +21,14 @@ from dex_connectors.sdk import (
     IdempotencyKey,
     MutationAttempt,
     MutationDefinition,
-    OperationRef,
     QueryAttempt,
     QueryDefinition,
     ReauthorizationRequiredError,
     Receipt,
-    SecretString,
-    StepDefaults,
 )
+from dex_connectors.sdk import OperationRef as OperationRef
+from dex_connectors.sdk import SecretString as SecretString
+from dex_connectors.sdk import StepDefaults as StepDefaults
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -38,27 +39,56 @@ from dex_connectors.sdk.providerhttp import (
     send_traced,
     validate_base_url,
 )
-from dex_connectors.sdk.retry_policy import default_connector_step_execute_retry_policy
+from dex_connectors.sdk.retry_policy import (
+    default_connector_step_execute_retry_policy as default_connector_step_execute_retry_policy,
+)
 
+from ._generated.config import (
+    Config as Config,
+)
+from ._generated.config import (
+    Credentials as Credentials,
+)
+from ._generated.definitions import (
+    CONNECTOR_ID as CONNECTOR_ID,
+)
+from ._generated.definitions import (
+    DEFECT as DEFECT,
+)
+from ._generated.definitions import (
+    INVALID_RESPONSE as INVALID_RESPONSE,
+)
+from ._generated.definitions import (
+    LIST_ZONES_DEFINITION as LIST_ZONES_DEFINITION,
+)
+from ._generated.definitions import (
+    LIST_ZONES_OPERATION_ID as LIST_ZONES_OPERATION_ID,
+)
+from ._generated.definitions import (
+    LISTED as LISTED,
+)
+from ._generated.definitions import (
+    NOT_FOUND as NOT_FOUND,
+)
+from ._generated.definitions import (
+    PROVIDER_REJECTED as PROVIDER_REJECTED,
+)
+from ._generated.definitions import (
+    PURGE_CACHE_BY_URLS_DEFINITION as PURGE_CACHE_BY_URLS_DEFINITION,
+)
+from ._generated.definitions import (
+    PURGE_CACHE_BY_URLS_OPERATION_ID as PURGE_CACHE_BY_URLS_OPERATION_ID,
+)
+from ._generated.definitions import (
+    PURGED as PURGED,
+)
 from .models import CachePurge, ListZonesInput, PurgeCacheByURLsInput, PurgeRequest, Zone, ZonesPage
 
-CONNECTOR_ID = "cloudflare"
-LIST_ZONES_OPERATION_ID = "listZones"
-PURGE_CACHE_BY_URLS_OPERATION_ID = "purgeCacheByURLs"
-LISTED = "listed"
-PURGED = "purged"
-NOT_FOUND = "notFound"
-PROVIDER_REJECTED = "providerRejected"
-INVALID_RESPONSE = "invalidResponse"
-DEFECT = "defect"
 _DEFAULT_BASE_URL = "https://api.cloudflare.com/client/v4"
 _DEFAULT_TIMEOUT_SECONDS = 15
 _DEFAULT_MAX_RESPONSE_BYTES = 2_097_152
 _MAX_PURGE_URLS = 30
 _PATH_SEGMENT_SAFE = "$&+:=@"
-_STEP_DEFAULTS = StepDefaults(
-    timedelta(seconds=30), 2, execute_retry=default_connector_step_execute_retry_policy()
-)
 _STATUS_KINDS = {
     401: FailureKind.AUTHENTICATION,
     403: FailureKind.AUTHORIZATION,
@@ -66,47 +96,8 @@ _STATUS_KINDS = {
     400: FailureKind.VALIDATION,
     422: FailureKind.VALIDATION,
 }
-_SHARED_BRANCHES = (
-    BranchDefinition(PROVIDER_REJECTED, "The provider rejected the request.", True),
-    BranchDefinition(INVALID_RESPONSE, "The provider returned malformed or oversized JSON.", True),
-    BranchDefinition(DEFECT, "Local input or connection credentials are invalid.", True),
-)
-LIST_ZONES_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, LIST_ZONES_OPERATION_ID),
-    (BranchDefinition(LISTED, "List the first page of Cloudflare zones."), *_SHARED_BRANCHES),
-    _STEP_DEFAULTS,
-)
-PURGE_CACHE_BY_URLS_DEFINITION = MutationDefinition(
-    OperationRef(CONNECTOR_ID, PURGE_CACHE_BY_URLS_OPERATION_ID),
-    (
-        BranchDefinition(
-            PURGED,
-            "Purge specific URLs from a Cloudflare zone; "
-            "repeating the same purge has the same cache-removal effect.",
-        ),
-        BranchDefinition(NOT_FOUND, "The requested resource does not exist or is inaccessible.", True),
-        *_SHARED_BRANCHES,
-    ),
-    _STEP_DEFAULTS,
-)
 
 Output = TypeVar("Output")
-
-
-@dataclass(frozen=True, slots=True)
-class Config:
-    """Cloudflare HTTP settings; zero or blank values use manifest defaults."""
-
-    base_url: str = _DEFAULT_BASE_URL
-    timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS
-    max_response_bytes: int = _DEFAULT_MAX_RESPONSE_BYTES
-
-
-@dataclass(frozen=True, slots=True)
-class Credentials:
-    """Cloudflare API token, resolved anew for every provider attempt."""
-
-    api_token: SecretString
 
 
 @dataclass(frozen=True, slots=True)
@@ -388,3 +379,7 @@ def _outcome(
     retry_after_seconds: float = 0,
 ) -> _Outcome:
     return _Outcome(branch, Failure(kind, CONNECTOR_ID, operation, message), is_retry, retry_after_seconds)
+
+
+Config.__doc__ = "Cloudflare HTTP settings; zero or blank values use manifest defaults."
+Credentials.__doc__ = "Cloudflare API token, resolved anew for every provider attempt."

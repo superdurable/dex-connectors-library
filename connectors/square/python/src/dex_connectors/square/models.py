@@ -1,44 +1,24 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Typed Square payment pages and payments."""
+"""Public model names backed by Go-derived generated dataclasses."""
 
-from dataclasses import dataclass, field
+from ._generated.models import (
+    GetPaymentInput as GetPaymentInput,
+)
+from ._generated.models import (
+    ListPaymentsInput as ListPaymentsInput,
+)
+from ._generated.models import (
+    Money as Money,
+)
+from ._generated.models import (
+    Payment as Payment,
+)
+from ._generated.models import PaymentPage as PaymentPage
 
+PaymentPage.__doc__ = "One page of payments; cursor is blank on the last page."
 
-@dataclass(frozen=True, slots=True)
-class ListPaymentsInput:
-    """Cursor from the previous page; blank reads the first page."""
-
-    cursor: str = field(default="", metadata={"dex_json_omit_default": True})
-
-
-@dataclass(frozen=True, slots=True)
-class GetPaymentInput:
-    """Square payment ID."""
-
-    payment_id: str = field(default="", metadata={"dex_json_name": "paymentId"})
-
-
-@dataclass(frozen=True, slots=True)
-class Money:
-    """Amount in the currency's smallest unit, such as cents, and its ISO 4217 code."""
-
-    amount: int = 0
-    currency: str = ""
-
-
-@dataclass(frozen=True, slots=True)
-class Payment:
-    """Square payment identity, status such as COMPLETED, and amount."""
-
-    id: str = ""
-    status: str = ""
-    amount_money: Money = field(default_factory=Money)
-
-
-@dataclass(frozen=True, slots=True)
-class PaymentPage:
-    """One page of payments; cursor is blank on the last page."""
-
-    payments: tuple[Payment, ...] = ()
-    cursor: str = ""
+ListPaymentsInput.__doc__ = "Cursor from the previous page; blank reads the first page."
+GetPaymentInput.__doc__ = "Square payment ID."
+Money.__doc__ = "Amount in the currency's smallest unit, such as cents, and its ISO 4217 code."
+Payment.__doc__ = "Square payment identity, status such as COMPLETED, and amount."

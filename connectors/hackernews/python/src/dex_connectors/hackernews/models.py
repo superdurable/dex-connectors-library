@@ -3,34 +3,10 @@
 """Typed Hacker News feed snapshots and items."""
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
 
-
-@dataclass(frozen=True, slots=True)
-class ListStoryIDsInput:
-    """Feed (top, best, new, ask, or show; blank means top) and limit (zero means 50, at most 500)."""
-
-    feed: str = ""
-    limit: int = 0
-
-
-@dataclass(frozen=True, slots=True)
-class StoryIDs:
-    """Item IDs in provider order, whether the feed held more, and when the snapshot was read."""
-
-    ids: tuple[int, ...] = ()
-    has_more: bool = field(default=False, metadata={"dex_json_name": "hasMore"})
-    observed_at: datetime = field(
-        default_factory=lambda: datetime.min.replace(tzinfo=UTC),
-        metadata={"dex_json_name": "observedAt", "dex_json_format": "rfc3339"},
-    )
-
-
-@dataclass(frozen=True, slots=True)
-class GetItemInput:
-    """Positive Hacker News item ID."""
-
-    id: int = 0
+from ._generated.models import GetItemInput as GetItemInput
+from ._generated.models import ListStoryIDsInput as ListStoryIDsInput
+from ._generated.models import StoryIDs as StoryIDs
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,3 +27,10 @@ class Item:
     kids: tuple[int, ...] = field(default=(), metadata={"dex_json_omit_default": True})
     deleted: bool = field(default=False, metadata={"dex_json_omit_default": True})
     dead: bool = field(default=False, metadata={"dex_json_omit_default": True})
+
+
+ListStoryIDsInput.__doc__ = (
+    "Feed (top, best, new, ask, or show; blank means top) and limit (zero means 50, at most 500)."
+)
+StoryIDs.__doc__ = "Item IDs in provider order, whether the feed held more, and when the snapshot was read."
+GetItemInput.__doc__ = "Positive Hacker News item ID."

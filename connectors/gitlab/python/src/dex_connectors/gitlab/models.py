@@ -1,56 +1,26 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Typed GitLab projects, issue pages, and issue label replacements."""
+"""Public model names backed by Go-derived generated dataclasses."""
 
-from dataclasses import dataclass, field
+from ._generated.models import (
+    GetProjectInput as GetProjectInput,
+)
+from ._generated.models import Issue as Issue
+from ._generated.models import IssuesPage as IssuesPage
+from ._generated.models import (
+    ListIssuesInput as ListIssuesInput,
+)
+from ._generated.models import (
+    Project as Project,
+)
+from ._generated.models import UpdateIssueLabelsInput as UpdateIssueLabelsInput
 
+Issue.__doc__ = "An issue's global ID, project-local number, title, complete label set, and web page."
+IssuesPage.__doc__ = "GitLab's default issue page, possibly empty."
+UpdateIssueLabelsInput.__doc__ = (
+    "Project, positive project-local issue number, and the complete label set; empty clears all labels."
+)
 
-@dataclass(frozen=True, slots=True)
-class GetProjectInput:
-    """A numeric project ID or namespace path, such as meridian/web."""
-
-    project_id: str = field(default="", metadata={"dex_json_name": "projectId"})
-
-
-@dataclass(frozen=True, slots=True)
-class Project:
-    """A project's numeric ID, display name, full group and project path, and web page."""
-
-    id: int = 0
-    name: str = ""
-    path_with_namespace: str = ""
-    web_url: str = ""
-
-
-@dataclass(frozen=True, slots=True)
-class ListIssuesInput:
-    """The numeric ID or namespace path of the project whose issues are listed."""
-
-    project_id: str = field(default="", metadata={"dex_json_name": "projectId"})
-
-
-@dataclass(frozen=True, slots=True)
-class Issue:
-    """An issue's global ID, project-local number, title, complete label set, and web page."""
-
-    id: int = 0
-    iid: int = 0
-    title: str = ""
-    labels: tuple[str, ...] = ()
-    web_url: str = ""
-
-
-@dataclass(frozen=True, slots=True)
-class IssuesPage:
-    """GitLab's default issue page, possibly empty."""
-
-    issues: tuple[Issue, ...] = ()
-
-
-@dataclass(frozen=True, slots=True)
-class UpdateIssueLabelsInput:
-    """Project, positive project-local issue number, and the complete label set; empty clears all labels."""
-
-    project_id: str = field(default="", metadata={"dex_json_name": "projectId"})
-    issue_iid: int = field(default=0, metadata={"dex_json_name": "issueIid"})
-    labels: tuple[str, ...] = ()
+GetProjectInput.__doc__ = "A numeric project ID or namespace path, such as meridian/web."
+Project.__doc__ = "A project's numeric ID, display name, full group and project path, and web page."
+ListIssuesInput.__doc__ = "The numeric ID or namespace path of the project whose issues are listed."

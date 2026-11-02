@@ -6,13 +6,14 @@ import asyncio
 import json
 import time
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
+from datetime import timedelta as timedelta
 from typing import Any
 from urllib.parse import quote, urlsplit
 
 import httpx
+from dex_connectors.sdk import BranchDefinition as BranchDefinition
 from dex_connectors.sdk import (
-    BranchDefinition,
     Call,
     CallID,
     CredentialProvider,
@@ -21,14 +22,14 @@ from dex_connectors.sdk import (
     IdempotencyKey,
     MutationAttempt,
     MutationDefinition,
-    OperationRef,
     QueryAttempt,
     QueryDefinition,
     ReauthorizationRequiredError,
     Receipt,
-    SecretString,
-    StepDefaults,
 )
+from dex_connectors.sdk import OperationRef as OperationRef
+from dex_connectors.sdk import SecretString as SecretString
+from dex_connectors.sdk import StepDefaults as StepDefaults
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -38,23 +39,60 @@ from dex_connectors.sdk.providerhttp import (
     read_bounded_body,
     send_traced,
 )
-from dex_connectors.sdk.retry_policy import RetryPolicy, default_connector_step_execute_retry_policy
+from dex_connectors.sdk.retry_policy import RetryPolicy as RetryPolicy
+from dex_connectors.sdk.retry_policy import (
+    default_connector_step_execute_retry_policy as default_connector_step_execute_retry_policy,
+)
 
+from ._generated.config import (
+    Config as Config,
+)
+from ._generated.config import (
+    Credentials as Credentials,
+)
+from ._generated.definitions import (
+    COMPLETED as COMPLETED,
+)
+from ._generated.definitions import (
+    CONNECTOR_ID as CONNECTOR_ID,
+)
+from ._generated.definitions import (
+    CREATE_RESPONSE_DEFINITION as CREATE_RESPONSE_DEFINITION,
+)
+from ._generated.definitions import (
+    CREATE_RESPONSE_OPERATION_ID as CREATE_RESPONSE_OPERATION_ID,
+)
+from ._generated.definitions import (
+    DEFECT as DEFECT,
+)
+from ._generated.definitions import (
+    FAILED as FAILED,
+)
+from ._generated.definitions import (
+    FOUND as FOUND,
+)
+from ._generated.definitions import (
+    INVALID_RESPONSE as INVALID_RESPONSE,
+)
+from ._generated.definitions import (
+    NOT_FOUND as NOT_FOUND,
+)
+from ._generated.definitions import (
+    PROVIDER_REJECTED as PROVIDER_REJECTED,
+)
+from ._generated.definitions import (
+    RETRIEVE_RESPONSE_DEFINITION as RETRIEVE_RESPONSE_DEFINITION,
+)
+from ._generated.definitions import (
+    RETRIEVE_RESPONSE_OPERATION_ID as RETRIEVE_RESPONSE_OPERATION_ID,
+)
+from ._generated.definitions import (
+    UNCERTAIN as UNCERTAIN,
+)
 from .models import CreateRequest, Response, RetrieveRequest
 from .stream import ResponseStreamReader
 from .wire import decode_wire_response, is_safe_response_id
 
-CONNECTOR_ID = "openai"
-CREATE_RESPONSE_OPERATION_ID = "createResponse"
-RETRIEVE_RESPONSE_OPERATION_ID = "retrieveResponse"
-COMPLETED = "completed"
-FAILED = "failed"
-FOUND = "found"
-NOT_FOUND = "notFound"
-PROVIDER_REJECTED = "providerRejected"
-UNCERTAIN = "uncertain"
-INVALID_RESPONSE = "invalidResponse"
-DEFECT = "defect"
 UI_UNIT_MODEL_PICKER = "modelPicker"
 UI_MODEL_PICKER_PORT_MODEL = "model"
 INVALID_CREATE_INPUT_MESSAGE = "input and a model of printable ASCII without spaces are required"
@@ -78,64 +116,6 @@ _RATE_LIMIT_HEADER_NAMES = (
     "x-ratelimit-remaining-tokens",
     "x-ratelimit-reset-tokens",
 )
-_DEFECT_BRANCH = BranchDefinition(
-    DEFECT, "Local input, connection configuration, or connector definition is invalid.", True
-)
-CREATE_RESPONSE_DEFINITION = MutationDefinition(
-    OperationRef(CONNECTOR_ID, CREATE_RESPONSE_OPERATION_ID),
-    (
-        BranchDefinition(COMPLETED, "OpenAI completed the response."),
-        BranchDefinition(
-            FAILED,
-            "OpenAI returned a terminal failed or incomplete response. A cancelled response is not "
-            "failed: the next attempt creates a new one.",
-            True,
-        ),
-        BranchDefinition(PROVIDER_REJECTED, "OpenAI conclusively rejected the response request.", True),
-        BranchDefinition(
-            UNCERTAIN,
-            "A request may have created a response that cannot be confirmed: no response ID was "
-            "observed or checkpointed, for example after HTTP 408 or 409, a 5xx other than 503, or a "
-            "streamed error event, or the stored response cannot be read back. The Responses API "
-            "documents no deduplication of create requests.",
-            True,
-        ),
-        _DEFECT_BRANCH,
-    ),
-    StepDefaults(
-        timedelta(seconds=150),
-        1,
-        execute_retry=RetryPolicy(timedelta(seconds=2), 2, timedelta(seconds=30), 3, timedelta(minutes=5)),
-    ),
-)
-RETRIEVE_RESPONSE_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, RETRIEVE_RESPONSE_OPERATION_ID),
-    (
-        BranchDefinition(FOUND, "The response exists and was returned."),
-        BranchDefinition(NOT_FOUND, "The requested response does not exist.", True),
-        BranchDefinition(PROVIDER_REJECTED, "OpenAI conclusively rejected the response query.", True),
-        BranchDefinition(INVALID_RESPONSE, "OpenAI returned an invalid or oversized response.", True),
-        _DEFECT_BRANCH,
-    ),
-    StepDefaults(timedelta(seconds=30), 2, execute_retry=default_connector_step_execute_retry_policy()),
-)
-
-
-@dataclass(frozen=True, slots=True)
-class Config:
-    """OpenAI settings; blank or zero values use manifest defaults."""
-
-    model: str = _DEFAULT_MODEL
-    endpoint: str = _DEFAULT_ENDPOINT
-    max_response_bytes: int = _DEFAULT_MAX_RESPONSE_BYTES
-    max_sse_event_bytes: int = _DEFAULT_MAX_SSE_EVENT_BYTES
-
-
-@dataclass(frozen=True, slots=True)
-class Credentials:
-    """OpenAI project API key, resolved anew for every provider attempt."""
-
-    api_key: SecretString
 
 
 @dataclass(frozen=True, slots=True)
@@ -865,3 +845,7 @@ def _read_back_deadline(call: Call) -> float:
 
 def _retry_after_seconds(headers: httpx.Headers) -> float:
     return parse_retry_after(headers.get("Retry-After", ""), datetime.now(UTC))
+
+
+Config.__doc__ = "OpenAI settings; blank or zero values use manifest defaults."
+Credentials.__doc__ = "OpenAI project API key, resolved anew for every provider attempt."

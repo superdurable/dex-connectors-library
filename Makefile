@@ -53,8 +53,11 @@ test-python-connectors:
 		test -f "$$module/python/uv.lock" || { echo "$$module/python/uv.lock is missing" >&2; exit 1; }; \
 		python3 script/release/component_release.py validate-language-package --component-path "$$module/python" --language python --allow-pending-go-release || exit 1; \
 		uv sync --locked --project "$$module/python" && uv run --project "$$module/python" ruff check "$$module/python" && \
-		uv run --project "$$module/python" mypy --strict "$$module/python/src" && uv run --project "$$module/python" pytest "$$module/python/tests" || exit 1; \
+		uv run --project "$$module/python" mypy --strict "$$module/python/src" && uv run --project "$$module/python" pytest "$$module/python/tests" && \
+		uv run --project "$$module/python" python script/python_public_exports_test.py "$$module/python" && \
+		uv run --project "$$module/python" python script/python_model_drift_test.py "$$module/python" || exit 1; \
 	done
+	@python3 script/python_slice_wire_test.py
 
 test-typescript-connectors:
 	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))"; \

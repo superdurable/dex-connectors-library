@@ -390,15 +390,37 @@ func generate(args []string) error {
 		}
 	}
 	args = positional
-	if language != "" && language != "typescript" {
+	if language != "" && language != "typescript" && language != "python" {
 		return fmt.Errorf("unsupported generate language %q", language)
 	}
 	if len(args) != 1 {
-		return errors.New("usage: connectorctl generate [--check] [--lang typescript] <manifest>")
+		return errors.New("usage: connectorctl generate [--check] [--lang python|typescript] <manifest>")
 	}
 	manifest, err := load(args[0])
 	if err != nil {
 		return err
+	}
+	if language == "python" {
+		generated, err := generatedPythonFiles(args[0], manifest)
+		if err != nil {
+			return err
+		}
+		stale, err := stalePythonFiles(args[0], generated)
+		if err != nil {
+			return err
+		}
+		if check {
+			if len(stale) > 0 {
+				return fmt.Errorf("generated Python module is stale: %s", stale[0])
+			}
+			return checkGeneratedFiles(generated)
+		}
+		for _, path := range stale {
+			if err := os.Remove(path); err != nil {
+				return fmt.Errorf("remove stale %s: %w", path, err)
+			}
+		}
+		return writeGeneratedFiles(generated)
 	}
 	if language == "typescript" {
 		generated, err := generatedTypeScriptFiles(args[0], manifest)
@@ -451,6 +473,14 @@ func generate(args []string) error {
 	if err != nil {
 		return err
 	}
+	pythonFiles, err := generatedPythonFiles(args[0], manifest)
+	if err != nil {
+		return err
+	}
+	stalePython, err := stalePythonFiles(args[0], pythonFiles)
+	if err != nil {
+		return err
+	}
 	staleLanguageManifests, err := staleLanguageManifestFiles(args[0], languageManifestFiles)
 	if err != nil {
 		return err
@@ -465,6 +495,9 @@ func generate(args []string) error {
 		mockFiles[path] = contents
 	}
 	for path, contents := range typeScriptFiles {
+		mockFiles[path] = contents
+	}
+	for path, contents := range pythonFiles {
 		mockFiles[path] = contents
 	}
 	stale := staleMockFiles(args[0], manifest)
@@ -493,12 +526,15 @@ func generate(args []string) error {
 		if len(staleTypeScript) > 0 {
 			return fmt.Errorf("generated TypeScript file is stale: %s", staleTypeScript[0])
 		}
+		if len(stalePython) > 0 {
+			return fmt.Errorf("generated Python module is stale: %s", stalePython[0])
+		}
 		return checkGeneratedFiles(mockFiles)
 	}
 	if err := os.WriteFile(output, generated, 0o644); err != nil {
 		return fmt.Errorf("write %s: %w", output, err)
 	}
-	for _, path := range slices.Concat(stale, staleRefreshAgreement, staleSharedCredential, staleLanguageManifests, staleTypeScript) {
+	for _, path := range slices.Concat(stale, staleRefreshAgreement, staleSharedCredential, staleLanguageManifests, staleTypeScript, stalePython) {
 		if err := os.Remove(path); err != nil {
 			return fmt.Errorf("remove stale %s: %w", path, err)
 		}

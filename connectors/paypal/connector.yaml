@@ -11,7 +11,7 @@ spec:
   languages:
     python:
       version: v0.1.0
-      operations: [getOrder, listTransactions]
+      operations: [listTransactions, getOrder]
       triggers: []
   codegen:
     go:

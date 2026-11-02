@@ -1,81 +1,34 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Manifest-backed Postmark scripts for consuming Flow tests."""
+"""Public manifest-backed mock helpers."""
 
-from dex_connectors.sdk import ConnectionRef, Failure
-from dex_connectors.sdk.connectormock import Case, Query
+from dex_connectors.sdk import ConnectionRef as ConnectionRef
+from dex_connectors.sdk import Failure as Failure
+from dex_connectors.sdk.connectormock import Case as Case
+from dex_connectors.sdk.connectormock import Query as Query
 
-from ..client import (
-    CONNECTOR_ID,
-    FOUND,
-    GET_MESSAGE_DETAILS_DEFINITION,
-    LIST_OUTBOUND_MESSAGES_DEFINITION,
-    LISTED,
-    NOT_FOUND,
-    PROVIDER_REJECTED,
+from .._generated.mock import Mock as Mock
+from .._generated.mock import get_message_details_default as get_message_details_default
+from .._generated.mock import get_message_details_found as get_message_details_found
+from .._generated.mock import get_message_details_not_found as get_message_details_not_found
+from .._generated.mock import list_outbound_messages_default as list_outbound_messages_default
+from .._generated.mock import list_outbound_messages_listed as list_outbound_messages_listed
+from .._generated.mock import (
+    list_outbound_messages_provider_rejected as list_outbound_messages_provider_rejected,
 )
-from ..connection import Connection, new_connection_with_operations
-from ..models import GetMessageDetailsInput, ListOutboundMessagesInput, MessageDetails, MessagePage
-
-_DEFAULT_MESSAGE = MessageDetails("0ac29aee-e1cd-480d-b08d-4f48548ff48d", "Welcome", "Sent")
-
-
-def list_outbound_messages_listed(value: MessagePage, failure: Failure | None = None) -> Case[MessagePage]:
-    """Script the successful listed route."""
-    return Case.branch_result(LISTED, value, failure)
-
-
-def list_outbound_messages_provider_rejected(
-    value: MessagePage, failure: Failure | None = None
-) -> Case[MessagePage]:
-    """Script a definite provider rejection of the search."""
-    return Case.branch_result(PROVIDER_REJECTED, value, failure)
-
-
-def list_outbound_messages_default() -> Case[MessagePage]:
-    """Return the manifest's listOutboundMessagesDefault answer."""
-    return list_outbound_messages_listed(MessagePage(1, (_DEFAULT_MESSAGE,)))
-
-
-def get_message_details_found(value: MessageDetails, failure: Failure | None = None) -> Case[MessageDetails]:
-    """Script the successful found route."""
-    return Case.branch_result(FOUND, value, failure)
-
-
-def get_message_details_not_found(
-    value: MessageDetails, failure: Failure | None = None
-) -> Case[MessageDetails]:
-    """Script a missing outbound message."""
-    return Case.branch_result(NOT_FOUND, value, failure)
-
-
-def get_message_details_default() -> Case[MessageDetails]:
-    """Return the manifest's getMessageDetailsDefault answer."""
-    return get_message_details_found(_DEFAULT_MESSAGE)
-
-
-class Mock:
-    """Script Postmark operations, defaulting to their manifest answers."""
-
-    def __init__(self, connection_name: str = "postmark") -> None:
-        self.list_outbound_messages_script: Query[ListOutboundMessagesInput, MessagePage] = Query(
-            LIST_OUTBOUND_MESSAGES_DEFINITION
-        )
-        self.list_outbound_messages_script.default(list_outbound_messages_default())
-        self.get_message_details_script: Query[GetMessageDetailsInput, MessageDetails] = Query(
-            GET_MESSAGE_DETAILS_DEFINITION
-        )
-        self.get_message_details_script.default(get_message_details_default())
-        self._connection = new_connection_with_operations(
-            self.list_outbound_messages_script,
-            self.get_message_details_script,
-            ConnectionRef(CONNECTOR_ID, connection_name),
-        )
-
-    def connection(self) -> Connection:
-        """Return this mock's named connection for Step registration."""
-        return self._connection
-
+from ..client import CONNECTOR_ID as CONNECTOR_ID
+from ..client import FOUND as FOUND
+from ..client import GET_MESSAGE_DETAILS_DEFINITION as GET_MESSAGE_DETAILS_DEFINITION
+from ..client import LIST_OUTBOUND_MESSAGES_DEFINITION as LIST_OUTBOUND_MESSAGES_DEFINITION
+from ..client import LISTED as LISTED
+from ..client import NOT_FOUND as NOT_FOUND
+from ..client import PROVIDER_REJECTED as PROVIDER_REJECTED
+from ..connection import Connection as Connection
+from ..connection import new_connection_with_operations as new_connection_with_operations
+from ..models import GetMessageDetailsInput as GetMessageDetailsInput
+from ..models import ListOutboundMessagesInput as ListOutboundMessagesInput
+from ..models import MessageDetails as MessageDetails
+from ..models import MessagePage as MessagePage
 
 __all__ = [
     "Mock",
@@ -86,3 +39,12 @@ __all__ = [
     "get_message_details_not_found",
     "get_message_details_default",
 ]
+
+Mock.__doc__ = "Script Postmark operations, defaulting to their manifest answers."
+
+list_outbound_messages_listed.__doc__ = "Script the successful listed route."
+list_outbound_messages_provider_rejected.__doc__ = "Script a definite provider rejection of the search."
+list_outbound_messages_default.__doc__ = "Return the manifest's listOutboundMessagesDefault answer."
+get_message_details_found.__doc__ = "Script the successful found route."
+get_message_details_not_found.__doc__ = "Script a missing outbound message."
+get_message_details_default.__doc__ = "Return the manifest's getMessageDetailsDefault answer."

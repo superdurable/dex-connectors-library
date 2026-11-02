@@ -5,25 +5,26 @@
 import json
 import re
 from collections.abc import Callable
-from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from dataclasses import dataclass as dataclass
+from datetime import UTC, datetime
+from datetime import timedelta as timedelta
 from typing import Any, TypeVar
 
 import httpx
+from dex_connectors.sdk import BranchDefinition as BranchDefinition
 from dex_connectors.sdk import (
-    BranchDefinition,
     Call,
     CredentialProvider,
     Failure,
     FailureKind,
-    OperationRef,
     QueryAttempt,
     QueryDefinition,
     ReauthorizationRequiredError,
     Receipt,
-    SecretString,
-    StepDefaults,
 )
+from dex_connectors.sdk import OperationRef as OperationRef
+from dex_connectors.sdk import SecretString as SecretString
+from dex_connectors.sdk import StepDefaults as StepDefaults
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -34,60 +35,57 @@ from dex_connectors.sdk.providerhttp import (
     send_traced,
     validate_base_url,
 )
-from dex_connectors.sdk.retry_policy import default_connector_step_execute_retry_policy
+from dex_connectors.sdk.retry_policy import (
+    default_connector_step_execute_retry_policy as default_connector_step_execute_retry_policy,
+)
 
+from ._generated.config import (
+    Config as Config,
+)
+from ._generated.config import (
+    Credentials as Credentials,
+)
+from ._generated.definitions import (
+    CONNECTOR_ID as CONNECTOR_ID,
+)
+from ._generated.definitions import (
+    DEFECT as DEFECT,
+)
+from ._generated.definitions import (
+    FOUND as FOUND,
+)
+from ._generated.definitions import (
+    GET_FILE_COMMENTS_DEFINITION as GET_FILE_COMMENTS_DEFINITION,
+)
+from ._generated.definitions import (
+    GET_FILE_COMMENTS_OPERATION_ID as GET_FILE_COMMENTS_OPERATION_ID,
+)
+from ._generated.definitions import (
+    GET_FILE_DEFINITION as GET_FILE_DEFINITION,
+)
+from ._generated.definitions import (
+    GET_FILE_OPERATION_ID as GET_FILE_OPERATION_ID,
+)
+from ._generated.definitions import (
+    INVALID_RESPONSE as INVALID_RESPONSE,
+)
+from ._generated.definitions import (
+    LISTED as LISTED,
+)
+from ._generated.definitions import (
+    NOT_FOUND as NOT_FOUND,
+)
+from ._generated.definitions import (
+    PROVIDER_REJECTED as PROVIDER_REJECTED,
+)
 from .models import File, FileComment, FileComments, GetFileCommentsInput, GetFileInput
 
-CONNECTOR_ID = "figma"
-GET_FILE_OPERATION_ID = "getFile"
-GET_FILE_COMMENTS_OPERATION_ID = "getFileComments"
-FOUND = "found"
-LISTED = "listed"
-NOT_FOUND = "notFound"
-PROVIDER_REJECTED = "providerRejected"
-INVALID_RESPONSE = "invalidResponse"
-DEFECT = "defect"
 _DEFAULT_BASE_URL = "https://api.figma.com/v1"
 _DEFAULT_TIMEOUT_SECONDS = 30
 _DEFAULT_MAX_RESPONSE_BYTES = 8_388_608
 _SAFE_KEY = re.compile(r"[A-Za-z0-9_-]{1,128}")
-_STEP_DEFAULTS = StepDefaults(
-    timedelta(seconds=45), 2, execute_retry=default_connector_step_execute_retry_policy()
-)
-_SHARED_BRANCHES = (
-    BranchDefinition(NOT_FOUND, "Figma does not have the requested resource.", True),
-    BranchDefinition(PROVIDER_REJECTED, "Figma conclusively rejected the read.", True),
-    BranchDefinition(INVALID_RESPONSE, "Figma returned malformed or oversized JSON.", True),
-    BranchDefinition(DEFECT, "Local input or connection credentials are invalid.", True),
-)
-GET_FILE_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, GET_FILE_OPERATION_ID),
-    (BranchDefinition(FOUND, "Figma returned the requested data."), *_SHARED_BRANCHES),
-    _STEP_DEFAULTS,
-)
-GET_FILE_COMMENTS_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, GET_FILE_COMMENTS_OPERATION_ID),
-    (BranchDefinition(LISTED, "Figma returned the requested data."), *_SHARED_BRANCHES),
-    _STEP_DEFAULTS,
-)
 
 Output = TypeVar("Output")
-
-
-@dataclass(frozen=True, slots=True)
-class Config:
-    """Figma HTTP settings; zero or blank values use manifest defaults."""
-
-    base_url: str = _DEFAULT_BASE_URL
-    timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS
-    max_response_bytes: int = _DEFAULT_MAX_RESPONSE_BYTES
-
-
-@dataclass(frozen=True, slots=True)
-class Credentials:
-    """Figma personal access token, resolved anew for every provider attempt."""
-
-    api_key: SecretString
 
 
 class Client:
@@ -320,3 +318,7 @@ def _string(document: dict[str, Any], name: str) -> str:
     if not isinstance(value, str):
         raise ValueError
     return value
+
+
+Config.__doc__ = "Figma HTTP settings; zero or blank values use manifest defaults."
+Credentials.__doc__ = "Figma personal access token, resolved anew for every provider attempt."

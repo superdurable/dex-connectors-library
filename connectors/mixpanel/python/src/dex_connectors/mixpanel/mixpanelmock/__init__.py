@@ -1,56 +1,43 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Manifest-backed Mixpanel scripts for consuming Flow tests."""
+"""Public manifest-backed mock helpers."""
 
-from dex_connectors.sdk import ConnectionRef, Failure
-from dex_connectors.sdk.connectormock import Case, Mutation, Query
+from dex_connectors.sdk import ConnectionRef as ConnectionRef
+from dex_connectors.sdk import Failure as Failure
+from dex_connectors.sdk.connectormock import Case as Case
+from dex_connectors.sdk.connectormock import Case as _Case
+from dex_connectors.sdk.connectormock import Mutation as Mutation
+from dex_connectors.sdk.connectormock import Query as Query
 
-from ..client import CONNECTOR_ID, EXPORT_EVENTS_DEFINITION, EXPORTED, IMPORTED, TRACK_EVENT_DEFINITION
-from ..connection import Connection, new_connection_with_operations
-from ..models import EventImportResult, ExportedEvent, ExportedEvents, ExportEventsInput, TrackEventInput
+from .._generated.mock import Mock as Mock
+from .._generated.mock import export_events_exported as export_events_exported
+from .._generated.mock import export_events_exported_default_events as _export_events_exported_default_events
+from .._generated.mock import track_event_imported as track_event_imported
+from .._generated.mock import track_event_imported_default_event as _track_event_imported_default_event
+from ..client import CONNECTOR_ID as CONNECTOR_ID
+from ..client import EXPORT_EVENTS_DEFINITION as EXPORT_EVENTS_DEFINITION
+from ..client import EXPORTED as EXPORTED
+from ..client import IMPORTED as IMPORTED
+from ..client import TRACK_EVENT_DEFINITION as TRACK_EVENT_DEFINITION
+from ..connection import Connection as Connection
+from ..connection import new_connection_with_operations as new_connection_with_operations
+from ..models import EventImportResult as EventImportResult
+from ..models import EventImportResult as _EventImportResult
+from ..models import ExportedEvent as ExportedEvent
+from ..models import ExportedEvents as ExportedEvents
+from ..models import ExportedEvents as _ExportedEvents
+from ..models import ExportEventsInput as ExportEventsInput
+from ..models import TrackEventInput as TrackEventInput
 
 
-def track_event_imported(value: EventImportResult, failure: Failure | None = None) -> Case[EventImportResult]:
-    """Script the imported route."""
-    return Case.branch_result(IMPORTED, value, failure)
-
-
-def track_event_default_answer() -> Case[EventImportResult]:
-    """Return the manifest's trackEvent default answer."""
-    return track_event_imported(EventImportResult(True))
-
-
-def export_events_exported(value: ExportedEvents, failure: Failure | None = None) -> Case[ExportedEvents]:
-    """Script the exported route."""
-    return Case.branch_result(EXPORTED, value, failure)
-
-
-def export_events_default_answer() -> Case[ExportedEvents]:
+def export_events_default_answer() -> _Case[_ExportedEvents]:
     """Return the manifest's exportEvents default answer."""
-    return export_events_exported(
-        ExportedEvents(
-            (ExportedEvent("Signed Up", "member-1", 1793232000, "4b5d3f33-2e21-4c1c-b392-2dae2a74a2ed"),)
-        )
-    )
+    return _export_events_exported_default_events()
 
 
-class Mock:
-    """Script Mixpanel operations, defaulting to their manifest answers."""
-
-    def __init__(self, connection_name: str = "mixpanel") -> None:
-        self.track_event_script: Mutation[TrackEventInput, EventImportResult] = Mutation(
-            TRACK_EVENT_DEFINITION
-        )
-        self.track_event_script.default(track_event_default_answer())
-        self.export_events_script: Query[ExportEventsInput, ExportedEvents] = Query(EXPORT_EVENTS_DEFINITION)
-        self.export_events_script.default(export_events_default_answer())
-        self._connection = new_connection_with_operations(
-            self.track_event_script, self.export_events_script, ConnectionRef(CONNECTOR_ID, connection_name)
-        )
-
-    def connection(self) -> Connection:
-        """Return this mock's named connection for Step registration."""
-        return self._connection
+def track_event_default_answer() -> _Case[_EventImportResult]:
+    """Return the manifest's trackEvent default answer."""
+    return _track_event_imported_default_event()
 
 
 __all__ = [
@@ -60,3 +47,8 @@ __all__ = [
     "export_events_exported",
     "export_events_default_answer",
 ]
+
+Mock.__doc__ = "Script Mixpanel operations, defaulting to their manifest answers."
+
+track_event_imported.__doc__ = "Script the imported route."
+export_events_exported.__doc__ = "Script the exported route."

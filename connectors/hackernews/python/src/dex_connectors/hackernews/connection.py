@@ -1,5 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
+# connectorctl: handwritten facade
 """Hacker News connection for a named project connection."""
 
 from typing import Any

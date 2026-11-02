@@ -1,5 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
+# connectorctl: handwritten facade
 """Manifest-backed OpenAI scripts for consuming Flow tests."""
 
 from dex_connectors.sdk import ConnectionRef, Failure, FailureKind

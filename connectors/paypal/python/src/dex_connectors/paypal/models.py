@@ -2,39 +2,12 @@
 # SPDX-License-Identifier: MIT
 """Typed PayPal checkout orders and transaction search pages."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
-
-@dataclass(frozen=True, slots=True)
-class GetOrderInput:
-    """The PayPal checkout order ID."""
-
-    order_id: str = field(default="", metadata={"dex_json_name": "orderId"})
-
-
-@dataclass(frozen=True, slots=True)
-class ListTransactionsInput:
-    """Inclusive RFC 3339 window of at most 31 days and a one-based page (zero selects page one)."""
-
-    start_date: str = field(default="", metadata={"dex_json_name": "startDate"})
-    end_date: str = field(default="", metadata={"dex_json_name": "endDate"})
-    page: int = field(default=0, metadata={"dex_json_omit_default": True})
-
-
-@dataclass(frozen=True, slots=True)
-class Order:
-    """A minimal checkout order summary: its ID and PayPal state."""
-
-    id: str = ""
-    status: str = ""
-
-
-@dataclass(frozen=True, slots=True)
-class TransactionAmount:
-    """A decimal amount and its ISO currency code."""
-
-    currency_code: str = ""
-    value: str = ""
+from ._generated.models import GetOrderInput as GetOrderInput
+from ._generated.models import ListTransactionsInput as ListTransactionsInput
+from ._generated.models import Order as Order
+from ._generated.models import TransactionAmount as TransactionAmount
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,3 +33,11 @@ class TransactionPage:
     transaction_details: tuple[TransactionDetail, ...] = ()
     page: int = 0
     total_pages: int = 0
+
+
+GetOrderInput.__doc__ = "The PayPal checkout order ID."
+ListTransactionsInput.__doc__ = (
+    "Inclusive RFC 3339 window of at most 31 days and a one-based page (zero selects page one)."
+)
+Order.__doc__ = "A minimal checkout order summary: its ID and PayPal state."
+TransactionAmount.__doc__ = "A decimal amount and its ISO currency code."

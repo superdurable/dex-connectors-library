@@ -7,14 +7,18 @@ from datetime import UTC, timedelta
 from pathlib import Path
 from typing import Any
 
+import dex
 import yaml
 from dex_connectors.sdk import FailureKind, default_connector_step_execute_retry_policy
 
 from dex_connectors.newsapi import SEARCH_ARTICLES_DEFINITION, Article, ArticlePage
 from dex_connectors.newsapi.newsapimock import (
+    Mock,
     search_articles_invalid_key,
     search_articles_searched_default_answer,
 )
+from examples.company_news.flow import CompanyNewsFlow
+from examples.company_news.request import FLOW_TYPE
 
 CONNECTOR_DIRECTORY = Path(__file__).resolve().parents[2]
 
@@ -95,3 +99,9 @@ def test_manifest_operation_and_mock_contract() -> None:
         "message": rejected.failure.message,
     }
     assert rejected.value == ArticlePage()
+
+
+def test_example_registers_with_mock_connection() -> None:
+    flow = CompanyNewsFlow(Mock().connection())
+    assert flow.get_flow_type() == FLOW_TYPE
+    dex.Registry([flow], allow_async_handlers=True)

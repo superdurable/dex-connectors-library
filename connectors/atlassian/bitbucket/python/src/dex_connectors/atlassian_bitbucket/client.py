@@ -4,26 +4,27 @@
 
 import json
 from collections.abc import Callable
-from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from dataclasses import dataclass as dataclass
+from datetime import UTC, datetime
+from datetime import timedelta as timedelta
 from typing import Any, TypeVar
 from urllib.parse import quote, urlencode
 
 import httpx
+from dex_connectors.sdk import BranchDefinition as BranchDefinition
 from dex_connectors.sdk import (
-    BranchDefinition,
     Call,
     CredentialProvider,
     Failure,
     FailureKind,
-    OperationRef,
     QueryAttempt,
     QueryDefinition,
     ReauthorizationRequiredError,
     Receipt,
-    SecretString,
-    StepDefaults,
 )
+from dex_connectors.sdk import OperationRef as OperationRef
+from dex_connectors.sdk import SecretString as SecretString
+from dex_connectors.sdk import StepDefaults as StepDefaults
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -34,8 +35,46 @@ from dex_connectors.sdk.providerhttp import (
     send_traced,
     validate_base_url,
 )
-from dex_connectors.sdk.retry_policy import default_connector_step_execute_retry_policy
+from dex_connectors.sdk.retry_policy import (
+    default_connector_step_execute_retry_policy as default_connector_step_execute_retry_policy,
+)
 
+from ._generated.config import (
+    Config as Config,
+)
+from ._generated.config import (
+    Credentials as Credentials,
+)
+from ._generated.definitions import (
+    CONNECTOR_ID as CONNECTOR_ID,
+)
+from ._generated.definitions import (
+    DEFECT as DEFECT,
+)
+from ._generated.definitions import (
+    INVALID_RESPONSE as INVALID_RESPONSE,
+)
+from ._generated.definitions import (
+    LIST_PULL_REQUESTS_DEFINITION as LIST_PULL_REQUESTS_DEFINITION,
+)
+from ._generated.definitions import (
+    LIST_PULL_REQUESTS_OPERATION_ID as LIST_PULL_REQUESTS_OPERATION_ID,
+)
+from ._generated.definitions import (
+    LIST_REPOSITORIES_DEFINITION as LIST_REPOSITORIES_DEFINITION,
+)
+from ._generated.definitions import (
+    LIST_REPOSITORIES_OPERATION_ID as LIST_REPOSITORIES_OPERATION_ID,
+)
+from ._generated.definitions import (
+    LISTED as LISTED,
+)
+from ._generated.definitions import (
+    NOT_FOUND as NOT_FOUND,
+)
+from ._generated.definitions import (
+    PROVIDER_REJECTED as PROVIDER_REJECTED,
+)
 from .models import (
     ListPullRequestsInput,
     ListRepositoriesInput,
@@ -45,54 +84,11 @@ from .models import (
     RepositoryPage,
 )
 
-CONNECTOR_ID = "bitbucket"
-LIST_REPOSITORIES_OPERATION_ID = "listRepositories"
-LIST_PULL_REQUESTS_OPERATION_ID = "listPullRequests"
-LISTED = "listed"
-NOT_FOUND = "notFound"
-PROVIDER_REJECTED = "providerRejected"
-INVALID_RESPONSE = "invalidResponse"
-DEFECT = "defect"
 _DEFAULT_BASE_URL = "https://api.bitbucket.org/2.0"
 _DEFAULT_TIMEOUT_SECONDS = 15
 _DEFAULT_MAX_RESPONSE_BYTES = 2_097_152
-_STEP_DEFAULTS = StepDefaults(
-    timedelta(seconds=30), 2, execute_retry=default_connector_step_execute_retry_policy()
-)
-_SHARED_BRANCHES = (
-    BranchDefinition(NOT_FOUND, "The requested resource was not found.", True),
-    BranchDefinition(PROVIDER_REJECTED, "The provider conclusively rejected the request.", True),
-    BranchDefinition(INVALID_RESPONSE, "The provider returned malformed or oversized JSON.", True),
-    BranchDefinition(DEFECT, "Local input or connection credentials are invalid.", True),
-)
-LIST_REPOSITORIES_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, LIST_REPOSITORIES_OPERATION_ID),
-    (BranchDefinition(LISTED, "List repositories owned by a Bitbucket workspace."), *_SHARED_BRANCHES),
-    _STEP_DEFAULTS,
-)
-LIST_PULL_REQUESTS_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, LIST_PULL_REQUESTS_OPERATION_ID),
-    (BranchDefinition(LISTED, "List pull requests for a Bitbucket repository."), *_SHARED_BRANCHES),
-    _STEP_DEFAULTS,
-)
 
 Output = TypeVar("Output")
-
-
-@dataclass(frozen=True, slots=True)
-class Config:
-    """Bitbucket HTTP settings; zero or blank values use manifest defaults."""
-
-    base_url: str = _DEFAULT_BASE_URL
-    timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS
-    max_response_bytes: int = _DEFAULT_MAX_RESPONSE_BYTES
-
-
-@dataclass(frozen=True, slots=True)
-class Credentials:
-    """Bitbucket access token, resolved anew for every provider attempt."""
-
-    access_token: SecretString
 
 
 class Client:
@@ -395,3 +391,7 @@ def _string(document: dict[str, Any], name: str) -> str:
     if not isinstance(value, str):
         raise ValueError
     return value
+
+
+Config.__doc__ = "Bitbucket HTTP settings; zero or blank values use manifest defaults."
+Credentials.__doc__ = "Bitbucket access token, resolved anew for every provider attempt."

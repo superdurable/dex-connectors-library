@@ -2,130 +2,45 @@
 # SPDX-License-Identifier: MIT
 """Smartsheet connection and project credential binding."""
 
-from typing import Any
+from typing import Any as Any
 
-import httpx
-from dex_connectors.sdk import Call, ConnectionRef, Query, SecretString
-from dex_connectors.sdk.projectconfig import ConnectionKey, LoadedProject
+import httpx as httpx
+from dex_connectors.sdk import Call as Call
+from dex_connectors.sdk import ConnectionRef as ConnectionRef
+from dex_connectors.sdk import Query as Query
+from dex_connectors.sdk import SecretString as SecretString
+from dex_connectors.sdk.projectconfig import ConnectionKey as ConnectionKey
+from dex_connectors.sdk.projectconfig import LoadedProject as LoadedProject
 
-from .client import (
-    CONNECTOR_ID,
-    GET_SHEET_DEFINITION,
-    LIST_SHEETS_DEFINITION,
-    Client,
-    Config,
-    Credentials,
+from ._generated.connection import (
+    Connection as Connection,
 )
-from .models import GetSheetInput, ListSheetsInput, Sheet, SheetPage
+from ._generated.connection import (
+    new_connection as new_connection,
+)
+from ._generated.connection import (
+    new_connection_with_operations as new_connection_with_operations,
+)
+from ._generated.connection import (
+    new_project_connection as new_project_connection,
+)
+from .client import CONNECTOR_ID as CONNECTOR_ID
+from .client import GET_SHEET_DEFINITION as GET_SHEET_DEFINITION
+from .client import LIST_SHEETS_DEFINITION as LIST_SHEETS_DEFINITION
+from .client import Client as Client
+from .client import Config as Config
+from .client import Credentials as Credentials
+from .models import GetSheetInput as GetSheetInput
+from .models import ListSheetsInput as ListSheetsInput
+from .models import Sheet as Sheet
+from .models import SheetPage as SheetPage
 
+Connection.__doc__ = "Nonserializable Smartsheet operation bindings for a named project connection."
 
-class Connection:
-    """Nonserializable Smartsheet operation bindings for a named project connection."""
-
-    __slots__ = ("_list_sheets", "_get_sheet", "_client", "reference")
-
-    def __init__(
-        self,
-        reference: ConnectionRef,
-        list_sheets: Query[ListSheetsInput, SheetPage],
-        get_sheet: Query[GetSheetInput, Sheet],
-        client: Client | None = None,
-    ) -> None:
-        reference.validate()
-        if reference.provider != CONNECTOR_ID or list_sheets is None or get_sheet is None:
-            raise ValueError("Smartsheet connection provider and operations are required")
-        if (
-            list_sheets.definition().operation != LIST_SHEETS_DEFINITION.operation
-            or get_sheet.definition().operation != GET_SHEET_DEFINITION.operation
-        ):
-            raise ValueError("Smartsheet connection operation identity differs")
-        self.reference = reference
-        self._list_sheets = list_sheets
-        self._get_sheet = get_sheet
-        self._client = client
-
-    def list_sheets(self) -> Query[ListSheetsInput, SheetPage]:
-        """Return the sheet page Query used by an application Step."""
-        return self._list_sheets
-
-    def get_sheet(self) -> Query[GetSheetInput, Sheet]:
-        """Return the sheet lookup Query used by an application Step."""
-        return self._get_sheet
-
-    async def aclose(self) -> None:
-        """Close the owned provider transport after Worker shutdown."""
-        if self._client is not None:
-            await self._client.aclose()
-
-    def __repr__(self) -> str:
-        """Keep provider transport and credentials out of logs."""
-        return "smartsheet.Connection([REDACTED])"
-
-    def __reduce__(self) -> tuple[object, ...]:
-        """Prevent a live connection from entering durable Flow state."""
-        raise TypeError("Smartsheet connections cannot be serialized")
-
-
-def new_connection(client: Client, reference: ConnectionRef) -> Connection:
-    """Bind a client to an explicit logical connection reference."""
-    if client is None:
-        raise ValueError("Smartsheet client is required")
-    return Connection(reference, client.list_sheets(), client.get_sheet(), client)
-
-
-def new_connection_with_operations(
-    list_sheets: Query[ListSheetsInput, SheetPage],
-    get_sheet: Query[GetSheetInput, Sheet],
-    reference: ConnectionRef,
-) -> Connection:
-    """Bind mock operations to the same connection identity as the real provider."""
-    return Connection(reference, list_sheets, get_sheet)
-
-
-class _ProjectCredentialSource:
-    def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
-        self.project = project
-        self.key = key
-
-    async def resolve(self, call: Call) -> Credentials:
-        material = await self.project.resolve_credential(self.key, str(call.id))
-        value = material.get("api_key")
-        if not isinstance(value, str) or not value:
-            raise ValueError("Smartsheet credential api_key is required")
-        return Credentials(SecretString(value))
-
-
-def new_project_connection(
-    project: LoadedProject, connection_name: str, http_client: httpx.AsyncClient | None = None
-) -> Connection:
-    """Open declared ordinary settings and resolve the current private key per call."""
-    if project is None:
-        raise ValueError("Smartsheet connection requires loaded project configuration")
-    reference = ConnectionRef(CONNECTOR_ID, connection_name)
-    reference.validate()
-    key = ConnectionKey(CONNECTOR_ID, connection_name)
-    matching = [
-        entry
-        for entry in project.configuration.connections
-        if entry.connector_id == CONNECTOR_ID and entry.connection_name == connection_name
-    ]
-    if len(matching) != 1:
-        raise ValueError("Smartsheet project connection is missing or duplicated")
-    if matching[0].provider != CONNECTOR_ID:
-        raise ValueError("Smartsheet project connection provider differs")
-    config = _decode_config(matching[0].configuration)
-    client = Client(config, _ProjectCredentialSource(project, key), http_client)
-    return new_connection(client, reference)
-
-
-def _decode_config(value: dict[str, Any]) -> Config:
-    if set(value) - {"baseUrl", "timeout", "maxResponseBytes"}:
-        raise ValueError("Smartsheet configuration has unknown fields")
-    base_url = value.get("baseUrl", "")
-    timeout = value.get("timeout", 0)
-    max_response_bytes = value.get("maxResponseBytes", 0)
-    if not isinstance(base_url, str):
-        raise ValueError("Smartsheet configuration baseUrl must be a string")
-    if type(timeout) is not int or type(max_response_bytes) is not int:
-        raise ValueError("Smartsheet configuration timeout and maxResponseBytes must be integers")
-    return Config(base_url, timeout / 1_000_000_000, max_response_bytes)
+new_connection.__doc__ = "Bind a client to an explicit logical connection reference."
+new_connection_with_operations.__doc__ = (
+    "Bind mock operations to the same connection identity as the real provider."
+)
+new_project_connection.__doc__ = (
+    "Open declared ordinary settings and resolve the current private key per call."
+)

@@ -1,52 +1,43 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Manifest-backed SendGrid scripts for consuming Flow tests."""
+"""Public manifest-backed mock helpers."""
 
-from dex_connectors.sdk import ConnectionRef, Failure
-from dex_connectors.sdk.connectormock import Case, Query
+from dex_connectors.sdk import ConnectionRef as ConnectionRef
+from dex_connectors.sdk import Failure as Failure
+from dex_connectors.sdk.connectormock import Case as Case
+from dex_connectors.sdk.connectormock import Case as _Case
+from dex_connectors.sdk.connectormock import Query as Query
 
-from ..client import CONNECTOR_ID, FOUND, GET_STATS_DEFINITION, LIST_TEMPLATES_DEFINITION, LISTED
-from ..connection import Connection, new_connection_with_operations
-from ..models import GetStatsInput, ListTemplatesInput, StatsDay, StatsOutput, Template, TemplatesOutput
+from .._generated.mock import Mock as Mock
+from .._generated.mock import get_stats_found as get_stats_found
+from .._generated.mock import get_stats_found_default as _get_stats_found_default
+from .._generated.mock import list_templates_listed as list_templates_listed
+from .._generated.mock import list_templates_listed_default as _list_templates_listed_default
+from ..client import CONNECTOR_ID as CONNECTOR_ID
+from ..client import FOUND as FOUND
+from ..client import GET_STATS_DEFINITION as GET_STATS_DEFINITION
+from ..client import LIST_TEMPLATES_DEFINITION as LIST_TEMPLATES_DEFINITION
+from ..client import LISTED as LISTED
+from ..connection import Connection as Connection
+from ..connection import new_connection_with_operations as new_connection_with_operations
+from ..models import GetStatsInput as GetStatsInput
+from ..models import ListTemplatesInput as ListTemplatesInput
+from ..models import StatsDay as StatsDay
+from ..models import StatsOutput as StatsOutput
+from ..models import StatsOutput as _StatsOutput
+from ..models import Template as Template
+from ..models import TemplatesOutput as TemplatesOutput
+from ..models import TemplatesOutput as _TemplatesOutput
 
 
-def get_stats_found(value: StatsOutput, failure: Failure | None = None) -> Case[StatsOutput]:
-    """Script the found route."""
-    return Case.branch_result(FOUND, value, failure)
-
-
-def get_stats_default_answer() -> Case[StatsOutput]:
+def get_stats_default_answer() -> _Case[_StatsOutput]:
     """Return the manifest's getStats default answer."""
-    return get_stats_found(StatsOutput((StatsDay("2026-10-27", 8, 7),)))
+    return _get_stats_found_default()
 
 
-def list_templates_listed(value: TemplatesOutput, failure: Failure | None = None) -> Case[TemplatesOutput]:
-    """Script the listed route."""
-    return Case.branch_result(LISTED, value, failure)
-
-
-def list_templates_default_answer() -> Case[TemplatesOutput]:
+def list_templates_default_answer() -> _Case[_TemplatesOutput]:
     """Return the manifest's listTemplates default answer."""
-    return list_templates_listed(TemplatesOutput((Template("d-meridian", "Meridian receipt", "dynamic"),), 1))
-
-
-class Mock:
-    """Script SendGrid operations, defaulting to their manifest answers."""
-
-    def __init__(self, connection_name: str = "sendgrid") -> None:
-        self.get_stats_script: Query[GetStatsInput, StatsOutput] = Query(GET_STATS_DEFINITION)
-        self.get_stats_script.default(get_stats_default_answer())
-        self.list_templates_script: Query[ListTemplatesInput, TemplatesOutput] = Query(
-            LIST_TEMPLATES_DEFINITION
-        )
-        self.list_templates_script.default(list_templates_default_answer())
-        self._connection = new_connection_with_operations(
-            self.get_stats_script, self.list_templates_script, ConnectionRef(CONNECTOR_ID, connection_name)
-        )
-
-    def connection(self) -> Connection:
-        """Return this mock's named connection for Step registration."""
-        return self._connection
+    return _list_templates_listed_default()
 
 
 __all__ = [
@@ -56,3 +47,8 @@ __all__ = [
     "list_templates_listed",
     "list_templates_default_answer",
 ]
+
+Mock.__doc__ = "Script SendGrid operations, defaulting to their manifest answers."
+
+get_stats_found.__doc__ = "Script the found route."
+list_templates_listed.__doc__ = "Script the listed route."

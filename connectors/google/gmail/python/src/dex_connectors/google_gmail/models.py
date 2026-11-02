@@ -9,21 +9,13 @@ from typing import Any
 from dex_connectors.sdk import SecretString
 from dex_connectors.sdk.providerhttp import validate_base_url
 
+from ._generated.config import Config as _GeneratedConfig
 
-@dataclass(frozen=True, slots=True)
-class Config:
+
+class Config(_GeneratedConfig):
     """Gmail API settings; zero-valued limits select the manifest defaults."""
 
-    # Gmail API root, normally Google's public HTTPS v1 endpoint.
-    endpoint: str = "https://gmail.googleapis.com/gmail/v1"
-    # Maximum complete provider response in bytes.
-    max_response_bytes: int = 1_048_576
-    # Maximum base64url-encoded RFC 5322 message size in bytes.
-    max_message_bytes: int = 10_485_760
-    # Trigger poll delay in seconds for a future polling source.
-    poll_interval_seconds: float = 10
-    # Recent inbox messages inspected per future Trigger poll.
-    poll_page_size: int = 25
+    __slots__ = ()
 
     @classmethod
     def from_project_settings(cls, settings: dict[str, Any]) -> "Config":
@@ -109,9 +101,7 @@ class SendMessageInput:
     # Required plain-text body.
     text_body: str = field(metadata={"dex_json_name": "textBody"})
     # Optional HTML alternative body.
-    html_body: str = field(
-        default="", metadata={"dex_json_name": "htmlBody", "dex_json_omit_default": True}
-    )
+    html_body: str = field(default="", metadata={"dex_json_name": "htmlBody", "dex_json_omit_default": True})
 
 
 @dataclass(frozen=True, slots=True)
@@ -123,9 +113,7 @@ class ReplyToMessageInput:
     # Required plain-text reply body.
     text_body: str = field(metadata={"dex_json_name": "textBody"})
     # Optional HTML alternative reply body.
-    html_body: str = field(
-        default="", metadata={"dex_json_name": "htmlBody", "dex_json_omit_default": True}
-    )
+    html_body: str = field(default="", metadata={"dex_json_name": "htmlBody", "dex_json_omit_default": True})
 
 
 @dataclass(frozen=True, slots=True)
@@ -163,21 +151,15 @@ class Message:
     # Decoded sender mailbox header.
     from_address: str = field(default="", metadata={"dex_json_name": "from"})
     # Reply-To header, if supplied.
-    reply_to: str = field(
-        default="", metadata={"dex_json_name": "replyTo", "dex_json_omit_default": True}
-    )
+    reply_to: str = field(default="", metadata={"dex_json_name": "replyTo", "dex_json_omit_default": True})
     # Decoded recipient mailbox headers.
     to: list[str] = field(default_factory=list, metadata={"dex_json_omit_default": True})
     # Decoded message subject.
     subject: str = ""
     # Concatenated plain-text MIME parts.
-    text_body: str = field(
-        default="", metadata={"dex_json_name": "textBody", "dex_json_omit_default": True}
-    )
+    text_body: str = field(default="", metadata={"dex_json_name": "textBody", "dex_json_omit_default": True})
     # Concatenated HTML MIME parts.
-    html_body: str = field(
-        default="", metadata={"dex_json_name": "htmlBody", "dex_json_omit_default": True}
-    )
+    html_body: str = field(default="", metadata={"dex_json_name": "htmlBody", "dex_json_omit_default": True})
     # Gmail preview snippet.
     snippet: str = field(default="", metadata={"dex_json_omit_default": True})
     # Gmail internal timestamp in UTC.

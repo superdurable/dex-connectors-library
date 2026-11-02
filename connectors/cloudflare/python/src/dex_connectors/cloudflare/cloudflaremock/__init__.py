@@ -1,66 +1,46 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Manifest-backed Cloudflare scripts for consuming Flow tests."""
+"""Public manifest-backed mock helpers."""
 
-from dex_connectors.sdk import ConnectionRef, Failure
-from dex_connectors.sdk.connectormock import Case, Mutation, Query
+from dex_connectors.sdk import ConnectionRef as ConnectionRef
+from dex_connectors.sdk import Failure as Failure
+from dex_connectors.sdk.connectormock import Case as Case
+from dex_connectors.sdk.connectormock import Case as _Case
+from dex_connectors.sdk.connectormock import Mutation as Mutation
+from dex_connectors.sdk.connectormock import Query as Query
 
-from ..client import (
-    CONNECTOR_ID,
-    LIST_ZONES_DEFINITION,
-    LISTED,
-    NOT_FOUND,
-    PURGE_CACHE_BY_URLS_DEFINITION,
-    PURGED,
-)
-from ..connection import Connection, new_connection_with_operations
-from ..models import CachePurge, ListZonesInput, PurgeCacheByURLsInput, PurgeRequest, Zone, ZonesPage
+from .._generated.mock import Mock as Mock
+from .._generated.mock import list_zones_listed as list_zones_listed
+from .._generated.mock import list_zones_listed_default as _list_zones_listed_default
+from .._generated.mock import purge_cache_by_urls_not_found as purge_cache_by_urls_not_found
+from .._generated.mock import purge_cache_by_urls_purged as purge_cache_by_urls_purged
+from .._generated.mock import purge_cache_by_urls_purged_default as _purge_cache_by_urls_purged_default
+from ..client import CONNECTOR_ID as CONNECTOR_ID
+from ..client import LIST_ZONES_DEFINITION as LIST_ZONES_DEFINITION
+from ..client import LISTED as LISTED
+from ..client import NOT_FOUND as NOT_FOUND
+from ..client import PURGE_CACHE_BY_URLS_DEFINITION as PURGE_CACHE_BY_URLS_DEFINITION
+from ..client import PURGED as PURGED
+from ..connection import Connection as Connection
+from ..connection import new_connection_with_operations as new_connection_with_operations
+from ..models import CachePurge as CachePurge
+from ..models import CachePurge as _CachePurge
+from ..models import ListZonesInput as ListZonesInput
+from ..models import PurgeCacheByURLsInput as PurgeCacheByURLsInput
+from ..models import PurgeRequest as PurgeRequest
+from ..models import Zone as Zone
+from ..models import ZonesPage as ZonesPage
+from ..models import ZonesPage as _ZonesPage
 
 
-def list_zones_listed(value: ZonesPage, failure: Failure | None = None) -> Case[ZonesPage]:
-    """Script the listed route."""
-    return Case.branch_result(LISTED, value, failure)
-
-
-def list_zones_default_answer() -> Case[ZonesPage]:
+def list_zones_default_answer() -> _Case[_ZonesPage]:
     """Return the manifest's listZones default answer."""
-    return list_zones_listed(ZonesPage(True, (Zone("zone-meridian", "meridian.example", "active"),)))
+    return _list_zones_listed_default()
 
 
-def purge_cache_by_urls_purged(value: CachePurge, failure: Failure | None = None) -> Case[CachePurge]:
-    """Script the purged route."""
-    return Case.branch_result(PURGED, value, failure)
-
-
-def purge_cache_by_urls_not_found(value: CachePurge, failure: Failure | None = None) -> Case[CachePurge]:
-    """Script a missing or inaccessible zone."""
-    return Case.branch_result(NOT_FOUND, value, failure)
-
-
-def purge_cache_by_urls_default_answer() -> Case[CachePurge]:
+def purge_cache_by_urls_default_answer() -> _Case[_CachePurge]:
     """Return the manifest's purgeCacheByURLs default answer."""
-    return purge_cache_by_urls_purged(CachePurge(True, PurgeRequest("purge-meridian")))
-
-
-class Mock:
-    """Script Cloudflare operations, defaulting to their manifest answers."""
-
-    def __init__(self, connection_name: str = "cloudflare") -> None:
-        self.list_zones_script: Query[ListZonesInput, ZonesPage] = Query(LIST_ZONES_DEFINITION)
-        self.list_zones_script.default(list_zones_default_answer())
-        self.purge_cache_by_urls_script: Mutation[PurgeCacheByURLsInput, CachePurge] = Mutation(
-            PURGE_CACHE_BY_URLS_DEFINITION
-        )
-        self.purge_cache_by_urls_script.default(purge_cache_by_urls_default_answer())
-        self._connection = new_connection_with_operations(
-            self.purge_cache_by_urls_script,
-            self.list_zones_script,
-            ConnectionRef(CONNECTOR_ID, connection_name),
-        )
-
-    def connection(self) -> Connection:
-        """Return this mock's named connection for Step registration."""
-        return self._connection
+    return _purge_cache_by_urls_purged_default()
 
 
 __all__ = [
@@ -71,3 +51,9 @@ __all__ = [
     "purge_cache_by_urls_not_found",
     "purge_cache_by_urls_default_answer",
 ]
+
+Mock.__doc__ = "Script Cloudflare operations, defaulting to their manifest answers."
+
+list_zones_listed.__doc__ = "Script the listed route."
+purge_cache_by_urls_purged.__doc__ = "Script the purged route."
+purge_cache_by_urls_not_found.__doc__ = "Script a missing or inaccessible zone."

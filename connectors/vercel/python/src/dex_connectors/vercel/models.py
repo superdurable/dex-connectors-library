@@ -4,25 +4,9 @@
 
 from dataclasses import dataclass, field
 
-
-@dataclass(frozen=True, slots=True)
-class ListDeploymentsInput:
-    """Optional team ID; blank lists the personal account's deployments."""
-
-    team_id: str = field(default="", metadata={"dex_json_name": "teamId", "dex_json_omit_default": True})
-
-
-@dataclass(frozen=True, slots=True)
-class Deployment:
-    """Deployment identity, project name, hostname, states, and creation time in Unix milliseconds."""
-
-    uid: str = ""
-    id: str = ""
-    name: str = ""
-    url: str = ""
-    state: str = ""
-    ready_state: str = field(default="", metadata={"dex_json_name": "readyState"})
-    created: int = 0
+from ._generated.models import Deployment as Deployment
+from ._generated.models import GetDeploymentInput as GetDeploymentInput
+from ._generated.models import ListDeploymentsInput as ListDeploymentsInput
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,9 +24,10 @@ class DeploymentsPage:
     pagination: Pagination = field(default_factory=Pagination)
 
 
-@dataclass(frozen=True, slots=True)
-class GetDeploymentInput:
-    """Deployment ID or hostname, plus the optional owning team ID."""
+# connectorctl: model-alias DeploymentsPagePagination=Pagination
 
-    id_or_url: str = field(default="", metadata={"dex_json_name": "idOrUrl"})
-    team_id: str = field(default="", metadata={"dex_json_name": "teamId", "dex_json_omit_default": True})
+ListDeploymentsInput.__doc__ = "Optional team ID; blank lists the personal account's deployments."
+Deployment.__doc__ = (
+    "Deployment identity, project name, hostname, states, and creation time in Unix milliseconds."
+)
+GetDeploymentInput.__doc__ = "Deployment ID or hostname, plus the optional owning team ID."

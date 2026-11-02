@@ -5,13 +5,14 @@
 import json
 import re
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
+from datetime import timedelta as timedelta
 from typing import Any, TypeVar
 from urllib.parse import urlencode
 
 import httpx
+from dex_connectors.sdk import BranchDefinition as BranchDefinition
 from dex_connectors.sdk import (
-    BranchDefinition,
     Call,
     CallID,
     CredentialProvider,
@@ -20,14 +21,14 @@ from dex_connectors.sdk import (
     IdempotencyKey,
     MutationAttempt,
     MutationDefinition,
-    OperationRef,
     QueryAttempt,
     QueryDefinition,
     ReauthorizationRequiredError,
     Receipt,
-    SecretString,
-    StepDefaults,
 )
+from dex_connectors.sdk import OperationRef as OperationRef
+from dex_connectors.sdk import SecretString as SecretString
+from dex_connectors.sdk import StepDefaults as StepDefaults
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -38,18 +39,48 @@ from dex_connectors.sdk.providerhttp import (
     send_traced,
     validate_base_url,
 )
-from dex_connectors.sdk.retry_policy import default_connector_step_execute_retry_policy
+from dex_connectors.sdk.retry_policy import (
+    default_connector_step_execute_retry_policy as default_connector_step_execute_retry_policy,
+)
 
+from ._generated.config import (
+    Config as Config,
+)
+from ._generated.config import (
+    Credentials as Credentials,
+)
+from ._generated.definitions import (
+    CONNECTOR_ID as CONNECTOR_ID,
+)
+from ._generated.definitions import (
+    DEFECT as DEFECT,
+)
+from ._generated.definitions import (
+    INVALID_RESPONSE as INVALID_RESPONSE,
+)
+from ._generated.definitions import (
+    PROVIDER_REJECTED as PROVIDER_REJECTED,
+)
+from ._generated.definitions import (
+    SELECT_ROWS_DEFINITION as SELECT_ROWS_DEFINITION,
+)
+from ._generated.definitions import (
+    SELECT_ROWS_OPERATION_ID as SELECT_ROWS_OPERATION_ID,
+)
+from ._generated.definitions import (
+    SELECTED as SELECTED,
+)
+from ._generated.definitions import (
+    UPSERT_ROWS_DEFINITION as UPSERT_ROWS_DEFINITION,
+)
+from ._generated.definitions import (
+    UPSERT_ROWS_OPERATION_ID as UPSERT_ROWS_OPERATION_ID,
+)
+from ._generated.definitions import (
+    UPSERTED as UPSERTED,
+)
 from .models import SelectRowsInput, SelectRowsOutput, UpsertRowsInput, UpsertRowsOutput
 
-CONNECTOR_ID = "supabase"
-SELECT_ROWS_OPERATION_ID = "selectRows"
-UPSERT_ROWS_OPERATION_ID = "upsertRows"
-SELECTED = "selected"
-UPSERTED = "upserted"
-PROVIDER_REJECTED = "providerRejected"
-INVALID_RESPONSE = "invalidResponse"
-DEFECT = "defect"
 UPSERT_PREFERENCE = "resolution=merge-duplicates,return=representation"
 _IDENTIFIER = re.compile(r"[A-Za-z0-9_-]+")
 _COLUMN_LIST = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*")
@@ -58,53 +89,14 @@ _DEFAULT_MAX_RESPONSE_BYTES = 2_097_152
 _DEFAULT_SELECT_LIMIT = 100
 _MAX_SELECT_LIMIT = 1000
 _MAX_UPSERT_ROWS = 100
-_STEP_DEFAULTS = StepDefaults(
-    timedelta(seconds=30), 2, execute_retry=default_connector_step_execute_retry_policy()
-)
 _STATUS_KINDS = {
     401: FailureKind.AUTHENTICATION,
     403: FailureKind.AUTHORIZATION,
     400: FailureKind.VALIDATION,
     422: FailureKind.VALIDATION,
 }
-_SHARED_BRANCHES = (
-    BranchDefinition(
-        PROVIDER_REJECTED, "The provider conclusively rejected the request or credentials.", True
-    ),
-    BranchDefinition(INVALID_RESPONSE, "The provider returned malformed or oversized JSON.", True),
-    BranchDefinition(DEFECT, "Local input, configuration, or credentials are invalid.", True),
-)
-SELECT_ROWS_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, SELECT_ROWS_OPERATION_ID),
-    (BranchDefinition(SELECTED, "Select a bounded page of table rows through PostgREST."), *_SHARED_BRANCHES),
-    _STEP_DEFAULTS,
-)
-UPSERT_ROWS_DEFINITION = MutationDefinition(
-    OperationRef(CONNECTOR_ID, UPSERT_ROWS_OPERATION_ID),
-    (
-        BranchDefinition(UPSERTED, "Upsert rows with a declared unique conflict key and merge duplicates."),
-        *_SHARED_BRANCHES,
-    ),
-    _STEP_DEFAULTS,
-)
 
 Output = TypeVar("Output")
-
-
-@dataclass(frozen=True, slots=True)
-class Config:
-    """Supabase Data API URL and HTTP settings; zero timeout or size limit uses manifest defaults."""
-
-    base_url: str
-    timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS
-    max_response_bytes: int = _DEFAULT_MAX_RESPONSE_BYTES
-
-
-@dataclass(frozen=True, slots=True)
-class Credentials:
-    """Supabase server-side API key, resolved anew for every provider attempt."""
-
-    api_key: SecretString
 
 
 @dataclass(frozen=True, slots=True)
@@ -389,3 +381,7 @@ def _mutation_failed(branch: str, kind: FailureKind, message: str) -> MutationAt
     return MutationAttempt.branch_result(
         branch, UpsertRowsOutput(), Receipt(), Failure(kind, CONNECTOR_ID, UPSERT_ROWS_OPERATION_ID, message)
     )
+
+
+Config.__doc__ = "Supabase Data API URL and HTTP settings; zero timeout or size limit uses manifest defaults."
+Credentials.__doc__ = "Supabase server-side API key, resolved anew for every provider attempt."

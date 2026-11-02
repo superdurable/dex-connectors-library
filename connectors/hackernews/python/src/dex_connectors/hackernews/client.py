@@ -4,13 +4,14 @@
 
 import json
 from collections.abc import Callable
-from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from dataclasses import dataclass as dataclass
+from datetime import UTC, datetime
+from datetime import timedelta as timedelta
 from typing import Any, TypeVar
 
 import httpx
+from dex_connectors.sdk import BranchDefinition as BranchDefinition
 from dex_connectors.sdk import (
-    BranchDefinition,
     Call,
     Failure,
     FailureKind,
@@ -18,8 +19,8 @@ from dex_connectors.sdk import (
     QueryAttempt,
     QueryDefinition,
     Receipt,
-    StepDefaults,
 )
+from dex_connectors.sdk import StepDefaults as StepDefaults
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -29,60 +30,46 @@ from dex_connectors.sdk.providerhttp import (
     send_traced,
     validate_base_url,
 )
-from dex_connectors.sdk.retry_policy import RetryPolicy
+from dex_connectors.sdk.retry_policy import RetryPolicy as RetryPolicy
 
+from ._generated import definitions as _generated_definitions
+from ._generated.config import Config as _GeneratedConfig
+from ._generated.definitions import DEFECT as DEFECT
+from ._generated.definitions import FOUND as FOUND
+from ._generated.definitions import GET_ITEM_OPERATION_ID as GET_ITEM_OPERATION_ID
+from ._generated.definitions import INVALID_RESPONSE as INVALID_RESPONSE
+from ._generated.definitions import LIST_STORY_IDS_OPERATION_ID as LIST_STORY_IDS_OPERATION_ID
+from ._generated.definitions import LISTED as LISTED
+from ._generated.definitions import NOT_FOUND as NOT_FOUND
+from ._generated.definitions import PROVIDER_REJECTED as PROVIDER_REJECTED
 from .models import GetItemInput, Item, ListStoryIDsInput, StoryIDs
 
 CONNECTOR_ID = "hackernews"
 FAILURE_PROVIDER = "hacker-news"
-LIST_STORY_IDS_OPERATION_ID = "listStoryIDs"
-GET_ITEM_OPERATION_ID = "getItem"
-LISTED = "listed"
-FOUND = "found"
-NOT_FOUND = "notFound"
-PROVIDER_REJECTED = "providerRejected"
-INVALID_RESPONSE = "invalidResponse"
-DEFECT = "defect"
 FEEDS = ("top", "best", "new", "ask", "show")
 ITEM_TYPES = ("story", "comment", "job", "poll", "pollopt")
 _DEFAULT_BASE_URL = "https://hacker-news.firebaseio.com/v0"
 _DEFAULT_TIMEOUT_SECONDS = 15
 _DEFAULT_MAX_RESPONSE_BYTES = 1_048_576
-_STEP_DEFAULTS = StepDefaults(
-    timedelta(seconds=30),
-    2,
-    execute_retry=RetryPolicy(timedelta(seconds=1), 2, timedelta(seconds=30), 0, timedelta(minutes=65)),
-)
-_SHARED_BRANCHES = (
-    BranchDefinition(PROVIDER_REJECTED, "Hacker News rejected the request.", True),
-    BranchDefinition(INVALID_RESPONSE, "Hacker News returned malformed or oversized data.", True),
-    BranchDefinition(DEFECT, "Local input or connection configuration is invalid.", True),
-)
+
 LIST_STORY_IDS_DEFINITION = QueryDefinition(
     OperationRef(CONNECTOR_ID, LIST_STORY_IDS_OPERATION_ID),
-    (BranchDefinition(LISTED, "The feed snapshot was read."), *_SHARED_BRANCHES),
-    _STEP_DEFAULTS,
+    _generated_definitions.LIST_STORY_IDS_DEFINITION.branches or (),
+    _generated_definitions.LIST_STORY_IDS_DEFINITION.step_defaults,
 )
 GET_ITEM_DEFINITION = QueryDefinition(
     OperationRef(CONNECTOR_ID, GET_ITEM_OPERATION_ID),
-    (
-        BranchDefinition(FOUND, "The public item was read."),
-        BranchDefinition(NOT_FOUND, "The item is missing, deleted, or dead.", True),
-        *_SHARED_BRANCHES,
-    ),
-    _STEP_DEFAULTS,
+    _generated_definitions.GET_ITEM_DEFINITION.branches or (),
+    _generated_definitions.GET_ITEM_DEFINITION.step_defaults,
 )
 
 Output = TypeVar("Output")
 
 
-@dataclass(frozen=True, slots=True)
-class Config:
+class Config(_GeneratedConfig):
     """Hacker News HTTP settings; zero or blank values use manifest defaults."""
 
-    base_url: str = _DEFAULT_BASE_URL
-    timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS
-    max_response_bytes: int = _DEFAULT_MAX_RESPONSE_BYTES
+    __slots__ = ()
 
 
 class Client:

@@ -1,5 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
+# connectorctl: handwritten facade
 """Bind Stripe operations to one static Dex connection identity."""
 
 from dataclasses import dataclass

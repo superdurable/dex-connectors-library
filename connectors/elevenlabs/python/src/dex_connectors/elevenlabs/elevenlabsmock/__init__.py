@@ -1,54 +1,42 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Manifest-backed ElevenLabs scripts for consuming Flow tests."""
+"""Public manifest-backed mock helpers."""
 
-from dex_connectors.sdk import ConnectionRef, Failure
-from dex_connectors.sdk.connectormock import Case, Query
+from dex_connectors.sdk import ConnectionRef as ConnectionRef
+from dex_connectors.sdk import Failure as Failure
+from dex_connectors.sdk.connectormock import Case as Case
+from dex_connectors.sdk.connectormock import Case as _Case
+from dex_connectors.sdk.connectormock import Query as Query
 
-from ..client import CONNECTOR_ID, CREATE_SPEECH_DEFINITION, CREATED, LIST_VOICES_DEFINITION, LISTED
-from ..connection import Connection, new_connection_with_operations
-from ..models import CreateSpeechInput, CreateSpeechOutput, ListVoicesInput, ListVoicesOutput, Voice
+from .._generated.mock import Mock as Mock
+from .._generated.mock import create_speech_created as create_speech_created
+from .._generated.mock import create_speech_created_default as _create_speech_created_default
+from .._generated.mock import list_voices_listed as list_voices_listed
+from .._generated.mock import list_voices_listed_default as _list_voices_listed_default
+from ..client import CONNECTOR_ID as CONNECTOR_ID
+from ..client import CREATE_SPEECH_DEFINITION as CREATE_SPEECH_DEFINITION
+from ..client import CREATED as CREATED
+from ..client import LIST_VOICES_DEFINITION as LIST_VOICES_DEFINITION
+from ..client import LISTED as LISTED
+from ..connection import Connection as Connection
+from ..connection import new_connection_with_operations as new_connection_with_operations
+from ..models import CreateSpeechInput as CreateSpeechInput
+from ..models import CreateSpeechOutput as CreateSpeechOutput
+from ..models import CreateSpeechOutput as _CreateSpeechOutput
+from ..models import ListVoicesInput as ListVoicesInput
+from ..models import ListVoicesOutput as ListVoicesOutput
+from ..models import ListVoicesOutput as _ListVoicesOutput
+from ..models import Voice as Voice
 
 
-def list_voices_listed(value: ListVoicesOutput, failure: Failure | None = None) -> Case[ListVoicesOutput]:
-    """Script the listed route."""
-    return Case.branch_result(LISTED, value, failure)
-
-
-def list_voices_default_answer() -> Case[ListVoicesOutput]:
-    """Return the manifest's listVoices default answer."""
-    return list_voices_listed(ListVoicesOutput((Voice("voice_meridian", "Meridian Narrator"),), False))
-
-
-def create_speech_created(
-    value: CreateSpeechOutput, failure: Failure | None = None
-) -> Case[CreateSpeechOutput]:
-    """Script the created route."""
-    return Case.branch_result(CREATED, value, failure)
-
-
-def create_speech_default_answer() -> Case[CreateSpeechOutput]:
+def create_speech_default_answer() -> _Case[_CreateSpeechOutput]:
     """Return the manifest's createSpeech default answer."""
-    return create_speech_created(CreateSpeechOutput("SUQz", "audio/mpeg"))
+    return _create_speech_created_default()
 
 
-class Mock:
-    """Script ElevenLabs operations, defaulting to their manifest answers."""
-
-    def __init__(self, connection_name: str = "elevenlabs") -> None:
-        self.list_voices_script: Query[ListVoicesInput, ListVoicesOutput] = Query(LIST_VOICES_DEFINITION)
-        self.list_voices_script.default(list_voices_default_answer())
-        self.create_speech_script: Query[CreateSpeechInput, CreateSpeechOutput] = Query(
-            CREATE_SPEECH_DEFINITION
-        )
-        self.create_speech_script.default(create_speech_default_answer())
-        self._connection = new_connection_with_operations(
-            self.list_voices_script, self.create_speech_script, ConnectionRef(CONNECTOR_ID, connection_name)
-        )
-
-    def connection(self) -> Connection:
-        """Return this mock's named connection for Step registration."""
-        return self._connection
+def list_voices_default_answer() -> _Case[_ListVoicesOutput]:
+    """Return the manifest's listVoices default answer."""
+    return _list_voices_listed_default()
 
 
 __all__ = [
@@ -58,3 +46,8 @@ __all__ = [
     "create_speech_created",
     "create_speech_default_answer",
 ]
+
+Mock.__doc__ = "Script ElevenLabs operations, defaulting to their manifest answers."
+
+list_voices_listed.__doc__ = "Script the listed route."
+create_speech_created.__doc__ = "Script the created route."
