@@ -13,6 +13,10 @@ spec:
       version: v0.1.0
       operations: [createOrUpdateContact, getContact]
       triggers: []
+    typescript:
+      version: v0.1.0
+      operations: [createOrUpdateContact, getContact]
+      triggers: []
   codegen:
     go:
       package: brevo
