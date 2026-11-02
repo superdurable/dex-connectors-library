@@ -213,7 +213,7 @@ mutation.assertNoFailures();
 
 ## OAuth token refresh
 
-The [runnable OAuth exchange example](examples/oauthtoken.mjs) shows a provider-neutral refresh-token grant. The injected `fetch` returns a local fixture; a connector normally uses the provider's fixed HTTPS token endpoint. `TokenEndpoint` also supports client-credentials and JWT-bearer grants, optional Basic authentication, declared response fields, bounded responses, and terminal OAuth error-code classification. The [manifest refresh example](examples/manifest_refresh.mjs) uses `ManifestCredentialRefreshDriver` with a generated authorization declaration and field map to exchange refresh-token, client-credentials, or JWT-bearer grants, preserve rotated material, check scopes, and replace only mapped fields. Constructor options also accept startup-pinned `settings`, a caller-owned `fetch`, and an injectable `now` clock. A credential with several authorization methods supplies `authMethodId`; an omitted value selects the manifest default method. Only declared terminal OAuth errors below HTTP 500 require reauthorization; transport, server, and other token errors remain retryable.
+The [runnable OAuth exchange example](examples/oauthtoken.mjs) shows a provider-neutral refresh-token grant. The injected `fetch` returns a local fixture; a connector normally uses the provider's fixed HTTPS token endpoint. `TokenEndpoint` also supports client-credentials and JWT-bearer grants, optional Basic authentication, declared response fields, bounded responses, and terminal OAuth error-code classification. The [manifest refresh example](examples/manifest_refresh.mjs) uses `ManifestCredentialRefreshDriver` with a generated authorization declaration and field map to exchange refresh-token, client-credentials, or JWT-bearer grants, preserve rotated material, check scopes, and replace only mapped fields. Constructor options also accept startup-pinned `settings`, a caller-owned `fetch`, and an injectable `now` clock. Credentials for a connector with several authorization methods must carry `authMethodId`. The manifest must declare `refresh.acceptsMissingTokenType` for providers that omit `token_type` and grant `acceptedTokenTypes` for providers such as Slack that return `bot` or `user`; schema and codegen support for these declarations is pending before connector migration. Only declared terminal OAuth errors below HTTP 500 require reauthorization; transport, server, and other token errors remain retryable.
 
 An access token with no stored expiry remains usable; the current project provider requires authoritative expiry before forcing refresh after a provider rejection. A response without `expires_in` uses the manifest's `missingExpiry` lifetime or returns an expired result for `keep`. The current project provider rejects that result without changing stored material. Refreshing multiple grants follows the Go driver's current single-expiry behavior: active grants rotate together and the earliest expiry wins. A process failure between provider response and persistence, or failure of a later grant after an earlier rotation, can lose a one-use refresh token.
 
@@ -262,6 +262,10 @@ await fence.recordProviderId(result.providerId);
 ```
 
 ## Release notes
+
+### 0.2.0
+
+Adds manifest-driven refresh for OAuth, client-credentials, and JWT bearer grants, including rotated refresh tokens, declared scope and token-type checks, and retryable token endpoint failures. Connector migration requires schema and codegen support for the new token-type declarations.
 
 ### 0.1.0
 

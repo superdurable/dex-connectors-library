@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { generateKeyPairSync, verify } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { SecretString } from '../src/credentials.js';
 import { ReauthorizationRequiredError } from '../src/errors.js';
@@ -42,6 +43,49 @@ const credentials = (): Credentials => ({
 const state = () => ({ credentials: credentials(), now: new Date(), expiresAt: new Date(0) });
 
 describe('manifest credential refresh', () => {
+  it('refreshes schema-decoded Jira and Slack declarations with planned token-type fields', async () => {
+    // Regenerate the snapshots with schema.Decode(connector.yaml), then JSON-encode Spec.Auth.
+    // Add Jira refresh.acceptsMissingTokenType and Slack grant.acceptedTokenTypes until schema supports them.
+    const jiraAuth = JSON.parse(readFileSync(new URL('./fixtures/jira-auth.json', import.meta.url), 'utf8')) as Record<string, unknown>;
+    const slackAuth = JSON.parse(readFileSync(new URL('./fixtures/slack-auth.json', import.meta.url), 'utf8')) as Record<string, unknown>;
+    const jira = new ManifestCredentialRefreshDriver<{
+      oauthClientId: string; oauthClientSecret: SecretString; accessToken: SecretString; refreshToken: SecretString;
+    }>({ providerName: 'Jira', auth: jiraAuth, credentialFields: {
+      oauth_client_id: 'oauthClientId', oauth_client_secret: 'oauthClientSecret',
+      access_token: 'accessToken', refresh_token: 'refreshToken',
+    }, fetch: async () => Response.json({ access_token: 'jira-new', refresh_token: 'jira-rotated', expires_in: 3600, scope: 'read:jira-work write:jira-work' }) });
+    const jiraResult = await jira.refresh({ credentials: {
+      oauthClientId: 'client', oauthClientSecret: new SecretString('secret'),
+      accessToken: new SecretString('old'), refreshToken: new SecretString('jira-old'),
+    }, now: new Date() }, new AbortController().signal);
+    expect(jiraResult.credentials.refreshToken.reveal()).toBe('jira-rotated');
+
+    const slackScopes = (slackAuth.oauth2 as Record<string, unknown>).scopes as string[];
+    const slackUserScopes = (slackAuth.oauth2 as Record<string, unknown>).userScopes as string[];
+    const slackRequests: string[] = [];
+    const slack = new ManifestCredentialRefreshDriver<{
+      oauthClientId: string; oauthClientSecret: SecretString; botToken: SecretString; botRefreshToken: SecretString;
+      userToken: SecretString; userRefreshToken: SecretString;
+    }>({ providerName: 'Slack', auth: slackAuth, credentialFields: {
+      oauth_client_id: 'oauthClientId', oauth_client_secret: 'oauthClientSecret',
+      bot_token: 'botToken', bot_refresh_token: 'botRefreshToken',
+      user_token: 'userToken', user_refresh_token: 'userRefreshToken',
+    }, fetch: async (_input, init) => {
+      const refreshToken = new URLSearchParams(String(init?.body)).get('refresh_token') ?? '';
+      slackRequests.push(refreshToken);
+      return Response.json(refreshToken === 'bot-old'
+        ? { access_token: 'bot-new', refresh_token: 'bot-rotated', expires_in: 3600, token_type: 'bot', scope: slackScopes.join(',') }
+        : { access_token: 'user-new', refresh_token: 'user-rotated', expires_in: 3600, token_type: 'user', scope: slackUserScopes.join(',') });
+    } });
+    const slackResult = await slack.refresh({ credentials: {
+      oauthClientId: 'client', oauthClientSecret: new SecretString('secret'),
+      botToken: new SecretString('old'), botRefreshToken: new SecretString('bot-old'),
+      userToken: new SecretString('old'), userRefreshToken: new SecretString('user-old'),
+    }, now: new Date() }, new AbortController().signal);
+    expect(slackRequests).toEqual(['bot-old', 'user-old']);
+    expect(slackResult.credentials.userRefreshToken.reveal()).toBe('user-rotated');
+  });
+
   it('uses declared request shape and rotates mapped fields only', async () => {
     const requests: RequestInit[] = [];
     const fetcher: typeof fetch = async (input, init) => {
@@ -118,7 +162,7 @@ describe('manifest credential refresh', () => {
     await expect(required.refresh({ credentials: withoutSecret, now: new Date() }, new AbortController().signal)).rejects.toBeInstanceOf(ReauthorizationRequiredError);
     expect(requests).toBe(0);
 
-    clientSecret.required = false;
+    delete clientSecret.required;
     const optional = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth: configured, credentialFields, fetch: fetcher });
     await optional.refresh({ credentials: withoutSecret, now: new Date() }, new AbortController().signal);
     expect(requests).toBe(1);
@@ -132,6 +176,42 @@ describe('manifest credential refresh', () => {
     expect(Object.fromEntries(new URLSearchParams(requestBody))).toEqual({
       grant_type: 'refresh_token', refresh_token: 'old-refresh', client_id: 'client-id', client_secret: 'client-secret', scope: 'offline_access files.read',
     });
+  });
+
+  it('treats an undeclared client secret as required before sending a token request', async () => {
+    const configured = structuredClone(auth) as Record<string, unknown>;
+    const method = (configured.methods as Record<string, unknown>[])[0]!;
+    method.fields = (method.fields as Record<string, unknown>[]).filter(field => field.name !== 'client_secret');
+    let requests = 0;
+    const driver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth: configured, credentialFields,
+      fetch: async () => { requests++; return Response.json({}); } });
+    await expect(driver.refresh({ credentials: { ...credentials(), clientSecret: new SecretString('') }, now: new Date() },
+      new AbortController().signal)).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+    expect(requests).toBe(0);
+  });
+
+  it('validates every grant mapping and Go duration before rotating a refresh token', async () => {
+    const configured = structuredClone(auth) as Record<string, unknown>;
+    const method = (configured.methods as Record<string, unknown>[])[0]!;
+    const oauth = method.oauth2 as Record<string, unknown>;
+    const refresh = oauth.refresh as Record<string, unknown>;
+    refresh.missingExpiry = { lifetime: '1h2m3.5s4ms5us6ns' };
+    let requests = 0;
+    const driverFor = () => new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth: configured, credentialFields,
+      fetch: async () => { requests++; return Response.json({ access_token: 'new', refresh_token: 'rotated', token_type: 'Bearer' }); } });
+    const result = await driverFor().refresh(state(), new AbortController().signal);
+    expect(result.credentials.refreshToken.reveal()).toBe('rotated');
+    expect(result.expiresAt.getTime()).toBeGreaterThan(Date.now() + 3_723_000);
+    refresh.missingExpiry = { lifetime: '1fortnight' };
+    await expect(driverFor().refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(TypeError);
+    expect(requests).toBe(1);
+    refresh.missingExpiry = 'keep';
+    refresh.grants = [
+      { refreshTokenCredential: 'refresh_token', credentialMappings: [{ credential: 'access_token', source: 'access_token' }] },
+      { refreshTokenCredential: 'refresh_token', credentialMappings: [{ credential: 'missing_field', source: 'access_token' }] },
+    ];
+    await expect(driverFor().refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(TypeError);
+    expect(requests).toBe(1);
   });
 
   it('uses the declared error code matrix for HTTP 400 and OAuth error responses', async () => {
@@ -230,6 +310,10 @@ describe('manifest credential refresh', () => {
     expect(result.credentials.botRefreshToken.reveal()).toBe('bot-rotated');
     expect(result.credentials.userRefreshToken.reveal()).toBe('user-rotated');
     expect(result.expiresAt.getTime()).toBeLessThan(Date.now() + 31 * 60_000);
+    const extraScopeDriver = new ManifestCredentialRefreshDriver({ providerName: 'Slack', auth: configured, credentialFields: fields,
+      fetch: async () => Response.json({ access_token: 'bot-new', expires_in: 3600, token_type: 'bot', scope: 'chat.write extra' }) });
+    await expect(extraScopeDriver.refresh({ credentials: stored, now: new Date() }, new AbortController().signal))
+      .rejects.toBeInstanceOf(ReauthorizationRequiredError);
   });
 
   it('never refreshes a method without a declared grant', async () => {
@@ -274,5 +358,15 @@ describe('manifest credential refresh', () => {
     const result = await driver.refresh({ credentials: { accessToken: new SecretString(''), serviceAccountKey: new SecretString(key), delegatedUser: 'user@example.test', primaryEmail: '' }, now: new Date() }, new AbortController().signal);
     expect(result.credentials.accessToken.reveal()).toBe('delegated');
     expect(result.credentials.primaryEmail).toBe('user@example.test');
+    const retryable = new ManifestCredentialRefreshDriver({ providerName: 'Example', auth: delegatedAuth, credentialFields: fields,
+      fetch: async () => { throw new Error('temporary network failure'); } });
+    await expect(retryable.refresh({ credentials: { accessToken: new SecretString(''), serviceAccountKey: new SecretString(key), delegatedUser: 'user@example.test', primaryEmail: '' }, now: new Date() },
+      new AbortController().signal)).rejects.toThrow('Example token endpoint is unavailable');
+    const invalidLifetime = structuredClone(delegatedAuth);
+    invalidLifetime.serviceAccount.jwtBearer.lifetime = 'invalid';
+    const invalid = new ManifestCredentialRefreshDriver({ providerName: 'Example', auth: invalidLifetime, credentialFields: fields,
+      fetch: async () => { throw new Error('should not send'); } });
+    await expect(invalid.refresh({ credentials: { accessToken: new SecretString(''), serviceAccountKey: new SecretString(key), delegatedUser: 'user@example.test', primaryEmail: '' }, now: new Date() },
+      new AbortController().signal)).rejects.toBeInstanceOf(TypeError);
   });
 });

@@ -29,7 +29,7 @@ interface Grant {
   acceptedTokenTypes: string[];
   acceptsMissingTokenType: boolean;
   missingExpiry: string;
-  additional: Record<string, string>;
+  additionalParameters: Record<string, string>;
 }
 
 /** Manifest-backed OAuth and service-account grant options emitted by connectorctl. */
@@ -47,7 +47,7 @@ export interface ManifestCredentialRefreshOptions {
  * Missing expiry keeps an existing access token. Refresh sends each active grant
  * and reports the earliest expiry. Declared sub-500 terminal errors require
  * reauthorization; other token endpoint failures remain retryable. A credential
- * with multiple methods uses authMethodId or the manifest default method.
+ * with multiple methods must carry authMethodId.
  */
 export class ManifestCredentialRefreshDriver<C extends object> implements CredentialRefreshDriver<C> {
   readonly #providerName: string;
@@ -72,7 +72,7 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
   refreshRequired(state: CredentialRefreshState<C>): boolean {
     const grants = this.#grants(this.#selectedMethod(state.credentials));
     if (!grants.length) return false;
-    const accessFields = grants.flatMap(grant => grant.mappings.filter(mapping => mapping.source === 'access_token').map(mapping => text(mapping.credential)));
+    const accessFields = grants.flatMap(grant => grant.mappings.filter(mapping => mapping.source === 'access_token').map(mapping => manifestText(mapping.credential)));
     const hasAccessToken = accessFields.length > 0 && accessFields.every(name => Boolean(this.#credentialValue(state.credentials, name)));
     return isRefreshRequired(hasAccessToken, state.expiresAt, state.now, 'keep');
   }
@@ -83,26 +83,28 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
     const method = this.#selectedMethod(credentials);
     const grants = this.#grants(method);
     if (!grants.length) throw new ReauthorizationRequiredError();
+    for (const grant of grants) this.#validateGrant(grant);
     const expiries: number[] = [];
     for (const grant of grants) {
       if (grant.refreshField && !this.#credentialValue(credentials, grant.refreshField)) continue;
       const token = await this.#exchange(grant, credentials, method, signal);
       const requiredScopes = this.#scopes(grant.scopes).filter(scope => grant.kind !== 'refresh' || scope !== 'offline_access');
-      if (token.scope && !hasAllScopes(token.scope, requiredScopes)) throw new ReauthorizationRequiredError();
+      if (grants.length > 1 ? !hasExactScopes(token.scope, requiredScopes)
+        : token.scope !== '' && !hasAllScopes(token.scope, requiredScopes)) throw new ReauthorizationRequiredError();
       const updates: Record<string, unknown> = {};
       for (const mapping of grant.mappings) {
-        const destination = text(mapping.credential);
-        const value = token.mappedCredentialValue(text(mapping.source));
+        const destination = manifestText(mapping.credential);
+        const value = token.mappedCredentialValue(manifestText(mapping.source));
         if (value === undefined || (value === '' && destination === grant.refreshField)) continue;
         const property = this.#credentialFields[destination];
         if (!property) throw new TypeError('manifest credential field is not mapped');
         updates[property] = this.#isSecret(method, destination) ? new SecretString(value) : value;
       }
       for (const copy of grant.copies) {
-        const destination = text(copy.credential);
+        const destination = manifestText(copy.credential);
         const property = this.#credentialFields[destination];
         if (!property) throw new TypeError('manifest credential field is not mapped');
-        const value = this.#credentialValue(credentials, text(copy.fromCredential));
+        const value = this.#credentialValue(credentials, manifestText(copy.fromCredential));
         updates[property] = this.#isSecret(method, destination) ? new SecretString(value) : value;
       }
       credentials = { ...credentials, ...updates };
@@ -114,69 +116,70 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
   }
 
   #selectedMethod(credentials: C): ManifestObject {
-    const methods = list(this.#auth.methods);
+    const methods = manifestList(this.#auth.methods);
     if (!methods.length) return this.#auth;
-    const selected = text((credentials as Record<string, unknown>).authMethodId) || text(this.#auth.defaultMethod);
-    const method = methods.map(object).find(item => item.id === selected);
+    const selected = manifestText((credentials as Record<string, unknown>).authMethodId);
+    if (!selected && methods.length > 1) throw new ReauthorizationRequiredError();
+    const method = methods.map(manifestObject).find(item => item.id === (selected || manifestText(this.#auth.defaultMethod)));
     if (!method) throw new ReauthorizationRequiredError();
     return method;
   }
 
   #grants(method: ManifestObject): Grant[] {
     if (method.oauth2) {
-      const oauth = object(method.oauth2);
-      const refresh = method.oauth2 && object(oauth.refresh);
-      let declared = list(refresh?.grants).map(object);
+      const oauth = manifestObject(method.oauth2);
+      const refresh = method.oauth2 && manifestObject(oauth.refresh);
+      let declared = manifestList(refresh?.grants).map(manifestObject);
       if (!declared.length) {
-        const mapped = list(oauth.credentialMappings).map(object).find(mapping => mapping.source === 'refresh_token');
+        const mapped = manifestList(oauth.credentialMappings).map(manifestObject).find(mapping => mapping.source === 'refresh_token');
         if (!mapped) return [];
         declared = [{ refreshTokenCredential: mapped.credential, credentialMappings: oauth.credentialMappings }];
       }
       return declared.map(declaration => ({
         kind: 'refresh', endpoint: oauth.tokenEndpoint, authentication: oauth.tokenEndpointAuthMethod ?? 'client_secret_post',
-        encoding: text(oauth.tokenRequestEncoding) || 'form', clientID: text(oauth.clientIDCredential),
-        clientSecret: text(oauth.clientSecretCredential), refreshField: text(declaration.refreshTokenCredential),
-        keyCredential: '', assertion: {}, mappings: list(declaration.credentialMappings).map(object), copies: [],
+        encoding: manifestText(oauth.tokenRequestEncoding) || 'form', clientID: manifestText(oauth.clientIDCredential),
+        clientSecret: manifestText(oauth.clientSecretCredential), refreshField: manifestText(declaration.refreshTokenCredential),
+        keyCredential: '', assertion: {}, mappings: manifestList(declaration.credentialMappings).map(manifestObject), copies: [],
         scopes: declaration.grantedScopes === 'userScopes' ? oauth.userScopes : oauth.scopes, requestScopes: [],
         terminalCodes: strings(refresh?.terminalErrorCodes, ['invalid_grant']),
         acceptedTokenTypes: strings(declaration.acceptedTokenTypes ?? refresh?.acceptedTokenTypes, ['Bearer']),
         acceptsMissingTokenType: refresh?.acceptsMissingTokenType === true,
-        missingExpiry: missingExpiryLifetime(refresh?.missingExpiry), additional: stringRecord(refresh?.additionalParameters),
+        missingExpiry: missingExpiryLifetime(refresh?.missingExpiry), additionalParameters: stringRecord(refresh?.additionalParameters),
       }));
     }
     if (method.clientCredentials) {
-      const client = object(method.clientCredentials);
+      const client = manifestObject(method.clientCredentials);
       return [{
         kind: 'client_credentials', endpoint: client.tokenEndpoint,
         authentication: client.tokenEndpointAuthMethod ?? 'client_secret_post',
-        encoding: text(client.tokenRequestEncoding) || 'form', clientID: text(client.clientIDCredential),
-        clientSecret: text(client.clientSecretCredential), refreshField: '', keyCredential: '', assertion: {},
-        mappings: list(client.credentialMappings).map(object), copies: [], scopes: client.scopes,
+        encoding: manifestText(client.tokenRequestEncoding) || 'form', clientID: manifestText(client.clientIDCredential),
+        clientSecret: manifestText(client.clientSecretCredential), refreshField: '', keyCredential: '', assertion: {},
+        mappings: manifestList(client.credentialMappings).map(manifestObject), copies: [], scopes: client.scopes,
         requestScopes: client.scopes, terminalCodes: strings(client.terminalErrorCodes, ['invalid_client']),
         acceptedTokenTypes: strings(client.acceptedTokenTypes, ['Bearer']),
         acceptsMissingTokenType: client.acceptsMissingTokenType === true,
-        missingExpiry: missingExpiryLifetime(client.missingExpiry), additional: stringRecord(client.additionalParameters),
+        missingExpiry: missingExpiryLifetime(client.missingExpiry), additionalParameters: stringRecord(client.additionalParameters),
       }];
     }
-    const serviceAccount = object(method.serviceAccount);
+    const serviceAccount = manifestObject(method.serviceAccount);
     if (!serviceAccount.jwtBearer) return [];
-    const bearer = object(serviceAccount.jwtBearer);
+    const bearer = manifestObject(serviceAccount.jwtBearer);
     return [{
       kind: 'jwt_bearer', endpoint: bearer.tokenEndpoint, authentication: '', encoding: 'form',
-      clientID: '', clientSecret: '', refreshField: '', keyCredential: text(bearer.keyCredential),
-      assertion: bearer, mappings: list(bearer.credentialMappings).map(object),
-      copies: list(bearer.credentialCopies).map(object), scopes: bearer.scopes, requestScopes: [],
+      clientID: '', clientSecret: '', refreshField: '', keyCredential: manifestText(bearer.keyCredential),
+      assertion: bearer, mappings: manifestList(bearer.credentialMappings).map(manifestObject),
+      copies: manifestList(bearer.credentialCopies).map(manifestObject), scopes: bearer.scopes, requestScopes: [],
       terminalCodes: strings(bearer.terminalErrorCodes, ['invalid_grant']),
       acceptedTokenTypes: strings(bearer.acceptedTokenTypes, ['Bearer']),
       acceptsMissingTokenType: bearer.acceptsMissingTokenType === true,
-      missingExpiry: missingExpiryLifetime(bearer.missingExpiry), additional: {},
+      missingExpiry: missingExpiryLifetime(bearer.missingExpiry), additionalParameters: {},
     }];
   }
 
   async #exchange(grant: Grant, credentials: C, method: ManifestObject, signal: AbortSignal): Promise<TokenResponse> {
     let key: ManifestObject = {};
     if (grant.kind === 'jwt_bearer') {
-      try { key = object(JSON.parse(this.#credentialValue(credentials, grant.keyCredential)) as unknown); }
+      try { key = manifestObject(JSON.parse(this.#credentialValue(credentials, grant.keyCredential)) as unknown); }
       catch { throw new ReauthorizationRequiredError(); }
     }
     const endpoint = new TokenEndpoint({
@@ -184,21 +187,23 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
       terminalErrorCodes: grant.terminalCodes, acceptedTokenTypes: grant.acceptedTokenTypes,
       acceptsMissingTokenType: grant.acceptsMissingTokenType,
       acceptsMissingExpiresIn: true, usesJSONRequestBody: grant.encoding === 'json',
-      additionalRequestParameters: grant.additional,
-      credentialMappingPaths: grant.mappings.map(mapping => text(mapping.source)), fetch: this.#fetch,
+      additionalRequestParameters: grant.additionalParameters,
+      credentialMappingPaths: grant.mappings.map(mapping => manifestText(mapping.source)), fetch: this.#fetch,
     });
     if (grant.kind === 'jwt_bearer') {
+      const assertion = grant.assertion;
+      const lifetimeMs = parseDurationMs(manifestText(assertion.lifetime));
+      let signed: SecretString;
       try {
-        const assertion = grant.assertion;
-        const signed = signJWTBearerAssertion({
+        signed = signJWTBearerAssertion({
           issuer: this.#resolveSource(assertion.issuer, credentials, key),
           audience: this.#resolveSource(assertion.audience, credentials, key),
           ...(assertion.subject ? { subject: this.#resolveSource(assertion.subject, credentials, key) } : {}),
           scope: this.#scopes(assertion.scopes).join(' '), issuedAt: this.#now(),
-          lifetimeMs: parseDurationMs(text(assertion.lifetime)),
+          lifetimeMs,
         }, parseRSAPrivateKeyPEM(this.#resolveSource(assertion.privateKey, credentials, key)));
-        return endpoint.exchangeJWTBearerAssertion(signed, signal);
       } catch { throw new ReauthorizationRequiredError(); }
+      return await endpoint.exchangeJWTBearerAssertion(signed, signal);
     }
     const secret = this.#credentialValue(credentials, grant.clientSecret);
     if (!secret && this.#isRequired(method, grant.clientSecret)) throw new ReauthorizationRequiredError();
@@ -219,34 +224,48 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
   }
 
   #isSecret(method: ManifestObject, name: string): boolean {
-    return [...list(this.#auth.fields), ...list(method.fields)].map(object)
+    return manifestList(method.fields).map(manifestObject)
       .some(field => field.name === name && field.type === 'secretString');
   }
 
   #isRequired(method: ManifestObject, name: string): boolean {
-    return [...list(this.#auth.fields), ...list(method.fields)].map(object)
-      .some(field => field.name === name && field.required === true);
+    const field = manifestList(method.fields).map(manifestObject)
+      .find(candidate => candidate.name === name);
+    return field ? field.required === true : true;
+  }
+
+  #validateGrant(grant: Grant): void {
+    for (const mapping of grant.mappings) {
+      if (!manifestText(mapping.source) || !this.#credentialFields[manifestText(mapping.credential)])
+        throw new TypeError('manifest credential field is not mapped');
+    }
+    for (const copy of grant.copies) {
+      if (!this.#credentialFields[manifestText(copy.credential)] || !this.#credentialFields[manifestText(copy.fromCredential)])
+        throw new TypeError('manifest credential field is not mapped');
+    }
+    parseDurationMs(grant.missingExpiry);
+    if (grant.kind === 'jwt_bearer') parseDurationMs(manifestText(grant.assertion.lifetime));
   }
 
   #scopes(source: unknown): string[] {
     if (Array.isArray(source)) return source.filter((value): value is string => typeof value === 'string');
-    const fromSetting = object(source).fromSetting;
+    const fromSetting = manifestObject(source).fromSetting;
     return typeof fromSetting === 'string' ? (this.#settings[fromSetting] ?? '').split(/\s+/).filter(Boolean) : [];
   }
 
   #resolveSource(source: unknown, credentials: C, key: ManifestObject): string {
     if (typeof source === 'string') return source;
-    const valueSource = object(source);
+    const valueSource = manifestObject(source);
     if (typeof valueSource.value === 'string') return valueSource.value;
     if (typeof valueSource.template === 'string') return valueSource.template.replace(/\{([^{}]+)\}/g, (_, name: string) =>
       pathEscape(this.#credentialFields[name] ? this.#credentialValue(credentials, name) : this.#settings[name] ?? ''));
     let value = '';
     if (typeof valueSource.fromCredential === 'string') value = this.#credentialValue(credentials, valueSource.fromCredential);
     else if (typeof valueSource.fromSetting === 'string') value = this.#settings[valueSource.fromSetting] ?? '';
-    else if (typeof valueSource.fromKey === 'string') value = text(key[valueSource.fromKey]);
+    else if (typeof valueSource.fromKey === 'string') value = manifestText(key[valueSource.fromKey]);
     else throw new ReauthorizationRequiredError();
     if (valueSource.values) {
-      const translated = object(valueSource.values)[value];
+      const translated = manifestObject(valueSource.values)[value];
       if (typeof translated !== 'string') throw new ReauthorizationRequiredError();
       return translated;
     }
@@ -255,32 +274,42 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
   }
 }
 
-function object(value: unknown): ManifestObject {
+function manifestObject(value: unknown): ManifestObject {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as ManifestObject : {};
 }
-function list(value: unknown): unknown[] { return Array.isArray(value) ? value : []; }
-function text(value: unknown): string { return typeof value === 'string' ? value : ''; }
+function manifestList(value: unknown): unknown[] { return Array.isArray(value) ? value : []; }
+function manifestText(value: unknown): string { return typeof value === 'string' ? value : ''; }
 function strings(value: unknown, fallback: string[]): string[] {
-  const found = list(value).filter((item): item is string => typeof item === 'string');
+  const found = manifestList(value).filter((item): item is string => typeof item === 'string');
   return found.length ? found : fallback;
 }
 function stringRecord(value: unknown): Record<string, string> {
-  return Object.fromEntries(Object.entries(object(value)).filter((entry): entry is [string, string] => typeof entry[1] === 'string'));
+  return Object.fromEntries(Object.entries(manifestObject(value)).filter((entry): entry is [string, string] => typeof entry[1] === 'string'));
 }
-function missingExpiryLifetime(value: unknown): string { return text(object(value).lifetime); }
+function missingExpiryLifetime(value: unknown): string { return manifestText(manifestObject(value).lifetime); }
 function pathEscape(value: string): string {
   return encodeURIComponent(value).replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`)
     .replace(/%(?:2B|26|3D|3A|40|24)/g, escaped => ({ '%2B': '+', '%26': '&', '%3D': '=', '%3A': ':', '%40': '@', '%24': '$' })[escaped] ?? escaped);
 }
+function hasExactScopes(returnedScopes: string, requiredScopes: readonly string[]): boolean {
+  const granted = new Set(returnedScopes.split(/[\s,]+/).filter(Boolean));
+  const required = new Set(requiredScopes);
+  return granted.size === required.size && [...required].every(scope => granted.has(scope));
+}
 function parseDurationMs(value: string): number {
   if (!value) return 0;
-  const parts = value.matchAll(/(\d+(?:\.\d+)?)(h|m|s)/g);
+  const parts = value.matchAll(/(\d+(?:\.\d+)?)(ns|us|µs|μs|ms|s|m|h)/g);
+  const milliseconds: Record<string, number> = {
+    ns: 0.000001, us: 0.001, 'µs': 0.001, 'μs': 0.001,
+    ms: 1, s: 1000, m: 60_000, h: 3_600_000,
+  };
   let duration = 0; let position = 0;
   for (const part of parts) {
     if (part.index !== position) throw new TypeError('manifest grant duration is invalid');
-    duration += Number(part[1]) * ({ h: 3_600_000, m: 60_000, s: 1000 }[part[2] as 'h' | 'm' | 's']);
+    duration += Number(part[1]) * milliseconds[part[2]!]!;
     position += part[0].length;
   }
-  if (position !== value.length || duration <= 0 || !Number.isSafeInteger(duration)) throw new TypeError('manifest grant duration is invalid');
+  if (position !== value.length || duration <= 0 || !Number.isFinite(duration) || duration > Number.MAX_SAFE_INTEGER)
+    throw new TypeError('manifest grant duration is invalid');
   return duration;
 }
