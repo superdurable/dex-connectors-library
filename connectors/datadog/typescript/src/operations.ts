@@ -15,7 +15,7 @@ export class QueryMetricsOperation implements Query<QueryMetricsInput, MetricsQu
   /** Return the generated manifest definition. */ definition() { return QueryMetricsDefinition; }
   /** Validate input, send one request, and classify the provider result. */
   async invoke(call: Call, input: QueryMetricsInput): Promise<QueryAttempt<MetricsQuery>> {
-    if (!Number.isSafeInteger(input.from) || input.from <= 0 || !Number.isSafeInteger(input.to) || input.to <= input.from || !input.query.trim()) {
+    if (!Number.isSafeInteger(input.from) || input.from <= 0 || !Number.isSafeInteger(input.to) || input.to <= input.from || typeof input.query !== 'string' || !input.query.trim()) {
       return validationFailure('queryMetrics', emptyMetricsQuery, 'from, to, and query are required; to must follow from');
     }
     const exchange = await this.client.exchange(call, 'queryMetrics', '/api/v1/query', new URLSearchParams({ from: String(input.from), to: String(input.to), query: input.query }));
@@ -112,7 +112,7 @@ function goString(value: unknown): string {
 
 function goNumber(value: unknown): number {
   if (value === null || value === undefined) return 0;
-  if (typeof value !== 'number' || !Number.isSafeInteger(value)) throw new TypeError('expected JSON integer');
+  if (typeof value !== 'number' || !Number.isInteger(value)) throw new TypeError('expected JSON integer');
   return value;
 }
 

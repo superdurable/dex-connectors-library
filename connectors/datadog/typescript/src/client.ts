@@ -71,11 +71,11 @@ export class DatadogClient {
     if (!apiKey || !applicationKey || !isHeaderSafeCredential(apiKey) || !isHeaderSafeCredential(applicationKey)) {
       return this.failure(operation, 'defect', 'AUTHENTICATION', 'connection credentials are invalid');
     }
-    const sortedQuery = new URLSearchParams([...query.entries()].sort(([left], [right]) => left.localeCompare(right, 'en')));
+    const sortedQuery = [...query.entries()].sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0);
     let response: ProviderResponse;
     try {
       response = await this.send({
-        url: `${this.baseURL}${path}?${sortedQuery.toString()}`, method: 'GET',
+        url: `${this.baseURL}${path}?${sortedQuery.map(([key, value]) => `${encodeGoQueryComponent(key)}=${encodeGoQueryComponent(value)}`).join('&')}`, method: 'GET',
         headers: { 'DD-API-KEY': apiKey, 'DD-APPLICATION-KEY': applicationKey, Accept: 'application/json' },
         timeoutMs: this.timeoutMs, maxResponseBytes: this.maxResponseBytes,
         addressPolicy: this.baseURL === defaultBaseURL ? 'publicHTTPS' : 'privateNetworkHTTP',
@@ -115,4 +115,8 @@ export class DatadogClient {
   private failureValue(operation: string, kind: Failure['kind'], message: string): Failure {
     return { kind, provider: 'datadog', operation, message };
   }
+}
+
+function encodeGoQueryComponent(value: string): string {
+  return encodeURIComponent(value).replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`).replace(/%20/g, '+');
 }
