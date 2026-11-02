@@ -1,6 +1,7 @@
 {
   "name": "@superdurable/connector-gitlab",
   "version": "0.1.0",
+  "license": "MIT",
   "description": "GitLab project, issue, and label operations for Dex Flows",
   "repository": {
     "type": "git",

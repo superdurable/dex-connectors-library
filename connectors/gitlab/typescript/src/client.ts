@@ -66,19 +66,27 @@ export class GitLabClient {
         addressPolicy: this.baseUrl === defaultBaseUrl ? 'publicHTTPS' : 'privateNetworkHTTP',
         signal: call.context.cancellationSignal,
       });
-      if (response.status === 429 || response.status === 408 || response.status === 409 || response.status >= 500) {
-        return this.failure('retry', operation, response.status === 429 ? 'RATE_LIMIT' : 'AVAILABILITY', `GitLab returned HTTP ${response.status}`, parseRetryAfter(header(response, 'retry-after'), this.now()));
-      }
-      if (response.status === 404) return this.failure('notFound', operation, 'NOT_FOUND', `GitLab returned HTTP ${response.status}`);
-      if (response.status !== 200) {
-        const kind = response.status === 401 ? 'AUTHENTICATION' : response.status === 403 ? 'AUTHORIZATION' : response.status === 400 || response.status === 422 ? 'VALIDATION' : 'PROVIDER_REJECTION';
-        return this.failure('providerRejected', operation, kind, `GitLab returned HTTP ${response.status}`);
-      }
+      const statusOutcome = this.classifyStatus(operation, response.status, response.headers);
+      if (statusOutcome) return statusOutcome;
       return { response };
     } catch (error) {
-      if (error instanceof BodyTooLargeError) return this.failure('invalidResponse', operation, 'RESPONSE_TOO_LARGE', 'response exceeded the configured limit');
+      if (error instanceof BodyTooLargeError) {
+        const statusOutcome = this.classifyStatus(operation, error.status, error.headers);
+        if (statusOutcome) return statusOutcome;
+        return this.failure('invalidResponse', operation, 'RESPONSE_TOO_LARGE', 'response exceeded the configured limit');
+      }
       return this.failure('retry', operation, 'AVAILABILITY', 'GitLab request failed');
     }
+  }
+
+  private classifyStatus(operation: string, status: number | undefined, headers: ProviderResponse['headers'] | undefined): GitLabExchange | undefined {
+    if (status === undefined || status === 200) return undefined;
+    if (status === 429 || status === 408 || status === 409 || status >= 500) {
+      return this.failure('retry', operation, status === 429 ? 'RATE_LIMIT' : 'AVAILABILITY', `GitLab returned HTTP ${status}`, parseRetryAfter(header(headers, 'retry-after'), this.now()));
+    }
+    if (status === 404) return this.failure('notFound', operation, 'NOT_FOUND', `GitLab returned HTTP ${status}`);
+    const kind = status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : status === 400 || status === 422 ? 'VALIDATION' : 'PROVIDER_REJECTION';
+    return this.failure('providerRejected', operation, kind, `GitLab returned HTTP ${status}`);
   }
 
   private failure(branch: Exclude<GitLabExchange, { response: ProviderResponse }>['branch'], operation: string, kind: Failure['kind'], message: string, retryAfterMs = 0): GitLabExchange {
@@ -86,8 +94,8 @@ export class GitLabClient {
   }
 }
 
-function header(response: ProviderResponse, name: string): string {
-  const value = response.headers[name];
+function header(headers: ProviderResponse['headers'] | undefined, name: string): string {
+  const value = headers?.[name];
   return Array.isArray(value) ? (value[0] ?? '') : (value ?? '');
 }
 

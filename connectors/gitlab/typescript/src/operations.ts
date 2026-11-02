@@ -53,8 +53,9 @@ export class UpdateIssueLabelsOperation implements Mutation<UpdateIssueLabelsInp
   /** Validate and classify one absolute label replacement. */
   async invoke(call: Call, input: UpdateIssueLabelsInput): Promise<MutationAttempt<Issue>> {
     if (!input.projectId?.trim() || !Number.isSafeInteger(input.issueIid) || input.issueIid <= 0) return mutationDefect('updateIssueLabels', 'projectId and positive issueIid are required');
-    if (!Array.isArray(input.labels) || input.labels.some(label => typeof label !== 'string' || !label.trim() || label.includes(','))) return mutationDefect('updateIssueLabels', 'labels must be nonblank and cannot contain commas');
-    const form = new URLSearchParams({ labels: input.labels.join(',') }).toString();
+    const labels = input.labels ?? [];
+    if (!Array.isArray(labels) || labels.some(label => typeof label !== 'string' || !label.trim() || label.includes(','))) return mutationDefect('updateIssueLabels', 'labels must be nonblank and cannot contain commas');
+    const form = new URLSearchParams({ labels: labels.join(',') }).toString();
     const result = await this.client.exchange(call, 'updateIssueLabels', 'PUT', `/projects/${pathEscape(input.projectId)}/issues/${input.issueIid}`, form);
     if (!('response' in result)) return mutationOutcome(result);
     try {
