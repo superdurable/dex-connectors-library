@@ -13,6 +13,10 @@ spec:
       version: v0.1.0
       operations: [listRepositories, listPullRequests]
       triggers: []
+    typescript:
+      version: v0.1.0
+      operations: [listRepositories, listPullRequests]
+      triggers: []
   codegen:
     go:
       package: bitbucket
