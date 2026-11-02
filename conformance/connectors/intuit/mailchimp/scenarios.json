@@ -1,0 +1,2728 @@
+{
+  "connector": "intuit/mailchimp",
+  "scenarios": [
+    {
+      "callId": "76aa8474-c963-57bd-944d-8dbc845c462a",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"2c66f6142933ed5a97948f89cb1c7be0\",\"email_address\":\"ben@example.com\",\"contact_id\":\"contact-ben\",\"full_name\":\"Ben Carter\",\"web_id\":42,\"email_type\":\"html\",\"status\":\"subscribed\",\"merge_fields\":{\"FNAME\":\"Ben\"},\"vip\":true,\"language\":\"en\",\"timestamp_signup\":\"2026-10-20T10:00:00Z\",\"timestamp_opt\":\"2026-10-21T10:00:00Z\",\"last_changed\":\"2026-10-25T10:00:00Z\",\"tags_count\":2,\"tags\":[{\"name\":\"spring-launch\"},{\"name\":\"vip\"}],\"list_id\":\"57afe96172\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members/2c66f6142933ed5a97948f89cb1c7be0",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "contactId": "contact-ben",
+          "emailAddress": "ben@example.com",
+          "emailType": "html",
+          "fullName": "Ben Carter",
+          "isVip": true,
+          "language": "en",
+          "lastChangedAt": "2026-10-25T10:00:00Z",
+          "listId": "57afe96172",
+          "mergeFields": {
+            "FNAME": "Ben"
+          },
+          "optedInAt": "2026-10-21T10:00:00Z",
+          "signedUpAt": "2026-10-20T10:00:00Z",
+          "status": "subscribed",
+          "subscriberHash": "2c66f6142933ed5a97948f89cb1c7be0",
+          "tagCount": 2,
+          "tags": [
+            "spring-launch",
+            "vip"
+          ],
+          "webId": 42
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "ben@example.com",
+        "listId": "57afe96172"
+      },
+      "name": "getMember-success",
+      "operation": "getMember"
+    },
+    {
+      "callId": "76aa8474-c963-57bd-944d-8dbc845c462a",
+      "exchanges": [
+        {
+          "body": "{\"title\":\"Resource Not Found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members/2c66f6142933ed5a97948f89cb1c7be0",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "emailAddress": "",
+          "listId": "",
+          "status": "",
+          "subscriberHash": "",
+          "tagCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "ben@example.com",
+        "listId": "57afe96172"
+      },
+      "name": "getMember-not-found",
+      "operation": "getMember"
+    },
+    {
+      "callId": "76aa8474-c963-57bd-944d-8dbc845c462a",
+      "exchanges": [
+        {
+          "body": "{\"title\":\"API Key Invalid\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members/2c66f6142933ed5a97948f89cb1c7be0",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "emailAddress": "",
+          "listId": "",
+          "status": "",
+          "subscriberHash": "",
+          "tagCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "ben@example.com",
+        "listId": "57afe96172"
+      },
+      "name": "getMember-provider-rejected",
+      "operation": "getMember"
+    },
+    {
+      "callId": "76aa8474-c963-57bd-944d-8dbc845c462a",
+      "exchanges": [
+        {
+          "body": "invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members/2c66f6142933ed5a97948f89cb1c7be0",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "emailAddress": "",
+          "listId": "",
+          "status": "",
+          "subscriberHash": "",
+          "tagCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "ben@example.com",
+        "listId": "57afe96172"
+      },
+      "name": "getMember-invalid-response",
+      "operation": "getMember"
+    },
+    {
+      "callId": "76aa8474-c963-57bd-944d-8dbc845c462a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "emailAddress": "",
+          "listId": "",
+          "status": "",
+          "subscriberHash": "",
+          "tagCount": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "not an email",
+        "listId": "57afe96172"
+      },
+      "name": "getMember-defect",
+      "operation": "getMember"
+    },
+    {
+      "callId": "76aa8474-c963-57bd-944d-8dbc845c462a",
+      "exchanges": [
+        {
+          "body": "{\"title\":\"Too Many Requests\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members/2c66f6142933ed5a97948f89cb1c7be0",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "ben@example.com",
+        "listId": "57afe96172"
+      },
+      "name": "getMember-rate-limit",
+      "operation": "getMember"
+    },
+    {
+      "callId": "76aa8474-c963-57bd-944d-8dbc845c462a",
+      "exchanges": [
+        {
+          "body": "{\"title\":\"Service Unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members/2c66f6142933ed5a97948f89cb1c7be0",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "ben@example.com",
+        "listId": "57afe96172"
+      },
+      "name": "getMember-server-unavailable",
+      "operation": "getMember"
+    },
+    {
+      "callId": "76aa8474-c963-57bd-944d-8dbc845c462a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members/2c66f6142933ed5a97948f89cb1c7be0",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "ben@example.com",
+        "listId": "57afe96172"
+      },
+      "name": "getMember-transport-before-send",
+      "operation": "getMember"
+    },
+    {
+      "callId": "beda088e-96a5-560d-b1aa-14bbf925b979",
+      "exchanges": [
+        {
+          "body": "{\"members\":[{\"id\":\"2c66f6142933ed5a97948f89cb1c7be0\",\"email_address\":\"ben@example.com\",\"contact_id\":\"contact-ben\",\"full_name\":\"Ben Carter\",\"web_id\":42,\"email_type\":\"html\",\"status\":\"subscribed\",\"merge_fields\":{\"FNAME\":\"Ben\"},\"vip\":true,\"language\":\"en\",\"timestamp_signup\":\"2026-10-20T10:00:00Z\",\"timestamp_opt\":\"2026-10-21T10:00:00Z\",\"last_changed\":\"2026-10-25T10:00:00Z\",\"tags_count\":2,\"tags\":[{\"name\":\"spring-launch\"},{\"name\":\"vip\"}],\"list_id\":\"57afe96172\"}],\"total_items\":2}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members",
+          "query": {
+            "count": [
+              "1"
+            ],
+            "fields": [
+              "members.id,members.email_address,members.contact_id,members.full_name,members.web_id,members.email_type,members.status,members.merge_fields,members.vip,members.language,members.timestamp_signup,members.timestamp_opt,members.last_changed,members.tags_count,members.tags,members.list_id,list_id,total_items"
+            ],
+            "offset": [
+              "1"
+            ],
+            "since_last_changed": [
+              "2026-10-20T10:00:00+00:00"
+            ],
+            "since_timestamp_opt": [
+              "2026-10-21T10:00:00+00:00"
+            ],
+            "sort_dir": [
+              "ASC"
+            ],
+            "sort_field": [
+              "last_changed"
+            ],
+            "status": [
+              "subscribed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "members": [
+            {
+              "contactId": "contact-ben",
+              "emailAddress": "ben@example.com",
+              "emailType": "html",
+              "fullName": "Ben Carter",
+              "isVip": true,
+              "language": "en",
+              "lastChangedAt": "2026-10-25T10:00:00Z",
+              "listId": "57afe96172",
+              "mergeFields": {
+                "FNAME": "Ben"
+              },
+              "optedInAt": "2026-10-21T10:00:00Z",
+              "signedUpAt": "2026-10-20T10:00:00Z",
+              "status": "subscribed",
+              "subscriberHash": "2c66f6142933ed5a97948f89cb1c7be0",
+              "tagCount": 2,
+              "tags": [
+                "spring-launch",
+                "vip"
+              ],
+              "webId": 42
+            }
+          ],
+          "totalItems": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "changedSince": "2026-10-20T10:00:00Z",
+        "listId": "57afe96172",
+        "offset": 1,
+        "optedInSince": "2026-10-21T10:00:00Z",
+        "pageSize": 1,
+        "status": "subscribed"
+      },
+      "name": "listMembers-success",
+      "operation": "listMembers"
+    },
+    {
+      "callId": "beda088e-96a5-560d-b1aa-14bbf925b979",
+      "exchanges": [
+        {
+          "body": "{\"title\":\"Resource Not Found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members",
+          "query": {
+            "count": [
+              "100"
+            ],
+            "fields": [
+              "members.id,members.email_address,members.contact_id,members.full_name,members.web_id,members.email_type,members.status,members.merge_fields,members.vip,members.language,members.timestamp_signup,members.timestamp_opt,members.last_changed,members.tags_count,members.tags,members.list_id,list_id,total_items"
+            ],
+            "offset": [
+              "0"
+            ],
+            "sort_dir": [
+              "ASC"
+            ],
+            "sort_field": [
+              "last_changed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "members": [],
+          "totalItems": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "57afe96172"
+      },
+      "name": "listMembers-not-found",
+      "operation": "listMembers"
+    },
+    {
+      "callId": "beda088e-96a5-560d-b1aa-14bbf925b979",
+      "exchanges": [
+        {
+          "body": "{\"title\":\"API Key Invalid\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members",
+          "query": {
+            "count": [
+              "100"
+            ],
+            "fields": [
+              "members.id,members.email_address,members.contact_id,members.full_name,members.web_id,members.email_type,members.status,members.merge_fields,members.vip,members.language,members.timestamp_signup,members.timestamp_opt,members.last_changed,members.tags_count,members.tags,members.list_id,list_id,total_items"
+            ],
+            "offset": [
+              "0"
+            ],
+            "sort_dir": [
+              "ASC"
+            ],
+            "sort_field": [
+              "last_changed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "members": [],
+          "totalItems": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "57afe96172"
+      },
+      "name": "listMembers-provider-rejected",
+      "operation": "listMembers"
+    },
+    {
+      "callId": "beda088e-96a5-560d-b1aa-14bbf925b979",
+      "exchanges": [
+        {
+          "body": "invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members",
+          "query": {
+            "count": [
+              "100"
+            ],
+            "fields": [
+              "members.id,members.email_address,members.contact_id,members.full_name,members.web_id,members.email_type,members.status,members.merge_fields,members.vip,members.language,members.timestamp_signup,members.timestamp_opt,members.last_changed,members.tags_count,members.tags,members.list_id,list_id,total_items"
+            ],
+            "offset": [
+              "0"
+            ],
+            "sort_dir": [
+              "ASC"
+            ],
+            "sort_field": [
+              "last_changed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "members": [],
+          "totalItems": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "57afe96172"
+      },
+      "name": "listMembers-invalid-response",
+      "operation": "listMembers"
+    },
+    {
+      "callId": "beda088e-96a5-560d-b1aa-14bbf925b979",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "members": [],
+          "totalItems": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "bad/id"
+      },
+      "name": "listMembers-defect",
+      "operation": "listMembers"
+    },
+    {
+      "callId": "beda088e-96a5-560d-b1aa-14bbf925b979",
+      "exchanges": [
+        {
+          "body": "{\"title\":\"Too Many Requests\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members",
+          "query": {
+            "count": [
+              "100"
+            ],
+            "fields": [
+              "members.id,members.email_address,members.contact_id,members.full_name,members.web_id,members.email_type,members.status,members.merge_fields,members.vip,members.language,members.timestamp_signup,members.timestamp_opt,members.last_changed,members.tags_count,members.tags,members.list_id,list_id,total_items"
+            ],
+            "offset": [
+              "0"
+            ],
+            "sort_dir": [
+              "ASC"
+            ],
+            "sort_field": [
+              "last_changed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "57afe96172"
+      },
+      "name": "listMembers-rate-limit",
+      "operation": "listMembers"
+    },
+    {
+      "callId": "beda088e-96a5-560d-b1aa-14bbf925b979",
+      "exchanges": [
+        {
+          "body": "{\"title\":\"Service Unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members",
+          "query": {
+            "count": [
+              "100"
+            ],
+            "fields": [
+              "members.id,members.email_address,members.contact_id,members.full_name,members.web_id,members.email_type,members.status,members.merge_fields,members.vip,members.language,members.timestamp_signup,members.timestamp_opt,members.last_changed,members.tags_count,members.tags,members.list_id,list_id,total_items"
+            ],
+            "offset": [
+              "0"
+            ],
+            "sort_dir": [
+              "ASC"
+            ],
+            "sort_field": [
+              "last_changed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "57afe96172"
+      },
+      "name": "listMembers-server-unavailable",
+      "operation": "listMembers"
+    },
+    {
+      "callId": "beda088e-96a5-560d-b1aa-14bbf925b979",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members",
+          "query": {
+            "count": [
+              "100"
+            ],
+            "fields": [
+              "members.id,members.email_address,members.contact_id,members.full_name,members.web_id,members.email_type,members.status,members.merge_fields,members.vip,members.language,members.timestamp_signup,members.timestamp_opt,members.last_changed,members.tags_count,members.tags,members.list_id,list_id,total_items"
+            ],
+            "offset": [
+              "0"
+            ],
+            "sort_dir": [
+              "ASC"
+            ],
+            "sort_field": [
+              "last_changed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "57afe96172"
+      },
+      "name": "listMembers-transport-before-send",
+      "operation": "listMembers"
+    },
+    {
+      "callId": "2b931676-b663-5a16-bd69-9d43a17efc7f",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"2c66f6142933ed5a97948f89cb1c7be0\",\"email_address\":\"ben@example.com\",\"contact_id\":\"contact-ben\",\"full_name\":\"Ben Carter\",\"web_id\":42,\"email_type\":\"html\",\"status\":\"subscribed\",\"merge_fields\":{\"FNAME\":\"Ben\"},\"vip\":true,\"language\":\"en\",\"timestamp_signup\":\"2026-10-20T10:00:00Z\",\"timestamp_opt\":\"2026-10-21T10:00:00Z\",\"last_changed\":\"2026-10-25T10:00:00Z\",\"tags_count\":2,\"tags\":[{\"name\":\"spring-launch\"},{\"name\":\"vip\"}],\"list_id\":\"57afe96172\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/lists/57afe96172/members/2c66f6142933ed5a97948f89cb1c7be0",
+          "query": {
+            "skip_merge_validation": [
+              "true"
+            ]
+          },
+          "requestBody": {
+            "email_address": "ben@example.com",
+            "marketing_permissions": [
+              {
+                "enabled": true,
+                "marketing_permission_id": "perm123"
+              }
+            ],
+            "merge_fields": {
+              "ADDRESS": {
+                "city": "Seattle"
+              },
+              "AGE": 42,
+              "FNAME": "Ben"
+            },
+            "status": "subscribed",
+            "status_if_new": "subscribed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "upserted",
+        "failureKind": "",
+        "output": {
+          "member": {
+            "contactId": "contact-ben",
+            "emailAddress": "ben@example.com",
+            "emailType": "html",
+            "fullName": "Ben Carter",
+            "isVip": true,
+            "language": "en",
+            "lastChangedAt": "2026-10-25T10:00:00Z",
+            "listId": "57afe96172",
+            "mergeFields": {
+              "FNAME": "Ben"
+            },
+            "optedInAt": "2026-10-21T10:00:00Z",
+            "signedUpAt": "2026-10-20T10:00:00Z",
+            "status": "subscribed",
+            "subscriberHash": "2c66f6142933ed5a97948f89cb1c7be0",
+            "tagCount": 2,
+            "tags": [
+              "spring-launch",
+              "vip"
+            ],
+            "webId": 42
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b931676-b663-5a16-bd69-9d43a17efc7f",
+      "input": {
+        "emailAddress": "ben@example.com",
+        "isResubscribeAllowed": true,
+        "listId": "57afe96172",
+        "marketingPermissions": [
+          {
+            "isEnabled": true,
+            "marketingPermissionId": "perm123"
+          }
+        ],
+        "mergeFields": {
+          "ADDRESS": {
+            "city": "Seattle"
+          },
+          "AGE": 42,
+          "FNAME": "Ben"
+        },
+        "shouldSkipMergeValidation": true,
+        "status": "subscribed",
+        "statusIfNew": "subscribed"
+      },
+      "name": "upsertMember-success",
+      "operation": "upsertMember"
+    },
+    {
+      "callId": "2b931676-b663-5a16-bd69-9d43a17efc7f",
+      "exchanges": [
+        {
+          "body": "{\"title\":\"API Key Invalid\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/lists/57afe96172/members/2c66f6142933ed5a97948f89cb1c7be0",
+          "requestBody": {
+            "email_address": "ben@example.com",
+            "status_if_new": "subscribed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "member": {
+            "emailAddress": "",
+            "listId": "",
+            "status": "",
+            "subscriberHash": "",
+            "tagCount": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b931676-b663-5a16-bd69-9d43a17efc7f",
+      "input": {
+        "emailAddress": "ben@example.com",
+        "listId": "57afe96172",
+        "statusIfNew": "subscribed"
+      },
+      "name": "upsertMember-provider-rejected",
+      "operation": "upsertMember"
+    },
+    {
+      "callId": "2b931676-b663-5a16-bd69-9d43a17efc7f",
+      "exchanges": [
+        {
+          "body": "invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/lists/57afe96172/members/2c66f6142933ed5a97948f89cb1c7be0",
+          "requestBody": {
+            "email_address": "ben@example.com",
+            "status_if_new": "subscribed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "member": {
+            "emailAddress": "",
+            "listId": "",
+            "status": "",
+            "subscriberHash": "",
+            "tagCount": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b931676-b663-5a16-bd69-9d43a17efc7f",
+      "input": {
+        "emailAddress": "ben@example.com",
+        "listId": "57afe96172",
+        "statusIfNew": "subscribed"
+      },
+      "name": "upsertMember-invalid-response",
+      "operation": "upsertMember"
+    },
+    {
+      "callId": "2b931676-b663-5a16-bd69-9d43a17efc7f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "member": {
+            "emailAddress": "",
+            "listId": "",
+            "status": "",
+            "subscriberHash": "",
+            "tagCount": 0
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b931676-b663-5a16-bd69-9d43a17efc7f",
+      "input": {
+        "emailAddress": "not an email",
+        "listId": "57afe96172",
+        "statusIfNew": "subscribed"
+      },
+      "name": "upsertMember-defect",
+      "operation": "upsertMember"
+    },
+    {
+      "callId": "2b931676-b663-5a16-bd69-9d43a17efc7f",
+      "exchanges": [
+        {
+          "body": "{\"title\":\"Too Many Requests\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/lists/57afe96172/members/2c66f6142933ed5a97948f89cb1c7be0",
+          "requestBody": {
+            "email_address": "ben@example.com",
+            "status_if_new": "subscribed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b931676-b663-5a16-bd69-9d43a17efc7f",
+      "input": {
+        "emailAddress": "ben@example.com",
+        "listId": "57afe96172",
+        "statusIfNew": "subscribed"
+      },
+      "name": "upsertMember-rate-limit",
+      "operation": "upsertMember"
+    },
+    {
+      "callId": "2b931676-b663-5a16-bd69-9d43a17efc7f",
+      "exchanges": [
+        {
+          "body": "{\"title\":\"Service Unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/lists/57afe96172/members/2c66f6142933ed5a97948f89cb1c7be0",
+          "requestBody": {
+            "email_address": "ben@example.com",
+            "status_if_new": "subscribed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b931676-b663-5a16-bd69-9d43a17efc7f",
+      "input": {
+        "emailAddress": "ben@example.com",
+        "listId": "57afe96172",
+        "statusIfNew": "subscribed"
+      },
+      "name": "upsertMember-server-unavailable",
+      "operation": "upsertMember"
+    },
+    {
+      "callId": "2b931676-b663-5a16-bd69-9d43a17efc7f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/lists/57afe96172/members/2c66f6142933ed5a97948f89cb1c7be0",
+          "requestBody": {
+            "email_address": "ben@example.com",
+            "status_if_new": "subscribed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b931676-b663-5a16-bd69-9d43a17efc7f",
+      "input": {
+        "emailAddress": "ben@example.com",
+        "listId": "57afe96172",
+        "statusIfNew": "subscribed"
+      },
+      "name": "upsertMember-transport-before-send",
+      "operation": "upsertMember"
+    },
+    {
+      "attempts": 2,
+      "callId": "2b931676-b663-5a16-bd69-9d43a17efc7f",
+      "exchanges": [
+        {
+          "body": "{\"title\":\"Service Unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/lists/57afe96172/members/2c66f6142933ed5a97948f89cb1c7be0",
+          "requestBody": {
+            "email_address": "ben@example.com",
+            "status_if_new": "subscribed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{\"id\":\"2c66f6142933ed5a97948f89cb1c7be0\",\"email_address\":\"ben@example.com\",\"contact_id\":\"contact-ben\",\"full_name\":\"Ben Carter\",\"web_id\":42,\"email_type\":\"html\",\"status\":\"subscribed\",\"merge_fields\":{\"FNAME\":\"Ben\"},\"vip\":true,\"language\":\"en\",\"timestamp_signup\":\"2026-10-20T10:00:00Z\",\"timestamp_opt\":\"2026-10-21T10:00:00Z\",\"last_changed\":\"2026-10-25T10:00:00Z\",\"tags_count\":2,\"tags\":[{\"name\":\"spring-launch\"},{\"name\":\"vip\"}],\"list_id\":\"57afe96172\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/lists/57afe96172/members/2c66f6142933ed5a97948f89cb1c7be0",
+          "requestBody": {
+            "email_address": "ben@example.com",
+            "status_if_new": "subscribed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "upserted",
+        "failureKind": "",
+        "output": {
+          "member": {
+            "contactId": "contact-ben",
+            "emailAddress": "ben@example.com",
+            "emailType": "html",
+            "fullName": "Ben Carter",
+            "isVip": true,
+            "language": "en",
+            "lastChangedAt": "2026-10-25T10:00:00Z",
+            "listId": "57afe96172",
+            "mergeFields": {
+              "FNAME": "Ben"
+            },
+            "optedInAt": "2026-10-21T10:00:00Z",
+            "signedUpAt": "2026-10-20T10:00:00Z",
+            "status": "subscribed",
+            "subscriberHash": "2c66f6142933ed5a97948f89cb1c7be0",
+            "tagCount": 2,
+            "tags": [
+              "spring-launch",
+              "vip"
+            ],
+            "webId": 42
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b931676-b663-5a16-bd69-9d43a17efc7f",
+      "input": {
+        "emailAddress": "ben@example.com",
+        "listId": "57afe96172",
+        "statusIfNew": "subscribed"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "upsertMember-retry-then-success",
+      "operation": "upsertMember"
+    },
+    {
+      "callId": "e25ce930-a423-596f-b992-602689b73e65",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/57afe96172/members/2c66f6142933ed5a97948f89cb1c7be0/tags",
+          "requestBody": {
+            "is_syncing": true,
+            "tags": [
+              {
+                "name": "spring-launch",
+                "status": "active"
+              },
+              {
+                "name": "old-tag",
+                "status": "inactive"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "activeTags": [
+            "spring-launch"
+          ],
+          "inactiveTags": [
+            "old-tag"
+          ],
+          "subscriberHash": "2c66f6142933ed5a97948f89cb1c7be0"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e25ce930-a423-596f-b992-602689b73e65",
+      "input": {
+        "addTags": [
+          "spring-launch"
+        ],
+        "emailAddress": "ben@example.com",
+        "listId": "57afe96172",
+        "removeTags": [
+          "old-tag"
+        ],
+        "shouldSuppressAutomations": true
+      },
+      "name": "updateMemberTags-success",
+      "operation": "updateMemberTags"
+    },
+    {
+      "callId": "e25ce930-a423-596f-b992-602689b73e65",
+      "exchanges": [
+        {
+          "body": "{\"title\":\"Resource Not Found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/57afe96172/members/2c66f6142933ed5a97948f89cb1c7be0/tags",
+          "requestBody": {
+            "tags": [
+              {
+                "name": "spring-launch",
+                "status": "active"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "subscriberHash": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e25ce930-a423-596f-b992-602689b73e65",
+      "input": {
+        "addTags": [
+          "spring-launch"
+        ],
+        "emailAddress": "ben@example.com",
+        "listId": "57afe96172"
+      },
+      "name": "updateMemberTags-not-found",
+      "operation": "updateMemberTags"
+    },
+    {
+      "callId": "e25ce930-a423-596f-b992-602689b73e65",
+      "exchanges": [
+        {
+          "body": "{\"title\":\"API Key Invalid\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/57afe96172/members/2c66f6142933ed5a97948f89cb1c7be0/tags",
+          "requestBody": {
+            "tags": [
+              {
+                "name": "spring-launch",
+                "status": "active"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "subscriberHash": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e25ce930-a423-596f-b992-602689b73e65",
+      "input": {
+        "addTags": [
+          "spring-launch"
+        ],
+        "emailAddress": "ben@example.com",
+        "listId": "57afe96172"
+      },
+      "name": "updateMemberTags-provider-rejected",
+      "operation": "updateMemberTags"
+    },
+    {
+      "callId": "e25ce930-a423-596f-b992-602689b73e65",
+      "exchanges": [
+        {
+          "body": "mailchimpfixturekey-us6",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/57afe96172/members/2c66f6142933ed5a97948f89cb1c7be0/tags",
+          "requestBody": {
+            "tags": [
+              {
+                "name": "spring-launch",
+                "status": "active"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "subscriberHash": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e25ce930-a423-596f-b992-602689b73e65",
+      "input": {
+        "addTags": [
+          "spring-launch"
+        ],
+        "emailAddress": "ben@example.com",
+        "listId": "57afe96172"
+      },
+      "name": "updateMemberTags-invalid-response",
+      "operation": "updateMemberTags"
+    },
+    {
+      "callId": "e25ce930-a423-596f-b992-602689b73e65",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "subscriberHash": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e25ce930-a423-596f-b992-602689b73e65",
+      "input": {
+        "addTags": [
+          "spring-launch"
+        ],
+        "emailAddress": "not an email",
+        "listId": "57afe96172"
+      },
+      "name": "updateMemberTags-defect",
+      "operation": "updateMemberTags"
+    },
+    {
+      "callId": "e25ce930-a423-596f-b992-602689b73e65",
+      "exchanges": [
+        {
+          "body": "{\"title\":\"Too Many Requests\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/57afe96172/members/2c66f6142933ed5a97948f89cb1c7be0/tags",
+          "requestBody": {
+            "tags": [
+              {
+                "name": "spring-launch",
+                "status": "active"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e25ce930-a423-596f-b992-602689b73e65",
+      "input": {
+        "addTags": [
+          "spring-launch"
+        ],
+        "emailAddress": "ben@example.com",
+        "listId": "57afe96172"
+      },
+      "name": "updateMemberTags-rate-limit",
+      "operation": "updateMemberTags"
+    },
+    {
+      "callId": "e25ce930-a423-596f-b992-602689b73e65",
+      "exchanges": [
+        {
+          "body": "{\"title\":\"Service Unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/57afe96172/members/2c66f6142933ed5a97948f89cb1c7be0/tags",
+          "requestBody": {
+            "tags": [
+              {
+                "name": "spring-launch",
+                "status": "active"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e25ce930-a423-596f-b992-602689b73e65",
+      "input": {
+        "addTags": [
+          "spring-launch"
+        ],
+        "emailAddress": "ben@example.com",
+        "listId": "57afe96172"
+      },
+      "name": "updateMemberTags-server-unavailable",
+      "operation": "updateMemberTags"
+    },
+    {
+      "callId": "e25ce930-a423-596f-b992-602689b73e65",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/57afe96172/members/2c66f6142933ed5a97948f89cb1c7be0/tags",
+          "requestBody": {
+            "tags": [
+              {
+                "name": "spring-launch",
+                "status": "active"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e25ce930-a423-596f-b992-602689b73e65",
+      "input": {
+        "addTags": [
+          "spring-launch"
+        ],
+        "emailAddress": "ben@example.com",
+        "listId": "57afe96172"
+      },
+      "name": "updateMemberTags-transport-before-send",
+      "operation": "updateMemberTags"
+    },
+    {
+      "attempts": 2,
+      "callId": "e25ce930-a423-596f-b992-602689b73e65",
+      "exchanges": [
+        {
+          "body": "{\"title\":\"Service Unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/57afe96172/members/2c66f6142933ed5a97948f89cb1c7be0/tags",
+          "requestBody": {
+            "tags": [
+              {
+                "name": "spring-launch",
+                "status": "active"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/57afe96172/members/2c66f6142933ed5a97948f89cb1c7be0/tags",
+          "requestBody": {
+            "tags": [
+              {
+                "name": "spring-launch",
+                "status": "active"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "activeTags": [
+            "spring-launch"
+          ],
+          "subscriberHash": "2c66f6142933ed5a97948f89cb1c7be0"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e25ce930-a423-596f-b992-602689b73e65",
+      "input": {
+        "addTags": [
+          "spring-launch"
+        ],
+        "emailAddress": "ben@example.com",
+        "listId": "57afe96172"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "updateMemberTags-retry-then-success",
+      "operation": "updateMemberTags"
+    },
+    {
+      "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"42694e9e57\",\"web_id\":53,\"type\":\"regular\",\"status\":\"save\",\"emails_sent\":0,\"create_time\":\"2026-10-24T10:00:00Z\",\"settings\":{\"title\":\"Spring launch\",\"subject_line\":\"Spring news\"},\"recipients\":{\"list_id\":\"57afe96172\",\"list_name\":\"Spring audience\",\"recipient_count\":3}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/42694e9e57/actions/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "output": {
+          "campaign": {
+            "createdAt": "2026-10-24T10:00:00Z",
+            "emailsSent": 0,
+            "id": "42694e9e57",
+            "listId": "57afe96172",
+            "listName": "Spring audience",
+            "recipientCount": 3,
+            "status": "save",
+            "subjectLine": "Spring news",
+            "title": "Spring launch",
+            "type": "regular",
+            "webId": 53
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "input": {
+        "campaignId": "42694e9e57",
+        "expectedListId": "57afe96172"
+      },
+      "name": "sendCampaign-sent",
+      "operation": "sendCampaign"
+    },
+    {
+      "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"42694e9e57\",\"web_id\":53,\"type\":\"regular\",\"status\":\"sent\",\"emails_sent\":3,\"create_time\":\"2026-10-24T10:00:00Z\",\"settings\":{\"title\":\"Spring launch\",\"subject_line\":\"Spring news\"},\"recipients\":{\"list_id\":\"57afe96172\",\"list_name\":\"Spring audience\",\"recipient_count\":3},\"send_time\":\"2026-10-25T11:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "alreadySent",
+        "failureKind": "",
+        "output": {
+          "campaign": {
+            "createdAt": "2026-10-24T10:00:00Z",
+            "emailsSent": 3,
+            "id": "42694e9e57",
+            "listId": "57afe96172",
+            "listName": "Spring audience",
+            "recipientCount": 3,
+            "sentAt": "2026-10-25T11:00:00Z",
+            "status": "sent",
+            "subjectLine": "Spring news",
+            "title": "Spring launch",
+            "type": "regular",
+            "webId": 53
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "input": {
+        "campaignId": "42694e9e57",
+        "expectedListId": "57afe96172"
+      },
+      "name": "sendCampaign-already-sent",
+      "operation": "sendCampaign"
+    },
+    {
+      "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"42694e9e57\",\"web_id\":53,\"type\":\"regular\",\"status\":\"schedule\",\"emails_sent\":0,\"create_time\":\"2026-10-24T10:00:00Z\",\"settings\":{\"title\":\"Spring launch\",\"subject_line\":\"Spring news\"},\"recipients\":{\"list_id\":\"57afe96172\",\"list_name\":\"Spring audience\",\"recipient_count\":3}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notSendable",
+        "failureKind": "CONFLICT",
+        "output": {
+          "campaign": {
+            "createdAt": "2026-10-24T10:00:00Z",
+            "emailsSent": 0,
+            "id": "42694e9e57",
+            "listId": "57afe96172",
+            "listName": "Spring audience",
+            "recipientCount": 3,
+            "status": "schedule",
+            "subjectLine": "Spring news",
+            "title": "Spring launch",
+            "type": "regular",
+            "webId": 53
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "input": {
+        "campaignId": "42694e9e57",
+        "expectedListId": "57afe96172"
+      },
+      "name": "sendCampaign-not-sendable",
+      "operation": "sendCampaign"
+    },
+    {
+      "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"42694e9e57\",\"web_id\":53,\"type\":\"regular\",\"status\":\"save\",\"emails_sent\":0,\"create_time\":\"2026-10-24T10:00:00Z\",\"settings\":{\"title\":\"Spring launch\",\"subject_line\":\"Spring news\"},\"recipients\":{\"list_id\":\"57afe96172\",\"list_name\":\"Spring audience\",\"recipient_count\":3}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"title\":\"Service Unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/42694e9e57/actions/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "campaign": {
+            "createdAt": "2026-10-24T10:00:00Z",
+            "emailsSent": 0,
+            "id": "42694e9e57",
+            "listId": "57afe96172",
+            "listName": "Spring audience",
+            "recipientCount": 3,
+            "status": "save",
+            "subjectLine": "Spring news",
+            "title": "Spring launch",
+            "type": "regular",
+            "webId": 53
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "input": {
+        "campaignId": "42694e9e57",
+        "expectedListId": "57afe96172"
+      },
+      "name": "sendCampaign-uncertain-send",
+      "operation": "sendCampaign"
+    },
+    {
+      "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "exchanges": [
+        {
+          "body": "{\"title\":\"Resource Not Found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "campaign": {
+            "emailsSent": 0,
+            "id": "",
+            "recipientCount": 0,
+            "status": "",
+            "type": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "input": {
+        "campaignId": "42694e9e57",
+        "expectedListId": "57afe96172"
+      },
+      "name": "sendCampaign-not-found",
+      "operation": "sendCampaign"
+    },
+    {
+      "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "exchanges": [
+        {
+          "body": "{\"title\":\"API Key Invalid\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "campaign": {
+            "emailsSent": 0,
+            "id": "",
+            "recipientCount": 0,
+            "status": "",
+            "type": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "input": {
+        "campaignId": "42694e9e57",
+        "expectedListId": "57afe96172"
+      },
+      "name": "sendCampaign-provider-rejected",
+      "operation": "sendCampaign"
+    },
+    {
+      "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "exchanges": [
+        {
+          "body": "invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "campaign": {
+            "emailsSent": 0,
+            "id": "",
+            "recipientCount": 0,
+            "status": "",
+            "type": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "input": {
+        "campaignId": "42694e9e57",
+        "expectedListId": "57afe96172"
+      },
+      "name": "sendCampaign-invalid-response",
+      "operation": "sendCampaign"
+    },
+    {
+      "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "campaign": {
+            "emailsSent": 0,
+            "id": "",
+            "recipientCount": 0,
+            "status": "",
+            "type": ""
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "input": {
+        "campaignId": "bad/id"
+      },
+      "name": "sendCampaign-defect",
+      "operation": "sendCampaign"
+    },
+    {
+      "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "exchanges": [
+        {
+          "body": "{\"title\":\"Too Many Requests\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "input": {
+        "campaignId": "42694e9e57",
+        "expectedListId": "57afe96172"
+      },
+      "name": "sendCampaign-rate-limit",
+      "operation": "sendCampaign"
+    },
+    {
+      "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "exchanges": [
+        {
+          "body": "{\"title\":\"Service Unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "input": {
+        "campaignId": "42694e9e57",
+        "expectedListId": "57afe96172"
+      },
+      "name": "sendCampaign-server-unavailable",
+      "operation": "sendCampaign"
+    },
+    {
+      "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "input": {
+        "campaignId": "42694e9e57",
+        "expectedListId": "57afe96172"
+      },
+      "name": "sendCampaign-transport-before-send",
+      "operation": "sendCampaign"
+    },
+    {
+      "attempts": 2,
+      "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "exchanges": [
+        {
+          "body": "{\"title\":\"Too Many Requests\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 429
+        },
+        {
+          "body": "{\"id\":\"42694e9e57\",\"web_id\":53,\"type\":\"regular\",\"status\":\"save\",\"emails_sent\":0,\"create_time\":\"2026-10-24T10:00:00Z\",\"settings\":{\"title\":\"Spring launch\",\"subject_line\":\"Spring news\"},\"recipients\":{\"list_id\":\"57afe96172\",\"list_name\":\"Spring audience\",\"recipient_count\":3}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/42694e9e57/actions/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "output": {
+          "campaign": {
+            "createdAt": "2026-10-24T10:00:00Z",
+            "emailsSent": 0,
+            "id": "42694e9e57",
+            "listId": "57afe96172",
+            "listName": "Spring audience",
+            "recipientCount": 3,
+            "status": "save",
+            "subjectLine": "Spring news",
+            "title": "Spring launch",
+            "type": "regular",
+            "webId": 53
+          }
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "input": {
+        "campaignId": "42694e9e57",
+        "expectedListId": "57afe96172"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "RATE_LIMIT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendCampaign-retry-read-then-sent",
+      "operation": "sendCampaign"
+    },
+    {
+      "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"42694e9e57\",\"web_id\":53,\"type\":\"regular\",\"status\":\"sent\",\"emails_sent\":0,\"create_time\":\"2026-10-24T10:00:00Z\",\"settings\":{\"title\":\"Spring launch\",\"subject_line\":\"Spring news\"},\"recipients\":{\"list_id\":\"57afe96172\",\"list_name\":\"Spring audience\",\"recipient_count\":3}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "alreadySent",
+        "failureKind": "",
+        "output": {
+          "campaign": {
+            "createdAt": "2026-10-24T10:00:00Z",
+            "emailsSent": 0,
+            "id": "42694e9e57",
+            "listId": "57afe96172",
+            "listName": "Spring audience",
+            "recipientCount": 3,
+            "status": "sent",
+            "subjectLine": "Spring news",
+            "title": "Spring launch",
+            "type": "regular",
+            "webId": 53
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "input": {
+        "campaignId": "42694e9e57",
+        "expectedListId": "57afe96172"
+      },
+      "name": "sendCampaign-prior-already-sent",
+      "operation": "sendCampaign",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"42694e9e57\",\"web_id\":53,\"type\":\"regular\",\"status\":\"save\",\"emails_sent\":0,\"create_time\":\"2026-10-24T10:00:00Z\",\"settings\":{\"title\":\"Spring launch\",\"subject_line\":\"Spring news\"},\"recipients\":{\"list_id\":\"57afe96172\",\"list_name\":\"Spring audience\",\"recipient_count\":3}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "campaign": {
+            "createdAt": "2026-10-24T10:00:00Z",
+            "emailsSent": 0,
+            "id": "42694e9e57",
+            "listId": "57afe96172",
+            "listName": "Spring audience",
+            "recipientCount": 3,
+            "status": "save",
+            "subjectLine": "Spring news",
+            "title": "Spring launch",
+            "type": "regular",
+            "webId": 53
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "input": {
+        "campaignId": "42694e9e57",
+        "expectedListId": "57afe96172"
+      },
+      "name": "sendCampaign-prior-uncertain",
+      "operation": "sendCampaign",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+        "state": "claimed"
+      }
+    },
+    {
+      "attempts": 2,
+      "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"42694e9e57\",\"web_id\":53,\"type\":\"regular\",\"status\":\"save\",\"emails_sent\":0,\"create_time\":\"2026-10-24T10:00:00Z\",\"settings\":{\"title\":\"Spring launch\",\"subject_line\":\"Spring news\"},\"recipients\":{\"list_id\":\"57afe96172\",\"list_name\":\"Spring audience\",\"recipient_count\":3}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"title\":\"Too Many Requests\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/42694e9e57/actions/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 429
+        },
+        {
+          "body": "{\"id\":\"42694e9e57\",\"web_id\":53,\"type\":\"regular\",\"status\":\"save\",\"emails_sent\":0,\"create_time\":\"2026-10-24T10:00:00Z\",\"settings\":{\"title\":\"Spring launch\",\"subject_line\":\"Spring news\"},\"recipients\":{\"list_id\":\"57afe96172\",\"list_name\":\"Spring audience\",\"recipient_count\":3}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/42694e9e57/actions/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "output": {
+          "campaign": {
+            "createdAt": "2026-10-24T10:00:00Z",
+            "emailsSent": 0,
+            "id": "42694e9e57",
+            "listId": "57afe96172",
+            "listName": "Spring audience",
+            "recipientCount": 3,
+            "status": "save",
+            "subjectLine": "Spring news",
+            "title": "Spring launch",
+            "type": "regular",
+            "webId": 53
+          }
+        },
+        "requestCount": 4,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "input": {
+        "campaignId": "42694e9e57",
+        "expectedListId": "57afe96172"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 2,
+          "failureKind": "RATE_LIMIT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendCampaign-send-rate-limit-then-sent",
+      "operation": "sendCampaign"
+    },
+    {
+      "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"42694e9e57\",\"web_id\":53,\"type\":\"regular\",\"status\":\"save\",\"emails_sent\":0,\"create_time\":\"2026-10-24T10:00:00Z\",\"settings\":{\"title\":\"Spring launch\",\"subject_line\":\"Spring news\"},\"recipients\":{\"list_id\":\"57afe96172\",\"list_name\":\"Spring audience\",\"recipient_count\":3}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/42694e9e57/actions/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "input": {
+        "campaignId": "42694e9e57",
+        "expectedListId": "57afe96172"
+      },
+      "name": "sendCampaign-send-before-send",
+      "operation": "sendCampaign"
+    },
+    {
+      "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"42694e9e57\",\"web_id\":53,\"type\":\"regular\",\"status\":\"save\",\"emails_sent\":0,\"create_time\":\"2026-10-24T10:00:00Z\",\"settings\":{\"title\":\"Spring launch\",\"subject_line\":\"Spring news\"},\"recipients\":{\"list_id\":\"57afe96172\",\"list_name\":\"Spring audience\",\"recipient_count\":3}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/42694e9e57/actions/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "campaign": {
+            "createdAt": "2026-10-24T10:00:00Z",
+            "emailsSent": 0,
+            "id": "42694e9e57",
+            "listId": "57afe96172",
+            "listName": "Spring audience",
+            "recipientCount": 3,
+            "status": "save",
+            "subjectLine": "Spring news",
+            "title": "Spring launch",
+            "type": "regular",
+            "webId": 53
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "input": {
+        "campaignId": "42694e9e57",
+        "expectedListId": "57afe96172"
+      },
+      "name": "sendCampaign-send-after-send",
+      "operation": "sendCampaign"
+    }
+  ],
+  "schemaVersion": 1
+}
