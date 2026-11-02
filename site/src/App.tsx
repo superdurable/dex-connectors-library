@@ -4,8 +4,8 @@
 import { useEffect, useState } from "react";
 import { Link, Route, Routes, useLocation, useParams } from "react-router-dom";
 
-import { DexMark } from "./DexMark";
 import { LanguageIcons } from "./LanguageIcons";
+import { SiteHeader } from "./SiteHeader";
 import { WhatIsDexConnectors } from "./WhatIsDexConnectors";
 import {
   catalogDocumentUrl,
@@ -58,38 +58,35 @@ export function App() {
   }, []);
 
   return (
-    <div className="page">
-      <header className="masthead">
-        <Link className="wordmark" to="/">
-          <span className="brand-symbol">
-            <DexMark size={36} />
-          </span>
-          <span className="wordmark-text">
-            <b>Dex</b>
-            <span>Connectors</span>
-          </span>
-        </Link>
-        <p className="lede">
-          Open sourced and trusted connectors, take your process from prototype to production.
-        </p>
-        <nav className="site-tabs" aria-label="Connector site">
-          <Link className={`site-tab${isExplainer ? "" : " active"}`} to="/">
-            Connectors
-          </Link>
-          <Link className={`site-tab${isExplainer ? " active" : ""}`} to="/what-is-dex-connectors">
-            What is Dex Connectors
-          </Link>
-        </nav>
-        {!isExplainer && catalog.status === "ready" ? <CatalogTotals connectors={catalog.value} /> : null}
-      </header>
-      <main>
-        <Routes>
-          <Route path="/" element={<CatalogPage catalog={catalog} />} />
-          <Route path="/connectors/:id" element={<ConnectorPage catalog={catalog} />} />
-          <Route path="/what-is-dex-connectors" element={<WhatIsDexConnectors />} />
-        </Routes>
-      </main>
-    </div>
+    <>
+      <SiteHeader />
+      <div className="page">
+        <header className="masthead">
+          <h1 className="directory-title">
+            <Link to="/">Dex Connectors</Link>
+          </h1>
+          <p className="lede">
+            Open sourced and trusted connectors, take your process from prototype to production.
+          </p>
+          <nav className="site-tabs" aria-label="Connector site">
+            <Link className={`site-tab${isExplainer ? "" : " active"}`} to="/">
+              Connectors
+            </Link>
+            <Link className={`site-tab${isExplainer ? " active" : ""}`} to="/what-is-dex-connectors">
+              What is Dex Connectors
+            </Link>
+          </nav>
+          {!isExplainer && catalog.status === "ready" ? <CatalogTotals connectors={catalog.value} /> : null}
+        </header>
+        <main>
+          <Routes>
+            <Route path="/" element={<CatalogPage catalog={catalog} />} />
+            <Route path="/connectors/:id" element={<ConnectorPage catalog={catalog} />} />
+            <Route path="/what-is-dex-connectors" element={<WhatIsDexConnectors />} />
+          </Routes>
+        </main>
+      </div>
+    </>
   );
 }
 
