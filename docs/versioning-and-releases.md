@@ -371,7 +371,7 @@ the original push commit, retaining its release matrix. The workflow:
     deployment. A failed Go or
     language build or release blocks the catalog publish, including Go entries.
     The site is
-    `https://superdurable.github.io/dex-connectors-library/` and the README
+    `https://connectors.superdurable.io/` and the README
     preview is `card.png` beside `catalog.yaml`.
 
 The workflow uploads `connector-release.complete` only after both publication
