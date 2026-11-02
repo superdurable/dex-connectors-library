@@ -353,6 +353,30 @@ def commit_message(commit: str) -> str:
     return git("show", "-s", "--format=%B", commit).stdout.strip()
 
 
+def commit_changes_beyond_language_descriptor(commit: str, component_path: str) -> bool:
+    if not component_path.startswith("connectors/") or not component_path.endswith(("/python", "/typescript")):
+        return True
+    parents = git("rev-list", "--parents", "-n", "1", commit).stdout.split()
+    if len(parents) > 1:
+        changed_paths = git("diff", "--name-only", parents[1], commit, "--", component_path).stdout.splitlines()
+    else:
+        changed_paths = git(
+            "diff-tree", "--root", "-r", "--no-commit-id", "--name-only", commit, "--", component_path,
+        ).stdout.splitlines()
+    if not changed_paths:
+        return True
+    for changed_path in changed_paths:
+        parts = Path(changed_path).relative_to(component_path).parts
+        is_python_descriptor = (component_path.endswith("/python") and len(parts) == 4
+                                and parts[:2] == ("src", "dex_connectors")
+                                and parts[3] == "dex-connector.json")
+        is_typescript_descriptor = (component_path.endswith("/typescript")
+                                    and parts == ("dex-connector.json",))
+        if not (is_python_descriptor or is_typescript_descriptor):
+            return True
+    return False
+
+
 def associated_pull_request(repository: str, commit: str) -> dict[str, object] | None:
     pulls, _ = github_json(f"https://api.github.com/repos/{repository}/commits/{commit}/pulls")
     if not isinstance(pulls, list):
@@ -378,7 +402,8 @@ def release_notes(plan: ReleasePlan, repository: str) -> tuple[str, bool]:
             url = str(pull.get("html_url", ""))
             user = pull.get("user") or {}
             author = f" by @{user.get('login')}" if isinstance(user, dict) and user.get("login") else ""
-        is_breaking = "(breaking)" in title or "(breaking)" in body or "(breaking)" in message
+        is_breaking = (("(breaking)" in title or "(breaking)" in body or "(breaking)" in message)
+                       and commit_changes_beyond_language_descriptor(commit, plan.component_path))
         clean_title = title.replace("(breaking)", "").strip()
         entry = f"- [{clean_title}]({url}){author}"
         key = url if pull is not None and url else commit

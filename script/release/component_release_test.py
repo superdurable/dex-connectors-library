@@ -742,6 +742,14 @@ class ComponentReleaseTest(unittest.TestCase):
         self.enter_repository()
         commits = release.component_commits("connectors/newsapi/python", "connectors/newsapi/python/v0.1.0")
         self.assertEqual(commits, (self.git("rev-parse", "HEAD"),))
+        plan = release.ReleasePlan(
+            component_path="connectors/newsapi/python", module_path="dex-connector-newsapi",
+            baseline_tag="connectors/newsapi/python/v0.1.0", baseline_version="v0.1.0",
+            bump="patch", version="v0.1.1", tag="connectors/newsapi/python/v0.1.1",
+            source_sha=commits[0], commits=commits,
+        )
+        _, is_breaking = release.release_notes(plan, "")
+        self.assertTrue(is_breaking)
 
     def test_minor_and_patch_follow_latest_component_tag(self) -> None:
         self.git("tag", "sdkgo/v0.1.0")
@@ -825,6 +833,76 @@ class ComponentReleaseTest(unittest.TestCase):
         self.assertIn("## Breaking Changes", notes)
         with self.assertRaisesRegex(ValueError, "cannot use a patch"):
             release.validate_breaking_bump(plan, breaking)
+
+    def test_language_descriptor_only_migration_does_not_break_patch_release(self) -> None:
+        for language in ("python", "typescript"):
+            with self.subTest(language=language):
+                package = self.repository / f"connectors/google/gmail/{language}"
+                package.mkdir(parents=True, exist_ok=True)
+                if language == "python":
+                    (package / "pyproject.toml").write_text(
+                        '[project]\nname = "dex-connector-google-gmail"\nversion = "0.1.0"\n', encoding="utf-8"
+                    )
+                    descriptor = package / "src/dex_connectors/google_gmail/dex-connector.json"
+                else:
+                    (package / "package.json").write_text(json.dumps({
+                        "name": "@superdurable/connector-google-gmail", "version": "0.1.0",
+                        "repository": {"type": "git", "url": NPM_REPOSITORY_URL,
+                                       "directory": "connectors/google/gmail/typescript"},
+                    }), encoding="utf-8")
+                    descriptor = package / "dex-connector.json"
+                descriptor.parent.mkdir(parents=True, exist_ok=True)
+                descriptor.write_text('{"goModule": "old"}\n', encoding="utf-8")
+                self.commit(f"connector(gmail): add {language} package")
+                self.git("tag", f"connectors/google/gmail/{language}/v0.1.0")
+                migration_branch = f"migration-{language}"
+                self.git("switch", "-c", migration_branch)
+                descriptor.write_text('{"goModule": "new"}\n', encoding="utf-8")
+                self.commit("tooling: rewrite Go connector module paths (breaking)")
+                self.git("switch", "main")
+                self.git("merge", "--no-ff", migration_branch, "-m", "tooling: move Go connectors (breaking)")
+                if language == "python":
+                    package_manifest = package / "pyproject.toml"
+                    package_manifest.write_text(package_manifest.read_text().replace("0.1.0", "0.1.1"), encoding="utf-8")
+                else:
+                    package_manifest = package / "package.json"
+                    package_manifest.write_text(package_manifest.read_text().replace("0.1.0", "0.1.1"), encoding="utf-8")
+                self.commit(f"connector(gmail): fix {language} package")
+                self.enter_repository()
+                plan = release.create_plan(str(package.relative_to(self.repository)),
+                                           f"connectors/google/gmail/{language}/", target_version="v0.1.1")
+                notes, is_breaking = release.release_notes(plan, "")
+                self.assertFalse(is_breaking)
+                self.assertIn("tooling: move Go connectors", notes.split("## Changes\n\n", 1)[1])
+                release.validate_breaking_bump(plan, is_breaking)
+
+    def test_language_source_change_keeps_breaking_marker(self) -> None:
+        package = self.repository / "connectors/google/gmail/python"
+        source = package / "src/dex_connectors/google_gmail"
+        source.mkdir(parents=True)
+        (package / "pyproject.toml").write_text(
+            '[project]\nname = "dex-connector-google-gmail"\nversion = "0.1.0"\n', encoding="utf-8"
+        )
+        descriptor = source / "dex-connector.json"
+        descriptor.write_text('{"goModule": "old"}\n', encoding="utf-8")
+        (source / "client.py").write_text("def call(): pass\n", encoding="utf-8")
+        self.commit("connector(gmail): add Python package")
+        self.git("tag", "connectors/google/gmail/python/v0.1.0")
+        descriptor.write_text('{"goModule": "new"}\n', encoding="utf-8")
+        (source / "client.py").write_text("def call(): return None\n", encoding="utf-8")
+        self.commit("connector(gmail): change Python API (breaking)")
+        (package / "pyproject.toml").write_text(
+            '[project]\nname = "dex-connector-google-gmail"\nversion = "0.1.1"\n', encoding="utf-8"
+        )
+        self.commit("connector(gmail): bump Python patch")
+        self.enter_repository()
+        plan = release.create_plan("connectors/google/gmail/python", "connectors/google/gmail/python/",
+                                   target_version="v0.1.1")
+        notes, is_breaking = release.release_notes(plan, "")
+        self.assertTrue(is_breaking)
+        self.assertIn("connector(gmail): change Python API", notes.split("## Changes", 1)[0])
+        with self.assertRaisesRegex(ValueError, "cannot use a patch"):
+            release.validate_breaking_bump(plan, is_breaking)
 
     def test_release_notes_include_each_pull_request_once(self) -> None:
         plan = release.ReleasePlan(
