@@ -64,15 +64,14 @@ it('runs a Coda query through real Dex and fails an unwired rejection', async ()
 }, 90_000);
 
 async function bindFixturePort(server: Server): Promise<number> {
-  for (let port = 21070; port <= 21099; port++) {
-    const isListening = await new Promise<boolean>(resolve => {
-      const onError = (): void => { server.off('listening', onListening); resolve(false); };
-      const onListening = (): void => { server.off('error', onError); resolve(true); };
-      server.once('error', onError);
-      server.once('listening', onListening);
-      server.listen(port, '127.0.0.1');
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      server.off('error', reject);
+      resolve();
     });
-    if (isListening) return port;
-  }
-  throw new Error('no Coda fixture port available in 21070-21099');
+  });
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('Coda fixture has no TCP port');
+  return address.port;
 }

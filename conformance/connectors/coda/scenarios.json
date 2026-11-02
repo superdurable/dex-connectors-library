@@ -64,6 +64,69 @@
       "operation": "listRows"
     },
     {
+      "callId": "coda-list-large-integer",
+      "exchanges": [
+        {
+          "body": "{\"items\":[{\"id\":\"i-Meridian\",\"name\":\"Meridian\",\"values\":{\"c-Name\":\"Meridian\",\"c-LargeInteger\":9007199254740994}}],\"nextPageToken\":\"later-page\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/v1/docs/AbCDeFGH/tables/grid-pqRst-U/rows",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-coda/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "data": {
+            "items": [
+              {
+                "id": "i-Meridian",
+                "name": "Meridian",
+                "values": {
+                  "c-LargeInteger": 9007199254740994,
+                  "c-Name": "Meridian"
+                }
+              }
+            ],
+            "nextPageToken": "later-page"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "docId": "AbCDeFGH",
+        "limit": 10,
+        "pageToken": "next-page",
+        "tableId": "grid-pqRst-U"
+      },
+      "name": "listRows-large-integer",
+      "operation": "listRows"
+    },
+    {
       "callId": "coda-list-rejected",
       "exchanges": [
         {
@@ -326,6 +389,55 @@
         "tableId": "grid-pqRst-U"
       },
       "name": "getRow-success",
+      "operation": "getRow"
+    },
+    {
+      "callId": "coda-get-large-integer",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"i-Meridian\",\"name\":\"Meridian\",\"values\":{\"c-Name\":\"Meridian\",\"c-LargeInteger\":9007199254740994}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/apis/v1/docs/AbCDeFGH/tables/grid-pqRst-U/rows/i-Meridian",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "superdurable-coda/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "data": {
+            "id": "i-Meridian",
+            "name": "Meridian",
+            "values": {
+              "c-LargeInteger": 9007199254740994,
+              "c-Name": "Meridian"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "docId": "AbCDeFGH",
+        "rowId": "i-Meridian",
+        "tableId": "grid-pqRst-U"
+      },
+      "name": "getRow-large-integer",
       "operation": "getRow"
     },
     {

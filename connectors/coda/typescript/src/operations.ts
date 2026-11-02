@@ -49,7 +49,13 @@ export class GetRowOperation implements Query<GetRowInput, GetRowOutput> {
 function decodeObject(result: CodaExchangeResult): Record<string, unknown> | null {
   if (!('body' in result)) return null;
   try {
-    const decoded: unknown = JSON.parse(Buffer.from(result.body).toString('utf8'));
+    // Supported Node versions expose source-aware parsing before TypeScript declares it.
+    const jsonWithRawNumbers = JSON as unknown as {
+      parse(text: string, reviver: (key: string, value: unknown, context: { source: string }) => unknown): unknown;
+      rawJSON(text: string): unknown;
+    };
+    const decoded = jsonWithRawNumbers.parse(Buffer.from(result.body).toString('utf8'), (_key, value, context) =>
+      typeof value === 'number' ? jsonWithRawNumbers.rawJSON(context.source) : value);
     return decoded && typeof decoded === 'object' && !Array.isArray(decoded) ? decoded as Record<string, unknown> : null;
   } catch { return null; }
 }

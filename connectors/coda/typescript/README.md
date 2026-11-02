@@ -4,6 +4,9 @@
 `getRow` operations for Dex TypeScript Flows. The generated operation
 factories and models come from [the connector manifest](../connector.yaml);
 `CodaClient` resolves the private API token for each call.
+The encoded Step output preserves provider JSON number text, including integers
+above JavaScript's safe integer range. Consumers that parse those values as
+JavaScript numbers must use a lossless JSON parser to retain their precision.
 
 The [runnable list example](examples/list-rows/) uses the static `coda`
 connection and calls `newListRowsStep`. Its happy-path `listed` branch
