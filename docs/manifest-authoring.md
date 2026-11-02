@@ -1081,7 +1081,11 @@ responses or transport failures. From the connector's `go/` directory, run
 `CONNECTOR_CONFORMANCE_MODE=record GOWORK=off go test . -run '^TestConnectorConformance$' -count=1`.
 The Go test writes the complete expected method, path, query, form, full JSON or
 decoded Gmail MIME body, connector-sent headers, production idempotency key,
-intermediate and final decisions, request count, and exact Go-marshaled output.
+intermediate and final decisions, request count, and canonical Go-marshaled output.
+For output fields present in JSON, nil Go slices and maps record as `[]` and `{}`
+at every nesting depth, matching generated Python and TypeScript empty collection
+defaults. `omitempty` and `omitzero` fields remain omitted; all other output
+values still compare exactly.
 Commit its recording; do not hand-edit expectations. Keep credentials inert.
 
 CI runs Go in verify mode and requires the committed recording to match exactly.
@@ -1101,7 +1105,7 @@ map operations to typed inputs and construct a client. The connector's Go test
 is generated from `conformance_adapter_test.go` by `connectorctl generate`;
 `generate --check` catches drift. Run `make test-connector-conformance
 CONNECTOR_DIRECTORY=connectors/<directory>` after editing the fixture. CI also
-mutates classification, output, exchange, optional query, form, MIME, production
+mutates classification, output including a wrong nonempty list, exchange, optional query, form, MIME, production
 idempotency key, read 5xx, and rejected pending cases to prove
 every applicable runner fails. Legacy packages without fixtures warn on Go-only
 edits; new or edited language packages require fixtures. A shared matcher fixture checks missing, empty, repeated,

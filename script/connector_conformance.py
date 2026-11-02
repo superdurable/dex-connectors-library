@@ -202,6 +202,10 @@ def mutation_self_test(connectors: list[Path]) -> None:
                                         "test/conformance.test.ts"], typescript_package)
         mutation_sources = [("classification", scenario), ("exchange", scenario),
                             ("wrong-output-field", scenario), ("pending-passing-go", scenario)]
+        list_output_scenario = next((item for item in original["scenarios"]
+                                     if isinstance(item["expected"].get("output"), dict)
+                                     and any(isinstance(value, list)
+                                             for value in item["expected"]["output"].values())), None)
         query_scenario = next((item for item in original["scenarios"]
                                if any(exchange.get("query") for exchange in item["exchanges"])), None)
         optional_query_scenario = next((item for item in original["scenarios"]
@@ -225,6 +229,7 @@ def mutation_self_test(connectors: list[Path]) -> None:
             ("changed-form-value", form_scenario), ("read-5xx-classification", read_server_error),
             ("mime-subject", mime_scenario), ("mime-recipient", mime_scenario),
             ("mime-body", mime_scenario), ("random-idempotency-key", keyed_scenario),
+            ("wrong-nonempty-list", list_output_scenario),
         ) if source is not None)
         for mutation, source in mutation_sources:
             changed = json.loads(json.dumps(source))
@@ -262,6 +267,10 @@ def mutation_self_test(connectors: list[Path]) -> None:
                 exchange["query"][renamed if renamed != field else field + "_renamed"] = exchange["query"].pop(field)
             elif mutation == "wrong-output-field":
                 changed["expected"]["output"][marker] = "wrong"
+            elif mutation == "wrong-nonempty-list":
+                key = next(key for key, value in changed["expected"]["output"].items()
+                           if isinstance(value, list))
+                changed["expected"]["output"][key] = ["__wrong_nonempty_list__"]
             elif mutation.startswith("mime-"):
                 exchange = next(exchange for exchange in changed["exchanges"]
                                 if "$rawMime" in exchange.get("requestBody", {}))
