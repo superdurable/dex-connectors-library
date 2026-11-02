@@ -1,0 +1,81 @@
+{
+  "type": "oauth2",
+  "connectionKind": "jira-atlassian-oauth",
+  "fields": [
+    {
+      "name": "oauth_client_id",
+      "goName": "OAuthClientID",
+      "type": "string",
+      "description": "Non-secret OAuth 2.0 (3LO) client ID copied from https://developer.atlassian.com/console/myapps/ after selecting the app > Settings > Authentication details > Client ID; an alphanumeric value, and blank means authorization and refresh cannot start.",
+      "required": true
+    },
+    {
+      "name": "oauth_client_secret",
+      "goName": "OAuthClientSecret",
+      "type": "secretString",
+      "description": "Secret OAuth 2.0 (3LO) client secret copied from https://developer.atlassian.com/console/myapps/ > the app > Settings > Authentication details > Secret; store it only in this credential field, and blank means authorization and refresh cannot start.",
+      "required": true
+    },
+    {
+      "name": "access_token",
+      "goName": "AccessToken",
+      "type": "secretString",
+      "description": "Secret short-lived access token returned by Atlassian after consent; Dex derives it automatically and refreshes it before its one-hour expiry, so never enter it manually, and blank means Connect has not completed.",
+      "required": true
+    },
+    {
+      "name": "refresh_token",
+      "goName": "RefreshToken",
+      "type": "secretString",
+      "description": "Secret rotating refresh token returned because the connection requests offline_access; Atlassian disables each refresh token once it issues the next, so Dex stores every replacement atomically, and blank means reauthorization is required.",
+      "required": true
+    }
+  ],
+  "guide": {
+    "startURL": "https://developer.atlassian.com/console/myapps/",
+    "steps": [
+      "Choose Create > OAuth 2.0 integration, name the app, and accept the developer terms; one app can serve every Dex connection.",
+      "Open Permissions, choose Add next to Jira API, then Configure, and add the classic scopes read:jira-work and write:jira-work; Dex also requests offline_access so Atlassian issues a rotating refresh token.",
+      "Open Authorization, choose Configure next to OAuth 2.0 (3LO), paste the exact Redirect URI shown below into Callback URL, and choose Save changes.",
+      "Open Settings and copy Client ID and Secret into the fields below; the secret is sensitive.",
+      "Choose Connect, pick the Jira site the Flows work in on the Atlassian consent screen, and choose Accept. The app stays private to its owner until Distribution > Enable sharing is on, and a refresh token unused for 90 days requires reconnecting."
+    ]
+  },
+  "oauth2": {
+    "authorizationEndpoint": "https://auth.atlassian.com/authorize",
+    "tokenEndpoint": "https://auth.atlassian.com/oauth/token",
+    "authorizationParameters": {
+      "audience": "api.atlassian.com",
+      "prompt": "consent"
+    },
+    "clientIDCredential": "oauth_client_id",
+    "clientSecretCredential": "oauth_client_secret",
+    "scopes": [
+      "read:jira-work",
+      "write:jira-work",
+      "offline_access"
+    ],
+    "credentialMappings": [
+      {
+        "credential": "access_token",
+        "source": "access_token"
+      },
+      {
+        "credential": "refresh_token",
+        "source": "refresh_token"
+      }
+    ],
+    "pkce": false,
+    "protocol": "oauth2",
+    "tokenRequestEncoding": "json",
+    "refresh": {
+      "terminalErrorCodes": [
+        "invalid_grant",
+        "invalid_client",
+        "unauthorized_client"
+      ],
+      "acceptsMissingTokenType": true
+    }
+  },
+  "refreshable": true
+}

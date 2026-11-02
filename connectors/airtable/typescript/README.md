@@ -50,6 +50,9 @@ next page cursor. Field values use Airtable's JSON cell types. A missing
 field means Airtable omitted an empty cell, while explicit JSON `null` clears
 one on write.
 
+Failure and not-found branch results contain empty `records` and record ID
+lists, and an empty `fields` map for a missing record.
+
 ## Verify
 
 ```sh
