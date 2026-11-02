@@ -1,7 +1,11 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
+import { lookup as lookupAddresses } from 'node:dns/promises';
+import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
+import https, { createServer as createTLSServer } from 'node:https';
+import { createServer as createTCPServer, type Socket } from 'node:net';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   AddressRefusal, BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter,
@@ -81,6 +85,26 @@ describe('provider HTTP', () => {
     await expect(sendProviderRequest({ url: `http://127.0.0.1:${address.port}/`, method: 'GET', maxResponseBytes: 16, addressPolicy: 'publicHTTPS' })).rejects.toBeInstanceOf(AddressRefusal);
   });
 
+  it('sends to a localhost hostname and proves a later refused connection was not sent', async () => {
+    const addresses = await lookupAddresses('localhost', { all: true, verbatim: true });
+    const selected = addresses[0];
+    if (!selected) throw new Error('localhost has no resolved address');
+    const server = createServer((_request, response) => response.end('ok'));
+    await new Promise<void>(resolve => server.listen(0, selected.address, resolve));
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('server address unavailable');
+    const request = { url: `http://localhost:${address.port}/`, method: 'GET', maxResponseBytes: 16, addressPolicy: 'privateNetworkHTTP' as const };
+    try {
+      const response = await sendProviderRequest(request);
+      expect(response.status).toBe(200);
+      expect(Buffer.from(response.body).toString()).toBe('ok');
+    } finally {
+      server.closeAllConnections();
+      await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+    }
+    await expect(sendProviderRequest(request)).rejects.toMatchObject({ name: ProviderTransportError.name, isProvablyNotSent: true });
+  });
+
   it('fails closed when a socket may have received request bytes', async () => {
     const server = createServer((_request, response) => response.destroy());
     servers.push(server);
@@ -90,7 +114,7 @@ describe('provider HTTP', () => {
     await expect(sendProviderRequest({ url: `http://127.0.0.1:${address.port}/`, method: 'POST', body: Buffer.from('write'), maxResponseBytes: 16, addressPolicy: 'privateNetworkHTTP' })).rejects.toMatchObject({ name: ProviderTransportError.name, isProvablyNotSent: false });
   });
 
-  it('proves refused connections, DNS failures, and pre-connect timeouts did not send a request', async () => {
+  it('proves refused connections and DNS failures did not send a request', async () => {
     const server = createServer();
     await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
     const address = server.address();
@@ -99,9 +123,43 @@ describe('provider HTTP', () => {
     const request = { method: 'POST', body: Buffer.from('write'), maxResponseBytes: 16, addressPolicy: 'privateNetworkHTTP' as const };
     await expect(sendProviderRequest({ ...request, url: `http://127.0.0.1:${address.port}/` })).rejects.toMatchObject({ name: ProviderTransportError.name, isProvablyNotSent: true });
     await expect(sendProviderRequest({ ...request, url: 'https://nonexistent.invalid/' })).rejects.toMatchObject({ name: ProviderTransportError.name, isProvablyNotSent: true });
-    const timeout = new AbortController();
-    timeout.abort(new DOMException('deadline elapsed', 'TimeoutError'));
-    await expect(sendProviderRequest({ ...request, url: `http://127.0.0.1:${address.port}/`, signal: timeout.signal })).rejects.toMatchObject({ name: ProviderTransportError.name, isProvablyNotSent: true });
+  });
+
+  it('proves a TLS handshake timeout did not send HTTP bytes', async () => {
+    const sockets: Socket[] = [];
+    const server = createTCPServer(socket => { sockets.push(socket); });
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('server address unavailable');
+    try {
+      await expect(sendProviderRequest({ url: `https://127.0.0.1:${address.port}/`, method: 'POST', body: Buffer.from('write'), maxResponseBytes: 16, addressPolicy: 'privateNetworkHTTP', timeoutMs: 300 })).rejects.toMatchObject({ name: ProviderTransportError.name, isProvablyNotSent: true });
+    } finally {
+      for (const socket of sockets) socket.destroy();
+      await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+    }
+  });
+
+  it('treats an HTTPS reset after the request arrives as possibly sent', async () => {
+    const certificate = readFileSync(new URL('./fixtures/localhost-cert.pem', import.meta.url));
+    const key = readFileSync(new URL('./fixtures/localhost-key.pem', import.meta.url));
+    let hasReceivedRequest = false;
+    const server = createTLSServer({ cert: certificate, key }, request => {
+      hasReceivedRequest = true;
+      request.socket.destroy();
+    });
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('server address unavailable');
+    const previousCertificateAuthority = https.globalAgent.options.ca;
+    https.globalAgent.options.ca = certificate;
+    try {
+      await expect(sendProviderRequest({ url: `https://127.0.0.1:${address.port}/`, method: 'POST', body: Buffer.from('write'), maxResponseBytes: 16, addressPolicy: 'privateNetworkHTTP' })).rejects.toMatchObject({ name: ProviderTransportError.name, isProvablyNotSent: false });
+      expect(hasReceivedRequest).toBe(true);
+    } finally {
+      https.globalAgent.options.ca = previousCertificateAuthority;
+      server.closeAllConnections();
+      await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+    }
   });
 
   it('proves a TLS handshake failure did not send HTTP request bytes', async () => {

@@ -145,7 +145,9 @@ export async function sendProviderRequest(request: ProviderRequest): Promise<Pro
   if (!selected) throw new AddressRefusal('host has no resolved address');
   const options: RequestOptions = {
     method: request.method, headers: request.headers, signal,
-    lookup: (_hostname, _options, callback) => callback(null, selected.address, selected.family),
+    lookup: (_hostname, options, callback) => options?.all
+      ? callback(null, [{ address: selected.address, family: selected.family }])
+      : callback(null, selected.address, selected.family),
   };
   return new Promise((resolve, reject) => {
     let hasConnected = false;
