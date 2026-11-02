@@ -83,7 +83,7 @@
         "pageSize": 100,
         "projectId": "1201000000000001"
       },
-      "name": "listTasks listed page",
+      "name": "listTasks_listed_page",
       "operation": "listTasks"
     },
     {
@@ -139,7 +139,7 @@
         "offset": "page-2-token",
         "sectionId": "1201000000000101"
       },
-      "name": "listTasks section offset",
+      "name": "listTasks_section_offset",
       "operation": "listTasks"
     },
     {
@@ -196,7 +196,7 @@
         "pageSize": 100,
         "projectId": "1201000000000001"
       },
-      "name": "listTasks not found",
+      "name": "listTasks_not_found",
       "operation": "listTasks"
     },
     {
@@ -253,7 +253,7 @@
         "pageSize": 100,
         "projectId": "1201000000000001"
       },
-      "name": "listTasks provider rejected",
+      "name": "listTasks_provider_rejected",
       "operation": "listTasks"
     },
     {
@@ -310,7 +310,7 @@
         "pageSize": 100,
         "projectId": "1201000000000001"
       },
-      "name": "listTasks invalid response",
+      "name": "listTasks_invalid_response",
       "operation": "listTasks"
     },
     {
@@ -399,7 +399,7 @@
       "input": {
         "taskId": "1204567890123456"
       },
-      "name": "getTask found",
+      "name": "getTask_found",
       "operation": "getTask"
     },
     {
@@ -445,7 +445,7 @@
       "input": {
         "taskId": "1204567890123456"
       },
-      "name": "getTask not found",
+      "name": "getTask_not_found",
       "operation": "getTask"
     },
     {
@@ -491,7 +491,7 @@
       "input": {
         "taskId": "1204567890123456"
       },
-      "name": "getTask provider rejected",
+      "name": "getTask_provider_rejected",
       "operation": "getTask"
     },
     {
@@ -537,7 +537,7 @@
       "input": {
         "taskId": "1204567890123456"
       },
-      "name": "getTask invalid response",
+      "name": "getTask_invalid_response",
       "operation": "getTask"
     },
     {
@@ -637,7 +637,7 @@
         "projectId": "1201000000000001",
         "sectionId": "1201000000000101"
       },
-      "name": "createTask created",
+      "name": "createTask_created",
       "operation": "createTask"
     },
     {
@@ -694,7 +694,7 @@
         "name": "Call locksmith",
         "workspaceId": "1100000000000001"
       },
-      "name": "createTask workspace",
+      "name": "createTask_workspace",
       "operation": "createTask"
     },
     {
@@ -791,7 +791,7 @@
         "projectId": "1201000000000001",
         "sectionId": "1201000000000101"
       },
-      "name": "createTask provider rejected",
+      "name": "createTask_provider_rejected",
       "operation": "createTask"
     },
     {
@@ -888,7 +888,7 @@
         "projectId": "1201000000000001",
         "sectionId": "1201000000000101"
       },
-      "name": "createTask uncertain 500",
+      "name": "createTask_uncertain_500",
       "operation": "createTask"
     },
     {
@@ -985,7 +985,7 @@
         "projectId": "1201000000000001",
         "sectionId": "1201000000000101"
       },
-      "name": "createTask uncertain invalid body",
+      "name": "createTask_uncertain_invalid_body",
       "operation": "createTask"
     },
     {
@@ -1126,7 +1126,7 @@
         "sectionId": "1201000000000101",
         "taskId": "1204567890123456"
       },
-      "name": "updateTask updated",
+      "name": "updateTask_updated",
       "operation": "updateTask"
     },
     {
@@ -1178,7 +1178,7 @@
         "isCompleted": false,
         "taskId": "1204567890123456"
       },
-      "name": "updateTask not found",
+      "name": "updateTask_not_found",
       "operation": "updateTask"
     },
     {
@@ -1230,7 +1230,7 @@
         "isCompleted": false,
         "taskId": "1204567890123456"
       },
-      "name": "updateTask provider rejected",
+      "name": "updateTask_provider_rejected",
       "operation": "updateTask"
     },
     {
@@ -1282,7 +1282,7 @@
         "isCompleted": false,
         "taskId": "1204567890123456"
       },
-      "name": "updateTask invalid response",
+      "name": "updateTask_invalid_response",
       "operation": "updateTask"
     },
     {
@@ -1401,7 +1401,7 @@
         "sectionId": "1201000000000101",
         "taskId": "1204567890123456"
       },
-      "name": "updateTask move only",
+      "name": "updateTask_move_only",
       "operation": "updateTask"
     },
     {
@@ -1459,7 +1459,7 @@
         "taskId": "1204567890123456",
         "text": "Approved by Grace.\n\u003cb\u003enot markup\u003c/b\u003e"
       },
-      "name": "addComment added",
+      "name": "addComment_added",
       "operation": "addComment"
     },
     {
@@ -1511,7 +1511,7 @@
         "taskId": "1204567890123456",
         "text": "Approved by Grace.\n\u003cb\u003enot markup\u003c/b\u003e"
       },
-      "name": "addComment not found",
+      "name": "addComment_not_found",
       "operation": "addComment"
     },
     {
@@ -1563,7 +1563,7 @@
         "taskId": "1204567890123456",
         "text": "Approved by Grace.\n\u003cb\u003enot markup\u003c/b\u003e"
       },
-      "name": "addComment provider rejected",
+      "name": "addComment_provider_rejected",
       "operation": "addComment"
     },
     {
@@ -1615,7 +1615,7 @@
         "taskId": "1204567890123456",
         "text": "Approved by Grace.\n\u003cb\u003enot markup\u003c/b\u003e"
       },
-      "name": "addComment uncertain 500",
+      "name": "addComment_uncertain_500",
       "operation": "addComment"
     },
     {
@@ -1667,7 +1667,7 @@
         "taskId": "1204567890123456",
         "text": "Approved by Grace.\n\u003cb\u003enot markup\u003c/b\u003e"
       },
-      "name": "addComment uncertain invalid body",
+      "name": "addComment_uncertain_invalid_body",
       "operation": "addComment"
     },
     {
@@ -1721,7 +1721,7 @@
         "pageSize": 100,
         "projectId": "1201000000000001"
       },
-      "name": "listTasks rate limited",
+      "name": "listTasks_rate_limited",
       "operation": "listTasks"
     },
     {
@@ -1775,7 +1775,7 @@
         "pageSize": 100,
         "projectId": "1201000000000001"
       },
-      "name": "listTasks unavailable",
+      "name": "listTasks_unavailable",
       "operation": "listTasks"
     },
     {
@@ -1827,7 +1827,7 @@
         "pageSize": 100,
         "projectId": "1201000000000001"
       },
-      "name": "listTasks transport before send",
+      "name": "listTasks_transport_before_send",
       "operation": "listTasks"
     },
     {
@@ -1866,7 +1866,7 @@
       "input": {
         "taskId": "1204567890123456"
       },
-      "name": "getTask rate limited",
+      "name": "getTask_rate_limited",
       "operation": "getTask"
     },
     {
@@ -1905,7 +1905,7 @@
       "input": {
         "taskId": "1204567890123456"
       },
-      "name": "getTask unavailable",
+      "name": "getTask_unavailable",
       "operation": "getTask"
     },
     {
@@ -1942,7 +1942,7 @@
       "input": {
         "taskId": "1204567890123456"
       },
-      "name": "getTask transport before send",
+      "name": "getTask_transport_before_send",
       "operation": "getTask"
     },
     {
@@ -2034,7 +2034,7 @@
         "projectId": "1201000000000001",
         "sectionId": "1201000000000101"
       },
-      "name": "createTask rate limited",
+      "name": "createTask_rate_limited",
       "operation": "createTask"
     },
     {
@@ -2126,7 +2126,7 @@
         "projectId": "1201000000000001",
         "sectionId": "1201000000000101"
       },
-      "name": "createTask unavailable",
+      "name": "createTask_unavailable",
       "operation": "createTask"
     },
     {
@@ -2216,7 +2216,7 @@
         "projectId": "1201000000000001",
         "sectionId": "1201000000000101"
       },
-      "name": "createTask transport before send",
+      "name": "createTask_transport_before_send",
       "operation": "createTask"
     },
     {
@@ -2269,7 +2269,7 @@
         "sectionId": "1201000000000101",
         "taskId": "1204567890123456"
       },
-      "name": "updateTask rate limited",
+      "name": "updateTask_rate_limited",
       "operation": "updateTask"
     },
     {
@@ -2322,7 +2322,7 @@
         "sectionId": "1201000000000101",
         "taskId": "1204567890123456"
       },
-      "name": "updateTask unavailable",
+      "name": "updateTask_unavailable",
       "operation": "updateTask"
     },
     {
@@ -2373,7 +2373,7 @@
         "sectionId": "1201000000000101",
         "taskId": "1204567890123456"
       },
-      "name": "updateTask transport before send",
+      "name": "updateTask_transport_before_send",
       "operation": "updateTask"
     },
     {
@@ -2422,7 +2422,7 @@
         "taskId": "1204567890123456",
         "text": "Approved by Grace.\n\u003cb\u003enot markup\u003c/b\u003e"
       },
-      "name": "addComment rate limited",
+      "name": "addComment_rate_limited",
       "operation": "addComment"
     },
     {
@@ -2471,7 +2471,7 @@
         "taskId": "1204567890123456",
         "text": "Approved by Grace.\n\u003cb\u003enot markup\u003c/b\u003e"
       },
-      "name": "addComment unavailable",
+      "name": "addComment_unavailable",
       "operation": "addComment"
     },
     {
@@ -2518,7 +2518,7 @@
         "taskId": "1204567890123456",
         "text": "Approved by Grace.\n\u003cb\u003enot markup\u003c/b\u003e"
       },
-      "name": "addComment transport before send",
+      "name": "addComment_transport_before_send",
       "operation": "addComment"
     },
     {
@@ -2592,7 +2592,7 @@
         "projectId": "1201000000000001",
         "sectionId": "1201000000000101"
       },
-      "name": "createTask checkpoint readback",
+      "name": "createTask_checkpoint_readback",
       "operation": "createTask",
       "priorHeartbeat": {
         "attempt": 1,
@@ -2648,7 +2648,7 @@
         "taskId": "1204567890123456",
         "text": "Approved by Grace.\n\u003cb\u003enot markup\u003c/b\u003e"
       },
-      "name": "addComment checkpoint readback",
+      "name": "addComment_checkpoint_readback",
       "operation": "addComment",
       "priorHeartbeat": {
         "attempt": 1,
@@ -2809,7 +2809,7 @@
           "retryAfterMs": 0
         }
       ],
-      "name": "createTask rate limit then success",
+      "name": "createTask_rate_limit_then_success",
       "operation": "createTask"
     },
     {
@@ -2904,7 +2904,7 @@
           "retryAfterMs": 0
         }
       ],
-      "name": "addComment rate limit then success",
+      "name": "addComment_rate_limit_then_success",
       "operation": "addComment"
     },
     {
@@ -2922,7 +2922,7 @@
         "uncertain": false
       },
       "input": {},
-      "name": "listTasks validation defect",
+      "name": "listTasks_validation_defect",
       "operation": "listTasks"
     },
     {
@@ -2946,7 +2946,7 @@
       "input": {
         "taskId": "invalid"
       },
-      "name": "getTask validation defect",
+      "name": "getTask_validation_defect",
       "operation": "getTask"
     },
     {
@@ -2967,7 +2967,7 @@
       "input": {
         "name": "Missing container"
       },
-      "name": "createTask validation defect",
+      "name": "createTask_validation_defect",
       "operation": "createTask"
     },
     {
@@ -2989,7 +2989,7 @@
         "isCompleted": true,
         "taskId": "invalid"
       },
-      "name": "updateTask validation defect",
+      "name": "updateTask_validation_defect",
       "operation": "updateTask"
     },
     {
@@ -3011,7 +3011,7 @@
         "taskId": "invalid",
         "text": "Approved."
       },
-      "name": "addComment validation defect",
+      "name": "addComment_validation_defect",
       "operation": "addComment"
     }
   ],

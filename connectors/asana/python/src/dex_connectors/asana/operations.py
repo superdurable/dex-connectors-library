@@ -528,7 +528,7 @@ class CreateTaskOperation:
                 else MutationAttempt.branch_result("defect", requested, Receipt(), authentication_problem)
             )
         if task_id:
-            return await self._read_back(call, token, requested, task_id)
+            return await self._read_back(call, token, requested, task_id, fence)
         try:
             exchange = await fence.dispatch(
                 lambda _deadline: self.client.exchange(
@@ -592,6 +592,7 @@ class CreateTaskOperation:
         try:
             await fence.record_provider_id(task_id)
         except Exception:
+            # The returned ID still proves success when the recovery checkpoint is unavailable.
             pass
         created_at = None
         try:
@@ -607,7 +608,7 @@ class CreateTaskOperation:
         return MutationAttempt.branch_result("created", output, self.client.receipt(call, task_id))
 
     async def _read_back(
-        self, call: Call, token: str, requested: CreateTaskOutput, task_id: str
+        self, call: Call, token: str, requested: CreateTaskOutput, task_id: str, fence: Fence
     ) -> MutationAttempt[CreateTaskOutput]:
         exchange = await self.client.exchange(
             call, token, "GET", f"/tasks/{gid(task_id, 'taskId')}", {"opt_fields": CREATED_TASK_FIELDS}
@@ -648,6 +649,11 @@ class CreateTaskOperation:
             permalink_url=resource.get("permalink_url") or "",
             created_at=created_at,
         )
+        try:
+            await fence.record_provider_id(task_id)
+        except Exception:
+            # Read-back confirmed the task; a failed recovery checkpoint cannot undo that result.
+            pass
         return MutationAttempt.branch_result("created", output, receipt)
 
 
@@ -817,7 +823,7 @@ class AddCommentOperation:
                 else MutationAttempt.branch_result("defect", requested, Receipt(), authentication_problem)
             )
         if story_id:
-            return await self._read_back(call, token, requested, story_id)
+            return await self._read_back(call, token, requested, story_id, fence)
         try:
             exchange = await fence.dispatch(
                 lambda _deadline: self.client.exchange(
@@ -881,12 +887,13 @@ class AddCommentOperation:
         try:
             await fence.record_provider_id(story_id)
         except Exception:
+            # The returned ID still proves success when the recovery checkpoint is unavailable.
             pass
         output = self._story_output(requested, resource, story_id)
         return MutationAttempt.branch_result("added", output, self.client.receipt(call, story_id))
 
     async def _read_back(
-        self, call: Call, token: str, requested: AddCommentOutput, story_id: str
+        self, call: Call, token: str, requested: AddCommentOutput, story_id: str, fence: Fence
     ) -> MutationAttempt[AddCommentOutput]:
         exchange = await self.client.exchange(
             call, token, "GET", f"/stories/{gid(story_id, 'storyId')}", {"opt_fields": CREATED_STORY_FIELDS}
@@ -916,6 +923,11 @@ class AddCommentOperation:
                 ),
                 receipt,
             )
+        try:
+            await fence.record_provider_id(story_id)
+        except Exception:
+            # Read-back confirmed the comment; a failed recovery checkpoint cannot undo that result.
+            pass
         return MutationAttempt.branch_result(
             "added", self._story_output(requested, resource, story_id), receipt
         )
