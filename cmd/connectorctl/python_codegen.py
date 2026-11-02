@@ -755,9 +755,19 @@ def render_connection():
             name = snake(field_info["name"])
             lines += [
                 f"        {name} = material.get({quoted(field_info['name'])})",
-                f"        if not isinstance({name}, str) or not {name}:",
-                f"            raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' is required')})",
             ]
+            if field_info["required"]:
+                lines += [
+                    f"        if not isinstance({name}, str) or not {name}:",
+                    f"            raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' is required')})",
+                ]
+            else:
+                lines += [
+                    f"        if {name} is None:",
+                    f"            {name} = ''",
+                    f"        if not isinstance({name}, str):",
+                    f"            raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' has an invalid type')})",
+                ]
         values = [
             f"SecretString({snake(field_info['name'])})"
             if field_info["type"] == "secretString"
@@ -804,6 +814,10 @@ def render_connection():
         "def _decode_config(value: dict[str, Any]) -> Config:",
     ]
     config_fields = spec["configuration"]["fields"]
+    # Preserve generated behavior for published packages without optional credentials.
+    has_optional_credential = any(
+        not field_info["required"] for field_info in spec["auth"].get("fields", [])
+    )
     allowed = (
         "{"
         + ", ".join(quoted(field_info["name"]) for field_info in config_fields)
@@ -821,11 +835,16 @@ def render_connection():
         raw_name = (
             name.removesuffix("_seconds") if field_info["type"] == "duration" else name
         )
-        lines.append(f"    if {quoted(field_info['name'])} in value:")
+        field_present = f"{quoted(field_info['name'])} in value"
+        if has_optional_credential and not field_info["required"]:
+            field_present += f" and value[{quoted(field_info['name'])}] != ''"
+        lines.append(f"    if {field_present}:")
         lines.append(f"        {raw_name} = value[{quoted(field_info['name'])}]")
         field_type = field_info["type"]
         if field_type in ("string", "url"):
             check = f"isinstance({raw_name}, str)"
+            if has_optional_credential and field_info["required"]:
+                check += f" and bool({raw_name})"
         elif field_type == "enum":
             check = f"isinstance({raw_name}, str) and {raw_name} in {tuple(field_info['enum'])!r}"
         elif field_type == "stringList":

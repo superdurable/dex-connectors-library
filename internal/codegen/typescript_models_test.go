@@ -53,3 +53,16 @@ func TestTypeScriptJSDocBlankLinesHaveNoTrailingWhitespace(t *testing.T) {
 		t.Fatalf("blank JSDoc line has unexpected formatting: %q", comment)
 	}
 }
+
+func TestTypeScriptOptionalCredentialsRemainOptional(t *testing.T) {
+	manifest := schema.Manifest{Spec: schema.Spec{
+		Auth: schema.Auth{Fields: []schema.Field{
+			{Name: "access_key_id", GoName: "AccessKeyID", Type: "secretString", Required: true},
+			{Name: "session_token", GoName: "SessionToken", Type: "secretString", Required: false},
+		}},
+	}}
+	generated := string(generateTypeScriptModels(manifest, nil))
+	if !strings.Contains(generated, "accessKeyId: SecretString;") || !strings.Contains(generated, "sessionToken?: SecretString;") {
+		t.Fatalf("credential optionality differs from the manifest:\n%s", generated)
+	}
+}
