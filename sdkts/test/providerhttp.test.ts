@@ -17,6 +17,22 @@ const servers: ReturnType<typeof createServer>[] = [];
 afterEach(async () => { await Promise.all(servers.splice(0).map(server => new Promise<void>(resolve => server.close(() => resolve())))); });
 
 describe('provider HTTP', () => {
+  it('matches Go public HTTPS address admission', () => {
+    const cases: Array<[string, boolean]> = [
+      ['8.8.8.8', true], ['2001:4860:4860::8888', true], ['::ffff:8.8.8.8', true],
+      ['127.0.0.1', false], ['::1', false], ['10.1.2.3', false], ['172.16.0.5', false],
+      ['192.168.1.1', false], ['fd12:3456::1', false], ['::ffff:10.0.0.1', false],
+      ['100.64.0.1', false], ['169.254.169.254', false], ['fe80::1', false],
+      ['::ffff:169.254.169.254', false], ['fd00:ec2::254', false],
+      ['0.0.0.0', false], ['::', false], ['224.0.0.1', false], ['ff02::1', false],
+      ['255.255.255.255', false],
+    ];
+    for (const [address, permitted] of cases) {
+      expect(isAllowedProviderIPAddress(address, 'https:', 'publicHTTPS'), address).toBe(permitted);
+      expect(isAllowedProviderIPAddress(address, 'http:', 'publicHTTPS'), address).toBe(false);
+    }
+  });
+
   it('parses Retry-After and keeps only safe error tokens', () => {
     expect(parseRetryAfter('7')).toBe(7000);
     expect(parseRetryAfter('999999999')).toBe(3600000);
@@ -70,6 +86,109 @@ describe('provider HTTP', () => {
     const url = `http://127.0.0.1:${address.port}`;
     await expect(sendProviderRequest({ url: `${url}/large`, method: 'GET', maxResponseBytes: 4, addressPolicy: 'privateNetworkHTTP' })).rejects.toMatchObject({ name: BodyTooLargeError.name, status: 429, headers: { 'retry-after': '7' } });
     await expect(sendProviderRequest({ url: `${url}/drip`, method: 'GET', maxResponseBytes: 10_000, timeoutMs: 40, addressPolicy: 'privateNetworkHTTP' })).rejects.toMatchObject({ name: ProviderTransportError.name, isProvablyNotSent: false });
+  });
+
+  it('drains an oversized response to EOF without retaining or observing later chunks', async () => {
+    let hasFinishedResponse = false;
+    const server = createServer((_request, response) => {
+      response.writeHead(200, { 'X-Request-ID': 'drained' });
+      response.write('abc');
+      setTimeout(() => response.write('def'), 20);
+      setTimeout(() => response.end('gh'), 40);
+      response.on('finish', () => { hasFinishedResponse = true; });
+    });
+    servers.push(server);
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('server address unavailable');
+    const observedChunks: string[] = [];
+    await expect(sendProviderRequest({
+      url: `http://127.0.0.1:${address.port}/`, method: 'GET', maxResponseBytes: 4,
+      onBodyLimit: 'drain', timeoutMs: 1_000, addressPolicy: 'privateNetworkHTTP',
+      onResponseChunk: chunk => { observedChunks.push(Buffer.from(chunk).toString()); },
+    })).rejects.toMatchObject({ name: BodyTooLargeError.name, status: 200, headers: { 'x-request-id': 'drained' } });
+    expect(hasFinishedResponse).toBe(true);
+    expect(observedChunks).toEqual(['abc', 'd']);
+  });
+
+  it('destroys an oversized response by default', async () => {
+    let wasSocketDestroyedBeforeEOF = false;
+    let responseClosed: () => void = () => {};
+    const responseClose = new Promise<void>(resolve => { responseClosed = resolve; });
+    const server = createServer((_request, response) => {
+      const socket = response.socket;
+      response.write('oversized');
+      const finishTimer = setTimeout(() => response.end('finished'), 100);
+      response.on('close', () => {
+        wasSocketDestroyedBeforeEOF = Boolean(socket?.destroyed) && !response.writableEnded;
+        clearTimeout(finishTimer);
+        responseClosed();
+      });
+    });
+    servers.push(server);
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('server address unavailable');
+    await expect(sendProviderRequest({ url: `http://127.0.0.1:${address.port}/`, method: 'GET', maxResponseBytes: 4, addressPolicy: 'privateNetworkHTTP' })).rejects.toBeInstanceOf(BodyTooLargeError);
+    await responseClose;
+    expect(wasSocketDestroyedBeforeEOF).toBe(true);
+  });
+
+  it('honors cancellation while draining an oversized response', async () => {
+    const server = createServer((_request, response) => {
+      response.writeHead(429, { 'Retry-After': '7' });
+      response.write('oversized');
+    });
+    servers.push(server);
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('server address unavailable');
+    const controller = new AbortController();
+    let hasCrossedLimit = false;
+    await expect(sendProviderRequest({
+      url: `http://127.0.0.1:${address.port}/`, method: 'GET', maxResponseBytes: 4,
+      onBodyLimit: 'drain', addressPolicy: 'privateNetworkHTTP', signal: controller.signal,
+      ignoreErrorBodyReadFailure: true,
+      onResponseChunk: () => { hasCrossedLimit = true; setTimeout(() => controller.abort(), 10); },
+    })).rejects.toMatchObject({ name: BodyTooLargeError.name, status: 429, headers: { 'retry-after': '7' } });
+    expect(hasCrossedLimit).toBe(true);
+    hasCrossedLimit = false;
+    await expect(sendProviderRequest({
+      url: `http://127.0.0.1:${address.port}/`, method: 'GET', maxResponseBytes: 4,
+      onBodyLimit: 'drain', addressPolicy: 'privateNetworkHTTP', timeoutMs: 50,
+      onResponseChunk: () => { hasCrossedLimit = true; },
+    })).rejects.toMatchObject({ name: BodyTooLargeError.name, status: 429 });
+    expect(hasCrossedLimit).toBe(true);
+  });
+
+  it('validates drain bounds and the body limit action', async () => {
+    const request = { url: 'http://127.0.0.1:1/', method: 'GET', maxResponseBytes: 4, addressPolicy: 'privateNetworkHTTP' as const };
+    await expect(sendProviderRequest({ ...request, onBodyLimit: 'drain' })).rejects.toBeInstanceOf(TypeError);
+    await expect(sendProviderRequest({ ...request, onBodyLimit: 'drain', timeoutMs: 0 })).rejects.toBeInstanceOf(TypeError);
+    await expect(sendProviderRequest({ ...request, onBodyLimit: 'invalid' as 'drain' })).rejects.toBeInstanceOf(TypeError);
+  });
+
+  it('accepts an exact-limit body and drains an oversized non-2xx body', async () => {
+    let hasFinishedResponse = false;
+    const server = createServer((request, response) => {
+      if (request.url === '/exact') { response.end('abcd'); return; }
+      response.writeHead(429, { 'Retry-After': '7' });
+      response.write('abc');
+      setTimeout(() => response.end('def'), 20);
+      response.on('finish', () => { hasFinishedResponse = true; });
+    });
+    servers.push(server);
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('server address unavailable');
+    const url = `http://127.0.0.1:${address.port}`;
+    const exact = await sendProviderRequest({ url: `${url}/exact`, method: 'GET', maxResponseBytes: 4, onBodyLimit: 'drain', timeoutMs: 1_000, addressPolicy: 'privateNetworkHTTP' });
+    expect(Buffer.from(exact.body).toString()).toBe('abcd');
+    await expect(sendProviderRequest({ url, method: 'GET', maxResponseBytes: 4, onBodyLimit: 'drain', timeoutMs: 1_000, addressPolicy: 'privateNetworkHTTP' })).rejects.toMatchObject({ name: BodyTooLargeError.name, status: 429, headers: { 'retry-after': '7' } });
+    expect(hasFinishedResponse).toBe(true);
+    const truncated = await sendProviderRequest({ url, method: 'GET', maxResponseBytes: 4, maxErrorResponseBytes: 4, onBodyLimit: 'drain', timeoutMs: 1_000, addressPolicy: 'privateNetworkHTTP' });
+    expect(truncated.status).toBe(429);
+    expect(Buffer.from(truncated.body).toString()).toBe('abcd');
   });
 
   it('returns redirects without replaying a credential', async () => {
