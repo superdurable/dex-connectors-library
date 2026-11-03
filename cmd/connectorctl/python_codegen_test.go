@@ -410,6 +410,61 @@ else:
 	}
 }
 
+func TestPythonCodegenAcceptsAbsentAndBlankOptionalCredentials(t *testing.T) {
+	manifestPath := filepath.Join("..", "..", "connectors", "amazon", "s3", "connector.yaml")
+	manifest, err := load(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest.Spec.Languages = &schema.Languages{Python: &schema.LanguagePackage{Operations: []string{manifest.Spec.Operations[0].Name}, Triggers: []string{}}}
+	generated, err := renderPythonCodegen(pythonCodegenInput{
+		Manifest: manifest, PackageName: "amazon_s3", MockPackageName: "s3mock",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload, err := json.Marshal(map[string]string{"config": generated["config.py"], "connection": generated["connection.py"]})
+	if err != nil {
+		t.Fatal(err)
+	}
+	const script = `import ast, asyncio, dataclasses, json, sys, types, typing
+sources = json.load(sys.stdin)
+config_nodes = [node for node in ast.parse(sources["config"]).body if isinstance(node, ast.ClassDef) and node.name in ("Config", "Credentials")]
+connection_nodes = [node for node in ast.parse(sources["connection"]).body if isinstance(node, ast.ClassDef) and node.name == "_ProjectCredentialSource" or isinstance(node, ast.FunctionDef) and node.name == "_decode_config"]
+class SecretString:
+    def __init__(self, value): self.value = value
+namespace = {"dataclass": dataclasses.dataclass, "Any": typing.Any, "SecretString": SecretString}
+module = ast.Module(body=[ast.ImportFrom(module="__future__", names=[ast.alias(name="annotations")], level=0), *config_nodes, *connection_nodes], type_ignores=[])
+exec(compile(ast.fix_missing_locations(module), "generated.py", "exec"), namespace)
+decode = namespace["_decode_config"]
+assert decode({"region": "", "listPageSize": "", "endpoint": ""}).region == "us-east-1"
+assert decode({"region": "", "listPageSize": ""}).list_page_size == 100
+assert decode({"endpoint": ""}).endpoint == ""
+class Project:
+    def __init__(self, material): self.material = material
+    async def resolve_credential(self, key, call_id): return self.material
+source = namespace["_ProjectCredentialSource"]
+required = {"access_key_id": "key", "secret_access_key": "secret"}
+for material in (required, {**required, "session_token": ""}):
+    credentials = asyncio.run(source(Project(material), object()).resolve(types.SimpleNamespace(id="call")))
+    assert credentials.session_token.value == ""
+credentials = asyncio.run(source(Project({**required, "session_token": "temporary"}), object()).resolve(types.SimpleNamespace(id="call")))
+assert credentials.session_token.value == "temporary"
+for material in ({"secret_access_key": "secret"}, {**required, "session_token": 42}):
+    try:
+        asyncio.run(source(Project(material), object()).resolve(types.SimpleNamespace(id="call")))
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("invalid credential material was accepted")
+`
+	command := exec.Command("python3", "-c", script)
+	command.Stdin = bytes.NewReader(payload)
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("generated optional credential behavior failed: %v: %s", err, output)
+	}
+}
+
 func TestPythonCodegenCreatesRealNestedMockFacades(t *testing.T) {
 	for _, connectorDirectory := range []string{
 		filepath.Join("amazon", "sqs"),
