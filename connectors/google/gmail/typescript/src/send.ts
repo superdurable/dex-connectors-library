@@ -233,7 +233,7 @@ export class GmailSender {
         return newMutationRetry(failure(operation.operationId, 'TRANSPORT', `Gmail ${operation.requestName} request was not dispatched`));
       }
       if (error instanceof BodyTooLargeError && error.status) return this.#classifySendStatus(call, fence, budget, credentials, operation, message, error.status, error.headers ?? {}, undefined);
-      return this.#confirmPossiblySent(call, budget, credentials, operation, message, 'TRANSPORT', `Gmail ${operation.requestName} outcome is unknown`, this.#receipt(call));
+      return this.#confirmPossiblySent(call, fence, budget, credentials, operation, message, 'TRANSPORT', `Gmail ${operation.requestName} outcome is unknown`, this.#receipt(call));
     }
     const receipt = this.#receipt(call, gmailRequestID(response.response.headers));
     const isAccepted = response.response.status >= 200 && response.response.status < 300;
@@ -249,11 +249,11 @@ export class GmailSender {
     }
     if (status === 503) {
       const lookup = await this.#pollSentMessage(call, budget, credentials);
-      if (lookup.sent) return this.#sentMessage(call, budget, credentials, operation, message, lookup.sent, receipt);
+      if (lookup.sent) return this.#sentAfterDispatch(call, fence, budget, credentials, operation, message, lookup.sent, receipt);
       await recordSafeResend(fence);
       return retryAfterRefusal(operation.operationId, 'AVAILABILITY', `Gmail ${operation.requestName} is temporarily unavailable`, headers);
     }
-    if (status >= 500) return this.#confirmPossiblySent(call, budget, credentials, operation, message, 'AVAILABILITY', `Gmail ${operation.requestName} outcome is unknown`, receipt);
+    if (status >= 500) return this.#confirmPossiblySent(call, fence, budget, credentials, operation, message, 'AVAILABILITY', `Gmail ${operation.requestName} outcome is unknown`, receipt);
     if (status < 200 || status >= 300) {
       if (call.context.attempt > 1) {
         try {
@@ -265,16 +265,22 @@ export class GmailSender {
     }
     if (!sentResponse) {
       const lookup = await this.#pollSentMessage(call, budget, credentials);
-      return this.#sentMessage(call, budget, credentials, operation, message, lookup.sent ?? { id: '', threadId: message.requestedThreadId }, receipt);
+      if (lookup.sent) return this.#sentAfterDispatch(call, fence, budget, credentials, operation, message, lookup.sent, receipt);
+      return this.#sentMessage(call, budget, credentials, operation, message, { id: '', threadId: message.requestedThreadId }, receipt);
     }
     return this.#sentMessage(call, budget, credentials, operation, message, sentResponse, receipt);
   }
 
-  async #confirmPossiblySent(call: Call, budget: GmailSendAttemptBudget, credentials: Credentials, operation: SendOutcomes, message: OutgoingMessage, kind: Failure['kind'], reason: string, receipt: ReceiptDraft): Promise<MutationAttempt<SendMessageOutput>> {
+  async #confirmPossiblySent(call: Call, fence: Fence, budget: GmailSendAttemptBudget, credentials: Credentials, operation: SendOutcomes, message: OutgoingMessage, kind: Failure['kind'], reason: string, receipt: ReceiptDraft): Promise<MutationAttempt<SendMessageOutput>> {
     const lookup = await this.#pollSentMessage(call, budget, credentials);
-    if (lookup.sent) return this.#sentMessage(call, budget, credentials, operation, message, lookup.sent, receipt);
+    if (lookup.sent) return this.#sentAfterDispatch(call, fence, budget, credentials, operation, message, lookup.sent, receipt);
     const suffix = lookup.hadError ? 'the sent-mail search did not answer' : 'the sent-mail search found no message';
     return newMutationRetry(failure(operation.operationId, kind, `${reason}; ${suffix}`));
+  }
+
+  async #sentAfterDispatch(call: Call, fence: Fence, budget: GmailSendAttemptBudget, credentials: Credentials, operation: SendOutcomes, message: OutgoingMessage, sent: SentMessageIdentity, receipt: ReceiptDraft): Promise<MutationAttempt<SendMessageOutput>> {
+    if (sent.id) await recordProviderIdentity(fence, sent.id);
+    return this.#sentMessage(call, budget, credentials, operation, message, sent, receipt);
   }
 
   async #sentMessage(call: Call, budget: GmailSendAttemptBudget, credentials: Credentials, operation: SendOutcomes, message: OutgoingMessage, sent: SentMessageIdentity, receipt: ReceiptDraft): Promise<MutationAttempt<SendMessageOutput>> {
