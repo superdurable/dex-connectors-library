@@ -90,6 +90,9 @@ def _error_code(response: Response, session: Session) -> str:
         return ""
     try:
         root = ET.fromstring(response.body)
+        _strip_xml_namespaces(root)
+        if root.tag != "Error":
+            return ""
         code = root.findtext("Code") or ""
     except ET.ParseError:
         return ""
@@ -98,6 +101,37 @@ def _error_code(response: Response, session: Session) -> str:
         if re.fullmatch(r"[A-Za-z0-9.]{1,64}", code) and not _credential_echo(code, session, True)
         else ""
     )
+
+
+def _strip_xml_namespaces(root: ET.Element) -> None:
+    for element in root.iter():
+        element.tag = element.tag.rsplit("}", 1)[-1]
+
+
+_MEDIA_TOKEN = r"[!#$%&'*+.^_`|~0-9A-Za-z-]+"
+_MEDIA_TYPE = re.compile(rf"\s*({_MEDIA_TOKEN}/{_MEDIA_TOKEN})")
+_MEDIA_PARAMETER = re.compile(
+    rf'\s*;\s*({_MEDIA_TOKEN})\s*=\s*({_MEDIA_TOKEN}|"(?:[\x20-\x21\x23-\x5b\x5d-\x7e]|\\[\x20-\x7e])*")'
+)
+
+
+def _parse_media_type(value: str) -> str | None:
+    match = _MEDIA_TYPE.match(value)
+    if match is None:
+        return None
+    position = match.end()
+    parameters: dict[str, str] = {}
+    while value[position:].strip():
+        parameter = _MEDIA_PARAMETER.match(value, position)
+        if parameter is None:
+            return None
+        name, parameter_value = parameter.groups()
+        name = name.lower()
+        if name in parameters and parameters[name] != parameter_value:
+            return None
+        parameters[name] = parameter_value
+        position = parameter.end()
+    return match.group(1).lower()
 
 
 def _classify(
@@ -190,12 +224,15 @@ def _metadata(response: Response, session: Session, bucket: str, key: str) -> Ob
         modified = parsedate_to_datetime(response.header("last-modified")).astimezone(UTC)
     except (ValueError, TypeError, IndexError, AttributeError):
         return None
-    metadata = {}
+    metadata_values: dict[str, list[str]] = {}
     for name, value in response.headers.multi_items():
         if name.lower().startswith("x-amz-meta-"):
-            safe = value if len(value.encode()) <= 2048 and not _credential_echo(value, session) else ""
-            if safe:
-                metadata[name.lower()[11:]] = safe
+            metadata_values.setdefault(name.lower()[11:], []).append(value)
+    metadata: dict[str, str] = {}
+    for metadata_name, values in metadata_values.items():
+        joined = ",".join(values)
+        if joined and len(joined.encode()) <= 2048 and not _credential_echo(joined, session):
+            metadata[metadata_name] = joined
     missing = response.header("x-amz-missing-meta")
     return ObjectMetadata(
         bucket=bucket,
@@ -219,12 +256,24 @@ def _metadata(response: Response, session: Session, bucket: str, key: str) -> Ob
 def _list_page(body: bytes, bucket: str, prefix: str, delimiter: str) -> ListObjectsOutput:
     try:
         root = ET.fromstring(body)
+        _strip_xml_namespaces(root)
         if root.tag != "ListBucketResult":
             raise ValueError("not ListBucketResult")
         encoded = root.findtext("EncodingType") == "url"
         truncated_text = (root.findtext("IsTruncated") or "false").strip()
         if truncated_text not in (
-            "true", "false", "1", "0", "True", "False", "TRUE", "FALSE", "t", "f", "T", "F"
+            "true",
+            "false",
+            "1",
+            "0",
+            "True",
+            "False",
+            "TRUE",
+            "FALSE",
+            "t",
+            "f",
+            "T",
+            "F",
         ):
             raise ValueError("invalid truncated flag")
         truncated = truncated_text in ("true", "1", "True", "TRUE", "t", "T")
@@ -236,12 +285,14 @@ def _list_page(body: bytes, bucket: str, prefix: str, delimiter: str) -> ListObj
             or any(ord(c) < 33 or ord(c) > 126 for c in token)
         ):
             raise ValueError("invalid continuation token")
+
         def decode(value: str) -> str:
             if not encoded:
                 return value
             if re.search(r"%(?![0-9A-Fa-f]{2})", value):
                 raise ValueError("invalid percent encoding")
             return unquote_to_bytes(value.replace("+", " ")).decode("utf-8")
+
         objects = []
         for item in root.findall("Contents"):
             key = decode(item.findtext("Key") or "")
@@ -466,8 +517,9 @@ class GetObjectTextOperation:
             last_modified=metadata.last_modified if metadata else datetime.min.replace(tzinfo=UTC),
             size_bytes=metadata.size_bytes if metadata else len(response.body),
         )
-        content_type = response.header("content-type").split(";", 1)[0].strip().lower()
-        allowed = (
+        raw_content_type = response.header("content-type").strip()
+        content_type = _parse_media_type(raw_content_type) if raw_content_type else ""
+        allowed = content_type is not None and (
             not content_type
             or content_type in ("application/octet-stream", "binary/octet-stream")
             or content_type.startswith("text/")
@@ -566,7 +618,12 @@ class PutObjectOperation:
             )
             if len(content) > self.client.config.max_upload_bytes:
                 raise ValueError("content exceeds maxUploadBytes")
-            if not input.content_type or len(input.content_type) > 256 or not _printable(input.content_type):
+            if (
+                not input.content_type
+                or len(input.content_type) > 256
+                or not _printable(input.content_type)
+                or _parse_media_type(input.content_type) is None
+            ):
                 raise ValueError("contentType is invalid")
             metadata_size = len("x-amz-meta-dex-idempotency-key") + 128
             for name, value in input.metadata.items():

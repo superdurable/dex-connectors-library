@@ -98,3 +98,42 @@ def test_invalid_connection_configuration_fails_before_request() -> None:
         Client(
             Config(endpoint="http://127.0.0.1:12345", default_bucket="BAD", region="eu-west-1"), credentials
         )
+
+
+@pytest.mark.asyncio
+async def test_default_endpoint_port_and_empty_put_signing() -> None:
+    """Sign the transmitted Host and omit zero Content-Length from SigV4."""
+    observed: list[httpx.Request] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        observed.append(request)
+        return httpx.Response(200)
+
+    connection = ConnectionRef("amazon-s3", "s3-test")
+    credentials = StaticCredentialProvider(
+        {
+            connection: Credentials(
+                SecretString("AKIAS3CONNECTORTEST1"), SecretString("safe-secret"), SecretString("")
+            )
+        }
+    )
+    call = Call(
+        CallID("5908a179-2147-5839-9c64-529cd36f77d7"),
+        connection,
+        OperationRef("amazon-s3", "putObject"),
+        IdempotencyKey(""),
+    )
+    async with httpx.AsyncClient(transport=httpx.MockTransport(answer)) as http_client:
+        for endpoint in ("https://example.com:443", "https://example.com"):
+            client = Client(
+                Config(endpoint=endpoint, default_bucket="acme-reports", region="eu-west-1"),
+                credentials,
+                http_client,
+                lambda: datetime(2026, 10, 25, 9, tzinfo=UTC),
+            )
+            session = await client.start_session(call)
+            assert session is not None
+            await client.exchange(call, session, "PUT", "acme-reports", "empty.txt", body=b"")
+    assert observed[0].headers["host"] == "example.com"
+    assert observed[0].headers["authorization"] == observed[1].headers["authorization"]
+    assert "content-length" not in observed[0].headers["authorization"]

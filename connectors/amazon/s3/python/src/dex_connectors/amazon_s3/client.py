@@ -224,17 +224,18 @@ class Client:
         target = f"{self.endpoint.scheme}://{host}{encoded_path}"
         if encoded_query:
             target += "?" + encoded_query
+        request_host = httpx.URL(target).netloc.decode("ascii")
         now = self.now().astimezone(UTC)
         amz_date = now.strftime("%Y%m%dT%H%M%SZ")
         payload_hash = hashlib.sha256(body).hexdigest() if body is not None else _EMPTY_HASH
         signed_headers = {name.lower(): value for name, value in (headers or {}).items()}
-        if body is not None:
+        if body:
             signed_headers["content-length"] = str(len(body))
         signed_headers["x-amz-content-sha256"] = payload_hash
         signed_headers["x-amz-date"] = amz_date
         if session.session_token:
             signed_headers["x-amz-security-token"] = session.session_token
-        canonical_headers = {"host": host.lower(), **signed_headers}
+        canonical_headers = {"host": request_host.lower(), **signed_headers}
         names = sorted(canonical_headers)
         canonical_header_text = "".join(
             f"{name}:{' '.join(canonical_headers[name].strip().split())}\n" for name in names

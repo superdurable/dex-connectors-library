@@ -21,16 +21,9 @@ CONNECTION = sdk.ConnectionRef("amazon-s3", "s3-test")
 
 
 def create_client(_http_client: httpx.AsyncClient, recorder: conformance.ExchangeRecorder) -> s3.Client:
-    """Scrub signing values as the Go conformance transport does."""
+    """Replay fixed-clock SigV4 requests against Go-recorded headers."""
 
-    async def answer(request: httpx.Request) -> httpx.Response:
-        headers = dict(request.headers)
-        for name in ("authorization", "x-amz-date", "x-amz-security-token"):
-            headers.pop(name, None)
-        observed = httpx.Request(request.method, request.url, headers=headers, content=request.content)
-        return await recorder.answer(observed)
-
-    http_client = httpx.AsyncClient(transport=httpx.MockTransport(answer))
+    http_client = httpx.AsyncClient(transport=httpx.MockTransport(recorder.answer))
     credentials = s3.Credentials(
         sdk.SecretString("AKIAS3CONNECTORTEST1"),
         sdk.SecretString("s3-connector-test/secret+value"),
