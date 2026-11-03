@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
+import { jsonCodec } from '@superdurable/dex';
 import { SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
 import { WebflowClient } from '../src/index.js';
 
@@ -30,5 +31,18 @@ describe('Webflow client configuration', () => {
   it('rejects invalid settings before a provider call', () => {
     expect(() => new WebflowClient({ timeoutMs: -1 }, credentials)).toThrow();
     expect(() => new WebflowClient({ maxResponseBytes: -1 }, credentials)).toThrow();
+  });
+
+  it('preserves provider number lexemes in the encoded output', async () => {
+    const client = new WebflowClient({}, credentials, {
+      send: async () => ({ status: 200, headers: {}, body: Buffer.from('{"items":[{"fieldData":{"n":12345678901234567890,"p":1.10}}]}') }),
+    });
+    const result = await client.listCollectionItems().invoke(call, { collectionId: '62b720ef280c7a7a3be8cabe' });
+    expect(result.kind).toBe('branch');
+    if (result.kind !== 'branch') throw new Error('expected a listed response');
+    const encoded = jsonCodec().encode(result.value);
+    expect(encoded.kind).toBe('json');
+    expect(encoded.data).toContain('12345678901234567890');
+    expect(encoded.data).toContain('"p":1.10');
   });
 });

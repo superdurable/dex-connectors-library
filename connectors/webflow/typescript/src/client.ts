@@ -102,11 +102,16 @@ function classifyResponse(operation: string, status: number, body: Uint8Array, r
 }
 function decodeResponse(operation: string, branch: string, shape: 'items' | 'id', body: Uint8Array): QueryAttempt<{ data: unknown | null }> {
   let decoded: unknown;
-  try { decoded = JSON.parse(Buffer.from(body).toString('utf8')); }
+  try { decoded = parseProviderJSON(Buffer.from(body).toString('utf8')); }
   catch { return failed(operation, 'invalidResponse', 'PROTOCOL', 'provider returned malformed JSON'); }
   if (!decoded || typeof decoded !== 'object' || Array.isArray(decoded) || !(shape in decoded) || (shape === 'items' ? !Array.isArray((decoded as Record<string, unknown>).items) : typeof (decoded as Record<string, unknown>).id !== 'string' || !(decoded as Record<string, unknown>).id))
     return failed(operation, 'invalidResponse', 'PROTOCOL', 'provider returned an incomplete response');
   return newQueryBranch(branch, { data: decoded }, {});
+}
+function parseProviderJSON(value: string): unknown {
+  const rawJSON = (JSON as typeof JSON & { rawJSON(text: string): unknown }).rawJSON;
+  return JSON.parse(value, (_key, parsedValue: unknown, context?: { source?: string }) =>
+    typeof parsedValue === 'number' && context?.source ? rawJSON(context.source) : parsedValue) as unknown;
 }
 function failure(operation: string, kind: Failure['kind'], message: string): Failure { return { kind, provider: 'webflow', operation, message }; }
 function failed(operation: string, branch: string, kind: Failure['kind'], message: string): QueryAttempt<{ data: unknown | null }> { return newQueryBranch(branch, emptyOutput, {}, failure(operation, kind, message)); }

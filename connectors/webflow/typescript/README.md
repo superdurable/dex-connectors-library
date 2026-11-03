@@ -8,6 +8,9 @@ Configure a Dex project connection with a Webflow `site_token` scoped to
 `CMS:read`. The connector manifest supplies the public API endpoint, a 15-second
 request timeout, and a 2 MiB response limit; `baseUrl`, `timeout`, and
 `maxResponseBytes` may be overridden in the connection configuration.
+`timeout` accepts a Go duration string or integer nanoseconds, rounded up to
+milliseconds for the HTTP request. Successful `data` outputs retain provider
+JSON number precision and formatting.
 
 From this directory, run `npm ci`, then start `dexcli dev` and
 `npm run example:list-items`. Start `WebflowListItems` with an input such as

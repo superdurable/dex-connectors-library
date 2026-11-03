@@ -13,8 +13,13 @@ export function newProjectConnection(project: LoadedProject, connectionName: str
   return generatedProjectConnection(project, connectionName, (loadedProject, name) => {
     const selected = loadedProject.configuration.connections.find(entry => entry.connectorId === 'webflow' && entry.connectionName === name);
     if (!selected) throw new TypeError('Webflow project connection is not configured');
-    const raw = selected.configuration as Record<string, unknown>;
-    const config = z.object({ baseUrl: z.string().optional(), timeoutMs: z.number().int().optional(), maxResponseBytes: z.number().int().optional() }).parse({ ...raw, timeoutMs: raw.timeoutMs ?? (typeof raw.timeout === 'string' ? parseDuration(raw.timeout) : undefined) }) as Config;
+    const fields = z.strictObject({ baseUrl: z.string().optional(), timeout: z.union([z.string(), z.number().int()]).optional(), timeoutMs: z.number().int().optional(), maxResponseBytes: z.number().int().optional() }).parse(selected.configuration);
+    const timeoutMs = fields.timeoutMs ?? (typeof fields.timeout === 'number' ? Math.ceil(fields.timeout / 1_000_000) : fields.timeout !== undefined ? parseDuration(fields.timeout) : undefined);
+    const config: Config = {
+      ...(fields.baseUrl !== undefined ? { baseUrl: fields.baseUrl } : {}),
+      ...(timeoutMs !== undefined ? { timeoutMs } : {}),
+      ...(fields.maxResponseBytes !== undefined ? { maxResponseBytes: fields.maxResponseBytes } : {}),
+    };
     const credentials: CredentialProvider<Credentials> = {
       async resolve(call: Call, signal?: AbortSignal): Promise<Credentials> {
         void call;
