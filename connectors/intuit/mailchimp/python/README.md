@@ -14,6 +14,8 @@ static `mailchimp-audience` connection through Dex project configuration, reads
 an audience contact, and persists its safe result. Its input is a Mailchimp
 audience ID and bare email address. The key stays in Dex Web Connections and
 is resolved at each provider call; it is never a Flow input or Attribute.
+Contact operations reject malformed bare addresses before contacting Mailchimp.
+Malformed contact or campaign responses select `invalidResponse`.
 
 From this directory:
 
@@ -40,11 +42,12 @@ uv run pytest tests
 
 From the repository root,
 `make test-connector-conformance CONNECTOR_DIRECTORY=connectors/intuit/mailchimp`
-replays 50 Go-recorded
-provider scenarios against this package. They cover each branch, final 429 and
+replays 65 Go-recorded
+provider scenarios against this package. They cover each branch, malformed
+addresses and provider bodies, final 429 and
 5xx retries, transport failure, complete input fields, campaign uncertainty,
 and an earlier send checkpoint. With an isolated Dex development server,
-`DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:22101 uv run pytest
+`DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:25401 uv run pytest
 examples/get_member/integration_test.py` exercises the real Worker and Client
 with a local provider stand-in.
 

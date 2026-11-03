@@ -9,7 +9,6 @@ import re
 import unicodedata
 from collections.abc import Iterable
 from datetime import UTC, datetime
-from email.utils import parseaddr
 from typing import Any
 
 from dex_connectors.sdk import (
@@ -51,6 +50,8 @@ _RESOURCE_ID = re.compile(r"[A-Za-z0-9]{1,64}\Z")
 _SUBSCRIBER_HASH = re.compile(r"[0-9a-f]{32}\Z")
 _MERGE_TAG = re.compile(r"[A-Z0-9_]{1,50}\Z")
 _ADDRESS_KEY = re.compile(r"[a-z][a-z0-9_]{0,31}\Z")
+_ADDRESS_ATOM = r"[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+"
+_BARE_ADDRESS = re.compile(rf"{_ADDRESS_ATOM}(?:\.{_ADDRESS_ATOM})*@{_ADDRESS_ATOM}(?:\.{_ADDRESS_ATOM})*\Z")
 _MEMBER_LIST_FIELDS = ",".join(
     (
         "members.id",
@@ -100,13 +101,10 @@ def _resource_id(name: str, value: str) -> None:
 
 def _member_address(list_id: str, email_address: str) -> None:
     _resource_id("listId", list_id)
-    parsed_name, parsed_address = parseaddr(email_address, strict=True)
     if (
         not email_address
         or len(email_address.encode()) > 254
-        or parsed_name
-        or parsed_address != email_address
-        or not parsed_address.partition("@")[0]
+        or not _BARE_ADDRESS.fullmatch(email_address)
     ):
         raise ValueError("emailAddress must be one bare email address such as jane@example.com")
 
@@ -136,54 +134,94 @@ def _decode_object(body: bytes) -> dict[str, Any]:
     return value
 
 
+def _text_field(wire: dict[str, Any], name: str) -> str:
+    value = wire.get(name)
+    if value is None:
+        return ""
+    if not isinstance(value, str):
+        raise ValueError(f"{name} is not a string")
+    return value
+
+
+def _integer_field(wire: dict[str, Any], name: str) -> int:
+    value = wire.get(name)
+    if value is None:
+        return 0
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError(f"{name} is not an integer")
+    return value
+
+
+def _object_field(wire: dict[str, Any], name: str) -> dict[str, Any]:
+    value = wire.get(name)
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise ValueError(f"{name} is not an object")
+    return value
+
+
 def _decode_member(wire: dict[str, Any], expected_hash: str = "") -> Member:
-    subscriber_hash = wire.get("id", "")
-    if not isinstance(subscriber_hash, str) or not _SUBSCRIBER_HASH.fullmatch(subscriber_hash):
+    if not isinstance(wire, dict):
+        raise ValueError("the contact is not an object")
+    subscriber_hash = _text_field(wire, "id")
+    if not _SUBSCRIBER_HASH.fullmatch(subscriber_hash):
         raise ValueError("the contact has no subscriber hash")
     if expected_hash and subscriber_hash != expected_hash:
         raise ValueError("the contact's subscriber hash does not match the requested address")
-    if not wire.get("email_address") or not wire.get("status"):
+    email_address = _text_field(wire, "email_address")
+    status = _text_field(wire, "status")
+    if not email_address or not status:
         raise ValueError("the contact has no email address or status")
-    tags = wire.get("tags") or []
+    tags = wire.get("tags")
+    if tags is None:
+        tags = []
+    if not isinstance(tags, list) or any(not isinstance(tag, dict) for tag in tags):
+        raise ValueError("tags is not a list of objects")
+    vip = wire.get("vip")
+    if vip is not None and not isinstance(vip, bool):
+        raise ValueError("vip is not a boolean")
     return Member(
         subscriber_hash=subscriber_hash,
-        email_address=wire["email_address"],
-        contact_id=wire.get("contact_id") or "",
-        full_name=wire.get("full_name") or "",
-        status=wire["status"],
-        email_type=wire.get("email_type") or "",
-        merge_fields=wire.get("merge_fields") or {},
-        tags=tuple(tag.get("name", "") for tag in tags),
-        tag_count=wire.get("tags_count") or 0,
-        is_vip=wire.get("vip") or False,
-        language=wire.get("language") or "",
-        list_id=wire.get("list_id") or "",
-        web_id=wire.get("web_id") or 0,
-        signed_up_at=_parse_time(wire.get("timestamp_signup")),
-        opted_in_at=_parse_time(wire.get("timestamp_opt")),
-        last_changed_at=_parse_time(wire.get("last_changed")),
+        email_address=email_address,
+        contact_id=_text_field(wire, "contact_id"),
+        full_name=_text_field(wire, "full_name"),
+        status=status,
+        email_type=_text_field(wire, "email_type"),
+        merge_fields=_object_field(wire, "merge_fields"),
+        tags=tuple(_text_field(tag, "name") for tag in tags),
+        tag_count=_integer_field(wire, "tags_count"),
+        is_vip=vip or False,
+        language=_text_field(wire, "language"),
+        list_id=_text_field(wire, "list_id"),
+        web_id=_integer_field(wire, "web_id"),
+        signed_up_at=_parse_time(_text_field(wire, "timestamp_signup")),
+        opted_in_at=_parse_time(_text_field(wire, "timestamp_opt")),
+        last_changed_at=_parse_time(_text_field(wire, "last_changed")),
     )
 
 
 def _decode_campaign(body: bytes, campaign_id: str) -> Campaign:
     wire = _decode_object(body)
-    if wire.get("id") != campaign_id or not wire.get("status") or not wire.get("type"):
+    status = _text_field(wire, "status")
+    campaign_type = _text_field(wire, "type")
+    if _text_field(wire, "id") != campaign_id or not status or not campaign_type:
         raise ValueError("the campaign has another ID, or no status or type")
-    settings = wire.get("settings") or {}
-    recipients = wire.get("recipients") or {}
+    settings = _object_field(wire, "settings")
+    recipients = _object_field(wire, "recipients")
     return Campaign(
         id=campaign_id,
-        web_id=wire.get("web_id") or 0,
-        type=wire["type"],
-        status=wire["status"],
-        title=settings.get("title") or "",
-        subject_line=settings.get("subject_line") or "",
-        list_id=recipients.get("list_id") or "",
-        list_name=recipients.get("list_name") or "",
-        recipient_count=recipients.get("recipient_count") or 0,
-        emails_sent=wire.get("emails_sent") or 0,
-        created_at=_parse_time(wire.get("create_time")),
-        sent_at=_parse_time(wire.get("send_time")),
+        web_id=_integer_field(wire, "web_id"),
+        type=campaign_type,
+        status=status,
+        title=_text_field(settings, "title"),
+        subject_line=_text_field(settings, "subject_line"),
+        list_id=_text_field(recipients, "list_id"),
+        list_name=_text_field(recipients, "list_name"),
+        recipient_count=_integer_field(recipients, "recipient_count"),
+        emails_sent=_integer_field(wire, "emails_sent"),
+        created_at=_parse_time(_text_field(wire, "create_time")),
+        sent_at=_parse_time(_text_field(wire, "send_time")),
     )
 
 
@@ -328,9 +366,17 @@ class ListMembersOperation:
             return terminal
         try:
             page = _decode_object(exchange.body)
-            members = page.get("members") or []
+            members = page.get("members")
+            if members is None:
+                members = []
             total_items = page.get("total_items")
-            if not isinstance(total_items, int) or total_items < 0 or len(members) > page_size:
+            if (
+                not isinstance(members, list)
+                or isinstance(total_items, bool)
+                or not isinstance(total_items, int)
+                or total_items < 0
+                or len(members) > page_size
+            ):
                 raise ValueError("the page has no total_items or more contacts than requested")
             output = ListMembersOutput(
                 tuple(_decode_member(member) for member in members),

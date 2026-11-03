@@ -35,6 +35,16 @@ async def test_get_member_retries_and_unwired_not_found_fails(monkeypatch: pytes
             return httpx.Response(429, headers={"Retry-After": "1"})
         if hashlib.md5(b"absent@example.com").hexdigest() in request.url.path:
             return httpx.Response(404, json={"title": "Resource Not Found"})
+        if hashlib.md5(b"malformed@example.com").hexdigest() in request.url.path:
+            return httpx.Response(
+                200,
+                json={
+                    "id": hashlib.md5(b"malformed@example.com").hexdigest(),
+                    "email_address": "malformed@example.com",
+                    "status": "subscribed",
+                    "tags": ["invalid tag object"],
+                },
+            )
         return httpx.Response(
             200,
             json={
@@ -110,6 +120,28 @@ async def test_get_member_retries_and_unwired_not_found_fails(monkeypatch: pytes
                         )
                         assert missing.status == dex.FlowStatus.FAILED
                         assert "notFound" in (missing.error_message or "")
+
+                        malformed_id = f"mailchimp-contact-{uuid4().hex}"
+                        await client.start_flow(
+                            flow, malformed_id, GetMemberInput("57afe96172", "malformed@example.com")
+                        )
+                        malformed = await asyncio.wait_for(
+                            client.wait_for_flow(malformed_id, timedelta(seconds=20)), 30
+                        )
+                        assert malformed.status == dex.FlowStatus.FAILED
+                        assert "invalidResponse" in (malformed.error_message or "")
+                        assert len(requests) == 4
+
+                        invalid_address_id = f"mailchimp-contact-{uuid4().hex}"
+                        await client.start_flow(
+                            flow, invalid_address_id, GetMemberInput("57afe96172", "plainstring")
+                        )
+                        invalid_address = await asyncio.wait_for(
+                            client.wait_for_flow(invalid_address_id, timedelta(seconds=20)), 30
+                        )
+                        assert invalid_address.status == dex.FlowStatus.FAILED
+                        assert "defect" in (invalid_address.error_message or "")
+                        assert len(requests) == 4
                 finally:
                     await worker.stop()
                     await worker_task
