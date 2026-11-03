@@ -21,9 +21,9 @@ it('escapes a message ID like Go url.PathEscape before sending', async () => {
       return { status: 200, headers: {}, body: Buffer.from('{"MessageID":"msg-1","Subject":"Welcome","Status":"Sent"}') };
     },
   });
-  const outcome = await client.getMessageDetails().invoke(call, { messageId: "a/b+$&,'!()" });
+  const outcome = await client.getMessageDetails().invoke(call, { messageId: "a/b+$&,:=@'!()" });
   expect(outcome.kind).toBe('branch');
-  expect(requestedURL).toBe('https://api.postmarkapp.com/messages/outbound/a%2Fb+$&%2C%27%21%28%29/details');
+  expect(requestedURL).toBe('https://api.postmarkapp.com/messages/outbound/a%2Fb+$&%2C:=@%27%21%28%29/details');
 });
 
 it('keeps missing credentials terminal and a refused connection retryable', async () => {

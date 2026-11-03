@@ -39,7 +39,7 @@ export class GetMessageDetailsOperation implements Query<GetMessageDetailsInput,
 function goPathEscape(value: string): string {
   return encodeURIComponent(value)
     .replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`)
-    .replace(/%(24|26|2B)/gi, encoded => String.fromCharCode(Number.parseInt(encoded.slice(1), 16)));
+    .replace(/%(24|26|2B|3A|3D|40)/gi, encoded => String.fromCharCode(Number.parseInt(encoded.slice(1), 16)));
 }
 
 function decodeObject(body: Uint8Array): Record<string, unknown> {

@@ -363,6 +363,48 @@
       "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
       "exchanges": [
         {
+          "body": "{\"MessageID\":\"a:b=c@d\",\"Subject\":\"Welcome\",\"Status\":\"Sent\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/messages/outbound/a:b=c@d/details",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-postmark/0.1"
+            ],
+            "X-Postmark-Server-Token": [
+              "test-secret-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "MessageID": "a:b=c@d",
+          "Status": "Sent",
+          "Subject": "Welcome"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messageId": "a:b=c@d"
+      },
+      "name": "details-found-path-escape",
+      "operation": "getMessageDetails"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
           "body": "",
           "headers": {
             "X-PM-ApiErrorCode": "701"
