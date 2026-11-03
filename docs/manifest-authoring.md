@@ -570,6 +570,16 @@ refresh response when a provider reports only API scopes, as Gmail does.
 value. An individual grant may override this with `exactScopes: true` or `false`. Choose these
 rules from the provider's actual response and the Go refresh driver; grant
 count never selects scope policy implicitly.
+`refresh.scopeSeparators` controls both exact and all-scope checks. The default
+`whitespace` splits on Unicode whitespace like Go `strings.Fields`; use
+`whitespaceAndComma` when the Go driver accepts ASCII spaces and commas like
+`oauthtoken.HasAllScopes`. `refresh.allowsPublicClient: true` permits a blank
+client secret for a provider that supports public-client refresh; otherwise a
+blank secret requires reauthorization before any token request.
+The generated Go agreement tests replay changed scope responses when a refresh
+explicitly declares `requiredScopes`, `exactScopes`, or `scopeSeparators`.
+Authorization scopes alone do not establish that a provider reports scopes on
+refresh or that an existing Go driver checks them.
 
 A method that stores several refresh tokens, such as a bot token and a user
 token, lists one grant for each, and the grants refresh independently:

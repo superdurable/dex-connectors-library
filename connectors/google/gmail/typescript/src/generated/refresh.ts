@@ -53,6 +53,7 @@ export const Authorization = {
             "https://www.googleapis.com/auth/gmail.readonly",
             "https://www.googleapis.com/auth/gmail.send"
           ],
+          "scopeSeparators": "whitespace",
           "terminalErrorCodes": [
             "invalid_grant",
             "invalid_client",

@@ -19,13 +19,14 @@ func TestDecodedProviderTokenResponseRules(t *testing.T) {
 		path            string
 		missingType     bool
 		exactScopes     bool
+		scopeSeparators string
 		grantTokenTypes []string
 	}{
-		{path: "slack", grantTokenTypes: []string{"bot", "user"}},
-		{path: "linkedin", missingType: true, exactScopes: true},
-		{path: "atlassian/jira", missingType: true},
-		{path: "atlassian/confluence", missingType: true},
-		{path: "atlassian/jira-service-management", missingType: true},
+		{path: "slack", scopeSeparators: schema.ScopeSeparatorsWhitespaceAndComma, grantTokenTypes: []string{"bot", "user"}},
+		{path: "linkedin", missingType: true, exactScopes: true, scopeSeparators: schema.ScopeSeparatorsWhitespaceAndComma},
+		{path: "atlassian/jira", missingType: true, scopeSeparators: schema.ScopeSeparatorsWhitespaceAndComma},
+		{path: "atlassian/confluence", missingType: true, scopeSeparators: schema.ScopeSeparatorsWhitespaceAndComma},
+		{path: "atlassian/jira-service-management", missingType: true, scopeSeparators: schema.ScopeSeparatorsWhitespaceAndComma},
 	} {
 		t.Run(test.path, func(t *testing.T) {
 			file, err := os.Open(filepath.Join("..", "connectors", test.path, "connector.yaml"))
@@ -37,6 +38,7 @@ func TestDecodedProviderTokenResponseRules(t *testing.T) {
 			refresh := method.OAuth2.Refresh
 			require.Equal(t, test.missingType, refresh.AcceptsMissingTokenType)
 			require.Equal(t, test.exactScopes, refresh.ExactScopes)
+			require.Equal(t, test.scopeSeparators, refresh.ScopeSeparators)
 			if len(test.grantTokenTypes) > 0 {
 				require.Len(t, refresh.Grants, len(test.grantTokenTypes))
 				for index, tokenType := range test.grantTokenTypes {
@@ -54,6 +56,14 @@ func TestGrantExactScopesFalseSurvivesJSONEncoding(t *testing.T) {
 	encoded, err := json.Marshal(schema.OAuthRefreshGrant{ExactScopes: &falseValue})
 	require.NoError(t, err)
 	require.Contains(t, string(encoded), `"exactScopes":false`)
+}
+
+func TestInvalidRefreshScopeSeparatorsAreRejected(t *testing.T) {
+	contents, err := os.ReadFile("../connectors/atlassian/jira/connector.yaml")
+	require.NoError(t, err)
+	invalid := strings.Replace(string(contents), "scopeSeparators: whitespaceAndComma", "scopeSeparators: comma", 1)
+	_, err = schema.Decode(strings.NewReader(invalid))
+	require.ErrorContains(t, err, "scopeSeparators")
 }
 
 func TestDecodeTokenGrantDeclarations(t *testing.T) {

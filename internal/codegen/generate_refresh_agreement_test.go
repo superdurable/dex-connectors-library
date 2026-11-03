@@ -74,13 +74,13 @@ func TestGenerateRefreshAgreementTestDeclaresEveryGrant(t *testing.T) {
 	text := string(generateTokenGrantsAgreement(t, nil))
 	for _, expected := range []string{
 		`name:     "user-oauth refresh",`,
-		`clientAuth:         "client_secret_basic",`,
-		`encoding:           "json",`,
+		`clientAuth: "client_secret_basic",`,
+		`encoding:   "json",`,
 		`"refresh_token": "manifest-refresh-token", "scope": "offline_access files.read"}`,
 		`name:     "bot-oauth refresh user_refresh_token",`,
 		`"scope": "history.read"`,
 		`name:     "app-only clientCredentials",`,
-		`endpoint:           "https://login.example.com/manifest.example.com/token",`,
+		`endpoint:   "https://login.example.com/manifest.example.com/token",`,
 		`name:     "delegation jwtBearer",`,
 		`ServiceAccountKey: sdkgo.NewSecretString(manifestJSONKey(privateKeyPEM, "private_key", map[string]string{"client_email": "manifest-issuer@example.com", "token_uri": "https://manifest.example.com/token"})),`,
 		`"primary_email": "manifest-user@example.com"`,
@@ -91,6 +91,25 @@ func TestGenerateRefreshAgreementTestDeclaresEveryGrant(t *testing.T) {
 		require.Contains(t, text, expected)
 	}
 	require.NotContains(t, text, `"scope": "offline_access files.read", "token_type"`, "a response does not report offline_access")
+}
+
+func TestGenerateRefreshAgreementTestReplaysResponseVariations(t *testing.T) {
+	generated := string(generateTokenGrantsAgreement(t, nil))
+	for _, suffix := range []string{
+		"with unaccepted token type", "without token type", "with partial scopes",
+		"without expires_in",
+	} {
+		require.Contains(t, generated, `name: " `+suffix+`"`)
+	}
+	require.Contains(t, generated, "requireManifestResponseVariations(t, grant, privateKeyPEM)")
+	githubFile, err := os.Open("../../connectors/github/connector.yaml")
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, githubFile.Close()) })
+	githubManifest, err := schema.Decode(githubFile)
+	require.NoError(t, err)
+	githubGenerated, err := codegen.GenerateRefreshAgreementTest(githubManifest, "example.com/github", nil)
+	require.NoError(t, err)
+	require.Contains(t, string(githubGenerated), `name: " with extra scopes"`)
 }
 
 func TestGenerateRefreshAgreementTestAppliesSamplesFromGeneralToSpecific(t *testing.T) {
@@ -120,8 +139,8 @@ func TestGenerateRefreshAgreementTestCoversEveryClientAuthenticationOfASetting(t
 		"return newCredentialRefreshDriverWithSettings(httpClient, settings)",
 		`name:     "user-oauth refresh with clientAuthentication \"client_secret_basic\"",`,
 		`name:     "user-oauth refresh with clientAuthentication \"client_secret_post\"",`,
-		`settings:           map[string]string{"clientAuthentication": "client_secret_basic"},`,
-		`clientAuth:         "client_secret_post",`,
+		`"clientAuthentication": "client_secret_basic"},`,
+		`clientAuth: "client_secret_post",`,
 	} {
 		require.Contains(t, text, expected)
 	}

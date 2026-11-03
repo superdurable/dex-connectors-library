@@ -4,6 +4,7 @@
 
 import base64
 import json
+import traceback
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
@@ -235,3 +236,22 @@ async def test_workspace_invalid_key_requires_reauthorization() -> None:
             await CredentialRefreshDriver(client, lambda: NOW).refresh(
                 CredentialRefreshState(credential, None, NOW)
             )
+
+
+@pytest.mark.asyncio
+async def test_workspace_invalid_key_does_not_render_secret_in_traceback() -> None:
+    """A JSON decoder's source document stays out of the surfaced exception."""
+    raw_key = '{"private_key":"SENSITIVE_KEY_CONTENT",'
+    credential = Credentials(
+        SecretString(""), "", auth_method_id="workspace-domain-delegation",
+        service_account_key=SecretString(raw_key), delegated_user="owner@example.org",
+    )
+    async with httpx.AsyncClient(transport=httpx.MockTransport(
+        lambda _: pytest.fail("unexpected token request")
+    )) as client:
+        with pytest.raises(ReauthorizationRequiredError) as caught:
+            await CredentialRefreshDriver(client, lambda: NOW).refresh(
+                CredentialRefreshState(credential, None, NOW)
+            )
+    assert caught.value.__suppress_context__
+    assert "SENSITIVE_KEY_CONTENT" not in "".join(traceback.format_exception(caught.value))

@@ -162,7 +162,11 @@ func GenerateRefreshAgreementCases(manifest schema.Manifest, samples map[string]
 				result := RefreshAgreementCase{Name: name, MethodID: grant.method.ID, Credentials: credentials,
 					Settings: settings, Endpoint: endpoint, Encoding: grant.encoding, ClientAuth: clientAuth, ClientID: clientID, ClientSecret: clientSecret,
 					Parameters: parameters, Response: response, Updates: updates, TerminalErrorCodes: grant.terminalCodes,
-					MayRefuseWithoutCall: isPublicClient}
+					MayRefuseWithoutCall: isPublicClient && !grant.allowsPublicClient}
+				if result.MayRefuseWithoutCall {
+					result.ExpectedError = "reauthorization"
+					result.TerminalErrorCodes = nil
+				}
 				if grant.jwtBearer != nil {
 					result.KeyCredential = grant.jwtBearer.KeyCredential
 					result.PrivateKeyCredential = grant.jwtBearer.PrivateKey.FromCredential
@@ -175,8 +179,8 @@ func GenerateRefreshAgreementCases(manifest schema.Manifest, samples map[string]
 					result.Assertion = assertion
 				}
 				cases = append(cases, result)
-				for _, variation := range agreement.responseVariations(result, grant) {
-					cases = append(cases, variation)
+				if !result.MayRefuseWithoutCall {
+					cases = append(cases, agreement.responseVariations(result, grant)...)
 				}
 			}
 		}
@@ -238,7 +242,7 @@ func (agreement *refreshAgreementGenerator) responseVariations(base RefreshAgree
 		missingType.ExpectedError = ""
 	}
 	variations = append(variations, missingType)
-	if len(grant.responseScopes) > 0 {
+	if grant.checksResponseScopes && len(grant.responseScopes) > 0 {
 		partial := clone(" with partial scopes", "reauthorization")
 		partial.Response["scope"] = "manifest-ungranted-scope"
 		variations = append(variations, partial)
@@ -277,9 +281,12 @@ type declaredGrant struct {
 	acceptedTokenTypes      []string
 	acceptsMissingTokenType bool
 	exactScopes             bool
-	missingExpiry           *schema.MissingExpiry
-	additional              map[string]string
-	jwtBearer               *schema.JWTBearerGrant
+	allowsPublicClient      bool
+	// Authorization scopes alone do not prove that a Go driver checks returned scopes.
+	checksResponseScopes bool
+	missingExpiry        *schema.MissingExpiry
+	additional           map[string]string
+	jwtBearer            *schema.JWTBearerGrant
 }
 
 // HasDeclaredTokenGrants reports whether any method of manifest refreshes or mints a token.
@@ -414,6 +421,8 @@ func declaredGrants(manifest schema.Manifest) []declaredGrant {
 					mappings: refreshGrant.CredentialMappings, responseScopes: withoutString(responseScopes, offlineAccessScope),
 					terminalCodes: defaultStrings(refresh.TerminalErrorCodes, "invalid_grant"), missingExpiry: refresh.MissingExpiry, additional: refresh.AdditionalParameters,
 					acceptedTokenTypes: acceptedTokenTypes, acceptsMissingTokenType: acceptsMissingTokenType, exactScopes: exactScopes,
+					allowsPublicClient:   refresh.AllowsPublicClient,
+					checksResponseScopes: len(refresh.RequiredScopes) > 0 || refresh.ExactScopes || refreshGrant.ExactScopes != nil || refresh.ScopeSeparators != "",
 				})
 			}
 		}
@@ -435,6 +444,7 @@ func declaredGrants(manifest schema.Manifest) []declaredGrant {
 				requestScopes: jwtBearer.Scopes, responseScopes: jwtBearer.Scopes, terminalCodes: defaultStrings(jwtBearer.TerminalErrorCodes, "invalid_grant"),
 				missingExpiry: jwtBearer.MissingExpiry, jwtBearer: jwtBearer,
 				acceptedTokenTypes: defaultStrings(jwtBearer.AcceptedTokenTypes, "Bearer"), acceptsMissingTokenType: jwtBearer.AcceptsMissingTokenType,
+				checksResponseScopes: true,
 			})
 		}
 	}
@@ -565,6 +575,14 @@ func (agreement *refreshAgreementGenerator) writeGrantCase(generation *generator
 		}
 	}
 	generation.mustWrite("\t\t\tresponse: %s,\n", goAnyMap(response))
+	if !isPublicClient || grant.allowsPublicClient {
+		generation.mustWrite("\t\t\tvariations: []manifestVariation{\n")
+		for _, variation := range agreement.responseVariations(RefreshAgreementCase{Response: response}, grant) {
+			generation.mustWrite("\t\t\t\t{name: %q, response: %s, expectedError: %q},\n",
+				variation.Name, goAnyMap(variation.Response), variation.ExpectedError)
+		}
+		generation.mustWrite("\t\t\t},\n")
+	}
 	generation.mustWrite("\t\t\tupdates: %s,\n", goStringMap(updates))
 	if grant.refreshToken != "" {
 		generation.mustWrite("\t\t\trefreshToken: %q,\n", grant.refreshToken)
@@ -577,7 +595,7 @@ func (agreement *refreshAgreementGenerator) writeGrantCase(generation *generator
 		}
 		generation.mustWrite("\t\t\tmissingExpiry: time.Duration(%d),\n", lifetime)
 	}
-	if isPublicClient {
+	if isPublicClient && !grant.allowsPublicClient {
 		generation.mustWrite("\t\t\tmayRefuseWithoutRequest: true,\n")
 	}
 	generation.mustWrite("\t\t},\n")

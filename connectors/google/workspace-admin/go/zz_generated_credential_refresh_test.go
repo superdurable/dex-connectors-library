@@ -41,6 +41,7 @@ type manifestGrant struct {
 	parameters  map[string]string
 	assertion   *manifestAssertion
 	response    map[string]any
+	variations  []manifestVariation
 	updates     map[string]string
 	// refreshToken is the credential field that holds the refresh token, or empty for a minting grant.
 	refreshToken       string
@@ -48,6 +49,12 @@ type manifestGrant struct {
 	missingExpiry      time.Duration
 	// mayRefuseWithoutRequest lets a driver refuse a public client refresh before calling the provider.
 	mayRefuseWithoutRequest bool
+}
+
+type manifestVariation struct {
+	name          string
+	response      map[string]any
+	expectedError string
 }
 
 // manifestAssertion holds the JWT bearer claims that connector.yaml declares.
@@ -124,6 +131,27 @@ func TestCredentialRefreshDriverAgreesWithTheManifest(t *testing.T) {
 			requireManifestRefreshTokenIsKept(t, grant, privateKeyPEM)
 			requireManifestTerminalErrorCodes(t, grant, privateKeyPEM)
 			requireManifestMissingExpiry(t, grant, privateKeyPEM)
+			requireManifestResponseVariations(t, grant, privateKeyPEM)
+		})
+	}
+}
+
+func requireManifestResponseVariations(t *testing.T, grant manifestGrant, privateKeyPEM string) {
+	for _, variation := range grant.variations {
+		t.Run(variation.name, func(t *testing.T) {
+			_, endpoint, err := grant.refresh(t, privateKeyPEM, http.StatusOK, variation.response)
+			require.Len(t, endpoint.requests, 1, "a response variation reaches the provider")
+			switch variation.expectedError {
+			case "":
+				require.NoError(t, err)
+			case "reauthorization":
+				require.True(t, sdkgo.IsReauthorizationRequired(err), "the declared scope variation requires reauthorization: %v", err)
+			case "retryable":
+				require.Error(t, err)
+				require.False(t, sdkgo.IsReauthorizationRequired(err), "the response variation is retryable: %v", err)
+			default:
+				t.Fatalf("unexpected agreement error class %q", variation.expectedError)
+			}
 		})
 	}
 }
@@ -281,13 +309,8 @@ func requireManifestMissingExpiry(t *testing.T, grant manifestGrant, privateKeyP
 
 func requireManifestPublicClientRefresh(t *testing.T, grant manifestGrant, privateKeyPEM string) {
 	_, endpoint, err := grant.refresh(t, privateKeyPEM, http.StatusOK, grant.response)
-	if len(endpoint.requests) == 0 {
-		require.True(t, sdkgo.IsReauthorizationRequired(err), "a driver that refuses a public client needs reauthorization")
-		return
-	}
-	require.NoError(t, err)
-	require.Len(t, endpoint.requests, 1)
-	requireManifestTokenRequest(t, grant, endpoint.requests[0], nil)
+	require.True(t, sdkgo.IsReauthorizationRequired(err), "a blank client secret requires reauthorization")
+	require.Empty(t, endpoint.requests, "a blank client secret never reaches the provider")
 }
 
 func manifestResponseWithout(response map[string]any, field string) map[string]any {
@@ -348,12 +371,18 @@ func manifestGrants() []manifestGrant {
 					AccessToken:       sdkgo.NewSecretString("manifest-access-token"),
 				}
 			},
-			endpoint:           "https://manifest.example.com/token",
-			encoding:           "form",
-			clientAuth:         "none",
-			parameters:         map[string]string{"grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer"},
-			assertion:          &manifestAssertion{issuer: "manifest-issuer@example.com", subject: "manifest-user@example.com", audience: "https://manifest.example.com/token", scope: "https://www.googleapis.com/auth/admin.directory.user https://www.googleapis.com/auth/admin.directory.group.member", lifetime: time.Duration(3600000000000)},
-			response:           map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://www.googleapis.com/auth/admin.directory.user https://www.googleapis.com/auth/admin.directory.group.member", "token_type": "Bearer"},
+			endpoint:   "https://manifest.example.com/token",
+			encoding:   "form",
+			clientAuth: "none",
+			parameters: map[string]string{"grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer"},
+			assertion:  &manifestAssertion{issuer: "manifest-issuer@example.com", subject: "manifest-user@example.com", audience: "https://manifest.example.com/token", scope: "https://www.googleapis.com/auth/admin.directory.user https://www.googleapis.com/auth/admin.directory.group.member", lifetime: time.Duration(3600000000000)},
+			response:   map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://www.googleapis.com/auth/admin.directory.user https://www.googleapis.com/auth/admin.directory.group.member", "token_type": "Bearer"},
+			variations: []manifestVariation{
+				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://www.googleapis.com/auth/admin.directory.user https://www.googleapis.com/auth/admin.directory.group.member", "token_type": "manifest-unaccepted-token-type"}, expectedError: "retryable"},
+				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://www.googleapis.com/auth/admin.directory.user https://www.googleapis.com/auth/admin.directory.group.member"}, expectedError: "retryable"},
+				{name: " with partial scopes", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, expectedError: "reauthorization"},
+				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "scope": "https://www.googleapis.com/auth/admin.directory.user https://www.googleapis.com/auth/admin.directory.group.member", "token_type": "Bearer"}, expectedError: "retryable"},
+			},
 			updates:            map[string]string{"access_token": "manifest-access-token-2"},
 			terminalErrorCodes: []string{"invalid_grant", "invalid_client", "unauthorized_client"},
 		},
@@ -369,13 +398,18 @@ func manifestGrants() []manifestGrant {
 					RefreshToken:      sdkgo.NewSecretString("manifest-refresh-token"),
 				}
 			},
-			endpoint:           "https://oauth2.googleapis.com/token",
-			encoding:           "form",
-			clientAuth:         "client_secret_post",
-			clientID:           "manifest-client-id",
-			secret:             "manifest-client-secret",
-			parameters:         map[string]string{"grant_type": "refresh_token", "refresh_token": "manifest-refresh-token"},
-			response:           map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "https://www.googleapis.com/auth/admin.directory.user https://www.googleapis.com/auth/admin.directory.group.member", "token_type": "Bearer"},
+			endpoint:   "https://oauth2.googleapis.com/token",
+			encoding:   "form",
+			clientAuth: "client_secret_post",
+			clientID:   "manifest-client-id",
+			secret:     "manifest-client-secret",
+			parameters: map[string]string{"grant_type": "refresh_token", "refresh_token": "manifest-refresh-token"},
+			response:   map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "https://www.googleapis.com/auth/admin.directory.user https://www.googleapis.com/auth/admin.directory.group.member", "token_type": "Bearer"},
+			variations: []manifestVariation{
+				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "https://www.googleapis.com/auth/admin.directory.user https://www.googleapis.com/auth/admin.directory.group.member", "token_type": "manifest-unaccepted-token-type"}, expectedError: "retryable"},
+				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "https://www.googleapis.com/auth/admin.directory.user https://www.googleapis.com/auth/admin.directory.group.member"}, expectedError: "retryable"},
+				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2", "scope": "https://www.googleapis.com/auth/admin.directory.user https://www.googleapis.com/auth/admin.directory.group.member", "token_type": "Bearer"}, expectedError: "retryable"},
+			},
 			updates:            map[string]string{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2"},
 			refreshToken:       "refresh_token",
 			terminalErrorCodes: []string{"invalid_grant", "invalid_client", "unauthorized_client"},

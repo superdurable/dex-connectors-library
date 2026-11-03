@@ -80,8 +80,8 @@ class CredentialRefreshDriver:
     def _validate_service_account_key(raw: str) -> None:
         try:
             document = json.loads(raw)
-        except (ValueError, UnicodeDecodeError) as error:
-            raise ReauthorizationRequiredError(error) from error
+        except (ValueError, UnicodeDecodeError):
+            raise ReauthorizationRequiredError() from None
         if not isinstance(document, dict) or any(
             not isinstance(document.get(name), str) or not document[name]
             for name in ("client_email", "private_key", "token_uri")
@@ -89,8 +89,8 @@ class CredentialRefreshDriver:
             raise ReauthorizationRequiredError()
         try:
             endpoint = urlsplit(document["token_uri"])
-        except ValueError as error:
-            raise ReauthorizationRequiredError(error) from error
+        except ValueError:
+            raise ReauthorizationRequiredError() from None
         if endpoint.scheme != "https" or not endpoint.hostname:
             raise ReauthorizationRequiredError()
 

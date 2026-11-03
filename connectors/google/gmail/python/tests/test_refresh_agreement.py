@@ -132,6 +132,8 @@ async def test_generated_refresh_agreement(case: dict[str, Any]) -> None:
             if case.get("mayRefuseWithoutCall") and not requests:
                 assert isinstance(error, ReauthorizationRequiredError)
                 return
+            if case.get("mayRefuseWithoutCall"):
+                pytest.fail("a blank client secret reached the provider")
             assert case.get("expectedError"), f"unexpected refresh error: {type(error).__name__}"
             if case["expectedError"] == "reauthorization":
                 assert isinstance(error, ReauthorizationRequiredError)

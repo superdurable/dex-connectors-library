@@ -29,6 +29,10 @@ const (
 const (
 	MethodScopes = "scopes"
 	UserScopes   = "userScopes"
+	// ScopeSeparatorsWhitespace splits reported scopes like Go strings.Fields.
+	ScopeSeparatorsWhitespace = "whitespace"
+	// ScopeSeparatorsWhitespaceAndComma splits reported scopes on ASCII spaces and commas.
+	ScopeSeparatorsWhitespaceAndComma = "whitespaceAndComma"
 )
 
 // keepMissingExpiry is the scalar form of MissingExpiry that keeps a token whose response has no expires_in.
@@ -44,6 +48,10 @@ type OAuthRefresh struct {
 	AcceptedTokenTypes []string `yaml:"acceptedTokenTypes,omitempty" json:"acceptedTokenTypes,omitempty"`
 	// ExactScopes requires the returned scope set to equal the declared scope set.
 	ExactScopes bool `yaml:"exactScopes,omitempty" json:"exactScopes,omitempty"`
+	// ScopeSeparators selects whitespace or space-and-comma parsing for reported scopes; empty means whitespace.
+	ScopeSeparators string `yaml:"scopeSeparators,omitempty" json:"scopeSeparators,omitempty"`
+	// AllowsPublicClient permits refresh without a stored client secret.
+	AllowsPublicClient bool `yaml:"allowsPublicClient,omitempty" json:"allowsPublicClient,omitempty"`
 	// RequiredScopes overrides the authorization scopes checked on refresh responses.
 	RequiredScopes []string `yaml:"requiredScopes,omitempty" json:"requiredScopes,omitempty"`
 	// TerminalErrorCodes are the OAuth error codes, in a response below HTTP 500, after which the refresh token can
@@ -418,6 +426,9 @@ func (grantContext tokenGrantContext) validateOAuthTokenRequests(oauth *OAuth2) 
 	problems = append(problems, grantContext.validateResponseRules(label, refresh.TerminalErrorCodes, refresh.MissingExpiry, refresh.AdditionalParameters)...)
 	problems = append(problems, validateAcceptedTokenTypes(label, refresh.AcceptedTokenTypes)...)
 	problems = append(problems, validateScopeList(label+" requiredScopes", refresh.RequiredScopes)...)
+	if refresh.ScopeSeparators != "" && refresh.ScopeSeparators != ScopeSeparatorsWhitespace && refresh.ScopeSeparators != ScopeSeparatorsWhitespaceAndComma {
+		problems = append(problems, label+" scopeSeparators must be whitespace or whitespaceAndComma")
+	}
 	if len(refresh.Grants) == 0 {
 		if !mapsSource(oauth.CredentialMappings, "refresh_token") {
 			problems = append(problems, label+" requires a credential mapped from refresh_token or explicit grants")

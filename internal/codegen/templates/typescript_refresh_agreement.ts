@@ -115,6 +115,7 @@ describe('generated Go manifest refresh agreement', () => {
         expect(error).toBeInstanceOf(ReauthorizationRequiredError);
         return;
       }
+      if (agreement.mayRefuseWithoutCall) throw new TypeError('a blank client secret reached the provider');
       expect(agreement.expectedError).toBeDefined();
       if (agreement.expectedError === 'reauthorization') expect(error).toBeInstanceOf(ReauthorizationRequiredError);
       else expect(error).not.toBeInstanceOf(ReauthorizationRequiredError);

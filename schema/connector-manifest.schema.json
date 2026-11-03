@@ -559,6 +559,8 @@
         "acceptsMissingTokenType": { "type": "boolean", "description": "Accept a successful token response without token_type." },
         "acceptedTokenTypes": { "$ref": "#/$defs/acceptedTokenTypes" },
         "exactScopes": { "type": "boolean", "description": "Require returned scopes to equal the declared scopes; otherwise require at least the declared scopes when a response includes scope." },
+        "scopeSeparators": { "enum": ["whitespace", "whitespaceAndComma"], "description": "Split reported scopes on Unicode whitespace, or on ASCII space and comma. Defaults to whitespace." },
+        "allowsPublicClient": { "type": "boolean", "description": "Permit refreshing with a blank client secret as a public OAuth client. Defaults to false." },
         "requiredScopes": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 }, "description": "Override authorization scopes checked in a refresh response, when a provider reports only API scopes." },
         "terminalErrorCodes": { "$ref": "#/$defs/terminalErrorCodes", "description": "invalid_grant when absent." },
         "missingExpiry": { "$ref": "#/$defs/missingExpiry", "description": "keep when absent." },
