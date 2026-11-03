@@ -1,29 +1,19 @@
+// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import path from "node:path";
 import test from "node:test";
 
-import { connectorCardGridPosition, connectorCountLine, renderCatalogCard } from "./render-card.mjs";
+import { cardHeight, cardWidth, renderCatalogCard, renderCatalogCardSvg } from "./render-card.mjs";
 
-test("catalog card is a PNG", () => {
-  const repositoryRoot = mkdtempSync(path.join(tmpdir(), "connector-card-"));
-  const logoDirectory = path.join(repositoryRoot, "connectors", "acme");
-  mkdirSync(logoDirectory, { recursive: true });
-  writeFileSync(
-    path.join(logoDirectory, "logo.svg"),
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" fill="#111111"/></svg>`,
-  );
-  const png = renderCatalogCard({
-    repositoryRoot,
-    catalogText: `
-connectors:
-  - company: Acme
-    id: mail
-    name: Mail
+function catalogText(connectorCount) {
+  const connectors = Array.from({ length: connectorCount }, (_, index) => `
+  - company: Company${index % 7}
+    id: mail${index}
+    name: Mail ${index}
     description: Send mail.
     version: v0.1.0
-    directory: connectors/acme/mail
+    directory: connectors/company${index % 7}/mail${index}
     uiUnits:
       - name: channelPicker
         description: Select one channel.
@@ -34,21 +24,43 @@ connectors:
       - name: sendMessage
         kind: mutation
         description: Send a message.
-`,
-  });
-  assert.equal(png.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
-  assert.equal(png.readUInt32BE(16), 1200);
-  assert.equal(png.readUInt32BE(20), 630);
-  assert.equal(connectorCountLine({
-    uiUnits: [{ name: "channelPicker" }],
-    operations: [{ name: "sendMessage" }],
-    triggers: [{ name: "messageReceived" }],
-  }), "1 UI · 1 op · 1 trigger");
+      - name: getMessage
+        kind: query
+        description: Read a message.
+`).join("");
+  return `connectors:${connectors}`;
+}
+
+function svgDimensions(svg) {
+  const match = svg.match(/<svg [^>]*width="(\d+)" height="(\d+)" viewBox="0 0 (\d+) (\d+)"/);
+  assert.ok(match, "svg root has width, height, and viewBox");
+  return match.slice(1).map(Number);
+}
+
+test("catalog card shows the five catalog totals in site order", () => {
+  const svg = renderCatalogCardSvg({ catalogText: catalogText(3) });
+  const tileTexts = [...svg.matchAll(/class="(label|count)">([^<]*)</g)].map((match) => match[2]);
+  assert.deepEqual(tileTexts, [
+    "companies", "3",
+    "connectors", "3",
+    "UI units", "3",
+    "operations", "6",
+    "triggers", "3",
+  ]);
+  assert.doesNotMatch(svg, /Mail 0/);
 });
 
-test("catalog card positions connectors in four columns", () => {
-  assert.deepEqual(connectorCardGridPosition(0), { x: 56, y: 144 });
-  assert.deepEqual(connectorCardGridPosition(3), { x: 884, y: 144 });
-  assert.deepEqual(connectorCardGridPosition(4), { x: 56, y: 296 });
-  assert.throws(() => connectorCardGridPosition(-1), /non-negative integer/);
+test("catalog card size does not depend on connector count", () => {
+  for (const connectorCount of [1, 500]) {
+    const svg = renderCatalogCardSvg({ catalogText: catalogText(connectorCount) });
+    assert.deepEqual(svgDimensions(svg), [cardWidth, cardHeight, cardWidth, cardHeight]);
+    assert.match(svg, new RegExp(`class="count">${connectorCount * 2}<`));
+  }
+});
+
+test("catalog card is a fixed-size PNG", () => {
+  const png = renderCatalogCard({ catalogText: catalogText(500) });
+  assert.equal(png.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
+  assert.equal(png.readUInt32BE(16), cardWidth);
+  assert.equal(png.readUInt32BE(20), cardHeight);
 });
