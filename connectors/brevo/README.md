@@ -16,6 +16,10 @@ Brevo contact operations for Dex. The module uses Brevo's public v3 REST API and
 The Python package is [`dex-connector-brevo`](python/README.md), imported as
 `dex_connectors.brevo`.
 
+The TypeScript package is [`@superdurable/connector-brevo`](typescript/README.md).
+Its runnable [contact sync Flow](typescript/examples/contact-sync) creates or updates
+and then reads a contact through one static Dex connection.
+
 ## Authorization
 
 Sign in at [Brevo API keys](https://app.brevo.com/settings/keys/api), open **Settings > SMTP & API > API keys**, choose **Generate a new API key**, name it, and copy its secret string once. Enter the key into Dex Web Connections' secret `api_key` field. Blank means the connection cannot make requests. The key travels only in the `api-key` header. Leave `baseUrl`, `timeout`, and `maxResponseBytes` blank to use the displayed defaults. Override the URL only for a compatible gateway, the timeout for network latency, or the byte limit for a larger response.

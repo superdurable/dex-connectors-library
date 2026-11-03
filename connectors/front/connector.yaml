@@ -8,6 +8,12 @@ metadata:
   version: v0.23.0
 spec:
   provider: front
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-front
+      operations: [searchConversations, getConversation, replyToConversation, updateConversation, findContactByEmail]
+      triggers: []
   codegen:
     go:
       package: front

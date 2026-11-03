@@ -1,0 +1,1958 @@
+{
+  "connector": "amazon/s3",
+  "scenarios": [
+    {
+      "callId": "5908a179-2147-5839-9c64-529cd36f77d7",
+      "exchanges": [
+        {
+          "body": "\u003cListBucketResult\u003e\u003cEncodingType\u003eurl\u003c/EncodingType\u003e\u003cIsTruncated\u003etrue\u003c/IsTruncated\u003e\u003cNextContinuationToken\u003enext-page\u003c/NextContinuationToken\u003e\u003cContents\u003e\u003cKey\u003ereports%2Fweekly.md\u003c/Key\u003e\u003cLastModified\u003e2026-10-25T09:00:00Z\u003c/LastModified\u003e\u003cETag\u003e\"abc\"\u003c/ETag\u003e\u003cSize\u003e6\u003c/Size\u003e\u003cStorageClass\u003eSTANDARD\u003c/StorageClass\u003e\u003c/Contents\u003e\u003cCommonPrefixes\u003e\u003cPrefix\u003ereports%2Farchive%2F\u003c/Prefix\u003e\u003c/CommonPrefixes\u003e\u003c/ListBucketResult\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/acme-reports",
+          "query": {
+            "continuation-token": [
+              "previous-page"
+            ],
+            "delimiter": [
+              "/"
+            ],
+            "encoding-type": [
+              "url"
+            ],
+            "list-type": [
+              "2"
+            ],
+            "max-keys": [
+              "3"
+            ],
+            "prefix": [
+              "reports/"
+            ],
+            "start-after": [
+              "reports/a"
+            ]
+          },
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "bucket": "acme-reports",
+          "commonPrefixes": [
+            "reports/archive/"
+          ],
+          "delimiter": "/",
+          "isTruncated": true,
+          "nextContinuationToken": "next-page",
+          "objects": [
+            {
+              "eTag": "\"abc\"",
+              "key": "reports/weekly.md",
+              "lastModified": "2026-10-25T09:00:00Z",
+              "sizeBytes": 6,
+              "storageClass": "STANDARD"
+            }
+          ],
+          "prefix": "reports/"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bucket": "acme-reports",
+        "continuationToken": "previous-page",
+        "delimiter": "/",
+        "maxKeys": 3,
+        "prefix": "reports/",
+        "startAfter": "reports/a"
+      },
+      "name": "list-found",
+      "operation": "listObjects"
+    },
+    {
+      "callId": "5908a179-2147-5839-9c64-529cd36f77d7",
+      "exchanges": [
+        {
+          "body": "\u003cListBucketResult\u003e\u003cIsTruncated\u003efalse\u003c/IsTruncated\u003e\u003c/ListBucketResult\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/acme-reports",
+          "query": {
+            "encoding-type": [
+              "url"
+            ],
+            "list-type": [
+              "2"
+            ],
+            "max-keys": [
+              "100"
+            ],
+            "prefix": [
+              "absent/"
+            ]
+          },
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "bucket": "acme-reports",
+          "isTruncated": false,
+          "prefix": "absent/"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bucket": "acme-reports",
+        "prefix": "absent/"
+      },
+      "name": "list-not-found",
+      "operation": "listObjects"
+    },
+    {
+      "callId": "5908a179-2147-5839-9c64-529cd36f77d7",
+      "exchanges": [
+        {
+          "body": "\u003cError\u003e\u003cCode\u003eAccessDenied\u003c/Code\u003e\u003c/Error\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/acme-reports",
+          "query": {
+            "encoding-type": [
+              "url"
+            ],
+            "list-type": [
+              "2"
+            ],
+            "max-keys": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "bucket": "acme-reports",
+          "isTruncated": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bucket": "acme-reports"
+      },
+      "name": "list-rejected",
+      "operation": "listObjects"
+    },
+    {
+      "callId": "5908a179-2147-5839-9c64-529cd36f77d7",
+      "exchanges": [
+        {
+          "body": "\u003cbroken\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/acme-reports",
+          "query": {
+            "encoding-type": [
+              "url"
+            ],
+            "list-type": [
+              "2"
+            ],
+            "max-keys": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "bucket": "acme-reports",
+          "isTruncated": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bucket": "acme-reports"
+      },
+      "name": "list-invalid-response",
+      "operation": "listObjects"
+    },
+    {
+      "callId": "5908a179-2147-5839-9c64-529cd36f77d7",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "bucket": "",
+          "isTruncated": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bucket": "BAD"
+      },
+      "name": "list-defect",
+      "operation": "listObjects"
+    },
+    {
+      "callId": "1f33ce2c-d642-5b52-975b-615eddf12c28",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Content-Length": "6",
+            "Content-Type": "text/plain",
+            "ETag": "\"abc\"",
+            "Last-Modified": "Sun, 25 Oct 2026 09:00:00 GMT",
+            "X-Amz-Request-Id": "request-1"
+          },
+          "keyMode": "absent",
+          "method": "HEAD",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "bucket": "acme-reports",
+          "contentType": "text/plain",
+          "eTag": "\"abc\"",
+          "key": "reports/weekly.md",
+          "lastModified": "2026-10-25T09:00:00Z",
+          "sizeBytes": 6
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bucket": "acme-reports",
+        "key": "reports/weekly.md"
+      },
+      "name": "head-found",
+      "operation": "headObject"
+    },
+    {
+      "callId": "1f33ce2c-d642-5b52-975b-615eddf12c28",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "HEAD",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "bucket": "acme-reports",
+          "key": "reports/weekly.md",
+          "sizeBytes": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bucket": "acme-reports",
+        "key": "reports/weekly.md"
+      },
+      "name": "head-not-found",
+      "operation": "headObject"
+    },
+    {
+      "callId": "1f33ce2c-d642-5b52-975b-615eddf12c28",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "HEAD",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "bucket": "acme-reports",
+          "key": "reports/weekly.md",
+          "sizeBytes": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bucket": "acme-reports",
+        "key": "reports/weekly.md"
+      },
+      "name": "head-rejected",
+      "operation": "headObject"
+    },
+    {
+      "callId": "1f33ce2c-d642-5b52-975b-615eddf12c28",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Content-Length": "6"
+          },
+          "keyMode": "absent",
+          "method": "HEAD",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "bucket": "acme-reports",
+          "key": "reports/weekly.md",
+          "sizeBytes": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bucket": "acme-reports",
+        "key": "reports/weekly.md"
+      },
+      "name": "head-invalid-response",
+      "operation": "headObject"
+    },
+    {
+      "callId": "1f33ce2c-d642-5b52-975b-615eddf12c28",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "bucket": "",
+          "key": "",
+          "sizeBytes": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bucket": "BAD",
+        "key": "reports/weekly.md"
+      },
+      "name": "head-defect",
+      "operation": "headObject"
+    },
+    {
+      "callId": "61749191-24e5-5d7b-bc20-45d1a585a092",
+      "exchanges": [
+        {
+          "body": "hello\n",
+          "headers": {
+            "Content-Length": "6",
+            "Content-Type": "text/plain",
+            "ETag": "\"abc\"",
+            "Last-Modified": "Sun, 25 Oct 2026 09:00:00 GMT",
+            "X-Amz-Request-Id": "request-1"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "read",
+        "failureKind": "",
+        "output": {
+          "bucket": "acme-reports",
+          "contentType": "text/plain",
+          "eTag": "\"abc\"",
+          "key": "reports/weekly.md",
+          "lastModified": "2026-10-25T09:00:00Z",
+          "sizeBytes": 6,
+          "text": "hello\n"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bucket": "acme-reports",
+        "key": "reports/weekly.md"
+      },
+      "name": "text-read",
+      "operation": "getObjectText"
+    },
+    {
+      "callId": "61749191-24e5-5d7b-bc20-45d1a585a092",
+      "exchanges": [
+        {
+          "body": "\u003cError\u003e\u003cCode\u003eNoSuchKey\u003c/Code\u003e\u003c/Error\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "bucket": "acme-reports",
+          "key": "reports/weekly.md",
+          "sizeBytes": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bucket": "acme-reports",
+        "key": "reports/weekly.md"
+      },
+      "name": "text-not-found",
+      "operation": "getObjectText"
+    },
+    {
+      "callId": "61749191-24e5-5d7b-bc20-45d1a585a092",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Content-Length": "6",
+            "Content-Type": "application/pdf",
+            "ETag": "\"abc\"",
+            "Last-Modified": "Sun, 25 Oct 2026 09:00:00 GMT",
+            "X-Amz-Request-Id": "request-1"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "unsupportedContent",
+        "failureKind": "VALIDATION",
+        "output": {
+          "bucket": "acme-reports",
+          "contentType": "application/pdf",
+          "eTag": "\"abc\"",
+          "key": "reports/weekly.md",
+          "lastModified": "2026-10-25T09:00:00Z",
+          "sizeBytes": 6
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bucket": "acme-reports",
+        "key": "reports/weekly.md"
+      },
+      "name": "text-unsupported",
+      "operation": "getObjectText"
+    },
+    {
+      "callId": "61749191-24e5-5d7b-bc20-45d1a585a092",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Content-Length": "1048577",
+            "Content-Type": "text/plain",
+            "ETag": "\"abc\"",
+            "Last-Modified": "Sun, 25 Oct 2026 09:00:00 GMT",
+            "X-Amz-Request-Id": "request-1"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "tooLarge",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "bucket": "acme-reports",
+          "contentType": "text/plain",
+          "eTag": "\"abc\"",
+          "key": "reports/weekly.md",
+          "lastModified": "2026-10-25T09:00:00Z",
+          "sizeBytes": 1048577
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bucket": "acme-reports",
+        "key": "reports/weekly.md"
+      },
+      "name": "text-too-large",
+      "operation": "getObjectText"
+    },
+    {
+      "callId": "61749191-24e5-5d7b-bc20-45d1a585a092",
+      "exchanges": [
+        {
+          "body": "\u003cError\u003e\u003cCode\u003eAccessDenied\u003c/Code\u003e\u003c/Error\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "bucket": "acme-reports",
+          "key": "reports/weekly.md",
+          "sizeBytes": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bucket": "acme-reports",
+        "key": "reports/weekly.md"
+      },
+      "name": "text-rejected",
+      "operation": "getObjectText"
+    },
+    {
+      "callId": "61749191-24e5-5d7b-bc20-45d1a585a092",
+      "exchanges": [
+        {
+          "body": "short",
+          "headers": {
+            "Content-Length": "6",
+            "Content-Type": "text/plain",
+            "ETag": "\"abc\"",
+            "Last-Modified": "Sun, 25 Oct 2026 09:00:00 GMT",
+            "X-Amz-Request-Id": "request-1"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "bucket": "acme-reports",
+          "contentType": "text/plain",
+          "eTag": "\"abc\"",
+          "key": "reports/weekly.md",
+          "lastModified": "2026-10-25T09:00:00Z",
+          "sizeBytes": 6
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bucket": "acme-reports",
+        "key": "reports/weekly.md"
+      },
+      "name": "text-invalid-response",
+      "operation": "getObjectText"
+    },
+    {
+      "callId": "61749191-24e5-5d7b-bc20-45d1a585a092",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "bucket": "",
+          "key": "",
+          "sizeBytes": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bucket": "BAD",
+        "key": "reports/weekly.md"
+      },
+      "name": "text-defect",
+      "operation": "getObjectText"
+    },
+    {
+      "callId": "0c58ff90-76a5-5ab6-9099-092233c989ba",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "ETag": "\"abc\"",
+            "X-Amz-Request-Id": "request-1"
+          },
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestBody": "hello\n",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Content-Md5": [
+              "sZRqySSS0jR8YjW00mERhA=="
+            ],
+            "Content-Type": [
+              "text/plain"
+            ],
+            "If-None-Match": [
+              "*"
+            ],
+            "X-Amz-Content-Sha256": [
+              "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+            ],
+            "X-Amz-Meta-Dex-Idempotency-Key": [
+              "0c58ff90-76a5-5ab6-9099-092233c989ba"
+            ],
+            "X-Amz-Meta-Report-Id": [
+              "weekly"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "stored",
+        "failureKind": "",
+        "output": {
+          "bucket": "acme-reports",
+          "contentType": "text/plain",
+          "eTag": "\"abc\"",
+          "key": "reports/weekly.md",
+          "sizeBytes": 6
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0c58ff90-76a5-5ab6-9099-092233c989ba",
+      "input": {
+        "bucket": "acme-reports",
+        "contentType": "text/plain",
+        "isCreateOnly": true,
+        "key": "reports/weekly.md",
+        "metadata": {
+          "report-id": "weekly"
+        },
+        "textContent": "hello\n"
+      },
+      "name": "put-stored",
+      "operation": "putObject"
+    },
+    {
+      "callId": "0c58ff90-76a5-5ab6-9099-092233c989ba",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestBody": "hello\n",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Content-Md5": [
+              "sZRqySSS0jR8YjW00mERhA=="
+            ],
+            "Content-Type": [
+              "text/plain"
+            ],
+            "If-None-Match": [
+              "*"
+            ],
+            "X-Amz-Content-Sha256": [
+              "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+            ],
+            "X-Amz-Meta-Dex-Idempotency-Key": [
+              "0c58ff90-76a5-5ab6-9099-092233c989ba"
+            ]
+          },
+          "status": 412
+        },
+        {
+          "body": "",
+          "headers": {
+            "Content-Length": "6",
+            "Content-Type": "text/plain",
+            "ETag": "\"abc\"",
+            "Last-Modified": "Sun, 25 Oct 2026 09:00:00 GMT",
+            "X-Amz-Request-Id": "request-1"
+          },
+          "keyMode": "absent",
+          "method": "HEAD",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "alreadyExists",
+        "failureKind": "CONFLICT",
+        "output": {
+          "bucket": "acme-reports",
+          "contentType": "text/plain",
+          "eTag": "\"abc\"",
+          "key": "reports/weekly.md",
+          "lastModified": "2026-10-25T09:00:00Z",
+          "sizeBytes": 6
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0c58ff90-76a5-5ab6-9099-092233c989ba",
+      "input": {
+        "bucket": "acme-reports",
+        "byteContent": "aGVsbG8K",
+        "contentType": "text/plain",
+        "isCreateOnly": true,
+        "key": "reports/weekly.md"
+      },
+      "name": "put-already-exists",
+      "operation": "putObject"
+    },
+    {
+      "callId": "0c58ff90-76a5-5ab6-9099-092233c989ba",
+      "exchanges": [
+        {
+          "body": "\u003cError\u003e\u003cCode\u003eAccessDenied\u003c/Code\u003e\u003c/Error\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestBody": "hello",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Content-Md5": [
+              "XUFAKrxLKna5cZ2REBfFkg=="
+            ],
+            "Content-Type": [
+              "text/plain"
+            ],
+            "X-Amz-Content-Sha256": [
+              "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+            ],
+            "X-Amz-Meta-Dex-Idempotency-Key": [
+              "0c58ff90-76a5-5ab6-9099-092233c989ba"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "bucket": "acme-reports",
+          "contentType": "text/plain",
+          "key": "reports/weekly.md",
+          "sizeBytes": 5
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0c58ff90-76a5-5ab6-9099-092233c989ba",
+      "input": {
+        "bucket": "acme-reports",
+        "contentType": "text/plain",
+        "key": "reports/weekly.md",
+        "textContent": "hello"
+      },
+      "name": "put-rejected",
+      "operation": "putObject"
+    },
+    {
+      "callId": "0c58ff90-76a5-5ab6-9099-092233c989ba",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "bucket": "",
+          "key": "",
+          "sizeBytes": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0c58ff90-76a5-5ab6-9099-092233c989ba",
+      "input": {
+        "bucket": "BAD",
+        "contentType": "text/plain",
+        "key": "reports/weekly.md"
+      },
+      "name": "put-defect",
+      "operation": "putObject"
+    },
+    {
+      "callId": "0c58ff90-76a5-5ab6-9099-092233c989ba",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestBody": "hello\n",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Content-Md5": [
+              "sZRqySSS0jR8YjW00mERhA=="
+            ],
+            "Content-Type": [
+              "text/plain"
+            ],
+            "If-None-Match": [
+              "*"
+            ],
+            "X-Amz-Content-Sha256": [
+              "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+            ],
+            "X-Amz-Meta-Dex-Idempotency-Key": [
+              "0c58ff90-76a5-5ab6-9099-092233c989ba"
+            ],
+            "X-Amz-Meta-Report-Id": [
+              "weekly"
+            ]
+          },
+          "status": 412
+        },
+        {
+          "body": "",
+          "headers": {
+            "Content-Length": "6",
+            "Content-Type": "text/plain",
+            "ETag": "\"abc\"",
+            "Last-Modified": "Sun, 25 Oct 2026 09:00:00 GMT",
+            "X-Amz-Meta-Dex-Idempotency-Key": "0c58ff90-76a5-5ab6-9099-092233c989ba",
+            "X-Amz-Request-Id": "request-1"
+          },
+          "keyMode": "absent",
+          "method": "HEAD",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "stored",
+        "failureKind": "",
+        "output": {
+          "bucket": "acme-reports",
+          "contentType": "text/plain",
+          "eTag": "\"abc\"",
+          "isFromEarlierAttempt": true,
+          "key": "reports/weekly.md",
+          "lastModified": "2026-10-25T09:00:00Z",
+          "sizeBytes": 6
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0c58ff90-76a5-5ab6-9099-092233c989ba",
+      "input": {
+        "bucket": "acme-reports",
+        "contentType": "text/plain",
+        "isCreateOnly": true,
+        "key": "reports/weekly.md",
+        "metadata": {
+          "report-id": "weekly"
+        },
+        "textContent": "hello\n"
+      },
+      "name": "put-earlier-attempt",
+      "operation": "putObject"
+    },
+    {
+      "callId": "5908a179-2147-5839-9c64-529cd36f77d7",
+      "exchanges": [
+        {
+          "body": "\u003cError\u003e\u003cCode\u003eAccessDenied\u003c/Code\u003e\u003c/Error\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/acme-reports",
+          "query": {
+            "encoding-type": [
+              "url"
+            ],
+            "list-type": [
+              "2"
+            ],
+            "max-keys": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bucket": "acme-reports"
+      },
+      "name": "listObjects-rate-limit",
+      "operation": "listObjects"
+    },
+    {
+      "callId": "5908a179-2147-5839-9c64-529cd36f77d7",
+      "exchanges": [
+        {
+          "body": "\u003cError\u003e\u003cCode\u003eAccessDenied\u003c/Code\u003e\u003c/Error\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/acme-reports",
+          "query": {
+            "encoding-type": [
+              "url"
+            ],
+            "list-type": [
+              "2"
+            ],
+            "max-keys": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bucket": "acme-reports"
+      },
+      "name": "listObjects-server-failure",
+      "operation": "listObjects"
+    },
+    {
+      "callId": "5908a179-2147-5839-9c64-529cd36f77d7",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/acme-reports",
+          "query": {
+            "encoding-type": [
+              "url"
+            ],
+            "list-type": [
+              "2"
+            ],
+            "max-keys": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bucket": "acme-reports"
+      },
+      "name": "listObjects-transport",
+      "operation": "listObjects"
+    },
+    {
+      "callId": "1f33ce2c-d642-5b52-975b-615eddf12c28",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "HEAD",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bucket": "acme-reports",
+        "key": "reports/weekly.md"
+      },
+      "name": "headObject-rate-limit",
+      "operation": "headObject"
+    },
+    {
+      "callId": "1f33ce2c-d642-5b52-975b-615eddf12c28",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "HEAD",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bucket": "acme-reports",
+        "key": "reports/weekly.md"
+      },
+      "name": "headObject-server-failure",
+      "operation": "headObject"
+    },
+    {
+      "callId": "1f33ce2c-d642-5b52-975b-615eddf12c28",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "HEAD",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bucket": "acme-reports",
+        "key": "reports/weekly.md"
+      },
+      "name": "headObject-transport",
+      "operation": "headObject"
+    },
+    {
+      "callId": "61749191-24e5-5d7b-bc20-45d1a585a092",
+      "exchanges": [
+        {
+          "body": "\u003cError\u003e\u003cCode\u003eAccessDenied\u003c/Code\u003e\u003c/Error\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bucket": "acme-reports",
+        "key": "reports/weekly.md"
+      },
+      "name": "getObjectText-rate-limit",
+      "operation": "getObjectText"
+    },
+    {
+      "callId": "61749191-24e5-5d7b-bc20-45d1a585a092",
+      "exchanges": [
+        {
+          "body": "\u003cError\u003e\u003cCode\u003eAccessDenied\u003c/Code\u003e\u003c/Error\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bucket": "acme-reports",
+        "key": "reports/weekly.md"
+      },
+      "name": "getObjectText-server-failure",
+      "operation": "getObjectText"
+    },
+    {
+      "callId": "61749191-24e5-5d7b-bc20-45d1a585a092",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bucket": "acme-reports",
+        "key": "reports/weekly.md"
+      },
+      "name": "getObjectText-transport",
+      "operation": "getObjectText"
+    },
+    {
+      "callId": "0c58ff90-76a5-5ab6-9099-092233c989ba",
+      "exchanges": [
+        {
+          "body": "\u003cError\u003e\u003cCode\u003eAccessDenied\u003c/Code\u003e\u003c/Error\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestBody": "hello",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Content-Md5": [
+              "XUFAKrxLKna5cZ2REBfFkg=="
+            ],
+            "Content-Type": [
+              "text/plain"
+            ],
+            "X-Amz-Content-Sha256": [
+              "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+            ],
+            "X-Amz-Meta-Dex-Idempotency-Key": [
+              "0c58ff90-76a5-5ab6-9099-092233c989ba"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0c58ff90-76a5-5ab6-9099-092233c989ba",
+      "input": {
+        "bucket": "acme-reports",
+        "contentType": "text/plain",
+        "key": "reports/weekly.md",
+        "textContent": "hello"
+      },
+      "name": "putObject-rate-limit",
+      "operation": "putObject"
+    },
+    {
+      "callId": "0c58ff90-76a5-5ab6-9099-092233c989ba",
+      "exchanges": [
+        {
+          "body": "\u003cError\u003e\u003cCode\u003eAccessDenied\u003c/Code\u003e\u003c/Error\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestBody": "hello",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Content-Md5": [
+              "XUFAKrxLKna5cZ2REBfFkg=="
+            ],
+            "Content-Type": [
+              "text/plain"
+            ],
+            "X-Amz-Content-Sha256": [
+              "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+            ],
+            "X-Amz-Meta-Dex-Idempotency-Key": [
+              "0c58ff90-76a5-5ab6-9099-092233c989ba"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0c58ff90-76a5-5ab6-9099-092233c989ba",
+      "input": {
+        "bucket": "acme-reports",
+        "contentType": "text/plain",
+        "key": "reports/weekly.md",
+        "textContent": "hello"
+      },
+      "name": "putObject-server-failure",
+      "operation": "putObject"
+    },
+    {
+      "callId": "0c58ff90-76a5-5ab6-9099-092233c989ba",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestBody": "hello",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Content-Md5": [
+              "XUFAKrxLKna5cZ2REBfFkg=="
+            ],
+            "Content-Type": [
+              "text/plain"
+            ],
+            "X-Amz-Content-Sha256": [
+              "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+            ],
+            "X-Amz-Meta-Dex-Idempotency-Key": [
+              "0c58ff90-76a5-5ab6-9099-092233c989ba"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0c58ff90-76a5-5ab6-9099-092233c989ba",
+      "input": {
+        "bucket": "acme-reports",
+        "contentType": "text/plain",
+        "key": "reports/weekly.md",
+        "textContent": "hello"
+      },
+      "name": "putObject-transport",
+      "operation": "putObject"
+    },
+    {
+      "callId": "0c58ff90-76a5-5ab6-9099-092233c989ba",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestBody": "hello\n",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Content-Md5": [
+              "sZRqySSS0jR8YjW00mERhA=="
+            ],
+            "Content-Type": [
+              "text/plain"
+            ],
+            "If-None-Match": [
+              "*"
+            ],
+            "X-Amz-Content-Sha256": [
+              "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+            ],
+            "X-Amz-Meta-Dex-Idempotency-Key": [
+              "0c58ff90-76a5-5ab6-9099-092233c989ba"
+            ]
+          },
+          "status": 412
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "HEAD",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "CONFLICT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0c58ff90-76a5-5ab6-9099-092233c989ba",
+      "input": {
+        "bucket": "acme-reports",
+        "contentType": "text/plain",
+        "isCreateOnly": true,
+        "key": "reports/weekly.md",
+        "textContent": "hello\n"
+      },
+      "name": "put-precondition-removed",
+      "operation": "putObject"
+    },
+    {
+      "callId": "0c58ff90-76a5-5ab6-9099-092233c989ba",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestBody": "hello\n",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Content-Md5": [
+              "sZRqySSS0jR8YjW00mERhA=="
+            ],
+            "Content-Type": [
+              "text/plain"
+            ],
+            "If-None-Match": [
+              "*"
+            ],
+            "X-Amz-Content-Sha256": [
+              "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+            ],
+            "X-Amz-Meta-Dex-Idempotency-Key": [
+              "0c58ff90-76a5-5ab6-9099-092233c989ba"
+            ]
+          },
+          "status": 412
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "HEAD",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "bucket": "acme-reports",
+          "contentType": "text/plain",
+          "key": "reports/weekly.md",
+          "sizeBytes": 6
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0c58ff90-76a5-5ab6-9099-092233c989ba",
+      "input": {
+        "bucket": "acme-reports",
+        "contentType": "text/plain",
+        "isCreateOnly": true,
+        "key": "reports/weekly.md",
+        "textContent": "hello\n"
+      },
+      "name": "put-precondition-read-denied",
+      "operation": "putObject"
+    },
+    {
+      "callId": "0c58ff90-76a5-5ab6-9099-092233c989ba",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestBody": "hello\n",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Content-Md5": [
+              "sZRqySSS0jR8YjW00mERhA=="
+            ],
+            "Content-Type": [
+              "text/plain"
+            ],
+            "If-None-Match": [
+              "*"
+            ],
+            "X-Amz-Content-Sha256": [
+              "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+            ],
+            "X-Amz-Meta-Dex-Idempotency-Key": [
+              "0c58ff90-76a5-5ab6-9099-092233c989ba"
+            ]
+          },
+          "status": 412
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "HEAD",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0c58ff90-76a5-5ab6-9099-092233c989ba",
+      "input": {
+        "bucket": "acme-reports",
+        "contentType": "text/plain",
+        "isCreateOnly": true,
+        "key": "reports/weekly.md",
+        "textContent": "hello\n"
+      },
+      "name": "put-precondition-read-retry",
+      "operation": "putObject"
+    },
+    {
+      "callId": "0c58ff90-76a5-5ab6-9099-092233c989ba",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestBody": "hello\n",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Content-Md5": [
+              "sZRqySSS0jR8YjW00mERhA=="
+            ],
+            "Content-Type": [
+              "text/plain"
+            ],
+            "If-None-Match": [
+              "*"
+            ],
+            "X-Amz-Content-Sha256": [
+              "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+            ],
+            "X-Amz-Meta-Dex-Idempotency-Key": [
+              "0c58ff90-76a5-5ab6-9099-092233c989ba"
+            ]
+          },
+          "status": 412
+        },
+        {
+          "body": "",
+          "headers": {
+            "Content-Length": "6"
+          },
+          "keyMode": "absent",
+          "method": "HEAD",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "bucket": "acme-reports",
+          "contentType": "text/plain",
+          "key": "reports/weekly.md",
+          "sizeBytes": 6
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0c58ff90-76a5-5ab6-9099-092233c989ba",
+      "input": {
+        "bucket": "acme-reports",
+        "contentType": "text/plain",
+        "isCreateOnly": true,
+        "key": "reports/weekly.md",
+        "textContent": "hello\n"
+      },
+      "name": "put-precondition-invalid-metadata",
+      "operation": "putObject"
+    },
+    {
+      "attempts": 2,
+      "callId": "0c58ff90-76a5-5ab6-9099-092233c989ba",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestBody": "hello\n",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Content-Md5": [
+              "sZRqySSS0jR8YjW00mERhA=="
+            ],
+            "Content-Type": [
+              "text/plain"
+            ],
+            "If-None-Match": [
+              "*"
+            ],
+            "X-Amz-Content-Sha256": [
+              "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+            ],
+            "X-Amz-Meta-Dex-Idempotency-Key": [
+              "0c58ff90-76a5-5ab6-9099-092233c989ba"
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestBody": "hello\n",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "Content-Md5": [
+              "sZRqySSS0jR8YjW00mERhA=="
+            ],
+            "Content-Type": [
+              "text/plain"
+            ],
+            "If-None-Match": [
+              "*"
+            ],
+            "X-Amz-Content-Sha256": [
+              "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+            ],
+            "X-Amz-Meta-Dex-Idempotency-Key": [
+              "0c58ff90-76a5-5ab6-9099-092233c989ba"
+            ]
+          },
+          "status": 412
+        },
+        {
+          "body": "",
+          "headers": {
+            "Content-Length": "6",
+            "Content-Type": "text/plain",
+            "ETag": "\"abc\"",
+            "Last-Modified": "Sun, 25 Oct 2026 09:00:00 GMT",
+            "X-Amz-Meta-Dex-Idempotency-Key": "0c58ff90-76a5-5ab6-9099-092233c989ba"
+          },
+          "keyMode": "absent",
+          "method": "HEAD",
+          "path": "/acme-reports/reports/weekly.md",
+          "requestHeaders": {
+            "Accept-Encoding": [
+              "identity"
+            ],
+            "X-Amz-Content-Sha256": [
+              "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "stored",
+        "failureKind": "",
+        "output": {
+          "bucket": "acme-reports",
+          "contentType": "text/plain",
+          "eTag": "\"abc\"",
+          "isFromEarlierAttempt": true,
+          "key": "reports/weekly.md",
+          "lastModified": "2026-10-25T09:00:00Z",
+          "sizeBytes": 6
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0c58ff90-76a5-5ab6-9099-092233c989ba",
+      "input": {
+        "bucket": "acme-reports",
+        "contentType": "text/plain",
+        "isCreateOnly": true,
+        "key": "reports/weekly.md",
+        "textContent": "hello\n"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "put-lost-response-then-own-write",
+      "operation": "putObject"
+    }
+  ],
+  "schemaVersion": 1
+}
