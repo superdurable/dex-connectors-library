@@ -21,7 +21,6 @@ from ..models import ExecuteStatementInput, QueryRowsInput, RowSet, StatementExe
 
 StepInput = TypeVar("StepInput")
 
-
 def new_query_step(
     *,
     step_type: str,
@@ -43,17 +42,11 @@ def new_query_step(
     if isinstance(annotations, StepAnnotations):
         step_annotations = annotations
     else:
-        if not isinstance(annotations, Mapping) or set(annotations) != {
-            "groupId",
-            "groupLabel",
-            "explanation",
-        }:
+        if not isinstance(annotations, Mapping) or set(annotations) != {"groupId", "groupLabel", "explanation"}:
             raise ValueError("PostgreSQL Step annotations require groupId, groupLabel, and explanation")
         if any(not isinstance(value, str) for value in annotations.values()):
             raise ValueError("PostgreSQL Step annotations must be strings")
-        step_annotations = StepAnnotations(
-            annotations["groupId"], annotations["groupLabel"], annotations["explanation"]
-        )
+        step_annotations = StepAnnotations(annotations["groupId"], annotations["groupLabel"], annotations["explanation"])
     branches = {
         "completed": completed,
     }
@@ -79,9 +72,7 @@ def new_query_step(
         )
     )
 
-
-setattr(new_query_step, "__module__", "dex_connectors.postgresql.steps")
-
+setattr(new_query_step, '__module__', 'dex_connectors.postgresql.steps')
 
 def new_execute_step(
     *,
@@ -105,17 +96,11 @@ def new_execute_step(
     if isinstance(annotations, StepAnnotations):
         step_annotations = annotations
     else:
-        if not isinstance(annotations, Mapping) or set(annotations) != {
-            "groupId",
-            "groupLabel",
-            "explanation",
-        }:
+        if not isinstance(annotations, Mapping) or set(annotations) != {"groupId", "groupLabel", "explanation"}:
             raise ValueError("PostgreSQL Step annotations require groupId, groupLabel, and explanation")
         if any(not isinstance(value, str) for value in annotations.values()):
             raise ValueError("PostgreSQL Step annotations must be strings")
-        step_annotations = StepAnnotations(
-            annotations["groupId"], annotations["groupLabel"], annotations["explanation"]
-        )
+        step_annotations = StepAnnotations(annotations["groupId"], annotations["groupLabel"], annotations["explanation"])
     branches = {
         "completed": completed,
     }
@@ -143,8 +128,7 @@ def new_execute_step(
         )
     )
 
-
-setattr(new_execute_step, "__module__", "dex_connectors.postgresql.steps")
+setattr(new_execute_step, '__module__', 'dex_connectors.postgresql.steps')
 
 
 def _bound_operation(connection: Connection, operation_name: str) -> Any:

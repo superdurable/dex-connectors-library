@@ -2,6 +2,10 @@
 # SPDX-License-Identifier: MIT
 """Native-driver decisions mirrored from the Go PostgreSQL connector tests."""
 
+import asyncio
+import json
+from dataclasses import replace
+
 import psycopg
 import pytest
 from dex_connectors.sdk import (
@@ -16,7 +20,13 @@ from dex_connectors.sdk import (
 )
 
 from dex_connectors.postgresql import Client, Config, Credentials, ExecuteStatementInput, QueryRowsInput
-from dex_connectors.postgresql.client import _bind_parameters, _classify_failure, _decode_column, _read_result
+from dex_connectors.postgresql.client import (
+    _bind_parameters,
+    _classify_failure,
+    _command_name,
+    _decode_column,
+    _read_result,
+)
 from dex_connectors.postgresql.models import Column
 
 REFERENCE = ConnectionRef("postgresql", "test")
@@ -75,13 +85,21 @@ class _Cursor:
     async def __aexit__(self, *_: object) -> None:
         return None
 
-    async def execute(self, statement: str, parameters: tuple[str | None, ...] = ()) -> None:
+    async def execute(
+        self, statement: str, parameters: tuple[str | None, ...] = (), *, prepare: bool = False
+    ) -> None:
         self.connection.statements.append((statement, parameters))
+        if statement == self.connection.statement and prepare:
+            self.connection.prepared_statements.append(statement)
         if statement == "COMMIT":
+            if self.connection.commit_wait is not None:
+                await self.connection.commit_wait.wait()
             if self.connection.commit_error is not None:
                 raise self.connection.commit_error
             self.statusmessage = "COMMIT"
         elif statement == self.connection.statement:
+            if self.connection.statement_wait is not None:
+                await self.connection.statement_wait.wait()
             if self.connection.statement_error is not None:
                 raise self.connection.statement_error
             self.pgresult = self.connection.result
@@ -103,8 +121,11 @@ class _Connection:
         self.result = result
         self.command = command
         self.statements: list[tuple[str, tuple[str | None, ...]]] = []
+        self.prepared_statements: list[str] = []
         self.statement_error: Exception | None = None
         self.commit_error: Exception | None = None
+        self.commit_wait: asyncio.Event | None = None
+        self.statement_wait: asyncio.Event | None = None
         self.closed = False
         self.info = _Info()
         self.pgconn = _PgConn()
@@ -126,6 +147,7 @@ class _Connection:
         ("53300", "statement", "retry", FailureKind.AVAILABILITY),
         ("58030", "statement", "retry", FailureKind.AVAILABILITY),
         ("08006", "statement", "retry", FailureKind.TRANSPORT),
+        ("08P01", "statement", "defect", FailureKind.VALIDATION),
         ("28P01", "connect", "rejected", FailureKind.AUTHENTICATION),
         ("42501", "statement", "rejected", FailureKind.AUTHORIZATION),
         ("25006", "statement", "rejected", FailureKind.AUTHORIZATION),
@@ -157,6 +179,22 @@ def test_transport_and_conclusive_connect_classification() -> None:
 
 
 @pytest.mark.parametrize(
+    ("message", "disposition", "kind"),
+    [
+        ("FATAL: password authentication failed for user test", "rejected", FailureKind.AUTHENTICATION),
+        ("FATAL: database test does not exist", "rejected", FailureKind.NOT_FOUND),
+        ("FATAL: role test does not exist", "rejected", FailureKind.AUTHENTICATION),
+        ("FATAL: too many connections", "retry", FailureKind.AVAILABILITY),
+        ("root certificate file /missing does not exist", "rejected", FailureKind.AUTHENTICATION),
+    ],
+)
+def test_libpq_connect_messages_without_sqlstate(message: str, disposition: str, kind: FailureKind) -> None:
+    classified = _classify_failure(psycopg.OperationalError(message), "connect")
+    assert (classified.disposition, classified.kind) == (disposition, kind)
+    assert "test" not in classified.message
+
+
+@pytest.mark.parametrize(
     "statement", ["", "BEGIN", "-- comment\nCOMMIT", "/* outer /* inner */ end */ COPY t FROM STDIN"]
 )
 def test_connector_owned_statements_are_defects(statement: str) -> None:
@@ -180,12 +218,81 @@ def test_parameter_encoding_and_type_mapping() -> None:
 
 
 @pytest.mark.parametrize(
+    ("oid", "value", "expected"),
+    [
+        (1184, b"2024-01-01 00:00:00.5+00", "2024-01-01T00:00:00.5Z"),
+        (1184, b"2024-01-01 00:00:00.500000+00", "2024-01-01T00:00:00.5Z"),
+        (1184, b"infinity", "infinity"),
+        (1184, b"-infinity", "-infinity"),
+        (1184, b"0044-03-15 00:00:00+00 BC", "0044-03-15 00:00:00+00 BC"),
+        (1184, b"10000-01-01 00:00:00+00", "10000-01-01 00:00:00+00"),
+        (1114, b"2024-01-01 00:00:00.500000", "2024-01-01T00:00:00.5"),
+        (1114, b"-infinity", "-infinity"),
+        (1114, b"0044-03-15 00:00:00 BC", "0044-03-15 00:00:00 BC"),
+        (1114, b"10000-01-01 00:00:00", "10000-01-01 00:00:00"),
+    ],
+)
+def test_timestamp_text_matches_go(oid: int, value: bytes, expected: str) -> None:
+    assert _decode_column(Column("moment", "", oid), value) == expected
+
+
+def test_json_numbers_never_change_on_serialization() -> None:
+    column = Column("document", "json", 114)
+    plain = _decode_column(column, b'{"text":"safe","array":[true,null,42]}')
+    assert json.dumps(plain, separators=(",", ":")) == '{"text":"safe","array":[true,null,42]}'
+    for value in (b'{"a":1.10}', b'{"b":12345678901234567890.123456789}', b'{"n":1e400}'):
+        with pytest.raises(ValueError, match='column "document"'):
+            _decode_column(column, value)
+
+
+@pytest.mark.parametrize(
+    ("status", "command"),
+    [
+        ("INSERT 0 1", "INSERT"),
+        ("UPDATE 3", "UPDATE"),
+        ("CREATE TABLE", "CREATE TABLE"),
+        ("ALTER TABLE", "ALTER TABLE"),
+        ("DROP TABLE", "DROP TABLE"),
+        ("CREATE INDEX", "CREATE INDEX"),
+    ],
+)
+def test_command_name_keeps_multiword_commands(status: str, command: str) -> None:
+    assert _command_name(status) == command
+
+
+@pytest.mark.parametrize(
     "host", ["", " db.example.com", 'db"example.com', "a,b", "https://db.example.com", "db\x7f"]
 )
 def test_connection_rejects_invalid_host(host: str) -> None:
     credentials = StaticCredentialProvider({REFERENCE: Credentials(SecretString("placeholder"))})
     with pytest.raises(ValueError, match="host"):
         Client(Config(host, "test", "test"), credentials)
+
+
+@pytest.mark.asyncio
+async def test_tls_root_selection(monkeypatch: pytest.MonkeyPatch) -> None:
+    options: dict[str, object] = {}
+
+    async def connect(**kwargs: object) -> object:
+        options.update(kwargs)
+        return object()
+
+    monkeypatch.setattr(psycopg.AsyncConnection, "connect", connect)
+    monkeypatch.delenv("PGSSLROOTCERT", raising=False)
+    await Client(replace(_client().config, ssl_mode="verify-full"), _client().credentials)._connect("secret")
+    assert options["sslrootcert"] == "system"
+    with pytest.raises(ValueError, match="PGSSLROOTCERT"):
+        await Client(replace(_client().config, ssl_mode="verify-ca"), _client().credentials)._connect(
+            "secret"
+        )
+    monkeypatch.setenv("PGSSLROOTCERT", "system")
+    with pytest.raises(ValueError, match="CA file"):
+        await Client(replace(_client().config, ssl_mode="verify-ca"), _client().credentials)._connect(
+            "secret"
+        )
+    monkeypatch.setenv("PGSSLROOTCERT", "/tmp/private-postgresql-ca.pem")
+    await Client(replace(_client().config, ssl_mode="verify-ca"), _client().credentials)._connect("secret")
+    assert options["sslrootcert"] == "/tmp/private-postgresql-ca.pem"
 
 
 def test_bounded_rows_and_duplicate_columns() -> None:
@@ -210,7 +317,23 @@ async def test_query_branches_and_no_commit(monkeypatch: pytest.MonkeyPatch) -> 
     result = await _client(max_rows=1).query().invoke(_call("query"), QueryRowsInput(statement, (1,)))
     assert result.branch == "truncated" and result.value.rows == ({"n": 1},)
     assert all(sql != "COMMIT" for sql, _ in connection.statements)
+    assert connection.prepared_statements == [statement]
     assert connection.closed
+
+
+@pytest.mark.asyncio
+async def test_parameterless_query_uses_prepared_protocol(monkeypatch: pytest.MonkeyPatch) -> None:
+    statement = "SELECT 1 AS n"
+    connection = _Connection(statement, _Result((("n", 23),), ((b"1",),)))
+
+    async def connect(_: Client, password: str) -> _Connection:
+        return connection
+
+    monkeypatch.setattr(Client, "_connect", connect)
+    outcome = await _client().query().invoke(_call("query"), QueryRowsInput(statement))
+    assert outcome.branch == "completed"
+    assert connection.prepared_statements == [statement]
+    assert (statement, ()) in connection.statements
 
 
 @pytest.mark.asyncio
@@ -228,6 +351,7 @@ async def test_execute_limits_commit_and_uncertainty(monkeypatch: pytest.MonkeyP
     assert completed.branch == "completed" and completed.value.rows_affected == 1
     assert connection.statements[-2][1] == ("item", str(CALL_ID))
     assert connection.statements[-1][0] == "COMMIT"
+    assert connection.prepared_statements == [statement]
     connection.statements.clear()
     limited = (
         await _client().execute().invoke(_call("execute"), ExecuteStatementInput(statement, ("item",), 2, 0))
@@ -326,3 +450,37 @@ async def test_closed_connection_before_commit_retries(monkeypatch: pytest.Monke
     outcome = await _client().execute().invoke(_call("execute"), ExecuteStatementInput(statement))
     assert outcome.kind == "retry" and outcome.failure.kind == FailureKind.TRANSPORT
     assert all(sql != "COMMIT" for sql, _ in connection.statements)
+
+
+@pytest.mark.asyncio
+async def test_call_deadline_classifies_connect_and_commit(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def slow_connect(_: Client, password: str) -> _Connection:
+        await asyncio.Event().wait()
+        raise AssertionError("unreachable")
+
+    monkeypatch.setattr("dex_connectors.postgresql.client._call_deadline_seconds", lambda _: 0.01)
+    monkeypatch.setattr(Client, "_connect", slow_connect)
+    query = await _client().query().invoke(_call("query"), QueryRowsInput("SELECT 1"))
+    assert query.kind == "retry" and query.failure.kind == FailureKind.AVAILABILITY
+
+    query_connection = _Connection("SELECT 1", _Result((("n", 23),), ((b"1",),)))
+    query_connection.statement_wait = asyncio.Event()
+
+    async def connect_query(_: Client, password: str) -> _Connection:
+        return query_connection
+
+    monkeypatch.setattr(Client, "_connect", connect_query)
+    timed_out_query = await _client().query().invoke(_call("query"), QueryRowsInput("SELECT 1"))
+    assert timed_out_query.kind == "retry" and timed_out_query.failure.kind == FailureKind.TRANSPORT
+
+    statement = "INSERT INTO t VALUES (1)"
+    connection = _Connection(statement, _Result((), (), 1), "INSERT 0 1")
+    connection.commit_wait = asyncio.Event()
+
+    async def connect(_: Client, password: str) -> _Connection:
+        return connection
+
+    monkeypatch.setattr(Client, "_connect", connect)
+    execute = await _client().execute().invoke(_call("execute"), ExecuteStatementInput(statement))
+    assert execute.kind == "uncertain" and execute.failure.kind == FailureKind.TRANSPORT
+    assert any(sql == "COMMIT" for sql, _ in connection.statements)

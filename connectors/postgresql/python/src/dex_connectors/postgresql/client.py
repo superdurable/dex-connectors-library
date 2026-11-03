@@ -2,10 +2,12 @@
 # SPDX-License-Identifier: MIT
 """Native PostgreSQL provider calls and Go-compatible attempt classification."""
 
+import asyncio
 import base64
 import ipaddress
 import json
 import math
+import os
 import re
 import unicodedata
 from dataclasses import dataclass
@@ -87,6 +89,7 @@ _OWNED_KEYWORDS = {
 }
 _NUMERIC = re.compile(r"^(?:-?[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?|NaN|-?Infinity)$")
 _INTEGER = re.compile(r"^-?[0-9]+$")
+_EXTENDED_YEAR = re.compile(r"^[0-9]{5,}-")
 
 
 @dataclass(frozen=True, slots=True)
@@ -158,6 +161,9 @@ class Client:
 
     async def _connect(self, password: str) -> psycopg.AsyncConnection[Any]:
         config = self.config
+        root_certificate = os.environ.get("PGSSLROOTCERT")
+        if config.ssl_mode == "verify-ca" and root_certificate in (None, "", "system"):
+            raise ValueError("sslMode verify-ca requires PGSSLROOTCERT to name a CA file on the Worker")
         return await psycopg.AsyncConnection.connect(
             host=config.host,
             port=config.port,
@@ -165,6 +171,7 @@ class Client:
             user=config.user,
             password=password,
             sslmode=config.ssl_mode,
+            sslrootcert=root_certificate or ("system" if config.ssl_mode == "verify-full" else None),
             connect_timeout=math.ceil(config.connect_timeout_seconds),
             target_session_attrs="any",
             application_name="dex-postgresql-connector",
@@ -221,27 +228,29 @@ class QueryRowsOperation:
         connection: psycopg.AsyncConnection[Any] | None = None
         phase = "connect"
         try:
-            connection = await self.client._connect(password)
-            phase = "begin"
-            await self.client._begin(connection, True)
-            phase = "statement"
-            async with connection.cursor() as cursor:
-                await cursor.execute(input.statement, parameters)
-                columns, rows, is_truncated, _ = _read_result(cursor.pgresult, self.client.config)
-            receipt = _receipt(call, connection)
-            row_set = RowSet(columns=columns, rows=rows, truncated=is_truncated)
-            if is_truncated:
-                return QueryAttempt.branch_result(
-                    TRUNCATED,
-                    row_set,
-                    receipt,
-                    _failure(
-                        "query",
-                        FailureKind.RESPONSE_TOO_LARGE,
-                        "the statement returned more rows or bytes than maxRows or maxResponseBytes allow",
-                    ),
-                )
-            return QueryAttempt.branch_result(COMPLETED, row_set, receipt)
+            async with asyncio.timeout(_call_deadline_seconds(self.client.config)):
+                connection = await self.client._connect(password)
+                phase = "begin"
+                await self.client._begin(connection, True)
+                phase = "statement"
+                async with connection.cursor() as cursor:
+                    await cursor.execute(input.statement, parameters, prepare=True)
+                    columns, rows, is_truncated, _ = _read_result(cursor.pgresult, self.client.config)
+                receipt = _receipt(call, connection)
+                row_set = RowSet(columns=columns, rows=rows, truncated=is_truncated)
+                if is_truncated:
+                    return QueryAttempt.branch_result(
+                        TRUNCATED,
+                        row_set,
+                        receipt,
+                        _failure(
+                            "query",
+                            FailureKind.RESPONSE_TOO_LARGE,
+                            "the statement returned more rows or bytes than maxRows or "
+                            "maxResponseBytes allow",
+                        ),
+                    )
+                return QueryAttempt.branch_result(COMPLETED, row_set, receipt)
         except Exception as error:
             classified = _classify_failure(error, phase)
             if classified.disposition in ("retry", "uncertain"):
@@ -300,50 +309,54 @@ class ExecuteStatementOperation:
         connection: psycopg.AsyncConnection[Any] | None = None
         phase = "connect"
         try:
-            connection = await self.client._connect(password)
-            phase = "begin"
-            await self.client._begin(connection, False)
-            phase = "statement"
-            async with connection.cursor() as cursor:
-                await cursor.execute(input.statement, parameters)
-                columns, rows, is_truncated, affected = _read_result(cursor.pgresult, self.client.config)
-                command = (cursor.statusmessage or "").split(" ")[0]
-            if is_truncated:
-                return _execute_failure(
-                    LIMIT_EXCEEDED,
-                    FailureKind.RESPONSE_TOO_LARGE,
-                    "RETURNING rows exceeded maxRows or maxResponseBytes, so the transaction was rolled back",
-                    _receipt(call, connection),
-                )
-            if input.max_rows_affected is not None and affected > input.max_rows_affected:
-                return _execute_failure(
-                    LIMIT_EXCEEDED,
-                    FailureKind.CONFLICT,
-                    f"the statement affected {affected} rows but maxRowsAffected is "
-                    f"{input.max_rows_affected}, so the transaction was rolled back",
-                    _receipt(call, connection),
-                )
-            if connection.closed:
-                return MutationAttempt.retry(
-                    _failure(
-                        "execute",
-                        FailureKind.TRANSPORT,
-                        "the connection ended or the call deadline passed before COMMIT "
-                        "was sent, so nothing was committed",
-                    )
-                )
-            phase = "commit"
-            async with connection.cursor() as cursor:
-                await cursor.execute("COMMIT")
-                if cursor.statusmessage != "COMMIT":
+            async with asyncio.timeout(_call_deadline_seconds(self.client.config)):
+                connection = await self.client._connect(password)
+                phase = "begin"
+                await self.client._begin(connection, False)
+                phase = "statement"
+                async with connection.cursor() as cursor:
+                    await cursor.execute(input.statement, parameters, prepare=True)
+                    columns, rows, is_truncated, affected = _read_result(cursor.pgresult, self.client.config)
+                    command = _command_name(cursor.statusmessage or "")
+                if is_truncated:
                     return _execute_failure(
-                        PROVIDER_REJECTED,
-                        FailureKind.PROVIDER_REJECTION,
-                        "PostgreSQL rolled back the transaction at COMMIT",
+                        LIMIT_EXCEEDED,
+                        FailureKind.RESPONSE_TOO_LARGE,
+                        "RETURNING rows exceeded maxRows or maxResponseBytes, so the transaction "
+                        "was rolled back",
                         _receipt(call, connection),
                     )
-            value = StatementExecution(command=command, rows_affected=affected, columns=columns, rows=rows)
-            return MutationAttempt.branch_result(COMPLETED, value, _receipt(call, connection))
+                if input.max_rows_affected is not None and affected > input.max_rows_affected:
+                    return _execute_failure(
+                        LIMIT_EXCEEDED,
+                        FailureKind.CONFLICT,
+                        f"the statement affected {affected} rows but maxRowsAffected is "
+                        f"{input.max_rows_affected}, so the transaction was rolled back",
+                        _receipt(call, connection),
+                    )
+                if connection.closed:
+                    return MutationAttempt.retry(
+                        _failure(
+                            "execute",
+                            FailureKind.TRANSPORT,
+                            "the connection ended or the call deadline passed before COMMIT "
+                            "was sent, so nothing was committed",
+                        )
+                    )
+                phase = "commit"
+                async with connection.cursor() as cursor:
+                    await cursor.execute("COMMIT")
+                    if cursor.statusmessage != "COMMIT":
+                        return _execute_failure(
+                            PROVIDER_REJECTED,
+                            FailureKind.PROVIDER_REJECTION,
+                            "PostgreSQL rolled back the transaction at COMMIT",
+                            _receipt(call, connection),
+                        )
+                value = StatementExecution(
+                    command=command, rows_affected=affected, columns=columns, rows=rows
+                )
+                return MutationAttempt.branch_result(COMPLETED, value, _receipt(call, connection))
         except Exception as error:
             classified = _classify_failure(error, phase)
             failure = _failure("execute", classified.kind, classified.message)
@@ -374,6 +387,17 @@ def _is_local_host(host: str) -> bool:
         return ipaddress.ip_address(host).is_loopback
     except ValueError:
         return False
+
+
+def _call_deadline_seconds(config: Config) -> float:
+    return config.connect_timeout_seconds + config.statement_timeout_seconds + 5
+
+
+def _command_name(status_message: str) -> str:
+    words = status_message.split()
+    while words and words[-1].isascii() and words[-1].isdigit():
+        words.pop()
+    return " ".join(words)
 
 
 def _leading_keyword(statement: str) -> str:
@@ -521,21 +545,73 @@ def _decode_column(column: Column, raw: bytes | None) -> Any:
                 raise ValueError
             return base64.b64encode(bytes.fromhex(value[2:])).decode("ascii")
         if oid in (114, 3802):
-            return json.loads(value)
+            return json.loads(
+                value,
+                parse_float=_exact_json_float,
+                parse_int=_exact_json_int,
+                parse_constant=_reject_json_constant,
+            )
         if oid == 1184:
+            if value in ("infinity", "-infinity") or value.endswith(" BC") or _EXTENDED_YEAR.match(value):
+                return value
             moment = datetime.fromisoformat(value.replace(" ", "T"))
-            return moment.astimezone(UTC).isoformat().replace("+00:00", "Z")
+            if moment.tzinfo is None:
+                raise ValueError
+            return _trim_timestamp_fraction(moment.astimezone(UTC).isoformat().replace("+00:00", "Z"))
         if oid == 1114:
-            return value.replace(" ", "T", 1)
+            if value in ("infinity", "-infinity") or value.endswith(" BC") or _EXTENDED_YEAR.match(value):
+                return value
+            datetime.fromisoformat(value.replace(" ", "T"))
+            return _trim_timestamp_fraction(value.replace(" ", "T", 1))
         return value
     except (UnicodeError, ValueError, OverflowError, json.JSONDecodeError) as error:
         raise _InvalidValue(column) from error
+
+
+def _exact_json_float(number_text: str) -> float:
+    number = float(number_text)
+    if not math.isfinite(number) or json.dumps(number) != number_text:
+        raise ValueError("JSON decimal cannot be encoded without changing its text")
+    return number
+
+
+def _exact_json_int(number_text: str) -> int:
+    number = int(number_text)
+    if str(number) != number_text:
+        raise ValueError("JSON integer cannot be encoded without changing its text")
+    return number
+
+
+def _reject_json_constant(_constant: str) -> None:
+    raise ValueError("JSON contains a non-standard numeric constant")
+
+
+def _trim_timestamp_fraction(timestamp_text: str) -> str:
+    def trim(match: re.Match[str]) -> str:
+        fraction = match.group(1).rstrip("0")
+        return f".{fraction}" if fraction else ""
+
+    return re.sub(r"\.(\d+)(?=Z?$)", trim, timestamp_text)
 
 
 def _classify_failure(error: Exception, phase: str) -> _ClassifiedFailure:
     if isinstance(error, _InvalidValue):
         return _ClassifiedFailure("invalid", FailureKind.PROTOCOL, str(error))
     sql_state = error.sqlstate if isinstance(error, psycopg.Error) else None
+    if not sql_state and isinstance(error, psycopg.Error):
+        sql_state = getattr(getattr(error, "diag", None), "sqlstate", None)
+    if not sql_state and phase == "connect":
+        connect_message = str(error).lower()
+        if "password authentication failed" in connect_message:
+            sql_state = "28P01"
+        elif "database" in connect_message and "does not exist" in connect_message:
+            sql_state = "3D000"
+        elif (
+            "role" in connect_message and "does not exist" in connect_message
+        ) or "no pg_hba.conf entry" in connect_message:
+            sql_state = "28000"
+        elif "too many connections" in connect_message or "remaining connection slots" in connect_message:
+            sql_state = "53300"
     if sql_state:
         if phase == "commit" and not sql_state.startswith(("23", "40")):
             return _ClassifiedFailure(
@@ -551,7 +627,9 @@ def _classify_failure(error: Exception, phase: str) -> _ClassifiedFailure:
             disposition, kind = "retry", FailureKind.CONFLICT
         elif sql_state in ("57P01", "57P02", "57P03") or sql_state.startswith(("53", "58")):
             disposition, kind = "retry", FailureKind.AVAILABILITY
-        elif sql_state.startswith("08"):
+        elif sql_state == "08P01":
+            disposition, kind = "defect", FailureKind.VALIDATION
+        elif sql_state in ("08000", "08001", "08003", "08004", "08006"):
             disposition, kind = "retry", FailureKind.TRANSPORT
         elif sql_state in ("28000", "28P01"):
             kind = FailureKind.AUTHENTICATION
@@ -570,7 +648,12 @@ def _classify_failure(error: Exception, phase: str) -> _ClassifiedFailure:
         )
     if phase == "connect":
         message = str(error).lower()
-        if "certificate verify failed" in message or "certificate verification failed" in message:
+        if (
+            "certificate verify failed" in message
+            or "certificate verification failed" in message
+            or "root certificate file" in message
+            or "pgsslrootcert" in message
+        ):
             return _ClassifiedFailure(
                 "rejected",
                 FailureKind.AUTHENTICATION,

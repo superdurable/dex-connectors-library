@@ -9,6 +9,7 @@ from dex_connectors.sdk import SecretString
 
 @dataclass(frozen=True, slots=True)
 class Config:
+
     host: str
     database: str
     user: str
@@ -19,13 +20,12 @@ class Config:
     max_rows: int = 1000
     max_response_bytes: int = 1048576
 
-
-setattr(Config, "__module__", "dex_connectors.postgresql.client")
+setattr(Config, '__module__', 'dex_connectors.postgresql.client')
 
 
 @dataclass(frozen=True, slots=True)
 class Credentials:
+
     password: SecretString
 
-
-setattr(Credentials, "__module__", "dex_connectors.postgresql.client")
+setattr(Credentials, '__module__', 'dex_connectors.postgresql.client')
