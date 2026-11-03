@@ -51,13 +51,13 @@ class RequestTrace:
         del info
         if event.endswith("send_request_headers.started"):
             self.request_headers_started = True
-        if event.endswith("connect_tcp.failed") or event.endswith("connect_unix_socket.failed"):
+        if event.endswith(("connect_tcp.failed", "connect_unix_socket.failed", "start_tls.failed")):
             if not self.request_headers_started:
                 self.connection_failed_before_send = True
 
     @property
     def provably_not_sent(self) -> bool:
-        """Report only a traced pre-dispatch connection failure as not sent."""
+        """Report traced DNS, connect, or TLS failure before HTTP dispatch."""
         return self.connection_failed_before_send and not self.request_headers_started
 
 
