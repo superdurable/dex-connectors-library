@@ -10,6 +10,7 @@ import { expect, it } from 'vitest';
 import { MySQLClient } from '../src/client.js';
 
 const host = process.env.MYSQL_CONNECTOR_TEST_HOST;
+if (process.env.CI && !host) throw new Error('MYSQL_CONNECTOR_TEST_HOST is required in CI');
 it.skipIf(!host)('runs both operations against the CI MySQL service and rolls back a limited write', async () => {
   const database = process.env.MYSQL_CONNECTOR_TEST_DATABASE || 'connector_test';
   const user = process.env.MYSQL_CONNECTOR_TEST_USER || 'root';
@@ -21,12 +22,21 @@ it.skipIf(!host)('runs both operations against the CI MySQL service and rolls ba
   const provider = new MySQLClient({ host: host!, port, database, user, sslMode }, { resolve: async () => ({ password: new SecretString(password) }) });
   const call = (operationId: string): Call => ({ id: randomUUID(), idempotencyKey: randomUUID(), connection: { provider: 'mysql', name: 'live' }, operation: { connectorId: 'mysql', operationId }, context: { cancellationSignal: new AbortController().signal } }) as Call;
   try {
-    await administration.query(`CREATE TABLE ${table} (id BIGINT AUTO_INCREMENT PRIMARY KEY, order_id VARCHAR(64) UNIQUE NOT NULL, amount DECIMAL(10,2) NOT NULL, idempotency_key CHAR(36) UNIQUE) ENGINE=InnoDB`);
+    await administration.query(`CREATE TABLE ${table} (id BIGINT AUTO_INCREMENT PRIMARY KEY, order_id VARCHAR(64) UNIQUE NOT NULL, amount DECIMAL(10,2) NOT NULL, idempotency_key CHAR(36) UNIQUE, big_value BIGINT, unsigned_big BIGINT UNSIGNED, bits BIT(5), single FLOAT, choice ENUM('open','closed'), tags SET('a','b'), year_value YEAR, document JSON) ENGINE=InnoDB`);
     const inserted = await provider.execute().invoke(call('execute'), { statement: `INSERT INTO ${table} (order_id, amount) VALUES (?, ?)`, parameters: ['88213', '250.00'] });
     expect(inserted).toMatchObject({ kind: 'branch', branch: 'completed', value: { rowsAffected: 1 } });
     const selected = await provider.query().invoke(call('query'), { statement: `SELECT id, order_id, amount FROM ${table} WHERE order_id = ?`, parameters: ['88213'] });
     expect(selected).toMatchObject({ kind: 'branch', branch: 'completed' });
-    if (selected.kind === 'branch') expect(selected.value.rows?.[0]).toMatchObject({ order_id: '88213', amount: '250.00' });
+    if (selected.kind === 'branch') expect(selected.value.rows?.[0]).toMatchObject({ id: '1', order_id: '88213', amount: '250.00' });
+    await administration.query(`UPDATE ${table} SET big_value = 9007199254740993, unsigned_big = 18446744073709551615, bits = b'10101', single = 0.1, choice = 'open', tags = 'a,b', year_value = 2026, document = '{"a":1,"b":"ok"}' WHERE order_id = '88213'`);
+    const typed = await provider.query().invoke(call('query'), { statement: `SELECT big_value, unsigned_big, bits, single, choice, tags, year_value, document FROM ${table} WHERE order_id = ?`, parameters: ['88213'] });
+    expect(typed).toMatchObject({ kind: 'branch', branch: 'completed', value: { rows: [{ big_value: '9007199254740993', unsigned_big: '18446744073709551615', bits: '21', single: 0.1, choice: 'open', tags: 'a,b', year_value: 2026, document: { a: 1, b: 'ok' } }] } });
+    if (typed.kind === 'branch') expect(Object.fromEntries((typed.value.columns ?? []).map(column => [column.name, column.typeName]))).toMatchObject({ big_value: 'BIGINT', unsigned_big: 'UNSIGNED BIGINT', bits: 'BIT', single: 'FLOAT', choice: 'ENUM', tags: 'SET', year_value: 'YEAR', document: 'JSON' });
+    await administration.query(`UPDATE ${table} SET document = '{"a":1.10,"b":12345678901234567890.123456789}' WHERE order_id = '88213'`);
+    const lossy = await provider.query().invoke(call('query'), { statement: `SELECT document FROM ${table} WHERE order_id = ?`, parameters: ['88213'] });
+    expect(lossy).toMatchObject({ kind: 'branch', branch: 'invalidResponse', failure: { kind: 'PROTOCOL', message: expect.stringContaining('column "document"') } });
+    const chained = await provider.query().invoke(call('query'), { statement: `SELECT amount FROM ${table} WHERE order_id = '88213'; UPDATE ${table} SET amount = '999.00' WHERE order_id = '88213'` });
+    expect(chained).toMatchObject({ kind: 'branch', branch: 'providerRejected' });
     const bounded = new MySQLClient({ host: host!, port, database, user, sslMode, maxRows: 1 }, { resolve: async () => ({ password: new SecretString(password) }) });
     const truncated = await bounded.query().invoke(call('query'), { statement: 'SELECT 1 AS n UNION ALL SELECT 2 AS n' });
     expect(truncated).toMatchObject({ kind: 'branch', branch: 'truncated', value: { rows: [{ n: 1 }] } });
@@ -51,5 +61,7 @@ it.skipIf(!host)('runs both operations against the CI MySQL service and rolls ba
     await new Promise<void>(resolve => listener.close(() => resolve()));
     const refused = new MySQLClient({ host: '127.0.0.1', port: address.port, database, user, sslMode: 'disabled' }, { resolve: async () => ({ password: new SecretString(password) }) });
     expect(await refused.query().invoke(call('query'), { statement: 'SELECT 1' })).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+    const verifying = new MySQLClient({ host: host!, port, database, user, sslMode: 'verify-ca' }, { resolve: async () => ({ password: new SecretString(password) }) });
+    expect(await verifying.query().invoke(call('query'), { statement: 'SELECT 1' })).toMatchObject({ kind: 'branch', branch: 'providerRejected', failure: { kind: 'AUTHENTICATION' } });
   } finally { await administration.query(`DROP TABLE IF EXISTS ${table}`); await administration.end(); }
 }, 60_000);

@@ -80,6 +80,8 @@ export class ExecuteStatementOperation implements Mutation<ExecuteStatementInput
       const warningCount = Number(outcomeRow[2]);
       if (!Number.isSafeInteger(affected) || !/^\d+$/.test(lastInsertId) || !Number.isSafeInteger(warningCount)) throw new InvalidRowsError('the server returned an unreadable ROW_COUNT(), LAST_INSERT_ID(), or @@warning_count');
       if (input.maxRowsAffected !== undefined && affected > input.maxRowsAffected) return newMutationBranch('limitExceeded', emptyExecution(), this.client.receipt(call, connectionId, serverVersion), failure('execute', 'CONFLICT', `the statement affected ${affected} rows but maxRowsAffected is ${input.maxRowsAffected}, so the transaction was rolled back`));
+      const rawConnection = (connection as Connection & { connection?: RawConnection & { _fatalError?: Error; _closing?: boolean } }).connection;
+      if (rawConnection?._fatalError || rawConnection?._closing) return newMutationRetry(failure('execute', 'TRANSPORT', 'the connection closed before COMMIT could be sent'));
       phase = 'commit';
       await connection.query('COMMIT');
       return newMutationBranch('completed', { rowsAffected: affected, lastInsertId, warningCount, columns: rows.columns, rows: rows.rows }, this.client.receipt(call, connectionId, serverVersion));
@@ -187,7 +189,7 @@ function decodeRows(rawRows: unknown, fields: FieldPacket[], maxRows: number, ma
 function decodeRow(raw: unknown, columns: Column[]): Record<string, unknown> {
   if (!Array.isArray(raw) || raw.length !== columns.length) throw new InvalidRowsError('the server returned an unreadable row');
   const row: Record<string, unknown> = {};
-  for (let index = 0; index < columns.length; index++) row[columns[index]!.name] = decodeValue(raw[index], columns[index]!.typeName);
+  for (let index = 0; index < columns.length; index++) row[columns[index]!.name] = decodeValue(raw[index], columns[index]!.typeName, columns[index]!.name);
   return row;
 }
 function mysqlTypeName(field: FieldPacket): string {
@@ -196,20 +198,42 @@ function mysqlTypeName(field: FieldPacket): string {
   if ([249, 250, 251, 252].includes(field.columnType ?? -1) && field.characterSet !== 63) name = ({ TINYBLOB: 'TINYTEXT', MEDIUMBLOB: 'MEDIUMTEXT', LONGBLOB: 'LONGTEXT', BLOB: 'TEXT' } as Record<string, string>)[name] ?? name;
   if (field.columnType === 254 && field.characterSet === 63) name = 'BINARY';
   if (field.columnType === 253 && field.characterSet === 63) name = 'VARBINARY';
-  const isUnsigned = typeof field.flags === 'number' ? (field.flags & 32) !== 0 : field.flags.includes('UNSIGNED');
+  const flags = typeof field.flags === 'number' ? field.flags : 0;
+  if (field.columnType === 254 && (flags & 256)) name = 'ENUM';
+  if (field.columnType === 254 && (flags & 2048)) name = 'SET';
+  const isUnsigned = (typeof field.flags === 'number' ? (field.flags & 32) !== 0 : field.flags.includes('UNSIGNED')) && ['TINYINT', 'SMALLINT', 'MEDIUMINT', 'INT', 'BIGINT'].includes(name);
   return isUnsigned ? `UNSIGNED ${name}` : name;
 }
-function decodeValue(value: unknown, typeName: string): unknown {
+function decodeValue(value: unknown, typeName: string, columnName: string): unknown {
   if (value === null) return null;
-  if (Buffer.isBuffer(value)) return typeName === 'BIT' ? BigInt(`0x${value.toString('hex') || '0'}`).toString() : value.toString('base64');
-  if (typeName === 'JSON' && typeof value === 'string') { try { return JSON.parse(value) as unknown; } catch { throw new InvalidRowsError('the server returned an invalid JSON value'); } }
+  if ((typeName === 'BIGINT' || typeName === 'UNSIGNED BIGINT' || typeName === 'JSON') && typeof value !== 'string') throw new InvalidRowsError(`column "${columnName}" of type ${typeName} returned an unreadable value`);
+  if (Buffer.isBuffer(value)) return typeName.replace(/^UNSIGNED /, '') === 'BIT' ? BigInt(`0x${value.toString('hex') || '0'}`).toString() : value.toString('base64');
+  if (typeName === 'JSON' && typeof value === 'string') {
+    try {
+      const parsed: unknown = JSON.parse(value);
+      const tokens = value.match(/"(?:\\.|[^"\\])*"|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/g) ?? [];
+      if (tokens.some(token => token[0] !== '"' && (!Number.isFinite(Number(token)) || String(Number(token)) !== token))) throw new InvalidRowsError(`column "${columnName}" of type JSON contains a number that cannot be represented exactly`);
+      return parsed;
+    } catch (error) { if (error instanceof InvalidRowsError) throw error; throw new InvalidRowsError(`column "${columnName}" of type JSON returned an invalid value`); }
+  }
   if (typeName === 'TIMESTAMP' && typeof value === 'string' && /^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d/.test(value)) return value.replace(' ', 'T').replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '') + 'Z';
   if (typeName === 'DATETIME' && typeof value === 'string' && /^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d/.test(value) && !value.startsWith('0000')) return value.replace(' ', 'T').replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
-  if (['TINYINT', 'SMALLINT', 'MEDIUMINT', 'INT', 'YEAR'].some(name => typeName.endsWith(name)) && typeof value === 'string') {
+  if ((typeName === 'BIGINT' || typeName === 'UNSIGNED BIGINT') && typeof value === 'string') {
+    if (!(typeName === 'BIGINT' ? /^-?\d+$/ : /^\d+$/).test(value)) throw new InvalidRowsError(`column "${columnName}" of type ${typeName} returned an invalid integer`);
+    return value;
+  }
+  if (['TINYINT', 'SMALLINT', 'MEDIUMINT', 'INT', 'YEAR'].includes(typeName.replace(/^UNSIGNED /, '')) && typeof value === 'string') {
     const number = Number(value);
-    if (!Number.isSafeInteger(number)) throw new InvalidRowsError('the server returned an invalid integer');
+    if (!Number.isSafeInteger(number)) throw new InvalidRowsError(`column "${columnName}" of type ${typeName} returned an invalid integer`);
     return number;
   }
+  if (typeName === 'FLOAT' && typeof value === 'number' && Number.isFinite(value)) {
+    for (let precision = 1; precision <= 9; precision++) {
+      const rounded = Number(value.toPrecision(precision));
+      if (Math.fround(rounded) === value) return rounded;
+    }
+  }
+  if (typeName === 'FLOAT') throw new InvalidRowsError(`column "${columnName}" of type FLOAT returned an invalid number`);
   if (typeof value === 'number' && !Number.isFinite(value)) throw new InvalidRowsError('the server returned a non-finite number');
   return value;
 }

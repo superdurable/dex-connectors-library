@@ -5,6 +5,10 @@ The `@superdurable/connector-mysql` package provides native MySQL and MariaDB
 connection, resolves the password at call time, and closes the connection after
 one transaction. The Connector manifest and [root README](../README.md) define
 the connection fields, transaction limits, type mapping, and SQL restrictions.
+`BIGINT` values remain decimal strings and `FLOAT` values use their shortest
+float32 representation. JSON numbers that cannot be returned without changing
+their text cause the `invalidResponse` branch, with the column named in the
+failure. Queries use prepared execution, so chained SQL statements are rejected.
 
 Install the package with `npm install @superdurable/connector-mysql`. Configure
 a MySQL connection named `mysql-refunds` in Dex Web, then run the checked-in

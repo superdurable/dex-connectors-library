@@ -33,7 +33,88 @@ describe('Go-compatible driver classification', () => {
     expect(classifyDriverError({ code: 'ECONNREFUSED' }, 'connect')).toMatchObject({ disposition: 'retry', kind: 'AVAILABILITY' });
     expect(classifyDriverError({ code: 'ECONNRESET' }, 'statement')).toMatchObject({ disposition: 'retry', kind: 'TRANSPORT' });
     expect(classifyDriverError({ code: 'ECONNRESET' }, 'commit')).toMatchObject({ disposition: 'uncertain', kind: 'TRANSPORT' });
+    expect(classifyDriverError({ code: 'PROTOCOL_ENQUEUE_AFTER_FATAL_ERROR' }, 'commit')).toMatchObject({ disposition: 'retry', kind: 'TRANSPORT' });
   });
+  it.each(['SELF_SIGNED_CERT_IN_CHAIN', 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY', 'CERT_NOT_YET_VALID', 'ERR_TLS_CERT_ALTNAME_INVALID'])('rejects certificate failure %s', code => {
+    expect(classifyDriverError({ code }, 'connect')).toMatchObject({ disposition: 'providerRejected', kind: 'AUTHENTICATION' });
+    expect(classifyDriverError({ code: 'HANDSHAKE_SSL_ERROR', message: 'self-signed certificate in certificate chain', cause: { code } }, 'connect')).toMatchObject({ disposition: 'providerRejected', kind: 'AUTHENTICATION' });
+    expect(classifyDriverError({ code: 'HANDSHAKE_SSL_ERROR', errno: 2026, sqlState: 'HY000', message: 'self-signed certificate in certificate chain' }, 'connect')).toMatchObject({ disposition: 'providerRejected', kind: 'AUTHENTICATION' });
+  });
+  it('keeps unrelated SSL handshake failures retryable', () => {
+    expect(classifyDriverError({ code: 'HANDSHAKE_SSL_ERROR', message: 'socket closed' }, 'connect')).toMatchObject({ disposition: 'retry', kind: 'AVAILABILITY' });
+  });
+});
+
+it('decodes exact MySQL type metadata and values', async () => {
+  const fields = [
+    { name: 'small_big', columnType: 8, flags: 0 },
+    { name: 'large_big', columnType: 8, flags: 0 },
+    { name: 'unsigned_big', columnType: 8, flags: 32 },
+    { name: 'bits', columnType: 16, flags: 32 },
+    { name: 'year_value', columnType: 13, flags: 32 },
+    { name: 'single', columnType: 4, flags: 0 },
+    { name: 'choice', columnType: 254, flags: 256 },
+    { name: 'tags', columnType: 254, flags: 2048 },
+    { name: 'document', columnType: 245, flags: 0 },
+  ];
+  const values = ['5', '9007199254740993', '18446744073709551615', Buffer.from([21]), '2026', Math.fround(0.1), 'open', 'a,c', '{"a":1,"b":"ok"}'];
+  const connection = {
+    query: async (sql: string) => sql === 'SELECT CONNECTION_ID(), VERSION()' ? [[[7, '8.4.0']], []] : [[], []],
+    execute: async () => [[values], fields],
+    destroy: () => undefined,
+  };
+  const client = new MySQLClient(config, credentials, { connect: async () => connection as never });
+  const result = await client.query().invoke(call, { statement: 'SELECT * FROM exact_values' });
+  expect(result).toMatchObject({ kind: 'branch', branch: 'completed', value: {
+    columns: fields.map(field => ({ name: field.name, typeName: ({ small_big: 'BIGINT', large_big: 'BIGINT', unsigned_big: 'UNSIGNED BIGINT', bits: 'BIT', year_value: 'YEAR', single: 'FLOAT', choice: 'ENUM', tags: 'SET', document: 'JSON' } as Record<string, string>)[field.name] })),
+    rows: [{ small_big: '5', large_big: '9007199254740993', unsigned_big: '18446744073709551615', bits: '21', year_value: 2026, single: 0.1, choice: 'open', tags: 'a,c', document: { a: 1, b: 'ok' } }],
+  } });
+});
+
+it.each(['{"a":1.10}', '{"b":12345678901234567890.123456789}', '{"a":'])('rejects lossy or invalid JSON naming its column', async document => {
+  const connection = {
+    query: async (sql: string) => sql === 'SELECT CONNECTION_ID(), VERSION()' ? [[[7, '8.4.0']], []] : [[], []],
+    execute: async () => [[[document]], [{ name: 'document', columnType: 245, flags: 0 }]],
+    destroy: () => undefined,
+  };
+  const client = new MySQLClient(config, credentials, { connect: async () => connection as never });
+  expect(await client.query().invoke(call, { statement: 'SELECT document FROM exact_values' })).toMatchObject({ kind: 'branch', branch: 'invalidResponse', failure: { kind: 'PROTOCOL', message: expect.stringContaining('column "document"') } });
+});
+
+it.each([
+  ['BIGINT', 8, 5],
+  ['JSON', 245, { a: 1 }],
+  ['FLOAT', 4, 0.123456789],
+] as const)('rejects driver-decoded %s values before they can lose precision', async (typeName, columnType, value) => {
+  const connection = {
+    query: async (sql: string) => sql === 'SELECT CONNECTION_ID(), VERSION()' ? [[[7, '8.4.0']], []] : [[], []],
+    execute: async () => [[[value]], [{ name: 'typed_value', columnType, flags: 0 }]],
+    destroy: () => undefined,
+  };
+  const client = new MySQLClient(config, credentials, { connect: async () => connection as never });
+  expect(await client.query().invoke(call, { statement: 'SELECT typed_value FROM exact_values' })).toMatchObject({ kind: 'branch', branch: 'invalidResponse', failure: { kind: 'PROTOCOL', message: expect.stringContaining(`column "typed_value" of type ${typeName}`) } });
+});
+
+it('retries when the driver closes before COMMIT is enqueued', async () => {
+  const issued: string[] = [];
+  const rawConnection = { _fatalError: new Error('closed'), execute: () => ({ stream: () => {
+    const rows = Readable.from([], { objectMode: true });
+    queueMicrotask(() => rows.emit('fields', []));
+    return rows;
+  } }) };
+  const connection = {
+    connection: rawConnection,
+    query: async (sql: string) => {
+      issued.push(sql);
+      if (sql === 'SELECT CONNECTION_ID(), VERSION()') return [[[7, '8.4.0']], []];
+      if (sql === 'SELECT ROW_COUNT(), LAST_INSERT_ID(), @@warning_count') return [[[1, '0', 0]], []];
+      return [[], []];
+    },
+    destroy: () => undefined,
+  };
+  const client = new MySQLClient(config, credentials, { connect: async () => connection as never });
+  expect(await client.execute().invoke(call, { statement: 'INSERT INTO exact_values VALUES (1)' })).toMatchObject({ kind: 'retry', failure: { kind: 'TRANSPORT' } });
+  expect(issued).not.toContain('COMMIT');
 });
 
 it('rejects invalid SQL and unavailable credentials before opening a session', async () => {
