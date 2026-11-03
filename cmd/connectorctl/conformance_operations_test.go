@@ -22,3 +22,10 @@ func TestConformanceOptionalInputFields(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, cardFields, "expiresAt")
 }
+
+func TestConformanceOptionalInputFieldsResolvesImportedAlias(t *testing.T) {
+	manifest := filepath.Join("testdata", "conformance_alias", "connector.yaml")
+	fields, err := conformanceOptionalInputFields(manifest, "OperationInput")
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{"optional", "zero"}, fields)
+}

@@ -76,6 +76,77 @@ FIELDS = {
 
 
 @pytest.mark.asyncio
+async def test_manifest_default_method_scope_and_missing_expiry_match_go() -> None:
+    """An empty method uses the default, while scope and expiry follow Go refresh rules."""
+    auth: dict[str, Any] = deepcopy(AUTH)
+    auth["methods"][0]["oauth2"]["refresh"]["requiredScopes"] = ["files.read"]
+    response: dict[str, Any] = {
+        "access_token": "next", "expires_in": 3600, "token_type": "Bearer", "scope": "\t  ",
+    }
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json=response)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+        driver = ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)
+        credentials = Credentials(SecretString("old"), SecretString("prior"), auth_method_id="")
+        state = CredentialRefreshState(credentials, None, datetime.now(UTC))
+        await driver.refresh(state)
+        response["scope"] = "files.read\textra"
+        await driver.refresh(state)
+        response["scope"] = "files.read,extra"
+        with pytest.raises(ReauthorizationRequiredError):
+            await driver.refresh(state)
+        response = {"access_token": "next", "token_type": "Bearer", "scope": "files.read"}
+        with pytest.raises(ValueError, match="required fields"):
+            await driver.refresh(state)
+    assert len(requests) == 4
+
+
+@pytest.mark.asyncio
+async def test_declared_scope_separators_apply_to_all_and_exact_checks() -> None:
+    """Whitespace and space-or-comma declarations match their Go scope checks."""
+    auth: dict[str, Any] = deepcopy(AUTH)
+    refresh = auth["methods"][0]["oauth2"]["refresh"]
+    refresh["requiredScopes"] = ["files.read", "files.write"]
+    returned_scope = ""
+
+    def respond(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={
+            "access_token": "next", "expires_in": 3600, "token_type": "Bearer", "scope": returned_scope,
+        })
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+        driver = ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)
+        credentials = Credentials(SecretString("old"), SecretString("prior"))
+        state = CredentialRefreshState(credentials, None, datetime.now(UTC))
+
+        async def check(scope: str, accepted: bool) -> None:
+            nonlocal returned_scope
+            returned_scope = scope
+            if accepted:
+                await driver.refresh(state)
+            else:
+                with pytest.raises(ReauthorizationRequiredError):
+                    await driver.refresh(state)
+
+        await check("files.read\tfiles.write", True)
+        await check("files.read,files.write", False)
+        refresh["scopeSeparators"] = "whitespaceAndComma"
+        await check("files.read,files.write", True)
+        await check("files.read\tfiles.write", False)
+        refresh["exactScopes"] = True
+        await check("files.read,files.write", True)
+        await check("files.read,files.write,extra", False)
+        await check("files.read\tfiles.write", False)
+        refresh["scopeSeparators"] = "whitespace"
+        await check("files.read\tfiles.write", True)
+        await check("files.read,files.write", False)
+
+
+@pytest.mark.asyncio
 async def test_schema_decoded_jira_and_slack_auth_refresh_with_planned_fields() -> None:
     """Real decoded declarations accept Jira's omitted type and Slack's bot/user types."""
     # schema.Decode(connector.yaml) JSON-encodes Spec.Auth; add planned token-type fields.
@@ -153,6 +224,12 @@ async def test_schema_decoded_jira_and_slack_auth_refresh_with_planned_fields() 
         )
         assert requests == ["bot-old", "user-old"]
         assert slack_result.credentials.user_refresh_token.reveal() == "user-rotated"
+        with pytest.raises(ReauthorizationRequiredError):
+            await slack_driver.refresh(CredentialRefreshState(
+                SlackCredentials("client", SecretString(""), SecretString("old"), SecretString("bot-old"),
+                                 SecretString("old"), SecretString("user-old")), None, datetime.now(UTC)
+            ))
+        assert requests == ["bot-old", "user-old"]
 
 
 @pytest.mark.asyncio
@@ -178,10 +255,23 @@ async def test_manifest_validates_all_grants_and_go_durations_before_exchange() 
         result = await driver.refresh(state)
         assert result.credentials.refresh_token.reveal() == "rotated"
         assert result.expires_at > now + timedelta(seconds=3723)
+        refresh["missingExpiry"] = {"lifetime": ".5h"}
+        assert (await driver.refresh(state)).expires_at > now + timedelta(minutes=29)
+        refresh["missingExpiry"] = {"lifetime": "+1h"}
+        assert (await driver.refresh(state)).expires_at > now + timedelta(minutes=59)
+        refresh["missingExpiry"] = {"lifetime": "0"}
+        with pytest.raises(ValueError, match="duration"):
+            await driver.refresh(state)
         refresh["missingExpiry"] = {"lifetime": "1fortnight"}
         with pytest.raises(ValueError, match="duration"):
             await driver.refresh(state)
-        assert len(requests) == 1
+        refresh["missingExpiry"] = {"lifetime": "2562048h"}
+        with pytest.raises(ValueError, match="duration"):
+            await driver.refresh(state)
+        refresh["missingExpiry"] = {"lifetime": "-1h"}
+        with pytest.raises(ValueError, match="duration"):
+            await driver.refresh(state)
+        assert len(requests) == 3
         refresh["missingExpiry"] = "keep"
         refresh["grants"] = [
             {"refreshTokenCredential": "refresh_token", "credentialMappings": [
@@ -193,7 +283,7 @@ async def test_manifest_validates_all_grants_and_go_durations_before_exchange() 
         ]
         with pytest.raises(ValueError, match="mapped"):
             await driver.refresh(state)
-        assert len(requests) == 1
+        assert len(requests) == 3
 
 
 @pytest.mark.asyncio
@@ -323,11 +413,10 @@ async def test_manifest_missing_expiry_follows_declaration_not_grant_count() -> 
 async def test_manifest_missing_token_type_requires_declaration() -> None:
     """Atlassian-style responses can omit token_type when explicitly allowed."""
     auth: dict[str, Any] = deepcopy(AUTH)
+    response: dict[str, Any] = {"access_token": "next", "refresh_token": "rotated", "expires_in": 3600}
 
     def respond(_: httpx.Request) -> httpx.Response:
-        return httpx.Response(
-            200, json={"access_token": "next", "refresh_token": "rotated", "expires_in": 3600}
-        )
+        return httpx.Response(200, json=response)
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
         state = CredentialRefreshState(
@@ -340,11 +429,25 @@ async def test_manifest_missing_token_type_requires_declaration() -> None:
         allowed = ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)
         result = await allowed.refresh(state)
         assert result.credentials.refresh_token.reveal() == "rotated"
+        refresh = auth["methods"][0]["oauth2"]["refresh"]
+        refresh["exactScopes"] = True
+        refresh["grants"] = [{
+            "refreshTokenCredential": "refresh_token",
+            "credentialMappings": auth["methods"][0]["oauth2"]["credentialMappings"],
+            "acceptsMissingTokenType": False,
+            "exactScopes": False,
+        }]
+        overridden = ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)
+        with pytest.raises(ValueError, match="required fields"):
+            await overridden.refresh(state)
+        refresh["grants"][0]["acceptsMissingTokenType"] = True
+        response["scope"] = "files.read extra"
+        await overridden.refresh(state)
 
 
 @pytest.mark.asyncio
 async def test_manifest_form_post_secret_and_optional_public_client() -> None:
-    """Required secrets fail closed; optional empty secrets use public-client form encoding."""
+    """Only an explicitly declared public client can refresh without a secret."""
     auth: dict[str, Any] = deepcopy(AUTH)
     method = auth["methods"][0]
     method["oauth2"]["tokenRequestEncoding"] = "form"
@@ -375,6 +478,10 @@ async def test_manifest_form_post_secret_and_optional_public_client() -> None:
         assert len(requests) == 1
 
         method["fields"][3]["required"] = False
+        with pytest.raises(ReauthorizationRequiredError):
+            await required_driver.refresh(empty_state)
+        assert len(requests) == 1
+        method["oauth2"]["refresh"]["allowsPublicClient"] = True
         public_driver = ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)
         await public_driver.refresh(empty_state)
         assert requests[-1].content == (
@@ -581,6 +688,18 @@ async def test_manifest_multi_grant_rotation_and_missing_expiry() -> None:
         assert result.credentials.user_refresh.reveal() == "user-token-rotated"
         assert result.credentials.bot_refresh.reveal() == "bot-token-rotated"
         assert len(requests) == 2
+        auth["methods"][0]["oauth2"]["refresh"]["exactScopes"] = True
+        def extra_scope_respond(request: httpx.Request) -> httpx.Response:
+            response = respond(request)
+            payload = json.loads(response.content)
+            payload["scope"] = "chat.write extra"
+            return httpx.Response(200, json=payload)
+        async with httpx.AsyncClient(transport=httpx.MockTransport(extra_scope_respond)) as extra_client:
+            with pytest.raises(ReauthorizationRequiredError):
+                await ManifestCredentialRefreshDriver[MultiGrantCredentials](
+                    "Example", auth, fields, extra_client
+                ).refresh(CredentialRefreshState(credentials, now, now))
+        auth["methods"][0]["oauth2"]["refresh"]["exactScopes"] = False
         auth["methods"][0]["oauth2"]["refresh"]["missingExpiry"] = {"lifetime": "2h"}
         lifetime_driver = ManifestCredentialRefreshDriver[MultiGrantCredentials](
             "Example", auth, fields, client
@@ -650,6 +769,7 @@ async def test_manifest_jwt_bearer_resolves_key_sources_and_copies_identity() ->
                     "private_key": pem,
                     "client_email": "service@example.test",
                     "token_uri": "https://oauth.example.test/token",
+                    "unrelated_metadata": {"revision": 2},
                 }
             )
         ),
@@ -699,6 +819,9 @@ async def test_manifest_jwt_bearer_resolves_key_sources_and_copies_identity() ->
             "Example", invalid_auth, fields, client
         )
         with pytest.raises(ValueError, match="duration"):
+            await invalid.refresh(CredentialRefreshState(credentials, None, datetime.now(UTC)))
+        invalid_auth["serviceAccount"]["jwtBearer"]["lifetime"] = "500us"
+        with pytest.raises(ValueError, match="at least one millisecond"):
             await invalid.refresh(CredentialRefreshState(credentials, None, datetime.now(UTC)))
         assert not invalid_requests
         retryable = ManifestCredentialRefreshDriver[DelegatedCredentials](
