@@ -2,10 +2,10 @@
 
 `dex-connectors-sdk` is the Python core for Dex-native provider connectors. It
 uses the PEP 420 `dex_connectors` namespace and imports as `dex_connectors.sdk`.
-Version `0.2.0` supplies the models, provider
-operation contracts, credential helpers, OAuth token exchanges, and
-single-dispatch checkpoint values below. Query and Mutation Step factories
-use the released Dex SDK's instance-addressed async Steps.
+Version `0.2.0` supplies the models, provider operation contracts, credential
+helpers, OAuth token exchanges, portable text generation, and single-dispatch
+checkpoint values below. Query and Mutation Step factories use the released
+Dex SDK's instance-addressed async Steps.
 Dex Web FDG 2.0 connector metadata for Python requires upstream R4.
 
 Python 3.11 or newer and `dex-python-sdk>=1.28.0` are required. APIs are
@@ -15,7 +15,8 @@ never place credentials in Flow state.
 Runnable examples are [`examples/core.py`](examples/core.py),
 [`examples/credentials_and_project.py`](examples/credentials_and_project.py),
 [`examples/operations_and_oauth.py`](examples/operations_and_oauth.py),
-and [`examples/single_dispatch.py`](examples/single_dispatch.py).
+[`examples/single_dispatch.py`](examples/single_dispatch.py), and
+[`examples/text_generation.py`](examples/text_generation.py).
 [`examples/manifest_refresh.py`](examples/manifest_refresh.py) demonstrates
 manifest-declared refresh with an inert provider endpoint.
 Run each with `uv run python examples/<name>.py`.
@@ -316,7 +317,192 @@ branch routing, retry and exhaustion, uncertainty, the lost-response fence,
 safe resend from a persisted checkpoint, heartbeat cadence, mock replay,
 result Attribute, and progress/text Streams.
 
-The provider address-policy client and SSE reader are outside this release.
+## Portable text generation
+
+`dex_connectors.sdk.textgen` provides the provider-neutral `generateText`
+request, response, six branch definitions, schema validation, model ID rules,
+error rules, and async `TextGenerationQuery`. Its `openaichat` adapter accepts a
+declarative `Profile` for Chat Completions providers. The Query validates
+locally before resolving a credential, sends it only in the configured header,
+heartbeats every five seconds during an attempt, bounds bodies and stream
+events, and classifies transport failures as retries. Only `generated` is a
+required branch. `truncated`, `blocked`, `providerRejected`, `invalidResponse`,
+and `defect` are optional. The generated text Stream can contain provisional
+deltas from an attempt that later retries; the Result text is authoritative.
+
+The [runnable example](examples/text_generation.py) uses a local HTTP mock to
+exercise the complete Query without provider credentials. A connector supplies
+its generated `QueryDefinition`, model and base URL, credential resolver, and
+provider `Profile`. Its Step defaults must select sync Execute durability, a
+heartbeat timeout of zero or at least ten seconds, and an Execute timeout
+longer than the request timeout. Run the example with
+`uv run python examples/text_generation.py` from `sdkpython/`.
+
+The example exercises the SDK and mock HTTP exchange. A connector port still
+needs its own runnable Dex Flow and provider verification.
+
+### Request and result contract
+
+`TextGenerationRequest.messages` is an ordered, nonempty tuple of `Message` values.
+Each `Message.role` is `user` or `assistant` (`MessageRole.USER` and
+`MessageRole.ASSISTANT`), and `Message.text` must be nonempty. The optional
+`model` overrides the connection model after trimming. `instructions` precedes
+the conversation when supported. `max_output_tokens` is a nonnegative count;
+zero leaves the provider limit unset. `temperature` is a finite, nonnegative
+sampling value or `None` to omit it. `reasoning_effort` may be empty to omit it,
+or one of `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, and `max` when the
+model's rules support it. These are the values of `ReasoningEffort`.
+
+`StructuredOutput.name` is an ASCII name of 1–64 letters, digits, `_`, or `-`;
+`schema` is the JSON object checked against the portable subset below, and
+`description` is optional provider-facing guidance. `TextGenerationResponse`
+holds `text`, `requested_model`, `served_model`, `response_id`,
+`finish_reason`, `provider_finish_reason`, and `usage`. Text is populated only
+on `generated` and `truncated`. The portable `FinishReason` values are `stop`,
+`length`, `contentPolicy`, and `refusal`. `Usage` contains nonnegative
+`input_tokens`, `cached_input_tokens`, `output_tokens`, `reasoning_tokens`, and
+`total_tokens`; absent counts are zero and absent total is computed from input
+plus output. `TextGenerationResult` aliases `QueryResult[TextGenerationResponse]`.
+
+The stable operation ID is `generateText`. Branch IDs are `generated`,
+`truncated`, `blocked`, `providerRejected`, `invalidResponse`, and `defect`.
+`text_generation_branch_definitions()` returns their definitions in manifest
+order; only `generated` is required. `ModelIDRule.BODY` accepts 1–256 printable
+ASCII characters without spaces; `PATH_SEGMENT` accepts up to 128 letters,
+digits, `.`, `_`, or `-` after an optional `models/` prefix. `resolve_model`
+uses the request model before the connection default.
+
+The portable schema accepts only `type`, `properties`, `required`,
+`additionalProperties`, `items`, `enum`, `const`, `description`, `title`,
+`minimum`, `maximum`, `minLength`, `maxLength`, `minItems`, `maxItems`, and
+`format`. The root is an object with every property required and
+`additionalProperties: false`. Nested nodes may use one JSON type or a pair
+of a type and `null`. Depth is at most 10; count bounds are nonnegative
+integers below 2⁶³; numbers are finite and limited to 256 literal characters
+and exponent magnitude 400. String formats are RFC 3339 `date-time`, `date`,
+and `time`, or a hyphenated `uuid`. Fractional seconds may use `.` or `,` as
+the separator. `validate_portable_request` checks locally;
+`extract_structured_answer` removes an optional JSON fence and checks the
+original schema, raising `ValueError` with a JSON pointer and no answer text.
+
+### Query pipeline and provider adapters
+
+Every `TextGenerationQuery.invoke` performs these steps in order, and reports
+the first local error in this order: (1) resolve and validate the model;
+(2) validate messages, output count, schema, declared features, temperature,
+and reasoning effort; (3) apply the model's schema mode and transformations;
+(4) resolve and validate the credential; (5) encode and validate the provider
+request; (6) dispatch with five-second heartbeats and byte limits; (7)
+classify a non-2xx response; (8) decode a 2xx response, map its finish reason,
+join non-reasoning text, and validate structured output; (9) return the branch
+and safe receipt. Steps 1–5 select `defect` without a provider request. A
+transport failure, stall, interrupted stream, or retryable status returns
+Retry. Each invocation owns its mutable state. A supplied HTTP client remains
+the caller's property and must stay open; otherwise a client is opened and
+closed per invocation, so connections are not pooled across calls.
+
+`TextGenerationQueryConfig` supplies `definition` (the six branches and sync
+Execute defaults), `wire_format`, HTTPS `base_url`, `connection_model`,
+`request_timeout_seconds` (a whole-exchange deadline including body reads),
+`resolve_credential`, `max_response_bytes`, `max_stream_event_bytes` (required
+for streaming), and optional caller-owned `http_client`. The Execute timeout
+must exceed the request timeout; a nonzero heartbeat timeout is at least ten
+seconds. The Query's `definition`, `request_features`, and `model_id_rule`
+methods expose those declarations without making a provider request.
+
+`WireFormat` declares `provider_name` for failures and receipts,
+`model_id_rule`, `features`, `credential_header`, `rules_for_model`,
+`encode_request`, `decode_response`, optional `decode_stream`,
+`finish_reasons`, ordered `error_rules`, `error_token_pointers`, optional
+`read_error_retry_delay`, `request_id_headers`, `rate_limit_headers`, and
+`stall_timeout_seconds`. Its callbacks must be safe for concurrent calls.
+`RequestFeatures` has five false-by-default predicates named
+`supports_instructions`, `supports_structured_output`,
+`supports_max_output_tokens`, `supports_temperature`, and
+`supports_reasoning_effort`; an unsupported nonempty request field selects
+`defect`. `ModelRequestRules` supplies `temperature`, `reasoning_efforts`, and
+`structured_output`. `TemperaturePolicy.accepted` defaults true;
+`minimum` and `maximum` are optional inclusive bounds. The helper functions
+`temperature_accepted`, `temperature_range`, and `temperature_not_accepted`
+make those choices. `StructuredOutputRules.mode` defaults to `NONE`, which
+rejects a structured request; `JSON_SCHEMA` sends a schema, and
+`JSON_OBJECT_WITH_INSTRUCTION` sends a JSON-object mode with a schema
+instruction. Its `keywords_moved_to_description` and `keywords_removed`
+change only the provider-facing copy; local validation uses the original.
+
+`CredentialHeader.name` and `prefix` form the only credential-bearing header.
+`EncodeRequestInput.request` and `.rules` carry validated values to the
+encoder. `EncodedRequest.path`, `.body`, `.headers`, and `.is_streaming`
+describe one credential-free request. `DecodedResponse.parts` is an ordered
+tuple of `ResponsePart.text` and `.is_reasoning`; its `served_model`,
+`response_id`, `provider_finish_reason`, `is_refusal`, and `usage` are checked
+before branch selection. `ProviderReportedError.error_tokens` holds bounded
+machine tokens from an error in a 2xx response. `ErrorOutcome.disposition`
+and `.kind` select Retry or a terminal branch. `ErrorRule.status_code` is a
+specific non-2xx status, or zero for any status and reported 2xx errors;
+`error_token` matches one extracted token exactly, or is empty for any token;
+`outcome` is the selected classification. The first matching rule wins.
+Without a rule, 408, 429, and 5xx except 501 retry; 401, 403, 404, 409,
+and 402 select provider rejection with their respective failure kinds; 3xx
+selects `invalidResponse`; other statuses select provider rejection. An
+unmatched 2xx reported error selects `invalidResponse`.
+
+`decode_response` receives a complete bounded body. `decode_stream` receives
+an async iterator of raw response bytes and a synchronous text-delta writer;
+an adapter must parse SSE itself when needed. It should raise
+`ProviderReportedError` for a provider error object, `EOFError` for a stream
+interrupted before its terminal event, `httpx.HTTPError` for a response read
+failure, or `ValueError` for malformed provider data. The Query maps the first
+two transport cases to Retry, malformed data to `invalidResponse`, and a text
+Stream write failure to Retry with availability. Decoder error strings are not
+copied into failures. `stall_timeout_seconds` is an optional interval between
+received bytes; zero disables it, leaving the whole-request timeout to bound
+the attempt. Keep-alives count as received bytes.
+
+### Chat Completions profile
+
+`openaichat.Profile.provider_name` is required. `chat_completions_path`
+defaults to `/chat/completions`; `credential_header` defaults to Authorization
+with Bearer prefix; `fixed_headers` contains safe nonsecret constants.
+`instructions_role` defaults to `SYSTEM` (`system`) and may be `DEVELOPER`
+(`developer`). `max_tokens_field` defaults to `MAX_TOKENS` (`max_tokens`) and
+may be `MAX_COMPLETION_TOKENS` (`max_completion_tokens`). `reasoning_efforts`
+maps supported portable efforts to wire values; an empty map rejects effort.
+`temperature` accepts finite nonnegative values by default;
+`structured_output` rejects schema requests by default.
+`should_send_strict_json_schema` adds `strict: true`. `streaming` defaults to
+`NEVER`; `ALWAYS` requests SSE, and `should_request_stream_usage` adds usage
+stream options. `allowed_request_fields`, when nonempty, lists all accepted
+top-level body fields and must include `model`, `messages`, and required stream
+fields. Unknown request fields select `defect`. `finish_reasons` extends the
+default `stop`, `length`, and `content_filter` mapping. `error_rules`,
+`error_token_pointers`, `request_id_headers`, and `rate_limit_headers` control
+classification and safe receipt metadata. `stall_timeout_seconds` sets the
+between-byte stall interval. `model_rules` applies the first matching
+`ModelRule`: exactly one `model_id_prefix` or anchored `model_id_pattern`
+selects the model; optional `temperature`, `reasoning_efforts`,
+`structured_output`, `max_tokens_field`, and `streaming` override the profile.
+`new_wire_format` validates the profile before constructing the adapter.
+
+The adapter accepts missing or null Chat messages and stream deltas as empty
+objects, then applies the finish reason. Usage counts accept integral JSON
+numbers and quoted numeric strings. Malformed choices invalidate the whole
+response, including choices after the first.
+
+The Python adapter currently parses SSE inside `decode_stream`; there is no
+public shared SSE reader in this release.
+
+`dex_connectors.sdk.textgen.textgentest` provides `FakeProvider` for
+credential-safe HTTP exchange tests. `FakeReply` configures status, headers,
+body, an initial delay in seconds, delayed `FakeStreamChunk` values, or a
+dropped connection. `RecordedRequest` exposes method, path, redacted headers
+and body, and predicates for credential placement. `client()` returns a
+caller-owned `httpx.AsyncClient`; `enqueue_replies()` scripts ordered replies;
+`requests()` returns sanitized records. `run_text_generation_exchange_suite()`
+checks a normal finish, malformed response, retry, and credential placement
+against a connector's Query factory. A consuming connector supplies additional
+branch cases and a real Dex Flow test for Worker, Client, retry, and Stream
+behavior.
 
 ## 0.1.0 release notes
 
