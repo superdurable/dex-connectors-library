@@ -33,7 +33,12 @@ from dex_connectors.sdk.projectconfig import (
     Scope,
     load_project_from_object_store,
 )
-from dex_connectors.sdk.providerhttp import new_provider_http_client, read_bounded_body
+from dex_connectors.sdk.providerhttp import (
+    ProviderTransportError,
+    new_provider_http_client,
+    read_bounded_body,
+    send_traced,
+)
 
 
 async def main() -> None:
@@ -70,6 +75,21 @@ async def main() -> None:
     async with new_provider_http_client(transport=httpx.MockTransport(provider_response)) as http_client:
         response = await http_client.get("https://provider.example/headlines")
         assert json.loads(await read_bounded_body(response, 4096)) == {"titles": []}
+
+    refused_server = await asyncio.start_server(lambda _reader, _writer: None, "127.0.0.1", 0)
+    refused_port = refused_server.sockets[0].getsockname()[1]
+    refused_server.close()
+    await refused_server.wait_closed()
+    async with new_provider_http_client(trust_env=False) as http_client:
+        try:
+            await send_traced(
+                http_client,
+                http_client.build_request("POST", f"http://127.0.0.1:{refused_port}/", content=b"write"),
+            )
+        except ProviderTransportError as error:
+            assert error.provably_not_sent
+        else:
+            raise AssertionError("expected refused connection")
 
     scope = Scope("example", "preview")
     objects = InMemoryObjectStore()
