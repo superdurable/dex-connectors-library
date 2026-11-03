@@ -1,6 +1,7 @@
 {
   "name": "@superdurable/connector-mixpanel",
   "version": "0.1.0",
+  "license": "MIT",
   "description": "Mixpanel event import and raw export operations for Dex Flows",
   "repository": {
     "type": "git",
@@ -30,7 +31,8 @@
   "files": [
     "dist",
     "dex-connector.json",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsup src/index.ts src/mock.ts --format esm --dts --clean",
