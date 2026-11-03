@@ -270,3 +270,11 @@ status progression and error codes from carriers and WhatsApp, 429 and 503
 behavior under load, regional endpoints, Restricted API key permissions,
 test-credential rejection of `getMessage`, and the Console paths in the setup
 guidance.
+
+## TypeScript package
+
+The first TypeScript release is `@superdurable/connector-twilio-messaging@0.1.0`.
+It implements `sendMessage` and `getMessage` with the same branch and retry
+contract as Go. See [the package README](typescript/README.md) and the
+[runnable Dex example](typescript/examples/text-message-delivery/README.md).
+Live Twilio authorization, sends, and status reads remain unverified.
