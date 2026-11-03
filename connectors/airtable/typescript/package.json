@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-airtable",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Airtable record operations for Dex Flows",
   "repository": {
     "type": "git",
@@ -43,7 +43,7 @@
     "example:list:start": "npm run build && tsx examples/list-records/start.ts"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.1.0",
+    "@superdurable/connectors-sdk": "0.1.1",
     "@superdurable/dex": ">=1.28.0",
     "zod": "^4.1.0"
   },
