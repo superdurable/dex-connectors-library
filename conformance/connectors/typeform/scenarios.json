@@ -1,0 +1,1556 @@
+{
+  "connector": "typeform",
+  "scenarios": [
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"total_items\":3,\"page_count\":2,\"items\":[{\"id\":\"form123\",\"title\":\"Signup\",\"settings\":{\"is_public\":true},\"_links\":{\"display\":\"https://form.typeform.com/to/form123\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "2"
+            ],
+            "search": [
+              "leads"
+            ],
+            "workspace_id": [
+              "space123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-TYPEFORM-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "forms": [
+            {
+              "displayUrl": "https://form.typeform.com/to/form123",
+              "id": "form123",
+              "isPublic": true,
+              "title": "Signup"
+            }
+          ],
+          "page": 2,
+          "pageCount": 2,
+          "totalItems": 3
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 2,
+        "search": "leads",
+        "workspaceId": "space123"
+      },
+      "name": "listForms-success",
+      "operation": "listForms"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"AUTHENTICATION_ERROR\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "2"
+            ],
+            "search": [
+              "leads"
+            ],
+            "workspace_id": [
+              "space123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-TYPEFORM-ACCESS-TOKEN"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "forms": [],
+          "page": 0,
+          "pageCount": 0,
+          "totalItems": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 2,
+        "search": "leads",
+        "workspaceId": "space123"
+      },
+      "name": "listForms-provider-rejected",
+      "operation": "listForms"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"unexpected\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "2"
+            ],
+            "search": [
+              "leads"
+            ],
+            "workspace_id": [
+              "space123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-TYPEFORM-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "forms": [],
+          "page": 0,
+          "pageCount": 0,
+          "totalItems": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 2,
+        "search": "leads",
+        "workspaceId": "space123"
+      },
+      "name": "listForms-invalid-response",
+      "operation": "listForms"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "forms": [],
+          "page": 0,
+          "pageCount": 0,
+          "totalItems": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 201
+      },
+      "name": "listForms-defect",
+      "operation": "listForms"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "2"
+            ],
+            "search": [
+              "leads"
+            ],
+            "workspace_id": [
+              "space123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-TYPEFORM-ACCESS-TOKEN"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 2,
+        "search": "leads",
+        "workspaceId": "space123"
+      },
+      "name": "listForms-rate-limit",
+      "operation": "listForms"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "2"
+            ],
+            "search": [
+              "leads"
+            ],
+            "workspace_id": [
+              "space123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-TYPEFORM-ACCESS-TOKEN"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 2,
+        "search": "leads",
+        "workspaceId": "space123"
+      },
+      "name": "listForms-server-error",
+      "operation": "listForms"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "2"
+            ],
+            "search": [
+              "leads"
+            ],
+            "workspace_id": [
+              "space123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-TYPEFORM-ACCESS-TOKEN"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 2,
+        "search": "leads",
+        "workspaceId": "space123"
+      },
+      "name": "listForms-transport",
+      "operation": "listForms"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"form123\",\"title\":\"Signup\",\"language\":\"en\",\"hidden\":[\"campaign\"],\"fields\":[{\"id\":\"field1\",\"ref\":\"name\",\"title\":\"Your name\",\"type\":\"short_text\",\"validations\":{\"required\":true}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/form123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-TYPEFORM-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "fields": [
+            {
+              "id": "field1",
+              "isRequired": true,
+              "ref": "name",
+              "title": "Your name",
+              "type": "short_text"
+            }
+          ],
+          "hiddenFields": [
+            "campaign"
+          ],
+          "id": "form123",
+          "language": "en",
+          "title": "Signup"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "form123"
+      },
+      "name": "getForm-success",
+      "operation": "getForm"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"AUTHENTICATION_ERROR\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/form123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-TYPEFORM-ACCESS-TOKEN"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "fields": [],
+          "id": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "form123"
+      },
+      "name": "getForm-provider-rejected",
+      "operation": "getForm"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"NOT_EXISTING_ID\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/form123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-TYPEFORM-ACCESS-TOKEN"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "fields": [],
+          "id": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "form123"
+      },
+      "name": "getForm-not-found",
+      "operation": "getForm"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"unexpected\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/form123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-TYPEFORM-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "fields": [],
+          "id": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "form123"
+      },
+      "name": "getForm-invalid-response",
+      "operation": "getForm"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "fields": [],
+          "id": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "bad/id"
+      },
+      "name": "getForm-defect",
+      "operation": "getForm"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/form123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-TYPEFORM-ACCESS-TOKEN"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "form123"
+      },
+      "name": "getForm-rate-limit",
+      "operation": "getForm"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/form123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-TYPEFORM-ACCESS-TOKEN"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "form123"
+      },
+      "name": "getForm-server-error",
+      "operation": "getForm"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/form123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-TYPEFORM-ACCESS-TOKEN"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "form123"
+      },
+      "name": "getForm-transport",
+      "operation": "getForm"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"total_items\":3,\"page_count\":3,\"items\":[{\"token\":\"response1\",\"landed_at\":\"2026-09-01T00:00:00Z\",\"submitted_at\":\"2026-09-01T00:02:00Z\",\"answers\":[{\"type\":\"text\",\"text\":\"Ada\",\"field\":{\"id\":\"field1\",\"ref\":\"name\",\"type\":\"short_text\"}}],\"hidden\":{\"campaign\":\"autumn\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/form123/responses",
+          "query": {
+            "before": [
+              "prior123"
+            ],
+            "page_size": [
+              "1"
+            ],
+            "since": [
+              "2026-09-01T00:00:00"
+            ],
+            "until": [
+              "2026-10-01T00:00:00"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-TYPEFORM-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "formId": "form123",
+          "nextBeforeToken": "response1",
+          "pageCount": 3,
+          "responses": [
+            {
+              "answers": [
+                {
+                  "fieldId": "field1",
+                  "fieldRef": "name",
+                  "fieldType": "short_text",
+                  "text": "Ada",
+                  "type": "text"
+                }
+              ],
+              "hiddenFields": {
+                "campaign": "autumn"
+              },
+              "landedAt": "2026-09-01T00:00:00Z",
+              "submittedAt": "2026-09-01T00:02:00Z",
+              "token": "response1"
+            }
+          ],
+          "totalItems": 3
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "before": "prior123",
+        "formId": "form123",
+        "pageSize": 1,
+        "since": "2026-09-01T00:00:00Z",
+        "until": "2026-10-01T00:00:00Z"
+      },
+      "name": "listResponses-success",
+      "operation": "listResponses"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"AUTHENTICATION_ERROR\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/form123/responses",
+          "query": {
+            "before": [
+              "prior123"
+            ],
+            "page_size": [
+              "1"
+            ],
+            "since": [
+              "2026-09-01T00:00:00"
+            ],
+            "until": [
+              "2026-10-01T00:00:00"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-TYPEFORM-ACCESS-TOKEN"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "formId": "",
+          "pageCount": 0,
+          "responses": [],
+          "totalItems": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "before": "prior123",
+        "formId": "form123",
+        "pageSize": 1,
+        "since": "2026-09-01T00:00:00Z",
+        "until": "2026-10-01T00:00:00Z"
+      },
+      "name": "listResponses-provider-rejected",
+      "operation": "listResponses"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"NOT_EXISTING_ID\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/form123/responses",
+          "query": {
+            "before": [
+              "prior123"
+            ],
+            "page_size": [
+              "1"
+            ],
+            "since": [
+              "2026-09-01T00:00:00"
+            ],
+            "until": [
+              "2026-10-01T00:00:00"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-TYPEFORM-ACCESS-TOKEN"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "formId": "",
+          "pageCount": 0,
+          "responses": [],
+          "totalItems": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "before": "prior123",
+        "formId": "form123",
+        "pageSize": 1,
+        "since": "2026-09-01T00:00:00Z",
+        "until": "2026-10-01T00:00:00Z"
+      },
+      "name": "listResponses-not-found",
+      "operation": "listResponses"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"unexpected\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/form123/responses",
+          "query": {
+            "before": [
+              "prior123"
+            ],
+            "page_size": [
+              "1"
+            ],
+            "since": [
+              "2026-09-01T00:00:00"
+            ],
+            "until": [
+              "2026-10-01T00:00:00"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-TYPEFORM-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "formId": "",
+          "pageCount": 0,
+          "responses": [],
+          "totalItems": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "before": "prior123",
+        "formId": "form123",
+        "pageSize": 1,
+        "since": "2026-09-01T00:00:00Z",
+        "until": "2026-10-01T00:00:00Z"
+      },
+      "name": "listResponses-invalid-response",
+      "operation": "listResponses"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "formId": "",
+          "pageCount": 0,
+          "responses": [],
+          "totalItems": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "bad/id"
+      },
+      "name": "listResponses-defect",
+      "operation": "listResponses"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/form123/responses",
+          "query": {
+            "before": [
+              "prior123"
+            ],
+            "page_size": [
+              "1"
+            ],
+            "since": [
+              "2026-09-01T00:00:00"
+            ],
+            "until": [
+              "2026-10-01T00:00:00"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-TYPEFORM-ACCESS-TOKEN"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "before": "prior123",
+        "formId": "form123",
+        "pageSize": 1,
+        "since": "2026-09-01T00:00:00Z",
+        "until": "2026-10-01T00:00:00Z"
+      },
+      "name": "listResponses-rate-limit",
+      "operation": "listResponses"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/form123/responses",
+          "query": {
+            "before": [
+              "prior123"
+            ],
+            "page_size": [
+              "1"
+            ],
+            "since": [
+              "2026-09-01T00:00:00"
+            ],
+            "until": [
+              "2026-10-01T00:00:00"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-TYPEFORM-ACCESS-TOKEN"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "before": "prior123",
+        "formId": "form123",
+        "pageSize": 1,
+        "since": "2026-09-01T00:00:00Z",
+        "until": "2026-10-01T00:00:00Z"
+      },
+      "name": "listResponses-server-error",
+      "operation": "listResponses"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/form123/responses",
+          "query": {
+            "before": [
+              "prior123"
+            ],
+            "page_size": [
+              "1"
+            ],
+            "since": [
+              "2026-09-01T00:00:00"
+            ],
+            "until": [
+              "2026-10-01T00:00:00"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-TYPEFORM-ACCESS-TOKEN"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "before": "prior123",
+        "formId": "form123",
+        "pageSize": 1,
+        "since": "2026-09-01T00:00:00Z",
+        "until": "2026-10-01T00:00:00Z"
+      },
+      "name": "listResponses-transport",
+      "operation": "listResponses"
+    },
+    {
+      "callId": "93f68908-3ecd-5e4a-8bc7-754581cb121f",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"hook123\",\"form_id\":\"form123\",\"tag\":\"dex-hook\",\"url\":\"https://example.com/typeform\",\"enabled\":false,\"event_types\":{\"form_response\":true},\"created_at\":\"2026-09-01T00:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/forms/form123/webhooks/dex-hook",
+          "requestBody": {
+            "enabled": false,
+            "event_types": {
+              "form_response": true
+            },
+            "secret": "SENTINEL-TYPEFORM-WEBHOOK-SECRET",
+            "url": "https://example.com/typeform"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-TYPEFORM-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "upserted",
+        "failureKind": "",
+        "output": {
+          "createdAt": "2026-09-01T00:00:00Z",
+          "eventTypes": [
+            "form_response"
+          ],
+          "formId": "form123",
+          "id": "hook123",
+          "isEnabled": false,
+          "tag": "dex-hook",
+          "url": "https://example.com/typeform"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "93f68908-3ecd-5e4a-8bc7-754581cb121f",
+      "input": {
+        "disabled": true,
+        "formId": "form123",
+        "tag": "dex-hook",
+        "url": "https://example.com/typeform"
+      },
+      "name": "upsertWebhook-success",
+      "operation": "upsertWebhook"
+    },
+    {
+      "callId": "93f68908-3ecd-5e4a-8bc7-754581cb121f",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"AUTHENTICATION_ERROR\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/forms/form123/webhooks/dex-hook",
+          "requestBody": {
+            "enabled": false,
+            "event_types": {
+              "form_response": true
+            },
+            "secret": "SENTINEL-TYPEFORM-WEBHOOK-SECRET",
+            "url": "https://example.com/typeform"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-TYPEFORM-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "eventTypes": [],
+          "formId": "",
+          "id": "",
+          "isEnabled": false,
+          "tag": "",
+          "url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "93f68908-3ecd-5e4a-8bc7-754581cb121f",
+      "input": {
+        "disabled": true,
+        "formId": "form123",
+        "tag": "dex-hook",
+        "url": "https://example.com/typeform"
+      },
+      "name": "upsertWebhook-provider-rejected",
+      "operation": "upsertWebhook"
+    },
+    {
+      "callId": "93f68908-3ecd-5e4a-8bc7-754581cb121f",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"NOT_EXISTING_ID\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/forms/form123/webhooks/dex-hook",
+          "requestBody": {
+            "enabled": false,
+            "event_types": {
+              "form_response": true
+            },
+            "secret": "SENTINEL-TYPEFORM-WEBHOOK-SECRET",
+            "url": "https://example.com/typeform"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-TYPEFORM-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "eventTypes": [],
+          "formId": "",
+          "id": "",
+          "isEnabled": false,
+          "tag": "",
+          "url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "93f68908-3ecd-5e4a-8bc7-754581cb121f",
+      "input": {
+        "disabled": true,
+        "formId": "form123",
+        "tag": "dex-hook",
+        "url": "https://example.com/typeform"
+      },
+      "name": "upsertWebhook-not-found",
+      "operation": "upsertWebhook"
+    },
+    {
+      "callId": "93f68908-3ecd-5e4a-8bc7-754581cb121f",
+      "exchanges": [
+        {
+          "body": "{\"unexpected\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/forms/form123/webhooks/dex-hook",
+          "requestBody": {
+            "enabled": false,
+            "event_types": {
+              "form_response": true
+            },
+            "secret": "SENTINEL-TYPEFORM-WEBHOOK-SECRET",
+            "url": "https://example.com/typeform"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-TYPEFORM-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "eventTypes": [],
+          "formId": "",
+          "id": "",
+          "isEnabled": false,
+          "tag": "",
+          "url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "93f68908-3ecd-5e4a-8bc7-754581cb121f",
+      "input": {
+        "disabled": true,
+        "formId": "form123",
+        "tag": "dex-hook",
+        "url": "https://example.com/typeform"
+      },
+      "name": "upsertWebhook-invalid-response",
+      "operation": "upsertWebhook"
+    },
+    {
+      "callId": "93f68908-3ecd-5e4a-8bc7-754581cb121f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "eventTypes": [],
+          "formId": "",
+          "id": "",
+          "isEnabled": false,
+          "tag": "",
+          "url": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "93f68908-3ecd-5e4a-8bc7-754581cb121f",
+      "input": {
+        "formId": "form123",
+        "tag": "bad/tag",
+        "url": "https://example.com/typeform"
+      },
+      "name": "upsertWebhook-defect",
+      "operation": "upsertWebhook"
+    },
+    {
+      "callId": "93f68908-3ecd-5e4a-8bc7-754581cb121f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/forms/form123/webhooks/dex-hook",
+          "requestBody": {
+            "enabled": false,
+            "event_types": {
+              "form_response": true
+            },
+            "secret": "SENTINEL-TYPEFORM-WEBHOOK-SECRET",
+            "url": "https://example.com/typeform"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-TYPEFORM-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "93f68908-3ecd-5e4a-8bc7-754581cb121f",
+      "input": {
+        "disabled": true,
+        "formId": "form123",
+        "tag": "dex-hook",
+        "url": "https://example.com/typeform"
+      },
+      "name": "upsertWebhook-rate-limit",
+      "operation": "upsertWebhook"
+    },
+    {
+      "callId": "93f68908-3ecd-5e4a-8bc7-754581cb121f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/forms/form123/webhooks/dex-hook",
+          "requestBody": {
+            "enabled": false,
+            "event_types": {
+              "form_response": true
+            },
+            "secret": "SENTINEL-TYPEFORM-WEBHOOK-SECRET",
+            "url": "https://example.com/typeform"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-TYPEFORM-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "93f68908-3ecd-5e4a-8bc7-754581cb121f",
+      "input": {
+        "disabled": true,
+        "formId": "form123",
+        "tag": "dex-hook",
+        "url": "https://example.com/typeform"
+      },
+      "name": "upsertWebhook-server-error",
+      "operation": "upsertWebhook"
+    },
+    {
+      "callId": "93f68908-3ecd-5e4a-8bc7-754581cb121f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/forms/form123/webhooks/dex-hook",
+          "requestBody": {
+            "enabled": false,
+            "event_types": {
+              "form_response": true
+            },
+            "secret": "SENTINEL-TYPEFORM-WEBHOOK-SECRET",
+            "url": "https://example.com/typeform"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-TYPEFORM-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "93f68908-3ecd-5e4a-8bc7-754581cb121f",
+      "input": {
+        "disabled": true,
+        "formId": "form123",
+        "tag": "dex-hook",
+        "url": "https://example.com/typeform"
+      },
+      "name": "upsertWebhook-transport",
+      "operation": "upsertWebhook"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"total_items\":3,\"page_count\":3,\"items\":[{\"token\":\"response1\",\"landed_at\":\"2026-09-01T00:00:00Z\",\"submitted_at\":\"2026-09-01T00:02:00Z\",\"answers\":[{\"type\":\"text\",\"text\":\"Ada\",\"field\":{\"id\":\"field1\",\"ref\":\"name\",\"type\":\"short_text\"}}],\"hidden\":{\"campaign\":\"autumn\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/form123/responses",
+          "query": {
+            "after": [
+              "processed123"
+            ],
+            "page_size": [
+              "1"
+            ],
+            "since": [
+              "2026-09-01T00:00:00"
+            ],
+            "until": [
+              "2026-10-01T00:00:00"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-TYPEFORM-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "formId": "form123",
+          "pageCount": 3,
+          "responses": [
+            {
+              "answers": [
+                {
+                  "fieldId": "field1",
+                  "fieldRef": "name",
+                  "fieldType": "short_text",
+                  "text": "Ada",
+                  "type": "text"
+                }
+              ],
+              "hiddenFields": {
+                "campaign": "autumn"
+              },
+              "landedAt": "2026-09-01T00:00:00Z",
+              "submittedAt": "2026-09-01T00:02:00Z",
+              "token": "response1"
+            }
+          ],
+          "totalItems": 3
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "processed123",
+        "formId": "form123",
+        "pageSize": 1,
+        "since": "2026-09-01T00:00:00Z",
+        "until": "2026-10-01T00:00:00Z"
+      },
+      "name": "listResponses-after-cursor",
+      "operation": "listResponses"
+    }
+  ],
+  "schemaVersion": 1
+}
