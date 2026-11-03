@@ -1,6 +1,6 @@
 # Connector TypeScript SDK
 
-`@superdurable/connectors-sdk` is the provider-neutral TypeScript SDK for Dex connectors. It provides stable value contracts, typed Query and Mutation operations, Dex Step factories, credential refresh, OAuth token exchanges, HTTP safety helpers, project configuration loading, scripted mocks, and single-dispatch marker decisions. The package is at version `0.2.0`, requires Node 22 or 24, and uses `@superdurable/dex` 1.28.0 or newer. It is ESM-only, matching Dex: use `import`; direct `require()` fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`.
+`@superdurable/connectors-sdk` is the provider-neutral TypeScript SDK for Dex connectors. It provides stable value contracts, typed Query and Mutation operations, Dex Step factories, credential refresh, OAuth token exchanges, HTTP safety helpers, project configuration loading, scripted mocks, and single-dispatch marker decisions. The package is at version `0.3.0`, requires Node 22 or 24, and uses `@superdurable/dex` 1.28.0 or newer. It is ESM-only, matching Dex: use `import`; direct `require()` fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`.
 
 Install dependencies and verify the package from this directory:
 
@@ -20,11 +20,28 @@ node examples/oauthtoken.mjs
 node examples/manifest_refresh.mjs
 node examples/singledispatch.mjs
 node examples/fence.mjs
+node examples/textgen.mjs
 ```
 
 All durations in this package are milliseconds. Public JSON shapes use the Go SDK's field names. Credential values and project objects stay outside Flow state and cannot be serialized through their wrappers.
 
 The [Dex integration harness](test/integ/step_flows.mjs) exercises the same Step factories through a real Worker and Client. Start `dexcli dev --open=false --dex-port 18891` with a local Dex server, set `DEX_SERVER_ADDRESS` when its gRPC address differs from `127.0.0.1:18891`, and run `npm run test:integration`. It verifies a happy path, optional branch, unwired optional branch failure, retry then success, retry exhaustion, uncertain mutation, a lost-response single-dispatch fence, repeated claim heartbeats, result Attribute persistence, progress and text Stream delivery, and scripted mock replay. It uses fixture operations and no provider credentials. CI runs the same harness in `sdkts-integration` using its once-per-run resolved Dex CLI.
+
+## Portable text generation
+
+The [runnable text generation example](examples/textgen.mjs) uses `newTextGenerationQuery` with the OpenAI-compatible Chat Completions adapter from `@superdurable/connectors-sdk/textgen/openaichat`. The `@superdurable/connectors-sdk/textgen` entrypoint also exports request and response contracts, model ID validation, portable schema checks, branch definitions, temperature policies, error rules, and the provider-neutral wire-format contract. The example exercises a local fixture provider; a consuming connector supplies a real connection, credential resolver, and Dex Step.
+
+`generateText` requires sync Execute durability and a request timeout shorter than the Step Execute timeout. It writes streamed text deltas to a configured text Stream as bytes arrive; the Result text is authoritative after retries or a blocked response. Register that Stream in the Flow persistence schema. Its six branches are `generated`, `truncated`, `blocked`, `providerRejected`, `invalidResponse`, and `defect`; only `generated` is required. The query retries transport errors, stalled responses, interrupted streams, and safe HTTP failures. A credential is resolved once after local validation and is never stored in Flow state, results, failures, or receipts.
+
+Each invocation resolves the trimmed request model or connection model, then validates messages, the token limit, the structured-output name and schema, declared features, temperature, and reasoning effort in that order. It applies model schema rules, resolves one credential, and encodes the request before dispatch. The first error in this order selects `defect` with zero provider requests. A nil heartbeat every five seconds keeps a silent call alive and clears any Step heartbeat checkpoint. Stream text may contain text from an attempt later retried or blocked, so consumers use the final Result for decisions. A caller may inject `httpClient` to own HTTP transport as in Go; the default transport permits private HTTPS endpoints and neither transport should replay redirects.
+
+An injected HTTP client may return a complete SSE response body without calling `onResponseChunk`. If it calls `onResponseChunk`, it must feed every chunk in order before returning and stop when the callback returns `false`. A provider retry-delay reader that throws or returns a non-finite value is treated as absent, allowing the `Retry-After` header to supply the delay. Usage token counts are JavaScript numbers and require safe integers; unlike Go's `int64` counts, larger values are rejected because they cannot be represented exactly in the public TypeScript `Usage` contract.
+
+The schema subset is the same as Go `sdkgo/textgen`: root object, closed objects with every property required, nullable optional values, arrays with `items`, and only the documented portable keywords. Structured output is checked locally even when the provider accepts a transformed schema. Model IDs are validated according to whether the adapter sends them in a JSON body or path segment. Optional request fields rejected by a wire format or selected model produce a `defect` branch before dispatch.
+
+Exact structured-output numbers may use at most 256 literal characters and an exponent magnitude of at most 400. Date and time formats follow Go's parser, including calendar-valid dates, one-digit hours, comma fractions, and offsets through hour 24 and minute 60. The JSON-object instruction uses Go's sorted, HTML-safe JSON encoding so provider requests match the Go connector. The shared [string-format fixture](../sdkgo/textgen/textgentest/testdata/string_format_cases.json) runs in both Go and TypeScript tests.
+
+The `@superdurable/connectors-sdk/textgen/textgentest` entrypoint ports Go's credential-safe fake provider and reusable exchange suite. [Its provider-dialect test](test/textgentest.test.ts) exercises model precedence, all common branches, error rules, complete and interrupted streams, usage, receipts, and credential redaction. The [Dex integration harness](test/integ/step_flows.mjs) calls `runTextGenerationDexScenarios` through a real Worker and Client to verify retry, heartbeat, text Stream persistence, and an unwired optional branch.
 
 ## Typed operations and credential resolution
 
@@ -102,6 +119,7 @@ if (result.kind !== 'branch' || retryPolicy.totalDurationMs !== 3600000 || crede
 
 The [complete runnable HTTP example](examples/providerhttp.mjs) sends one bounded request to a local server. `sendProviderRequest` resolves every address before connecting, pins the chosen address for IP literals and hostnames, and returns redirects without following them. `ProviderTransportError.isProvablyNotSent` is true for DNS, TCP connect, or TLS handshake failures before a usable connection could send HTTP bytes. Failures after connection or request writing have an unknown dispatch outcome, matching the Go connectors' DNS, connect, TLS, and obtained-connection trace.
 `BodyTooLargeError` preserves the response `status` and `headers`, so a caller can classify a 429 or 503 and its `Retry-After` even when the response body exceeds its limit.
+`ProviderRequest.onBodyLimit` defaults to `destroy`, closing an oversized response immediately. Set it to `drain` for provider calls that continue or bill work after a client disconnect: the SDK releases buffered bytes, delivers callback bytes only through the limit, reads to EOF, then rejects with `BodyTooLargeError`. Drain requires at least one positive `timeoutMs`, positive `stallTimeoutMs`, or `signal`; otherwise `sendProviderRequest` throws `TypeError`. These bounds remain active while draining. For non-2xx responses, an explicit `maxErrorResponseBytes` takes precedence and truncates the body immediately instead of draining. Once drain begins, a later read failure still rejects with `BodyTooLargeError`, including when `ignoreErrorBodyReadFailure` is set. The runnable example exercises `drain` with a local server.
 
 ```js
 import { createServer } from 'node:http';
@@ -213,7 +231,7 @@ mutation.assertNoFailures();
 
 ## OAuth token refresh
 
-The [runnable OAuth exchange example](examples/oauthtoken.mjs) shows a provider-neutral refresh-token grant. The injected `fetch` returns a local fixture; a connector normally uses the provider's fixed HTTPS token endpoint. `TokenEndpoint` also supports client-credentials and JWT-bearer grants, optional Basic authentication, declared response fields, bounded responses, and terminal OAuth error-code classification. The [manifest refresh example](examples/manifest_refresh.mjs) uses `ManifestCredentialRefreshDriver` with a generated authorization declaration and field map to exchange refresh-token, client-credentials, or JWT-bearer grants, preserve rotated material, check scopes, and replace only mapped fields. Constructor options also accept startup-pinned `settings`, a caller-owned `fetch`, and an injectable `now` clock. Credentials for a connector with several authorization methods must carry `authMethodId`. The manifest must declare `refresh.acceptsMissingTokenType` for providers that omit `token_type` and grant `acceptedTokenTypes` for providers such as Slack that return `bot` or `user`; schema and codegen support for these declarations is pending before connector migration. Only declared terminal OAuth errors below HTTP 500 require reauthorization; transport, server, and other token errors remain retryable.
+The [runnable OAuth exchange example](examples/oauthtoken.mjs) shows a provider-neutral refresh-token grant. The injected `fetch` returns a local fixture; a connector normally uses the provider's fixed HTTPS token endpoint. `TokenEndpoint` also supports client-credentials and JWT-bearer grants, optional Basic authentication, declared response fields, bounded responses, and terminal OAuth error-code classification. The [manifest refresh example](examples/manifest_refresh.mjs) uses `ManifestCredentialRefreshDriver` with a generated authorization declaration and field map to exchange refresh-token, client-credentials, or JWT-bearer grants, preserve rotated material, check scopes, and replace only mapped fields. Constructor options also accept startup-pinned `settings`, a caller-owned `fetch`, and an injectable `now` clock. Credentials for a connector with several authorization methods use `authMethodId`; an empty value selects `defaultMethod`. Refresh validation uses `requiredScopes` when declared, and a grant can override `exactScopes` or `acceptsMissingTokenType`. `refresh.scopeSeparators` selects `whitespace` (the default) or `whitespaceAndComma` for both exact and all-scope checks. A blank client secret requires reauthorization unless `refresh.allowsPublicClient` is true. A response lacking `expires_in` is retryable unless the manifest declares `missingExpiry`. Only declared terminal OAuth errors below HTTP 500 require reauthorization; transport, server, and other token errors remain retryable.
 
 An access token with no stored expiry remains usable; the current project provider requires authoritative expiry before forcing refresh after a provider rejection. A response without `expires_in` uses the manifest's `missingExpiry` lifetime or returns an expired result for `keep`. The current project provider rejects that result without changing stored material. Refreshing multiple grants follows the Go driver's current single-expiry behavior: active grants rotate together and the earliest expiry wins. A process failure between provider response and persistence, or failure of a later grant after an earlier rotation, can lose a one-use refresh token.
 
@@ -262,6 +280,12 @@ await fence.recordProviderId(result.providerId);
 ```
 
 ## Release notes
+
+### 0.3.0
+
+Adds declaration-driven required and exact scope checks, per-grant token-type rules, Go-compatible duration validation, and default-method selection for manifest refresh drivers. Scope parsing now follows `scopeSeparators`: whitespace by default, or spaces and commas when declared. A blank client secret now requires reauthorization unless public-client refresh is declared. A missing `expires_in` is retryable unless the manifest declares `missingExpiry`. These changes alter the published 0.2.0 refresh driver's behavior.
+
+Public HTTPS address checks now refuse the IPv4 broadcast address, matching Go's global-unicast rule. Adds opt-in draining of oversized Provider HTTP responses with bounded cancellation and byte-exact chunk callbacks.
 
 ### 0.2.0
 

@@ -100,6 +100,17 @@ export function loadScenarios(url: URL): Scenario[] {
               !(Array.isArray(value) && value.length > 0 && value.every(item => typeof item === 'string'))))) throw new Error(`invalid ${field}`);
       }
       const body = exchange.requestBody;
+      if (typeof body === 'object' && body !== null && !Array.isArray(body) && '$multipart' in body) {
+        const parts = (body as RecordValue).$multipart;
+        if (Object.keys(body).length !== 1 || !Array.isArray(parts) || parts.some(part =>
+          typeof part !== 'object' || part === null || Array.isArray(part) ||
+          !isDeepStrictEqual(Object.keys(part).sort(), ['bodyBase64', 'headers']) ||
+          typeof part.bodyBase64 !== 'string' || typeof part.headers !== 'object' || part.headers === null ||
+          Array.isArray(part.headers) || Object.values(part.headers as RecordValue).some(values =>
+            !Array.isArray(values) || !values.length || values.some(value => typeof value !== 'string')))) {
+          throw new Error('invalid multipart expectation');
+        }
+      }
       if (typeof body === 'object' && body !== null && !Array.isArray(body) && '$rawMimeContains' in body) {
         const fragments = (body as RecordValue).$rawMimeContains;
         if (Object.keys(body).some(key => !['$rawMimeContains', 'threadId'].includes(key)) ||
@@ -182,6 +193,73 @@ export async function withScenarioHTTPServer<Value>(recorder: ExchangeRecorder,
   finally { await new Promise<void>(resolve => server.close(() => resolve())); }
 }
 
+function multipartContentType(contentType: string): { mediaType: string; parameters: Record<string, string> } {
+  const [type = '', ...rawParameters] = contentType.split(/;(?=(?:[^"]*"[^"]*")*[^"]*$)/);
+  const parameters: Record<string, string> = {};
+  for (const rawParameter of rawParameters) {
+    const separator = rawParameter.indexOf('=');
+    if (separator < 0) continue;
+    const name = rawParameter.slice(0, separator).trim().toLowerCase();
+    if (Object.hasOwn(parameters, name)) throw new Error('duplicate multipart media type parameter');
+    const rawValue = rawParameter.slice(separator + 1).trim();
+    parameters[name] = rawValue.startsWith('"') && rawValue.endsWith('"')
+      ? rawValue.slice(1, -1).replace(/\\(.)/g, '$1') : rawValue;
+  }
+  return { mediaType: type.trim().toLowerCase(), parameters };
+}
+
+function multipartMediaType(contentType: string): { mediaType: string; parameters: Record<string, string> } {
+  const result = multipartContentType(contentType);
+  delete result.parameters.boundary;
+  return result;
+}
+
+function isMultipart(contentType: string): boolean {
+  return ['multipart/form-data', 'multipart/mixed'].includes(multipartContentType(contentType).mediaType);
+}
+
+function multipartBody(contentType: string, body: Buffer): RecordValue {
+  const parsed = multipartContentType(contentType);
+  const boundary = parsed.parameters.boundary;
+  if (!isMultipart(contentType) || !boundary) throw new Error('missing multipart boundary');
+  const delimiter = Buffer.from(`--${boundary}`);
+  if (!body.subarray(0, delimiter.length).equals(delimiter)) throw new Error('invalid multipart opening delimiter');
+  let position = delimiter.length;
+  const parts: RecordValue[] = [];
+  while (true) {
+    if (body.subarray(position, position + 2).equals(Buffer.from('--'))) break;
+    if (!body.subarray(position, position + 2).equals(Buffer.from('\r\n'))) throw new Error('invalid multipart delimiter');
+    const headerStart = position + 2;
+    const headerEnd = body.indexOf(Buffer.from('\r\n\r\n'), headerStart);
+    if (headerEnd < 0) throw new Error('missing multipart part headers');
+    const headers: Record<string, string[]> = {};
+    let lastName = '';
+    for (const line of new TextDecoder('utf-8', { fatal: true }).decode(body.subarray(headerStart, headerEnd)).split('\r\n')) {
+      if (/[\r\n]/.test(line)) throw new Error('invalid multipart part header');
+      if (/^[ \t]/.test(line)) {
+        if (!lastName) throw new Error('invalid multipart part header');
+        headers[lastName]![headers[lastName]!.length - 1] += ` ${line.trim()}`;
+        continue;
+      }
+      const separator = line.indexOf(':');
+      if (separator < 0 || !/^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/.test(line.slice(0, separator))) throw new Error('invalid multipart part header');
+      const name = line.slice(0, separator).toLowerCase().replace(/(^|-)[a-z]/g, letter => letter.toUpperCase());
+      (headers[name] ??= []).push(line.slice(separator + 1).trim());
+      lastName = name;
+    }
+    const contentStart = headerEnd + 4;
+    const partDelimiter = Buffer.concat([Buffer.from('\r\n'), delimiter]);
+    let contentEnd = body.indexOf(partDelimiter, contentStart);
+    while (contentEnd >= 0 && !['\r\n', '--'].includes(body.subarray(contentEnd + partDelimiter.length, contentEnd + partDelimiter.length + 2).toString())) {
+      contentEnd = body.indexOf(partDelimiter, contentEnd + 1);
+    }
+    if (contentEnd < 0) throw new Error('missing multipart closing delimiter');
+    parts.push({ headers, bodyBase64: body.subarray(contentStart, contentEnd).toString('base64') });
+    position = contentEnd + 2 + delimiter.length;
+  }
+  return { $multipart: parts };
+}
+
 export class ExchangeRecorder {
   readonly mismatches: string[] = [];
   requestCount = 0;
@@ -198,7 +276,8 @@ export class ExchangeRecorder {
     }
     if (exchange.transportFailure !== 'before-send') this.providerRequestCount++;
     const url = new URL(request.url, 'http://localhost');
-    const bodyText = typeof request.body === 'string' ? request.body : request.body ? Buffer.from(request.body).toString() : '';
+    const bodyBytes = typeof request.body === 'string' ? Buffer.from(request.body) : Buffer.from(request.body ?? []);
+    const bodyText = bodyBytes.toString();
     this.equal(index, 'method', request.method, exchange.method);
     this.equal(index, 'path', url.pathname, this.pathPrefix + exchange.path);
     for (const [key, value] of Object.entries(exchange.query ?? {})) this.equal(index, `query ${key}`, url.searchParams.getAll(key), Array.isArray(value) ? value : [value]);
@@ -209,7 +288,10 @@ export class ExchangeRecorder {
     for (const key of new Set(form.keys())) if (!(key in (exchange.form ?? {}))) this.mismatches.push(`request ${index}: unasserted form ${key}=${JSON.stringify(form.getAll(key))}`);
     if (exchange.requestBody !== undefined) {
       const expected = exchange.requestBody;
-      if (typeof expected === 'object' && expected !== null && !Array.isArray(expected) && '$rawMimeContains' in expected) {
+      if (typeof expected === 'object' && expected !== null && !Array.isArray(expected) && '$multipart' in expected) {
+        try { this.equal(index, 'multipart body', multipartBody(String(contentType ?? ''), bodyBytes), expected); }
+        catch (error) { this.mismatches.push(`request ${index}: invalid multipart body: ${String(error)}`); }
+      } else if (typeof expected === 'object' && expected !== null && !Array.isArray(expected) && '$rawMimeContains' in expected) {
         let mime = '';
         try {
           const payload = JSON.parse(bodyText) as RecordValue;
@@ -244,7 +326,14 @@ export class ExchangeRecorder {
       const value = headers[name.toLowerCase()];
       return value === undefined ? [] : Array.isArray(value) ? value : [value];
     };
-    for (const [name, value] of Object.entries(exchange.requestHeaders ?? {})) this.equal(index, `header ${name}`, headerValues(name), Array.isArray(value) ? value : [value]);
+    for (const [name, value] of Object.entries(exchange.requestHeaders ?? {})) {
+      const actual = headerValues(name);
+      const expected = Array.isArray(value) ? value : [value];
+      if (name.toLowerCase() === 'content-type' && actual.length === 1 && expected.length === 1 && isMultipart(expected[0] ?? '')) {
+        try { this.equal(index, `header ${name}`, multipartMediaType(actual[0] ?? ''), multipartMediaType(expected[0] ?? '')); }
+        catch (error) { this.mismatches.push(`request ${index}: invalid header ${name}: ${String(error)}`); }
+      } else this.equal(index, `header ${name}`, actual, expected);
+    }
     const assertedHeaders = new Set(Object.keys(exchange.requestHeaders ?? {}).map(name => name.toLowerCase()));
     for (const [name, value] of Object.entries(headers)) {
       if (['host', 'accept-encoding', 'connection', 'content-length', 'idempotency-key'].includes(name)) continue;
