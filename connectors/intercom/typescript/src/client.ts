@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import {
+  AddressRefusal,
   BodyTooLargeError,
   isHeaderSafeCredential,
   parseRetryAfter,
@@ -235,7 +236,7 @@ export class IntercomClient {
           retryAfterMs: 0,
           receipt,
         };
-      else if (error instanceof ProviderTransportError && error.isProvablyNotSent)
+      else if (error instanceof AddressRefusal || error instanceof ProviderTransportError && error.isProvablyNotSent)
         return {
           outcome: "notSent",
           failure: this.failure(

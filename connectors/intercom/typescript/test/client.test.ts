@@ -5,7 +5,7 @@ import { createServer } from "node:http";
 import { once } from "node:events";
 import { afterEach, expect, it } from "vitest";
 import { SecretString, type Call } from "@superdurable/connectors-sdk";
-import { BodyTooLargeError } from "@superdurable/connectors-sdk/providerhttp";
+import { AddressRefusal, BodyTooLargeError, ProviderTransportError } from "@superdurable/connectors-sdk/providerhttp";
 import { IntercomClient } from "../src/client.js";
 
 const call = {
@@ -197,6 +197,9 @@ it.each([
   ["2025-03-01T24:00:00Z", "defect"],
   ["2025-03-01T12:00:00+99:59", "defect"],
   ["2025-03-01T12:00:00,5Z", "searched"],
+  ["2025-03-01T9:00:00Z", "searched"],
+  ["2025-03-01T12:00:00+24:00", "searched"],
+  ["2025-03-01T12:00:00+00:60", "searched"],
 ] as const)("validates Go RFC 3339 instant %s", async (updatedSince, expectedBranch) => {
   const client = new IntercomClient({}, validCredentials, {
     endpoint: "http://127.0.0.1:0",
@@ -209,4 +212,117 @@ it.each([
   const attempt = await client.searchConversations().invoke(call, { updatedSince });
   expect(attempt.kind).toBe("branch");
   if (attempt.kind === "branch") expect(attempt.branch).toBe(expectedBranch);
+});
+
+it.each([
+  ["-@[]", "defect"],
+  ["a\u0085b@example.com", "notFound"],
+  ["a\ufeffb@example.com", "notFound"],
+  ["a@[127.0.0.1]", "notFound"],
+  ["a@[IPv6:::1]", "defect"],
+] as const)("matches Go mail.ParseAddress for %s", async (email, expectedBranch) => {
+  const client = new IntercomClient({}, validCredentials, {
+    endpoint: "http://127.0.0.1:0",
+    send: async () => ({ status: 200, headers: {}, body: Buffer.from('{"type":"list","data":[],"total_count":0}') }),
+  });
+  const attempt = await client.findContactByEmail().invoke(call, { email });
+  expect(attempt.kind).toBe("branch");
+  if (attempt.kind === "branch") expect(attempt.branch).toBe(expectedBranch);
+});
+
+it.each([
+  ["1", 1_000], [" 1 ", 1_000], ["01", 1_000], ["1.5", 0],
+  ["-1", 0], ["0", 0], ["3600", 60_000],
+  ["999999999999999999999999", 60_000],
+] as const)("matches Go Retry-After duration for %s", async (header, expectedMs) => {
+  const client = new IntercomClient({}, validCredentials, {
+    endpoint: "http://127.0.0.1:0",
+    send: async () => ({ status: 429, headers: { "retry-after": header }, body: Buffer.from("{}") }),
+  });
+  const exchange = await client.exchange(call, "getConversation", "GET", "/conversations/2002");
+  expect(exchange.outcome).toBe("rateLimited");
+  if (exchange.outcome === "rateLimited") expect(exchange.retryAfterMs).toBe(expectedMs);
+});
+
+it("keeps a possibly-sent reply checkpoint until read-back confirms the part", async () => {
+  let heartbeat: unknown;
+  const paths: string[] = [];
+  const replyCall = {
+    ...call,
+    context: {
+      ...call.context,
+      hasLastHeartbeatValue: () => heartbeat !== undefined && heartbeat !== null,
+      getLastHeartbeatValue: () => heartbeat,
+      recordHeartbeat: async (value: unknown) => { heartbeat = value; },
+    },
+  } as Call;
+  const client = new IntercomClient({}, validCredentials, {
+    endpoint: "http://127.0.0.1:0",
+    now: () => new Date("2026-10-30T00:00:00Z"),
+    send: async (request) => {
+      paths.push(new URL(request.url).pathname);
+      if (paths.length === 1) throw new ProviderTransportError(false);
+      return { status: 200, headers: {}, body: Buffer.from(JSON.stringify({
+        type: "conversation", id: "2002", state: "open", open: true,
+        conversation_parts: { conversation_parts: [{ id: "3001", part_type: "comment",
+          body: "Hello", author: { type: "admin", id: "77" }, created_at: 1793318400 }], total_count: 1 },
+      })) };
+    },
+  });
+  const input = { conversationId: "2002", adminId: "77", messageType: "comment" as const, body: "Hello" };
+  const first = await client.replyToConversation().invoke(replyCall, input);
+  expect(first.kind).toBe("retry");
+  expect(heartbeat).toBeTruthy();
+  const second = await client.replyToConversation().invoke(replyCall, input);
+  expect(second.kind).toBe("branch");
+  if (second.kind === "branch") {
+    expect(second.branch).toBe("replied");
+    expect(second.value.wasAlreadyApplied).toBe(true);
+  }
+  expect(paths).toEqual(["/conversations/2002/reply", "/conversations/2002"]);
+});
+
+it("treats address refusal as unsent and clears the reply checkpoint", async () => {
+  let heartbeat: unknown;
+  const replyCall = {
+    ...call,
+    context: {
+      ...call.context,
+      hasLastHeartbeatValue: () => heartbeat !== undefined && heartbeat !== null,
+      getLastHeartbeatValue: () => heartbeat,
+      recordHeartbeat: async (value: unknown) => { heartbeat = value; },
+    },
+  } as Call;
+  const client = new IntercomClient({}, validCredentials, {
+    endpoint: "http://127.0.0.1:0",
+    send: async () => { throw new AddressRefusal("blocked address"); },
+  });
+  const attempt = await client.replyToConversation().invoke(replyCall, {
+    conversationId: "2002", adminId: "77", messageType: "comment", body: "Hello",
+  });
+  expect(attempt.kind).toBe("retry");
+  expect(heartbeat).toBeNull();
+});
+
+it("uses Go whitespace for reply body validation and HTML", async () => {
+  let sentBody = "";
+  const replyCall = {
+    ...call,
+    context: { ...call.context, hasLastHeartbeatValue: () => false, recordHeartbeat: async () => {} },
+  } as Call;
+  const client = new IntercomClient({}, validCredentials, {
+    endpoint: "http://127.0.0.1:0",
+    send: async (request) => {
+      sentBody = Buffer.from(request.body ?? []).toString("utf8");
+      return { status: 401, headers: {}, body: Buffer.from("{}") };
+    },
+  });
+  const input = { conversationId: "2002", adminId: "77", messageType: "comment" as const };
+  const blank = await client.replyToConversation().invoke(replyCall, { ...input, body: "\u0085" });
+  expect(blank.kind).toBe("branch");
+  if (blank.kind === "branch") expect(blank.branch).toBe("defect");
+  const nonblank = await client.replyToConversation().invoke(replyCall, { ...input, body: "\ufeff" });
+  expect(nonblank.kind).toBe("branch");
+  if (nonblank.kind === "branch") expect(nonblank.branch).toBe("providerRejected");
+  expect(JSON.parse(sentBody).body).toBe("<p>\ufeff</p>");
 });

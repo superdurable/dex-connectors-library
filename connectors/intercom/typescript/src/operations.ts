@@ -39,6 +39,8 @@ import type {
 } from "./generated/models.js";
 import type { IntercomClient, IntercomExchange } from "./client.js";
 import emailAddresses from "email-addresses";
+import { decode } from "html-entities";
+import { isIP } from "node:net";
 
 type Wire = Record<string, unknown>;
 const zeroTime = "0001-01-01T00:00:00Z";
@@ -59,6 +61,24 @@ function id(value: unknown): string {
   if (typeof value === "string") return value;
   if (typeof value === "number" && Number.isSafeInteger(value)) return String(value);
   throw new Error("identifier is not a string or an integer");
+}
+function parseProviderJSON(body: Uint8Array): unknown {
+  return JSON.parse(
+    Buffer.from(body).toString("utf8"),
+    (key: string, value: unknown, context?: { source: string }) => {
+      if (typeof value !== "number" || !["id", "admin_assignee_id", "team_assignee_id"].includes(key))
+        return value;
+      const source = context?.source;
+      if (source && !/^-?[0-9]{1,24}$/.test(source))
+        throw new Error("identifier is not a string or an integer");
+      if (!source && !Number.isSafeInteger(value))
+        throw new Error("identifier has no exact numeric source");
+      return source ?? String(value);
+    },
+  );
+}
+function trimGoSpace(value: string): string {
+  return value.replace(/^\p{White_Space}+|\p{White_Space}+$/gu, "");
 }
 function sec(value: unknown): number {
   const text = id(value);
@@ -184,9 +204,7 @@ function envelope(exchange: IntercomExchange, conversationID: string): Wire {
   let w: Wire;
   try {
     w = obj(
-      JSON.parse(
-        Buffer.from(successfulResponse(exchange).body).toString("utf8"),
-      ),
+      parseProviderJSON(successfulResponse(exchange).body),
     );
   } catch {
     throw new Error("conversation response is not a conversation object");
@@ -277,7 +295,7 @@ function mutationFailure<T>(
   return newMutationBranch(branch, empty, exchange.receipt, exchange.failure);
 }
 function rfc3339(value: string): number | undefined {
-  const parts = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:[.,]\d+)?(Z|([+-])(\d{2}):(\d{2}))$/.exec(value);
+  const parts = /^(\d{4})-(\d{2})-(\d{2})T(\d{1,2}):(\d{2}):(\d{2})(?:[.,]\d+)?(Z|([+-])(\d{2}):(\d{2}))$/.exec(value);
   if (!parts) return;
   const [, yearText, monthText, dayText, hourText, minuteText, secondText, , sign, offsetHourText, offsetMinuteText] = parts;
   const year = Number(yearText);
@@ -288,7 +306,7 @@ function rfc3339(value: string): number | undefined {
   const second = Number(secondText);
   const offsetHour = Number(offsetHourText ?? 0);
   const offsetMinute = Number(offsetMinuteText ?? 0);
-  if (month < 1 || month > 12 || day < 1 || hour > 23 || minute > 59 || second > 59 || offsetHour > 23 || offsetMinute > 59) return;
+  if (month < 1 || month > 12 || day < 1 || hour > 23 || minute > 59 || second > 59 || offsetHour > 24 || offsetMinute > 60) return;
   const instant = new Date(0);
   instant.setUTCFullYear(year, month - 1, day);
   instant.setUTCHours(hour, minute, second, 0);
@@ -297,11 +315,16 @@ function rfc3339(value: string): number | undefined {
   return Math.floor(instant.getTime() / 1000) - (sign === "+" ? offsetSeconds : sign === "-" ? -offsetSeconds : 0);
 }
 function bareEmail(value: string): boolean {
-  if (!value || /[\s"'()<>,;]/.test(value)) return false;
+  if (!value || /[ "'()<>,;]/.test(value)) return false;
   const parsed = emailAddresses.parseOneAddress({
     input: value,
     rfc6532: true,
   });
+  if (parsed?.type === "mailbox" && parsed.domain?.startsWith("[")) {
+    const literal = parsed.domain.slice(1, -1);
+    if (isIP(literal) !== 4)
+      return false;
+  }
   return (
     parsed?.type === "mailbox" &&
     parsed.name === null &&
@@ -385,7 +408,7 @@ export class SearchConversationsOperation
         ? query
         : (input.pageSize ?? 0) < 0 || (input.pageSize ?? 0) > 150
           ? "pageSize must be between 1 and 150, or zero for 20"
-          : (input.cursor ?? "").length > 2048 ||
+          : Buffer.byteLength(input.cursor ?? "") > 2048 ||
               /[^!-~]/.test(input.cursor ?? "")
             ? "cursor must be the printable NextCursor of a previous page"
             : undefined;
@@ -414,9 +437,7 @@ export class SearchConversationsOperation
     if (bad) return bad;
     try {
       const page = obj(
-        JSON.parse(
-          Buffer.from(successfulResponse(exchange).body).toString("utf8"),
-        ),
+        parseProviderJSON(successfulResponse(exchange).body),
       );
       if (str(page.type) && str(page.type) !== "conversation.list")
         throw new Error("search page is not a conversation list");
@@ -433,7 +454,11 @@ export class SearchConversationsOperation
       const next = obj(page.pages ?? {}).next;
       if (next) {
         const cursor = str(obj(next).starting_after);
-        if (cursor) output.nextCursor = cursor;
+        if (cursor) {
+          if (Buffer.byteLength(cursor) > 2048 || /[^!-~]/.test(cursor))
+            throw new Error("search next cursor is invalid");
+          output.nextCursor = cursor;
+        }
       }
       return newQueryBranch("searched", output, exchange.receipt);
     } catch (error) {
@@ -501,7 +526,7 @@ export class GetConversationOperation
         .map(part)
         .sort(
           (a, b) =>
-            b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id),
+            (b.createdAt > a.createdAt ? 1 : b.createdAt < a.createdAt ? -1 : 0) || comparePartIDs(b.id, a.id),
         );
       const latestParts = decoded.slice(0, input.latestPartLimit || 10);
       const count = Math.max(
@@ -529,6 +554,11 @@ export class GetConversationOperation
     }
   }
 }
+function comparePartIDs(left: string, right: string): number {
+  if (left.length !== right.length && numericID.test(left) && numericID.test(right))
+    return left.length > right.length ? 1 : -1;
+  return left > right ? 1 : left < right ? -1 : 0;
+}
 
 function replyInputError(input: ReplyToConversationInput): string | undefined {
   if (!numericID.test(input.conversationId))
@@ -537,17 +567,15 @@ function replyInputError(input: ReplyToConversationInput): string | undefined {
     return "adminId must be an Intercom admin ID of digits";
   if (input.messageType !== "comment" && input.messageType !== "note")
     return "messageType must be comment or note";
-  if (!input.body.trim()) return "body is required";
+  if (!trimGoSpace(input.body)) return "body is required";
   if (Buffer.byteLength(input.body) > 16384)
     return "body must be valid UTF-8 of at most 16384 bytes";
   return;
 }
 function escapeHTML(body: string): string {
-  return body
-    .replace(/\r\n/g, "\n")
-    .trim()
+  return trimGoSpace(body.replace(/\r\n/g, "\n"))
     .split(/\n[ \t]*\n/)
-    .map((p) => p.trim())
+    .map(trimGoSpace)
     .filter(Boolean)
     .map(
       (p) =>
@@ -556,12 +584,8 @@ function escapeHTML(body: string): string {
     .join("");
 }
 function plainText(body: string): string {
-  return body
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .trim()
-    .split(/\s+/)
+  return trimGoSpace(decode(body, { level: "html5" }))
+    .split(/\p{White_Space}+/u)
     .join(" ");
 }
 function matchingPart(
@@ -571,8 +595,7 @@ function matchingPart(
   isHTML: boolean,
 ): Wire | undefined {
   const wanted = plainText(input.body);
-  return parts(wire)
-    .filter(
+  return newestAdminPart(parts(wire).filter(
       (w) =>
         str(w.part_type) === input.messageType &&
         str(obj(w.author ?? {}).type) === "admin" &&
@@ -581,8 +604,13 @@ function matchingPart(
         plainText(
           isHTML ? str(w.body).replace(/<[^>]*>/g, " ") : str(w.body),
         ) === wanted,
-    )
-    .sort((a, b) => sec(b.created_at) - sec(a.created_at))[0];
+    ));
+}
+function newestAdminPart(candidates: Wire[]): Wire | undefined {
+  let newest: Wire | undefined;
+  for (const candidate of candidates)
+    if (!newest || sec(candidate.created_at) >= sec(newest.created_at)) newest = candidate;
+  return newest;
 }
 
 /** Add an admin reply at most once per Dex Step execution. */
@@ -671,12 +699,13 @@ export class ReplyToConversationOperation
       if (str(wire.state)) output.conversationState = str(wire.state);
       const found =
         matchingPart(wire, input, dispatchedAt - 300, true) ??
-        parts(wire).find(
+        newestAdminPart(parts(wire).filter(
           (w) =>
             str(w.part_type) === input.messageType &&
+            str(obj(w.author ?? {}).type) === "admin" &&
             id(obj(w.author ?? {}).id) === input.adminId &&
             sec(w.created_at) >= dispatchedAt - 300,
-        );
+        ));
       if (found) output.part = part(found);
       return newMutationBranch(
         "replied",
@@ -996,9 +1025,7 @@ export class FindContactByEmailOperation
     if (bad) return bad;
     try {
       const page = obj(
-        JSON.parse(
-          Buffer.from(successfulResponse(exchange).body).toString("utf8"),
-        ),
+        parseProviderJSON(successfulResponse(exchange).body),
       );
       if (str(page.type) && str(page.type) !== "list")
         throw new Error("contact page is not a contact list");
@@ -1024,7 +1051,7 @@ export class FindContactByEmailOperation
         };
       });
       const hasMore =
-        Boolean(obj(page.pages ?? {}).next) ||
+        (obj(page.pages ?? {}).next != null && str(obj(obj(page.pages ?? {}).next).starting_after) !== "") ||
         integerField(page.total_count) > contacts.length;
       const output: FindContactByEmailOutput = {
         contacts,

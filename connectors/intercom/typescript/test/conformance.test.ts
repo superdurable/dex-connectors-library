@@ -90,6 +90,12 @@ async function invokeIntercom(
       now: () => new Date("2026-10-30T00:00:00Z"),
     },
   );
+  if (scenario.priorHeartbeat) {
+    context.marker = {
+      intercomReplyDispatchedCallId: scenario.callId,
+      intercomReplyDispatchedAt: 1793318400,
+    };
+  }
   const call = scenarioCall(
     scenario,
     { provider: "intercom", name: "intercom-test" },

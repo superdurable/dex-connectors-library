@@ -43,7 +43,8 @@
   "dependencies": {
     "@superdurable/connectors-sdk": "0.1.1",
     "@superdurable/dex": ">=1.28.0",
-    "email-addresses": "^5.0.0",
+    "email-addresses": "5.0.0",
+    "html-entities": "2.6.0",
     "zod": "^4.1.0"
   },
   "devDependencies": {
