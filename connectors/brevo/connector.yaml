@@ -13,6 +13,11 @@ spec:
       version: v0.1.0
       operations: [createOrUpdateContact, getContact]
       triggers: []
+    typescript:
+      package: '@superdurable/connector-brevo'
+      version: v0.1.1
+      operations: [createOrUpdateContact, getContact]
+      triggers: []
   codegen:
     go:
       package: brevo

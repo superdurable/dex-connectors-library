@@ -17,23 +17,19 @@ const conformanceFixturePathPrefix = "/api"
 
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint string, transport *http.Client) conformanceInvoker {
 	t.Helper()
-	client, err := gorgias.New(gorgias.Config{Domain: testDomain}, testCredentialProvider(), gorgias.WithAPIBaseURL(endpoint), gorgias.WithHTTPClient(transport))
+	client, err := gorgias.New(gorgias.Config{Domain: testDomain}, testCredentialProvider(),
+		gorgias.WithAPIBaseURL(endpoint), gorgias.WithHTTPClient(transport))
 	require.NoError(t, err)
 	context := newGorgiasDexContext("conformance")
-	context.previousHeartbeat = scenario.PriorHeartbeat
-	attemptOffset := 0
-	if len(scenario.PriorHeartbeat) != 0 {
-		var marker struct {
-			Attempt int `json:"attempt"`
-		}
-		require.NoError(t, json.Unmarshal(scenario.PriorHeartbeat, &marker))
-		attemptOffset = marker.Attempt
-	}
+	previousAttempt := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(value []byte) {
+		context.previousHeartbeat = append(json.RawMessage(nil), value...)
+	})
 	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
-		if attempt > 1 && context.recordedHeartbeat != nil {
+		if attempt > 1 {
 			context.previousHeartbeat = context.recordedHeartbeat
+			context.recordedHeartbeat = nil
 		}
-		context.attempt = int32(attempt + attemptOffset)
+		context.attempt = previousAttempt + int32(attempt)
 	}, actions: map[string]conformanceOperationInvocation{
 		"searchTickets":       newConformanceQueryInvocation(t, scenario.Input, context, client.SearchTickets(), gorgiasConnection),
 		"getTicket":           newConformanceQueryInvocation(t, scenario.Input, context, client.GetTicket(), gorgiasConnection),

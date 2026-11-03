@@ -157,3 +157,7 @@ announcement, a post whose first response was lost, an unwired `notFound`, and
 invalid start input.
 
 No test runs against the real Discord API yet.
+
+## Python package
+
+The `python/` package implements all four operations with generated typed models and Step factories. Its runnable [channel announcement example](python/examples/channel_announcement/README.md) uses a static `discord-announcements` connection and a Dex Worker. Run `uv sync && uv run pytest` from `python/`. Go-recorded conformance scenarios cover provider requests, branches, retry, and the stable message nonce. Live Discord authorization and API behavior remain unverified for the Python port.

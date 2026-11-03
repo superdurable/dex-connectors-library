@@ -1,0 +1,1885 @@
+{
+  "connector": "amazon-sqs",
+  "scenarios": [
+    {
+      "callId": "a16e9c1a-c248-5629-a9c9-ae15f2f87c43",
+      "exchanges": [
+        {
+          "body": "{\"Messages\":[{\"MessageId\":\"order-1042\",\"ReceiptHandle\":\"receipt-order-1042\",\"Body\":\"{\\\"orderId\\\":\\\"1042\\\",\\\"event\\\":\\\"paid\\\"}\",\"MD5OfBody\":\"457ba27172a5858e4fed7600ec948c39\",\"Attributes\":{\"ApproximateReceiveCount\":\"1\",\"SentTimestamp\":\"1792918800000\",\"ApproximateFirstReceiveTimestamp\":\"1792918801000\"},\"MessageAttributes\":{\"source\":{\"DataType\":\"String\",\"StringValue\":\"checkout\"}}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "AttributeNames": [
+              "ApproximateReceiveCount",
+              "ApproximateFirstReceiveTimestamp",
+              "SentTimestamp",
+              "MessageGroupId",
+              "MessageDeduplicationId",
+              "SequenceNumber"
+            ],
+            "MaxNumberOfMessages": 1,
+            "MessageAttributeNames": [
+              "All"
+            ],
+            "MessageSystemAttributeNames": [
+              "ApproximateReceiveCount",
+              "ApproximateFirstReceiveTimestamp",
+              "SentTimestamp",
+              "MessageGroupId",
+              "MessageDeduplicationId",
+              "SequenceNumber"
+            ],
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders",
+            "VisibilityTimeout": 30,
+            "WaitTimeSeconds": 1
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=d43754d0770244df32ccc677f7146179ddea608208cf07b6a9e9201d9f46fe60"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.ReceiveMessage"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "received",
+        "failureKind": "",
+        "output": {
+          "messages": [
+            {
+              "body": "{\"orderId\":\"1042\",\"event\":\"paid\"}",
+              "firstReceivedAt": "2026-10-25T09:00:01Z",
+              "md5OfBody": "457ba27172a5858e4fed7600ec948c39",
+              "messageAttributes": {
+                "source": {
+                  "dataType": "String",
+                  "stringValue": "checkout"
+                }
+              },
+              "messageId": "order-1042",
+              "receiptHandle": "receipt-order-1042",
+              "receiveCount": 1,
+              "sentAt": "2026-10-25T09:00:00Z"
+            }
+          ],
+          "queueUrl": "http://127.0.0.1:12345/123456789012/orders"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a16e9c1a-c248-5629-a9c9-ae15f2f87c43",
+      "input": {
+        "maxMessages": 1,
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders",
+        "visibilityTimeoutSeconds": 30,
+        "waitTimeSeconds": 1
+      },
+      "name": "receiveMessages-received",
+      "operation": "receiveMessages"
+    },
+    {
+      "callId": "a16e9c1a-c248-5629-a9c9-ae15f2f87c43",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "AttributeNames": [
+              "ApproximateReceiveCount",
+              "ApproximateFirstReceiveTimestamp",
+              "SentTimestamp",
+              "MessageGroupId",
+              "MessageDeduplicationId",
+              "SequenceNumber"
+            ],
+            "MaxNumberOfMessages": 10,
+            "MessageAttributeNames": [
+              "All"
+            ],
+            "MessageSystemAttributeNames": [
+              "ApproximateReceiveCount",
+              "ApproximateFirstReceiveTimestamp",
+              "SentTimestamp",
+              "MessageGroupId",
+              "MessageDeduplicationId",
+              "SequenceNumber"
+            ],
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders",
+            "WaitTimeSeconds": 20
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=85afb9a322a6f5c9f7849f555a028a5338b348690f59ed7e5a0d1ad80f741ffc"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.ReceiveMessage"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "empty",
+        "failureKind": "",
+        "output": {
+          "queueUrl": "http://127.0.0.1:12345/123456789012/orders"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a16e9c1a-c248-5629-a9c9-ae15f2f87c43",
+      "input": {
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders"
+      },
+      "name": "receiveMessages-empty",
+      "operation": "receiveMessages"
+    },
+    {
+      "callId": "a16e9c1a-c248-5629-a9c9-ae15f2f87c43",
+      "exchanges": [
+        {
+          "body": "{\"Messages\":[{\"MessageId\":\"order-1042\",\"ReceiptHandle\":\"receipt-order-1042\",\"Body\":\"{\\\"orderId\\\":\\\"1042\\\",\\\"event\\\":\\\"paid\\\"}\",\"MD5OfBody\":\"457ba27172a5858e4fed7600ec948c39\",\"Attributes\":{\"ApproximateReceiveCount\":\"1\",\"SentTimestamp\":\"1792918800000\",\"ApproximateFirstReceiveTimestamp\":\"1792918801000\"},\"MessageAttributes\":{\"source\":{\"DataType\":\"String\",\"StringValue\":\"checkout\"}}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "AttributeNames": [
+              "ApproximateReceiveCount",
+              "ApproximateFirstReceiveTimestamp",
+              "SentTimestamp",
+              "MessageGroupId",
+              "MessageDeduplicationId",
+              "SequenceNumber"
+            ],
+            "MaxNumberOfMessages": 1,
+            "MessageAttributeNames": [
+              "All"
+            ],
+            "MessageSystemAttributeNames": [
+              "ApproximateReceiveCount",
+              "ApproximateFirstReceiveTimestamp",
+              "SentTimestamp",
+              "MessageGroupId",
+              "MessageDeduplicationId",
+              "SequenceNumber"
+            ],
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders.fifo",
+            "ReceiveRequestAttemptId": "a16e9c1a-c248-5629-a9c9-ae15f2f87c43",
+            "WaitTimeSeconds": 20
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=33b83300c3f30c0b096782f6118bfb51e96ae61d559ebb38d915bfd30e610a3a"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.ReceiveMessage"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "received",
+        "failureKind": "",
+        "output": {
+          "isFifo": true,
+          "messages": [
+            {
+              "body": "{\"orderId\":\"1042\",\"event\":\"paid\"}",
+              "firstReceivedAt": "2026-10-25T09:00:01Z",
+              "md5OfBody": "457ba27172a5858e4fed7600ec948c39",
+              "messageAttributes": {
+                "source": {
+                  "dataType": "String",
+                  "stringValue": "checkout"
+                }
+              },
+              "messageId": "order-1042",
+              "receiptHandle": "receipt-order-1042",
+              "receiveCount": 1,
+              "sentAt": "2026-10-25T09:00:00Z"
+            }
+          ],
+          "queueUrl": "http://127.0.0.1:12345/123456789012/orders.fifo"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a16e9c1a-c248-5629-a9c9-ae15f2f87c43",
+      "input": {
+        "maxMessages": 1,
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders.fifo"
+      },
+      "name": "receiveMessages-fifo",
+      "operation": "receiveMessages"
+    },
+    {
+      "callId": "a16e9c1a-c248-5629-a9c9-ae15f2f87c43",
+      "exchanges": [
+        {
+          "body": "{\"__type\":\"AccessDenied\",\"message\":\"SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "AttributeNames": [
+              "ApproximateReceiveCount",
+              "ApproximateFirstReceiveTimestamp",
+              "SentTimestamp",
+              "MessageGroupId",
+              "MessageDeduplicationId",
+              "SequenceNumber"
+            ],
+            "MaxNumberOfMessages": 10,
+            "MessageAttributeNames": [
+              "All"
+            ],
+            "MessageSystemAttributeNames": [
+              "ApproximateReceiveCount",
+              "ApproximateFirstReceiveTimestamp",
+              "SentTimestamp",
+              "MessageGroupId",
+              "MessageDeduplicationId",
+              "SequenceNumber"
+            ],
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders",
+            "WaitTimeSeconds": 20
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=85afb9a322a6f5c9f7849f555a028a5338b348690f59ed7e5a0d1ad80f741ffc"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.ReceiveMessage"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "queueUrl": "http://127.0.0.1:12345/123456789012/orders"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a16e9c1a-c248-5629-a9c9-ae15f2f87c43",
+      "input": {
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders"
+      },
+      "name": "receiveMessages-providerRejected",
+      "operation": "receiveMessages"
+    },
+    {
+      "callId": "a16e9c1a-c248-5629-a9c9-ae15f2f87c43",
+      "exchanges": [
+        {
+          "body": "{\"Messages\":[{\"MessageId\":\"bad\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "AttributeNames": [
+              "ApproximateReceiveCount",
+              "ApproximateFirstReceiveTimestamp",
+              "SentTimestamp",
+              "MessageGroupId",
+              "MessageDeduplicationId",
+              "SequenceNumber"
+            ],
+            "MaxNumberOfMessages": 10,
+            "MessageAttributeNames": [
+              "All"
+            ],
+            "MessageSystemAttributeNames": [
+              "ApproximateReceiveCount",
+              "ApproximateFirstReceiveTimestamp",
+              "SentTimestamp",
+              "MessageGroupId",
+              "MessageDeduplicationId",
+              "SequenceNumber"
+            ],
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders",
+            "WaitTimeSeconds": 20
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=85afb9a322a6f5c9f7849f555a028a5338b348690f59ed7e5a0d1ad80f741ffc"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.ReceiveMessage"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "queueUrl": "http://127.0.0.1:12345/123456789012/orders"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a16e9c1a-c248-5629-a9c9-ae15f2f87c43",
+      "input": {
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders"
+      },
+      "name": "receiveMessages-invalidResponse",
+      "operation": "receiveMessages"
+    },
+    {
+      "callId": "a16e9c1a-c248-5629-a9c9-ae15f2f87c43",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "queueUrl": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a16e9c1a-c248-5629-a9c9-ae15f2f87c43",
+      "input": {
+        "maxMessages": 11,
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders"
+      },
+      "name": "receiveMessages-defect",
+      "operation": "receiveMessages"
+    },
+    {
+      "callId": "a16e9c1a-c248-5629-a9c9-ae15f2f87c43",
+      "exchanges": [
+        {
+          "body": "{\"__type\":\"RequestThrottled\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "AttributeNames": [
+              "ApproximateReceiveCount",
+              "ApproximateFirstReceiveTimestamp",
+              "SentTimestamp",
+              "MessageGroupId",
+              "MessageDeduplicationId",
+              "SequenceNumber"
+            ],
+            "MaxNumberOfMessages": 10,
+            "MessageAttributeNames": [
+              "All"
+            ],
+            "MessageSystemAttributeNames": [
+              "ApproximateReceiveCount",
+              "ApproximateFirstReceiveTimestamp",
+              "SentTimestamp",
+              "MessageGroupId",
+              "MessageDeduplicationId",
+              "SequenceNumber"
+            ],
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders",
+            "WaitTimeSeconds": 20
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=85afb9a322a6f5c9f7849f555a028a5338b348690f59ed7e5a0d1ad80f741ffc"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.ReceiveMessage"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "a16e9c1a-c248-5629-a9c9-ae15f2f87c43",
+      "input": {
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders"
+      },
+      "name": "receiveMessages-retry429",
+      "operation": "receiveMessages"
+    },
+    {
+      "callId": "a16e9c1a-c248-5629-a9c9-ae15f2f87c43",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "AttributeNames": [
+              "ApproximateReceiveCount",
+              "ApproximateFirstReceiveTimestamp",
+              "SentTimestamp",
+              "MessageGroupId",
+              "MessageDeduplicationId",
+              "SequenceNumber"
+            ],
+            "MaxNumberOfMessages": 10,
+            "MessageAttributeNames": [
+              "All"
+            ],
+            "MessageSystemAttributeNames": [
+              "ApproximateReceiveCount",
+              "ApproximateFirstReceiveTimestamp",
+              "SentTimestamp",
+              "MessageGroupId",
+              "MessageDeduplicationId",
+              "SequenceNumber"
+            ],
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders",
+            "WaitTimeSeconds": 20
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=85afb9a322a6f5c9f7849f555a028a5338b348690f59ed7e5a0d1ad80f741ffc"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.ReceiveMessage"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a16e9c1a-c248-5629-a9c9-ae15f2f87c43",
+      "input": {
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders"
+      },
+      "name": "receiveMessages-retry503",
+      "operation": "receiveMessages"
+    },
+    {
+      "callId": "a16e9c1a-c248-5629-a9c9-ae15f2f87c43",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "AttributeNames": [
+              "ApproximateReceiveCount",
+              "ApproximateFirstReceiveTimestamp",
+              "SentTimestamp",
+              "MessageGroupId",
+              "MessageDeduplicationId",
+              "SequenceNumber"
+            ],
+            "MaxNumberOfMessages": 10,
+            "MessageAttributeNames": [
+              "All"
+            ],
+            "MessageSystemAttributeNames": [
+              "ApproximateReceiveCount",
+              "ApproximateFirstReceiveTimestamp",
+              "SentTimestamp",
+              "MessageGroupId",
+              "MessageDeduplicationId",
+              "SequenceNumber"
+            ],
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders",
+            "WaitTimeSeconds": 20
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=85afb9a322a6f5c9f7849f555a028a5338b348690f59ed7e5a0d1ad80f741ffc"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.ReceiveMessage"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a16e9c1a-c248-5629-a9c9-ae15f2f87c43",
+      "input": {
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders"
+      },
+      "name": "receiveMessages-transport",
+      "operation": "receiveMessages"
+    },
+    {
+      "attempts": 2,
+      "callId": "a16e9c1a-c248-5629-a9c9-ae15f2f87c43",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "AttributeNames": [
+              "ApproximateReceiveCount",
+              "ApproximateFirstReceiveTimestamp",
+              "SentTimestamp",
+              "MessageGroupId",
+              "MessageDeduplicationId",
+              "SequenceNumber"
+            ],
+            "MaxNumberOfMessages": 10,
+            "MessageAttributeNames": [
+              "All"
+            ],
+            "MessageSystemAttributeNames": [
+              "ApproximateReceiveCount",
+              "ApproximateFirstReceiveTimestamp",
+              "SentTimestamp",
+              "MessageGroupId",
+              "MessageDeduplicationId",
+              "SequenceNumber"
+            ],
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders",
+            "WaitTimeSeconds": 20
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=85afb9a322a6f5c9f7849f555a028a5338b348690f59ed7e5a0d1ad80f741ffc"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.ReceiveMessage"
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "AttributeNames": [
+              "ApproximateReceiveCount",
+              "ApproximateFirstReceiveTimestamp",
+              "SentTimestamp",
+              "MessageGroupId",
+              "MessageDeduplicationId",
+              "SequenceNumber"
+            ],
+            "MaxNumberOfMessages": 10,
+            "MessageAttributeNames": [
+              "All"
+            ],
+            "MessageSystemAttributeNames": [
+              "ApproximateReceiveCount",
+              "ApproximateFirstReceiveTimestamp",
+              "SentTimestamp",
+              "MessageGroupId",
+              "MessageDeduplicationId",
+              "SequenceNumber"
+            ],
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders",
+            "WaitTimeSeconds": 20
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=85afb9a322a6f5c9f7849f555a028a5338b348690f59ed7e5a0d1ad80f741ffc"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.ReceiveMessage"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "empty",
+        "failureKind": "",
+        "output": {
+          "queueUrl": "http://127.0.0.1:12345/123456789012/orders"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a16e9c1a-c248-5629-a9c9-ae15f2f87c43",
+      "input": {
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "receiveMessages-retryThenEmpty",
+      "operation": "receiveMessages"
+    },
+    {
+      "callId": "df555a7b-2f64-574b-b251-57beeedb9e5d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders",
+            "ReceiptHandle": "receipt-order-1042"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=4c6b396b4efb3409f30590cee2736a19c3bf6a8f0c214548084ced8012ba2260"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.DeleteMessage"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "messageId": "order-1042",
+          "queueUrl": "http://127.0.0.1:12345/123456789012/orders"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df555a7b-2f64-574b-b251-57beeedb9e5d",
+      "input": {
+        "messageId": "order-1042",
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders",
+        "receiptHandle": "receipt-order-1042"
+      },
+      "name": "deleteMessage-deleted",
+      "operation": "deleteMessage"
+    },
+    {
+      "callId": "df555a7b-2f64-574b-b251-57beeedb9e5d",
+      "exchanges": [
+        {
+          "body": "{\"__type\":\"ReceiptHandleIsInvalid\",\"message\":\"SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders",
+            "ReceiptHandle": "receipt-order-1042"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=4c6b396b4efb3409f30590cee2736a19c3bf6a8f0c214548084ced8012ba2260"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.DeleteMessage"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "receiptHandleInvalid",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "messageId": "order-1042",
+          "queueUrl": "http://127.0.0.1:12345/123456789012/orders"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df555a7b-2f64-574b-b251-57beeedb9e5d",
+      "input": {
+        "messageId": "order-1042",
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders",
+        "receiptHandle": "receipt-order-1042"
+      },
+      "name": "deleteMessage-receiptHandleInvalid",
+      "operation": "deleteMessage"
+    },
+    {
+      "callId": "df555a7b-2f64-574b-b251-57beeedb9e5d",
+      "exchanges": [
+        {
+          "body": "{\"__type\":\"AccessDenied\",\"message\":\"SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders",
+            "ReceiptHandle": "receipt-order-1042"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=4c6b396b4efb3409f30590cee2736a19c3bf6a8f0c214548084ced8012ba2260"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.DeleteMessage"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "messageId": "order-1042",
+          "queueUrl": "http://127.0.0.1:12345/123456789012/orders"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df555a7b-2f64-574b-b251-57beeedb9e5d",
+      "input": {
+        "messageId": "order-1042",
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders",
+        "receiptHandle": "receipt-order-1042"
+      },
+      "name": "deleteMessage-providerRejected",
+      "operation": "deleteMessage"
+    },
+    {
+      "callId": "df555a7b-2f64-574b-b251-57beeedb9e5d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "queueUrl": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df555a7b-2f64-574b-b251-57beeedb9e5d",
+      "input": {
+        "messageId": "order-1042",
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders",
+        "receiptHandle": ""
+      },
+      "name": "deleteMessage-defect",
+      "operation": "deleteMessage"
+    },
+    {
+      "callId": "df555a7b-2f64-574b-b251-57beeedb9e5d",
+      "exchanges": [
+        {
+          "body": "{\"__type\":\"RequestThrottled\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders",
+            "ReceiptHandle": "receipt-order-1042"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=4c6b396b4efb3409f30590cee2736a19c3bf6a8f0c214548084ced8012ba2260"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.DeleteMessage"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "df555a7b-2f64-574b-b251-57beeedb9e5d",
+      "input": {
+        "messageId": "order-1042",
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders",
+        "receiptHandle": "receipt-order-1042"
+      },
+      "name": "deleteMessage-retry429",
+      "operation": "deleteMessage"
+    },
+    {
+      "callId": "df555a7b-2f64-574b-b251-57beeedb9e5d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders",
+            "ReceiptHandle": "receipt-order-1042"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=4c6b396b4efb3409f30590cee2736a19c3bf6a8f0c214548084ced8012ba2260"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.DeleteMessage"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df555a7b-2f64-574b-b251-57beeedb9e5d",
+      "input": {
+        "messageId": "order-1042",
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders",
+        "receiptHandle": "receipt-order-1042"
+      },
+      "name": "deleteMessage-retry503",
+      "operation": "deleteMessage"
+    },
+    {
+      "callId": "df555a7b-2f64-574b-b251-57beeedb9e5d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders",
+            "ReceiptHandle": "receipt-order-1042"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=4c6b396b4efb3409f30590cee2736a19c3bf6a8f0c214548084ced8012ba2260"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.DeleteMessage"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df555a7b-2f64-574b-b251-57beeedb9e5d",
+      "input": {
+        "messageId": "order-1042",
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders",
+        "receiptHandle": "receipt-order-1042"
+      },
+      "name": "deleteMessage-transport",
+      "operation": "deleteMessage"
+    },
+    {
+      "attempts": 2,
+      "callId": "df555a7b-2f64-574b-b251-57beeedb9e5d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders",
+            "ReceiptHandle": "receipt-order-1042"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=4c6b396b4efb3409f30590cee2736a19c3bf6a8f0c214548084ced8012ba2260"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.DeleteMessage"
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders",
+            "ReceiptHandle": "receipt-order-1042"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=4c6b396b4efb3409f30590cee2736a19c3bf6a8f0c214548084ced8012ba2260"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.DeleteMessage"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "deleted",
+        "failureKind": "",
+        "output": {
+          "messageId": "order-1042",
+          "queueUrl": "http://127.0.0.1:12345/123456789012/orders"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df555a7b-2f64-574b-b251-57beeedb9e5d",
+      "input": {
+        "messageId": "order-1042",
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders",
+        "receiptHandle": "receipt-order-1042"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "deleteMessage-retryThenSuccess",
+      "operation": "deleteMessage"
+    },
+    {
+      "callId": "b0b97535-9aa1-5184-bdf0-fbd5c1005a87",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders",
+            "ReceiptHandle": "receipt-order-1042",
+            "VisibilityTimeout": 30
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=e6cc2f528cccc286bca860745c58fe09672d4c2dd42982f4c14b8be1f9c91fec"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.ChangeMessageVisibility"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "changed",
+        "failureKind": "",
+        "output": {
+          "messageId": "order-1042",
+          "queueUrl": "http://127.0.0.1:12345/123456789012/orders",
+          "visibilityTimeoutSeconds": 30,
+          "visibleAfter": "2026-10-30T00:00:30Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0b97535-9aa1-5184-bdf0-fbd5c1005a87",
+      "input": {
+        "messageId": "order-1042",
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders",
+        "receiptHandle": "receipt-order-1042",
+        "visibilityTimeoutSeconds": 30
+      },
+      "name": "changeMessageVisibility-changed",
+      "operation": "changeMessageVisibility"
+    },
+    {
+      "callId": "b0b97535-9aa1-5184-bdf0-fbd5c1005a87",
+      "exchanges": [
+        {
+          "body": "{\"__type\":\"ReceiptHandleIsInvalid\",\"message\":\"SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders",
+            "ReceiptHandle": "receipt-order-1042",
+            "VisibilityTimeout": 30
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=e6cc2f528cccc286bca860745c58fe09672d4c2dd42982f4c14b8be1f9c91fec"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.ChangeMessageVisibility"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "receiptHandleInvalid",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "messageId": "order-1042",
+          "queueUrl": "http://127.0.0.1:12345/123456789012/orders",
+          "visibilityTimeoutSeconds": 30,
+          "visibleAfter": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0b97535-9aa1-5184-bdf0-fbd5c1005a87",
+      "input": {
+        "messageId": "order-1042",
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders",
+        "receiptHandle": "receipt-order-1042",
+        "visibilityTimeoutSeconds": 30
+      },
+      "name": "changeMessageVisibility-receiptHandleInvalid",
+      "operation": "changeMessageVisibility"
+    },
+    {
+      "callId": "b0b97535-9aa1-5184-bdf0-fbd5c1005a87",
+      "exchanges": [
+        {
+          "body": "{\"__type\":\"AccessDenied\",\"message\":\"SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders",
+            "ReceiptHandle": "receipt-order-1042",
+            "VisibilityTimeout": 30
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=e6cc2f528cccc286bca860745c58fe09672d4c2dd42982f4c14b8be1f9c91fec"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.ChangeMessageVisibility"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "messageId": "order-1042",
+          "queueUrl": "http://127.0.0.1:12345/123456789012/orders",
+          "visibilityTimeoutSeconds": 30,
+          "visibleAfter": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0b97535-9aa1-5184-bdf0-fbd5c1005a87",
+      "input": {
+        "messageId": "order-1042",
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders",
+        "receiptHandle": "receipt-order-1042",
+        "visibilityTimeoutSeconds": 30
+      },
+      "name": "changeMessageVisibility-providerRejected",
+      "operation": "changeMessageVisibility"
+    },
+    {
+      "callId": "b0b97535-9aa1-5184-bdf0-fbd5c1005a87",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "queueUrl": "",
+          "visibilityTimeoutSeconds": 0,
+          "visibleAfter": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0b97535-9aa1-5184-bdf0-fbd5c1005a87",
+      "input": {
+        "messageId": "order-1042",
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders",
+        "receiptHandle": "",
+        "visibilityTimeoutSeconds": 30
+      },
+      "name": "changeMessageVisibility-defect",
+      "operation": "changeMessageVisibility"
+    },
+    {
+      "callId": "b0b97535-9aa1-5184-bdf0-fbd5c1005a87",
+      "exchanges": [
+        {
+          "body": "{\"__type\":\"RequestThrottled\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders",
+            "ReceiptHandle": "receipt-order-1042",
+            "VisibilityTimeout": 30
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=e6cc2f528cccc286bca860745c58fe09672d4c2dd42982f4c14b8be1f9c91fec"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.ChangeMessageVisibility"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0b97535-9aa1-5184-bdf0-fbd5c1005a87",
+      "input": {
+        "messageId": "order-1042",
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders",
+        "receiptHandle": "receipt-order-1042",
+        "visibilityTimeoutSeconds": 30
+      },
+      "name": "changeMessageVisibility-retry429",
+      "operation": "changeMessageVisibility"
+    },
+    {
+      "callId": "b0b97535-9aa1-5184-bdf0-fbd5c1005a87",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders",
+            "ReceiptHandle": "receipt-order-1042",
+            "VisibilityTimeout": 30
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=e6cc2f528cccc286bca860745c58fe09672d4c2dd42982f4c14b8be1f9c91fec"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.ChangeMessageVisibility"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0b97535-9aa1-5184-bdf0-fbd5c1005a87",
+      "input": {
+        "messageId": "order-1042",
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders",
+        "receiptHandle": "receipt-order-1042",
+        "visibilityTimeoutSeconds": 30
+      },
+      "name": "changeMessageVisibility-retry503",
+      "operation": "changeMessageVisibility"
+    },
+    {
+      "callId": "b0b97535-9aa1-5184-bdf0-fbd5c1005a87",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders",
+            "ReceiptHandle": "receipt-order-1042",
+            "VisibilityTimeout": 30
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=e6cc2f528cccc286bca860745c58fe09672d4c2dd42982f4c14b8be1f9c91fec"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.ChangeMessageVisibility"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0b97535-9aa1-5184-bdf0-fbd5c1005a87",
+      "input": {
+        "messageId": "order-1042",
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders",
+        "receiptHandle": "receipt-order-1042",
+        "visibilityTimeoutSeconds": 30
+      },
+      "name": "changeMessageVisibility-transport",
+      "operation": "changeMessageVisibility"
+    },
+    {
+      "attempts": 2,
+      "callId": "b0b97535-9aa1-5184-bdf0-fbd5c1005a87",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders",
+            "ReceiptHandle": "receipt-order-1042",
+            "VisibilityTimeout": 30
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=e6cc2f528cccc286bca860745c58fe09672d4c2dd42982f4c14b8be1f9c91fec"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.ChangeMessageVisibility"
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders",
+            "ReceiptHandle": "receipt-order-1042",
+            "VisibilityTimeout": 30
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=e6cc2f528cccc286bca860745c58fe09672d4c2dd42982f4c14b8be1f9c91fec"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.ChangeMessageVisibility"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "changed",
+        "failureKind": "",
+        "output": {
+          "messageId": "order-1042",
+          "queueUrl": "http://127.0.0.1:12345/123456789012/orders",
+          "visibilityTimeoutSeconds": 30,
+          "visibleAfter": "2026-10-30T00:00:30Z"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0b97535-9aa1-5184-bdf0-fbd5c1005a87",
+      "input": {
+        "messageId": "order-1042",
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders",
+        "receiptHandle": "receipt-order-1042",
+        "visibilityTimeoutSeconds": 30
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "changeMessageVisibility-retryThenSuccess",
+      "operation": "changeMessageVisibility"
+    },
+    {
+      "callId": "a16e9c1a-c248-5629-a9c9-ae15f2f87c43",
+      "exchanges": [
+        {
+          "body": "{\"Messages\":[{\"MessageId\":\"order-1042\",\"ReceiptHandle\":\"receipt-order-1042\",\"Body\":\"paid\",\"MD5OfBody\":\"00000000000000000000000000000000\",\"Attributes\":{\"ApproximateReceiveCount\":\"1\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "AttributeNames": [
+              "ApproximateReceiveCount",
+              "ApproximateFirstReceiveTimestamp",
+              "SentTimestamp",
+              "MessageGroupId",
+              "MessageDeduplicationId",
+              "SequenceNumber"
+            ],
+            "MaxNumberOfMessages": 10,
+            "MessageAttributeNames": [
+              "All"
+            ],
+            "MessageSystemAttributeNames": [
+              "ApproximateReceiveCount",
+              "ApproximateFirstReceiveTimestamp",
+              "SentTimestamp",
+              "MessageGroupId",
+              "MessageDeduplicationId",
+              "SequenceNumber"
+            ],
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders",
+            "WaitTimeSeconds": 20
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=85afb9a322a6f5c9f7849f555a028a5338b348690f59ed7e5a0d1ad80f741ffc"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.ReceiveMessage"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "queueUrl": "http://127.0.0.1:12345/123456789012/orders"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a16e9c1a-c248-5629-a9c9-ae15f2f87c43",
+      "input": {
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders"
+      },
+      "name": "receiveMessages-invalidDigest",
+      "operation": "receiveMessages"
+    },
+    {
+      "callId": "a16e9c1a-c248-5629-a9c9-ae15f2f87c43",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "AttributeNames": [
+              "ApproximateReceiveCount",
+              "ApproximateFirstReceiveTimestamp",
+              "SentTimestamp",
+              "MessageGroupId",
+              "MessageDeduplicationId",
+              "SequenceNumber"
+            ],
+            "MaxNumberOfMessages": 10,
+            "MessageAttributeNames": [
+              "All"
+            ],
+            "MessageSystemAttributeNames": [
+              "ApproximateReceiveCount",
+              "ApproximateFirstReceiveTimestamp",
+              "SentTimestamp",
+              "MessageGroupId",
+              "MessageDeduplicationId",
+              "SequenceNumber"
+            ],
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders",
+            "WaitTimeSeconds": 20
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=85afb9a322a6f5c9f7849f555a028a5338b348690f59ed7e5a0d1ad80f741ffc"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.ReceiveMessage"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a16e9c1a-c248-5629-a9c9-ae15f2f87c43",
+      "input": {
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders"
+      },
+      "name": "receiveMessages-transportAfterSend",
+      "operation": "receiveMessages"
+    },
+    {
+      "callId": "df555a7b-2f64-574b-b251-57beeedb9e5d",
+      "exchanges": [
+        {
+          "body": "{\"__type\":\"InvalidParameterValue\",\"message\":\"ReceiptHandle expired\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders",
+            "ReceiptHandle": "receipt-order-1042"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=4c6b396b4efb3409f30590cee2736a19c3bf6a8f0c214548084ced8012ba2260"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.DeleteMessage"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "receiptHandleInvalid",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "messageId": "order-1042",
+          "queueUrl": "http://127.0.0.1:12345/123456789012/orders"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df555a7b-2f64-574b-b251-57beeedb9e5d",
+      "input": {
+        "messageId": "order-1042",
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders",
+        "receiptHandle": "receipt-order-1042"
+      },
+      "name": "deleteMessage-invalidParameterReceipt",
+      "operation": "deleteMessage"
+    },
+    {
+      "callId": "df555a7b-2f64-574b-b251-57beeedb9e5d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders",
+            "ReceiptHandle": "receipt-order-1042"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=4c6b396b4efb3409f30590cee2736a19c3bf6a8f0c214548084ced8012ba2260"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.DeleteMessage"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df555a7b-2f64-574b-b251-57beeedb9e5d",
+      "input": {
+        "messageId": "order-1042",
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders",
+        "receiptHandle": "receipt-order-1042"
+      },
+      "name": "deleteMessage-transportAfterSend",
+      "operation": "deleteMessage"
+    },
+    {
+      "callId": "b0b97535-9aa1-5184-bdf0-fbd5c1005a87",
+      "exchanges": [
+        {
+          "body": "{\"__type\":\"InvalidParameterValue\",\"message\":\"ReceiptHandle expired\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders",
+            "ReceiptHandle": "receipt-order-1042",
+            "VisibilityTimeout": 30
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=e6cc2f528cccc286bca860745c58fe09672d4c2dd42982f4c14b8be1f9c91fec"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.ChangeMessageVisibility"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "receiptHandleInvalid",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "messageId": "order-1042",
+          "queueUrl": "http://127.0.0.1:12345/123456789012/orders",
+          "visibilityTimeoutSeconds": 30,
+          "visibleAfter": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0b97535-9aa1-5184-bdf0-fbd5c1005a87",
+      "input": {
+        "messageId": "order-1042",
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders",
+        "receiptHandle": "receipt-order-1042",
+        "visibilityTimeoutSeconds": 30
+      },
+      "name": "changeMessageVisibility-invalidParameterReceipt",
+      "operation": "changeMessageVisibility"
+    },
+    {
+      "callId": "b0b97535-9aa1-5184-bdf0-fbd5c1005a87",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "QueueUrl": "http://127.0.0.1:12345/123456789012/orders",
+            "ReceiptHandle": "receipt-order-1042",
+            "VisibilityTimeout": 30
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASQSCONNECTORTEST/20261030/eu-west-1/sqs/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=e6cc2f528cccc286bca860745c58fe09672d4c2dd42982f4c14b8be1f9c91fec"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "AmazonSQS.ChangeMessageVisibility"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b0b97535-9aa1-5184-bdf0-fbd5c1005a87",
+      "input": {
+        "messageId": "order-1042",
+        "queueUrl": "http://127.0.0.1:12345/123456789012/orders",
+        "receiptHandle": "receipt-order-1042",
+        "visibilityTimeoutSeconds": 30
+      },
+      "name": "changeMessageVisibility-transportAfterSend",
+      "operation": "changeMessageVisibility"
+    }
+  ],
+  "schemaVersion": 1
+}
