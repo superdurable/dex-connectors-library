@@ -50,7 +50,7 @@ export class SendGridClient {
     let response: ProviderResponse;
     try {
       response = await this.send({
-        url: `${this.baseUrl}${path}?${parameters.toString()}`, method: 'GET',
+        url: `${this.baseUrl}${path}?${encodeQueryParameters(parameters)}`, method: 'GET',
         headers: { Authorization: `Bearer ${key}`, Accept: 'application/json' },
         maxResponseBytes: this.maxResponseBytes, timeoutMs: this.timeoutMs,
         addressPolicy: this.baseUrl === 'https://api.sendgrid.com' ? 'publicHTTPS' : 'privateNetworkHTTP',
@@ -73,4 +73,26 @@ export class SendGridClient {
       catch { return failed('invalidResponse', 'PROTOCOL', 'provider returned an invalid response'); }
     }
   }
+}
+
+function encodeQueryParameters(parameters: URLSearchParams): string {
+  return [...parameters.entries()]
+    .sort(([left], [right]) => Buffer.compare(Buffer.from(left), Buffer.from(right)))
+    .map(([key, value]) => `${goQueryEscape(key)}=${goQueryEscape(value)}`)
+    .join('&');
+}
+
+function goQueryEscape(value: string): string {
+  let encoded = '';
+  for (const byte of Buffer.from(value, 'utf8')) {
+    if ((byte >= 65 && byte <= 90) || (byte >= 97 && byte <= 122) ||
+      (byte >= 48 && byte <= 57) || byte === 45 || byte === 46 || byte === 95 || byte === 126) {
+      encoded += String.fromCharCode(byte);
+    } else if (byte === 32) {
+      encoded += '+';
+    } else {
+      encoded += `%${byte.toString(16).toUpperCase().padStart(2, '0')}`;
+    }
+  }
+  return encoded;
 }

@@ -2,6 +2,7 @@
   "name": "@superdurable/connector-sendgrid",
   "version": "0.1.0",
   "description": "SendGrid read operations for Dex Flows",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/superdurable/dex-connectors-library.git",
@@ -30,6 +31,7 @@
   "files": [
     "dist",
     "dex-connector.json",
+    "LICENSE",
     "README.md"
   ],
   "scripts": {
