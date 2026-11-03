@@ -324,6 +324,36 @@ jobs:
             npm run build --prefix "$CONNECTOR/typescript"
             "$CONNECTOR/typescript/node_modules/.bin/vitest" run test/integration.test.ts --root "$CONNECTOR/typescript"
           fi
+          if [ "$CONNECTOR" = connectors/microsoft/sql-server ]; then
+            tls_directory="$(mktemp -d)"
+            openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+              -keyout "$tls_directory/server.key" -out "$tls_directory/server.crt" \
+              -subj '/CN=localhost' -addext 'subjectAltName=DNS:localhost,IP:127.0.0.1' \
+              -addext 'extendedKeyUsage=serverAuth'
+            database_container='${{ job.services.database.id }}'
+            docker cp "$tls_directory/server.key" "$database_container:/var/opt/mssql/connector-server.key"
+            docker cp "$tls_directory/server.crt" "$database_container:/var/opt/mssql/connector-server.crt"
+            docker exec -u root "$database_container" chown mssql:mssql /var/opt/mssql/connector-server.key /var/opt/mssql/connector-server.crt
+            docker exec -u root "$database_container" chmod 600 /var/opt/mssql/connector-server.key
+            docker exec -u root "$database_container" /opt/mssql/bin/mssql-conf set network.tlscert /var/opt/mssql/connector-server.crt
+            docker exec -u root "$database_container" /opt/mssql/bin/mssql-conf set network.tlskey /var/opt/mssql/connector-server.key
+            docker exec -u root "$database_container" /opt/mssql/bin/mssql-conf set network.forceencryption 1
+            docker restart "$database_container"
+            for _ in $(seq 1 120); do
+              if (echo > /dev/tcp/127.0.0.1/1433) 2>/dev/null; then break; fi
+              sleep 1
+            done
+            (echo > /dev/tcp/127.0.0.1/1433) 2>/dev/null
+            export SQLSERVER_CONNECTOR_TEST_ENCRYPT=mandatory
+            export SQLSERVER_TLS_CA_FILE="$tls_directory/server.crt" SQLSERVER_TLS_HOST=127.0.0.1
+            export SQLSERVER_SSL_CA="$SQLSERVER_TLS_CA_FILE"
+            if [ -f "$CONNECTOR/python/pyproject.toml" ]; then
+              uv run --project "$CONNECTOR/python" pytest "$CONNECTOR/python/tests/integration"
+            fi
+            if [ -f "$CONNECTOR/typescript/package.json" ]; then
+              "$CONNECTOR/typescript/node_modules/.bin/vitest" run test/integration.test.ts --root "$CONNECTOR/typescript"
+            fi
+          fi
 
   connectors:
     needs: connector-plan

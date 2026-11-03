@@ -2,6 +2,7 @@
   "name": "@superdurable/connector-microsoft-sql-server",
   "version": "0.1.0",
   "description": "Microsoft SQL Server query and execute operations for Dex",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/superdurable/dex-connectors-library.git",
@@ -41,6 +42,8 @@
     "check": "npm test && npm run typecheck && npm run lint",
     "example:query": "npm run build && tsx examples/query-rows/main.ts",
     "example:query:start": "npm run build && tsx examples/query-rows/start.ts",
+    "example:execute": "npm run build && tsx examples/record-refund/main.ts",
+    "example:execute:start": "npm run build && tsx examples/record-refund/start.ts",
     "test:dex-integration": "npm run build && vitest run test/dex.integration.test.ts"
   },
   "dependencies": {
@@ -54,6 +57,7 @@
     "@types/mssql": "^9.1.8",
     "@types/node": "^22.0.0",
     "eslint": "^9.0.0",
+    "tedious": "^20.3.8",
     "tsup": "^8.0.0",
     "tsx": "^4.23.15",
     "typescript": "^5.9.0",

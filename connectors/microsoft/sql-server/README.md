@@ -2,7 +2,7 @@
 
 ## TypeScript package
 
-`@superdurable/connector-microsoft-sql-server` v0.1.0 provides the `query` and `execute` operations with the native Tedious SQL Server driver. Install it with `npm install @superdurable/connector-microsoft-sql-server`, then load the named Dex project connection with `newProjectConnection(project, ConnectionName)`. The runnable [query example](typescript/examples/query-rows/README.md) shows a Worker, starter, and static connection name.
+`@superdurable/connector-microsoft-sql-server` v0.1.0 provides the `query` and `execute` operations with `mssql` over Tedious. Install it with `npm install @superdurable/connector-microsoft-sql-server`, then load the named Dex project connection with `newProjectConnection(project, ConnectionName)`. The runnable [query example](typescript/examples/query-rows/README.md) and [record-refund write example](typescript/examples/record-refund/README.md) show Workers, starters, and static connection names. See the [TypeScript package contract](typescript/README.md) for TLS roots, pinned session settings, and type limitations.
 
 The TypeScript package uses the same manifest configuration fields and branches as Go. Use constant, parameterized SQL with `@p1` through `@pN`; bind user values in `parameters`. An `execute` statement must be idempotent across retries, and `idempotencyKeyPlaceholder` appends the stable Dex Call ID. Its `uncertain` branch means a failed COMMIT may have reached SQL Server. The TypeScript test suite checks SQL Server error-number classification; `test/integration.test.ts` needs the `SQLSERVER_CONNECTOR_TEST_*` variables and a disposable SQL Server database, and `test/dex.integration.test.ts` additionally needs a real `dexcli dev` Flow service address.
 
