@@ -4080,6 +4080,875 @@
         "callId": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
         "state": "claimed"
       }
+    },
+    {
+      "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes/105902/conversations/573741352/notes",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "VHJpYWdlZCBieSBQaG9lYmUu",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"content\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer hiverTestKey0123456789"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "X-Dex-Call-Id": [
+              "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2"
+            ]
+          },
+          "status": 408
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "note": {
+            "createdAt": "0001-01-01T00:00:00Z",
+            "id": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+      "input": {
+        "content": "Triaged by Phoebe.",
+        "conversationId": "573741352",
+        "inboxId": "105902"
+      },
+      "name": "addNote-uncertain-408",
+      "operation": "addNote"
+    },
+    {
+      "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes/105902/conversations/573741352/notes",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "VHJpYWdlZCBieSBQaG9lYmUu",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"content\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer hiverTestKey0123456789"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "X-Dex-Call-Id": [
+              "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "note": {
+            "createdAt": "0001-01-01T00:00:00Z",
+            "id": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+      "input": {
+        "content": "Triaged by Phoebe.",
+        "conversationId": "573741352",
+        "inboxId": "105902"
+      },
+      "name": "addNote-uncertain-500",
+      "operation": "addNote"
+    },
+    {
+      "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":35042650,\"conversation_id\":573741352,\"author\":{\"id\":456342,\"email\":\"phoebe@acme.example.com\"},\"created_at\":\"2026-07-21T14:24:22Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes/105902/conversations/573741352/notes",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "VHJpYWdlZCBieSBQaG9lYmUu",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"content\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer hiverTestKey0123456789"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "X-Dex-Call-Id": [
+              "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "note": {
+            "authorEmail": "phoebe@acme.example.com",
+            "authorId": "456342",
+            "conversationId": "573741352",
+            "createdAt": "2026-07-21T14:24:22Z",
+            "id": "35042650"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+      "input": {
+        "content": "Triaged by Phoebe.",
+        "conversationId": "573741352",
+        "inboxId": "105902"
+      },
+      "name": "addNote-prior-canResend-success",
+      "operation": "addNote",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+        "state": "canResend"
+      }
+    },
+    {
+      "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":35042650,\"conversation_id\":573741352,\"author\":{\"id\":456342,\"email\":\"phoebe@acme.example.com\"},\"created_at\":\"2026-07-21T14:24:22Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes/105902/conversations/573741352/notes",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "VHJpYWdlZCBieSBQaG9lYmUu",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"content\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer hiverTestKey0123456789"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "X-Dex-Call-Id": [
+              "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "note": {
+            "authorEmail": "phoebe@acme.example.com",
+            "authorId": "456342",
+            "conversationId": "573741352",
+            "createdAt": "2026-07-21T14:24:22Z",
+            "id": "35042650"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+      "input": {
+        "content": "Triaged by Phoebe.",
+        "conversationId": "573741352",
+        "inboxId": "105902"
+      },
+      "name": "addNote-prior-notSent-success",
+      "operation": "addNote",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+        "state": "notSent"
+      }
+    },
+    {
+      "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "note": {
+            "createdAt": "0001-01-01T00:00:00Z",
+            "id": ""
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+      "input": {
+        "content": "",
+        "conversationId": "",
+        "inboxId": ""
+      },
+      "name": "addNote-prior-claimed-invalid-input",
+      "operation": "addNote",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":35042650,\"created_at\":\"2026-01-01T00:00:00+30:00\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes/105902/conversations/573741352/notes",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "VHJpYWdlZCBieSBQaG9lYmUu",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"content\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer hiverTestKey0123456789"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "X-Dex-Call-Id": [
+              "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "note": {
+            "createdAt": "0001-01-01T00:00:00Z",
+            "id": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+      "input": {
+        "content": "Triaged by Phoebe.",
+        "conversationId": "573741352",
+        "inboxId": "105902"
+      },
+      "name": "addNote-uncertain-invalid-offset",
+      "operation": "addNote"
+    },
+    {
+      "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":35042650,\"author\":{\"email\":42}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes/105902/conversations/573741352/notes",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "VHJpYWdlZCBieSBQaG9lYmUu",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"content\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer hiverTestKey0123456789"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "X-Dex-Call-Id": [
+              "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "note": {
+            "createdAt": "0001-01-01T00:00:00Z",
+            "id": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+      "input": {
+        "content": "Triaged by Phoebe.",
+        "conversationId": "573741352",
+        "inboxId": "105902"
+      },
+      "name": "addNote-uncertain-numeric-email",
+      "operation": "addNote"
+    },
+    {
+      "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":-5}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes/105902/conversations/573741352/notes",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "VHJpYWdlZCBieSBQaG9lYmUu",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"content\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer hiverTestKey0123456789"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "X-Dex-Call-Id": [
+              "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "note": {
+            "createdAt": "0001-01-01T00:00:00Z",
+            "id": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+      "input": {
+        "content": "Triaged by Phoebe.",
+        "conversationId": "573741352",
+        "inboxId": "105902"
+      },
+      "name": "addNote-uncertain-negative-id",
+      "operation": "addNote"
+    },
+    {
+      "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":35042650,\"conversation_id\":573741352,\"author\":{\"id\":456342,\"email\":\"phoebe@acme.example.com\"},\"created_at\":\"2026-07-21T14:24:22Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes/105902/conversations/573741352/notes",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "77u/",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"content\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer hiverTestKey0123456789"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "X-Dex-Call-Id": [
+              "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "note": {
+            "authorEmail": "phoebe@acme.example.com",
+            "authorId": "456342",
+            "conversationId": "573741352",
+            "createdAt": "2026-07-21T14:24:22Z",
+            "id": "35042650"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+      "input": {
+        "content": "﻿",
+        "conversationId": "573741352",
+        "inboxId": "105902"
+      },
+      "name": "addNote-content-feff",
+      "operation": "addNote"
+    },
+    {
+      "callId": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "note": {
+            "createdAt": "0001-01-01T00:00:00Z",
+            "id": ""
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "53fa38a4-5e96-56e2-81ac-2b8ddb6e38f2",
+      "input": {
+        "content": "",
+        "conversationId": "573741352",
+        "inboxId": "105902"
+      },
+      "name": "addNote-content-nel-defect",
+      "operation": "addNote"
+    },
+    {
+      "callId": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes/105902/conversations/shared-drafts",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "V2UgYXJlIGludmVzdGlnYXRpbmcu",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"body\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "ODM0NDY2MDQ4",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"hiver_message_id\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer hiverTestKey0123456789"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "X-Dex-Call-Id": [
+              "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd"
+            ]
+          },
+          "status": 408
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
+      "input": {
+        "body": "We are investigating.",
+        "hiverMessageId": "834466048",
+        "inboxId": "105902"
+      },
+      "name": "createSharedDraft-uncertain-408",
+      "operation": "createSharedDraft"
+    },
+    {
+      "callId": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes/105902/conversations/shared-drafts",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "V2UgYXJlIGludmVzdGlnYXRpbmcu",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"body\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "ODM0NDY2MDQ4",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"hiver_message_id\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer hiverTestKey0123456789"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "X-Dex-Call-Id": [
+              "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
+      "input": {
+        "body": "We are investigating.",
+        "hiverMessageId": "834466048",
+        "inboxId": "105902"
+      },
+      "name": "createSharedDraft-uncertain-500",
+      "operation": "createSharedDraft"
+    },
+    {
+      "callId": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":573741352,\"shared_draft_id\":901,\"reply_to_message_id\":834466048}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes/105902/conversations/shared-drafts",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "V2UgYXJlIGludmVzdGlnYXRpbmcu",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"body\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "ODM0NDY2MDQ4",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"hiver_message_id\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer hiverTestKey0123456789"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "X-Dex-Call-Id": [
+              "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "conversationId": "573741352",
+          "id": "901",
+          "replyToHiverMessageId": "834466048"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
+      "input": {
+        "body": "We are investigating.",
+        "hiverMessageId": "834466048",
+        "inboxId": "105902"
+      },
+      "name": "createSharedDraft-prior-canResend-success",
+      "operation": "createSharedDraft",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
+        "state": "canResend"
+      }
+    },
+    {
+      "callId": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":573741352,\"shared_draft_id\":901,\"reply_to_message_id\":834466048}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/inboxes/105902/conversations/shared-drafts",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "V2UgYXJlIGludmVzdGlnYXRpbmcu",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"body\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "ODM0NDY2MDQ4",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"hiver_message_id\""
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer hiverTestKey0123456789"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "X-Dex-Call-Id": [
+              "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "conversationId": "573741352",
+          "id": "901",
+          "replyToHiverMessageId": "834466048"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
+      "input": {
+        "body": "We are investigating.",
+        "hiverMessageId": "834466048",
+        "inboxId": "105902"
+      },
+      "name": "createSharedDraft-prior-notSent-success",
+      "operation": "createSharedDraft",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
+        "state": "notSent"
+      }
+    },
+    {
+      "callId": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
+      "input": {
+        "body": "",
+        "inboxId": ""
+      },
+      "name": "createSharedDraft-prior-claimed-invalid-input",
+      "operation": "createSharedDraft",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "548cbf75-e534-56a3-bcb1-9f0f24f0a3dd",
+        "state": "claimed"
+      }
     }
   ],
   "schemaVersion": 1

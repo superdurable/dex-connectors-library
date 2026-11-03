@@ -7,6 +7,7 @@ const idPattern = /^[A-Za-z0-9_-]{1,64}$/;
 const statusPattern = /^[A-Za-z0-9 _-]{1,64}$/;
 const gmailPattern = /^[A-Za-z0-9]{1,64}$/;
 const assigneeTypePattern = /^[a-z_]{1,32}$/;
+class ProviderInteger { constructor(readonly source: string) {} }
 
 /** Validate an ID accepted by the Go connector. */
 export function requireHiverID(field: string, value: string): void {
@@ -130,6 +131,7 @@ function optionalArray(value: unknown): unknown[] { if (value === undefined || v
 export function wireID(value: unknown): string {
   if (value === null || value === undefined) return '';
   if (typeof value === 'string') return value;
+  if (value instanceof ProviderInteger && /^[0-9]+$/.test(value.source)) return value.source;
   if (typeof value === 'number' && Number.isSafeInteger(value) && value >= 0) return String(value);
   throw new Error('ID is neither a string nor an integer');
 }
@@ -141,7 +143,7 @@ function parseRFC3339(value: string): string {
   const offsetHour = Number(match[11] ?? 0); const offsetMinute = Number(match[12] ?? 0);
   const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
   const monthDays = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-  if (month < 1 || month > 12 || day < 1 || day > monthDays[month - 1]! || hour > 23 || minute > 59 || second > 59 || offsetHour > 99 || offsetMinute > 59) throw new Error('note created_at is not an RFC 3339 time');
+  if (month < 1 || month > 12 || day < 1 || day > monthDays[month - 1]! || hour > 23 || minute > 59 || second > 59 || offsetHour > 24 || offsetMinute > 59) throw new Error('note created_at is not an RFC 3339 time');
   const local = new Date(0);
   local.setUTCFullYear(year, month - 1, day);
   local.setUTCHours(hour, minute, second, 0);
@@ -154,5 +156,5 @@ function parseRFC3339(value: string): string {
 
 function parseProviderJSON(body: Uint8Array): unknown {
   return JSON.parse(Buffer.from(body).toString('utf8'), (_key: string, value: unknown, context?: { source?: string }) =>
-    typeof value === 'number' && Number.isInteger(value) ? context?.source ?? String(value) : value) as unknown;
+    typeof value === 'number' && Number.isInteger(value) ? new ProviderInteger(context?.source ?? String(value)) : value) as unknown;
 }

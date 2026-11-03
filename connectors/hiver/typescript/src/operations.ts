@@ -203,7 +203,7 @@ function validatePage(pageToken?: string, pageSize?: number): void {
 }
 function pageQuery(token?: string, size?: number): URLSearchParams { const query = new URLSearchParams({ limit: String(size || 50) }); if (token) query.set('next_page', token); return query; }
 function validateText(field: string, value: string, maxBytes: number): void {
-  if (typeof value !== 'string' || !value.trim()) throw new Error(`${field} is required`);
+  if (typeof value !== 'string' || /^[\t-\r \u0085\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]*$/.test(value)) throw new Error(`${field} is required`);
   if (Buffer.byteLength(value) > maxBytes) throw new Error(`${field} exceeds ${maxBytes} bytes`);
   if (value.includes('\0')) throw new Error(`${field} must not contain NUL characters`);
 }

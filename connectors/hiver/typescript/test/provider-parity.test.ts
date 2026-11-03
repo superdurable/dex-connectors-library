@@ -13,6 +13,15 @@ function noteBody(createdAt: string): Uint8Array {
 const call = { id: '00000000-0000-5000-8000-000000000001', context: { cancellationSignal: new AbortController().signal } } as Call;
 
 describe('Hiver provider parity', () => {
+  it('uses Go defaults when connection limits are zero', async () => {
+    const limits: number[] = [];
+    const client = new HiverClient({ maxResponseBytes: 0, requestIntervalMilliseconds: 0 }, { resolve: async () => ({ apiKey: new SecretString('hiverTestKey0123456789') }) }, {
+      send: async request => { limits.push(request.maxResponseBytes); return { status: 200, headers: {}, body: Buffer.from('{"data":{"results":[]}}') }; },
+    });
+    await client.listInboxes().invoke(call, {});
+    expect(limits).toEqual([4_194_304]);
+  });
+
   it('keeps Go path escaping for reserved punctuation', () => {
     expect(pathEscape("a!$&'()*+,;=:@?/z~")).toBe('a%21$&%27%28%29%2A+%2C%3B=:@%3F%2Fz~');
   });

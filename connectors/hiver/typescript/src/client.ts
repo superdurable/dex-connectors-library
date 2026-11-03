@@ -39,8 +39,8 @@ export class HiverClient {
     this.credentials = credentials;
     this.send = options.send ?? sendProviderRequest;
     this.now = options.now ?? (() => new Date());
-    this.maxResponseBytes = config.maxResponseBytes ?? 4_194_304;
-    this.intervalMs = config.requestIntervalMilliseconds ?? 1000;
+    this.maxResponseBytes = config.maxResponseBytes || 4_194_304;
+    this.intervalMs = config.requestIntervalMilliseconds || 1000;
     if (!Number.isSafeInteger(this.maxResponseBytes) || this.maxResponseBytes < 1) throw new TypeError('Hiver response limit must be positive');
     if (!Number.isSafeInteger(this.intervalMs) || this.intervalMs < 1 || this.intervalMs > 60_000) throw new TypeError('Hiver request interval must be between 1 and 60000 milliseconds');
   }
