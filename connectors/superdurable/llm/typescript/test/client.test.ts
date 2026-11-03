@@ -10,10 +10,7 @@ import { isAllowedOpenAICompatibleAddress } from '../src/address-policy.js';
 import { newChatWireFormat } from '../src/chat-profiles.js';
 import { newResponsesWireFormat } from '../src/responses-wire-format.js';
 
-const { lookupAddresses, sendRequest } = vi.hoisted(() => ({
-  lookupAddresses: vi.fn(), sendRequest: vi.fn(),
-}));
-vi.mock('node:dns/promises', () => ({ lookup: lookupAddresses }));
+const { sendRequest } = vi.hoisted(() => ({ sendRequest: vi.fn() }));
 vi.mock('@superdurable/connectors-sdk/providerhttp', async importOriginal => ({
   ...await importOriginal<typeof import('@superdurable/connectors-sdk/providerhttp')>(),
   sendProviderRequest: sendRequest,
@@ -66,38 +63,20 @@ it('keeps provider-specific reasoning constraints', () => {
 });
 
 
-it.each(['255.255.255.255', '100.64.0.1', 'fd00:ec2::254', '::ffff:10.0.0.1'])(
-  'refuses a DNS answer of %s before sending request bytes', async address => {
-    lookupAddresses.mockReset().mockResolvedValue([{ address, family: address.includes(':') ? 6 : 4 }]);
-    sendRequest.mockReset();
-    const client = new Client({ provider: 'openai-compatible', model: 'fixture-model', baseUrl: 'https://bcast.example/v1' }, credentials);
-    const result = await client.generateText().invoke(testCall(), { messages: [{ role: 'user', text: 'Hello' }] });
-    expect(result.kind).toBe('branch');
-    expect(sendRequest).not.toHaveBeenCalled();
-    expect(lookupAddresses).toHaveBeenCalledWith('bcast.example', { all: true, verbatim: true });
-  },
-);
-
-it('refuses the entire DNS set when a later answer is private', async () => {
-  lookupAddresses.mockReset().mockResolvedValue([
-    { address: '8.8.8.8', family: 4 }, { address: '100.64.0.1', family: 4 },
-  ]);
-  sendRequest.mockReset();
-  const client = new Client({ provider: 'openai-compatible', model: 'fixture-model', baseUrl: 'https://bcast.example/v1' }, credentials);
-  await client.generateText().invoke(testCall(), { messages: [{ role: 'user', text: 'Hello' }] });
-  expect(sendRequest).not.toHaveBeenCalled();
-});
-
-it('pins the checked DNS answer while preserving the original HTTPS host', async () => {
-  lookupAddresses.mockReset().mockResolvedValue([{ address: '8.8.8.8', family: 4 }]);
+it.each(['openai-compatible', 'openai', 'anthropic'])(
+  'keeps the HTTPS host and applies public HTTPS policy for %s', async provider => {
   sendRequest.mockReset().mockResolvedValue({ status: 503, headers: {}, body: Buffer.alloc(0) });
-  const client = new Client({ provider: 'openai-compatible', model: 'fixture-model', baseUrl: 'https://bcast.example/v1' }, credentials);
+  const config = provider === 'openai-compatible'
+    ? { provider, model: 'fixture-model', baseUrl: 'https://bcast.example/v1' } : { provider };
+  const client = new Client(config, credentials);
   await client.generateText().invoke(testCall(), { messages: [{ role: 'user', text: 'Hello' }] });
   const request = sendRequest.mock.calls[0]?.[0] as ProviderRequest;
-  expect(request.url).toBe('https://8.8.8.8/v1/chat/completions');
-  expect(request.headers?.Host).toBe('bcast.example');
-  expect(request.addressPolicy).toBe('unrestricted');
-});
+  expect(new URL(request.url).hostname).toBe(provider === 'openai-compatible' ? 'bcast.example' :
+    provider === 'openai' ? 'api.openai.com' : 'api.anthropic.com');
+  expect(request.headers?.Host).toBeUndefined();
+  expect(request.addressPolicy).toBe('publicHTTPS');
+  },
+);
 
 it('rejects custom transports for every provider', () => {
   for (const config of [{ provider: 'openai' },
