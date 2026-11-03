@@ -13,6 +13,17 @@ function clientWith(send: NonNullable<NonNullable<ConstructorParameters<typeof R
 }
 
 describe('Resend request boundaries', () => {
+  it('sends only the Go-defined email fields', async () => {
+    let body: unknown;
+    const client = clientWith(async request => {
+      body = JSON.parse(Buffer.from(request.body ?? []).toString('utf8')) as unknown;
+      return { status: 200, headers: {}, body: Buffer.from('{"id":"mail"}') };
+    });
+    const inputWithExtra = { ...emailInput, bcc: ['hidden@example.test'], reply_to: 'reply@example.test' };
+    await client.sendEmail().invoke(call, inputWithExtra);
+    expect(body).toEqual(emailInput);
+  });
+
   it('escapes a provider ID like Go url.PathEscape', async () => {
     let path = '';
     const client = clientWith(async request => {

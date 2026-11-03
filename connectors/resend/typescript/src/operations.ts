@@ -24,7 +24,7 @@ export class SendEmailOperation implements Mutation<SendEmailInput, SentEmail> {
     const apiKey = await this.client.resolveAPIKey(call);
     if (!apiKey) return credentialDefect(operation, emptySent);
     let response: ResendResponse;
-    try { response = await this.client.exchange(call, apiKey, 'POST', '/emails', Buffer.from(JSON.stringify(input))); }
+    try { response = await this.client.exchange(call, apiKey, 'POST', '/emails', Buffer.from(JSON.stringify({ from: input.from, to: input.to, subject: input.subject, html: input.html }))); }
     catch { return newMutationRetry(failure(operation, 'AVAILABILITY', 'provider request failed')); }
     const retry = retryResponse(operation, response);
     if (retry) return newMutationRetry(retry.failure, retry.delay);
