@@ -40,8 +40,23 @@ export class ProviderTransportError extends Error {
   }
 }
 
-/** Public-only HTTPS or explicitly owned private-network HTTP. */
-export type AddressPolicy = 'publicHTTPS' | 'privateNetworkHTTP';
+/** Provider emitted no response byte within the configured stall timeout. */
+export class ProviderStalledError extends Error {
+  /** Construct a sanitized no-byte timeout failure. */
+  constructor() { super('provider sent no bytes within the stall timeout'); this.name = 'ProviderStalledError'; }
+}
+
+/** Public HTTPS, owned private HTTP, or caller-owned unrestricted transport. */
+export type AddressPolicy = 'publicHTTPS' | 'privateNetworkHTTP' | 'unrestricted';
+
+/** Caller-owned transport for a provider exchange; implementations must not replay redirects.
+ * A client may return a complete body without calling onResponseChunk. If it calls the callback,
+ * it must feed every received chunk in order before returning and honor false by stopping the response.
+ */
+export interface ProviderHTTPClient {
+  /** Send one request and return its bounded response. */
+  send(request: ProviderRequest): Promise<ProviderResponse>;
+}
 
 /** One bounded provider request; response bodies and URL values never enter errors. */
 export interface ProviderRequest {
@@ -50,9 +65,13 @@ export interface ProviderRequest {
   /** Request headers, including provider credentials when needed. */ headers?: Record<string, string>;
   /** Caller-encoded request body. */ body?: Uint8Array;
   /** Maximum response body size in bytes. */ maxResponseBytes: number;
+  /** Optional separate prefix limit for non-2xx error bodies. */ maxErrorResponseBytes?: number;
+  /** Classify a non-2xx status even when its diagnostic body fails to read. */ ignoreErrorBodyReadFailure?: boolean;
   /** Network policy checked against all resolved addresses. */ addressPolicy: AddressPolicy;
   /** Request deadline in milliseconds. */ timeoutMs?: number;
   /** Caller cancellation. */ signal?: AbortSignal;
+  /** Observe chunks in arrival order; returning false stops a completed event stream. */ onResponseChunk?: (chunk: Uint8Array, status: number, headers: http.IncomingHttpHeaders) => boolean | void;
+  /** Abort a response when no byte arrives for this many milliseconds. */ stallTimeoutMs?: number;
 }
 
 /** Bounded response; redirects remain visible as 3xx responses. */
@@ -126,7 +145,8 @@ export function readErrorTokens(body: Uint8Array, pointers: readonly string[]): 
 /** Send once using pinned, policy-checked DNS results and no redirect replay. */
 export async function sendProviderRequest(request: ProviderRequest): Promise<ProviderResponse> {
   if (!Number.isSafeInteger(request.maxResponseBytes) || request.maxResponseBytes < 0) throw new RangeError('response body limit must be a non-negative integer');
-  if (request.addressPolicy !== 'publicHTTPS' && request.addressPolicy !== 'privateNetworkHTTP') throw new AddressRefusal('address policy is invalid');
+  if (request.maxErrorResponseBytes !== undefined && (!Number.isSafeInteger(request.maxErrorResponseBytes) || request.maxErrorResponseBytes < 0)) throw new RangeError('error body limit must be a non-negative integer');
+  if (request.addressPolicy !== 'publicHTTPS' && request.addressPolicy !== 'privateNetworkHTTP' && request.addressPolicy !== 'unrestricted') throw new AddressRefusal('address policy is invalid');
   let parsed: URL;
   try { parsed = new URL(request.url); } catch { throw new AddressRefusal('URL is invalid'); }
   if (parsed.username || parsed.password || !['http:', 'https:'].includes(parsed.protocol)) throw new AddressRefusal('URL scheme or user information is not allowed');
@@ -138,7 +158,8 @@ export async function sendProviderRequest(request: ProviderRequest): Promise<Pro
   let addresses: { address: string; family: number }[];
   try { addresses = isIP(hostname) ? [{ address: hostname, family: isIP(hostname) }] : await lookupAddresses(hostname, { all: true, verbatim: true }); }
   catch { throw new ProviderTransportError(true); }
-  if (addresses.length === 0 || addresses.some(({ address }) => !isAllowedProviderIPAddress(address, parsed.protocol, request.addressPolicy))) {
+  const restrictedPolicy = request.addressPolicy === 'unrestricted' ? undefined : request.addressPolicy;
+  if (addresses.length === 0 || restrictedPolicy && addresses.some(({ address }) => !isAllowedProviderIPAddress(address, parsed.protocol, restrictedPolicy))) {
     throw new AddressRefusal('resolved address violates policy');
   }
   const selected = addresses[0];
@@ -153,22 +174,59 @@ export async function sendProviderRequest(request: ProviderRequest): Promise<Pro
     let hasConnected = false;
     let hasWrittenRequest = false;
     let clientRequest: ClientRequest;
+    let responseStallTimer: ReturnType<typeof setTimeout> | undefined;
     try {
       clientRequest = (parsed.protocol === 'https:' ? https : http).request(parsed, options, (response: IncomingMessage) => {
-        void readBoundedBody(response, request.maxResponseBytes).then(body => {
-          resolve({ status: response.statusCode ?? 0, headers: response.headers, body });
-        }).catch((error: unknown) => {
-          response.destroy();
-          reject(error instanceof BodyTooLargeError ? new BodyTooLargeError(response.statusCode ?? 0, response.headers) : new ProviderTransportError(false));
-        });
+        if (responseStallTimer) clearTimeout(responseStallTimer);
+        const chunks: Uint8Array[] = [];
+        let size = 0;
+        let stallTimer: ReturnType<typeof setTimeout> | undefined;
+        const observeProgress = () => {
+          if (stallTimer) clearTimeout(stallTimer);
+          if (request.stallTimeoutMs && request.stallTimeoutMs > 0) stallTimer = setTimeout(() => response.destroy(new ProviderStalledError()), request.stallTimeoutMs);
+        };
+        observeProgress();
+        void (async () => {
+          try {
+            for await (const chunk of response) {
+              observeProgress();
+              const isSuccess = (response.statusCode ?? 0) >= 200 && (response.statusCode ?? 0) <= 299;
+              const limit = isSuccess ? request.maxResponseBytes : request.maxErrorResponseBytes ?? request.maxResponseBytes;
+              if (!isSuccess && request.maxErrorResponseBytes !== undefined && size + chunk.length > limit) {
+                chunks.push(chunk.subarray(0, Math.max(0,limit-size)));
+                response.destroy();
+                resolve({ status: response.statusCode ?? 0, headers: response.headers, body: Buffer.concat(chunks) });
+                return;
+              }
+              const shouldContinue = request.onResponseChunk?.(chunk, response.statusCode ?? 0, response.headers);
+              if (shouldContinue === false) {
+                response.destroy();
+                resolve({ status: response.statusCode ?? 0, headers: response.headers, body: Buffer.concat(chunks) });
+                return;
+              }
+              size += chunk.length;
+              if (size > limit) throw new BodyTooLargeError(response.statusCode ?? 0, response.headers);
+              chunks.push(chunk);
+            }
+            resolve({ status: response.statusCode ?? 0, headers: response.headers, body: Buffer.concat(chunks) });
+          } catch (error) {
+            response.destroy();
+            if (request.ignoreErrorBodyReadFailure && ((response.statusCode ?? 0) < 200 || (response.statusCode ?? 0) >= 300)) {
+              resolve({ status: response.statusCode ?? 0, headers: response.headers, body: Buffer.concat(chunks) });
+            } else {
+              reject(error instanceof BodyTooLargeError || error instanceof ProviderStalledError ? error : new ProviderTransportError(false));
+            }
+          } finally { if (stallTimer) clearTimeout(stallTimer); }
+        })();
       });
     } catch { reject(new ProviderTransportError(true)); return; }
     clientRequest.on('socket', socket => {
       if (!socket.connecting) hasConnected = true;
-      socket.once(parsed.protocol === 'https:' ? 'secureConnect' : 'connect', () => { hasConnected = true; });
+      else socket.once(parsed.protocol === 'https:' ? 'secureConnect' : 'connect', () => { hasConnected = true; });
     });
     clientRequest.on('finish', () => { hasWrittenRequest = true; });
-    clientRequest.on('error', () => reject(new ProviderTransportError(!hasConnected && !hasWrittenRequest)));
+    clientRequest.on('error', error => { if (responseStallTimer) clearTimeout(responseStallTimer); reject(error instanceof ProviderStalledError ? error : new ProviderTransportError(!hasConnected && !hasWrittenRequest)); });
+    if (request.stallTimeoutMs && request.stallTimeoutMs > 0) responseStallTimer = setTimeout(() => clientRequest.destroy(new ProviderStalledError()), request.stallTimeoutMs);
     try { clientRequest.end(request.body); }
     catch { reject(new ProviderTransportError(!hasConnected && !hasWrittenRequest)); }
   });
