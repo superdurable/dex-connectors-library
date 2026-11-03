@@ -7,20 +7,22 @@ import ssl
 import struct
 from datetime import timedelta
 from decimal import Decimal
+from uuid import uuid4
 
 import pytest
-from dex_connectors.sdk import FailureKind
+from dex_connectors.sdk import Call, CallID, ConnectionRef, FailureKind, OperationRef
 from mysql.connector.connection import MySQLConnection
-from mysql.connector.constants import FieldFlag, FieldType
+from mysql.connector.constants import ClientFlag, FieldFlag, FieldType
 from mysql.connector.errors import DatabaseError
 
-from dex_connectors.mysql import Client, Config
+from dex_connectors.mysql import Client, Config, QueryRowsInput
 from dex_connectors.mysql.client import (
     _classify,
     _column_type_name,
     _commit_transaction,
     _CommitNotSent,
     _decode_value,
+    _ExactValueConnection,
     _ExactValueProtocol,
     _execute_prepared,
     _StrictTLSConnection,
@@ -203,6 +205,18 @@ def test_binary_zero_and_partial_dates_preserve_mysql_text() -> None:
         _decode_value("TIMESTAMP", protocol._parse_binary_timestamp(b"\x00", FieldType.TIMESTAMP)[1])
         == "0000-00-00 00:00:00"
     )
+    year_zero = b"\x07" + struct.pack("<HBBBBB", 0, 1, 1, 0, 0, 0)
+    assert (
+        _decode_value("DATETIME", protocol._parse_binary_timestamp(year_zero, FieldType.DATETIME)[1])
+        == "0000-01-01T00:00:00"
+    )
+    year_zero_fraction = b"\x0b" + struct.pack("<HBBBBBI", 0, 2, 29, 1, 2, 3, 500000)
+    datetime_value = protocol._parse_binary_timestamp(year_zero_fraction, FieldType.DATETIME)[1]
+    timestamp_value = protocol._parse_binary_timestamp(year_zero_fraction, FieldType.TIMESTAMP)[1]
+    assert (
+        _decode_value("DATETIME", datetime_value, 6) == "0000-02-29T01:02:03.5"
+    )
+    assert _decode_value("TIMESTAMP", timestamp_value, 6) == "0000-02-29T01:02:03.5Z"
 
 
 def test_column_metadata_keeps_time_fraction_digits() -> None:
@@ -242,9 +256,133 @@ def test_float32_matches_go_shortest_form(bits: int, expected: float) -> None:
 
 
 def test_non_verification_tls_handshake_failure_retries() -> None:
-    error = DatabaseError("secret", errno=2026)
+    error = DatabaseError("secret", errno=2055)
     error.__cause__ = ssl.SSLEOFError("connection closed")
     assert _classify(error, "connect").branch == "retry"
+
+
+def test_verified_tls_rejects_server_without_ssl_capability() -> None:
+    capabilities = (
+        ClientFlag.PROTOCOL_41 | ClientFlag.SECURE_CONNECTION | ClientFlag.PLUGIN_AUTH
+    ) & ~ClientFlag.SSL
+    handshake = (
+        b"\x0a8.4.0\x00"
+        + struct.pack("<I", 7)
+        + b"abcdefgh\x00"
+        + struct.pack("<H", capabilities & 0xFFFF)
+        + b"\xff"
+        + struct.pack("<H", 2)
+        + struct.pack("<H", capabilities >> 16)
+        + b"\x15"
+        + bytes(10)
+        + b"ijklmnopqrst\x00caching_sha2_password\x00"
+    )
+    packet = bytearray(struct.pack("<I", len(handshake))[:3] + b"\x00" + handshake)
+
+    class Socket:
+        def recv(self, *args: object, **kwargs: object) -> bytearray:
+            return packet
+
+    connection = _StrictTLSConnection()
+    connection._socket = Socket()
+    connection._protocol = _ExactValueProtocol()
+    connection._ssl = {"verify_cert": True}
+    connection._ssl_disabled = False
+    with pytest.raises(_TLSUnavailable) as error:
+        connection._do_handshake()
+    disposition = _classify(error.value, "connect")
+    assert (disposition.branch, disposition.kind) == (
+        "providerRejected",
+        FailureKind.PROVIDER_REJECTION,
+    )
+
+
+@pytest.mark.parametrize(
+    ("max_rows", "max_response_bytes", "expected_rows"),
+    [(1, 1024, ({"number": "0"},)), (1000, 2, ())],
+)
+def test_truncated_prepared_query_leaves_unread_rows_on_discarded_connection(
+    monkeypatch: pytest.MonkeyPatch,
+    max_rows: int,
+    max_response_bytes: int,
+    expected_rows: tuple[dict[str, str], ...],
+) -> None:
+    def packet(body: bytes) -> bytearray:
+        return bytearray(struct.pack("<I", len(body))[:3] + b"\x00" + body)
+
+    def column(name: bytes) -> bytearray:
+        names = (b"def", b"db", b"table", b"table", name, name)
+        return packet(
+            b"".join(bytes((len(value),)) + value for value in names)
+            + b"\x0c"
+            + struct.pack("<HIBHB", 63, 20, FieldType.LONGLONG, 0, 0)
+            + b"\x00\x00"
+        )
+
+    eof = packet(b"\xfe" + struct.pack("<HH", 0, 2))
+    responses = [
+        packet(b"\x00\x00\x00" + struct.pack("<HH", 2, 0)),
+        packet(b"\x00" + struct.pack("<IHHBH", 1, 1, 0, 0, 0)),
+        column(b"number"),
+        eof,
+        packet(b"\x01"),
+        column(b"number"),
+        eof,
+        *[packet(b"\x00\x00" + struct.pack("<q", number)) for number in range(3)],
+        eof,
+    ]
+
+    class Socket:
+        def __init__(self) -> None:
+            self.packets = responses
+            self.sock = self
+            self.sent: list[bytes] = []
+
+        def recv(self, *args: object, **kwargs: object) -> bytearray:
+            return self.packets.pop(0)
+
+        def send(self, payload: bytes, *args: object, **kwargs: object) -> int:
+            self.sent.append(bytes(payload))
+            return len(payload)
+
+        def sendall(self, payload: bytes, *args: object, **kwargs: object) -> None:
+            self.sent.append(bytes(payload))
+
+        def shutdown(self) -> None:
+            pass
+
+        def close_connection(self) -> None:
+            pass
+
+    fake_socket = Socket()
+    connection = _ExactValueConnection()
+    connection._protocol = _ExactValueProtocol()
+    connection._socket = fake_socket
+    monkeypatch.setattr(connection, "is_connected", lambda: True)
+    client = Client(
+        Config(
+            "127.0.0.1",
+            "app",
+            "database",
+            ssl_mode="disabled",
+            max_rows=max_rows,
+            max_response_bytes=max_response_bytes,
+        ),
+        object(),
+    )
+    monkeypatch.setattr(client, "_open", lambda password: connection)
+    monkeypatch.setattr(client, "_session", lambda opened: ("1", "8.4.0"))
+    call_id = CallID(str(uuid4()))
+    call = Call(
+        call_id, ConnectionRef("mysql", "live"), OperationRef("mysql", "query"), idempotency_key=call_id
+    )
+
+    result = client.query()._invoke_sync(call, QueryRowsInput("SELECT number FROM t"), (), "password")
+
+    assert result.branch == "truncated"
+    assert result.value is not None and result.value.rows == expected_rows
+    assert any(command[:1] == b"\x17" for command in fake_socket.sent)
+    assert not any(command[:1] == b"\x19" for command in fake_socket.sent)
 
 
 def test_binary_collation_is_text_unless_charset_is_binary() -> None:

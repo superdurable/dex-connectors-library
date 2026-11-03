@@ -131,6 +131,10 @@ class _ParameterCountMismatch(Exception):
     pass
 
 
+class _YearZeroDatetime(str):
+    pass
+
+
 class _SendMeter:
     def __init__(self, socket: Any) -> None:
         self.socket = socket
@@ -180,6 +184,17 @@ class _ExactValueProtocol(MySQLProtocol):
         try:
             return MySQLProtocol._parse_binary_timestamp(packet, field_type)
         except ValueError:
+            if year == 0 and field_type != FieldType.DATE:
+                try:
+                    date(2000, month, day)
+                    time(hour, minute, second, struct.unpack_from("<I", packet, 8)[0] if length == 11 else 0)
+                except ValueError:
+                    pass
+                else:
+                    iso_text = text.replace(" ", "T", 1)
+                    if length == 11:
+                        iso_text = iso_text.rstrip("0").rstrip(".")
+                    return packet[length + 1 :], _YearZeroDatetime(iso_text)
             return packet[length + 1 :], text
 
     @staticmethod
@@ -216,8 +231,7 @@ class _StrictTLSConnection(_ExactValueConnection):
         try:
             super()._do_handshake()
         except MySQLError as error:
-            capabilities = self._handshake.get("capabilities") if self._handshake is not None else None
-            if error.errno == 2026 and isinstance(capabilities, int) and not capabilities & ClientFlag.SSL:
+            if error.errno == 2026:
                 raise _TLSUnavailable("the MySQL server does not accept TLS") from error
             raise
         capabilities = self._handshake.get("capabilities") if self._handshake is not None else None
@@ -396,7 +410,8 @@ class QueryRowsOperation:
             prepared_cursor = connection.cursor(prepared=True)
             _execute_prepared(prepared_cursor, input.statement, parameters)
             columns, rows, truncated = _read_rows(prepared_cursor, self.client.config)
-            prepared_cursor.close()
+            if not truncated:
+                prepared_cursor.close()
             receipt = _receipt(call, metadata)
             if truncated:
                 failure = _failure(
@@ -726,6 +741,8 @@ def _decode_value(type_name: str, value: Any, decimals: int | None = None) -> An
         if decimals is not None:
             return text + (f".{fractional:06}"[: decimals + 1] if decimals not in {0, 31} else "")
         return text + (f".{fractional:06}".rstrip("0") if fractional else "")
+    if isinstance(value, _YearZeroDatetime):
+        return str(value) + ("Z" if type_name == "TIMESTAMP" else "")
     if isinstance(value, str) and type_name in {"DATE", "DATETIME", "TIMESTAMP"}:
         if decimals is not None and type_name != "DATE":
             base, _, fraction = value.partition(".")
@@ -877,7 +894,7 @@ def _classify(error: Exception, phase: str) -> _Disposition:
                 number,
                 state,
             )
-        if phase == "connect" and number in {2002, 2003, 2006, 2013, 2026, 2055}:
+        if phase == "connect" and number in {2002, 2003, 2006, 2013, 2055}:
             return _Disposition(
                 "retry",
                 FailureKind.AVAILABILITY,

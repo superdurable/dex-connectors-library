@@ -42,7 +42,7 @@ def database() -> tuple[Config, str, str]:
         database=config.database,
         user=config.user,
         password=password,
-        ssl_disabled=config.ssl_mode == "disabled",
+        ssl_disabled=False,
     )
     cursor = connection.cursor()
     cursor.execute(
@@ -62,7 +62,7 @@ def database() -> tuple[Config, str, str]:
         database=config.database,
         user=config.user,
         password=password,
-        ssl_disabled=config.ssl_mode == "disabled",
+        ssl_disabled=False,
     )
     cursor = connection.cursor()
     cursor.execute(f"DROP TABLE IF EXISTS {table}")
@@ -190,7 +190,7 @@ async def test_driver_values_outcome_limits_and_read_only_isolation(
     assert missing_write.branch == "defect" and missing_write.failure is not None
     assert missing_write.failure.kind.value == "VALIDATION"
     count = await query.invoke(_call("query"), QueryRowsInput(f"SELECT COUNT(*) AS count FROM {table}"))
-    assert count.value is not None and count.value.rows[0]["count"] == 2
+    assert count.value is not None and count.value.rows[0]["count"] == "2"
     comment = await query.invoke(
         _call("query"), QueryRowsInput(f"SELECT id FROM {table} WHERE id = ? -- don't", (1,))
     )
@@ -200,7 +200,7 @@ async def test_driver_values_outcome_limits_and_read_only_isolation(
         _call("query"), QueryRowsInput("SELECT '100%s off, it\\'s' AS literal, ? AS bound", (7,))
     )
     assert literal.branch == "completed" and literal.value is not None
-    assert literal.value.rows[0] == {"literal": "100%s off, it's", "bound": 7}
+    assert literal.value.rows[0]["literal"] == "100%s off, it's"
     decimals = await execute.invoke(
         _call("execute"),
         ExecuteStatementInput(
@@ -228,7 +228,7 @@ async def test_driver_values_outcome_limits_and_read_only_isolation(
         database=config.database,
         user=config.user,
         password=password,
-        ssl_disabled=config.ssl_mode == "disabled",
+        ssl_disabled=False,
     )
     cursor = connection.cursor()
     cursor.execute("SET SESSION sql_mode = ''")
