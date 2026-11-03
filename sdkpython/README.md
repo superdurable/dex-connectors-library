@@ -2,10 +2,10 @@
 
 `dex-connectors-sdk` is the Python core for Dex-native provider connectors. It
 uses the PEP 420 `dex_connectors` namespace and imports as `dex_connectors.sdk`.
-Version `0.2.0` supplies the models, provider operation contracts, credential
+Version `0.3.0` supplies the models, provider operation contracts, credential
 helpers, OAuth token exchanges, portable text generation, and single-dispatch
-checkpoint values below. Query and Mutation Step factories use the released
-Dex SDK's instance-addressed async Steps.
+checkpoint values below, plus opt-in provider address policies. Query and
+Mutation Step factories use the released Dex SDK's instance-addressed async Steps.
 Dex Web FDG 2.0 connector metadata for Python requires upstream R4.
 
 Python 3.11 or newer and `dex-python-sdk>=1.28.0` are required. APIs are
@@ -19,6 +19,8 @@ Runnable examples are [`examples/core.py`](examples/core.py),
 [`examples/text_generation.py`](examples/text_generation.py).
 [`examples/manifest_refresh.py`](examples/manifest_refresh.py) demonstrates
 manifest-declared refresh with an inert provider endpoint.
+[`examples/provider_address_policy.py`](examples/provider_address_policy.py)
+exercises an address-checked request against a local server.
 Run each with `uv run python examples/<name>.py`.
 
 ## Core values, failures, and retry policy
@@ -218,6 +220,25 @@ await fence.record_provider_id(provider_id)
 
 `new_provider_http_client` returns an `httpx.AsyncClient` with redirects
 disabled so authorization headers are never replayed to another host.
+Its optional `address_policy` is `"unrestricted"` by default for compatibility.
+`"publicHTTPS"` allows HTTPS only when every resolved address is public;
+`"privateNetworkHTTP"` also allows HTTP to private or loopback addresses.
+Both restricted policies reject link-local, metadata, multicast, unspecified,
+and broadcast addresses. `publicHTTPS` also rejects shared addresses. They
+resolve and check every DNS answer, then dial a checked IP while retaining the
+URL hostname for Host, TLS
+SNI, and certificate verification. DNS resolution and every dial share one
+connect timeout. Restricted clients accept only safe `httpx.AsyncClient` options;
+they refuse custom transports, applications, mounts, and proxies, including
+the legacy `proxies` option. `SSL_CERT_FILE` and `SSL_CERT_DIR` supply trusted
+certificates without enabling environment proxies. The restricted client uses
+one HTTP/HTTPS connection pool with the standard 100 connection and 20 keepalive
+defaults, or caller-supplied `limits`. An `AddressRefusal` contains a safe rule,
+never a host or secret. DNS and connect failures before dispatch produce
+`ProviderTransportError.provably_not_sent=True`. The caller closes the client.
+For example, [the runnable policy example](examples/provider_address_policy.py)
+uses `new_provider_http_client(address_policy="privateNetworkHTTP")` for a
+loopback HTTP service.
 `read_bounded_body` rejects an oversized response. `read_error_tokens` extracts
 only safe machine tokens from bounded JSON error bodies, and
 `parse_retry_after` accepts delta seconds or HTTP dates capped at one hour.
@@ -230,6 +251,12 @@ without putting header values in its message.
 The caller closes the streaming response returned by `send_traced`; the bounded
 reader closes it on success and failure.
 The core example sends through an in-process HTTP transport.
+
+## Version history
+
+- `0.3.0`: Added opt-in provider address policies and text generation policy
+  forwarding. The unrestricted default keeps the `0.2.0` network behavior.
+- `0.2.0`: Added portable text generation and single-dispatch checkpoints.
 
 ## Project configuration
 
@@ -411,8 +438,10 @@ closed per invocation, so connections are not pooled across calls.
 Execute defaults), `wire_format`, HTTPS `base_url`, `connection_model`,
 `request_timeout_seconds` (a whole-exchange deadline including body reads),
 `resolve_credential`, `max_response_bytes`, `max_stream_event_bytes` (required
-for streaming), and optional caller-owned `http_client`. The Execute timeout
-must exceed the request timeout; a nonzero heartbeat timeout is at least ten
+for streaming), optional caller-owned `http_client`, and `address_policy`.
+The policy defaults to unrestricted. A restricted policy requires the Query
+to own its HTTP client; a supplied client cannot bypass the check. The Execute
+timeout must exceed the request timeout; a nonzero heartbeat timeout is at least ten
 seconds. The Query's `definition`, `request_features`, and `model_id_rule`
 methods expose those declarations without making a provider request.
 
