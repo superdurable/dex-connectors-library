@@ -3,6 +3,7 @@
 """Mailchimp operation invocations and exact provider outcome routing."""
 
 import hashlib
+import ipaddress
 import json
 import math
 import re
@@ -50,8 +51,10 @@ _RESOURCE_ID = re.compile(r"[A-Za-z0-9]{1,64}\Z")
 _SUBSCRIBER_HASH = re.compile(r"[0-9a-f]{32}\Z")
 _MERGE_TAG = re.compile(r"[A-Z0-9_]{1,50}\Z")
 _ADDRESS_KEY = re.compile(r"[a-z][a-z0-9_]{0,31}\Z")
-_ADDRESS_ATOM = r"[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+"
-_BARE_ADDRESS = re.compile(rf"{_ADDRESS_ATOM}(?:\.{_ADDRESS_ATOM})*@{_ADDRESS_ATOM}(?:\.{_ADDRESS_ATOM})*\Z")
+_ADDRESS_ATOM = r"[A-Za-z0-9!#$%&'*+/=?^_`{|}~\-\u0080-\U0010FFFF]+"
+_BARE_ADDRESS = re.compile(
+    rf"{_ADDRESS_ATOM}(?:\.{_ADDRESS_ATOM})*@(?:{_ADDRESS_ATOM}(?:\.{_ADDRESS_ATOM})*|\[[0-9A-Fa-f:.]+\])\Z"
+)
 _MEMBER_LIST_FIELDS = ",".join(
     (
         "members.id",
@@ -107,6 +110,12 @@ def _member_address(list_id: str, email_address: str) -> None:
         or not _BARE_ADDRESS.fullmatch(email_address)
     ):
         raise ValueError("emailAddress must be one bare email address such as jane@example.com")
+    domain = email_address.rsplit("@", 1)[1]
+    if domain.startswith("["):
+        try:
+            ipaddress.ip_address(domain[1:-1])
+        except ValueError as error:
+            raise ValueError("emailAddress has an invalid IP address domain") from error
 
 
 def _subscriber_hash(email_address: str) -> str:

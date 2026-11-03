@@ -3315,6 +3315,122 @@
         "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
         "state": "claimed"
       }
+    },
+    {
+      "callId": "76aa8474-c963-57bd-944d-8dbc845c462a",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"04b9139640b51adfedef86aa87ad36ea\",\"email_address\":\"jané@example.com\",\"contact_id\":\"contact-ben\",\"full_name\":\"Ben Carter\",\"web_id\":42,\"email_type\":\"html\",\"status\":\"subscribed\",\"merge_fields\":{\"FNAME\":\"Ben\"},\"vip\":true,\"language\":\"en\",\"timestamp_signup\":\"2026-10-20T10:00:00Z\",\"timestamp_opt\":\"2026-10-21T10:00:00Z\",\"last_changed\":\"2026-10-25T10:00:00Z\",\"tags_count\":2,\"tags\":[{\"name\":\"spring-launch\"},{\"name\":\"vip\"}],\"list_id\":\"57afe96172\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members/04b9139640b51adfedef86aa87ad36ea",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "contactId": "contact-ben",
+          "emailAddress": "jané@example.com",
+          "emailType": "html",
+          "fullName": "Ben Carter",
+          "isVip": true,
+          "language": "en",
+          "lastChangedAt": "2026-10-25T10:00:00Z",
+          "listId": "57afe96172",
+          "mergeFields": {
+            "FNAME": "Ben"
+          },
+          "optedInAt": "2026-10-21T10:00:00Z",
+          "signedUpAt": "2026-10-20T10:00:00Z",
+          "status": "subscribed",
+          "subscriberHash": "04b9139640b51adfedef86aa87ad36ea",
+          "tagCount": 2,
+          "tags": [
+            "spring-launch",
+            "vip"
+          ],
+          "webId": 42
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "jané@example.com",
+        "listId": "57afe96172"
+      },
+      "name": "getMember-success-international-address",
+      "operation": "getMember"
+    },
+    {
+      "callId": "76aa8474-c963-57bd-944d-8dbc845c462a",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"c5e1c2e7f3467bff062253afa5c6c5d4\",\"email_address\":\"a@[1.2.3.4]\",\"contact_id\":\"contact-ben\",\"full_name\":\"Ben Carter\",\"web_id\":42,\"email_type\":\"html\",\"status\":\"subscribed\",\"merge_fields\":{\"FNAME\":\"Ben\"},\"vip\":true,\"language\":\"en\",\"timestamp_signup\":\"2026-10-20T10:00:00Z\",\"timestamp_opt\":\"2026-10-21T10:00:00Z\",\"last_changed\":\"2026-10-25T10:00:00Z\",\"tags_count\":2,\"tags\":[{\"name\":\"spring-launch\"},{\"name\":\"vip\"}],\"list_id\":\"57afe96172\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members/c5e1c2e7f3467bff062253afa5c6c5d4",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer mailchimpfixturekey-us6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "contactId": "contact-ben",
+          "emailAddress": "a@[1.2.3.4]",
+          "emailType": "html",
+          "fullName": "Ben Carter",
+          "isVip": true,
+          "language": "en",
+          "lastChangedAt": "2026-10-25T10:00:00Z",
+          "listId": "57afe96172",
+          "mergeFields": {
+            "FNAME": "Ben"
+          },
+          "optedInAt": "2026-10-21T10:00:00Z",
+          "signedUpAt": "2026-10-20T10:00:00Z",
+          "status": "subscribed",
+          "subscriberHash": "c5e1c2e7f3467bff062253afa5c6c5d4",
+          "tagCount": 2,
+          "tags": [
+            "spring-launch",
+            "vip"
+          ],
+          "webId": 42
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "a@[1.2.3.4]",
+        "listId": "57afe96172"
+      },
+      "name": "getMember-success-domain-literal",
+      "operation": "getMember"
     }
   ],
   "schemaVersion": 1

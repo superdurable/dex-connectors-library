@@ -27,7 +27,7 @@ async def test_get_member_retries_and_unwired_not_found_fails(monkeypatch: pytes
     """Check retry and optional branch routing across the real Dex boundary."""
     server_address = os.environ["DEX_FLOW_SERVICE_ADDRESS"]
     requests: list[httpx.Request] = []
-    subscriber_hash = hashlib.md5(b"ben@example.com").hexdigest()
+    subscriber_hash = hashlib.md5("jané@example.com".encode()).hexdigest()
 
     def answer(request: httpx.Request) -> httpx.Response:
         requests.append(request)
@@ -49,7 +49,7 @@ async def test_get_member_retries_and_unwired_not_found_fails(monkeypatch: pytes
             200,
             json={
                 "id": subscriber_hash,
-                "email_address": "ben@example.com",
+                "email_address": "jané@example.com",
                 "status": "subscribed",
                 "list_id": "57afe96172",
                 "tags_count": 1,
@@ -98,14 +98,14 @@ async def test_get_member_retries_and_unwired_not_found_fails(monkeypatch: pytes
                     ) as client:
                         successful_id = f"mailchimp-contact-{uuid4().hex}"
                         await client.start_flow(
-                            flow, successful_id, GetMemberInput("57afe96172", "ben@example.com")
+                            flow, successful_id, GetMemberInput("57afe96172", "jané@example.com")
                         )
                         success = await asyncio.wait_for(
                             client.wait_for_flow(successful_id, timedelta(seconds=20)), 30
                         )
                         assert success.status == dex.FlowStatus.COMPLETED, success.error_message
                         contact = success.single_output(Member)
-                        assert contact.email_address == "ben@example.com"
+                        assert contact.email_address == "jané@example.com"
                         assert contact.tags == ("vip",)
                         assert len(requests) == 2
 

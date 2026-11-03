@@ -3,6 +3,7 @@
 This runnable Python Flow reads one Mailchimp audience contact through the static
 `mailchimp-audience` connection. The returned contact is persisted as a safe
 Attribute. Only `found` is wired; other definite outcomes fail the Flow.
+The sample input and integration test exercise an internationalized email address.
 
 From `connectors/intuit/mailchimp`, create a strict FDG 2.0 rendering for the
 existing Go application setup, which exposes the same connection form:
