@@ -1077,8 +1077,12 @@ exemptions in [`conformance/exemptions.yaml`](../conformance/exemptions.yaml).
 Their Python and TypeScript packages use native protocols, so HTTP replay does
 not apply. Require unit coverage for Go-tested branches, Retry, uncertainty,
 and protocol-error classification, plus real protocol integration tests in CI
-service containers. Follow the Go connector live-test setup and scenarios when
-available; email packages use the GreenMail `EMAIL_CONNECTOR_TEST_*` variables.
+service containers. Database ports follow Go connector live-test setup and
+scenarios when available. Email ports mirror the Go connector's in-process
+`internal/mailtest` tests, including `send_message_test.go` and
+`search_messages_test.go`, and use the GreenMail `EMAIL_CONNECTOR_TEST_*`
+variables in CI. GreenMail lacks STARTTLS, so protocol unit fakes cover that
+path.
 Developers do not run Docker locally. See
 [`conformance/connectors/README.md`](../conformance/connectors/README.md#native-wire-protocol-exemptions).
 

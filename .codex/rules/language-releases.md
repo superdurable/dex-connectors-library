@@ -29,9 +29,12 @@ The reviewed `conformance/exemptions.yaml` exempts only `connectors/postgresql`,
 by the HTTP replay runner. Adding an exemption requires a tooling PR. For each
 exempt Python and TypeScript package, replace replay with unit tests for every
 Go-tested branch, retry, uncertain decision, and protocol-error classification,
-plus real protocol integration tests in CI service containers. Use the Go
-connector live-test scenarios and connection variables when available; email
-integration tests use the `EMAIL_CONNECTOR_TEST_*` GreenMail variables in CI.
+plus real protocol integration tests in CI service containers. Database ports
+use Go connector live-test scenarios and connection variables when available.
+Email ports mirror the Go connector's in-process `internal/mailtest` tests,
+including `send_message_test.go` and `search_messages_test.go`; their CI
+integration tests use the `EMAIL_CONNECTOR_TEST_*` GreenMail variables.
+GreenMail lacks STARTTLS, so protocol unit fakes cover that path.
 Developers do not run Docker locally. Python integration tests live in
 `python/tests/integration/` and TypeScript integration tests in
 `typescript/test/integration.test.ts`.

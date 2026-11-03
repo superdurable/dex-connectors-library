@@ -20,10 +20,15 @@ the list requires a tooling PR.
 
 Each exempt Python or TypeScript package needs unit tests for every Go-tested
 branch, Retry, uncertain decision, and protocol-error classification. It also
-needs real protocol integration tests in CI service containers. Follow the Go
-connector's live-test scenarios and connection variables when available. Email
-packages use the `EMAIL_CONNECTOR_TEST_*` variables exported by the GreenMail
-CI job for SMTP, SMTPS, IMAP, IMAPS, and the test mailbox.
+needs real protocol integration tests in CI service containers. Database ports
+follow the Go connector's live-test scenarios and connection variables when
+available. Email ports mirror the Go connector's in-process `internal/mailtest`
+tests, including `send_message_test.go` and `search_messages_test.go`.
+The GreenMail CI job exports `EMAIL_CONNECTOR_TEST_*` variables for SMTPS,
+IMAPS, and a test mailbox, with a CA certificate that verifies localhost and
+127.0.0.1. Its plaintext SMTP and IMAP ports cover refusal to authenticate
+without TLS. GreenMail has no STARTTLS, so protocol unit fakes cover SMTP and
+IMAP STARTTLS behavior in each language port.
 Place Python integration tests in `python/tests/integration/` and TypeScript
 integration tests in `typescript/test/integration.test.ts`. Developers do not
 run Docker locally. CI selects only exempt connectors with a language package.

@@ -98,6 +98,8 @@ class AgentRulesTest(unittest.TestCase):
                 self.assertIn("native wire protocols cannot be recorded", contents)
                 self.assertIn("unit tests for every Go-tested branch, retry, uncertain decision, and protocol-error classification", contents)
                 self.assertIn("protocol integration tests in CI service containers", contents)
+                self.assertIn("in-process `internal/mailtest` tests", contents)
+                self.assertIn("GreenMail lacks STARTTLS, so protocol unit fakes cover that path", contents)
                 self.assertIn("EMAIL_CONNECTOR_TEST_*", contents)
                 self.assertIn("5-8 connectors of one language", contents)
                 self.assertIn("v0.1.0", contents)
