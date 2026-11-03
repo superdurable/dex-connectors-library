@@ -661,7 +661,7 @@ def render_connection():
         "# SPDX-License-Identifier: MIT",
         "",
         "from typing import Any",
-        *(["from urllib.parse import urlsplit"] if any(field_info["type"] == "url" for field_info in auth_fields()) else []),
+        *(["from re import search", "from urllib.parse import urlsplit"] if any(field_info["type"] == "url" for field_info in auth_fields()) else []),
         "",
         "import httpx",
         "from dex_connectors.sdk import "
@@ -678,6 +678,17 @@ def render_connection():
         "from .definitions import CONNECTOR_ID, " + ", ".join(definition_names),
         "from ..models import " + ", ".join(model_names),
         "",
+        *([
+            "def _is_absolute_credential_url(value: str) -> bool:",
+            "    if value != value.strip() or any(ord(character) < 32 or ord(character) == 127 for character in value) or search(r'%(?![0-9a-fA-F]{2})', value):",
+            "        return False",
+            "    try:",
+            "        parsed = urlsplit(value)",
+            "        return bool(parsed.scheme and parsed.hostname and not any(character.isspace() for character in parsed.netloc))",
+            "    except ValueError:",
+            "        return False",
+            "",
+        ] if any(field_info["type"] == "url" for field_info in auth_fields()) else []),
         "class Connection:",
         "",
         "    __slots__ = ("
@@ -805,8 +816,8 @@ def render_connection():
             check = f"isinstance({name}, str)" if field_type in ("string", "secretString", "enum", "url") else (
                 f"type({name}) is int" if field_type in ("integer", "duration") else
                 f"type({name}) is bool" if field_type == "boolean" else
-                f"isinstance({name}, list) and all(isinstance(item, str) for item in {name})" if field_type == "stringList" else
-                f"isinstance({name}, dict) and all(isinstance(key, str) and isinstance(item, str) for key, item in {name}.items())"
+                f"isinstance({name}, list) and all(item is None or isinstance(item, str) for item in {name})" if field_type == "stringList" else
+                f"isinstance({name}, dict) and all(isinstance(key, str) and (item is None or isinstance(item, str)) for key, item in {name}.items())"
             )
             lines += [
                 f"        {name} = material.get({quoted(field_info['name'])})",
@@ -830,18 +841,23 @@ def render_connection():
                     name = snake(field_info["name"])
                     is_shared_required = field_info["name"] in payload["sharedRequiredFields"][method["id"]]
                     if field_info["required"] or is_shared_required:
-                        requirement = f"not {name}"
+                        requirement = f"({name} is None or {name} <= 0)" if field_info["type"] in ("integer", "duration") else f"not {name}"
                         if field_info["required"] != is_shared_required:
                             requirement += " and " + ("is_shared" if is_shared_required else "not is_shared")
                         lines += [
                             f"            if {requirement}:",
-                            f"                raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' is required')})",
+                            f"                raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + (' must be positive' if field_info['type'] in ('integer', 'duration') else ' is required'))})",
                         ]
+                    if field_info["type"] in ("integer", "duration"):
+                        lines += [f"            if {name} is not None and {name} < 0:", f"                raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' cannot be negative')})"]
                     if field_info["type"] == "enum":
                         lines += [f"            if {name} and {name} not in {tuple(field_info['enum'])!r}:", f"                raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' is invalid')})"]
                     if field_info["type"] == "url":
-                        lines += [f"            if {name} and (not urlsplit({name}).scheme or not urlsplit({name}).hostname):", f"                raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' must be an absolute URL')})"]
-                    expression = f"SecretString({name})" if field_info["type"] == "secretString" else name
+                        lines += [f"            if {name} and not _is_absolute_credential_url({name}):", f"                raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' must be an absolute URL')})"]
+                    expression = f"SecretString({name})" if field_info["type"] == "secretString" else (
+                        f"[item or '' for item in {name}]" if field_info["type"] == "stringList" else
+                        f"{{key: item or '' for key, item in {name}.items()}}" if field_info["type"] == "stringMap" else name
+                    )
                     lines.append(f"            if {name}:")
                     lines.append(f"                values[{quoted(name)}] = {expression}")
             lines += [
@@ -854,18 +870,32 @@ def render_connection():
                 name = snake(field_info["name"])
                 is_shared_required = field_info["name"] in payload["sharedRequiredFields"][""]
                 if field_info["required"] or is_shared_required:
-                    requirement = f"not {name}"
+                    requirement = f"({name} is None or {name} <= 0)" if field_info["type"] in ("integer", "duration") else f"not {name}"
                     if field_info["required"] != is_shared_required:
                         requirement += " and " + ("is_shared" if is_shared_required else "not is_shared")
-                    lines += [f"        if {requirement}:", f"            raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' is required')})"]
+                    lines += [f"        if {requirement}:", f"            raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + (' must be positive' if field_info['type'] in ('integer', 'duration') else ' is required'))})"]
+                if field_info["type"] in ("integer", "duration"):
+                    lines += [f"        if {name} is not None and {name} < 0:", f"            raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' cannot be negative')})"]
                 if field_info["type"] == "enum":
                     lines += [f"        if {name} and {name} not in {tuple(field_info['enum'])!r}:", f"            raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' is invalid')})"]
                 if field_info["type"] == "url":
-                    lines += [f"        if {name} and (not urlsplit({name}).scheme or not urlsplit({name}).hostname):", f"            raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' must be an absolute URL')})"]
-            values = [
-                f"SecretString({snake(field_info['name'])})" if field_info["type"] == "secretString" else snake(field_info["name"])
-                for field_info in credential_fields
-            ]
+                    lines += [f"        if {name} and not _is_absolute_credential_url({name}):", f"            raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' must be an absolute URL')})"]
+            values = []
+            for field_info in credential_fields:
+                name = snake(field_info["name"])
+                can_be_absent = not field_info["required"] or field_info["name"] not in payload["sharedRequiredFields"][""]
+                if field_info["type"] == "secretString":
+                    values.append(f"SecretString({name} or '')" if can_be_absent else f"SecretString({name})")
+                elif field_info["type"] in ("string", "enum", "url"):
+                    values.append(f"({name} or '')" if can_be_absent else name)
+                elif field_info["type"] in ("integer", "duration"):
+                    values.append(f"({name} or 0)" if can_be_absent else name)
+                elif field_info["type"] == "boolean":
+                    values.append(f"({name} or False)" if can_be_absent else name)
+                elif field_info["type"] == "stringList":
+                    values.append(f"[item or '' for item in ({name} or [])]")
+                else:
+                    values.append(f"{{key: item or '' for key, item in ({name} or {{}}).items()}}")
             lines += ["        return Credentials(" + ", ".join(values) + ")", ""]
     lines += [
         "",

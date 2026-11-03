@@ -30,6 +30,12 @@ class Credentials:
     session_note: str | None = None
     environment: str | None = None
     login_url: str | None = None
+    request_count: int | None = None
+    wait_duration: int | None = None
+    labels: list[str] | None = None
+    headers: dict[str, str] | None = None
+    optional_count: int | None = None
+    optional_note: str | None = None
     tenant_id: str | None = None
     client_id: str | None = None
     client_secret: SecretString | None = None

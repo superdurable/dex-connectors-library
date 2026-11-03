@@ -188,6 +188,22 @@ func generateTypeScriptModels(manifest schema.Manifest, models []gomodel.Model) 
 	}
 	output.WriteString("}\n\n")
 	if len(manifest.Spec.Auth.Methods) > 0 {
+		for _, fieldName := range fieldNames {
+			if allCredentialFields[fieldName].Type == "url" {
+				output.WriteString(`function isAbsoluteCredentialURL(value: string): boolean {
+  if (value !== value.trim() || /[\u0000-\u001f\u007f]/.test(value) || /%(?![0-9a-fA-F]{2})/.test(value)) return false;
+  const authority = value.match(/^[A-Za-z][A-Za-z0-9+.-]*:\/\/([^/?#]*)/)?.[1];
+  if (!authority || /\s/.test(authority)) return false;
+  const numericPort = authority.match(/:(\d+)$/);
+  const parsedAuthority = numericPort && Number(numericPort[1]) > 65535 ? authority.replace(/:\d+$/, ':65535') : authority;
+  const parsedValue = value.replace(authority, parsedAuthority);
+  try { return !!new URL(parsedValue).hostname; } catch { return false; }
+}
+
+`)
+				break
+			}
+		}
 		writeTypeScriptCredentialDecoder(&output, manifest, allCredentialFields, fieldNames, false)
 		if HasHostKeptCredentials(manifest) {
 			writeTypeScriptCredentialDecoder(&output, manifest, allCredentialFields, fieldNames, true)
@@ -355,6 +371,12 @@ func typeScriptCredentialValue(field schema.Field) string {
 	if field.Type == "secretString" {
 		return "new SecretString(" + value + ")"
 	}
+	if field.Type == "stringList" {
+		return "(" + value + ").map(item => item ?? '')"
+	}
+	if field.Type == "stringMap" {
+		return "Object.fromEntries(Object.entries(" + value + ").map(([key, item]) => [key, item ?? '']))"
+	}
 	return value
 }
 
@@ -381,9 +403,9 @@ func writeTypeScriptCredentialDecoder(output *bytes.Buffer, manifest schema.Mani
 		case "boolean":
 			valid = "typeof " + value + " === 'boolean'"
 		case "stringList":
-			valid = "Array.isArray(" + value + ") && " + value + ".every(item => typeof item === 'string')"
+			valid = "Array.isArray(" + value + ") && " + value + ".every(item => item === null || typeof item === 'string')"
 		case "stringMap":
-			valid = "!!" + value + " && typeof " + value + " === 'object' && !Array.isArray(" + value + ") && Object.values(" + value + ").every(item => typeof item === 'string')"
+			valid = "!!" + value + " && typeof " + value + " === 'object' && !Array.isArray(" + value + ") && Object.values(" + value + ").every(item => item === null || typeof item === 'string')"
 		}
 		fmt.Fprintf(output, "  if (%s != null && !(%s)) throw new TypeError(%s);\n", value, valid, strconv.Quote("credential "+field.Name+" has an invalid type"))
 	}
@@ -405,13 +427,24 @@ func writeTypeScriptCredentialDecoder(output *bytes.Buffer, manifest schema.Mani
 				isRequired = slices.Contains(sharedRequired, field.Name)
 			}
 			if isRequired {
-				fmt.Fprintf(output, "    if (!%s) throw new TypeError(%s);\n", value, strconv.Quote("credential "+field.Name+" is required"))
+				check := "!" + value
+				message := "credential " + field.Name + " is required"
+				if field.Type == "integer" || field.Type == "duration" {
+					check = value + " == null || (" + value + " as number) <= 0"
+					message = "credential " + field.Name + " must be positive"
+				} else if field.Type == "stringList" || field.Type == "stringMap" {
+					check = "!" + value + " || Object.keys(" + value + ").length === 0"
+				}
+				fmt.Fprintf(output, "    if (%s) throw new TypeError(%s);\n", check, strconv.Quote(message))
+			}
+			if field.Type == "integer" || field.Type == "duration" {
+				fmt.Fprintf(output, "    if (%s != null && (%s as number) < 0) throw new TypeError(%s);\n", value, value, strconv.Quote("credential "+field.Name+" cannot be negative"))
 			}
 			if field.Type == "enum" {
 				fmt.Fprintf(output, "    if (%s && !%s.includes(%s as string)) throw new TypeError(%s);\n", value, typeScriptStringArray(field.Enum), value, strconv.Quote("credential "+field.Name+" is invalid"))
 			}
 			if field.Type == "url" {
-				fmt.Fprintf(output, "    if (%s) { try { if (!new URL(%s as string).hostname) throw new Error(); } catch { throw new TypeError(%s); } }\n", value, value, strconv.Quote("credential "+field.Name+" must be an absolute URL"))
+				fmt.Fprintf(output, "    if (%s && !isAbsoluteCredentialURL(%s as string)) throw new TypeError(%s);\n", value, value, strconv.Quote("credential "+field.Name+" must be an absolute URL"))
 			}
 			fmt.Fprintf(output, "    if (%s) credentials.%s = %s;\n", value, typeScriptFieldName(field.Name), typeScriptCredentialValue(field))
 		}

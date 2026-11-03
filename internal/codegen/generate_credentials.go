@@ -101,7 +101,7 @@ func isRequiredInSharedCredential(method schema.AuthMethod, field schema.Field) 
 
 // SharedRequiredCredentialFields returns the fields an application must receive from a shared connection broker.
 func SharedRequiredCredentialFields(method schema.AuthMethod) []string {
-	var required []string
+	required := []string{}
 	for _, field := range method.Fields {
 		if isRequiredInSharedCredential(method, field) {
 			required = append(required, field.Name)

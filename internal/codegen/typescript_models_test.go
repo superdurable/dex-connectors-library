@@ -5,6 +5,7 @@ package codegen
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -32,6 +33,13 @@ func TestTypeScriptMultiAuthModelsGolden(t *testing.T) {
 	manifest.Spec.Auth.Methods[0].Configuration = &schema.Configuration{Fields: []schema.Field{{Name: "workspaceId", GoName: "WorkspaceID", Type: "string", Description: "Workspace for the selected method.", Required: true}}}
 	manifest.Spec.Auth.Methods[1].Fields = append(manifest.Spec.Auth.Methods[1].Fields, schema.Field{Name: "session_note", GoName: "SessionNote", Type: "string", Description: "Optional session note.", Required: false})
 	manifest.Spec.Auth.Methods[1].Fields = append(manifest.Spec.Auth.Methods[1].Fields, schema.Field{Name: "environment", GoName: "Environment", Type: "enum", Enum: []string{"production", "sandbox"}, Description: "Login environment.", Required: false}, schema.Field{Name: "login_url", GoName: "LoginURL", Type: "url", Description: "Login URL.", Required: false})
+	manifest.Spec.Auth.Methods = append(manifest.Spec.Auth.Methods, schema.AuthMethod{ID: "typed", Fields: []schema.Field{
+		{Name: "request_count", GoName: "RequestCount", Type: "integer", Required: true},
+		{Name: "wait_duration", GoName: "WaitDuration", Type: "duration", Required: true},
+		{Name: "labels", GoName: "Labels", Type: "stringList", Required: false},
+		{Name: "headers", GoName: "Headers", Type: "stringMap", Required: false},
+		{Name: "optional_count", GoName: "OptionalCount", Type: "integer", Required: false},
+	}})
 	grantFile, err := os.Open(filepath.Join("..", "..", "schema", "testdata", "token-grants.yaml"))
 	if err != nil {
 		t.Fatal(err)
@@ -99,6 +107,22 @@ assert.equal(service.authMethodId, 'workspace-service-account');
 assert.equal(service.serviceAccountKey?.reveal(), 'key');
 assert.equal(service.sessionNote, 'note');
 assert.equal(service.oauthClientId, undefined);
+for (const invalidURL of [' https://example.com', 'https://example.com\n', 'https://exa mple.com', 'https://%zz', 'https://example.com/%zz', 'https://u:p@[secretish]/']) {
+  assert.throws(() => decodeCredentials({ auth_method: 'workspace-service-account', service_account_key: 'key', delegated_user: 'user', login_url: invalidURL }), /credential login_url must be an absolute URL/);
+}
+assert.equal(decodeCredentials({ auth_method: 'workspace-service-account', service_account_key: 'key', delegated_user: 'user', login_url: 'https://example.com:99999' }).loginUrl, 'https://example.com:99999');
+const typed = decodeCredentials({ auth_method: 'typed', request_count: 1, wait_duration: 2, labels: [null, 'x'], headers: { empty: null, filled: 'x' }, optional_count: 0 });
+assert.deepEqual(typed.labels, ['', 'x']);
+assert.deepEqual(typed.headers, { empty: '', filled: 'x' });
+assert.equal(typed.optionalCount, undefined);
+assert.throws(() => decodeCredentials({ auth_method: 'typed', request_count: 1, wait_duration: 2, labels: [1] }), /credential labels has an invalid type/);
+assert.throws(() => decodeCredentials({ auth_method: 'typed', request_count: 1, wait_duration: 2, headers: { bad: 1 } }), /credential headers has an invalid type/);
+for (const field of ['request_count', 'wait_duration']) {
+  for (const invalidValue of [0, -1]) {
+    assert.throws(() => decodeCredentials({ auth_method: 'typed', request_count: 1, wait_duration: 2, [field]: invalidValue }), new RegExp('credential ' + field + ' must be positive'));
+  }
+}
+assert.throws(() => decodeCredentials({ auth_method: 'typed', request_count: 1, wait_duration: 2, optional_count: -1 }), /credential optional_count cannot be negative/);
 assert.equal(decodeCredentials({ auth_method: 'workspace-service-account', service_account_key: 'key', delegated_user: 'user', session_note: null }).sessionNote, undefined);
 assert.throws(() => decodeCredentials({ auth_method: 'workspace-service-account', service_account_key: null, delegated_user: 'user' }), /credential service_account_key is required/);
 assert.throws(() => decodeCredentials({ auth_method: 'workspace-service-account', delegated_user: 'user' }));
@@ -112,6 +136,17 @@ assert.throws(() => decodeSharedCredentials({ oauth_client_id: 'id' }), /credent
 assert.throws(() => decodeSharedCredentials({ access_token: 'access' }), /credential oauth_client_id is required/);
 assert.throws(() => decodeSharedCredentials({ auth_method: 'app-only', tenant_id: 'tenant', client_id: 'id' }), /credential access_token is required/);
 `
+
+func TestSharedRequiredCredentialFieldsHasEmptyJSONArray(t *testing.T) {
+	fields := SharedRequiredCredentialFields(schema.AuthMethod{Fields: []schema.Field{{Name: "optional", Type: "string"}}})
+	encoded, err := json.Marshal(fields)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(encoded) != "[]" {
+		t.Fatalf("empty shared-required fields encode as %s, want []", encoded)
+	}
+}
 
 func TestTypeScriptModelsKeepRequiredFieldsAndLimitLazyToCycles(t *testing.T) {
 	models := []gomodel.Model{

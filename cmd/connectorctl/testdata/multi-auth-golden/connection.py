@@ -3,6 +3,7 @@
 # ruff: noqa
 
 from typing import Any
+from re import search
 from urllib.parse import urlsplit
 
 import httpx
@@ -12,6 +13,15 @@ from dex_connectors.sdk.projectconfig import ConnectionKey, LoadedProject
 from ..client import Client, Config, Credentials
 from .definitions import CONNECTOR_ID, GET_THING_DEFINITION
 from ..models import GetThingInput, GetThingOutput
+
+def _is_absolute_credential_url(value: str) -> bool:
+    if value != value.strip() or any(ord(character) < 32 or ord(character) == 127 for character in value) or search(r'%(?![0-9a-fA-F]{2})', value):
+        return False
+    try:
+        parsed = urlsplit(value)
+        return bool(parsed.scheme and parsed.hostname and not any(character.isspace() for character in parsed.netloc))
+    except ValueError:
+        return False
 
 class Connection:
 
@@ -74,7 +84,7 @@ class _ProjectCredentialSource:
         material = await self.project.resolve_credential(self.key, str(call.id))
         if not isinstance(material, dict):
             raise ValueError("Multi Auth Fixture stored credential does not match the connector credential fields")
-        if set(material) - set(('oauth_client_id', 'oauth_client_secret', 'access_token', 'refresh_token', 'service_account_key', 'delegated_user', 'session_note', 'environment', 'login_url', 'tenant_id', 'client_id', 'client_secret', 'auth_method')):
+        if set(material) - set(('oauth_client_id', 'oauth_client_secret', 'access_token', 'refresh_token', 'service_account_key', 'delegated_user', 'session_note', 'environment', 'login_url', 'request_count', 'wait_duration', 'labels', 'headers', 'optional_count', 'optional_note', 'tenant_id', 'client_id', 'client_secret', 'auth_method')):
             raise ValueError("Multi Auth Fixture stored credential does not match the connector credential fields")
         is_shared = bool(self.project.shared_connections and self.key in self.project.shared_connections)
         oauth_client_id = material.get("oauth_client_id")
@@ -104,6 +114,24 @@ class _ProjectCredentialSource:
         login_url = material.get("login_url")
         if login_url is not None and not (isinstance(login_url, str)):
             raise ValueError("Multi Auth Fixture credential login_url has an invalid type")
+        request_count = material.get("request_count")
+        if request_count is not None and not (type(request_count) is int):
+            raise ValueError("Multi Auth Fixture credential request_count has an invalid type")
+        wait_duration = material.get("wait_duration")
+        if wait_duration is not None and not (type(wait_duration) is int):
+            raise ValueError("Multi Auth Fixture credential wait_duration has an invalid type")
+        labels = material.get("labels")
+        if labels is not None and not (isinstance(labels, list) and all(item is None or isinstance(item, str) for item in labels)):
+            raise ValueError("Multi Auth Fixture credential labels has an invalid type")
+        headers = material.get("headers")
+        if headers is not None and not (isinstance(headers, dict) and all(isinstance(key, str) and (item is None or isinstance(item, str)) for key, item in headers.items())):
+            raise ValueError("Multi Auth Fixture credential headers has an invalid type")
+        optional_count = material.get("optional_count")
+        if optional_count is not None and not (type(optional_count) is int):
+            raise ValueError("Multi Auth Fixture credential optional_count has an invalid type")
+        optional_note = material.get("optional_note")
+        if optional_note is not None and not (isinstance(optional_note, str)):
+            raise ValueError("Multi Auth Fixture credential optional_note has an invalid type")
         tenant_id = material.get("tenant_id")
         if tenant_id is not None and not (isinstance(tenant_id, str)):
             raise ValueError("Multi Auth Fixture credential tenant_id has an invalid type")
@@ -152,10 +180,34 @@ class _ProjectCredentialSource:
                 raise ValueError("Multi Auth Fixture credential environment is invalid")
             if environment:
                 values["environment"] = environment
-            if login_url and (not urlsplit(login_url).scheme or not urlsplit(login_url).hostname):
+            if login_url and not _is_absolute_credential_url(login_url):
                 raise ValueError("Multi Auth Fixture credential login_url must be an absolute URL")
             if login_url:
                 values["login_url"] = login_url
+        elif method == "typed":
+            if (request_count is None or request_count <= 0):
+                raise ValueError("Multi Auth Fixture credential request_count must be positive")
+            if request_count is not None and request_count < 0:
+                raise ValueError("Multi Auth Fixture credential request_count cannot be negative")
+            if request_count:
+                values["request_count"] = request_count
+            if (wait_duration is None or wait_duration <= 0):
+                raise ValueError("Multi Auth Fixture credential wait_duration must be positive")
+            if wait_duration is not None and wait_duration < 0:
+                raise ValueError("Multi Auth Fixture credential wait_duration cannot be negative")
+            if wait_duration:
+                values["wait_duration"] = wait_duration
+            if labels:
+                values["labels"] = [item or '' for item in labels]
+            if headers:
+                values["headers"] = {key: item or '' for key, item in headers.items()}
+            if optional_count is not None and optional_count < 0:
+                raise ValueError("Multi Auth Fixture credential optional_count cannot be negative")
+            if optional_count:
+                values["optional_count"] = optional_count
+        elif method == "optional-only":
+            if optional_note:
+                values["optional_note"] = optional_note
         elif method == "app-only":
             if not tenant_id:
                 raise ValueError("Multi Auth Fixture credential tenant_id is required")

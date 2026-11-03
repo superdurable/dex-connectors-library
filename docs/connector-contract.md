@@ -415,19 +415,23 @@ func (credentials Credentials) Validate() error {
 }
 ```
 
-Generated Python project connections and TypeScript `decodeCredentials` select
-one method from the stored `auth_method`, then the manifest default when that
-field is absent, null, or empty. The connection's `authMethodId` does not select
+Generated Python project connections and TypeScript `decodeCredentials` for
+multi-method manifests select one method from the stored `auth_method`, then
+the manifest default when that field is absent, null, or empty. The
+connection's `authMethodId` does not select
 the method. They require only the selected method's credential fields, treat
 null as missing, and leave other methods' fields unset. Both decoders reject
 unknown fields and invalid types in any declared method's fields, including
 fields of a method that was not selected. Enum and absolute URL constraints
 are checked for the selected method. For a shared connection, Python detects
-the broker source and TypeScript exposes `decodeSharedCredentials`; both omit
-host-kept fields from required validation and require an access token minted
-by a client-credentials or JWT-bearer grant. Generated
-Python `Config` and TypeScript `ConfigSchema` include method-specific settings
-as optional fields; Dex Web enforces their selected-method requirements.
+the broker source and TypeScript multi-method decoders expose
+`decodeSharedCredentials`; both omit host-kept fields from required validation
+and require an access token minted by a client-credentials or JWT-bearer grant.
+TypeScript ports must pass
+`decodeSharedCredentials` to `newCredentialProvider` when using shared
+connections. Generated Python `Config` and TypeScript `ConfigSchema` include
+method-specific settings as optional fields; Dex Web enforces their
+selected-method requirements.
 
 `SecretString` has private storage, redacted formatting, and rejects JSON,
 YAML, and text serialization. Connector-specific credential types prevent a

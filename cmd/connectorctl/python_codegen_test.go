@@ -61,6 +61,14 @@ func TestPythonCodegenMultiAuthGolden(t *testing.T) {
 	manifest.Spec.Auth.Methods[0].Configuration = &schema.Configuration{Fields: []schema.Field{{Name: "workspaceId", GoName: "WorkspaceID", Type: "string", Description: "Workspace for the selected method.", Required: true}}}
 	manifest.Spec.Auth.Methods[1].Fields = append(manifest.Spec.Auth.Methods[1].Fields, schema.Field{Name: "session_note", GoName: "SessionNote", Type: "string", Description: "Optional session note.", Required: false})
 	manifest.Spec.Auth.Methods[1].Fields = append(manifest.Spec.Auth.Methods[1].Fields, schema.Field{Name: "environment", GoName: "Environment", Type: "enum", Enum: []string{"production", "sandbox"}, Description: "Login environment.", Required: false}, schema.Field{Name: "login_url", GoName: "LoginURL", Type: "url", Description: "Login URL.", Required: false})
+	manifest.Spec.Auth.Methods = append(manifest.Spec.Auth.Methods, schema.AuthMethod{ID: "typed", Fields: []schema.Field{
+		{Name: "request_count", GoName: "RequestCount", Type: "integer", Required: true},
+		{Name: "wait_duration", GoName: "WaitDuration", Type: "duration", Required: true},
+		{Name: "labels", GoName: "Labels", Type: "stringList", Required: false},
+		{Name: "headers", GoName: "Headers", Type: "stringMap", Required: false},
+		{Name: "optional_count", GoName: "OptionalCount", Type: "integer", Required: false},
+	}})
+	manifest.Spec.Auth.Methods = append(manifest.Spec.Auth.Methods, schema.AuthMethod{ID: "optional-only", Fields: []schema.Field{{Name: "optional_note", GoName: "OptionalNote", Type: "string", Required: false}}})
 	grantManifest, err := load(filepath.Join("..", "..", "schema", "testdata", "token-grants.yaml"))
 	if err != nil {
 		t.Fatal(err)
@@ -113,6 +121,7 @@ assert config_namespace['Config'](account_id='account').region == ''
 source = sources['connection.py']
 tree = ast.parse(source)
 credential_source = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == '_ProjectCredentialSource')
+url_validator = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == '_is_absolute_credential_url')
 config_decoder = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == '_decode_config')
 class SecretString:
     def __init__(self, value): self.value = value
@@ -123,8 +132,9 @@ class Config:
 class Project:
     def __init__(self, values, shared=False): self.values = values; self.shared_connections = {key: True} if shared else {}
     async def resolve_credential(self, key, call_id): return self.values
-namespace = {'Any': Any, 'Call': object, 'LoadedProject': object, 'ConnectionKey': object, 'Credentials': Credentials, 'Config': Config, 'SecretString': SecretString, 'urlsplit': urlsplit}
-exec(compile(ast.Module(body=[credential_source, config_decoder], type_ignores=[]), '<generated>', 'exec'), namespace)
+from re import search
+namespace = {'Any': Any, 'Call': object, 'LoadedProject': object, 'ConnectionKey': object, 'Credentials': Credentials, 'Config': Config, 'SecretString': SecretString, 'urlsplit': urlsplit, 'search': search}
+exec(compile(ast.Module(body=[url_validator, credential_source, config_decoder], type_ignores=[]), '<generated>', 'exec'), namespace)
 Source = namespace['_ProjectCredentialSource']
 assert namespace['_decode_config']({'accountId':'account'}).workspace_id == ''
 assert namespace['_decode_config']({'accountId':'account', 'workspaceId':'workspace'}).workspace_id == 'workspace'
@@ -143,6 +153,27 @@ alternate = resolve({'auth_method':'workspace-service-account', 'service_account
 assert alternate.auth_method_id == 'workspace-service-account' and alternate.service_account_key.value == 'key'
 assert alternate.session_note == 'note'
 assert not hasattr(alternate, 'oauth_client_id')
+for invalid_url in (' https://example.com', 'https://example.com\n', 'https://exa mple.com', 'https://%zz', 'https://example.com/%zz', 'https://u:p@[secretish]/'):
+    try: resolve({'auth_method':'workspace-service-account', 'service_account_key':'key', 'delegated_user':'user', 'login_url':invalid_url})
+    except ValueError as error: assert str(error) == 'Multi Auth Fixture credential login_url must be an absolute URL', str(error)
+    else: raise AssertionError('invalid URL accepted')
+assert resolve({'auth_method':'workspace-service-account', 'service_account_key':'key', 'delegated_user':'user', 'login_url':'https://example.com:99999'}).login_url.endswith(':99999')
+typed = resolve({'auth_method':'typed', 'request_count':1, 'wait_duration':2, 'labels':[None, 'x'], 'headers':{'empty':None, 'filled':'x'}, 'optional_count':0})
+assert typed.labels == ['', 'x'] and typed.headers == {'empty':'', 'filled':'x'} and not hasattr(typed, 'optional_count')
+assert resolve({'auth_method':'optional-only'}, shared=True).auth_method_id == 'optional-only'
+for invalid_collection in ({'labels':[1]}, {'headers':{'bad':1}}):
+    try: resolve({'auth_method':'typed', 'request_count':1, 'wait_duration':2, **invalid_collection})
+    except ValueError as error: assert 'has an invalid type' in str(error), str(error)
+    else: raise AssertionError('invalid collection element accepted')
+for field in ('request_count', 'wait_duration'):
+    for invalid_value in (0, -1):
+        values = {'auth_method':'typed', 'request_count':1, 'wait_duration':2, field:invalid_value}
+        try: resolve(values)
+        except ValueError as error: assert str(error) == 'Multi Auth Fixture credential ' + field + ' must be positive', str(error)
+        else: raise AssertionError('nonpositive required number accepted')
+try: resolve({'auth_method':'typed', 'request_count':1, 'wait_duration':2, 'optional_count':-1})
+except ValueError as error: assert str(error) == 'Multi Auth Fixture credential optional_count cannot be negative', str(error)
+else: raise AssertionError('negative optional number accepted')
 optional_null = resolve({'auth_method':'workspace-service-account', 'service_account_key':'key', 'delegated_user':'user', 'session_note':None})
 assert not hasattr(optional_null, 'session_note')
 for values, message in (
@@ -164,6 +195,81 @@ for values in ({'oauth_client_id':'id'}, {'access_token':'access'}):
 try: resolve({'auth_method':'app-only', 'tenant_id':'tenant', 'client_id':'id'}, shared=True)
 except ValueError as error: assert 'credential access_token is required' in str(error)
 else: raise AssertionError('shared minted token was optional')
+`
+
+func TestPythonCodegenSingleAuthGolden(t *testing.T) {
+	manifest, err := load(filepath.Join("..", "..", "connectors", "spotify", "connector.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest.Spec.Auth.Fields[1].Required = true
+	manifest.Spec.Languages = &schema.Languages{Python: &schema.LanguagePackage{Operations: []string{"listPlaylistTracks"}}}
+	generated, err := renderPythonCodegen(pythonCodegenInput{Manifest: manifest, PackageName: "spotify_fixture", MockPackageName: "spotifymock"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	goldenPath := filepath.Join("testdata", "single-auth-golden", "connection.py")
+	if os.Getenv("UPDATE_SINGLE_AUTH_GOLDEN") == "1" {
+		if err := os.MkdirAll(filepath.Dir(goldenPath), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(goldenPath, []byte(generated["connection.py"]), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	want, err := os.ReadFile(goldenPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if generated["connection.py"] != string(want) {
+		t.Fatal("single-auth Python connection differs from golden output")
+	}
+	pythonSources, err := json.Marshal(map[string]string{"config.py": generated["config.py"], "connection.py": generated["connection.py"]})
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := exec.Command("python3", "-c", singleAuthPythonRuntimeTest)
+	command.Stdin = bytes.NewReader(pythonSources)
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("generated single-auth credential behavior: %v\n%s", err, output)
+	}
+}
+
+const singleAuthPythonRuntimeTest = `
+import ast, asyncio, json, sys
+from dataclasses import dataclass
+sources = json.load(sys.stdin)
+class SecretString:
+    def __init__(self, value): self.value = value
+    def reveal(self): return self.value
+config_tree = ast.parse(sources['config.py'])
+credentials_class = next(node for node in config_tree.body if isinstance(node, ast.ClassDef) and node.name == 'Credentials')
+namespace = {'__name__':'__main__', 'dataclass':dataclass, 'SecretString':SecretString, 'Call':object, 'LoadedProject':object, 'ConnectionKey':object}
+exec(compile(ast.Module(body=[credentials_class], type_ignores=[]), '<generated-config>', 'exec'), namespace)
+tree = ast.parse(sources['connection.py'])
+credential_source = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == '_ProjectCredentialSource')
+exec(compile(ast.Module(body=[credential_source], type_ignores=[]), '<generated-connection>', 'exec'), namespace)
+class Project:
+    def __init__(self, values, shared=False): self.values = values; self.shared_connections = {key:True} if shared else {}
+    async def resolve_credential(self, key, call_id): return self.values
+class Call:
+    id = 'call'
+key = object()
+def resolve(values, shared=False):
+    return asyncio.run(namespace['_ProjectCredentialSource'](Project(values, shared), key).resolve(Call()))
+complete = resolve({'oauth_client_id':'id', 'oauth_client_secret':'secret', 'access_token':'access', 'refresh_token':'refresh'})
+assert complete.oauth_client_id == 'id' and complete.oauth_client_secret.reveal() == 'secret' and complete.refresh_token.reveal() == 'refresh'
+shared = resolve({'access_token':'access'}, shared=True)
+assert shared.oauth_client_id == '' and shared.oauth_client_secret.reveal() == '' and shared.refresh_token.reveal() == '' and shared.access_token.reveal() == 'access'
+absent_optional = resolve({'oauth_client_secret':'secret', 'access_token':'access'})
+assert absent_optional.oauth_client_id == '' and absent_optional.oauth_client_secret.reveal() == 'secret' and absent_optional.refresh_token.reveal() == ''
+try: resolve({'access_token':'access'})
+except ValueError as error: assert str(error) == 'Spotify credential oauth_client_secret is required'
+else: raise AssertionError('private host-kept secret was optional')
+for shared_flag in (False, True):
+    try: resolve({'access_token':'access', 'unknown':'value'}, shared=shared_flag)
+    except ValueError as error: assert str(error) == 'Spotify stored credential does not match the connector credential fields'
+    else: raise AssertionError('unknown key accepted')
 `
 
 func TestPythonCodegenKeepsMockScenariosDistinctFromBranchHelpers(t *testing.T) {
