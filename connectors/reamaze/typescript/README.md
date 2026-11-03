@@ -23,7 +23,7 @@ At Worker startup, load the project with `loadFromEnvironment()` from `@superdur
 | `newReplyToConversationStep` | Send one reply or internal note | `replied` |
 | `newFindContactByEmailStep` | Match contacts by exact email | `found` |
 
-The connector keeps Re:amaze's integer statuses, visibilities, origins, and channel types. Other declared branches are optional; an unwired optional branch fails the Flow. Reads and `updateConversation` retry transient failures. Create and reply use the SDK's durable single-dispatch fence and read-back key; an unconfirmed write may select `uncertain` instead of sending twice.
+The connector keeps Re:amaze's integer statuses, visibilities, origins, and channel types. Numeric message `origin_id` values retain their exact JSON spelling in the string `originId` output, including values larger than JavaScript's safe integer range. Other declared branches are optional; an unwired optional branch fails the Flow. Reads and `updateConversation` retry transient failures. Create and reply use the SDK's durable single-dispatch fence and read-back key; an unconfirmed write may select `uncertain` instead of sending twice.
 
 ## Verify
 

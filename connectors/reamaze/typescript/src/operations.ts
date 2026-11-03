@@ -6,7 +6,7 @@ import { newFence, CheckpointError, InsufficientTimeError } from '@superdurable/
 import { isBareEmail, type CredentialResult, type ReamazeClient, type ReamazeExchange } from './client.js';
 import { CreateConversationDefinition, FindContactByEmailDefinition, GetConversationDefinition, ReplyToConversationDefinition, SearchConversationsDefinition, UpdateConversationDefinition } from './generated/definitions.js';
 import type { Conversation, ConversationDetails, ConversationMessage, ConversationReply, CreateConversationInput, CreateConversationOutput, FindContactByEmailInput, FindContactByEmailOutput, GetConversationInput, ReplyToConversationInput, SearchConversationsInput, SearchConversationsOutput, UpdateConversationInput, UpdateConversationOutput } from './generated/models.js';
-import { decodeConversation, decodeMessage, encodeQuery, matchingContacts, page, parseBody, parseInstant, pathEscape } from './wire.js';
+import { decodeConversation, decodeMessage, encodeQuery, matchingContacts, page, parseBody, parseInstant, pathEscape, validateConversationWire } from './wire.js';
 
 const zeroConversation: Conversation = { id: '', status: 0, tags: [], channel: { slug: '' }, createdAt: '0001-01-01T00:00:00Z' };
 const zeroMessage: ConversationMessage = { body: '', visibility: 0, isInternalNote: false, origin: 0, createdAt: '0001-01-01T00:00:00Z' };
@@ -48,7 +48,10 @@ function validTags(tags: string[] | undefined): boolean {
   for (const tag of tags ?? []) { const lowered = tag.toLowerCase(); if (Buffer.byteLength(tag) > 64 || !tagPattern.test(tag) || seen.has(lowered)) return false; seen.add(lowered); }
   return true;
 }
-function validText(text: string): boolean { return text.trim().length > 0 && Buffer.byteLength(text) <= 16_384; }
+/** Match the Unicode White_Space characters removed by Go strings.TrimSpace. */
+// eslint-disable-next-line no-control-regex -- Go includes ASCII controls in White_Space.
+export function goTrimSpace(value: string): string { return value.replace(/^[\u0009-\u000d\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]+|[\u0009-\u000d\u0020\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]+$/g, ''); }
+function validText(text: string): boolean { return goTrimSpace(text).length > 0 && Buffer.byteLength(text) <= 16_384; }
 function validStatus(status: number | undefined): boolean { return status === undefined || Number.isInteger(status) && status >= 0 && status <= 9; }
 function validHoldUntil(value: string | undefined, status: number | undefined): boolean {
   if (!value) return true;
@@ -191,7 +194,7 @@ function readBackTerminal<Output>(client: ReamazeClient, call: Call, operation: 
   return newMutationUncertain(value, failure(operation, result.failure.kind, 'an earlier attempt may have sent the request, and it could not be read back: ' + result.failure.message), client.receipt(call, objectId, result.requestId));
 }
 function validCreate(input: CreateConversationInput): boolean {
-  return validText(input.subject) && validText(input.message) && channelPattern.test(input.channel) && isBareEmail(input.requester.email) && (!input.requester.name || input.requester.name === input.requester.name.trim() && Buffer.byteLength(input.requester.name) <= 255) && validStatus(input.status) && validHoldUntil(input.holdUntil, input.status) && (!input.assigneeEmail || isBareEmail(input.assigneeEmail)) && validTags(input.tags);
+  return validText(input.subject) && validText(input.message) && channelPattern.test(input.channel) && isBareEmail(input.requester.email) && (!input.requester.name || input.requester.name === goTrimSpace(input.requester.name) && Buffer.byteLength(input.requester.name) <= 255) && validStatus(input.status) && validHoldUntil(input.holdUntil, input.status) && (!input.assigneeEmail || isBareEmail(input.assigneeEmail)) && validTags(input.tags);
 }
 
 /** Create one conversation under a durable single-dispatch fence. */
@@ -242,14 +245,14 @@ export class CreateConversationOperation implements Mutation<CreateConversationI
     try {
       if (result.kind !== 'success') throw new Error('missing response');
       if (candidateId) {
-        const wire = parseBody(result.response.body);
+        const wire = validateConversationWire(parseBody(result.response.body));
         if (typeof (wire.data as Record<string, unknown> | undefined)?.dex_dispatch_key !== 'string' || (wire.data as Record<string, unknown>).dex_dispatch_key !== key) return newMutationUncertain(zeroCreate, uncertainNotFound(operation), this.client.receipt(call, candidateId, result.requestId));
         const conversation = decodeConversation(wire, true, candidateId);
         return newMutationBranch('created', { conversation, wasAlreadyApplied: true }, this.client.receipt(call, conversation.id, result.requestId));
       }
       const wire = parseBody(result.response.body); const listing = page(wire, wire.conversations);
       for (const item of listing.values) {
-        const candidate = item as Record<string, unknown>;
+        const candidate = validateConversationWire(item);
         const data = candidate.data as Record<string, unknown> | undefined;
         if (data?.dex_dispatch_key === key) { const conversation = decodeConversation(candidate, true); return newMutationBranch('created', { conversation, wasAlreadyApplied: true }, this.client.receipt(call, conversation.id, result.requestId)); }
         if (!data && typeof candidate.slug === 'string' && conversationIdPattern.test(candidate.slug)) return this.reconcile(call, credential, candidate.slug);

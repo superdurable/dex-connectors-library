@@ -3,7 +3,7 @@
 
 import { ReauthorizationRequiredError, SecretString, type Call, type CredentialProvider, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { ConnectionNotSelectedError, CredentialBrokerRejectedError, ObjectNotFoundError } from '@superdurable/connectors-sdk/projectconfig';
-import { BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { AddressRefusal, BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import type { Config, Credentials } from './generated/models.js';
 import { CreateConversationOperation, FindContactByEmailOperation, GetConversationOperation, ReplyToConversationOperation, SearchConversationsOperation, UpdateConversationOperation } from './operations.js';
 
@@ -74,7 +74,7 @@ export class ReamazeClient {
     let body: Uint8Array | undefined;
     try { if (payload !== undefined) body = Buffer.from(JSON.stringify(payload)); }
     catch { return this.failure('defect', operation, 'LOCAL_DEFECT', 'Re:amaze request could not be built'); }
-    const url = this.endpoint + path + (query && query.size ? `?${query.toString().replace(/\*/g, '%2A')}` : '');
+    const url = this.endpoint + path + (query && query.size ? `?${query.toString().replace(/\*/g, '%2A').replace(/%7E/g, '~')}` : '');
     const headers: Record<string, string> = { Accept: 'application/json', Authorization: `Basic ${Buffer.from(`${credentials.email}:${credentials.token}`).toString('base64')}` };
     if (body) headers['Content-Type'] = 'application/json';
     let response: ProviderResponse;
@@ -88,7 +88,7 @@ export class ReamazeClient {
           if (error.status >= 200 && error.status < 300) return this.failure('invalid', operation, 'RESPONSE_TOO_LARGE', 'Re:amaze response exceeds the configured maxResponseBytes limit', 0, error.status, safeRequestId(error.headers));
           response = { status: error.status, headers: error.headers, body: Buffer.alloc(0) };
         } else return this.failure('unavailable', operation, 'TRANSPORT', 'Re:amaze response could not be read');
-      } else if (error instanceof ProviderTransportError && error.isProvablyNotSent) {
+      } else if (error instanceof AddressRefusal || error instanceof ProviderTransportError && error.isProvablyNotSent) {
         return this.failure('notSent', operation, 'TRANSPORT', 'Re:amaze could not be reached; no request was sent');
       } else return this.failure('unavailable', operation, 'TRANSPORT', 'Re:amaze request failed before a response arrived');
     }

@@ -40,8 +40,6 @@
     "test": "npm run build && vitest run --exclude 'test/integration/**'",
     "test:integration": "npm run build && vitest run test/integration/*.integration.test.ts",
     "check": "npm test && npm run typecheck && npm run lint",
-    "example:list": "npm run build && tsx examples/list-records/main.ts",
-    "example:list:start": "npm run build && tsx examples/list-records/start.ts",
     "example:search": "npm run build && tsx examples/search-conversations/main.ts",
     "example:search:start": "npm run build && tsx examples/search-conversations/start.ts"
   },

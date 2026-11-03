@@ -20,7 +20,7 @@ function truncate(value: string): [string, boolean] {
 function utf8Boundary(bytes: Uint8Array, length: number): number { while (length > 0 && (bytes[length]! & 0xc0) === 0x80) length--; return length; }
 /** Parse an RFC 3339 instant and return Go's UTC JSON timestamp shape. */
 export function parseInstant(value: string): string {
-  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:[.,](\d+))?(Z|[+-]\d{2}:\d{2})$/.exec(value);
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{1,2}):(\d{2}):(\d{2})(?:[.,](\d+))?(Z|[+-]\d{2}:\d{2})$/.exec(value);
   if (!match) throw new Error('invalid instant');
   const [, year, month, day, hour, minute, second, fraction, offset] = match;
   const y = Number(year), m = Number(month), d = Number(day), h = Number(hour), min = Number(minute), s = Number(second);
@@ -29,7 +29,7 @@ export function parseInstant(value: string): string {
   if (m < 1 || m > 12 || d < 1 || d > endOfMonth.getUTCDate() || h > 23 || min > 59 || s > 59) throw new Error('invalid instant');
   const offsetHours = offset === 'Z' ? 0 : Number(offset!.slice(1, 3));
   const offsetMinutes = offset === 'Z' ? 0 : Number(offset!.slice(4));
-  if (offsetHours > 99 || offsetMinutes > 59) throw new Error('invalid instant');
+  if (offsetHours > 24 || offsetMinutes > 60) throw new Error('invalid instant');
   const signedOffset = offset === 'Z' ? 0 : (offset!.startsWith('+') ? 1 : -1) * (offsetHours * 60 + offsetMinutes);
   const date = new Date(0);
   date.setUTCFullYear(y, m - 1, d);
@@ -37,12 +37,27 @@ export function parseInstant(value: string): string {
   const timestamp = date.getTime() - signedOffset * 60_000;
   if (!Number.isFinite(timestamp)) throw new Error('invalid instant');
   const whole = new Date(timestamp).toISOString().replace(/\.000Z$/, 'Z');
-  return fraction && /[1-9]/.test(fraction) ? whole.slice(0, -1) + '.' + fraction.slice(0, 9).replace(/0+$/, '') + 'Z' : whole;
+  const nanoseconds = fraction?.slice(0, 9).replace(/0+$/, '');
+  return nanoseconds ? whole.slice(0, -1) + '.' + nanoseconds + 'Z' : whole;
 }
-function optionalInstant(value: unknown): string | undefined { const wire = optionalObject(value); const raw = wire ? text(wire.created_at) : ''; return raw ? parseInstant(raw) : undefined; }
+function optionalInstant(value: unknown): string | undefined { const wire = optionalObject(value); if (wire) text(wire.body); const raw = wire ? text(wire.created_at) : ''; return raw ? parseInstant(raw) : undefined; }
+/** Check declared fields before a conversation is considered for reconciliation. */
+export function validateConversationWire(value: unknown): Record<string, unknown> {
+  const wire = value === null ? {} : object(value);
+  text(wire.slug); text(wire.subject); integer(wire.status); text(wire.created_at); strings(wire.tag_list);
+  for (const field of ['message', 'last_customer_message', 'last_staff_message']) {
+    const message = optionalObject(wire[field]);
+    if (message) { text(message.body); text(message.created_at); }
+  }
+  participant(wire.author); participant(wire.assignee);
+  const category = optionalObject(wire.category);
+  if (category) { text(category.name); text(category.slug); integer(category.channel); }
+  const data = optionalObject(wire.data);
+  return { ...wire, ...(data ? { data } : {}) };
+}
 /** Decode a provider conversation with Go's required-field checks. */
 export function decodeConversation(value: unknown, includeFirstMessage: boolean, expectedId = ''): Conversation {
-  const wire = object(value);
+  const wire = validateConversationWire(value);
   const id = text(wire.slug);
   if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,254}$/.test(id) || (expectedId && expectedId !== id)) throw new Error('conversation slug is missing or invalid');
   if (wire.status === undefined || wire.status === null) throw new Error('conversation status is missing');
@@ -53,7 +68,9 @@ export function decodeConversation(value: unknown, includeFirstMessage: boolean,
   const requester = participant(wire.author);
   const assignee = participant(wire.assignee);
   const message = optionalObject(wire.message);
-  const [firstMessage, isFirstMessageTruncated] = includeFirstMessage && message ? truncate(text(message.body)) : ['', false];
+  const messageBody = message ? text(message.body) : '';
+  if (message) text(message.created_at);
+  const [firstMessage, isFirstMessageTruncated] = includeFirstMessage ? truncate(messageBody) : ['', false];
   const lastCustomerMessageAt = optionalInstant(wire.last_customer_message);
   const lastStaffMessageAt = optionalInstant(wire.last_staff_message);
   return { id, ...(text(wire.subject) ? { subject: text(wire.subject) } : {}), status, tags: strings(wire.tag_list), channel,
@@ -77,7 +94,13 @@ export function decodeMessage(value: unknown): ConversationMessage {
     ...(originId ? { originId } : {}), ...(author ? { author } : {}), createdAt: parseInstant(text(wire.created_at)) };
 }
 /** Parse an HTTP JSON body. */
-export function parseBody(body: Uint8Array): Record<string, unknown> { return object(JSON.parse(Buffer.from(body).toString('utf8')) as unknown); }
+export function parseBody(body: Uint8Array): Record<string, unknown> {
+  return object(JSON.parse(Buffer.from(body).toString('utf8'), (key: string, value: unknown, context?: { source: string }) => {
+    if (key !== 'origin_id' || typeof value !== 'number') return value;
+    if (!context?.source) throw new Error('numeric origin id source is unavailable');
+    return context.source;
+  }) as unknown);
+}
 /** Check one bounded Re:amaze list envelope. */
 export function page(wire: Record<string, unknown>, entries: unknown): { pageCount: number; totalCount: number; values: unknown[] } {
   if (!Array.isArray(entries)) throw new Error('response is not a page');
@@ -89,7 +112,10 @@ export function page(wire: Record<string, unknown>, entries: unknown): { pageCou
 /** Decode the first page of a contact search, keeping exact email matches. */
 export function matchingContacts(wire: Record<string, unknown>, email: string): { contacts: Contact[]; hasMoreCandidates?: boolean } {
   const listing = page(wire, wire.contacts);
-  const contacts = listing.values.map(object).filter(contact => text(contact.email).toLowerCase() === email.toLowerCase()).map(contact => ({
+  const contacts = listing.values.map(value => value === null ? {} : object(value)).filter(contact => {
+    text(contact.name); text(contact.friendly_name);
+    return text(contact.email).toLowerCase() === email.toLowerCase();
+  }).map(contact => ({
     ...(text(contact.name) ? { name: text(contact.name) } : {}), email: text(contact.email), ...(text(contact.friendly_name) ? { friendlyName: text(contact.friendly_name) } : {}),
   }));
   return { contacts, ...(listing.pageCount > 1 ? { hasMoreCandidates: true } : {}) };
