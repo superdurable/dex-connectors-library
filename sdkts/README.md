@@ -1,6 +1,6 @@
 # Connector TypeScript SDK
 
-`@superdurable/connectors-sdk` is the provider-neutral TypeScript SDK for Dex connectors. It provides stable value contracts, typed Query and Mutation operations, Dex Step factories, credential refresh, OAuth token exchanges, HTTP safety helpers, project configuration loading, scripted mocks, and single-dispatch marker decisions. The package is at version `0.2.1`, requires Node 22 or 24, and uses `@superdurable/dex` 1.28.0 or newer. It is ESM-only, matching Dex: use `import`; direct `require()` fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`.
+`@superdurable/connectors-sdk` is the provider-neutral TypeScript SDK for Dex connectors. It provides stable value contracts, typed Query and Mutation operations, Dex Step factories, credential refresh, OAuth token exchanges, HTTP safety helpers, project configuration loading, scripted mocks, and single-dispatch marker decisions. The package is at version `0.3.0`, requires Node 22 or 24, and uses `@superdurable/dex` 1.28.0 or newer. It is ESM-only, matching Dex: use `import`; direct `require()` fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`.
 
 Install dependencies and verify the package from this directory:
 
@@ -279,6 +279,10 @@ await fence.recordProviderId(result.providerId);
 ```
 
 ## Release notes
+
+### 0.3.0
+
+Adds declaration-driven required and exact scope checks, per-grant token-type rules, Go-compatible duration validation, and default-method selection for manifest refresh drivers. A missing `expires_in` is retryable unless the manifest declares `missingExpiry`.
 
 ### 0.2.0
 
