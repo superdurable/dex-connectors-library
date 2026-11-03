@@ -38,6 +38,7 @@ def test_conversation_path_escapes_and_rejects_no_slugs() -> None:
     """Keep path escaping compatible with Go's url.PathEscape."""
     assert conversation_path("double-charge") == "/conversations/double-charge"
     assert conversation_path("a/b") == "/conversations/a%2Fb"
+    assert conversation_path("!'()*,;") == "/conversations/%21%27%28%29%2A%2C%3B"
 
 
 def test_search_query_keeps_provider_defaults_and_optional_values() -> None:

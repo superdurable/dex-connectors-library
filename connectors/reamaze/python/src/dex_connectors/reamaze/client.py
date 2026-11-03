@@ -324,4 +324,4 @@ def _is_safe_token(value: str) -> bool:
 
 def conversation_path(conversation_id: str) -> str:
     """Escape a conversation ID with Go url.PathEscape semantics."""
-    return "/conversations/" + quote(conversation_id, safe="-._~!$&'()*+,;=:@")
+    return "/conversations/" + quote(conversation_id, safe="-._~$&+:=@")

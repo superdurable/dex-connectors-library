@@ -101,7 +101,7 @@ def _query_exchange(
         return QueryAttempt.retry(exchange.failure, exchange.retry_after_seconds)
     branch = {
         "not_found": definitions.NOT_FOUND
-        if operation in {"getConversation", "findContactByEmail"}
+        if operation == "getConversation"
         else definitions.PROVIDER_REJECTED,
         "invalid": definitions.INVALID_RESPONSE,
         "defect": definitions.DEFECT,

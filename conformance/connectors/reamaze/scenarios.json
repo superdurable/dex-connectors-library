@@ -2310,6 +2310,54 @@
       "callId": "55555555-5555-4555-8555-555555555555",
       "exchanges": [
         {
+          "body": "{\"error\":\"not found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "q": [
+              "jane@acme.example.com"
+            ],
+            "type": [
+              "email"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YWdlbnRAYWNtZS5leGFtcGxlLmNvbTpyZWFtYXplVGVzdFRva2VuMDEyMzQ1Njc4OQ=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "contacts": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "jane@acme.example.com"
+      },
+      "name": "findContactByEmail-http-404",
+      "operation": "findContactByEmail"
+    },
+    {
+      "callId": "55555555-5555-4555-8555-555555555555",
+      "exchanges": [
+        {
           "body": "{\"error\":\"rate limit\"}",
           "headers": {},
           "keyMode": "absent",

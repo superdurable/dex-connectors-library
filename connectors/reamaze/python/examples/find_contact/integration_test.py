@@ -40,6 +40,8 @@ async def test_contact_lookup_retries_and_routes_optional_rejection() -> None:
             body: dict[str, object]
             if "rejected%40" in self.path:
                 status, body = 401, {"error": "unauthorized"}
+            elif "missing%40" in self.path:
+                status, body = 404, {"error": "not found"}
             elif len(requests) == 1:
                 status, body = 429, {"error": "rate limit"}
             else:
@@ -110,6 +112,16 @@ async def test_contact_lookup_retries_and_routes_optional_rejection() -> None:
                         )
                         assert rejected.status == dex.FlowStatus.FAILED
                         assert "providerRejected" in (rejected.error_message or "")
+
+                        missing_flow_id = f"reamaze-python-contact-{uuid4().hex}"
+                        await dex_client.start_flow(
+                            flow, missing_flow_id, FindContactByEmailInput("missing@acme.example.com")
+                        )
+                        missing = await asyncio.wait_for(
+                            dex_client.wait_for_flow(missing_flow_id, timedelta(seconds=20)), 30
+                        )
+                        assert missing.status == dex.FlowStatus.FAILED
+                        assert "providerRejected" in (missing.error_message or "")
                 finally:
                     await worker.stop()
                     await worker_task
