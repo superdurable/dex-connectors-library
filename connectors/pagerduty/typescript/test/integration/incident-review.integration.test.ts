@@ -13,7 +13,7 @@ import { expect, it } from 'vitest';
 import { PagerDutyClient, newConnection, type Incident, type IncidentPage } from '../../src/index.js';
 import { ConnectionName, IncidentLookupFlow, IncidentReviewFlow } from '../../examples/incident-review/flow/workflow.js';
 
-it('lists incidents through real Dex and fails an unwired provider rejection', async () => {
+it('classifies oversized provider errors and retries through real Dex', async () => {
   const dexAddress = process.env.DEX_FLOW_SERVICE_ADDRESS;
   if (!dexAddress) throw new Error('set DEX_FLOW_SERVICE_ADDRESS to a running dexcli dev server');
   const requests: string[] = [];
@@ -21,8 +21,9 @@ it('lists incidents through real Dex and fails an unwired provider rejection', a
   const server = createServer((request, response) => {
     requests.push(`${request.method} ${request.url}`);
     if (request.headers.authorization !== 'Token token=test-secret-token') { response.writeHead(401).end(); return; }
-    if (request.url?.includes('offset=2')) { response.writeHead(403).end(); return; }
-    if (request.url?.includes('offset=3') && !hasRateLimited) { hasRateLimited = true; response.writeHead(429).end(); return; }
+    if (request.url?.includes('offset=2')) { response.writeHead(403).end('x'.repeat(2_048)); return; }
+    if (request.url?.includes('offset=3') && !hasRateLimited) { hasRateLimited = true; response.writeHead(429).end('x'.repeat(2_048)); return; }
+    if (request.url === '/incidents/missing') { response.writeHead(404).end('x'.repeat(2_048)); return; }
     response.writeHead(200, { 'Content-Type': 'application/json' });
     if (request.url === '/incidents/P123456') { response.end(JSON.stringify({ incident: { id: 'P123456', title: 'API latency', status: 'triggered' } })); return; }
     response.end(JSON.stringify({ incidents: [{ id: 'P123456', title: 'API latency', status: 'triggered' }], limit: 25, offset: 1, more: false }));
@@ -33,7 +34,7 @@ it('lists incidents through real Dex and fails an unwired provider rejection', a
   if (!address || typeof address === 'string') throw new Error('PagerDuty fixture port unavailable');
   const directory = await mkdtemp(join(tmpdir(), 'dex-pagerduty-integration-'));
   const cache = openBlobCache({ directory, maxBytes: 64 * 1024 * 1024 });
-  const provider = new PagerDutyClient({ baseUrl: `http://127.0.0.1:${address.port}` }, {
+  const provider = new PagerDutyClient({ baseUrl: `http://127.0.0.1:${address.port}`, maxResponseBytes: 1_024 }, {
     resolve: async () => ({ apiKey: new SecretString('test-secret-token') }),
   });
   const connection = newConnection(provider, { provider: 'pagerduty', name: ConnectionName });
@@ -64,7 +65,12 @@ it('lists incidents through real Dex and fails an unwired provider rejection', a
     await client.startFlow(flow, retryId, { limit: 25, offset: 3 });
     const retried = await client.waitForFlow(retryId, 60_000);
     expect(retried.status, retried.errorMessage).toBe('completed');
-    expect(requests).toHaveLength(5);
+    const missingId = `pagerduty-missing-${randomUUID()}`;
+    await client.startFlow(lookupFlow, missingId, { id: 'missing' });
+    const missing = await client.waitForFlow(missingId, 60_000);
+    expect(missing.status).toBe('failed');
+    expect(missing.errorMessage).toContain('notFound');
+    expect(requests).toHaveLength(6);
   } finally {
     await client.close(); await worker.close(); cache.close();
     await rm(directory, { recursive: true, force: true });

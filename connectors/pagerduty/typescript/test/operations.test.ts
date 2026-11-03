@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { SecretString, type Call } from '@superdurable/connectors-sdk';
 import { PagerDutyClient } from '../src/client.js';
-import type { ProviderRequest, ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 
 const call = {
   id: 'pagerduty-test', connection: { provider: 'pagerduty', name: 'pagerduty' },
@@ -34,5 +34,18 @@ describe('PagerDuty operation classification', () => {
     expect(invalid.kind).toBe('branch');
     const refused = await client(sender).listIncidents().invoke(call, { limit: 25, offset: 0 });
     expect(refused.kind).toBe('retry');
+  });
+  it('classifies oversized error bodies by HTTP status and preserves Retry-After', async () => {
+    for (const [status, expectedDisposition, expectedKind] of [
+      [429, 'retry', 'RATE_LIMIT'], [503, 'retry', 'AVAILABILITY'],
+      [404, 'notFound', 'NOT_FOUND'], [400, 'providerRejected', 'PROVIDER_REJECTION'],
+      [200, 'invalidResponse', 'RESPONSE_TOO_LARGE'],
+    ] as const) {
+      const pagerDuty = client(async () => { throw new BodyTooLargeError(status, { 'retry-after': '2' }); });
+      const result = await pagerDuty.exchange(call, 'getIncident', '/incidents/example', true);
+      expect(result).toHaveProperty('outcome.disposition', expectedDisposition);
+      expect(result).toHaveProperty('outcome.failure.kind', expectedKind);
+      if (status === 429 || status === 503) expect(result).toHaveProperty('outcome.retryAfterMs', 2_000);
+    }
   });
 });

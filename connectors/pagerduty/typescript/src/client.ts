@@ -65,8 +65,12 @@ export class PagerDutyClient {
         signal: call.context.cancellationSignal,
       });
     } catch (error) {
-      if (error instanceof BodyTooLargeError) return { outcome: this.failure(operation, 'invalidResponse', 'RESPONSE_TOO_LARGE', 'provider response exceeded the configured limit') };
-      return { outcome: this.failure(operation, 'retry', 'AVAILABILITY', 'provider request failed') };
+      if (error instanceof BodyTooLargeError) {
+        if (error.status === undefined || error.status === 200) return { outcome: this.failure(operation, 'invalidResponse', 'RESPONSE_TOO_LARGE', 'provider response exceeded the configured limit') };
+        response = { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() };
+      } else {
+        return { outcome: this.failure(operation, 'retry', 'AVAILABILITY', 'provider request failed') };
+      }
     }
     const retryAfterMs = parseRetryAfter(header(response, 'retry-after'), this.now());
     if (response.status === 429) return { outcome: this.failure(operation, 'retry', 'RATE_LIMIT', 'provider rate limited the request', retryAfterMs) };
