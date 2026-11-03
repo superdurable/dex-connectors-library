@@ -30,6 +30,14 @@ class _Cursor:
         self.error = error
         self.sql: list[str] = []
         self.did_close = False
+        self._connection: _Connection | None = None
+        self._read_timeout = None
+        self._write_timeout = None
+        self._prepared: dict[str, Any] | None = None
+        self._executed = ""
+
+    def _handle_result(self, result: object) -> None:
+        pass
 
     def execute(self, statement: str, parameters: tuple[Any, ...] = ()) -> None:
         self.sql.append(statement)
@@ -56,6 +64,7 @@ class _Connection:
 
     def cursor(self, prepared: bool = False) -> _Cursor:
         if prepared:
+            self.prepared._connection = self
             return self.prepared
         if not self.transaction.sql:
             return self.transaction
@@ -63,6 +72,13 @@ class _Connection:
 
     def start_transaction(self) -> None:
         self.transaction.sql.append("START TRANSACTION")
+
+    def cmd_stmt_prepare(self, statement: bytes, **kwargs: object) -> dict[str, Any]:
+        return {"statement_id": 1, "parameters": [object()] * statement.count(b"?")}
+
+    def cmd_stmt_execute(self, statement_id: int, data: tuple[Any, ...], **kwargs: object) -> dict[str, Any]:
+        self.prepared.execute(self.prepared._executed, data)
+        return {}
 
     def commit(self) -> None:
         if self.commit_error:

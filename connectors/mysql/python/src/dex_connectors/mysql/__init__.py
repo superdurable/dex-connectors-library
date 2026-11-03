@@ -16,3 +16,20 @@ from .models import RowSet as RowSet
 from .models import StatementExecution as StatementExecution
 from .steps import new_execute_step as new_execute_step
 from .steps import new_query_step as new_query_step
+
+__all__ = [
+    "Client",
+    "Config",
+    "Credentials",
+    "Connection",
+    "Column",
+    "ExecuteStatementInput",
+    "QueryRowsInput",
+    "RowSet",
+    "StatementExecution",
+    "new_connection",
+    "new_connection_with_operations",
+    "new_project_connection",
+    "new_execute_step",
+    "new_query_step",
+]

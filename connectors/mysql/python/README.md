@@ -16,7 +16,7 @@ Create a MySQL account with only the table permissions the Flow needs. Dex Web *
 
 The default `sslMode` requires TLS. `disabled` is accepted only on loopback or a local Unix socket. Set `MYSQL_SSL_CA` on the Worker when a private CA must be trusted. A read runs in a read-only transaction. A write uses server-side prepared parameters and commits only after returned rows and `maxRowsAffected` pass the configured limits.
 
-Result decoding preserves MySQL `FLOAT`, `YEAR`, signed `TIME`, and text with binary collations. JSON values whose numbers cannot survive Python's JSON codec exactly return `invalidResponse` with the column name instead of a rounded value. `rowsAffected`, `lastInsertId`, and `warningCount` come from the statement before its prepared cursor closes.
+Result decoding preserves MySQL `FLOAT`, scaled `DECIMAL`, zero or partial dates, signed `TIME` with its column scale, `YEAR`, and text with binary collations. JSON values whose numbers cannot survive Python's JSON codec exactly return `invalidResponse` with the column name instead of a rounded value. A parameter count mismatch returns `defect` without executing the statement. `rowsAffected`, `lastInsertId`, and `warningCount` come from the statement before its prepared cursor closes.
 
 ## Run the example
 
@@ -41,7 +41,7 @@ dexcli visualize examples/record_refund/flow.py --python .venv/bin/python --sche
 
 ## Verification
 
-From the package directory, run `uv sync --locked --group dev`, `uv run pytest tests`, and `uv run ruff check src tests examples`. `tests/integration/test_database.py` uses `MYSQL_CONNECTOR_TEST_HOST`, `PORT`, `DATABASE`, `USER`, `PASSWORD`, and `SSL_MODE` to exercise a real database in the CI service container; it skips when the variables are absent. The Flow's Dex Worker and Client test runs against `DEX_FLOW_SERVICE_ADDRESS` with a connector mock:
+From the package directory, run `uv sync --locked --group dev`, `uv run pytest tests`, and `uv run ruff check src tests examples`. `tests/integration/test_database.py` uses `MYSQL_CONNECTOR_TEST_HOST`, `PORT`, `DATABASE`, `USER`, `PASSWORD`, `SSL_MODE`, and `MYSQL_TLS_CA_FILE` to exercise a real database in the CI service container; it skips when the host is absent and requires the CA file when testing TLS. The Flow's Dex Worker and Client test runs against `DEX_FLOW_SERVICE_ADDRESS` with a connector mock:
 
 ```sh
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:23701 uv run pytest examples/record_refund/integration_test.py

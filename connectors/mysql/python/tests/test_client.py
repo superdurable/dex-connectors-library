@@ -3,8 +3,10 @@
 """Go parity checks for native-driver classification and statement safety."""
 
 import socket
+import ssl
 import struct
 from datetime import timedelta
+from decimal import Decimal
 
 import pytest
 from dex_connectors.sdk import FailureKind
@@ -19,8 +21,8 @@ from dex_connectors.mysql.client import (
     _commit_transaction,
     _CommitNotSent,
     _decode_value,
-    _driver_placeholders,
     _ExactValueProtocol,
+    _execute_prepared,
     _StrictTLSConnection,
     _TLSUnavailable,
     _validate_statement,
@@ -98,10 +100,43 @@ def test_parameter_binding_keeps_user_values_out_of_sql() -> None:
     assert _validate_statement(
         "SELECT id FROM t WHERE name = ?", ("a'; DROP TABLE t",), frozenset({"SELECT"})
     ) == ("a'; DROP TABLE t",)
-    assert _driver_placeholders("SELECT id FROM t WHERE name = ?") == "SELECT id FROM t WHERE name = %s"
-    assert _driver_placeholders("SELECT '?' AS literal, id FROM t WHERE id = ? /* ? */") == (
-        "SELECT '?' AS literal, id FROM t WHERE id = %s /* ? */"
-    )
+
+
+def test_prepared_statement_sends_original_sql_and_rejects_missing_parameters() -> None:
+    class Connection:
+        def __init__(self) -> None:
+            self.prepared_sql = b""
+            self.executions = 0
+
+        def cmd_stmt_prepare(self, statement: bytes, **kwargs: object) -> dict[str, object]:
+            self.prepared_sql = statement
+            return {"statement_id": 1, "parameters": [object()]}
+
+        def cmd_stmt_execute(self, *args: object, **kwargs: object) -> dict[str, object]:
+            self.executions += 1
+            return {}
+
+    class Cursor:
+        def __init__(self, connection: Connection) -> None:
+            self._connection = connection
+            self._read_timeout = None
+            self._write_timeout = None
+            self._prepared = None
+            self._executed = None
+
+        def _handle_result(self, result: object) -> None:
+            pass
+
+    connection = Connection()
+    cursor = Cursor(connection)
+    statement = "SELECT id FROM t WHERE id = ? -- don't change 100%s or it\\'s"
+    with pytest.raises(Exception, match="parameter count") as error:
+        _execute_prepared(cursor, statement, ())
+    assert _classify(error.value, "statement").branch == "defect"
+    assert connection.prepared_sql == statement.encode()
+    assert connection.executions == 0
+    _execute_prepared(Cursor(connection), statement, (1,))
+    assert connection.executions == 1
 
 
 def test_driver_connect_errors_retry_or_reject_like_go() -> None:
@@ -145,6 +180,42 @@ def test_binary_year_and_signed_time_preserve_wire_values() -> None:
     )
     negative_millisecond = b"\x0c\x01" + struct.pack("<I", 0) + b"\x00\x00\x00" + struct.pack("<I", 1000)
     assert _decode_value("TIME", protocol._parse_binary_time(negative_millisecond)[1]) == "-00:00:00.001"
+    assert (
+        _decode_value("TIME", -timedelta(hours=12, minutes=34, seconds=56, microseconds=500000), 2)
+        == "-12:34:56.50"
+    )
+    assert _decode_value("TIME", timedelta(), 6) == "00:00:00.000000"
+
+
+def test_binary_zero_and_partial_dates_preserve_mysql_text() -> None:
+    protocol = _ExactValueProtocol()
+    assert protocol._parse_binary_timestamp(b"\x00", FieldType.DATE)[1] == "0000-00-00"
+    assert protocol._parse_binary_timestamp(b"\x00", FieldType.DATETIME)[1] == "0000-00-00 00:00:00"
+    assert (
+        _decode_value("DATETIME", protocol._parse_binary_timestamp(b"\x00", FieldType.DATETIME)[1], 6)
+        == "0000-00-00 00:00:00.000000"
+    )
+    partial = b"\x04" + struct.pack("<HBB", 2024, 0, 0)
+    assert protocol._parse_binary_timestamp(partial, FieldType.DATE)[1] == "2024-00-00"
+    invalid_day = b"\x04" + struct.pack("<HBB", 2024, 2, 31)
+    assert protocol._parse_binary_timestamp(invalid_day, FieldType.DATE)[1] == "2024-02-31"
+    assert (
+        _decode_value("TIMESTAMP", protocol._parse_binary_timestamp(b"\x00", FieldType.TIMESTAMP)[1])
+        == "0000-00-00 00:00:00"
+    )
+
+
+def test_column_metadata_keeps_time_fraction_digits() -> None:
+    strings = ("def", "db", "table", "table", "clock", "clock")
+    packet = b"\x00" * 4 + b"".join(bytes((len(value),)) + value.encode() for value in strings)
+    packet += struct.pack("<BHIBHBxx", 12, 45, 11, FieldType.TIME, 0, 2)
+    assert _ExactValueProtocol.parse_column(packet)[5] == 2
+
+
+def test_decimal_scale_is_preserved() -> None:
+    assert _decode_value("DECIMAL", Decimal("0.00000000")) == "0.00000000"
+    assert _decode_value("DECIMAL", Decimal("0.00000001")) == "0.00000001"
+    assert _decode_value("DECIMAL", Decimal("-0.0000001")) == "-0.0000001"
 
 
 def test_float_and_large_time_use_exact_decimal_output() -> None:
@@ -152,6 +223,28 @@ def test_float_and_large_time_use_exact_decimal_output() -> None:
     assert _decode_value("FLOAT", widened) == 0.1
     duration = timedelta(days=24, seconds=83589, microseconds=742888)
     assert _decode_value("TIME", duration) == "599:13:09.742888"
+
+
+@pytest.mark.parametrize(
+    ("bits", "expected"),
+    [
+        (0x39800000, 0.00024414063),
+        (0xB9800000, -0.00024414063),
+        (0x0F800000, 1.2621775e-29),
+        (0x6B000000, 1.5474251e26),
+        (0x6C800000, 1.2379401e27),
+        (0x7F7FFFFF, 3.4028235e38),
+    ],
+)
+def test_float32_matches_go_shortest_form(bits: int, expected: float) -> None:
+    value = struct.unpack("<f", struct.pack("<I", bits))[0]
+    assert _decode_value("FLOAT", value) == expected
+
+
+def test_non_verification_tls_handshake_failure_retries() -> None:
+    error = DatabaseError("secret", errno=2026)
+    error.__cause__ = ssl.SSLEOFError("connection closed")
+    assert _classify(error, "connect").branch == "retry"
 
 
 def test_binary_collation_is_text_unless_charset_is_binary() -> None:

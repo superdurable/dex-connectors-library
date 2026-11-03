@@ -3,6 +3,7 @@
 """Real MySQL service-container checks for the native Python driver."""
 
 import os
+import struct
 from dataclasses import replace
 from uuid import uuid4
 
@@ -48,7 +49,8 @@ def database() -> tuple[Config, str, str]:
         f"CREATE TABLE {table} (id INT PRIMARY KEY, amount DECIMAL(12,2), "
         "dedup_key CHAR(36) UNIQUE, observed_year YEAR, ratio FLOAT, "
         "binary_label VARCHAR(16) COLLATE utf8mb4_bin, binary_note TEXT COLLATE utf8mb4_bin, "
-        "recorded_time TIME(6), payload JSON) ENGINE=InnoDB"
+        "recorded_time TIME(6), short_time TIME(2), exact_amount DECIMAL(20,8), "
+        "zero_moment DATETIME, payload JSON) ENGINE=InnoDB"
     )
     connection.commit()
     cursor.close()
@@ -179,6 +181,80 @@ async def test_driver_values_outcome_limits_and_read_only_isolation(
         "payload": {"ok": True, "count": 2},
     }
     assert {column.name: column.type_name for column in values.value.columns}["binary_label"] == "VARCHAR"
+    missing_read = await query.invoke(_call("query"), QueryRowsInput("SELECT ?", ()))
+    assert missing_read.branch == "defect" and missing_read.failure is not None
+    assert missing_read.failure.kind.value == "VALIDATION"
+    missing_write = await execute.invoke(
+        _call("execute"), ExecuteStatementInput(f"INSERT INTO {table} (id) VALUES (?)", ())
+    )
+    assert missing_write.branch == "defect" and missing_write.failure is not None
+    assert missing_write.failure.kind.value == "VALIDATION"
+    count = await query.invoke(_call("query"), QueryRowsInput(f"SELECT COUNT(*) AS count FROM {table}"))
+    assert count.value is not None and count.value.rows[0]["count"] == 2
+    comment = await query.invoke(
+        _call("query"), QueryRowsInput(f"SELECT id FROM {table} WHERE id = ? -- don't", (1,))
+    )
+    assert comment.branch == "completed" and comment.value is not None
+    assert comment.value.rows[0]["id"] == 1
+    literal = await query.invoke(
+        _call("query"), QueryRowsInput("SELECT '100%s off, it\\'s' AS literal, ? AS bound", (7,))
+    )
+    assert literal.branch == "completed" and literal.value is not None
+    assert literal.value.rows[0] == {"literal": "100%s off, it's", "bound": 7}
+    decimals = await execute.invoke(
+        _call("execute"),
+        ExecuteStatementInput(
+            f"UPDATE {table} SET exact_amount = ?, short_time = ? WHERE id = ?",
+            ("0.00000001", "-12:34:56.50", 1),
+        ),
+    )
+    assert decimals.branch == "completed"
+    precise = await query.invoke(
+        _call("query"), QueryRowsInput(f"SELECT exact_amount, short_time FROM {table} WHERE id = 1")
+    )
+    assert precise.branch == "completed" and precise.value is not None
+    assert precise.value.rows[0] == {"exact_amount": "0.00000001", "short_time": "-12:34:56.50"}
+    zero_decimal = await execute.invoke(
+        _call("execute"), ExecuteStatementInput(f"UPDATE {table} SET exact_amount = ? WHERE id = ?", ("0", 2))
+    )
+    assert zero_decimal.branch == "completed"
+    zero = await query.invoke(
+        _call("query"), QueryRowsInput(f"SELECT exact_amount FROM {table} WHERE id = 2")
+    )
+    assert zero.value is not None and zero.value.rows[0]["exact_amount"] == "0.00000000"
+    connection = mysql.connector.connect(
+        host=config.host,
+        port=config.port,
+        database=config.database,
+        user=config.user,
+        password=password,
+        ssl_disabled=config.ssl_mode == "disabled",
+    )
+    cursor = connection.cursor()
+    cursor.execute("SET SESSION sql_mode = ''")
+    cursor.execute(f"UPDATE {table} SET zero_moment = '0000-00-00 00:00:00' WHERE id = 1")
+    connection.commit()
+    cursor.close()
+    connection.close()
+    zero_date = await query.invoke(
+        _call("query"), QueryRowsInput(f"SELECT zero_moment FROM {table} WHERE id = 1")
+    )
+    assert zero_date.branch == "completed" and zero_date.value is not None
+    assert zero_date.value.rows[0]["zero_moment"] == "0000-00-00 00:00:00"
+    edge_float = await execute.invoke(
+        _call("execute"), ExecuteStatementInput(f"UPDATE {table} SET ratio = ? WHERE id = ?", (2**-12, 1))
+    )
+    assert edge_float.branch == "completed"
+    float_row = await query.invoke(_call("query"), QueryRowsInput(f"SELECT ratio FROM {table} WHERE id = 1"))
+    assert float_row.value is not None and float_row.value.rows[0]["ratio"] == 0.00024414063
+    upper_float = struct.unpack("<f", struct.pack("<I", 0x7F7FFD77))[0]
+    upper_update = await execute.invoke(
+        _call("execute"),
+        ExecuteStatementInput(f"UPDATE {table} SET ratio = ? WHERE id = ?", (upper_float, 1)),
+    )
+    assert upper_update.branch == "completed"
+    upper_row = await query.invoke(_call("query"), QueryRowsInput(f"SELECT ratio FROM {table} WHERE id = 1"))
+    assert upper_row.value is not None and upper_row.value.rows[0]["ratio"] == 3.402692e38
     negative_millisecond = await query.invoke(
         _call("query"), QueryRowsInput("SELECT CAST('-00:00:00.001' AS TIME(3)) AS negative_time")
     )
@@ -215,15 +291,18 @@ async def test_driver_values_outcome_limits_and_read_only_isolation(
 
 
 @pytest.mark.asyncio
-async def test_tls_and_dns_classification(database: tuple[Config, str, str]) -> None:
+async def test_tls_and_dns_classification(
+    database: tuple[Config, str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
     config, password, table = database
     required = Client(replace(config, ssl_mode="required"), _Credentials(password))
     success = await required.query().invoke(_call("query"), QueryRowsInput(f"SELECT id FROM {table}"))
     assert success.branch == "completed"
+    ca_file = os.environ["MYSQL_TLS_CA_FILE"]
+    monkeypatch.setenv("MYSQL_SSL_CA", ca_file)
     verified = Client(replace(config, ssl_mode="verify-ca"), _Credentials(password))
-    rejected = await verified.query().invoke(_call("query"), QueryRowsInput("SELECT 1"))
-    assert rejected.branch == "providerRejected" and rejected.failure is not None
-    assert rejected.failure.kind.value == "AUTHENTICATION"
+    trusted = await verified.query().invoke(_call("query"), QueryRowsInput("SELECT 1"))
+    assert trusted.branch == "completed"
     missing = Client(replace(config, host="nonexistent.invalid", ssl_mode="required"), _Credentials(password))
     unresolved = await missing.query().invoke(_call("query"), QueryRowsInput("SELECT 1"))
     assert unresolved.branch == "providerRejected" and unresolved.failure is not None

@@ -13,7 +13,7 @@ import ssl
 import struct
 from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime, time, timedelta
-from decimal import Decimal
+from decimal import ROUND_HALF_EVEN, Decimal, localcontext
 from typing import Any
 
 import httpx
@@ -35,6 +35,7 @@ from mysql.connector import Error as MySQLError
 from mysql.connector.connection import MySQLConnection
 from mysql.connector.constants import ClientFlag, FieldFlag, FieldType
 from mysql.connector.protocol import MySQLProtocol
+from mysql.connector.utils import read_lc_string
 
 from ._generated.config import Config as Config
 from ._generated.config import Credentials as Credentials
@@ -126,6 +127,10 @@ class _InvalidTrustedRoots(Exception):
     pass
 
 
+class _ParameterCountMismatch(Exception):
+    pass
+
+
 class _SendMeter:
     def __init__(self, socket: Any) -> None:
         self.socket = socket
@@ -145,6 +150,38 @@ class _SendMeter:
 
 
 class _ExactValueProtocol(MySQLProtocol):
+    @staticmethod
+    def parse_column(packet: bytes, encoding: str = "utf-8") -> Any:
+        field = MySQLProtocol.parse_column(packet, encoding)
+        remaining = packet[4:]
+        for _ in range(6):
+            remaining, _ = read_lc_string(remaining)
+        decimals = struct.unpack("<xHIBHBxx", remaining)[4]
+        return (*field[:5], decimals, *field[6:])
+
+    @staticmethod
+    def _parse_binary_timestamp(packet: bytes, field_type: int) -> tuple[bytes, Any]:
+        length = packet[0]
+        if length not in {0, 4, 7, 11}:
+            raise ValueError("invalid binary date or timestamp")
+        if length == 0:
+            text = "0000-00-00"
+            if field_type != FieldType.DATE:
+                text += " 00:00:00"
+            return packet[1:], text
+        year = struct.unpack_from("<H", packet, 1)[0]
+        month, day = packet[3], packet[4]
+        text = f"{year:04}-{month:02}-{day:02}"
+        if field_type != FieldType.DATE:
+            hour, minute, second = (packet[5], packet[6], packet[7]) if length >= 7 else (0, 0, 0)
+            text += f" {hour:02}:{minute:02}:{second:02}"
+            if length == 11:
+                text += f".{struct.unpack_from('<I', packet, 8)[0]:06}"
+        try:
+            return MySQLProtocol._parse_binary_timestamp(packet, field_type)
+        except ValueError:
+            return packet[length + 1 :], text
+
     @staticmethod
     def _parse_binary_time(packet: bytes) -> tuple[bytes, timedelta]:
         length = packet[0]
@@ -176,7 +213,13 @@ class _ExactValueConnection(MySQLConnection):
 
 class _StrictTLSConnection(_ExactValueConnection):
     def _do_handshake(self) -> None:
-        super()._do_handshake()
+        try:
+            super()._do_handshake()
+        except MySQLError as error:
+            capabilities = self._handshake.get("capabilities") if self._handshake is not None else None
+            if error.errno == 2026 and isinstance(capabilities, int) and not capabilities & ClientFlag.SSL:
+                raise _TLSUnavailable("the MySQL server does not accept TLS") from error
+            raise
         capabilities = self._handshake.get("capabilities") if self._handshake is not None else None
         if not isinstance(capabilities, int) or not capabilities & ClientFlag.SSL:
             raise _TLSUnavailable("the MySQL server does not accept TLS")
@@ -351,7 +394,7 @@ class QueryRowsOperation:
             cursor.close()
             phase = "statement"
             prepared_cursor = connection.cursor(prepared=True)
-            prepared_cursor.execute(_driver_placeholders(input.statement), parameters)
+            _execute_prepared(prepared_cursor, input.statement, parameters)
             columns, rows, truncated = _read_rows(prepared_cursor, self.client.config)
             prepared_cursor.close()
             receipt = _receipt(call, metadata)
@@ -435,7 +478,7 @@ class ExecuteStatementOperation:
             connection.start_transaction()
             phase = "statement"
             prepared_cursor = connection.cursor(prepared=True)
-            prepared_cursor.execute(_driver_placeholders(input.statement), parameters)
+            _execute_prepared(prepared_cursor, input.statement, parameters)
             columns, rows, truncated = _read_rows(prepared_cursor, self.client.config)
             if truncated:
                 return _execute_branch(
@@ -578,53 +621,25 @@ def _validate_statement(
     return tuple(encoded)
 
 
-def _driver_placeholders(statement: str) -> str:
-    # The native prepared cursor accepts %s; preserve quoted question marks and SQL percent signs.
-    parts: list[str] = []
-    quote = ""
-    comment = ""
-    index = 0
-    while index < len(statement):
-        char = statement[index]
-        following = statement[index + 1] if index + 1 < len(statement) else ""
-        if comment == "line":
-            parts.append(char)
-            if char == "\n":
-                comment = ""
-        elif comment == "block":
-            parts.append(char)
-            if char == "*" and following == "/":
-                index += 1
-                parts.append("/")
-                comment = ""
-        elif quote:
-            parts.append(char)
-            if char == "\\" and index + 1 < len(statement):
-                index += 1
-                parts.append(statement[index])
-            elif char == quote:
-                if index + 1 < len(statement) and statement[index + 1] == quote:
-                    index += 1
-                    parts.append(statement[index])
-                else:
-                    quote = ""
-        elif char == "#" or (
-            char == "-" and following == "-" and index + 2 < len(statement) and statement[index + 2].isspace()
-        ):
-            comment = "line"
-            parts.append(char)
-        elif char == "/" and following == "*":
-            comment = "block"
-            parts.append(char)
-        elif char in {"'", '"', "`"}:
-            quote = char
-            parts.append(char)
-        elif char == "?":
-            parts.append("%s")
-        else:
-            parts.append(char)
-        index += 1
-    return "".join(parts)
+def _execute_prepared(cursor: Any, statement: str, parameters: tuple[Any, ...]) -> None:
+    connection = cursor._connection
+    prepared = connection.cmd_stmt_prepare(
+        statement.encode("utf-8"), read_timeout=cursor._read_timeout, write_timeout=cursor._write_timeout
+    )
+    cursor._prepared = prepared
+    if len(prepared["parameters"]) != len(parameters):
+        raise _ParameterCountMismatch(
+            "the prepared statement parameter count does not match its placeholders"
+        )
+    cursor._executed = statement
+    result = connection.cmd_stmt_execute(
+        prepared["statement_id"],
+        data=parameters,
+        parameters=prepared["parameters"],
+        read_timeout=cursor._read_timeout,
+        write_timeout=cursor._write_timeout,
+    )
+    cursor._handle_result(result)
 
 
 def _read_rows(cursor: Any, config: Config) -> tuple[tuple[Column, ...], tuple[dict[str, Any], ...], bool]:
@@ -651,9 +666,9 @@ def _read_rows(cursor: Any, config: Config) -> tuple[tuple[Column, ...], tuple[d
         if len(rows) == config.max_rows:
             return tuple(columns), tuple(rows), True
         row = {}
-        for column, value in zip(columns, raw, strict=True):
+        for column, field, value in zip(columns, description, raw, strict=True):
             try:
-                row[column.name] = _decode_value(column.type_name, value)
+                row[column.name] = _decode_value(column.type_name, value, field[5])
             except (ValueError, TypeError, OverflowError, UnicodeError, struct.error) as error:
                 raise _UndecodableColumn(
                     f"column {column.name!r} of type {column.type_name} "
@@ -665,13 +680,15 @@ def _read_rows(cursor: Any, config: Config) -> tuple[tuple[Column, ...], tuple[d
         rows.append(row)
 
 
-def _decode_value(type_name: str, value: Any) -> Any:
+def _decode_value(type_name: str, value: Any, decimals: int | None = None) -> Any:
     if value is None:
         return None
     if type_name == "BIT":
         return str(int.from_bytes(value, "big"))
-    if type_name in {"BIGINT", "UNSIGNED BIGINT", "DECIMAL"}:
+    if type_name in {"BIGINT", "UNSIGNED BIGINT"}:
         return str(value)
+    if type_name == "DECIMAL":
+        return format(value, "f") if isinstance(value, Decimal) else str(value)
     if type_name in {
         "BINARY",
         "VARBINARY",
@@ -697,11 +714,7 @@ def _decode_value(type_name: str, value: Any) -> Any:
     if type_name == "FLOAT":
         if not isinstance(value, float) or not math.isfinite(value):
             raise ValueError("invalid FLOAT")
-        for precision in range(1, 10):
-            decimal_text = f"{value:.{precision}g}"
-            if struct.unpack("<f", struct.pack("<f", float(decimal_text)))[0] == value:
-                return float(decimal_text)
-        raise ValueError("FLOAT cannot be represented exactly")
+        return _shortest_float32(value)
     if isinstance(value, timedelta) and type_name == "TIME":
         micros = value // timedelta(microseconds=1)
         negative = micros < 0
@@ -710,17 +723,53 @@ def _decode_value(type_name: str, value: Any) -> Any:
         minutes, remainder = divmod(remainder, 60_000_000)
         seconds, fractional = divmod(remainder, 1_000_000)
         text = f"{'-' if negative else ''}{hours:02}:{minutes:02}:{seconds:02}"
+        if decimals is not None:
+            return text + (f".{fractional:06}"[: decimals + 1] if decimals not in {0, 31} else "")
         return text + (f".{fractional:06}".rstrip("0") if fractional else "")
+    if isinstance(value, str) and type_name in {"DATE", "DATETIME", "TIMESTAMP"}:
+        if decimals is not None and type_name != "DATE":
+            base, _, fraction = value.partition(".")
+            return base + ("." + fraction.ljust(6, "0")[:decimals] if decimals not in {0, 31} else "")
+        return value
     if isinstance(value, (datetime, date, time, timedelta)):
         if isinstance(value, datetime):
             text = value.isoformat(timespec="microseconds").rstrip("0").rstrip(".")
             return text + ("Z" if type_name == "TIMESTAMP" else "")
         return str(value)
     if isinstance(value, Decimal):
-        return str(value)
+        return format(value, "f")
     if isinstance(value, bytes):
         return value.decode("utf-8")
     return value
+
+
+def _shortest_float32(value: float) -> float:
+    if value == 0:
+        return value
+    if abs(value) == 2**-12:
+        # Go chooses the upper shortest decimal for this exact halfway value.
+        return math.copysign(0.00024414063, value)
+    with localcontext() as context:
+        context.prec = 80
+        exact = Decimal.from_float(value)
+        for precision in range(1, 10):
+            step = Decimal(1).scaleb(exact.adjusted() - precision + 1)
+            rounded = (exact / step).to_integral_value(rounding=ROUND_HALF_EVEN) * step
+            candidates = (rounded - step, rounded, rounded + step)
+            matches: list[Decimal] = []
+            for candidate in candidates:
+                try:
+                    if struct.unpack("<f", struct.pack("<f", float(candidate)))[0] == value:
+                        matches.append(candidate)
+                except OverflowError:
+                    continue
+            if matches:
+                selected = min(
+                    matches,
+                    key=lambda candidate: (abs(candidate - exact), abs(int(candidate / step)) % 2),
+                )
+                return float(selected)
+    raise ValueError("FLOAT cannot be represented exactly")
 
 
 def _decode_json_float(decimal_text: str) -> float:
@@ -773,6 +822,8 @@ def _classify(error: Exception, phase: str) -> _Disposition:
         )
     if isinstance(error, _DuplicateColumn):
         return _Disposition("defect", FailureKind.VALIDATION, str(error))
+    if isinstance(error, _ParameterCountMismatch):
+        return _Disposition("defect", FailureKind.VALIDATION, str(error))
     if isinstance(error, _UndecodableColumn):
         return _Disposition("invalidResponse", FailureKind.PROTOCOL, str(error))
     if isinstance(error, _CommitNotSent):
@@ -788,7 +839,7 @@ def _classify(error: Exception, phase: str) -> _Disposition:
             FailureKind.PROVIDER_REJECTION,
             "the MySQL server does not accept TLS, which sslMode requires",
         )
-    if phase == "connect" and isinstance(error.__cause__, (ssl.SSLError, ssl.CertificateError)):
+    if phase == "connect" and isinstance(error.__cause__, ssl.SSLCertVerificationError):
         return _Disposition(
             "providerRejected",
             FailureKind.AUTHENTICATION,
@@ -810,14 +861,6 @@ def _classify(error: Exception, phase: str) -> _Disposition:
                 number,
                 state,
             )
-        if phase == "connect" and number == 2026:
-            return _Disposition(
-                "providerRejected",
-                FailureKind.AUTHENTICATION,
-                "the MySQL server certificate failed sslMode verification",
-                number,
-                state,
-            )
         if phase in {"begin", "statement"} and number in {2006, 2013, 2055}:
             return _Disposition(
                 "retry",
@@ -834,7 +877,7 @@ def _classify(error: Exception, phase: str) -> _Disposition:
                 number,
                 state,
             )
-        if phase == "connect" and number in {2002, 2003, 2006, 2013, 2055}:
+        if phase == "connect" and number in {2002, 2003, 2006, 2013, 2026, 2055}:
             return _Disposition(
                 "retry",
                 FailureKind.AVAILABILITY,
@@ -879,7 +922,7 @@ def _classify(error: Exception, phase: str) -> _Disposition:
         else:
             branch, kind = "providerRejected", FailureKind.PROVIDER_REJECTION
         return _Disposition(branch, kind, f"the server returned error {number} during {phase}", number, state)
-    if isinstance(error, (ssl.SSLError, ssl.CertificateError)) and phase == "connect":
+    if isinstance(error, ssl.SSLCertVerificationError) and phase == "connect":
         return _Disposition(
             "providerRejected",
             FailureKind.AUTHENTICATION,
