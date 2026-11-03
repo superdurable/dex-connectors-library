@@ -22,12 +22,13 @@ export class UpsertVectorsOperation implements Mutation<UpsertVectorsInput, Upse
     for (const vector of vectors) {
       if (!vector.id || !vector.values?.length) return mutationFailure('defect', 'VALIDATION', 'each vector needs an ID and values');
       if (ids.has(vector.id)) return mutationFailure('defect', 'VALIDATION', 'vector IDs must be unique within the batch');
+      if (vector.values.some(value => !Number.isFinite(value) || !Number.isFinite(Math.fround(value)))) return mutationFailure('defect', 'VALIDATION', 'vector values must be finite float32 numbers');
       ids.add(vector.id);
     }
     const requestBody = {
       ...(input.namespace ? { namespace: input.namespace } : {}),
       vectors: vectors.map(vector => ({
-        id: vector.id, values: vector.values,
+        id: vector.id, values: vector.values!.map(encodeFloat32Number),
         ...(vector.metadata && Object.keys(vector.metadata).length ? { metadata: vector.metadata } : {}),
       })),
     };
@@ -47,15 +48,22 @@ export class QueryVectorsOperation implements Query<QueryVectorsInput, QueryVect
   /** Validate, send, and classify one vector query. */
   async invoke(call: Call, input: QueryVectorsInput): Promise<QueryAttempt<QueryVectorsOutput>> {
     if (!input.vector?.length || !Number.isInteger(input.topK) || input.topK < 1 || input.topK > 10_000) return queryFailure('defect', 'VALIDATION', 'vector and topK from 1 through 10000 are required');
+    if (input.vector.some(value => !Number.isFinite(value) || !Number.isFinite(Math.fround(value)))) return queryFailure('defect', 'VALIDATION', 'vector values must be finite float32 numbers');
     const requestBody = {
       ...(input.namespace ? { namespace: input.namespace } : {}),
-      vector: input.vector, topK: input.topK,
+      vector: input.vector.map(encodeFloat32Number), topK: input.topK,
       ...(input.includeMetadata ? { includeMetadata: true } : {}),
     };
     const result = await this.client.exchange(call, 'queryVectors', '/query', requestBody);
     if ('outcome' in result) return queryOutcome(result.outcome);
     if (!isObject(result.body) || !Array.isArray(result.body.matches)) return queryFailure('invalidResponse', 'PROTOCOL', 'provider returned an incomplete response');
-    return newQueryBranch('queried', { data: result.body }, {});
+    const sourceAwareJSON = JSON as unknown as {
+      parse(text: string, reviver: (key: string, value: unknown, context: { source: string }) => unknown): unknown;
+      rawJSON(text: string): unknown;
+    };
+    const data = sourceAwareJSON.parse(Buffer.from(result.rawBody).toString('utf8'), (_key, value, context) =>
+      typeof value === 'number' ? sourceAwareJSON.rawJSON(context.source) : value);
+    return newQueryBranch('queried', { data }, {});
   }
 }
 
@@ -74,3 +82,11 @@ function queryFailure(branch: string, kind: Failure['kind'], message: string): Q
   return newQueryBranch(branch, emptyQuery, {}, { kind, provider: 'pinecone', operation: 'queryVectors', message });
 }
 function isObject(value: unknown): value is Record<string, unknown> { return value !== null && typeof value === 'object' && !Array.isArray(value); }
+function encodeFloat32Number(value: number): unknown {
+  const rounded = Math.fround(value);
+  for (let precision = 1; precision <= 9; precision++) {
+    const decimal = Number(rounded.toPrecision(precision));
+    if (Math.fround(decimal) === rounded) return (JSON as typeof JSON & { rawJSON(text: string): unknown }).rawJSON(decimal.toString());
+  }
+  return (JSON as typeof JSON & { rawJSON(text: string): unknown }).rawJSON(rounded.toString());
+}

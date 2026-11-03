@@ -18,6 +18,7 @@ it('upserts and fails an unwired rejection through a real Dex Worker and Client'
   const dexAddress = process.env.DEX_FLOW_SERVICE_ADDRESS;
   if (!dexAddress) throw new Error('set DEX_FLOW_SERVICE_ADDRESS to a running dexcli dev server');
   const requests: string[] = [];
+  const requestBodies: string[] = [];
   const server = createServer((request, response) => {
     requests.push(`${request.method} ${request.url}`);
     if (request.method !== 'POST' || request.url !== '/vectors/upsert') { response.writeHead(404).end(); return; }
@@ -25,7 +26,9 @@ it('upserts and fails an unwired rejection through a real Dex Worker and Client'
     const chunks: Buffer[] = [];
     request.on('data', (chunk: Buffer) => chunks.push(chunk));
     request.on('end', () => {
-      const body = JSON.parse(Buffer.concat(chunks).toString('utf8')) as { vectors: Array<{ id: string }> };
+      const requestBody = Buffer.concat(chunks).toString('utf8');
+      requestBodies.push(requestBody);
+      const body = JSON.parse(requestBody) as { vectors: Array<{ id: string }> };
       if (body.vectors[0]?.id === 'reject') { response.writeHead(403, { 'Content-Type': 'application/json' }).end('{}'); return; }
       response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ upsertedCount: body.vectors.length }));
     });
@@ -47,10 +50,11 @@ it('upserts and fails an unwired rejection through a real Dex Worker and Client'
     await worker.start();
     await worker.waitPullRegistered({ timeoutMs: 30_000 });
     const successId = `pinecone-upsert-${randomUUID()}`;
-    await client.startFlow(flow, successId, { namespace: 'example', vectors: [{ id: 'vec-meridian', values: [1, 2] }] });
+    await client.startFlow(flow, successId, { namespace: 'example', vectors: [{ id: 'vec-meridian', values: [0.123456789, 16777217, 0.30000001192092896] }] });
     const success = await client.waitForFlow(successId, 60_000);
     expect(success.status, success.errorMessage).toBe('completed');
     expect(success.singleOutput<UpsertVectorsOutput>().upsertedCount).toBe(1);
+    expect(requestBodies[0]).toContain('"values":[0.12345679,16777216,0.3]');
     const rejectionId = `pinecone-rejected-${randomUUID()}`;
     await client.startFlow(flow, rejectionId, { vectors: [{ id: 'reject', values: [1, 2] }] });
     const rejected = await client.waitForFlow(rejectionId, 60_000);

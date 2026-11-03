@@ -22,7 +22,7 @@ export interface PineconeExchangeFailure {
   /** Provider-directed retry delay. */ retryAfterMs: number;
 }
 /** Bounded response or classified failure. */
-export type PineconeExchange = { body: unknown } | { outcome: PineconeExchangeFailure };
+export type PineconeExchange = { body: unknown; rawBody: Uint8Array } | { outcome: PineconeExchangeFailure };
 
 /** Pinecone data-plane client with call-time credential resolution. */
 export class PineconeClient {
@@ -67,7 +67,7 @@ export class PineconeClient {
         url: this.baseUrl + path, method: 'POST',
         headers: { Accept: 'application/json', 'User-Agent': 'superdurable-pinecone/0.1', 'Api-Key': token, 'X-Pinecone-Api-Version': '2025-04', 'Content-Type': 'application/json' },
         body, maxResponseBytes: this.maxResponseBytes, timeoutMs: this.timeoutMs,
-        addressPolicy: this.baseUrl.startsWith('http://127.0.0.1:') || this.baseUrl.startsWith('http://localhost:') ? 'privateNetworkHTTP' : 'publicHTTPS',
+        addressPolicy: 'privateNetworkHTTP',
         signal: call.context.cancellationSignal,
       });
     } catch (error) {
@@ -86,7 +86,7 @@ export class PineconeClient {
       const kind = status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : status === 400 || status === 422 ? 'VALIDATION' : 'PROVIDER_REJECTION';
       return { outcome: this.failure('providerRejected', operation, kind, `provider rejected the request with HTTP ${status}`) };
     }
-    try { return { body: JSON.parse(Buffer.from(response.body).toString('utf8')) as unknown }; }
+    try { return { body: JSON.parse(Buffer.from(response.body).toString('utf8')) as unknown, rawBody: response.body }; }
     catch { return { outcome: this.failure('invalidResponse', operation, 'PROTOCOL', 'provider returned malformed JSON') }; }
   }
 
