@@ -48,7 +48,7 @@ export function isLinkLocalIPAddressLiteral(hostname: string): boolean { return 
 /** Whether an IP literal is always refused for provider requests. */
 export function isAlwaysRefusedIPAddressLiteral(hostname: string): boolean {
   const address = unbracketHostname(hostname);
-  return address === '0.0.0.0' || address === '::' || address.toLowerCase() === 'fd00:ec2::254' ||
+  return address === '0.0.0.0' || address === '255.255.255.255' || address === '::' || address.toLowerCase() === 'fd00:ec2::254' ||
     contains(linkLocal, address) || contains(multicast, address);
 }
 
