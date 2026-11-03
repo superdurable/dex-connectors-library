@@ -69,21 +69,19 @@ export function App() {
           </h1>
           <p className="lede">
             Open sourced and trusted connectors, take your process from prototype to production.
-          </p>
-          <div className="masthead-navigation">
-            <nav className="site-tabs" aria-label="Connector site">
-              <Link className={`site-tab${isExplainer ? "" : " active"}`} to="/">
-                Connectors
-              </Link>
-              <Link className={`site-tab${isExplainer ? " active" : ""}`} to="/what-is-dex-connectors">
-                What is Dex Connectors
-              </Link>
-            </nav>
-            <a className="repository-source-link" href={connectorLibraryRepositoryUrl}>
-              <GitHubMarkIcon />
-              Source on GitHub
+            <a className="lede-repository-link" href={connectorLibraryRepositoryUrl}>
+              <GitHubMarkIcon size={14} />
+              GitHub Repo
             </a>
-          </div>
+          </p>
+          <nav className="site-tabs" aria-label="Connector site">
+            <Link className={`site-tab${isExplainer ? "" : " active"}`} to="/">
+              Connectors
+            </Link>
+            <Link className={`site-tab${isExplainer ? " active" : ""}`} to="/what-is-dex-connectors">
+              What is Dex Connectors
+            </Link>
+          </nav>
           {!isExplainer && catalog.status === "ready" ? <CatalogTotals connectors={catalog.value} /> : null}
         </header>
         <main>
