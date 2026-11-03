@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { Link, Route, Routes, useLocation, useParams } from "react-router-dom";
 
+import { GitHubMarkIcon } from "./GitHubMarkIcon";
 import { LanguageIcons } from "./LanguageIcons";
 import { SiteHeader } from "./SiteHeader";
 import { WhatIsDexConnectors } from "./WhatIsDexConnectors";
@@ -20,6 +21,7 @@ import {
 } from "./catalogModel.mjs";
 
 const logoOrigin = import.meta.env.DEV ? "local" : "published";
+const connectorLibraryRepositoryUrl = "https://github.com/superdurable/dex-connectors-library";
 
 function formatLanguageVersions(languages: CatalogConnector["languages"]): string {
   return Object.entries(languages)
@@ -68,14 +70,20 @@ export function App() {
           <p className="lede">
             Open sourced and trusted connectors, take your process from prototype to production.
           </p>
-          <nav className="site-tabs" aria-label="Connector site">
-            <Link className={`site-tab${isExplainer ? "" : " active"}`} to="/">
-              Connectors
-            </Link>
-            <Link className={`site-tab${isExplainer ? " active" : ""}`} to="/what-is-dex-connectors">
-              What is Dex Connectors
-            </Link>
-          </nav>
+          <div className="masthead-navigation">
+            <nav className="site-tabs" aria-label="Connector site">
+              <Link className={`site-tab${isExplainer ? "" : " active"}`} to="/">
+                Connectors
+              </Link>
+              <Link className={`site-tab${isExplainer ? " active" : ""}`} to="/what-is-dex-connectors">
+                What is Dex Connectors
+              </Link>
+            </nav>
+            <a className="repository-source-link" href={connectorLibraryRepositoryUrl}>
+              <GitHubMarkIcon />
+              Source on GitHub
+            </a>
+          </div>
           {!isExplainer && catalog.status === "ready" ? <CatalogTotals connectors={catalog.value} /> : null}
         </header>
         <main>
@@ -239,6 +247,12 @@ function ConnectorPage({ catalog }: { catalog: LoadState<CatalogConnector[]> }) 
       </div>
       <p className="description detail-description">{connector.description}</p>
       <p className="install-command"><code>go get github.com/superdurable/dex-connectors-library/{connector.directory}/go@{connector.languages.go}</code></p>
+      <p className="connector-source">
+        <a className="repository-source-link" href={`${connectorLibraryRepositoryUrl}/tree/main/${connector.directory}`}>
+          <GitHubMarkIcon />
+          View source
+        </a>
+      </p>
       <CapabilityList title="UI units" capabilities={connector.uiUnits} versions={connector.languages} showLanguages={false} />
       <CapabilityList title="Triggers" capabilities={connector.triggers} versions={connector.languages} />
       <CapabilityList title="Operations" capabilities={connector.operations} versions={connector.languages} />
