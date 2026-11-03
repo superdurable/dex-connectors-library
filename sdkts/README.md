@@ -20,11 +20,28 @@ node examples/oauthtoken.mjs
 node examples/manifest_refresh.mjs
 node examples/singledispatch.mjs
 node examples/fence.mjs
+node examples/textgen.mjs
 ```
 
 All durations in this package are milliseconds. Public JSON shapes use the Go SDK's field names. Credential values and project objects stay outside Flow state and cannot be serialized through their wrappers.
 
 The [Dex integration harness](test/integ/step_flows.mjs) exercises the same Step factories through a real Worker and Client. Start `dexcli dev --open=false --dex-port 18891` with a local Dex server, set `DEX_SERVER_ADDRESS` when its gRPC address differs from `127.0.0.1:18891`, and run `npm run test:integration`. It verifies a happy path, optional branch, unwired optional branch failure, retry then success, retry exhaustion, uncertain mutation, a lost-response single-dispatch fence, repeated claim heartbeats, result Attribute persistence, progress and text Stream delivery, and scripted mock replay. It uses fixture operations and no provider credentials. CI runs the same harness in `sdkts-integration` using its once-per-run resolved Dex CLI.
+
+## Portable text generation
+
+The [runnable text generation example](examples/textgen.mjs) uses `newTextGenerationQuery` with the OpenAI-compatible Chat Completions adapter from `@superdurable/connectors-sdk/textgen/openaichat`. The `@superdurable/connectors-sdk/textgen` entrypoint also exports request and response contracts, model ID validation, portable schema checks, branch definitions, temperature policies, error rules, and the provider-neutral wire-format contract. The example exercises a local fixture provider; a consuming connector supplies a real connection, credential resolver, and Dex Step.
+
+`generateText` requires sync Execute durability and a request timeout shorter than the Step Execute timeout. It writes streamed text deltas to a configured text Stream as bytes arrive; the Result text is authoritative after retries or a blocked response. Register that Stream in the Flow persistence schema. Its six branches are `generated`, `truncated`, `blocked`, `providerRejected`, `invalidResponse`, and `defect`; only `generated` is required. The query retries transport errors, stalled responses, interrupted streams, and safe HTTP failures. A credential is resolved once after local validation and is never stored in Flow state, results, failures, or receipts.
+
+Each invocation resolves the trimmed request model or connection model, then validates messages, the token limit, the structured-output name and schema, declared features, temperature, and reasoning effort in that order. It applies model schema rules, resolves one credential, and encodes the request before dispatch. The first error in this order selects `defect` with zero provider requests. A nil heartbeat every five seconds keeps a silent call alive and clears any Step heartbeat checkpoint. Stream text may contain text from an attempt later retried or blocked, so consumers use the final Result for decisions. A caller may inject `httpClient` to own HTTP transport as in Go; the default transport permits private HTTPS endpoints and neither transport should replay redirects.
+
+An injected HTTP client may return a complete SSE response body without calling `onResponseChunk`. If it calls `onResponseChunk`, it must feed every chunk in order before returning and stop when the callback returns `false`. A provider retry-delay reader that throws or returns a non-finite value is treated as absent, allowing the `Retry-After` header to supply the delay. Usage token counts are JavaScript numbers and require safe integers; unlike Go's `int64` counts, larger values are rejected because they cannot be represented exactly in the public TypeScript `Usage` contract.
+
+The schema subset is the same as Go `sdkgo/textgen`: root object, closed objects with every property required, nullable optional values, arrays with `items`, and only the documented portable keywords. Structured output is checked locally even when the provider accepts a transformed schema. Model IDs are validated according to whether the adapter sends them in a JSON body or path segment. Optional request fields rejected by a wire format or selected model produce a `defect` branch before dispatch.
+
+Exact structured-output numbers may use at most 256 literal characters and an exponent magnitude of at most 400. Date and time formats follow Go's parser, including calendar-valid dates, one-digit hours, comma fractions, and offsets through hour 24 and minute 60. The JSON-object instruction uses Go's sorted, HTML-safe JSON encoding so provider requests match the Go connector. The shared [string-format fixture](../sdkgo/textgen/textgentest/testdata/string_format_cases.json) runs in both Go and TypeScript tests.
+
+The `@superdurable/connectors-sdk/textgen/textgentest` entrypoint ports Go's credential-safe fake provider and reusable exchange suite. [Its provider-dialect test](test/textgentest.test.ts) exercises model precedence, all common branches, error rules, complete and interrupted streams, usage, receipts, and credential redaction. The [Dex integration harness](test/integ/step_flows.mjs) calls `runTextGenerationDexScenarios` through a real Worker and Client to verify retry, heartbeat, text Stream persistence, and an unwired optional branch.
 
 ## Typed operations and credential resolution
 
