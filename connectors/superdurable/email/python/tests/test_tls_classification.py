@@ -89,6 +89,40 @@ def test_smtp_starttls_refusal_never_sends_credentials(monkeypatch: pytest.Monke
     assert server.login_calls == 0
 
 
+def test_smtp_temporary_ehlo_refusal_retries(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A temporary EHLO answer is classified before reading extensions or AUTH."""
+    class TemporaryEHLO(SMTPWithoutStartTLS):
+        def ehlo(self, *args: object) -> tuple[int, bytes]:
+            return 451, b"temporarily unavailable"
+
+    server = TemporaryEHLO()
+    monkeypatch.setattr(smtplib, "SMTP", lambda *args, **kwargs: server)
+    client = Client(
+        Config("127.0.0.1", "127.0.0.1", "", "", 35801, "implicitTLS", 35802, "startTLS"),
+        CredentialsProvider(),
+    )
+    credentials = Credentials("agent@example.com", SecretString("inert"), "", SecretString(""))
+    try:
+        client.open_smtp(credentials, "sendMessage")
+    except MailFailure as failure:
+        assert failure.outcome == "retry"
+    else:
+        pytest.fail("temporary EHLO succeeded")
+    assert server.login_calls == 0
+
+
+def test_custom_tls_context_cannot_disable_verification() -> None:
+    """A supplied trust store may not relax certificate or hostname checks."""
+    config = Config("127.0.0.1", "127.0.0.1", "", "", 35801, "implicitTLS", 35802, "implicitTLS")
+    insecure = ssl.create_default_context()
+    insecure.check_hostname = False
+    insecure.verify_mode = ssl.CERT_NONE
+    with pytest.raises(ValueError, match="must verify"):
+        Client(config, CredentialsProvider(), tls_context=insecure)
+    assert insecure.verify_mode == ssl.CERT_NONE
+    assert insecure.check_hostname is False
+
+
 def test_tls_verification_and_dial_refusal_have_distinct_outcomes() -> None:
     """A bad certificate is terminal while a local refused dial retries."""
     certificate = classify_mail_error(
@@ -165,7 +199,8 @@ def test_smtp_starttls_upgrades_before_authentication(monkeypatch: pytest.Monkey
     """The SMTP credential is sent only after STARTTLS and verified TLS state."""
 
     class SecureSocket:
-        pass
+        def settimeout(self, timeout: int) -> None:
+            assert timeout == 30
 
     class UpgradableSMTP:
         def __init__(self) -> None:

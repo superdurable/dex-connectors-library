@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """IMAP read and mutation paths mirror the Go mailtest scenarios."""
 
+import imaplib
 from typing import Any, cast
 
 import dex
@@ -15,6 +16,7 @@ from dex_connectors.superdurable_email import (
     SearchMessagesInput,
     SetFlagsInput,
 )
+from dex_connectors.superdurable_email.operations import _fetch, _imap_mailbox_argument, _parse_message
 
 from .test_send_message import Context, make_client
 
@@ -39,15 +41,20 @@ class IMAPServer:
         self.mailbox = "INBOX"
         self.seen = False
         self.has_source = True
+        self.copy_uid: bytes | None = None
 
     def select(self, mailbox: str, readonly: bool) -> tuple[str, list[bytes]]:
         """Select one mailbox with stable UIDVALIDITY."""
-        self.mailbox = mailbox
+        self.mailbox = mailbox.strip('"')
         self.commands.append(("EXAMINE" if readonly else "SELECT", (mailbox,)))
         return "OK", [b"1"]
 
     def response(self, name: str) -> tuple[str, list[bytes]]:
         """Return UIDVALIDITY for selected mailbox."""
+        if name == "COPYUID":
+            response = self.copy_uid
+            self.copy_uid = None
+            return name, [response] if response is not None else [None]  # type: ignore[list-item]
         return name, [b"42"]
 
     def uid(self, command: str, *arguments: str | bytes) -> tuple[str, list[Any]]:
@@ -75,9 +82,11 @@ class IMAPServer:
             return "OK", [b"ok"]
         if command == "MOVE":
             self.has_source = False
-            return "OK", [b"[COPYUID 42 97 98]"]
+            self.copy_uid = b"42 97 98"
+            return "OK", [None]
         if command == "COPY":
-            return "OK", [b"[COPYUID 42 97 98]"]
+            self.copy_uid = b"42 97 98"
+            return "OK", [None]
         if command == "EXPUNGE":
             self.has_source = False
             return "OK", [b"expunged"]
@@ -234,3 +243,104 @@ async def test_move_lost_reply_finds_already_moved_message(monkeypatch: pytest.M
     assert second.branch == "moved"
     assert second.value is not None and second.value.was_already_moved
     assert second.value.destination.uid == 98
+
+
+@pytest.mark.parametrize(
+    ("mailbox", "wire"),
+    (
+        ("Sent Items", '"Sent Items"'),
+        ("[Gmail]/All Mail", '"[Gmail]/All Mail"'),
+        ("Entwürfe", '"Entw&APw-rfe"'),
+        ("已发送", '"&XfJT0ZAB-"'),
+    ),
+)
+@pytest.mark.asyncio
+async def test_mailbox_arguments_are_quoted_modified_utf7(
+    monkeypatch: pytest.MonkeyPatch, mailbox: str, wire: str
+) -> None:
+    """SELECT and UID MOVE use the same ASCII mailbox representation on every Python version."""
+    assert _imap_mailbox_argument(mailbox) == wire
+    client = make_client()
+    server = IMAPServer()
+    monkeypatch.setattr(client, "open_imap", lambda *_: server)
+    attempt = await client.move_message().invoke(
+        make_call("moveMessage"),
+        MoveMessageInput(MessageReference(mailbox, 42, 97), "Deleted Items", "original@example.com"),
+    )
+    assert attempt.branch == "moved"
+    assert ("SELECT", (wire,)) in server.commands
+    assert ("MOVE", ("97", '"Deleted Items"')) in server.commands
+
+
+def test_fetch_reassembles_literal_bodystructure_after_header() -> None:
+    """Literal filenames and arbitrary FETCH item order retain headers and later metadata."""
+    headers = _MESSAGE.split(b"\r\n\r\n", 1)[0] + b"\r\n\r\n"
+    filename = "Résumé.pdf".encode()
+
+    class LiteralServer:
+        def uid(self, command: str, *arguments: str) -> tuple[str, list[Any]]:
+            return "OK", [
+                (b"1 (BODY[HEADER] {" + str(len(headers)).encode() + b"}", headers),
+                (b' UID 97 FLAGS () INTERNALDATE "03-Nov-2026 18:01:00 +0000" '
+                 b'RFC822.SIZE 222 BODYSTRUCTURE ("APPLICATION" "PDF" ("NAME" {'
+                 + str(len(filename)).encode() + b"}", filename),
+                b') NIL NIL "BASE64" 20 NIL ("ATTACHMENT" NIL) NIL NIL))',
+            ]
+
+    fetched = _fetch(cast(Any, LiteralServer()), 97, "getMessage")
+    assert fetched is not None
+    message = _parse_message(MessageReference("INBOX", 42, 97), *fetched, False)
+    assert message.attachments[0].file_name == "Résumé.pdf"
+    assert message.attachments[0].part == "1"
+
+
+@pytest.mark.parametrize("mailbox", ("Sent Items", "[Gmail]/All Mail", "Entwürfe"))
+def test_stdlib_imap_receives_ascii_quoted_mailbox_arguments(
+    monkeypatch: pytest.MonkeyPatch, mailbox: str
+) -> None:
+    """The installed imaplib preserves our quoting for EXAMINE, MOVE, and COPY."""
+    session = imaplib.IMAP4.__new__(imaplib.IMAP4)
+    session.state = "AUTH"
+    session.debug = 0
+    session.utf8_enabled = False
+    cast(Any, session)._encoding = "ascii"
+    session.untagged_responses = {}
+    commands: list[tuple[str, tuple[Any, ...]]] = []
+
+    def command(name: str, *arguments: Any) -> tuple[str, list[bytes | None]]:
+        commands.append((name, arguments))
+        return "OK", [None]
+
+    monkeypatch.setattr(session, "_simple_command", command)
+    argument = _imap_mailbox_argument(mailbox)
+    session.select(argument, readonly=True)
+    session.uid("MOVE", "97", argument)
+    session.uid("COPY", "97", argument)
+    for _, arguments in commands:
+        wire_argument = arguments[-1]
+        if isinstance(wire_argument, str):
+            wire_argument = wire_argument.encode("ascii")
+        assert wire_argument == argument.encode("ascii")
+
+
+@pytest.mark.asyncio
+async def test_search_malformed_bodystructure_selects_invalid_response(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """One malformed FETCH page selects invalidResponse instead of escaping invoke."""
+    class MalformedIMAP(IMAPServer):
+        def uid(self, command: str, *arguments: str | bytes) -> tuple[str, list[Any]]:
+            if command == "FETCH" and "BODY.PEEK[HEADER]" in str(arguments[1]):
+                headers = _MESSAGE.split(b"\r\n\r\n", 1)[0] + b"\r\n\r\n"
+                metadata = (
+                    b'1 (UID 97 FLAGS () INTERNALDATE "03-Nov-2026 18:01:00 +0000" '
+                    b'RFC822.SIZE 222 BODYSTRUCTURE ("TEXT" BODY[HEADER] {'
+                    + str(len(headers)).encode() + b"}"
+                )
+                return "OK", [(metadata, headers)]
+            return super().uid(command, *arguments)
+
+    client = make_client()
+    monkeypatch.setattr(client, "open_imap", lambda *_: MalformedIMAP())
+    attempt = await client.search_messages().invoke(make_call("searchMessages"), SearchMessagesInput())
+    assert attempt.branch == "invalidResponse"

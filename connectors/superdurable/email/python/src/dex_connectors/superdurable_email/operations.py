@@ -40,7 +40,7 @@ from ._generated.definitions import (
     SEND_MESSAGE_DEFINITION,
     SET_FLAGS_DEFINITION,
 )
-from .client import Client, MailFailure, classify_mail_error, is_bare_email_address
+from .client import Client, MailFailure, _has_control, classify_mail_error, is_bare_email_address
 from .imap_bodystructure import _BodyPart, parse_bodystructure
 from .models import (
     Attachment,
@@ -144,6 +144,23 @@ def _valid_mailbox(value: str) -> bool:
     )
 
 
+def _imap_mailbox_argument(mailbox: str) -> str:
+    encoded: list[str] = []
+    position = 0
+    while position < len(mailbox):
+        character = mailbox[position]
+        if ord(character) > 127:
+            start = position
+            while position < len(mailbox) and ord(mailbox[position]) > 127:
+                position += 1
+            segment = base64.b64encode(mailbox[start:position].encode("utf-16-be"))
+            encoded.append("&" + segment.decode("ascii").rstrip("=").replace("/", ",") + "-")
+            continue
+        encoded.append("&-" if character == "&" else character)
+        position += 1
+    return '"' + "".join(encoded).replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
 def _valid_reference(reference: MessageReference) -> bool:
     return (
         _valid_mailbox(reference.mailbox)
@@ -164,7 +181,7 @@ def _imap_select(
     session: imaplib.IMAP4, mailbox: str, read_only: bool, expected_uid_validity: int, operation: str
 ) -> int:
     try:
-        status, data = session.select(mailbox, readonly=read_only)
+        status, data = session.select(_imap_mailbox_argument(mailbox), readonly=read_only)
         if status != "OK":
             raise imaplib.IMAP4.error(f"{status} {data!r}")
         _, response = session.response("UIDVALIDITY")
@@ -201,10 +218,28 @@ def _fetch(session: imaplib.IMAP4, uid: int, operation: str) -> tuple[bytes, byt
         )
         if status != "OK":
             raise imaplib.IMAP4.error(f"{status} {data!r}")
+        metadata = bytearray()
+        headers: bytes | None = None
         for item in data:
-            if isinstance(item, tuple) and len(item) == 2 and isinstance(item[1], bytes):
-                return item
-        return None
+            if (
+                isinstance(item, tuple)
+                and len(item) == 2
+                and isinstance(item[0], bytes)
+                and isinstance(item[1], bytes)
+            ):
+                prefix, literal = item
+                marker = re.search(rb"\{(\d+)\}\s*$", prefix)
+                if marker is None or int(marker.group(1)) != len(literal):
+                    raise ValueError("invalid IMAP FETCH literal")
+                if re.search(rb"BODY(?:\.PEEK)?\[HEADER\]\s*$", prefix[:marker.start()], re.IGNORECASE):
+                    headers = literal
+                    metadata.extend(prefix[:marker.start()] + b'""')
+                else:
+                    escaped = literal.replace(b"\\", b"\\\\").replace(b'"', b'\\"')
+                    metadata.extend(prefix[:marker.start()] + b'"' + escaped + b'"')
+            elif isinstance(item, bytes):
+                metadata.extend(item)
+        return (bytes(metadata), headers) if headers is not None else None
     except Exception as error:
         raise classify_mail_error(error, operation, "IMAP", "FETCH") from error
 
@@ -254,7 +289,11 @@ def _message_id(value: str | None) -> str:
 def _decode_text_part(encoded: bytes, part: _BodyPart) -> tuple[str, bool]:
     encoded = encoded[:_MAX_ENCODED_TEXT]
     if part.transfer_encoding == "base64":
-        decoded_bytes = base64.b64decode(encoded, validate=False)
+        alphabet = re.sub(rb"[^A-Za-z0-9+/=]", b"", encoded)
+        if part.encoded_size > len(encoded):
+            alphabet = alphabet.rstrip(b"=")
+            alphabet = alphabet[: len(alphabet) // 4 * 4]
+        decoded_bytes = base64.b64decode(alphabet, validate=False)
     elif part.transfer_encoding == "quoted-printable":
         decoded_bytes = quopri.decodestring(encoded)
     else:
@@ -296,7 +335,10 @@ def _parse_message(
         or not date_match
     ):
         raise ValueError("missing or mismatched IMAP FETCH metadata")
-    parts = parse_bodystructure(metadata)
+    try:
+        parts = parse_bodystructure(metadata)
+    except Exception as error:
+        raise ValueError("invalid IMAP BODYSTRUCTURE") from error
     flags = flags_match.group(1).upper().split()
     received_at = _parse_date(date_match.group(1).decode("ascii", errors="replace"))
     if received_at == datetime.min.replace(tzinfo=UTC):
@@ -306,7 +348,7 @@ def _parse_message(
     attachment_parts = tuple(part for part in parts if part.is_attachment)
     attachments = tuple(
         Attachment(
-            ".".join(str(index) for index in part.path),
+            ".".join(str(index) for index in part.path) or "1",
             part.filename.encode()[:255].decode(errors="ignore"),
             part.media_type,
             part.encoded_size,
@@ -370,7 +412,9 @@ def _read_message(
             )
         try:
             return _parse_message(reference, fetched[0], fetched[1], include_text, session, operation)
-        except (ValueError, UnicodeError) as error:
+        except MailFailure:
+            raise
+        except Exception as error:
             raise MailFailure(
                 "invalid",
                 _failure(FailureKind.PROTOCOL, operation, "the IMAP server returned an invalid message"),
@@ -493,7 +537,9 @@ class SearchMessagesOperation:
                     message = _parse_message(
                         MessageReference(mailbox, validity, uid), fetched[0], fetched[1], False
                     )
-                except (ValueError, UnicodeError) as error:
+                except MailFailure:
+                    raise
+                except Exception as error:
                     raise MailFailure(
                         "invalid",
                         _failure(
@@ -676,6 +722,9 @@ def _smtp_submit(
                     ),
                 ) from error
             try:
+                socket = getattr(session, "sock", None)
+                if socket is not None:
+                    socket.settimeout(90)
                 session.send(b".\r\n")
                 code, _ = session.getreply()
             except Exception as error:
@@ -791,7 +840,7 @@ class SendMessageOperation:
             or not all(_validate_recipients(group) for group in (input.to, input.cc, input.bcc))
             or (input.reply_to and not is_bare_email_address(input.reply_to))
             or len(input.subject.encode()) > 998
-            or any(c in input.subject for c in "\r\n\u2028\u2029")
+            or _has_control(input.subject)
             or not _validate_text(input.text)
         ):
             return MutationAttempt.branch_result(
@@ -920,7 +969,8 @@ class ReplyToMessageOperation:
                 )
             trimmed_subject = source.subject.strip()
             subject = (
-                trimmed_subject if trimmed_subject.lower().startswith("re:") else "Re: " + trimmed_subject
+                trimmed_subject if trimmed_subject.lower().startswith("re:")
+                else ("Re: " + trimmed_subject).strip()
             )
             subject = subject.encode()[:998].decode(errors="ignore")
             references = (
@@ -1200,21 +1250,25 @@ class MoveMessageOperation:
                         FailureKind.NOT_FOUND, operation, "the message at the UID has a different Message-ID"
                     ),
                 )
+            session.response("COPYUID")
+            destination_argument = _imap_mailbox_argument(input.destination_mailbox)
             if "MOVE" in capabilities:
-                _, response = _uid_command(
-                    session, "MOVE", operation, str(input.message.uid), input.destination_mailbox
+                _uid_command(
+                    session, "MOVE", operation, str(input.message.uid), destination_argument
                 )
             else:
-                _, response = _uid_command(
-                    session, "COPY", operation, str(input.message.uid), input.destination_mailbox
+                _uid_command(
+                    session, "COPY", operation, str(input.message.uid), destination_argument
                 )
+            _, copy_uid_data = session.response("COPYUID")
+            if "MOVE" not in capabilities:
                 _uid_command(
                     session, "STORE", operation, str(input.message.uid), "+FLAGS.SILENT", "(\\Deleted)"
                 )
                 _uid_command(session, "EXPUNGE", operation, str(input.message.uid))
             destination = MessageReference(input.destination_mailbox, 0, 0)
-            joined = b" ".join(item for item in response if isinstance(item, bytes))
-            copy_uid = re.search(rb"COPYUID (\d+) \d+ (\d+)", joined)
+            joined = b" ".join(item for item in copy_uid_data if isinstance(item, bytes))
+            copy_uid = re.search(rb"(?:COPYUID\s+)?(\d+)\s+\d+\s+(\d+)", joined)
             if copy_uid:
                 destination = MessageReference(
                     input.destination_mailbox, int(copy_uid.group(1)), int(copy_uid.group(2))

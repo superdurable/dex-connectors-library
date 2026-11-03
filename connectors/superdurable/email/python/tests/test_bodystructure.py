@@ -6,7 +6,7 @@ import pytest
 
 from dex_connectors.superdurable_email import MessageReference
 from dex_connectors.superdurable_email.imap_bodystructure import parse_bodystructure
-from dex_connectors.superdurable_email.operations import _parse_message
+from dex_connectors.superdurable_email.operations import _decode_text_part, _parse_message
 
 
 def test_nested_multipart_paths_and_rfc2231_filename() -> None:
@@ -60,3 +60,31 @@ def test_malformed_bodystructure_is_rejected() -> None:
     """A truncated server expression fails instead of producing incomplete metadata."""
     with pytest.raises(ValueError):
         parse_bodystructure(b'BODYSTRUCTURE (("TEXT" "PLAIN"')
+
+
+def test_unknown_filename_charset_falls_back_to_utf8() -> None:
+    """A server-supplied unknown charset does not escape the operation."""
+    parts = parse_bodystructure(
+        b'BODYSTRUCTURE ("APPLICATION" "PDF" NIL NIL NIL "BASE64" 20 NIL '
+        b'("ATTACHMENT" ("FILENAME*" "x-unknown\'\'R%C3%A9sum%C3%A9.pdf")) NIL NIL)'
+    )
+    assert parts[0].filename == "Résumé.pdf"
+
+
+def test_plain_filename_continuation_keeps_literal_percent() -> None:
+    """Only RFC 2231 starred segments decode percent escapes."""
+    parts = parse_bodystructure(
+        b'BODYSTRUCTURE ("APPLICATION" "PDF" NIL NIL NIL "BASE64" 20 NIL '
+        b'("ATTACHMENT" ("FILENAME*0" "report 100%" "FILENAME*1" "AB.pdf")) NIL NIL)'
+    )
+    assert parts[0].filename == "report 100%AB.pdf"
+
+
+def test_partial_base64_text_decodes_complete_quanta() -> None:
+    """A bounded text read ends before an incomplete final base64 quantum."""
+    part = parse_bodystructure(
+        b'BODYSTRUCTURE ("TEXT" "PLAIN" ("CHARSET" "UTF-8") NIL NIL "BASE64" 9 1)'
+    )[0]
+    text, is_truncated = _decode_text_part(b"SGVsbG8", part)
+    assert text == "Hel"
+    assert is_truncated

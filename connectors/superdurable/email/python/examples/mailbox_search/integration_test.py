@@ -172,12 +172,15 @@ async def test_mailbox_search_through_real_dex_and_verified_imap(tmp_path: Path)
             registry, cache, dex.ClientOptions(server_address=server_address)
         ) as dex_client:
             flow_id = "email-python-search-" + uuid4().hex
-            await dex_client.start_flow(flow, flow_id, SearchMessagesInput(subject_contains="Invoice"))
+            await dex_client.start_flow(
+                flow, flow_id, SearchMessagesInput(mailbox="Sent Items", subject_contains="Invoice")
+            )
             result = await asyncio.wait_for(dex_client.wait_for_flow(flow_id, timedelta(seconds=30)), 40)
             assert result.status == dex.FlowStatus.COMPLETED, (result.error_message, provider.commands)
             output = result.single_output(SearchMessagesOutput)
             assert output.messages[0].message_id == "invoice@example.com"
             assert output.messages[0].reference.uid == 97
+            assert ("EXAMINE", '"Sent Items"') in provider.commands
     finally:
         await worker.stop()
         await worker_task

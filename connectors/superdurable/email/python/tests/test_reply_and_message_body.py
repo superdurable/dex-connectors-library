@@ -19,8 +19,11 @@ from dex_connectors.superdurable_email import (
 from .test_send_message import Context, SMTPServer, make_client
 
 
+@pytest.mark.parametrize(("source_subject", "reply_subject"), (("Refund", "Re: Refund"), ("", "Re:")))
 @pytest.mark.asyncio
-async def test_reply_all_threads_and_omits_own_sender(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_reply_all_threads_and_omits_own_sender(
+    monkeypatch: pytest.MonkeyPatch, source_subject: str, reply_subject: str
+) -> None:
     """A reply honors Reply-To, excludes the sender, and preserves References."""
     client = make_client()
     server = SMTPServer()
@@ -32,7 +35,7 @@ async def test_reply_all_threads_and_omits_own_sender(monkeypatch: pytest.Monkey
         reply_to=(EmailAddress("Support", "reply@example.com"),),
         to=(EmailAddress("", "agent@example.com"), EmailAddress("", "other@example.com")),
         cc=(EmailAddress("", "copy@example.com"),),
-        subject="Refund",
+        subject=source_subject,
         received_at=datetime.now(UTC),
         references=("earlier@example.com",),
         text_source="none",
@@ -60,6 +63,7 @@ async def test_reply_all_threads_and_omits_own_sender(monkeypatch: pytest.Monkey
     assert attempt.value.recipients == ("reply@example.com", "other@example.com", "copy@example.com")
     assert attempt.value.in_reply_to == "original@example.com"
     assert attempt.value.references == ("earlier@example.com", "original@example.com")
+    assert attempt.value.subject == reply_subject
     assert b"In-Reply-To: <original@example.com>" in server.content
     assert b"agent@example.com" in server.content  # The sender remains in From only.
 

@@ -3,7 +3,7 @@
 """SMTP outcomes mirror the Go in-process mailtest scenarios."""
 
 from dataclasses import dataclass, field
-from typing import cast
+from typing import Any, cast
 
 import dex
 import pytest
@@ -49,6 +49,7 @@ class SMTPServer:
         self.commands: list[str] = []
         self.content = b""
         self.replies = 0
+        self.sock: Any = None
 
     def mail(self, sender: str, options: list[str]) -> tuple[int, bytes]:
         """Accept the envelope sender."""
@@ -168,3 +169,38 @@ async def test_send_message_rejects_invalid_input_before_network(monkeypatch: py
         make_call(Context()), SendMessageInput(to=("not an address",), subject="Hello", text="Body")
     )
     assert attempt.branch == "defect"
+
+
+@pytest.mark.asyncio
+async def test_send_message_rejects_all_subject_controls(monkeypatch: pytest.MonkeyPatch) -> None:
+    """C0 and C1 subject controls select defect before a network request."""
+    client = make_client()
+    monkeypatch.setattr(client, "open_smtp", lambda *_: pytest.fail("connected"))
+    for character in ("\t", "\0", "\x1b", "\x85"):
+        attempt = await client.send_message().invoke(
+            make_call(Context()),
+            SendMessageInput(to=("jane@example.com",), subject="Hello" + character, text="Body"),
+        )
+        assert attempt.branch == "defect"
+
+
+@pytest.mark.asyncio
+async def test_final_smtp_dot_uses_ninety_second_reply_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Submission gives a scanning server time to answer after the final dot."""
+    class TimeoutSocket:
+        def __init__(self) -> None:
+            self.timeouts: list[int] = []
+
+        def settimeout(self, timeout: int) -> None:
+            self.timeouts.append(timeout)
+
+    client = make_client()
+    server = SMTPServer()
+    server.sock = TimeoutSocket()
+    monkeypatch.setattr(client, "open_smtp", lambda *_: server)
+    attempt = await client.send_message().invoke(
+        make_call(Context()),
+        SendMessageInput(to=("jane@example.com",), subject="Hello", text="Body"),
+    )
+    assert attempt.branch == "sent"
+    assert server.sock.timeouts == [90]

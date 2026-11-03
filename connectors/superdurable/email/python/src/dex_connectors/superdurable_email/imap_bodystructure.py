@@ -125,21 +125,34 @@ def _decode_filename(parameters: dict[str, str]) -> str:
     encoded = parameters.get("filename*") or parameters.get("name*")
     if encoded:
         charset, _, value = decode_rfc2231(encoded)
-        return unquote_to_bytes(value).decode(charset or "utf-8", errors="replace")
+        decoded = unquote_to_bytes(value)
+        try:
+            return decoded.decode(charset or "utf-8", errors="replace")
+        except LookupError:
+            return decoded.decode("utf-8", errors="replace")
     for base in ("filename", "name"):
-        segments: list[str] = []
+        segments: list[bytes] = []
+        charset = "utf-8"
         index = 0
-        while (
-            segment := parameters.get(f"{base}*{index}*") or parameters.get(f"{base}*{index}")
-        ) is not None:
-            segments.append(segment)
+        while True:
+            extended = parameters.get(f"{base}*{index}*")
+            plain = parameters.get(f"{base}*{index}")
+            if extended is None and plain is None:
+                break
+            if extended is not None:
+                if index == 0:
+                    declared_charset, _, extended = decode_rfc2231(extended)
+                    charset = declared_charset or "utf-8"
+                segments.append(unquote_to_bytes(extended))
+            else:
+                segments.append((plain or "").encode("utf-8"))
             index += 1
         if segments:
-            joined = "".join(segments)
-            charset, _, value = decode_rfc2231(joined)
-            if charset:
-                return unquote_to_bytes(value).decode(charset, errors="replace")
-            return unquote_to_bytes(joined).decode("utf-8", errors="replace")
+            joined = b"".join(segments)
+            try:
+                return joined.decode(charset, errors="replace")
+            except LookupError:
+                return joined.decode("utf-8", errors="replace")
     direct = parameters.get("filename") or parameters.get("name")
     if direct:
         try:

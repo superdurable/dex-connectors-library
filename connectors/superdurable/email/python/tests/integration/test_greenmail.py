@@ -17,6 +17,8 @@ from dex_connectors.superdurable_email import (
     Config,
     Credentials,
     GetMessageInput,
+    MoveMessageInput,
+    ReplyToMessageInput,
     SearchMessagesInput,
     SendMessageInput,
     SetFlagsInput,
@@ -51,8 +53,8 @@ def make_call(operation: str) -> Call:
 
 
 @pytest.mark.asyncio
-async def test_greenmail_verified_tls_send_search_read_and_flags() -> None:
-    """Send through SMTPS and read the resulting message through IMAPS."""
+async def test_greenmail_verified_tls_send_search_read_reply_move_and_flags() -> None:
+    """Exercise all six operations through real SMTPS and IMAPS."""
     required = (
         "EMAIL_CONNECTOR_TEST_CA_CERT",
         "EMAIL_CONNECTOR_TEST_SMTPS_PORT",
@@ -81,10 +83,14 @@ async def test_greenmail_verified_tls_send_search_read_and_flags() -> None:
     send = await client.send_message().invoke(
         make_call("sendMessage"),
         SendMessageInput(
-            to=(os.environ["EMAIL_CONNECTOR_TEST_ADDRESS"],), subject=subject, text="Integration body"
+            to=(os.environ["EMAIL_CONNECTOR_TEST_ADDRESS"],),
+            reply_to="connector+reply@example.com",
+            subject=subject,
+            text="Integration body",
         ),
     )
     assert send.branch == "sent", send.failure
+    assert send.value is not None
     search = None
     for _ in range(40):
         search = await client.search_messages().invoke(
@@ -102,3 +108,28 @@ async def test_greenmail_verified_tls_send_search_read_and_flags() -> None:
     updated = await client.set_flags().invoke(make_call("setFlags"), SetFlagsInput(reference, is_seen=True))
     assert updated.branch == "updated", updated.failure
     assert updated.value is not None and updated.value.is_seen
+    reply = await client.reply_to_message().invoke(
+        make_call("replyToMessage"), ReplyToMessageInput(reference, "Integration reply")
+    )
+    assert reply.branch == "sent", reply.failure
+    assert reply.value is not None and reply.value.in_reply_to == send.value.message_id
+
+    archive = "Archive_" + uuid4().hex
+    credentials = await client.resolve_credentials(make_call("moveMessage"), "moveMessage")
+    session = client.open_imap(credentials, "moveMessage")
+    try:
+        status, _ = session.create(archive)
+        assert status == "OK"
+    finally:
+        session.logout()
+    moved = await client.move_message().invoke(
+        make_call("moveMessage"), MoveMessageInput(reference, archive, send.value.message_id)
+    )
+    assert moved.branch == "moved", moved.failure
+    assert moved.value is not None and moved.value.destination.uid_validity > 0
+    assert moved.value.destination.uid > 0
+    destination = await client.get_message().invoke(
+        make_call("getMessage"), GetMessageInput(moved.value.destination)
+    )
+    assert destination.branch == "found", destination.failure
+    assert destination.value is not None and destination.value.message_id == send.value.message_id

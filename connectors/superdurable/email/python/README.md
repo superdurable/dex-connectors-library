@@ -15,10 +15,14 @@ answer is lost, the `uncertain` result contains the stable Message-ID and a
 later attempt does not resubmit. A definitive temporary refusal clears the
 claim and retries. IMAP flag changes use absolute values; moves look for the
 same Message-ID in the destination after a lost answer.
+Mailbox names, including spaces and Unicode, are sent as quoted IMAP modified
+UTF-7. When the server reports COPYUID, a move returns the destination
+UIDVALIDITY and UID.
 
 Provider protocol unit tests mirror the Go connector's mailtest scenarios.
-`tests/integration/test_greenmail.py` runs verified SMTPS and IMAPS against the
-CI GreenMail service. The example's `integration_test.py` runs against a real
+`tests/integration/test_greenmail.py` exercises send, search, read, reply, move,
+and flags over verified SMTPS and IMAPS against the CI GreenMail service.
+The example's `integration_test.py` runs against a real
 Dex Worker and Client with a certificate-verified local IMAP stand-in.
 Attachment names, part paths, and encoded sizes come from IMAP BODYSTRUCTURE,
 including for messages with large bodies. Text is fetched separately and bounded

@@ -59,7 +59,7 @@ def is_bare_email_address(value: str) -> bool:
 
 
 def _has_control(value: str) -> bool:
-    return any(ord(c) < 32 or ord(c) == 127 or c in "\u2028\u2029" for c in value)
+    return any(ord(c) < 32 or 127 <= ord(c) <= 159 or c in "\u2028\u2029" for c in value)
 
 
 def _failure(kind: FailureKind, operation: str, message: str) -> Failure:
@@ -111,8 +111,14 @@ class Client:
             )
         self.config = config
         self.credentials = credentials
+        if tls_context is not None and (
+            tls_context.verify_mode != ssl.CERT_REQUIRED or not tls_context.check_hostname
+            or tls_context.minimum_version < ssl.TLSVersion.TLSv1_2
+        ):
+            raise ValueError(
+                "email TLS context must verify certificates and host names with TLS 1.2 or later"
+            )
         self.tls_context = tls_context or ssl.create_default_context()
-        self.tls_context.minimum_version = ssl.TLSVersion.TLSv1_2
         # Generated project bindings pass this HTTP-only optional argument; SMTP and IMAP never use it.
         self._unused_http_client = http_client
 
@@ -211,7 +217,13 @@ class Client:
                 )
             else:
                 session = smtplib.SMTP(config.smtp_host, config.smtp_port, timeout=15)
-                session.ehlo("localhost")
+                if (smtp_socket := getattr(session, "sock", None)) is not None:
+                    smtp_socket.settimeout(30)
+                code, response = session.ehlo("localhost")
+                if code != 250:
+                    raise classify_mail_error(
+                        smtplib.SMTPResponseException(code, response), operation, "SMTP", "EHLO"
+                    )
                 if not session.has_extn("starttls"):
                     raise MailFailure(
                         "rejected",
@@ -221,8 +233,16 @@ class Client:
                             "the SMTP server does not offer STARTTLS, so the connector did not authenticate",
                         ),
                     )
+                if (smtp_socket := getattr(session, "sock", None)) is not None:
+                    smtp_socket.settimeout(15)
                 session.starttls(context=self.tls_context)
-            session.ehlo("localhost")
+            if (smtp_socket := getattr(session, "sock", None)) is not None:
+                smtp_socket.settimeout(30)
+            code, response = session.ehlo("localhost")
+            if code != 250:
+                raise classify_mail_error(
+                    smtplib.SMTPResponseException(code, response), operation, "SMTP", "EHLO"
+                )
             if not isinstance(session.sock, ssl.SSLSocket):
                 raise MailFailure(
                     "rejected",
