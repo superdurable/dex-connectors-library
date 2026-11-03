@@ -54,6 +54,21 @@ def live_config(*, max_rows: int = 1000) -> Config:
     )
 
 
+def administration_connection(config: Config, *, autocommit: bool) -> pytds.Connection:
+    ca_file = (
+        os.environ["SQLSERVER_TLS_CA_FILE"] if config.encrypt == "mandatory" else None
+    )
+    return pytds.connect(
+        server=config.host,
+        port=config.port,
+        database=config.database,
+        user=config.user,
+        password=os.environ["SQLSERVER_CONNECTOR_TEST_PASSWORD"],
+        cafile=ca_file,
+        autocommit=autocommit,
+    )
+
+
 def test_query_type_mapping_and_row_limit() -> None:
     client = Client(live_config(), CredentialsSource())
     completed = asyncio.run(
@@ -113,14 +128,7 @@ def test_query_type_mapping_and_row_limit() -> None:
 def test_execute_commits_and_limits_rollback() -> None:
     table_name = "dex_py_" + uuid4().hex[:20]
     config = live_config()
-    administration = pytds.connect(
-        server=config.host,
-        port=config.port,
-        database=config.database,
-        user=config.user,
-        password=os.environ["SQLSERVER_CONNECTOR_TEST_PASSWORD"],
-        autocommit=True,
-    )
+    administration = administration_connection(config, autocommit=True)
     try:
         cursor = administration.cursor()
         cursor.execute(
@@ -170,14 +178,7 @@ def test_trigger_done_counts_are_summed_before_commit() -> None:
     table_name = "dex_py_" + uuid4().hex[:20]
     audit_name = "dex_py_" + uuid4().hex[:20]
     config = live_config()
-    administration = pytds.connect(
-        server=config.host,
-        port=config.port,
-        database=config.database,
-        user=config.user,
-        password=os.environ["SQLSERVER_CONNECTOR_TEST_PASSWORD"],
-        autocommit=True,
-    )
+    administration = administration_connection(config, autocommit=True)
     try:
         cursor = administration.cursor()
         cursor.execute(f"CREATE TABLE dbo.{table_name} (id int NOT NULL)")
@@ -222,14 +223,7 @@ def test_trigger_done_counts_are_summed_before_commit() -> None:
 def test_statement_timeout_under_a_held_lock() -> None:
     table_name = "dex_py_" + uuid4().hex[:20]
     config = live_config()
-    administration = pytds.connect(
-        server=config.host,
-        port=config.port,
-        database=config.database,
-        user=config.user,
-        password=os.environ["SQLSERVER_CONNECTOR_TEST_PASSWORD"],
-        autocommit=False,
-    )
+    administration = administration_connection(config, autocommit=False)
     try:
         cursor = administration.cursor()
         cursor.execute(f"CREATE TABLE dbo.{table_name} (id int NOT NULL)")
@@ -255,6 +249,12 @@ def test_statement_timeout_under_a_held_lock() -> None:
 
 
 def test_mandatory_tls_against_service_certificate(monkeypatch: pytest.MonkeyPatch) -> None:
+    encryption = os.environ["SQLSERVER_CONNECTOR_TEST_ENCRYPT"]
+    if encryption == "disable":
+        assert "SQLSERVER_TLS_HOST" not in os.environ
+        assert "SQLSERVER_TLS_CA_FILE" not in os.environ
+        return
+    assert encryption == "mandatory"
     tls_host = os.environ["SQLSERVER_TLS_HOST"]
     tls_ca = os.environ["SQLSERVER_TLS_CA_FILE"]
     assert tls_host and os.path.isfile(tls_ca)
@@ -263,6 +263,7 @@ def test_mandatory_tls_against_service_certificate(monkeypatch: pytest.MonkeyPat
     client = Client(config, CredentialsSource())
     completed = asyncio.run(client.query().invoke(call("query"), QueryRowsInput("SELECT 1 AS n")))
     assert completed.branch == "completed", completed.failure
-    wrong_host = Client(replace(config, host="127.0.0.1"), CredentialsSource())
+    wrong_host = Client(replace(config, host="127.0.0.2"), CredentialsSource())
     rejected = asyncio.run(wrong_host.query().invoke(call("query"), QueryRowsInput("SELECT 1 AS n")))
     assert rejected.branch == "providerRejected", rejected.failure
+    assert rejected.failure.kind == FailureKind.AUTHENTICATION

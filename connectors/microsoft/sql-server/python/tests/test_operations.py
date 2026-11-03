@@ -12,6 +12,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from uuid import UUID, uuid4
 
+import certifi
 import pytest
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes
@@ -38,9 +39,11 @@ from dex_connectors.microsoft_sql_server import (
 )
 from dex_connectors.microsoft_sql_server.client import _verify_server_hostname
 from dex_connectors.microsoft_sql_server.operations import (
+    _AttemptDeadline,
     _bind_statement,
     _classify,
     _read_rows,
+    _ReadBudgetExceeded,
     _ReadBudgetTransport,
 )
 
@@ -114,9 +117,12 @@ def call(operation: str) -> Call:
     )
 
 
-def client(connection: FakeConnection, *, max_rows: int = 1000) -> Client:
+def client(connection: FakeConnection, *, max_rows: int = 1000, max_response_bytes: int = 1 << 20) -> Client:
     return Client(
-        Config("localhost", "master", "sa", encrypt="disable", max_rows=max_rows),
+        Config(
+            "localhost", "master", "sa", encrypt="disable", max_rows=max_rows,
+            max_response_bytes=max_response_bytes,
+        ),
         CredentialsSource(),
         connection_factory=lambda **_kwargs: connection,
     )
@@ -407,6 +413,108 @@ def test_native_read_budget_stops_a_large_value_before_buffering_it() -> None:
         budgeted.recv_into(buffer, 4)
 
 
+def test_read_budget_truncates_rows_and_restores_transport() -> None:
+    class ChunkTransport:
+        def recv_into(self, buffer: bytearray, length: int) -> int:
+            buffer[:length] = b"x" * length
+            return length
+
+    class BudgetCursor(FakeCursor):
+        def fetchone(self) -> tuple | None:
+            self._session._reader._transport.recv_into(bytearray(40 << 10), 40 << 10)
+            return super().fetchone()
+
+    original_transport = ChunkTransport()
+    reader = SimpleNamespace(_transport=original_transport)
+    cursor = BudgetCursor(rows=((17,), (18,)))
+    cursor._session = SimpleNamespace(_reader=reader, process_end=lambda _marker: None)
+    columns, rows, truncated = _read_rows(cursor, 1000, 100)
+    assert columns[0].name == "value"
+    assert rows == ({"value": "17"},)
+    assert truncated
+    assert reader._transport is original_transport
+
+    mutation_connection = FakeConnection(cursor)
+    cursor.rows = ((17,), (18,))
+    outcome = asyncio.run(
+        client(mutation_connection, max_response_bytes=100)
+        .execute()
+        .invoke(
+            call("execute"),
+            ExecuteStatementInput(
+                "UPDATE dbo.t SET x = @p1 OUTPUT inserted.x", (1,), returns_output_rows=True
+            ),
+        )
+    )
+    assert outcome.branch == "limitExceeded"
+    assert not mutation_connection.committed
+    assert reader._transport is original_transport
+
+
+def test_commit_read_budget_failure_is_uncertain() -> None:
+    connection = FakeConnection(FakeCursor(description=()), _ReadBudgetExceeded("commit reply too large"))
+    outcome = asyncio.run(
+        client(connection)
+        .execute()
+        .invoke(call("execute"), ExecuteStatementInput("UPDATE dbo.t SET x = @p1", (1,)))
+    )
+    assert outcome.kind == "uncertain"
+    assert connection.rolled_back
+
+
+def test_precommit_deadline_retries_when_commit_was_not_sent(monkeypatch: pytest.MonkeyPatch) -> None:
+    connection = FakeConnection(FakeCursor(description=()))
+    native_client = client(connection)
+    original_check = _AttemptDeadline.check
+    call_count = 0
+
+    def check_at_commit(deadline: _AttemptDeadline) -> None:
+        nonlocal call_count
+        if deadline.timer.interval > native_client.config.statement_timeout_seconds:
+            call_count += 1
+            if call_count == 3:
+                raise TimeoutError("attempt deadline")
+        original_check(deadline)
+
+    monkeypatch.setattr(_AttemptDeadline, "check", check_at_commit)
+    outcome = asyncio.run(
+        native_client.execute().invoke(
+            call("execute"), ExecuteStatementInput("UPDATE dbo.t SET x = @p1", (1,))
+        )
+    )
+    assert outcome.kind == "retry"
+    assert outcome.failure.kind == FailureKind.TRANSPORT
+    assert "COMMIT was not sent" in outcome.failure.message
+    assert not connection.committed
+
+
+def test_acknowledged_commit_stays_completed_when_deadline_expires() -> None:
+    class AcknowledgedConnection(FakeConnection):
+        def commit(self) -> None:
+            super().commit()
+            for deadline in active_deadlines:
+                deadline.expired.set()
+
+    connection = AcknowledgedConnection(FakeCursor(description=()))
+    active_deadlines: list[_AttemptDeadline] = []
+    native_client = client(connection)
+    original_init = _AttemptDeadline.__init__
+
+    def capture_deadline(deadline: _AttemptDeadline, seconds: float) -> None:
+        original_init(deadline, seconds)
+        active_deadlines.append(deadline)
+
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(_AttemptDeadline, "__init__", capture_deadline)
+        outcome = asyncio.run(
+            native_client.execute().invoke(
+                call("execute"), ExecuteStatementInput("UPDATE dbo.t SET x = @p1", (1,))
+            )
+        )
+    assert outcome.branch == "completed"
+    assert connection.committed
+
+
 def test_multiple_done_counts_include_trigger_rows() -> None:
     connection = FakeConnection(FakeCursor(description=(), rowcount=1, remaining_counts=(2,)))
     outcome = asyncio.run(
@@ -491,11 +599,22 @@ def test_explicit_missing_ca_file_fails_closed(monkeypatch: pytest.MonkeyPatch) 
         native.open_connection("inert")
 
 
+def test_explicit_ca_file_without_certificates_is_a_defect(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    certificate = tmp_path / "ca.pem"
+    certificate.write_text("not a PEM certificate")
+    monkeypatch.setenv("SQLSERVER_SSL_CA", str(certificate))
+    native = Client(Config("localhost", "master", "sa"), CredentialsSource())
+    with pytest.raises(ValueError, match="trusted CA bundle is unreadable"):
+        native.open_connection("inert")
+
+
 def test_mandatory_tls_supplies_per_connection_ca_and_hostname_check(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     certificate = tmp_path / "ca.pem"
-    certificate.write_text("inert CA fixture")
+    certificate.write_bytes(Path(certifi.where()).read_bytes())
     monkeypatch.setenv("SQLSERVER_SSL_CA", str(certificate))
     seen: dict[str, object] = {}
 
@@ -512,6 +631,9 @@ def test_mandatory_tls_supplies_per_connection_ca_and_hostname_check(
     assert seen["validate_host"] is True
     assert seen["enc_login_only"] is False
     assert seen["disable_connect_retry"] is True
+    assert seen["timeout"] == (
+        native.config.connect_timeout_seconds + native.config.statement_timeout_seconds + 5
+    )
 
 
 def test_ca_signed_certificate_uses_san_precedence_dns_case_and_ip_san() -> None:

@@ -52,20 +52,23 @@ idempotent across retries and Worker replacement.
 supplies no count, `maxRowsAffected` fails `invalidResponse` before COMMIT. Receipts include
 the session process ID and server version; server errors add number, state, and severity.
 The connector enforces an attempt deadline and a response read budget in addition to the
-configured row and JSON response bounds.
+configured row and JSON response bounds. Exhausting the read budget returns truncated
+query rows or rolls back an execute operation before COMMIT.
 
 Both operations accept `@p1` through `@pN` positional parameters in SQL text. Do not
 interpolate user input into the statement. The connector checks for one allowed statement,
 rejects transaction control and other reserved operations, and binds values through
-`python-tds` named parameters. Read the [runnable Flow](examples/record_refund/flow.py) for
+`python-tds` named parameters. Python `None` binds as a SQL `NULL` literal, small integers
+bind as SQL `INT`, and timezone-aware `datetime` inputs are unsupported. Use explicit SQL
+casts when a parameter needs a specific SQL type. Read the [runnable Flow](examples/record_refund/flow.py) for
 the exact application call pattern.
 
 ## Verification
 
 The package unit tests cover routing, driver error numbers, input validation, row bounds,
 and commit uncertainty. The example integration test runs its Worker and Client against a
-real `dexcli dev` server with scripted connector operations. CI runs
-`tests/integration/test_database.py` against a real SQL Server service container, including
-mandatory TLS with a workflow CA. No live
+real `dexcli dev` server with scripted connector operations. The SQL Server service-container
+workflow runs `tests/integration/test_database.py`; its mandatory TLS pass depends on the
+separate CI workflow change in PR #518. No live
 SQL Server, Azure SQL Database, or Azure SQL Managed Instance has been verified through a
 user-controlled Dex Web connection for this Python package.

@@ -39,7 +39,8 @@ _SESSION_SETTINGS = (
     "SET TEXTSIZE 2147483647",
     "SET TRANSACTION ISOLATION LEVEL READ COMMITTED",
 )
-_TLS_VALIDATION_LOCK = threading.Lock()
+_TLS_HOST_VALIDATION = threading.local()
+_ORIGINAL_HOST_VALIDATOR = tls.validate_host
 
 
 def _verify_server_hostname(cert: Any, name: bytes) -> bool:
@@ -67,6 +68,15 @@ def _verify_server_hostname(cert: Any, name: bytes) -> bool:
                 return True
         return False
     return address in subject_alternative_names.get_values_for_type(x509.IPAddress)
+
+
+def _dispatch_host_validation(cert: Any, name: bytes) -> bool:
+    if getattr(_TLS_HOST_VALIDATION, "is_sql_server_connection", False):
+        return _verify_server_hostname(cert, name)
+    return bool(_ORIGINAL_HOST_VALIDATOR(cert, name))
+
+
+tls.validate_host = _dispatch_host_validation
 
 
 class Client:
@@ -177,6 +187,15 @@ class Client:
                 ca_file = certifi.where()
             if not ca_file or not os.path.isfile(ca_file):
                 raise ValueError("SQL Server trusted CA bundle is unavailable")
+            try:
+                trust_context = ssl.create_default_context(cafile=ca_file)
+                if trust_context.cert_store_stats()["x509"] == 0:
+                    raise ValueError("SQL Server trusted CA bundle has no certificates")
+            except (OSError, ValueError, ssl.SSLError) as error:
+                raise ValueError("SQL Server trusted CA bundle is unreadable") from error
+        attempt_timeout_seconds = (
+            self.config.connect_timeout_seconds + self.config.statement_timeout_seconds + 5
+        )
         connection_settings = dict(
             server=self.config.host,
             port=self.config.port,
@@ -184,7 +203,7 @@ class Client:
             user=self.config.user,
             password=password,
             login_timeout=self.config.connect_timeout_seconds,
-            timeout=self.config.statement_timeout_seconds,
+            timeout=attempt_timeout_seconds,
             cafile=ca_file,
             validate_host=True,
             enc_login_only=False,
@@ -194,13 +213,11 @@ class Client:
         )
         if self.config.encrypt == "mandatory" and self.connection_factory is pytds.connect:
             # pytds performs this check after the handshake and before it sends login credentials.
-            with _TLS_VALIDATION_LOCK:
-                original_validator = tls.validate_host
-                tls.validate_host = _verify_server_hostname
-                try:
-                    connection = self.connection_factory(**connection_settings)
-                finally:
-                    tls.validate_host = original_validator
+            _TLS_HOST_VALIDATION.is_sql_server_connection = True
+            try:
+                connection = self.connection_factory(**connection_settings)
+            finally:
+                _TLS_HOST_VALIDATION.is_sql_server_connection = False
         else:
             connection = self.connection_factory(**connection_settings)
         try:

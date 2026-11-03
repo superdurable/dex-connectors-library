@@ -175,6 +175,14 @@ class _InvalidResponse(Exception):
     pass
 
 
+class _ReadBudgetExceeded(Exception):
+    pass
+
+
+class _CommitNotSent(Exception):
+    pass
+
+
 class _ReadBudgetTransport:
     def __init__(self, transport: Any, byte_limit: int) -> None:
         self.transport = transport
@@ -185,7 +193,7 @@ class _ReadBudgetTransport:
         received = int(self.transport.recv_into(buffer, length))
         self.bytes_read += received
         if self.bytes_read > self.byte_limit:
-            raise _InvalidResponse("SQL Server reply exceeded the read budget")
+            raise _ReadBudgetExceeded("SQL Server reply exceeded the read budget")
         return received
 
     def __getattr__(self, name: str) -> Any:
@@ -418,6 +426,10 @@ def _classify(error: BaseException, phase: str) -> tuple[str, FailureKind, str, 
             f"SQL Server rejected request with error {number}",
             metadata,
         )
+    if isinstance(error, _CommitNotSent):
+        return "retry", FailureKind.TRANSPORT, "SQL Server COMMIT was not sent", {}
+    if phase == "commit":
+        return "uncertain", FailureKind.TRANSPORT, "SQL Server commit outcome is unknown", {}
     if isinstance(error, _InvalidResponse):
         return "invalid", FailureKind.PROTOCOL, str(error), {}
     error_text = str(error).lower()
@@ -437,8 +449,6 @@ def _classify(error: BaseException, phase: str) -> tuple[str, FailureKind, str, 
         return "defect", FailureKind.VALIDATION, str(error), {}
     if isinstance(error, tds_base.DataError):
         return "defect", FailureKind.VALIDATION, "SQL Server driver rejected a parameter value", {}
-    if phase == "commit":
-        return "uncertain", FailureKind.TRANSPORT, "SQL Server commit outcome is unknown", {}
     if isinstance(error, TimeoutError) and phase == "statement":
         return (
             "rejected",
@@ -593,41 +603,49 @@ def _read_rows(
         columns.append(Column(name, type_name))
     rows: list[dict[str, Any]] = []
     reader = getattr(getattr(cursor, "_session", None), "_reader", None)
+    original_transport = None
     if reader is not None:
-        reader._transport = _ReadBudgetTransport(reader._transport, max_bytes + (64 << 10))
+        original_transport = reader._transport
+        reader._transport = _ReadBudgetTransport(original_transport, max_bytes + (64 << 10))
     encoded_bytes = 2
-    while True:
-        raw = cursor.fetchone()
-        if raw is None:
-            while callable(getattr(cursor, "nextset", None)) and cursor.nextset():
-                if cursor.description:
-                    raise ValueError("statement returned more than one result set")
-            return tuple(columns), tuple(rows), False
-        if len(rows) >= max_rows:
-            return tuple(columns), tuple(rows), True
-        row = {
-            column.name: _row_value(
-                value,
-                column.type_name,
-                description[index][5]
-                if len(description[index]) > 5 and isinstance(description[index][5], int)
-                else None,
-            )
-            for index, (column, value) in enumerate(zip(columns, raw, strict=True))
-        }
-        encoded_row = json.dumps(row, separators=(",", ":"), sort_keys=True, ensure_ascii=False)
-        for character, escaped in (
-            ("<", "\\u003c"),
-            (">", "\\u003e"),
-            ("&", "\\u0026"),
-            ("\u2028", "\\u2028"),
-            ("\u2029", "\\u2029"),
-        ):
-            encoded_row = encoded_row.replace(character, escaped)
-        encoded_bytes += len(encoded_row.encode("utf-8")) + 1
-        if encoded_bytes > max_bytes:
-            return tuple(columns), tuple(rows), True
-        rows.append(row)
+    try:
+        while True:
+            raw = cursor.fetchone()
+            if raw is None:
+                while callable(getattr(cursor, "nextset", None)) and cursor.nextset():
+                    if cursor.description:
+                        raise ValueError("statement returned more than one result set")
+                return tuple(columns), tuple(rows), False
+            if len(rows) >= max_rows:
+                return tuple(columns), tuple(rows), True
+            row = {
+                column.name: _row_value(
+                    value,
+                    column.type_name,
+                    description[index][5]
+                    if len(description[index]) > 5 and isinstance(description[index][5], int)
+                    else None,
+                )
+                for index, (column, value) in enumerate(zip(columns, raw, strict=True))
+            }
+            encoded_row = json.dumps(row, separators=(",", ":"), sort_keys=True, ensure_ascii=False)
+            for character, escaped in (
+                ("<", "\\u003c"),
+                (">", "\\u003e"),
+                ("&", "\\u0026"),
+                ("\u2028", "\\u2028"),
+                ("\u2029", "\\u2029"),
+            ):
+                encoded_row = encoded_row.replace(character, escaped)
+            encoded_bytes += len(encoded_row.encode("utf-8")) + 1
+            if encoded_bytes > max_bytes:
+                return tuple(columns), tuple(rows), True
+            rows.append(row)
+    except _ReadBudgetExceeded:
+        return tuple(columns), tuple(rows), True
+    finally:
+        if reader is not None:
+            reader._transport = original_transport
 
 
 class QueryRowsOperation:
@@ -869,17 +887,23 @@ class ExecuteStatementOperation:
                 )
             statement_deadline.check()
             statement_deadline.close()
+            try:
+                deadline.check()
+            except TimeoutError as error:
+                raise _CommitNotSent() from error
             phase = "commit"
-            deadline.check()
             connection.commit()
-            deadline.check()
             was_committed = True
             return MutationAttempt.branch_result(COMPLETED, value, _receipt(call, connection=connection))
         except Exception as error:
             has_timed_out = deadline.expired.is_set() or (
                 statement_deadline is not None and statement_deadline.expired.is_set()
             )
-            classified_error = TimeoutError("SQL Server statement timed out") if has_timed_out else error
+            classified_error = (
+                TimeoutError("SQL Server statement timed out")
+                if has_timed_out and not isinstance(error, _CommitNotSent) and phase != "commit"
+                else error
+            )
             disposition, kind, message, metadata = _classify(classified_error, phase)
             failure = Failure(kind, CONNECTOR_ID, EXECUTE_OPERATION_ID, message)
             if disposition == "retry":
