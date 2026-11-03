@@ -14,7 +14,7 @@ spec:
       operations: [embed, rerank]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       package: "@superdurable/connector-cohere"
       operations: [embed, rerank]
       triggers: []
