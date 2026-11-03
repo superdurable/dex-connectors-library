@@ -8,6 +8,12 @@ metadata:
   version: v0.23.0
 spec:
   provider: email
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-superdurable-email
+      operations: [searchMessages, getMessage, sendMessage, replyToMessage, moveMessage, setFlags]
+      triggers: []
   codegen:
     go:
       package: email

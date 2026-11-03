@@ -13,6 +13,11 @@ plain-text messages and threaded replies over SMTP, for mail providers other
 than Gmail and Microsoft 365. It exposes these operation-specific Dex Step
 factories:
 
+The [Python package](python/README.md) implements the same six operations at
+`v0.1.0`, with a [runnable mailbox search Flow](python/examples/mailbox_search/README.md).
+Its CI protocol integration test uses GreenMail; live mail-provider behavior
+remains unverified.
+
 | Operation | Kind | Durability | Happy branch | Other branches |
 | --- | --- | --- | --- | --- |
 | `email.NewSearchMessagesStep` | Query | async | `searched` | `providerRejected`, `invalidResponse`, `defect` |
