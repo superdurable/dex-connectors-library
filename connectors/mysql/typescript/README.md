@@ -11,6 +11,9 @@ float32 representation. Negative zero in `FLOAT` or `DOUBLE` fails with
 cannot be returned without changing their text cause the `invalidResponse`
 branch, with the column named in the failure. Queries use prepared execution,
 so chained SQL statements are rejected.
+The whole call has a `connectTimeoutMs + statementTimeoutMs + 5 seconds` deadline.
+If the server stops responding before COMMIT, the operation requests a retry;
+after COMMIT may have been sent, a timed-out write reports `uncertain`.
 
 For TypeScript, `verify-identity` requires a DNS host name. The mysql2 TLS
 upgrade verifies that name against the server certificate. It cannot verify an
@@ -26,7 +29,7 @@ in Flow state. A write Step can use `newExecuteStatementStep` with a stable
 `idempotencyKeyPlaceholder`, and must account for the optional `uncertain`
 branch when COMMIT may have reached the server.
 
-Run `npm run check` for unit and type checks. The Dex Worker and Client test in
+Run `npm run check` for unit, fake-socket, and type checks. The Dex Worker and Client test in
 `test/integration/flow.integration.test.ts` requires a running `dexcli dev`
 server and `DEX_FLOW_SERVICE_ADDRESS`. The native database test in
 `test/integration.test.ts` runs in CI's MySQL service container using the same

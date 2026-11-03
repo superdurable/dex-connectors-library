@@ -75,8 +75,8 @@ export class MySQLClient {
     } catch { return undefined; }
   }
 
-  /** Open and initialize one MySQL session with pinned server settings. */
-  async openSession(password: string): Promise<{ connection: Connection; connectionId: string; serverVersion: string }> {
+  /** Open and initialize one MySQL session with pinned server settings. The callback can bind a call deadline before setup queries. */
+  async openSession(password: string, onConnected?: (connection: Connection) => void): Promise<{ connection: Connection; connectionId: string; serverVersion: string }> {
     if (this.config.sslMode === 'verify-identity' && isIP(this.config.host)) throw new MySQLIPIdentityError();
     const settings: ConnectionOptions = {
       ...(this.config.host.startsWith('/') ? { socketPath: this.config.host } : { host: this.config.host, port: this.config.port }),
@@ -96,6 +96,7 @@ export class MySQLClient {
     }
     const connection = await this.connect(settings);
     try {
+      onConnected?.(connection);
       const [identity] = await connection.query('SELECT CONNECTION_ID(), VERSION()');
       const row = (identity as unknown[][])[0];
       if (!row || row.length !== 2 || row[0] === undefined || typeof row[1] !== 'string') throw new TypeError('the server returned an unreadable CONNECTION_ID() or VERSION()');

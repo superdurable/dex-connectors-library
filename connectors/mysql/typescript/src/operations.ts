@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import type { Connection as RawConnection, FieldPacket } from 'mysql2';
+import type { Socket } from 'node:net';
 import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import type { Connection } from 'mysql2/promise';
 import { ExecuteStatementDefinition, QueryRowsDefinition } from './generated/definitions.js';
@@ -13,6 +14,59 @@ const emptyRows = (): RowSet => ({ columns: [], rows: [] });
 const emptyExecution = (): StatementExecution => ({ rowsAffected: 0, lastInsertId: '0', warningCount: 0, columns: [], rows: [] });
 const readKeywords = new Set(['SELECT', 'WITH', 'TABLE', 'VALUES', 'SHOW', 'EXPLAIN', 'DESCRIBE', 'DESC']);
 const writeKeywords = new Set(['INSERT', 'UPDATE', 'DELETE', 'REPLACE', 'WITH']);
+type DriverConnection = RawConnection & { stream?: Socket };
+
+class SessionDeadline {
+  private readonly pendingFailure: Promise<never>;
+  private readonly timer: NodeJS.Timeout;
+  private rejectFailure!: (error: unknown) => void;
+  private connection?: Connection;
+  private expired = false;
+
+  constructor(timeoutMs: number) {
+    this.pendingFailure = new Promise((_, reject) => { this.rejectFailure = reject; });
+    this.timer = setTimeout(() => {
+      this.expired = true;
+      this.destroySocket();
+      this.rejectFailure(transportError('the MySQL call deadline expired'));
+    }, Math.min(timeoutMs, 2147483647));
+  }
+
+  bind(connection: Connection): void {
+    this.connection = connection;
+    const rawConnection = (connection as Connection & { connection?: DriverConnection }).connection;
+    // mysql2 emits connection errors for streaming commands without an onResult callback.
+    rawConnection?.on?.('error', error => this.fail(error));
+    if (this.expired) {
+      this.destroySocket();
+      throw transportError('the MySQL call deadline expired');
+    }
+  }
+
+  wait<T>(operation: Promise<T>): Promise<T> { return Promise.race([operation, this.pendingFailure]); }
+
+  close(): void {
+    clearTimeout(this.timer);
+    this.connection?.destroy();
+  }
+
+  private fail(error: unknown): void {
+    if (this.expired) return;
+    this.expired = true;
+    clearTimeout(this.timer);
+    this.rejectFailure(error);
+  }
+
+  private destroySocket(): void {
+    const rawConnection = (this.connection as Connection & { connection?: DriverConnection } | undefined)?.connection;
+    if (rawConnection?.stream?.destroy) rawConnection.stream.destroy();
+    else this.connection?.destroy();
+  }
+}
+
+function transportError(message: string, code = 'ETIMEDOUT'): Error & { code: string } {
+  return Object.assign(new Error(message), { code });
+}
 
 /** Read a single parameterized statement in a read-only transaction. */
 export class QueryRowsOperation implements Query<QueryRowsInput, RowSet> {
@@ -27,13 +81,14 @@ export class QueryRowsOperation implements Query<QueryRowsInput, RowSet> {
     let connection: Connection | undefined;
     let connectionId = '', serverVersion = '';
     let phase: SessionPhase = 'connect';
+    const deadline = new SessionDeadline(this.client.config.connectTimeoutMs + this.client.config.statementTimeoutMs + 5000);
     try {
-      const session = await this.client.openSession(password);
+      const session = await deadline.wait(this.client.openSession(password, connected => { phase = 'begin'; deadline.bind(connected); }));
       ({ connection, connectionId, serverVersion } = session);
       phase = 'begin';
-      await connection.query('START TRANSACTION READ ONLY');
+      await deadline.wait(connection.query('START TRANSACTION READ ONLY'));
       phase = 'statement';
-      const rowSet = await readPreparedRows(connection, input.statement, parameters, this.client.config.maxRows, this.client.config.maxResponseBytes);
+      const rowSet = await deadline.wait(readPreparedRows(connection, input.statement, parameters, this.client.config.maxRows, this.client.config.maxResponseBytes));
       const receipt = this.client.receipt(call, connectionId, serverVersion);
       if (rowSet.truncated) return newQueryBranch('truncated', rowSet, receipt, failure('query', 'RESPONSE_TOO_LARGE', 'the statement returned more rows or bytes than maxRows or maxResponseBytes allow'));
       return newQueryBranch('completed', rowSet, receipt);
@@ -45,7 +100,7 @@ export class QueryRowsOperation implements Query<QueryRowsInput, RowSet> {
       const receipt = this.client.receipt(call, connectionId, serverVersion, classified.errorNumber, classified.sqlState);
       if (classified.disposition === 'retry' || classified.disposition === 'uncertain') return newQueryRetry(failure('query', classified.kind, classified.message));
       return newQueryBranch(classified.disposition, emptyRows(), receipt, failure('query', classified.kind, classified.message));
-    } finally { connection?.destroy(); }
+    } finally { deadline.close(); }
   }
 }
 
@@ -64,15 +119,16 @@ export class ExecuteStatementOperation implements Mutation<ExecuteStatementInput
     let connection: Connection | undefined;
     let connectionId = '', serverVersion = '';
     let phase: SessionPhase = 'connect';
+    const deadline = new SessionDeadline(this.client.config.connectTimeoutMs + this.client.config.statementTimeoutMs + 5000);
     try {
-      const session = await this.client.openSession(password);
+      const session = await deadline.wait(this.client.openSession(password, connected => { phase = 'begin'; deadline.bind(connected); }));
       ({ connection, connectionId, serverVersion } = session);
       phase = 'begin';
-      await connection.query('START TRANSACTION');
+      await deadline.wait(connection.query('START TRANSACTION'));
       phase = 'statement';
-      const rows = await readPreparedRows(connection, input.statement, parameters, this.client.config.maxRows, this.client.config.maxResponseBytes);
+      const rows = await deadline.wait(readPreparedRows(connection, input.statement, parameters, this.client.config.maxRows, this.client.config.maxResponseBytes));
       if (rows.truncated) return newMutationBranch('limitExceeded', emptyExecution(), this.client.receipt(call, connectionId, serverVersion), failure('execute', 'RESPONSE_TOO_LARGE', 'RETURNING rows exceeded maxRows or maxResponseBytes, so the transaction was rolled back'));
-      const [outcome] = await connection.query('SELECT ROW_COUNT(), LAST_INSERT_ID(), @@warning_count');
+      const [outcome] = await deadline.wait(connection.query('SELECT ROW_COUNT(), LAST_INSERT_ID(), @@warning_count'));
       const outcomeRow = (outcome as unknown[][])[0];
       if (!outcomeRow || outcomeRow.length !== 3) throw new InvalidRowsError('the server returned an unreadable ROW_COUNT(), LAST_INSERT_ID(), or @@warning_count');
       const affected = Number(outcomeRow[0]) < 0 ? (rows.rows?.length ?? 0) : Number(outcomeRow[0]);
@@ -80,10 +136,10 @@ export class ExecuteStatementOperation implements Mutation<ExecuteStatementInput
       const warningCount = Number(outcomeRow[2]);
       if (!Number.isSafeInteger(affected) || !/^\d+$/.test(lastInsertId) || !Number.isSafeInteger(warningCount)) throw new InvalidRowsError('the server returned an unreadable ROW_COUNT(), LAST_INSERT_ID(), or @@warning_count');
       if (input.maxRowsAffected !== undefined && affected > input.maxRowsAffected) return newMutationBranch('limitExceeded', emptyExecution(), this.client.receipt(call, connectionId, serverVersion), failure('execute', 'CONFLICT', `the statement affected ${affected} rows but maxRowsAffected is ${input.maxRowsAffected}, so the transaction was rolled back`));
-      const rawConnection = (connection as Connection & { connection?: RawConnection }).connection;
+      const rawConnection = (connection as Connection & { connection?: DriverConnection }).connection;
       if (rawConnection && rawConnection.state !== 'authenticated') return newMutationRetry(failure('execute', 'TRANSPORT', 'the connection closed before COMMIT could be sent'));
       phase = 'commit';
-      await connection.query('COMMIT');
+      await deadline.wait(connection.query('COMMIT'));
       return newMutationBranch('completed', { rowsAffected: affected, lastInsertId, warningCount, columns: rows.columns, rows: rows.rows }, this.client.receipt(call, connectionId, serverVersion));
     } catch (error) {
       if (error instanceof DuplicateColumnsError) return executeDefect(error.message);
@@ -92,7 +148,7 @@ export class ExecuteStatementOperation implements Mutation<ExecuteStatementInput
       const classified = classifyDriverError(error instanceof MySQLSessionSetupError ? error.driverError : error, error instanceof MySQLSessionSetupError ? 'begin' : phase);
       const receipt = this.client.receipt(call, connectionId, serverVersion, classified.errorNumber, classified.sqlState);
       return mutationFailure(classified, receipt);
-    } finally { connection?.destroy(); }
+    } finally { deadline.close(); }
   }
 }
 
@@ -147,13 +203,18 @@ class InvalidRowsError extends Error {}
 class DuplicateColumnsError extends Error {}
 async function readPreparedRows(connection: Connection, statement: string, parameters: unknown[], maxRows: number, maxBytes: number): Promise<RowSet> {
   const preparedParameters = parameters as Array<string | number | boolean | Date | Buffer | null>;
-  const rawConnection = (connection as Connection & { connection?: RawConnection }).connection;
+  const rawConnection = (connection as Connection & { connection?: DriverConnection }).connection;
   if (!rawConnection) {
     const [rawRows, fields] = await connection.execute(statement, preparedParameters);
     return decodeRows(rawRows, fields, maxRows, maxBytes);
   }
   const command = rawConnection.execute(statement, preparedParameters);
   const stream = command.stream({ highWaterMark: 1 });
+  const onConnectionError = (error: Error) => stream.destroy(error);
+  const onSocketClose = () => stream.destroy(transportError('the MySQL connection closed before the statement completed', 'PROTOCOL_CONNECTION_LOST'));
+  rawConnection.on?.('error', onConnectionError);
+  rawConnection.stream?.on?.('close', onSocketClose);
+  if (rawConnection.stream?.destroyed) onSocketClose();
   let columns: Column[] = [];
   stream.on('fields', (fields: FieldPacket[] | undefined) => {
     columns = (fields ?? []).map(field => ({ name: field.name, typeName: mysqlTypeName(field) }));
@@ -161,13 +222,18 @@ async function readPreparedRows(connection: Connection, statement: string, param
   });
   const rows: Array<Record<string, unknown>> = [];
   let encodedBytes = 2;
-  for await (const raw of stream) {
-    if (columns.length === 0) continue;
-    if (rows.length === maxRows) { stream.destroy(); return { columns, rows, truncated: true }; }
-    const row = decodeRow(raw, columns);
-    encodedBytes += Buffer.byteLength(JSON.stringify(row)) + 1;
-    if (encodedBytes > maxBytes) { stream.destroy(); return { columns, rows, truncated: true }; }
-    rows.push(row);
+  try {
+    for await (const raw of stream) {
+      if (columns.length === 0) continue;
+      if (rows.length === maxRows) { stream.destroy(); return { columns, rows, truncated: true }; }
+      const row = decodeRow(raw, columns);
+      encodedBytes += Buffer.byteLength(JSON.stringify(row)) + 1;
+      if (encodedBytes > maxBytes) { stream.destroy(); return { columns, rows, truncated: true }; }
+      rows.push(row);
+    }
+  } finally {
+    rawConnection.off?.('error', onConnectionError);
+    rawConnection.stream?.off?.('close', onSocketClose);
   }
   return { columns, rows };
 }
