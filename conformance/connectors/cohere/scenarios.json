@@ -1,0 +1,947 @@
+{
+  "connector": "cohere",
+  "scenarios": [
+    {
+      "callId": "3bb2c01a-b38d-4e47-815e-7d41819865d9",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"embed_1\", \"embeddings\": {\"float\": [[0.1, 0.2], [0.3, 0.4]]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/embed",
+          "requestBody": {
+            "embedding_types": [
+              "float"
+            ],
+            "input_type": "search_query",
+            "model": "embed-v4.0",
+            "texts": [
+              "hello",
+              "world"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "embedded",
+        "failureKind": "",
+        "output": {
+          "embeddings": [
+            [
+              0.1,
+              0.2
+            ],
+            [
+              0.3,
+              0.4
+            ]
+          ],
+          "id": "embed_1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "input_type": "search_query",
+        "model": "embed-v4.0",
+        "texts": [
+          "hello",
+          "world"
+        ]
+      },
+      "name": "embed-success",
+      "operation": "embed"
+    },
+    {
+      "callId": "3bb2c01a-b38d-4e47-815e-7d41819865d9",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/embed",
+          "requestBody": {
+            "embedding_types": [
+              "float"
+            ],
+            "input_type": "search_query",
+            "model": "embed-v4.0",
+            "texts": [
+              "hello",
+              "world"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "embeddings": [],
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "input_type": "search_query",
+        "model": "embed-v4.0",
+        "texts": [
+          "hello",
+          "world"
+        ]
+      },
+      "name": "embed-authentication",
+      "operation": "embed"
+    },
+    {
+      "callId": "3bb2c01a-b38d-4e47-815e-7d41819865d9",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/embed",
+          "requestBody": {
+            "embedding_types": [
+              "float"
+            ],
+            "input_type": "search_query",
+            "model": "embed-v4.0",
+            "texts": [
+              "hello",
+              "world"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "embeddings": [],
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "input_type": "search_query",
+        "model": "embed-v4.0",
+        "texts": [
+          "hello",
+          "world"
+        ]
+      },
+      "name": "embed-authorization",
+      "operation": "embed"
+    },
+    {
+      "callId": "3bb2c01a-b38d-4e47-815e-7d41819865d9",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/embed",
+          "requestBody": {
+            "embedding_types": [
+              "float"
+            ],
+            "input_type": "search_query",
+            "model": "embed-v4.0",
+            "texts": [
+              "hello",
+              "world"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "embeddings": [],
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "input_type": "search_query",
+        "model": "embed-v4.0",
+        "texts": [
+          "hello",
+          "world"
+        ]
+      },
+      "name": "embed-rejected",
+      "operation": "embed"
+    },
+    {
+      "callId": "3bb2c01a-b38d-4e47-815e-7d41819865d9",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/embed",
+          "requestBody": {
+            "embedding_types": [
+              "float"
+            ],
+            "input_type": "search_query",
+            "model": "embed-v4.0",
+            "texts": [
+              "hello",
+              "world"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "embeddings": [],
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "input_type": "search_query",
+        "model": "embed-v4.0",
+        "texts": [
+          "hello",
+          "world"
+        ]
+      },
+      "name": "embed-invalid-response",
+      "operation": "embed"
+    },
+    {
+      "callId": "3bb2c01a-b38d-4e47-815e-7d41819865d9",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "embeddings": [],
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "input_type": "search_query",
+        "model": "  ",
+        "texts": [
+          "hello",
+          "world"
+        ]
+      },
+      "name": "embed-invalid-input",
+      "operation": "embed"
+    },
+    {
+      "callId": "3bb2c01a-b38d-4e47-815e-7d41819865d9",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SENTINEL\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/embed",
+          "requestBody": {
+            "embedding_types": [
+              "float"
+            ],
+            "input_type": "search_query",
+            "model": "embed-v4.0",
+            "texts": [
+              "hello",
+              "world"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "input_type": "search_query",
+        "model": "embed-v4.0",
+        "texts": [
+          "hello",
+          "world"
+        ]
+      },
+      "name": "embed-rate-limit",
+      "operation": "embed"
+    },
+    {
+      "callId": "3bb2c01a-b38d-4e47-815e-7d41819865d9",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/embed",
+          "requestBody": {
+            "embedding_types": [
+              "float"
+            ],
+            "input_type": "search_query",
+            "model": "embed-v4.0",
+            "texts": [
+              "hello",
+              "world"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "input_type": "search_query",
+        "model": "embed-v4.0",
+        "texts": [
+          "hello",
+          "world"
+        ]
+      },
+      "name": "embed-unavailable",
+      "operation": "embed"
+    },
+    {
+      "callId": "3bb2c01a-b38d-4e47-815e-7d41819865d9",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/embed",
+          "requestBody": {
+            "embedding_types": [
+              "float"
+            ],
+            "input_type": "search_query",
+            "model": "embed-v4.0",
+            "texts": [
+              "hello",
+              "world"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "input_type": "search_query",
+        "model": "embed-v4.0",
+        "texts": [
+          "hello",
+          "world"
+        ]
+      },
+      "name": "embed-transport-before-send",
+      "operation": "embed"
+    },
+    {
+      "callId": "3bb2c01a-b38d-4e47-815e-7d41819865d9",
+      "exchanges": [
+        {
+          "body": "{\"results\": [{\"index\": 1, \"relevance_score\": 0.9}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/rerank",
+          "requestBody": {
+            "documents": [
+              "weather",
+              "release note"
+            ],
+            "model": "rerank-v5.0-pro",
+            "query": "release",
+            "top_n": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "ranked",
+        "failureKind": "",
+        "output": {
+          "results": [
+            {
+              "index": 1,
+              "relevanceScore": 0.9
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "documents": [
+          "weather",
+          "release note"
+        ],
+        "model": "rerank-v5.0-pro",
+        "query": "release",
+        "top_n": 1
+      },
+      "name": "rerank-success",
+      "operation": "rerank"
+    },
+    {
+      "callId": "3bb2c01a-b38d-4e47-815e-7d41819865d9",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/rerank",
+          "requestBody": {
+            "documents": [
+              "weather",
+              "release note"
+            ],
+            "model": "rerank-v5.0-pro",
+            "query": "release",
+            "top_n": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "results": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "documents": [
+          "weather",
+          "release note"
+        ],
+        "model": "rerank-v5.0-pro",
+        "query": "release",
+        "top_n": 1
+      },
+      "name": "rerank-authentication",
+      "operation": "rerank"
+    },
+    {
+      "callId": "3bb2c01a-b38d-4e47-815e-7d41819865d9",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/rerank",
+          "requestBody": {
+            "documents": [
+              "weather",
+              "release note"
+            ],
+            "model": "rerank-v5.0-pro",
+            "query": "release",
+            "top_n": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "results": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "documents": [
+          "weather",
+          "release note"
+        ],
+        "model": "rerank-v5.0-pro",
+        "query": "release",
+        "top_n": 1
+      },
+      "name": "rerank-authorization",
+      "operation": "rerank"
+    },
+    {
+      "callId": "3bb2c01a-b38d-4e47-815e-7d41819865d9",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/rerank",
+          "requestBody": {
+            "documents": [
+              "weather",
+              "release note"
+            ],
+            "model": "rerank-v5.0-pro",
+            "query": "release",
+            "top_n": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "results": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "documents": [
+          "weather",
+          "release note"
+        ],
+        "model": "rerank-v5.0-pro",
+        "query": "release",
+        "top_n": 1
+      },
+      "name": "rerank-rejected",
+      "operation": "rerank"
+    },
+    {
+      "callId": "3bb2c01a-b38d-4e47-815e-7d41819865d9",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/rerank",
+          "requestBody": {
+            "documents": [
+              "weather",
+              "release note"
+            ],
+            "model": "rerank-v5.0-pro",
+            "query": "release",
+            "top_n": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "results": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "documents": [
+          "weather",
+          "release note"
+        ],
+        "model": "rerank-v5.0-pro",
+        "query": "release",
+        "top_n": 1
+      },
+      "name": "rerank-invalid-response",
+      "operation": "rerank"
+    },
+    {
+      "callId": "3bb2c01a-b38d-4e47-815e-7d41819865d9",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "results": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "documents": [
+          "weather",
+          "release note"
+        ],
+        "model": "  ",
+        "query": "release",
+        "top_n": 1
+      },
+      "name": "rerank-invalid-input",
+      "operation": "rerank"
+    },
+    {
+      "callId": "3bb2c01a-b38d-4e47-815e-7d41819865d9",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SENTINEL\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/rerank",
+          "requestBody": {
+            "documents": [
+              "weather",
+              "release note"
+            ],
+            "model": "rerank-v5.0-pro",
+            "query": "release",
+            "top_n": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "documents": [
+          "weather",
+          "release note"
+        ],
+        "model": "rerank-v5.0-pro",
+        "query": "release",
+        "top_n": 1
+      },
+      "name": "rerank-rate-limit",
+      "operation": "rerank"
+    },
+    {
+      "callId": "3bb2c01a-b38d-4e47-815e-7d41819865d9",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/rerank",
+          "requestBody": {
+            "documents": [
+              "weather",
+              "release note"
+            ],
+            "model": "rerank-v5.0-pro",
+            "query": "release",
+            "top_n": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "documents": [
+          "weather",
+          "release note"
+        ],
+        "model": "rerank-v5.0-pro",
+        "query": "release",
+        "top_n": 1
+      },
+      "name": "rerank-unavailable",
+      "operation": "rerank"
+    },
+    {
+      "callId": "3bb2c01a-b38d-4e47-815e-7d41819865d9",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/rerank",
+          "requestBody": {
+            "documents": [
+              "weather",
+              "release note"
+            ],
+            "model": "rerank-v5.0-pro",
+            "query": "release",
+            "top_n": 1
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "documents": [
+          "weather",
+          "release note"
+        ],
+        "model": "rerank-v5.0-pro",
+        "query": "release",
+        "top_n": 1
+      },
+      "name": "rerank-transport-before-send",
+      "operation": "rerank"
+    }
+  ],
+  "schemaVersion": 1
+}

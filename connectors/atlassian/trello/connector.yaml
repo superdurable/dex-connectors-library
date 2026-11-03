@@ -8,6 +8,15 @@ metadata:
   version: v0.23.0
 spec:
   provider: trello
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listCards, getCard, createCard, updateCard, addComment]
+      triggers: []
+    typescript:
+      version: v0.1.1
+      operations: [listCards, getCard, createCard, updateCard, addComment]
+      triggers: []
   codegen:
     go:
       package: trello

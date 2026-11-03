@@ -1,5 +1,7 @@
 # Asana Connector
 
+TypeScript: install `@superdurable/connector-asana@0.1.0`. Its [package README](typescript/README.md) and [runnable approved-request example](typescript/examples/approved-request-task/README.md) cover all five operations. Go and TypeScript share recorded provider conformance scenarios; the TypeScript example was exercised with a real Dex Worker and a local Asana stand-in. Live Asana behavior remains unverified for the TypeScript port.
+
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/asana/go@v0.23.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/asana`.
@@ -275,6 +277,27 @@ approved request into a task: it pages through the project's incomplete tasks
 for one that already carries the request ID, creates the task once, assigns it
 and moves it to the picked section, and comments with the approval. It uses all
 five operations and composes the `projectPicker` unit.
+
+## Python package
+
+The `python/` package releases independently as `dex-connector-asana` v0.1.0.
+It implements `listTasks`, `getTask`, `createTask`, `updateTask`, and
+`addComment`; it declares no Triggers. Import `dex_connectors.asana` and bind
+the generated operation-specific Step factories to one `Connection` or
+`new_project_connection`. The package resolves the personal access token for
+each call and never sends its Call ID as an Asana idempotency header.
+
+[`python/examples/approved_task`](python/examples/approved_task) is the runnable
+Python Flow. Its static connection name is `asana-tasks`; it reads a project
+page, creates a task, moves it to the approved section, comments, and reads
+back the task. Its real Dex Worker and Client integration test uses a fake
+Asana endpoint. See the [example instructions](python/examples/approved_task/README.md)
+for setup and commands. The Go-recorded provider replay scenarios under
+`conformance/connectors/asana/` verify exact Python requests and outcomes.
+
+The Python package has not been tested against a live Asana account. In
+particular, the five real endpoint responses, rate-limit behavior, and
+read-back after a lost create or comment result remain unverified live.
 
 ## Verification
 
