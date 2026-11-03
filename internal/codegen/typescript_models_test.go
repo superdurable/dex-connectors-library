@@ -4,12 +4,94 @@
 package codegen
 
 import (
+	"bytes"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/superdurable/dex-connectors-library/internal/codegen/gomodel"
 	"github.com/superdurable/dex-connectors-library/schema"
 )
+
+func TestTypeScriptMultiAuthModelsGolden(t *testing.T) {
+	manifestFile, err := os.Open(filepath.Join("..", "..", "schema", "testdata", "multi-auth.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer manifestFile.Close()
+	manifest, err := schema.Decode(manifestFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest.Spec.Configuration.Fields = []schema.Field{
+		{Name: "region", GoName: "Region", Type: "string", Description: "Optional region.", Required: false},
+		{Name: "accountId", GoName: "AccountID", Type: "string", Description: "Required account ID.", Required: true},
+	}
+	manifest.Spec.Auth.Methods[0].Configuration = &schema.Configuration{Fields: []schema.Field{{Name: "workspaceId", GoName: "WorkspaceID", Type: "string", Description: "Workspace for the selected method.", Required: true}}}
+	manifest.Spec.Auth.Methods[1].Fields = append(manifest.Spec.Auth.Methods[1].Fields, schema.Field{Name: "session_note", GoName: "SessionNote", Type: "string", Description: "Optional session note.", Required: false})
+	got := append(bytes.TrimRight(generateTypeScriptModels(manifest, nil), "\n"), '\n')
+	goldenPath := filepath.Join("testdata", "multi-auth-models.ts")
+	if os.Getenv("UPDATE_MULTI_AUTH_GOLDEN") == "1" {
+		if err := os.WriteFile(goldenPath, got, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	want, err := os.ReadFile(goldenPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != string(want) {
+		t.Fatal("multi-auth TypeScript models differ from golden output")
+	}
+	if os.Getenv("TS_CODEGEN_COMPILE") != "1" {
+		return
+	}
+	stripeDirectory, err := filepath.Abs(filepath.Join("..", "..", "connectors", "stripe", "typescript"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixtureDirectory := t.TempDir()
+	if err := os.Symlink(filepath.Join(stripeDirectory, "node_modules"), filepath.Join(fixtureDirectory, "node_modules")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(fixtureDirectory, "package.json"), []byte(`{"type":"module"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(fixtureDirectory, "models.ts"), got, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(fixtureDirectory, "test.ts"), []byte(multiAuthTypeScriptRuntimeTest), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	command := exec.Command(filepath.Join(stripeDirectory, "node_modules", ".bin", "tsx"), "test.ts")
+	command.Dir = fixtureDirectory
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("generated multi-auth TypeScript credential behavior: %v\n%s", err, output)
+	}
+}
+
+const multiAuthTypeScriptRuntimeTest = `
+import assert from 'node:assert/strict';
+import { ConfigSchema, decodeCredentials } from './models.js';
+assert.deepEqual(ConfigSchema.parse({ accountId: 'account' }), { accountId: 'account' });
+assert.equal(ConfigSchema.parse({ accountId: 'account', region: 'west', workspaceId: 'workspace' }).region, 'west');
+assert.throws(() => ConfigSchema.parse({}));
+const oauth = decodeCredentials({ auth_method: null, oauth_client_id: 'id', oauth_client_secret: 'secret', access_token: 'access', refresh_token: 'refresh', service_account_key: 17 });
+assert.equal(oauth.authMethodId, 'google-oauth');
+assert.equal(oauth.serviceAccountKey, undefined);
+const service = decodeCredentials({ auth_method: 'workspace-service-account', service_account_key: 'key', delegated_user: 'user', session_note: 'note', oauth_client_id: 17 });
+assert.equal(service.authMethodId, 'workspace-service-account');
+assert.equal(service.serviceAccountKey?.reveal(), 'key');
+assert.equal(service.sessionNote, 'note');
+assert.equal(service.oauthClientId, undefined);
+assert.equal(decodeCredentials({ auth_method: 'workspace-service-account', service_account_key: 'key', delegated_user: 'user', session_note: null }).sessionNote, undefined);
+assert.throws(() => decodeCredentials({ auth_method: 'workspace-service-account', service_account_key: null, delegated_user: 'user' }), /credential service_account_key is required/);
+assert.throws(() => decodeCredentials({ auth_method: 'workspace-service-account', delegated_user: 'user' }));
+assert.throws(() => decodeCredentials({ auth_method: 'unknown' }));
+assert.throws(() => decodeCredentials({ auth_method: 0 }));
+`
 
 func TestTypeScriptModelsKeepRequiredFieldsAndLimitLazyToCycles(t *testing.T) {
 	models := []gomodel.Model{

@@ -39,6 +39,9 @@ empty fields from every record it returns, so a missing key means an empty
 field. A write rejects the zero `CellValue`, so a forgotten value never clears
 a field.
 
+The Python package is [`dex-connector-airtable`](python/README.md), imported as
+`dex_connectors.airtable`.
+
 ## Mocks
 
 The generated [`airtablemock`](go/airtablemock) package supplies one refund policy

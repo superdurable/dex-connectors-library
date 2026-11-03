@@ -33,7 +33,7 @@ export class AddressRefusal extends Error {
 
 /** Sanitized transport failure with positive evidence about dispatch. */
 export class ProviderTransportError extends Error {
-  /** True only when no socket was assigned to the request. */
+  /** True only when the request failed before a usable connection could send HTTP bytes. */
   constructor(readonly isProvablyNotSent: boolean) {
     super('provider request failed in transport');
     this.name = 'ProviderTransportError';
@@ -145,10 +145,12 @@ export async function sendProviderRequest(request: ProviderRequest): Promise<Pro
   if (!selected) throw new AddressRefusal('host has no resolved address');
   const options: RequestOptions = {
     method: request.method, headers: request.headers, signal,
-    lookup: (_hostname, _options, callback) => callback(null, selected.address, selected.family),
+    lookup: (_hostname, options, callback) => options?.all
+      ? callback(null, [{ address: selected.address, family: selected.family }])
+      : callback(null, selected.address, selected.family),
   };
   return new Promise((resolve, reject) => {
-    let hasSocket = false;
+    let hasConnected = false;
     let hasWrittenRequest = false;
     let clientRequest: ClientRequest;
     try {
@@ -161,11 +163,14 @@ export async function sendProviderRequest(request: ProviderRequest): Promise<Pro
         });
       });
     } catch { reject(new ProviderTransportError(true)); return; }
-    clientRequest.on('socket', () => { hasSocket = true; });
+    clientRequest.on('socket', socket => {
+      if (!socket.connecting) hasConnected = true;
+      socket.once(parsed.protocol === 'https:' ? 'secureConnect' : 'connect', () => { hasConnected = true; });
+    });
     clientRequest.on('finish', () => { hasWrittenRequest = true; });
-    clientRequest.on('error', () => reject(new ProviderTransportError(!hasSocket && !hasWrittenRequest)));
+    clientRequest.on('error', () => reject(new ProviderTransportError(!hasConnected && !hasWrittenRequest)));
     try { clientRequest.end(request.body); }
-    catch { reject(new ProviderTransportError(!hasSocket && !hasWrittenRequest)); }
+    catch { reject(new ProviderTransportError(!hasConnected && !hasWrittenRequest)); }
   });
 }
 
