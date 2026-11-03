@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-cloudflare",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "MIT",
   "description": "Cloudflare zone and cache operations for Dex Flows",
   "repository": {
@@ -45,7 +45,7 @@
     "example:lookup:start": "npm run build && tsx examples/cloudflare-lookup/start.ts"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.1.0",
+    "@superdurable/connectors-sdk": "0.1.1",
     "@superdurable/dex": ">=1.28.0",
     "zod": "^4.1.0"
   },
