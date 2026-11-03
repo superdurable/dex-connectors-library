@@ -4,10 +4,13 @@
 package openai
 
 import (
+	contextpkg "context"
 	"net/http"
 	"net/http/httptrace"
+	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/openai/go/internal/testsupport"
@@ -28,6 +31,11 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	}, WithHTTPClient(&clientTransport))
 	require.NoError(t, err)
 	context := testsupport.NewDexContext("conformance-flow", "openai-response")
+	if strings.HasSuffix(scenario.Name, "-deadline") {
+		deadlineContext, cancel := contextpkg.WithTimeout(context.Context, 6*time.Second)
+		t.Cleanup(cancel)
+		context.Context = deadlineContext
+	}
 	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
 		context.AttemptNo = int32(attempt)
 	}, actions: map[string]conformanceOperationInvocation{

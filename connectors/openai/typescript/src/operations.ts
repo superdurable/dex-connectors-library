@@ -18,13 +18,15 @@ class CheckpointHeartbeat {
   private pending: Promise<void> = Promise.resolve();
   constructor(private readonly call: Call) {}
   async begin(checkpoint: Checkpoint): Promise<void> {
-    await this.record(checkpoint);
-    this.timer = setInterval(() => {
-      if (this.checkpoint) this.pending = this.pending.then(async () => {
-        try { if (this.checkpoint) await this.call.context.recordHeartbeat(this.checkpoint); }
-        catch { /* A later heartbeat can still refresh the checkpoint. */ }
-      });
-    }, 5000);
+    try { await this.record(checkpoint); }
+    finally {
+      this.timer = setInterval(() => {
+        if (this.checkpoint) this.pending = this.pending.then(async () => {
+          try { if (this.checkpoint) await this.call.context.recordHeartbeat(this.checkpoint); }
+          catch { /* A later heartbeat can still refresh the checkpoint. */ }
+        });
+      }, 5000);
+    }
   }
   async record(checkpoint: Checkpoint): Promise<void> { this.checkpoint = checkpoint; await this.call.context.recordHeartbeat(checkpoint); }
   async responseId(id: string): Promise<void> { await this.record({ callId: this.call.id, attempt: this.call.context.attempt, responseId: id }); }
@@ -49,9 +51,10 @@ export class CreateResponseOperation implements Mutation<CreateRequest, Response
     if (streaming) payload.stream = true;
     let previous: Checkpoint | undefined;
     try {
-      if (call.context.hasLastHeartbeatValue()) previous = call.context.getLastHeartbeatValue() as Checkpoint;
+      const raw = call.context.hasLastHeartbeatValue() ? call.context.getLastHeartbeatValue() : undefined;
+      previous = raw == null ? undefined : raw as Checkpoint;
     } catch { return this.branch(call, 'defect', emptyResponse, 'LOCAL_DEFECT', "the Step's heartbeat value is not this call's checkpoint; createResponse must be the Step's only heartbeat writer", false); }
-    if (previous && previous.callId !== call.id) return this.branch(call, 'defect', emptyResponse, 'LOCAL_DEFECT', "the Step's heartbeat value is not this call's checkpoint; createResponse must be the Step's only heartbeat writer", false);
+    if (previous !== undefined && (typeof previous !== 'object' || Array.isArray(previous) || previous.callId !== call.id)) return this.branch(call, 'defect', emptyResponse, 'LOCAL_DEFECT', "the Step's heartbeat value is not this call's checkpoint; createResponse must be the Step's only heartbeat writer", false);
     const heartbeat = new CheckpointHeartbeat(call);
     try {
       if (previous?.responseId) {
@@ -80,8 +83,8 @@ export class CreateResponseOperation implements Mutation<CreateRequest, Response
     try { response = await this.client.sendPreparedRequest(prepared); }
     catch (error) {
       if (error instanceof ProviderTransportError && error.isProvablyNotSent) return this.retry(heartbeat, 'TRANSPORT', 'request was not sent');
-      if (stream?.responseId) { await stream.waitForCheckpoint(); return this.readBack(call, heartbeat, stream.responseId); }
-      if (error instanceof BodyTooLargeError) return newMutationUncertain(emptyResponse, openAIFailure('RESPONSE_TOO_LARGE', 'createResponse', 'provider response exceeds the configured size limit'), this.client.receipt(call, undefined));
+      if (stream?.responseId) { await stream.waitForCheckpoint(); return this.readBack(call, heartbeat, stream.responseId, stream.responseHeaders ? { status: stream.responseStatus, headers: stream.responseHeaders, body: new Uint8Array() } : undefined); }
+      if (error instanceof BodyTooLargeError) return newMutationUncertain(emptyResponse, openAIFailure('RESPONSE_TOO_LARGE', 'createResponse', 'provider response exceeds the configured size limit'), this.client.receipt(call, { status: error.status ?? 200, headers: error.headers ?? {}, body: new Uint8Array() }));
       return newMutationUncertain(emptyResponse, openAIFailure('TRANSPORT', 'createResponse', 'provider outcome is unknown'), this.client.receipt(call, undefined));
     }
     if (response.status < 200 || response.status >= 300) {
@@ -183,6 +186,8 @@ function classifyStatus(operation: string, response: ProviderResponse, client: O
 
 class ResponseStream {
   responseId = '';
+  responseStatus = 0;
+  responseHeaders: ProviderResponse['headers'] | undefined;
   private pendingCheckpoint: Promise<void> = Promise.resolve();
   private readonly decoder = new TextDecoder();
   private source = '';
@@ -192,7 +197,9 @@ class ResponseStream {
   private isDeliveryStopped = false;
   constructor(private readonly call: Call, private readonly heartbeat: CheckpointHeartbeat, private readonly client: OpenAIClient) {}
   async waitForCheckpoint(): Promise<void> { await this.pendingCheckpoint; }
-  readonly onChunk = (chunk: Uint8Array, status: number): boolean => {
+  readonly onChunk: NonNullable<ProviderRequest['onResponseChunk']> = (chunk, status, headers) => {
+    this.responseStatus = status;
+    this.responseHeaders = headers;
     if (status < 200 || status >= 300) return true;
     this.totalBytes += chunk.length;
     if (this.totalBytes > this.client.maxResponseBytes) { this.error = 'stream exceeds the configured size limit'; return true; }
@@ -216,7 +223,7 @@ class ResponseStream {
       if (event.type === 'error') { this.error = 'provider streamed an error before naming a response, which may exist'; continue; }
       if (!this.isDeliveryStopped && typeof event.type === 'string') {
         try {
-          if (['response.created', 'response.queued', 'response.in_progress'].includes(event.type)) this.call.reportProgress({ phase: event.type, message: typeof (wire as Record<string, unknown> | undefined)?.status === 'string' ? String((wire as Record<string, unknown>).status) : '' });
+          if (['response.created', 'response.queued', 'response.in_progress'].includes(event.type)) this.call.reportProgress({ phase: event.type, message: typeof (wire as Record<string, unknown> | undefined)?.status === 'string' ? String((wire as Record<string, unknown>).status) : '', ...(typeof event.sequence_number === 'number' ? { providerSequence: event.sequence_number } : {}) });
           if (event.type === 'response.output_text.delta' && typeof event.delta === 'string') this.call.writeText(event.delta);
         } catch { this.isDeliveryStopped = true; }
       }

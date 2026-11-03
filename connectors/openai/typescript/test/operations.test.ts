@@ -1,11 +1,11 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { once } from 'node:events';
 import { createServer } from 'node:http';
 import { SecretString, type Call } from '@superdurable/connectors-sdk';
-import { ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderTransportError, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { OpenAIClient, pathEscape } from '../src/client.js';
 import type { CreateRequest } from '../src/generated/models.js';
 import { Mock, validateCreateResponseAnswer, validateCreateResponseRequest } from '../src/mock.js';
@@ -17,6 +17,7 @@ function call(attempt = 1, previous?: unknown, streaming = false) {
   let marker = previous;
   const heartbeats: unknown[] = [];
   const texts: string[] = [];
+  const progresses: unknown[] = [];
   const context = {
     attempt, deadline: new Date(Date.now() + 20_000), cancellationSignal: new AbortController().signal,
     hasLastHeartbeatValue: () => marker !== undefined, getLastHeartbeatValue: () => marker,
@@ -24,9 +25,9 @@ function call(attempt = 1, previous?: unknown, streaming = false) {
   };
   const invocation = { id: '8a771c3d-aac1-5b5a-97fd-182c7091fa9e', idempotencyKey: '8a771c3d-aac1-5b5a-97fd-182c7091fa9e',
     operation: { connectorId: 'openai', operationId: 'createResponse' }, connection: { provider: 'openai', name: 'openai' }, context,
-    reportProgress() {}, writeText(value: string) { texts.push(value); }, hasProgressStream: () => false, hasTextStream: () => streaming,
+    reportProgress(value: unknown) { progresses.push(value); }, writeText(value: string) { texts.push(value); }, hasProgressStream: () => false, hasTextStream: () => streaming,
   } as unknown as Call;
-  return { invocation, heartbeats, texts };
+  return { invocation, heartbeats, texts, progresses };
 }
 
 function client(send: (request: ProviderRequest) => Promise<ProviderResponse>): OpenAIClient {
@@ -45,10 +46,43 @@ describe('createResponse checkpoint recovery', () => {
     expect(heartbeats).toContainEqual({ callId: invocation.id, attempt: 2, responseId: 'resp_123' });
   });
 
+  it('keeps heartbeating during read-back when the first record fails', async () => {
+    const { invocation } = call(2, { callId: '8a771c3d-aac1-5b5a-97fd-182c7091fa9e', attempt: 1, responseId: 'resp_123' });
+    let heartbeatCount = 0;
+    const context = invocation.context as { recordHeartbeat: (value: unknown) => Promise<void> };
+    context.recordHeartbeat = async () => { if (++heartbeatCount === 1) throw new Error('transient heartbeat failure'); };
+    const provider = client(async () => {
+      await new Promise(resolve => setTimeout(resolve, 5500));
+      return { status: 200, headers: {}, body: Buffer.from(JSON.stringify(wire)) };
+    });
+    vi.useFakeTimers();
+    try {
+      const resultPromise = provider.createResponse().invoke(invocation, input);
+      await vi.advanceTimersByTimeAsync(5500);
+      const result = await resultPromise;
+      expect(result.kind).toBe('branch');
+      expect(heartbeatCount).toBeGreaterThanOrEqual(2);
+    } finally { vi.useRealTimers(); }
+  });
+
   it('fails closed without a checkpoint after the first attempt', async () => {
     const provider = client(async () => { throw new Error('unexpected send'); });
     const result = await provider.createResponse().invoke(call(2).invocation, input);
     expect(result.kind).toBe('uncertain');
+  });
+
+  it('treats a cleared checkpoint as absent and rejects scalar checkpoints', async () => {
+    const methods: string[] = [];
+    const provider = client(async request => { methods.push(request.method); return { status: 200, headers: {}, body: Buffer.from(JSON.stringify(wire)) }; });
+    const cleared = await provider.createResponse().invoke(call(1, null).invocation, input);
+    expect(cleared.kind).toBe('branch');
+    expect(methods).toEqual(['POST']);
+    for (const marker of [0, '']) {
+      const invalid = await provider.createResponse().invoke(call(1, marker).invocation, input);
+      expect(invalid.kind).toBe('branch');
+      if (invalid.kind === 'branch') expect(invalid.branch).toBe('defect');
+    }
+    expect(methods).toEqual(['POST']);
   });
 
   it('retries only a transport failure proved to be before-send', async () => {
@@ -62,19 +96,49 @@ describe('createResponse checkpoint recovery', () => {
   it('decodes streamed text and checkpoints its response ID', async () => {
     const provider = client(async request => {
       const events = [
-        { type: 'response.created', response: { id: 'resp_123', status: 'in_progress' } },
+        { type: 'response.created', sequence_number: 12, response: { id: 'resp_123', status: 'in_progress' } },
         { type: 'response.output_text.delta', delta: 'Done.' },
         { type: 'response.completed', response: wire },
       ].map(event => `data: ${JSON.stringify(event)}\n\n`).join('');
       request.onResponseChunk?.(Buffer.from(events), 200, {});
       return { status: 200, headers: {}, body: Buffer.from(events) };
     });
-    const { invocation, heartbeats, texts } = call(1, undefined, true);
+    const { invocation, heartbeats, texts, progresses } = call(1, undefined, true);
     const result = await provider.createResponse().invoke(invocation, input);
     expect(result.kind).toBe('branch');
     if (result.kind === 'branch') expect(result.branch).toBe('completed');
     expect(texts).toEqual(['Done.']);
+    expect(progresses).toContainEqual({ phase: 'response.created', message: 'in_progress', providerSequence: 12 });
     expect(heartbeats).toContainEqual({ callId: invocation.id, attempt: 1, responseId: 'resp_123' });
+  });
+
+  it('keeps create headers when a known stream is read back after transport failure', async () => {
+    const methods: string[] = [];
+    const provider = client(async request => {
+      methods.push(request.method);
+      if (request.method === 'POST') {
+        request.onResponseChunk?.(Buffer.from('data: {"type":"response.created","response":{"id":"resp_123","status":"in_progress"}}\n\n'), 200, { 'x-request-id': 'req_create', 'x-ratelimit-remaining-tokens': '90' });
+        throw new ProviderTransportError(false);
+      }
+      return { status: 200, headers: {}, body: Buffer.from(JSON.stringify(wire)) };
+    });
+    const result = await provider.createResponse().invoke(call(1, undefined, true).invocation, input);
+    expect(methods).toEqual(['POST', 'GET']);
+    expect(result.kind).toBe('branch');
+    if (result.kind === 'branch') {
+      expect(result.receipt.providerRequestId).toBe('req_create');
+      expect(result.receipt.metadata?.['x-ratelimit-remaining-tokens']).toBe('90');
+    }
+  });
+
+  it('keeps create headers on an oversized body with no response ID', async () => {
+    const provider = client(async () => { throw new BodyTooLargeError(200, { 'x-request-id': 'req_large', 'x-ratelimit-remaining-tokens': '80' }); });
+    const result = await provider.createResponse().invoke(call().invocation, input);
+    expect(result.kind).toBe('uncertain');
+    if (result.kind === 'uncertain') {
+      expect(result.receipt.providerRequestId).toBe('req_large');
+      expect(result.receipt.metadata?.['x-ratelimit-remaining-tokens']).toBe('80');
+    }
   });
 });
 

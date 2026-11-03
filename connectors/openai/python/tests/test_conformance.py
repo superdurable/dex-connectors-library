@@ -80,6 +80,8 @@ async def test_connector_conformance(scenario: dict[str, Any]) -> None:
     """Compare provider requests, checkpoints, and outcomes to the Go recording."""
     recorder = conformance.ExchangeRecorder(scenario, scenario["callId"], "/v1")
     context = OpenAIHeartbeatContext()
+    if scenario["name"].endswith("-deadline"):
+        context.deadline = datetime.now(UTC) + timedelta(seconds=6)
     for intermediate in scenario.get("intermediate", []):
         attempt = await invoke_openai(scenario, recorder, context)
         conformance.assert_attempt(attempt, {"retry": True, "uncertain": False, "branch": "", **intermediate})

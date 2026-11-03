@@ -15,6 +15,7 @@ const noProgress = { reportProgress() {}, writeText() {}, hasProgressStream: () 
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeOpenAI, '/v1'));
 
 async function invokeOpenAI(scenario: Scenario, recorder: ExchangeRecorder, context: HeartbeatContext) {
+  if (scenario.name.endsWith('-deadline')) Object.defineProperty(context, 'deadline', { value: new Date(Date.now() + 5500), configurable: true });
   const send = (request: ProviderRequest) => answerRecordedRequest(recorder, request, before => new ProviderTransportError(before));
   const client = new OpenAIClient({ endpoint: 'http://127.0.0.1:12345/v1' }, {
     resolve: async () => ({ apiKey: new SecretString('test-secret-key') }),
