@@ -18,6 +18,15 @@ describe('Square client', () => {
     expect(result.kind).toBe('branch');
     expect(requests).toEqual([{ url: 'http://127.0.0.1:28710/v2/payments/a%21$&+%2C:%3B=@b', timeoutMs: 1450 }]);
   });
+  it('uses Go query escaping for payment cursors', async () => {
+    const requests: string[] = [];
+    const client = new Client({ baseUrl: 'http://127.0.0.1:28710/v2' }, credentials, {
+      send: async request => { requests.push(request.url); return { status: 200, headers: {}, body: Buffer.from('{"payments":[],"cursor":""}') }; },
+    });
+    const result = await client.listPayments().invoke(call, { cursor: "a*~ !'()+b" });
+    expect(result.kind).toBe('branch');
+    expect(requests).toEqual(['http://127.0.0.1:28710/v2/payments?cursor=a%2A~+%21%27%28%29%2Bb']);
+  });
   it('classifies an oversized 429 by status before body size', async () => {
     const client = new Client({ baseUrl: 'http://127.0.0.1:28710/v2', maxResponseBytes: 1 }, credentials, {
       send: async () => ({ status: 429, headers: { 'retry-after': '2' }, body: Buffer.alloc(100_000) }),

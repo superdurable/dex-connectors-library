@@ -77,7 +77,7 @@ export class ListPaymentsOperation implements Query<ListPaymentsInput, PaymentPa
   /** Manifest operation definition. */ definition() { return ListPaymentsDefinition; }
   /** Read one payment page. */
   invoke(call: Call, input: ListPaymentsInput): Promise<QueryAttempt<PaymentPage>> {
-    const query = input.cursor ? `?cursor=${new URLSearchParams({ cursor: input.cursor }).toString().slice(7)}` : '';
+    const query = input.cursor ? `?cursor=${encodeURIComponent(input.cursor).replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`).replace(/%20/g, '+')}` : '';
     return this.client.read(call, 'listPayments', `/payments${query}`, 'listed', zeroPage, decodePage);
   }
 }
