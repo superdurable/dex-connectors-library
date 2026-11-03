@@ -30,3 +30,22 @@ it('ignores a successful DELETE body as Go does', async () => {
   expect(answer.status).toBe(204);
   expect(answer.failure).toBeUndefined();
 });
+
+// Go strings.TrimSpace yields blank only for the first two entries.
+it.each([
+  ['\u0085', true], [' \u0085 ', true], ['\ufeff', false], [' \ufeff ', false],
+  ['\u200b', false], ['\u00a0', true], ['\u180e', false],
+])('matches Go task-content whitespace for %j', async (content, isBlank) => {
+  let requestCount = 0;
+  const client = new TodoistClient({}, { resolve: async () => ({ apiToken: new SecretString('inert-token') }) }, {
+    send: async () => { requestCount++; return { status: 400, headers: {}, body: Buffer.from('') }; },
+  });
+  const mutationCall = { ...call, idempotencyKey: '12345678-1234-1234-1234-123456789abc' } as Call;
+  const update = await client.updateTaskContent().invoke(mutationCall, { taskId: 'task-123', content });
+  const create = await client.createTask().invoke(mutationCall, { content });
+  expect(update.kind).toBe('branch');
+  expect(create.kind).toBe('branch');
+  if (update.kind === 'branch') expect(update.branch).toBe(isBlank ? 'defect' : 'providerRejected');
+  if (create.kind === 'branch') expect(create.branch).toBe(isBlank ? 'defect' : 'providerRejected');
+  expect(requestCount).toBe(isBlank ? 0 : 2);
+});

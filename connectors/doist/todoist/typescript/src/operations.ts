@@ -36,7 +36,7 @@ export class UpdateTaskOperation implements Mutation<UpdateTaskInput, Task> {
   /** Update and classify one provider attempt. */
   async invoke(call: Call, input: UpdateTaskInput): Promise<MutationAttempt<Task>> {
     const operation = 'updateTaskContent';
-    if (!isTaskID(input.taskId) || input.content === undefined && input.description === undefined || input.content !== undefined && (!isValidUTF8(input.content) || !input.content.trim()) || input.description !== undefined && !isValidUTF8(input.description)) {
+    if (!isTaskID(input.taskId) || input.content === undefined && input.description === undefined || input.content !== undefined && (!isValidUTF8(input.content) || !trimGoSpace(input.content)) || input.description !== undefined && !isValidUTF8(input.description)) {
       return newMutationBranch('defect', emptyTask, zeroReceipt(), todoistFailure(operation, 'VALIDATION', 'taskId and at least one valid field are required; specified content must be non-blank UTF-8'));
     }
     const payload = Buffer.from(JSON.stringify({ ...(input.content !== undefined ? { content: input.content } : {}), ...(input.description !== undefined ? { description: input.description } : {}) }));
@@ -99,7 +99,7 @@ export class CreateTaskOperation implements Mutation<CreateTaskInput, Task> {
   /** Create or classify one request without repeating an uncertain write. */
   async invoke(call: Call, input: CreateTaskInput): Promise<MutationAttempt<Task>> {
     const operation = 'createTask';
-    if (!isValidUTF8(input.content) || !input.content.trim() || !isValidUTF8(input.description ?? '') || input.projectId && !isTaskID(input.projectId) || !requestIDPattern.test(call.idempotencyKey ?? '')) {
+    if (!isValidUTF8(input.content) || !trimGoSpace(input.content) || !isValidUTF8(input.description ?? '') || input.projectId && !isTaskID(input.projectId) || !requestIDPattern.test(call.idempotencyKey ?? '')) {
       return newMutationBranch('defect', emptyTask, zeroReceipt(), todoistFailure(operation, 'VALIDATION', 'valid content, description, projectId, and stable request identity are required'));
     }
     const payload = Buffer.from(JSON.stringify({ content: input.content, ...(input.description ? { description: input.description } : {}), ...(input.projectId ? { project_id: input.projectId } : {}) }));
@@ -146,3 +146,4 @@ export class DeleteTaskOperation implements Mutation<DeleteTaskInput, DeleteTask
 
 function isSuccess(status: number): boolean { return status >= 200 && status < 300; }
 function matchesUpdate(task: Task, input: UpdateTaskInput): boolean { return (input.content === undefined || task.content === input.content) && (input.description === undefined || task.description === input.description); }
+function trimGoSpace(value: string): string { return value.replace(/^\p{White_Space}+|\p{White_Space}+$/gu, ''); }

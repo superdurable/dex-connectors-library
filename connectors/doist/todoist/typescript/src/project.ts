@@ -32,15 +32,15 @@ export function newProjectConnection(project: LoadedProject, connectionName: str
 }
 
 function parseDurationMilliseconds(value: string): number {
-  let remaining = value;
+  let remaining = value.startsWith('+') ? value.slice(1) : value;
   let milliseconds = 0;
-  const units: Record<string, number> = { ns: 0.000001, us: 0.001, 'µs': 0.001, ms: 1, s: 1_000, m: 60_000, h: 3_600_000 };
+  const units: Record<string, number> = { ns: 0.000001, us: 0.001, 'µs': 0.001, 'μs': 0.001, ms: 1, s: 1_000, m: 60_000, h: 3_600_000 };
   while (remaining) {
-    const component = /^(\d+(?:\.\d+)?)(ns|us|µs|ms|s|m|h)/.exec(remaining);
+    const component = /^(\d+(?:\.\d*)?|\.\d+)(ns|us|µs|μs|ms|s|m|h)/.exec(remaining);
     if (!component) throw new TypeError('Todoist timeout must be a positive Go duration');
     milliseconds += Number(component[1]) * (units[component[2] ?? ''] ?? NaN);
     remaining = remaining.slice(component[0].length);
   }
-  if (!Number.isSafeInteger(milliseconds) || milliseconds <= 0) throw new TypeError('Todoist timeout must resolve to positive whole milliseconds');
-  return milliseconds;
+  if (!Number.isFinite(milliseconds) || milliseconds <= 0 || !Number.isSafeInteger(Math.ceil(milliseconds))) throw new TypeError('Todoist timeout must resolve to positive milliseconds');
+  return Math.max(1, Math.ceil(milliseconds));
 }
