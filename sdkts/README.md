@@ -283,6 +283,8 @@ await fence.recordProviderId(result.providerId);
 
 ### 0.3.0
 
+Public HTTPS address checks now refuse the IPv4 broadcast address, matching Go's global-unicast rule.
+
 Adds opt-in draining of oversized Provider HTTP responses with bounded cancellation and byte-exact chunk callbacks. OAuth refresh declaration support is planned for the same SDK release.
 
 ### 0.2.0

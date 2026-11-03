@@ -17,6 +17,22 @@ const servers: ReturnType<typeof createServer>[] = [];
 afterEach(async () => { await Promise.all(servers.splice(0).map(server => new Promise<void>(resolve => server.close(() => resolve())))); });
 
 describe('provider HTTP', () => {
+  it('matches Go public HTTPS address admission', () => {
+    const cases: Array<[string, boolean]> = [
+      ['8.8.8.8', true], ['2001:4860:4860::8888', true], ['::ffff:8.8.8.8', true],
+      ['127.0.0.1', false], ['::1', false], ['10.1.2.3', false], ['172.16.0.5', false],
+      ['192.168.1.1', false], ['fd12:3456::1', false], ['::ffff:10.0.0.1', false],
+      ['100.64.0.1', false], ['169.254.169.254', false], ['fe80::1', false],
+      ['::ffff:169.254.169.254', false], ['fd00:ec2::254', false],
+      ['0.0.0.0', false], ['::', false], ['224.0.0.1', false], ['ff02::1', false],
+      ['255.255.255.255', false],
+    ];
+    for (const [address, permitted] of cases) {
+      expect(isAllowedProviderIPAddress(address, 'https:', 'publicHTTPS'), address).toBe(permitted);
+      expect(isAllowedProviderIPAddress(address, 'http:', 'publicHTTPS'), address).toBe(false);
+    }
+  });
+
   it('parses Retry-After and keeps only safe error tokens', () => {
     expect(parseRetryAfter('7')).toBe(7000);
     expect(parseRetryAfter('999999999')).toBe(3600000);
