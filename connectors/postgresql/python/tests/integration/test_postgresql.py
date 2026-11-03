@@ -104,6 +104,18 @@ async def test_real_database_query_write_limits_and_idempotency() -> None:
         )
         assert no_escaped_rows.value.rows == ({"n": "0"},)
 
+        comment_query = await client.query().invoke(
+            _call("query"), QueryRowsInput("-- only a comment")
+        )
+        assert comment_query.branch == "completed"
+        assert comment_query.value.rows == ()
+        comment_execute = await client.execute().invoke(
+            _call("execute"), ExecuteStatementInput("-- only a comment")
+        )
+        assert comment_execute.branch == "completed"
+        assert comment_execute.value.command == ""
+        assert comment_execute.value.rows_affected == 0
+
         short_parameters = await client.query().invoke(
             _call("query"), QueryRowsInput("SELECT $1::text, $2::text", ("only-one",))
         )

@@ -345,6 +345,7 @@ async def test_tls_root_selection(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("PGSSLROOTCERT", raising=False)
     await Client(replace(_client().config, ssl_mode="verify-full"), _client().credentials)._connect("secret")
     assert options["sslrootcert"] == "system"
+    assert options["client_encoding"] == "UTF8"
     with pytest.raises(ValueError, match="PGSSLROOTCERT"):
         await Client(replace(_client().config, ssl_mode="verify-ca"), _client().credentials)._connect(
             "secret"
@@ -402,6 +403,29 @@ async def test_parameterless_query_uses_prepared_protocol(monkeypatch: pytest.Mo
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("operation", ["query", "execute"])
+async def test_comment_only_statement_completes(monkeypatch: pytest.MonkeyPatch, operation: str) -> None:
+    statement = "-- only a comment"
+    empty_result = _Result((), ())
+    empty_result.status = pq.ExecStatus.EMPTY_QUERY
+    connection = _Connection(statement, empty_result, "")
+
+    async def connect(_: Client, password: str) -> _Connection:
+        return connection
+
+    monkeypatch.setattr(Client, "_connect", connect)
+    if operation == "query":
+        outcome = await _client().query().invoke(_call(operation), QueryRowsInput(statement))
+        assert outcome.value.rows == ()
+    else:
+        outcome = await _client().execute().invoke(_call(operation), ExecuteStatementInput(statement))
+        assert outcome.value.command == ""
+        assert outcome.value.rows_affected == 0
+        assert connection.statements[-1][0] == "COMMIT"
+    assert outcome.branch == "completed"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation", ["query", "execute"])
 async def test_extra_parameters_are_defects_before_execution(
     monkeypatch: pytest.MonkeyPatch, operation: str
 ) -> None:
@@ -419,6 +443,7 @@ async def test_extra_parameters_are_defects_before_execution(
             await _client().execute().invoke(_call(operation), ExecuteStatementInput(statement, ("a", "b")))
         )
     assert outcome.branch == "defect" and outcome.failure.kind == FailureKind.VALIDATION
+    assert outcome.failure.message == "statement uses 1 placeholders but 2 parameters were bound"
     assert not any(sql == statement or sql == "COMMIT" for sql, _ in connection.statements)
 
 
@@ -449,6 +474,7 @@ async def test_duplicate_described_columns_are_defects_before_execution(
     monkeypatch.setattr(Client, "_connect", connect)
     outcome = await _client().query().invoke(_call("query"), QueryRowsInput(statement))
     assert outcome.branch == "defect" and outcome.failure.kind == FailureKind.VALIDATION
+    assert "give each result column a unique alias" in outcome.failure.message
     assert not any(sql == statement for sql, _ in connection.statements)
 
 

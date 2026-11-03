@@ -177,6 +177,7 @@ class Client:
             connect_timeout=math.ceil(config.connect_timeout_seconds),
             target_session_attrs="any",
             application_name="dex-postgresql-connector",
+            client_encoding="UTF8",
             cursor_factory=psycopg.AsyncRawCursor,
             autocommit=True,
         )
@@ -418,16 +419,18 @@ async def _execute_described_statement(
         pgconn.send_query_prepared(
             b"", tuple(value.encode("utf-8") if value is not None else None for value in parameters)
         )
-        return _single_pg_result(await connection.wait(generators.execute(pgconn)))
+        return _single_pg_result(await connection.wait(generators.execute(pgconn)), allow_empty_query=True)
 
 
-def _single_pg_result(results: list[PGresult]) -> PGresult:
+def _single_pg_result(results: list[PGresult], *, allow_empty_query: bool = False) -> PGresult:
     if len(results) != 1:
         raise psycopg.ProgrammingError("PostgreSQL returned an unexpected number of statement results")
     result = results[0]
     if result.status == pq.ExecStatus.FATAL_ERROR:
         raise psycopg.errors.error_from_result(result)
-    if result.status not in (pq.ExecStatus.COMMAND_OK, pq.ExecStatus.TUPLES_OK):
+    if result.status not in (pq.ExecStatus.COMMAND_OK, pq.ExecStatus.TUPLES_OK) and not (
+        allow_empty_query and result.status == pq.ExecStatus.EMPTY_QUERY
+    ):
         raise psycopg.ProgrammingError("PostgreSQL returned an unsupported statement result")
     return result
 
@@ -731,7 +734,9 @@ def _classify_failure(error: Exception, phase: str) -> _ClassifiedFailure:
             FailureKind.TRANSPORT,
             "the connection failed after COMMIT was sent, so whether the transaction committed is unknown",
         )
-    if isinstance(error, (ValueError, psycopg.ProgrammingError)):
+    if isinstance(error, ValueError):
+        return _ClassifiedFailure("defect", FailureKind.VALIDATION, str(error))
+    if isinstance(error, psycopg.ProgrammingError):
         return _ClassifiedFailure(
             "defect", FailureKind.VALIDATION, "PostgreSQL statement description is invalid"
         )

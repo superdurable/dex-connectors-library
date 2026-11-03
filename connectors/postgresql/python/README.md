@@ -6,6 +6,8 @@ The Python package follows the Go connector's branch and retry contract. `query`
 
 Every statement is parsed and described by PostgreSQL before binding values, including statements with no parameters. PostgreSQL rejects multiple statements in one call. A placeholder count mismatch or duplicate result column selects `defect` before execution. Each invocation has a client deadline of `connectTimeout + statementTimeout + 5` seconds; a timeout after COMMIT is sent selects `uncertain`. Psycopg 3.3.6 or newer bounds its wait after cancellation on an unresponsive server when libpq is 17 or newer.
 
+The connection requests UTF8 client encoding so statements, parameters, and returned text round-trip across databases with other encodings. A statement containing only SQL comments completes with no rows; `execute` reports an empty command.
+
 `verify-full` trusts the system root store unless `PGSSLROOTCERT` names a private CA file. `verify-ca` requires `PGSSLROOTCERT` on the Worker because libpq cannot use its system root store without hostname verification. A missing or invalid root certificate or a hostname mismatch selects a terminal authentication failure.
 
 JSON and JSONB values are returned as JSON values when Python can encode every number without changing its text and every object key is unique. A number such as `1.10`, a high-precision decimal, `1e400`, or a duplicate object key selects `invalidResponse` and names the column; the Python SDK JSON codec cannot carry PostgreSQL's raw JSON text. Other scalar mappings follow the Go connector, including unbounded timestamp text and trimmed fractional seconds.
