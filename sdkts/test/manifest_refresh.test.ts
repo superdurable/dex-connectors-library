@@ -181,6 +181,7 @@ describe('manifest credential refresh', () => {
     expect(requests).toBe(0);
 
     delete clientSecret.required;
+    (oauth.refresh as Record<string, unknown>).allowsPublicClient = true;
     const optional = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth: configured, credentialFields, fetch: fetcher });
     await optional.refresh({ credentials: withoutSecret, now: new Date() }, new AbortController().signal);
     expect(requests).toBe(1);
@@ -304,7 +305,7 @@ describe('manifest credential refresh', () => {
         tokenEndpoint: 'https://slack.example.test/token', tokenEndpointAuthMethod: 'client_secret_basic',
         clientIDCredential: 'client_id', clientSecretCredential: 'client_secret',
         scopes: ['chat.write'], userScopes: ['history.read'],
-        refresh: { grants: [
+        refresh: { scopeSeparators: 'whitespaceAndComma', grants: [
           { refreshTokenCredential: 'bot_refresh_token', acceptedTokenTypes: ['bot'], exactScopes: true, credentialMappings: [
             { credential: 'bot_token', source: 'access_token' }, { credential: 'bot_refresh_token', source: 'refresh_token' },
           ] },
@@ -338,6 +339,9 @@ describe('manifest credential refresh', () => {
     expect(result.credentials.botRefreshToken.reveal()).toBe('bot-rotated');
     expect(result.credentials.userRefreshToken.reveal()).toBe('user-rotated');
     expect(result.expiresAt.getTime()).toBeLessThan(Date.now() + 31 * 60_000);
+    await expect(driver.refresh({ credentials: { ...stored, clientSecret: new SecretString('') }, now: new Date() },
+      new AbortController().signal)).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+    expect(requests).toEqual(['bot-old', 'user-old']);
     const extraScopeDriver = new ManifestCredentialRefreshDriver({ providerName: 'Slack', auth: configured, credentialFields: fields,
       fetch: async () => Response.json({ access_token: 'bot-new', expires_in: 3600, token_type: 'bot', scope: 'chat.write extra' }) });
     await expect(extraScopeDriver.refresh({ credentials: stored, now: new Date() }, new AbortController().signal))
@@ -347,6 +351,34 @@ describe('manifest credential refresh', () => {
     const botOnly = { ...stored, userRefreshToken: new SecretString('') };
     await expect(extraScopeDriver.refresh({ credentials: botOnly, now: new Date() }, new AbortController().signal))
       .resolves.toMatchObject({ credentials: { botToken: new SecretString('bot-new') } });
+  });
+
+  it('uses declared separators for both all-scope and exact-scope checks', async () => {
+    const configured = structuredClone(auth) as Record<string, unknown>;
+    const oauth = ((configured.methods as Record<string, unknown>[])[0]!.oauth2 as Record<string, unknown>);
+    const refresh = oauth.refresh as Record<string, unknown>;
+    refresh.requiredScopes = ['files.read', 'files.write'];
+    let returnedScope = '';
+    const driver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth: configured, credentialFields,
+      fetch: async () => Response.json({ access_token: 'next', expires_in: 3600, token_type: 'Bearer', scope: returnedScope }) });
+    const check = async (scope: string, accepted: boolean) => {
+      returnedScope = scope;
+      const result = driver.refresh(state(), new AbortController().signal);
+      if (accepted) await expect(result).resolves.toBeDefined();
+      else await expect(result).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+    };
+    await check('files.read\tfiles.write', true);
+    await check('files.read,files.write', false);
+    refresh.scopeSeparators = 'whitespaceAndComma';
+    await check('files.read,files.write', true);
+    await check('files.read\tfiles.write', false);
+    refresh.exactScopes = true;
+    await check('files.read,files.write', true);
+    await check('files.read,files.write,extra', false);
+    await check('files.read\tfiles.write', false);
+    refresh.scopeSeparators = 'whitespace';
+    await check('files.read\tfiles.write', true);
+    await check('files.read,files.write', false);
   });
 
   it('never refreshes a method without a declared grant', async () => {

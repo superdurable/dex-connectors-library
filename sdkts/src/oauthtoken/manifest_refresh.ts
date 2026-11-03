@@ -4,7 +4,7 @@
 import { ReauthorizationRequiredError } from '../errors.js';
 import { SecretString, type CredentialRefreshDriver, type CredentialRefreshResult, type CredentialRefreshState } from '../credentials.js';
 import {
-  hasExactScopes, isRefreshRequired, parseRSAPrivateKeyPEM, signJWTBearerAssertion, TokenEndpoint,
+  isRefreshRequired, parseRSAPrivateKeyPEM, signJWTBearerAssertion, TokenEndpoint,
   type ClientAuthenticationMethod, type TokenResponse,
 } from './index.js';
 
@@ -28,6 +28,8 @@ interface Grant {
   terminalCodes: string[];
   acceptedTokenTypes: string[];
   exactScopes: boolean;
+  scopeSeparators: 'whitespace' | 'whitespaceAndComma';
+  allowsPublicClient: boolean;
   acceptsMissingTokenType: boolean;
   acceptsMissingExpiresIn: boolean;
   missingExpiry: string;
@@ -91,8 +93,8 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
       if (grant.refreshField && !this.#credentialValue(credentials, grant.refreshField)) continue;
       const token = await this.#exchange(grant, credentials, method, signal);
       const requiredScopes = this.#scopes(grant.scopes).filter(scope => grant.kind !== 'refresh' || scope !== 'offline_access');
-      if (grant.exactScopes ? !hasExactScopes(token.scope, requiredScopes)
-        : token.scope.trim() !== '' && !hasAllWhitespaceScopes(token.scope, requiredScopes)) throw new ReauthorizationRequiredError();
+      if (grant.exactScopes ? !hasDeclaredScopes(token.scope, requiredScopes, grant.scopeSeparators, true)
+        : token.scope.trim() !== '' && !hasDeclaredScopes(token.scope, requiredScopes, grant.scopeSeparators, false)) throw new ReauthorizationRequiredError();
       const updates: Record<string, unknown> = {};
       for (const mapping of grant.mappings) {
         const destination = manifestText(mapping.credential);
@@ -145,6 +147,8 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
         terminalCodes: strings(refresh?.terminalErrorCodes, ['invalid_grant']),
         acceptedTokenTypes: strings(declaration.acceptedTokenTypes ?? refresh?.acceptedTokenTypes, ['Bearer']),
         exactScopes: declaration.exactScopes === true || (declaration.exactScopes === undefined && refresh?.exactScopes === true),
+        scopeSeparators: refresh?.scopeSeparators === 'whitespaceAndComma' ? 'whitespaceAndComma' : 'whitespace',
+        allowsPublicClient: refresh?.allowsPublicClient === true,
         acceptsMissingTokenType: declaration.acceptsMissingTokenType === undefined
           ? refresh?.acceptsMissingTokenType === true : declaration.acceptsMissingTokenType === true,
         acceptsMissingExpiresIn: refresh?.missingExpiry !== undefined,
@@ -162,6 +166,7 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
         requestScopes: client.scopes, terminalCodes: strings(client.terminalErrorCodes, ['invalid_client']),
         acceptedTokenTypes: strings(client.acceptedTokenTypes, ['Bearer']),
         exactScopes: false,
+        scopeSeparators: 'whitespace', allowsPublicClient: false,
         acceptsMissingTokenType: client.acceptsMissingTokenType === true,
         acceptsMissingExpiresIn: client.missingExpiry !== undefined,
         missingExpiry: missingExpiryLifetime(client.missingExpiry), additionalParameters: stringRecord(client.additionalParameters),
@@ -178,6 +183,7 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
       terminalCodes: strings(bearer.terminalErrorCodes, ['invalid_grant']),
       acceptedTokenTypes: strings(bearer.acceptedTokenTypes, ['Bearer']),
       exactScopes: false,
+      scopeSeparators: 'whitespace', allowsPublicClient: false,
       acceptsMissingTokenType: bearer.acceptsMissingTokenType === true,
       acceptsMissingExpiresIn: bearer.missingExpiry !== undefined,
       missingExpiry: missingExpiryLifetime(bearer.missingExpiry), additionalParameters: {},
@@ -214,7 +220,8 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
       return await endpoint.exchangeJWTBearerAssertion(signed, signal);
     }
     const secret = this.#credentialValue(credentials, grant.clientSecret);
-    if (!secret && this.#isRequired(method, grant.clientSecret)) throw new ReauthorizationRequiredError();
+    if (!secret && !grant.allowsPublicClient && (grant.kind === 'refresh' || this.#isRequired(method, grant.clientSecret)))
+      throw new ReauthorizationRequiredError();
     const authenticationMethod = secret || grant.kind === 'client_credentials'
       ? this.#resolveSource(grant.authentication, credentials, key) as ClientAuthenticationMethod : 'none';
     const client = { id: this.#credentialValue(credentials, grant.clientID), secret: new SecretString(secret), authenticationMethod };
@@ -297,9 +304,10 @@ function stringRecord(value: unknown): Record<string, string> {
   return Object.fromEntries(Object.entries(manifestObject(value)).filter((entry): entry is [string, string] => typeof entry[1] === 'string'));
 }
 function missingExpiryLifetime(value: unknown): string { return manifestText(manifestObject(value).lifetime); }
-function hasAllWhitespaceScopes(returnedScopes: string, requiredScopes: readonly string[]): boolean {
-  const granted = new Set(returnedScopes.trim().split(/\s+/));
-  return requiredScopes.every(scope => granted.has(scope));
+function hasDeclaredScopes(returnedScopes: string, requiredScopes: readonly string[], separators: Grant['scopeSeparators'], exact: boolean): boolean {
+  const granted = new Set(returnedScopes.split(separators === 'whitespaceAndComma' ? /[ ,]+/ : /\s+/).filter(Boolean));
+  const required = new Set(requiredScopes);
+  return (!exact || granted.size === required.size) && [...required].every(scope => granted.has(scope));
 }
 function pathEscape(value: string): string {
   return encodeURIComponent(value).replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`)
