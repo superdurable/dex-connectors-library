@@ -293,12 +293,12 @@ jobs:
         run: |
           for _ in $(seq 1 120); do
             if [ "$CONNECTOR" = connectors/postgresql ]; then
-              if docker exec "${{ job.services.database.id }}" pg_isready -U postgres -d connector_test >/dev/null 2>&1; then break; fi
+              if docker exec "${{ job.services.database.id }}" pg_isready -h 127.0.0.1 -p 5432 -U postgres -d connector_test >/dev/null 2>&1; then break; fi
             elif (echo > /dev/tcp/127.0.0.1/"$DATABASE_PORT") 2>/dev/null; then break; fi
             sleep 1
           done
           if [ "$CONNECTOR" = connectors/postgresql ]; then
-            docker exec "${{ job.services.database.id }}" pg_isready -U postgres -d connector_test
+            docker exec "${{ job.services.database.id }}" pg_isready -h 127.0.0.1 -p 5432 -U postgres -d connector_test
           else
             (echo > /dev/tcp/127.0.0.1/"$DATABASE_PORT") 2>/dev/null
           fi
