@@ -38,6 +38,54 @@ it('rejects a display-name email before any update request', async () => {
   expect(requests).toBe(0);
 });
 
+it('rejects an IPv6 email zone identifier before sending an update', async () => {
+  let requests = 0;
+  const client = new NotionClient({}, { resolve: async () => ({ apiToken: new SecretString('ntn_test_token_value') }) }, { send: async () => { requests++; return { status: 200, headers: {}, body: Buffer.from('{}') }; } });
+  const result = await client.updatePageProperties().invoke(call('updatePageProperties'), {
+    pageId: '1f3c9a2e-5b7d-4e8a-9c01-23456789abcd', properties: { Email: { type: 'email', email: 'a@[fe80::1%eth0]' } },
+  });
+  expect(result.kind).toBe('branch');
+  if (result.kind === 'branch') expect(result.branch).toBe('defect');
+  expect(requests).toBe(0);
+});
+
+it.each(['0000-02-29', '2024-01-02T03:04:05+24:00', '2024-01-02T03:04:05+00:60'])('sends Go-accepted date %s', async date => {
+  let requestBody: string | undefined;
+  const client = new NotionClient({}, { resolve: async () => ({ apiToken: new SecretString('ntn_test_token_value') }) }, {
+    send: async request => { requestBody = Buffer.from(request.body ?? []).toString('utf8'); return { status: 400, headers: {}, body: Buffer.from('{}') }; },
+  });
+  const result = await client.updatePageProperties().invoke(call('updatePageProperties'), {
+    pageId: '1f3c9a2e-5b7d-4e8a-9c01-23456789abcd', properties: { Date: { type: 'date', date: { start: date } } },
+  });
+  expect(result.kind).toBe('branch');
+  if (result.kind === 'branch') expect(result.branch).toBe('providerRejected');
+  expect(JSON.parse(requestBody!) as unknown).toMatchObject({ properties: { Date: { date: { start: date } } } });
+});
+
+it('keeps credential-failure receipts free of provider object IDs', async () => {
+  const client = new NotionClient({}, { resolve: async () => { throw new ReauthorizationRequiredError(); } }, { send: async () => { throw new Error('provider must not be called'); } });
+  const result = await client.getPage().invoke(call('getPage'), { pageId: '1f3c9a2e-5b7d-4e8a-9c01-23456789abcd' });
+  expect(result.kind).toBe('branch');
+  if (result.kind === 'branch') { expect(result.branch).toBe('defect'); expect(result.receipt.providerObjectId).toBeUndefined(); }
+});
+
+it('uses the page request receipt when the subsequent block read fails', async () => {
+  const pageId = '1f3c9a2e-5b7d-4e8a-9c01-23456789abcd';
+  let requests = 0;
+  const client = new NotionClient({}, { resolve: async () => ({ apiToken: new SecretString('ntn_test_token_value') }) }, {
+    send: async () => {
+      requests++;
+      return requests === 1
+        ? { status: 200, headers: { 'x-notion-request-id': 'page-request' }, body: Buffer.from(JSON.stringify({ object: 'page', id: pageId })) }
+        : { status: 404, headers: { 'x-notion-request-id': 'blocks-request' }, body: Buffer.from('{}') };
+    },
+  });
+  const result = await client.getPage().invoke(call('getPage'), { pageId });
+  expect(requests).toBe(2);
+  expect(result.kind).toBe('branch');
+  if (result.kind === 'branch') { expect(result.branch).toBe('notFound'); expect(result.receipt.providerRequestId).toBe('page-request'); }
+});
+
 it('records a not-sent checkpoint before retrying unavailable create credentials', async () => {
   const context = new HeartbeatContext(undefined);
   const scenario = { name: 'create-credentials', operation: 'createPage', callId: '64b6abdd-fb4b-5576-b67c-e695ee42f5fc', input: {}, exchanges: [], expected: { branch: '', failureKind: '', retry: false, retryAfterMs: 0, uncertain: false, requestCount: 0 } };

@@ -77,7 +77,7 @@ export class NotionClient {
   async exchange(call: Call, operation: string, subject: string, method: string, path: string, body?: unknown, mode: 'read' | 'repeatableWrite' | 'unkeyedWrite' = 'read', signal?: AbortSignal, resolvedToken?: string, providerObjectId = ''): Promise<NotionExchange> {
     const emptyReceipt = this.receipt(call, undefined, providerObjectId);
     const credentials = resolvedToken ? { token: resolvedToken } : await this.resolveToken(call, operation, signal);
-    if ('outcome' in credentials) return { ...credentials.outcome, receipt: emptyReceipt };
+    if ('outcome' in credentials) return credentials.outcome;
     const token = credentials.token;
     let encoded: Uint8Array | undefined;
     try { if (body !== undefined) encoded = Buffer.from(JSON.stringify(body)); }

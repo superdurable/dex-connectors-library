@@ -112,7 +112,7 @@ export class GetPageOperation implements Query<GetPageInput, GetPageOutput> {
     for (;;) {
       const query = `page_size=${Math.min(100, maxBlocks - content.blockCount)}${cursor ? `&start_cursor=${queryEscape(cursor)}` : ''}`;
       const blocks = await this.client.exchange(call, 'getPage', 'page content read', 'GET', `/blocks/${pathEscape(page.id)}/children?${query}`, undefined, 'read', undefined, undefined, pageId);
-      if (!('response' in blocks)) return readAttempt('getPage', blocks, emptyGet, 'providerRejected', 'notFound');
+      if (!('response' in blocks)) return readAttempt('getPage', blocks, emptyGet, 'providerRejected', 'notFound', result.receipt);
       let blockList: Record<string, unknown>;
       try { blockList = objectJSON(blocks.response.body); if (array(blockList.results).length > Math.min(100, maxBlocks - content.blockCount)) throw new Error('too many blocks'); }
       catch { return queryBranch('getPage', 'invalidResponse', emptyGet, failure('getPage', 'PROTOCOL', 'Notion returned an invalid block list'), result.receipt); }
@@ -238,9 +238,9 @@ export class UpdatePagePropertiesOperation implements Mutation<UpdatePagePropert
 
 function queryBranch<T>(operation: string, branch: string, value: T, issue?: Failure, receipt: ReceiptDraft = {}): QueryAttempt<T> { void operation; return newQueryBranch(branch, value, receipt, issue); }
 function mutationBranch<T>(operation: string, branch: string, value: T, issue?: Failure, receipt: ReceiptDraft = {}): MutationAttempt<T> { void operation; return newMutationBranch(branch, value, receipt, issue); }
-function readAttempt<T>(operation: string, result: Exclude<NotionExchange, { response: unknown }>, zero: T, rejected: string, notFound = rejected): QueryAttempt<T> {
+function readAttempt<T>(operation: string, result: Exclude<NotionExchange, { response: unknown }>, zero: T, rejected: string, notFound = rejected, receipt = result.receipt): QueryAttempt<T> {
   if (result.disposition === 'retry') return newQueryRetry(result.failure, result.retryAfterMs);
-  return queryBranch(operation, result.disposition === 'notFound' ? notFound : result.disposition === 'providerRejected' ? rejected : result.disposition === 'defect' ? 'defect' : 'invalidResponse', zero, result.failure, result.receipt);
+  return queryBranch(operation, result.disposition === 'notFound' ? notFound : result.disposition === 'providerRejected' ? rejected : result.disposition === 'defect' ? 'defect' : 'invalidResponse', zero, result.failure, receipt);
 }
 function writeAttempt<T>(operation: string, result: Exclude<NotionExchange, { response: unknown }>, zero: T, rejected: string, notFound = rejected): MutationAttempt<T> {
   if (result.disposition === 'retry') return newMutationRetry(result.failure, result.retryAfterMs);
@@ -471,11 +471,12 @@ function validDate(value: string): string {
   const match = date.match(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|[+-]\d{2}:\d{2}))?$/);
   if (!match) throw new Error('invalid date');
   const year = Number(match[1]); const month = Number(match[2]); const day = Number(match[3]);
-  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const isLeapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysInMonth = [31, isLeapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1]!;
   if (month < 1 || month > 12 || day < 1 || day > daysInMonth) throw new Error('invalid date');
   if (match[4] !== undefined && (Number(match[4]) > 23 || Number(match[5]) > 59 || Number(match[6]) > 59)) throw new Error('invalid date');
   const zone = match[7];
-  if (zone && zone !== 'Z' && (Number(zone.slice(1, 3)) > 23 || Number(zone.slice(4, 6)) > 59)) throw new Error('invalid date');
+  if (zone && zone !== 'Z' && (Number(zone.slice(1, 3)) > 24 || Number(zone.slice(4, 6)) > 60)) throw new Error('invalid date');
   return date;
 }
 function decimalNumber(value: number): string {
@@ -500,6 +501,6 @@ function isPlainEmailAddress(value: string): boolean {
     return (codePoint >= 33 && codePoint <= 126 || codePoint >= 128) && !'()<>[]:;@\\,"'.includes(character);
   });
   if (!atom(local)) return false;
-  if (domain.startsWith('[') && domain.endsWith(']')) return isIP(domain.slice(1, -1)) !== 0;
+  if (domain.startsWith('[') && domain.endsWith(']')) return !domain.includes('%') && isIP(domain.slice(1, -1)) !== 0;
   return atom(domain);
 }
