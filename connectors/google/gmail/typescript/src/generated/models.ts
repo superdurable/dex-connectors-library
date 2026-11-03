@@ -53,7 +53,7 @@ export interface Credentials {
 export function decodeCredentials(value: unknown): Credentials {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
-  const allowed = new Set(["auth_method", "access_token", "delegated_user", "oauth_client_id", "oauth_client_secret", "primary_email", "refresh_token", "service_account_key"]);
+  const allowed = new Set<string>(["auth_method", "access_token", "delegated_user", "oauth_client_id", "oauth_client_secret", "primary_email", "refresh_token", "service_account_key"]);
   if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
   if (fields["access_token"] != null && !(typeof fields["access_token"] === 'string')) throw new TypeError("credential access_token has an invalid type");
   if (fields["delegated_user"] != null && !(typeof fields["delegated_user"] === 'string')) throw new TypeError("credential delegated_user has an invalid type");
@@ -94,7 +94,7 @@ export function decodeCredentials(value: unknown): Credentials {
 export function decodeSharedCredentials(value: unknown): Credentials {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
-  const allowed = new Set(["auth_method", "access_token", "delegated_user", "oauth_client_id", "oauth_client_secret", "primary_email", "refresh_token", "service_account_key"]);
+  const allowed = new Set<string>(["auth_method", "access_token", "delegated_user", "oauth_client_id", "oauth_client_secret", "primary_email", "refresh_token", "service_account_key"]);
   if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
   if (fields["access_token"] != null && !(typeof fields["access_token"] === 'string')) throw new TypeError("credential access_token has an invalid type");
   if (fields["delegated_user"] != null && !(typeof fields["delegated_user"] === 'string')) throw new TypeError("credential delegated_user has an invalid type");

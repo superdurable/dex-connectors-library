@@ -77,7 +77,7 @@ function isAbsoluteCredentialURL(value: string): boolean {
 export function decodeCredentials(value: unknown): Credentials {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
-  const allowed = new Set(["auth_method", "access_token", "client_id", "client_secret", "delegated_user", "environment", "headers", "labels", "login_url", "oauth_client_id", "oauth_client_secret", "optional_count", "refresh_token", "request_count", "service_account_key", "session_note", "tenant_id", "wait_duration"]);
+  const allowed = new Set<string>(["auth_method", "access_token", "client_id", "client_secret", "delegated_user", "environment", "headers", "labels", "login_url", "oauth_client_id", "oauth_client_secret", "optional_count", "refresh_token", "request_count", "service_account_key", "session_note", "tenant_id", "wait_duration"]);
   if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
   if (fields["access_token"] != null && !(typeof fields["access_token"] === 'string')) throw new TypeError("credential access_token has an invalid type");
   if (fields["client_id"] != null && !(typeof fields["client_id"] === 'string')) throw new TypeError("credential client_id has an invalid type");
@@ -148,7 +148,7 @@ export function decodeCredentials(value: unknown): Credentials {
 export function decodeSharedCredentials(value: unknown): Credentials {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
-  const allowed = new Set(["auth_method", "access_token", "client_id", "client_secret", "delegated_user", "environment", "headers", "labels", "login_url", "oauth_client_id", "oauth_client_secret", "optional_count", "refresh_token", "request_count", "service_account_key", "session_note", "tenant_id", "wait_duration"]);
+  const allowed = new Set<string>(["auth_method", "access_token", "client_id", "client_secret", "delegated_user", "environment", "headers", "labels", "login_url", "oauth_client_id", "oauth_client_secret", "optional_count", "refresh_token", "request_count", "service_account_key", "session_note", "tenant_id", "wait_duration"]);
   if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
   if (fields["access_token"] != null && !(typeof fields["access_token"] === 'string')) throw new TypeError("credential access_token has an invalid type");
   if (fields["client_id"] != null && !(typeof fields["client_id"] === 'string')) throw new TypeError("credential client_id has an invalid type");

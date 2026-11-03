@@ -3,7 +3,8 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
-import type { CredentialProvider, SecretString } from '@superdurable/connectors-sdk';
+import { SecretString } from '@superdurable/connectors-sdk';
+import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
@@ -25,6 +26,21 @@ export interface Credentials {
   apiToken: SecretString;
   /** Secret signing secret of the ClickUp webhook that delivers task events to this connection, returned once as webhook.secret by Create Webhook (POST https://api.clickup.com/api/v2/team/{team_id}/webhook, documented at https://developer.clickup.com/reference/createwebhook). It is an opaque string of letters and digits, stored only in this credential field and never sent to ClickUp; the taskEvent Trigger checks each request's X-Signature, a hex HMAC-SHA256 of the body, with it. Leave it blank when no Flow uses the taskEvent Trigger; while it is blank, the webhook endpoint answers 503. */
   webhookSecret?: SecretString;
+}
+
+/** Decode private credential fields for the connector. */
+export function decodeCredentials(value: unknown): Credentials {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  const fields = value as { [key: string]: unknown };
+  const allowed = new Set<string>(["api_token", "webhook_secret"]);
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
+  if (fields["api_token"] != null && !(typeof fields["api_token"] === 'string')) throw new TypeError("credential api_token has an invalid type");
+  if (fields["webhook_secret"] != null && !(typeof fields["webhook_secret"] === 'string')) throw new TypeError("credential webhook_secret has an invalid type");
+  const credentials = {} as Credentials;
+  if (!fields["api_token"]) throw new TypeError("credential api_token is required");
+  credentials.apiToken = new SecretString((fields["api_token"] ?? '') as string);
+  credentials.webhookSecret = new SecretString((fields["webhook_secret"] ?? '') as string);
+  return credentials;
 }
 
 /** Host-owned source of private connector credentials. */

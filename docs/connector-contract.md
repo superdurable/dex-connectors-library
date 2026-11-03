@@ -415,18 +415,19 @@ func (credentials Credentials) Validate() error {
 }
 ```
 
-Generated Python project connections and TypeScript `decodeCredentials` for
-multi-method manifests select one method from the stored `auth_method`, then
-the manifest default when that field is absent, null, or empty. The
-connection's `authMethodId` does not select
-the method. They require only the selected method's credential fields, treat
-null as missing, and leave other methods' fields unset. Both decoders reject
-unknown fields and invalid types in any declared method's fields, including
-fields of a method that was not selected. Enum and absolute URL constraints
-are checked for the selected method. For a shared connection, Python detects
-the broker source and TypeScript multi-method decoders expose
-`decodeSharedCredentials`; both omit host-kept fields from required validation
-and require an access token minted by a client-credentials or JWT-bearer grant.
+Generated Python project connections and TypeScript `decodeCredentials` reject
+unknown credential fields and invalid types for single- and multi-method
+manifests. Multi-method decoders select one method from the stored
+`auth_method`, then the manifest default when that field is absent, null, or
+empty. The connection's `authMethodId` does not select the method. They require
+only the selected method's credential fields and leave other methods' fields
+unset. Single-method decoders reject `auth_method` and return empty strings or
+`SecretString` values for absent optional fields, matching generated Go
+credentials. Both paths treat null as missing, and validate enum and absolute
+URL fields. For a shared connection, Python detects the broker source and
+TypeScript decoders expose `decodeSharedCredentials`; both omit host-kept fields
+from required validation and require an access token minted by a
+client-credentials or JWT-bearer grant.
 TypeScript ports must pass
 `decodeSharedCredentials` to `newCredentialProvider` when using shared
 connections. Generated Python `Config` and TypeScript `ConfigSchema` include

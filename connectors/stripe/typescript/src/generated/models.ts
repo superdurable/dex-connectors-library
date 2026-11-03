@@ -40,7 +40,7 @@ export interface Credentials {
 export function decodeCredentials(value: unknown): Credentials {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
-  const allowed = new Set(["auth_method", "secret_key", "webhook_secret"]);
+  const allowed = new Set<string>(["auth_method", "secret_key", "webhook_secret"]);
   if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
   if (fields["secret_key"] != null && !(typeof fields["secret_key"] === 'string')) throw new TypeError("credential secret_key has an invalid type");
   if (fields["webhook_secret"] != null && !(typeof fields["webhook_secret"] === 'string')) throw new TypeError("credential webhook_secret has an invalid type");

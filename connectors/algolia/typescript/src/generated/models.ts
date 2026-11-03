@@ -3,7 +3,8 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
-import type { CredentialProvider, SecretString } from '@superdurable/connectors-sdk';
+import { SecretString } from '@superdurable/connectors-sdk';
+import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
@@ -28,6 +29,22 @@ export interface Credentials {
   apiKey: SecretString;
   /** Public uppercase alphanumeric Algolia Application ID from https://www.algolia.com/account/api-keys/all under Settings > Team and Access > API Keys; blank prevents requests. */
   applicationId: string;
+}
+
+/** Decode private credential fields for the connector. */
+export function decodeCredentials(value: unknown): Credentials {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  const fields = value as { [key: string]: unknown };
+  const allowed = new Set<string>(["api_key", "application_id"]);
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
+  if (fields["api_key"] != null && !(typeof fields["api_key"] === 'string')) throw new TypeError("credential api_key has an invalid type");
+  if (fields["application_id"] != null && !(typeof fields["application_id"] === 'string')) throw new TypeError("credential application_id has an invalid type");
+  const credentials = {} as Credentials;
+  if (!fields["application_id"]) throw new TypeError("credential application_id is required");
+  credentials.applicationId = (fields["application_id"] ?? '') as string;
+  if (!fields["api_key"]) throw new TypeError("credential api_key is required");
+  credentials.apiKey = new SecretString((fields["api_key"] ?? '') as string);
+  return credentials;
 }
 
 /** Host-owned source of private connector credentials. */

@@ -91,6 +91,90 @@ func TestTypeScriptMultiAuthModelsGolden(t *testing.T) {
 	}
 }
 
+func TestTypeScriptSingleAuthModelsGolden(t *testing.T) {
+	manifestFile, err := os.Open(filepath.Join("..", "..", "schema", "testdata", "single-auth-credentials.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer manifestFile.Close()
+	manifest, err := schema.Decode(manifestFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := append(bytes.TrimRight(generateTypeScriptModels(manifest, nil), "\n"), '\n')
+	goldenPath := filepath.Join("testdata", "single-auth-models.ts")
+	if os.Getenv("UPDATE_SINGLE_AUTH_GOLDEN") == "1" {
+		if err := os.WriteFile(goldenPath, got, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	want, err := os.ReadFile(goldenPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, want) {
+		t.Fatal("single-auth TypeScript models differ from golden output")
+	}
+	if os.Getenv("TS_CODEGEN_COMPILE") != "1" {
+		return
+	}
+	stripeDirectory, err := filepath.Abs(filepath.Join("..", "..", "connectors", "stripe", "typescript"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixtureDirectory := t.TempDir()
+	if err := os.Symlink(filepath.Join(stripeDirectory, "node_modules"), filepath.Join(fixtureDirectory, "node_modules")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(fixtureDirectory, "package.json"), []byte(`{"type":"module"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(fixtureDirectory, "models.ts"), got, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(fixtureDirectory, "test.ts"), []byte(singleAuthTypeScriptRuntimeTest), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	command := exec.Command(filepath.Join(stripeDirectory, "node_modules", ".bin", "tsx"), "test.ts")
+	command.Dir = fixtureDirectory
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("generated single-auth TypeScript credential behavior: %v\n%s", err, output)
+	}
+}
+
+const singleAuthTypeScriptRuntimeTest = `
+import assert from 'node:assert/strict';
+import { decodeCredentials, decodeSharedCredentials } from './models.js';
+const complete = decodeCredentials({ oauth_client_id: 'id', oauth_client_secret: 'secret', access_token: 'access', refresh_token: 'refresh', environment: 'sandbox', login_url: 'https://example.com/login' });
+assert.equal(complete.oauthClientId, 'id');
+assert.equal(complete.oauthClientSecret.reveal(), 'secret');
+assert.equal(complete.accessToken.reveal(), 'access');
+assert.equal(complete.refreshToken.reveal(), 'refresh');
+assert.equal(complete.environment, 'sandbox');
+assert.equal(complete.loginUrl, 'https://example.com/login');
+const shared = decodeSharedCredentials({ access_token: 'access' });
+assert.equal(shared.oauthClientId, '');
+assert.equal(shared.oauthClientSecret.reveal(), '');
+assert.equal(shared.refreshToken.reveal(), '');
+assert.equal(decodeSharedCredentials({ oauth_client_id: 'id', oauth_client_secret: 'secret', access_token: 'access' }).oauthClientSecret.reveal(), 'secret');
+const absentOptional = decodeCredentials({ access_token: 'access' });
+assert.equal(absentOptional.oauthClientId, '');
+assert.equal(absentOptional.oauthClientSecret.reveal(), '');
+assert.equal(absentOptional.refreshToken.reveal(), '');
+assert.equal(absentOptional.environment, '');
+assert.equal(absentOptional.loginUrl, '');
+assert.equal(decodeCredentials({ access_token: 'access', refresh_token: null }).refreshToken.reveal(), '');
+assert.throws(() => decodeCredentials({ access_token: 'access', unknown: 'value' }), /stored credential does not match/);
+assert.throws(() => decodeCredentials({ access_token: 3 }), /credential access_token has an invalid type/);
+assert.throws(() => decodeSharedCredentials({ access_token: 'access', unknown: 'value' }), /stored credential does not match/);
+assert.throws(() => decodeSharedCredentials({ access_token: 'access', oauth_client_secret: 3 }), /credential oauth_client_secret has an invalid type/);
+assert.throws(() => decodeCredentials({ auth_method: '' }), /stored credential does not match/);
+assert.throws(() => decodeCredentials({ access_token: 'access', environment: 'staging' }), /credential environment is invalid/);
+assert.throws(() => decodeCredentials({ access_token: 'access', login_url: 'relative' }), /credential login_url must be an absolute URL/);
+assert.throws(() => decodeCredentials({}), /credential access_token is required/);
+assert.throws(() => decodeSharedCredentials({}), /credential access_token is required/);
+`
+
 const multiAuthTypeScriptRuntimeTest = `
 import assert from 'node:assert/strict';
 import { ConfigSchema, decodeCredentials, decodeSharedCredentials } from './models.js';
