@@ -27,7 +27,7 @@ export async function verifySmartsheetLookup(serverAddress: string): Promise<voi
       response.end('{"pageNumber":1,"totalCount":1,"data":[{"id":1001,"name":"Meridian Planning"}]}');
       return;
     }
-    if (request.url === '/2.0/sheets/1001') { response.end('{"id":1001,"name":"Meridian Planning","columns":[{"id":2001,"title":"Task"}],"rows":[]}'); return; }
+    if (request.url === '/2.0/sheets/1001') { response.end('{"id":1001,"name":"Meridian Planning","columns":[{"id":2001,"title":"Task"}],"rows":[{"id":3001,"cells":[{"columnId":2001,"value":1.10},{"columnId":2001,"value":9007199254740993}]}]}'); return; }
     response.writeHead(404); response.end('{}');
   });
   await new Promise<void>(resolve => provider.listen(0, '127.0.0.1', resolve));
@@ -47,7 +47,9 @@ export async function verifySmartsheetLookup(serverAddress: string): Promise<voi
     await client.startFlow(flow, flowId, { page: 1 });
     const completed = await client.waitForFlow(flowId, 30_000);
     assert.equal(completed.status, 'completed', completed.errorMessage);
-    assert.equal(completed.singleOutput<Outcome>().sheet?.id, 1001);
+    const sheet = completed.singleOutput<Outcome>().sheet;
+    assert.equal(sheet?.id, 1001);
+    assert.equal(sheet?.rows?.[0]?.cells?.length, 2);
     assert.deepEqual(requests, ['/2.0/sheets?page=1&pageSize=10', '/2.0/sheets?page=1&pageSize=10', '/2.0/sheets/1001']);
   } finally {
     await client.close();

@@ -30,6 +30,29 @@ describe('Smartsheet response classification', () => {
     if (result.kind === 'branch') expect(result.branch).toBe('invalidResponse');
   });
 
+  it('preserves numeric cell tokens and accepts null Go zero values', async () => {
+    const body = '{"id":1001,"name":"Sheet","columns":[{"id":null,"title":null}],"rows":[{"id":null,"cells":[{"columnId":1,"value":1.10},{"columnId":1,"value":1e3},{"columnId":1,"value":9007199254740993}]}]}';
+    const client = new Client({}, credentials, { send: async () => ({ status: 200, headers: {}, body: Buffer.from(body) }) });
+    const result = await client.getSheet().invoke(call, { sheetId: 1001 });
+    expect(result.kind).toBe('branch');
+    if (result.kind === 'branch') {
+      expect(result.branch).toBe('found');
+      expect(result.value.columns).toEqual([{ id: 0, title: '' }]);
+      expect(result.value.rows?.[0]?.id).toBe(0);
+      expect(JSON.stringify(result.value.rows?.[0]?.cells)).toBe('[{"columnId":1,"value":1.10},{"columnId":1,"value":1e3},{"columnId":1,"value":9007199254740993}]');
+    }
+  });
+
+  it('accepts null summary fields as Go zero values', async () => {
+    const client = new Client({}, credentials, { send: async () => ({ status: 200, headers: {}, body: Buffer.from('{"pageNumber":1,"totalCount":1,"data":[{"id":null,"name":null}]}') }) });
+    const result = await client.listSheets().invoke(call, {});
+    expect(result.kind).toBe('branch');
+    if (result.kind === 'branch') {
+      expect(result.branch).toBe('listed');
+      expect(result.value.sheets).toEqual([{ id: 0, name: '' }]);
+    }
+  });
+
   it('treats credential resolution failure as terminal', async () => {
     const client = new Client({}, { resolve: async () => { throw new Error('secret must not leak'); } });
     const result = await client.listSheets().invoke(call, {});

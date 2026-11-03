@@ -103,9 +103,14 @@ function classifyStatus<T>(call: Call, result: Exchange, zero: T, notFoundBranch
   return branch(call, 'providerRejected', zero, 'PROVIDER_REJECTION', `provider rejected HTTP ${status}`);
 }
 function object(value: unknown): Record<string, unknown> { if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('object expected'); return value as Record<string, unknown>; }
-function integer(value: unknown): number { if (value === undefined) return 0; if (typeof value !== 'number' || !Number.isSafeInteger(value)) throw new TypeError('integer expected'); return value; }
-function string(value: unknown): string { if (value === undefined) return ''; if (typeof value !== 'string') throw new TypeError('string expected'); return value; }
+function integer(value: unknown): number { if (value === undefined || value === null) return 0; if (typeof value !== 'number' || !Number.isSafeInteger(value)) throw new TypeError('integer expected'); return value; }
+function string(value: unknown): string { if (value === undefined || value === null) return ''; if (typeof value !== 'string') throw new TypeError('string expected'); return value; }
 function array(value: unknown): unknown[] | null { if (value === undefined || value === null) return null; if (!Array.isArray(value)) throw new TypeError('array expected'); return value; }
+function parseProviderJSON(value: string): unknown {
+  const rawJSON = (JSON as typeof JSON & { rawJSON(text: string): unknown }).rawJSON;
+  return JSON.parse(value, (_key, parsedValue: unknown, context?: { source?: string }) =>
+    typeof parsedValue === 'number' && context?.source ? rawJSON(context.source) : parsedValue) as unknown;
+}
 function decodePage(body: Uint8Array): SheetPage {
   const wire = object(JSON.parse(Buffer.from(body).toString('utf8')) as unknown);
   const entries = array(wire.data);
@@ -114,8 +119,10 @@ function decodePage(body: Uint8Array): SheetPage {
   return { sheets: entries.map(entry => { const item = object(entry); return { id: integer(item.id), name: string(item.name) }; }), pageNumber, totalCount };
 }
 function decodeSheet(body: Uint8Array): Sheet {
-  const wire = object(JSON.parse(Buffer.from(body).toString('utf8')) as unknown);
+  const responseJSON = Buffer.from(body).toString('utf8');
+  const wire = object(JSON.parse(responseJSON) as unknown);
+  const rawRows = array(object(parseProviderJSON(responseJSON)).rows);
   const id = integer(wire.id), name = string(wire.name), columns = array(wire.columns), rows = array(wire.rows);
-  if (id <= 0 || !name || !columns || !rows) throw new TypeError('incomplete sheet');
-  return { id, name, columns: columns.map(column => { const item = object(column); return { id: integer(item.id), title: string(item.title) }; }), rows: rows.map(row => { const item = object(row); return { id: integer(item.id), cells: array(item.cells) ?? [] }; }) };
+  if (id <= 0 || !name || !columns || !rows || !rawRows || rows.length !== rawRows.length) throw new TypeError('incomplete sheet');
+  return { id, name, columns: columns.map(column => { const item = object(column); return { id: integer(item.id), title: string(item.title) }; }), rows: rows.map((row, index) => { const item = object(row); return { id: integer(item.id), cells: array(object(rawRows[index]).cells) ?? [] }; }) };
 }
