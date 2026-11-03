@@ -15,7 +15,7 @@ spec:
       triggers: []
     typescript:
       package: '@superdurable/connector-brevo'
-      version: v0.1.0
+      version: v0.1.1
       operations: [createOrUpdateContact, getContact]
       triggers: []
   codegen:
