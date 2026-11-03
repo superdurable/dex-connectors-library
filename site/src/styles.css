@@ -310,10 +310,8 @@ h2, h3 {
 
 .lede-repository-link {
   display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
+  align-items: stretch;
   margin-left: 0.5em;
-  padding: 2px 10px;
   border: 1px solid var(--sd-rule-strong);
   border-radius: 999px;
   color: var(--sd-text);
@@ -332,6 +330,23 @@ h2, h3 {
 }
 
 .lede-repository-link svg { flex: none; }
+
+.lede-repository-link-name,
+.lede-repository-link-stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 2px 10px;
+}
+
+.lede-repository-link-stars {
+  gap: 0.25rem;
+  padding-left: 8px;
+  border-left: 1px solid var(--sd-rule-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.lede-repository-link-stars svg { color: #e3b341; }
 
 .site-tabs {
   display: flex;
