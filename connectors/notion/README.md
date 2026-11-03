@@ -4,6 +4,8 @@ Install the Go module with `go get github.com/superdurable/dex-connectors-librar
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/notion`.
 
+The TypeScript package `@superdurable/connector-notion@0.1.0` implements all five operations. See the [TypeScript README](typescript/README.md) and [runnable search example](typescript/examples/search-pages/README.md). Its provider replay is Go-recorded; live Notion behavior remains unverified.
+
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Notion; no live Notion workspace was used. See
 > [verification status](../../docs/verification-status.md) for what is and
 > is not verified.

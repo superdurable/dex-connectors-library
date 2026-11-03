@@ -1,0 +1,3940 @@
+{
+  "connector": "notion",
+  "scenarios": [
+    {
+      "callId": "bf449653-ec6a-5a0d-a386-59ebc3a68300",
+      "exchanges": [
+        {
+          "body": "{\"results\":[{\"object\":\"data_source\",\"id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"title\":[{\"plain_text\":\"Form submissions\"}],\"parent\":{\"type\":\"database_id\",\"database_id\":\"3b5e7091-2c4d-4e6f-9081-223344556677\"},\"in_trash\":false}],\"next_cursor\":null,\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/search",
+          "requestBody": {
+            "filter": {
+              "property": "object",
+              "value": "data_source"
+            },
+            "page_size": 1,
+            "query": "Form",
+            "sort": {
+              "direction": "ascending",
+              "timestamp": "last_edited_time"
+            },
+            "start_cursor": "next-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "searched",
+        "failureKind": "",
+        "output": {
+          "hasMore": false,
+          "matches": [
+            {
+              "id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+              "inTrash": false,
+              "objectType": "data_source",
+              "parent": {
+                "id": "3b5e7091-2c4d-4e6f-9081-223344556677",
+                "type": "database_id"
+              },
+              "title": "Form submissions"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "objectType": "data_source",
+        "pageSize": 1,
+        "query": "Form",
+        "sortDirection": "ascending",
+        "startCursor": "next-1"
+      },
+      "name": "search-success",
+      "operation": "search"
+    },
+    {
+      "callId": "e91c061e-d2e7-5fc6-bb13-61a0d4f06c70",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"error\",\"status\":400,\"code\":\"validation_error\",\"message\":\"secret provider text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/search",
+          "requestBody": {
+            "filter": {
+              "property": "object",
+              "value": "data_source"
+            },
+            "page_size": 1,
+            "query": "Form",
+            "sort": {
+              "direction": "ascending",
+              "timestamp": "last_edited_time"
+            },
+            "start_cursor": "next-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "hasMore": false,
+          "matches": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "objectType": "data_source",
+        "pageSize": 1,
+        "query": "Form",
+        "sortDirection": "ascending",
+        "startCursor": "next-1"
+      },
+      "name": "search-rejected",
+      "operation": "search"
+    },
+    {
+      "callId": "2cc323e6-3648-51d8-850e-60096dd92598",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/search",
+          "requestBody": {
+            "filter": {
+              "property": "object",
+              "value": "data_source"
+            },
+            "page_size": 1,
+            "query": "Form",
+            "sort": {
+              "direction": "ascending",
+              "timestamp": "last_edited_time"
+            },
+            "start_cursor": "next-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "hasMore": false,
+          "matches": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "objectType": "data_source",
+        "pageSize": 1,
+        "query": "Form",
+        "sortDirection": "ascending",
+        "startCursor": "next-1"
+      },
+      "name": "search-invalid-response",
+      "operation": "search"
+    },
+    {
+      "callId": "f3fba357-c411-5b4a-8d32-1dac540fa595",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"error\",\"status\":429,\"code\":\"rate_limited\",\"message\":\"secret provider text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/search",
+          "requestBody": {
+            "filter": {
+              "property": "object",
+              "value": "data_source"
+            },
+            "page_size": 1,
+            "query": "Form",
+            "sort": {
+              "direction": "ascending",
+              "timestamp": "last_edited_time"
+            },
+            "start_cursor": "next-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "objectType": "data_source",
+        "pageSize": 1,
+        "query": "Form",
+        "sortDirection": "ascending",
+        "startCursor": "next-1"
+      },
+      "name": "search-rate-limit-retry",
+      "operation": "search"
+    },
+    {
+      "callId": "5efb6500-7dc6-5629-b588-18deb85ad438",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"error\",\"status\":503,\"code\":\"service_unavailable\",\"message\":\"secret provider text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/search",
+          "requestBody": {
+            "filter": {
+              "property": "object",
+              "value": "data_source"
+            },
+            "page_size": 1,
+            "query": "Form",
+            "sort": {
+              "direction": "ascending",
+              "timestamp": "last_edited_time"
+            },
+            "start_cursor": "next-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "objectType": "data_source",
+        "pageSize": 1,
+        "query": "Form",
+        "sortDirection": "ascending",
+        "startCursor": "next-1"
+      },
+      "name": "search-server-retry",
+      "operation": "search"
+    },
+    {
+      "callId": "4320ad07-b321-5e77-9880-f96f82de0e0e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/search",
+          "requestBody": {
+            "filter": {
+              "property": "object",
+              "value": "data_source"
+            },
+            "page_size": 1,
+            "query": "Form",
+            "sort": {
+              "direction": "ascending",
+              "timestamp": "last_edited_time"
+            },
+            "start_cursor": "next-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "objectType": "data_source",
+        "pageSize": 1,
+        "query": "Form",
+        "sortDirection": "ascending",
+        "startCursor": "next-1"
+      },
+      "name": "search-transport-retry",
+      "operation": "search"
+    },
+    {
+      "callId": "eb6e7223-9760-57b4-8e2c-32edf3ce4ba6",
+      "exchanges": [
+        {
+          "body": "{\"results\":[],\"next_cursor\":null,\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/search",
+          "requestBody": {
+            "filter": {
+              "property": "object",
+              "value": "data_source"
+            },
+            "page_size": 1,
+            "query": "Form",
+            "sort": {
+              "direction": "ascending",
+              "timestamp": "last_edited_time"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "noMatch",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "hasMore": false,
+          "matches": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "objectType": "data_source",
+        "pageSize": 1,
+        "query": "Form",
+        "sortDirection": "ascending"
+      },
+      "name": "search-no-match",
+      "operation": "search"
+    },
+    {
+      "callId": "2fd69d5b-8855-5829-9a3f-8573f80f0afc",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "hasMore": false,
+          "matches": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "objectType": "data_source",
+        "pageSize": 101,
+        "query": "Form",
+        "sortDirection": "ascending",
+        "startCursor": "next-1"
+      },
+      "name": "search-defect",
+      "operation": "search"
+    },
+    {
+      "callId": "5d3c0222-69d7-57fd-9c46-69c9a82db598",
+      "exchanges": [
+        {
+          "body": "{\"results\":[{\"object\":\"page\",\"id\":\"1f3c9a2e-5b7d-4e8a-9c01-23456789abcd\",\"url\":\"https://www.notion.so/1f3c9a2e5b7d4e8a9c0123456789abcd\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"3b5e7091-2c4d-4e6f-9081-223344556677\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"plain_text\":\"Ada Lovelace\",\"text\":{\"content\":\"Ada Lovelace\"}}]},\"Email\":{\"id\":\"em1\",\"type\":\"email\",\"email\":\"ada@example.com\"}},\"in_trash\":false,\"is_archived\":false}],\"next_cursor\":null,\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/data_sources/2a4d6f80-1b3c-4d5e-8f70-112233445566/query",
+          "query": {
+            "filter_properties[]": [
+              "Name"
+            ]
+          },
+          "requestBody": {
+            "filter": {
+              "property": "Name",
+              "title": {
+                "contains": "Ada"
+              }
+            },
+            "page_size": 1,
+            "result_type": "page",
+            "sorts": [
+              {
+                "direction": "ascending",
+                "property": "Name"
+              }
+            ],
+            "start_cursor": "next-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "queried",
+        "failureKind": "",
+        "output": {
+          "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+          "hasMore": false,
+          "pages": [
+            {
+              "archived": false,
+              "id": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+              "inTrash": false,
+              "parent": {
+                "databaseId": "3b5e7091-2c4d-4e6f-9081-223344556677",
+                "id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+                "type": "data_source_id"
+              },
+              "properties": {
+                "Email": {
+                  "email": "ada@example.com",
+                  "id": "em1",
+                  "plainText": "ada@example.com",
+                  "type": "email"
+                },
+                "Name": {
+                  "id": "title",
+                  "plainText": "Ada Lovelace",
+                  "text": "Ada Lovelace",
+                  "type": "title"
+                }
+              },
+              "title": "Ada Lovelace",
+              "url": "https://www.notion.so/1f3c9a2e5b7d4e8a9c0123456789abcd"
+            }
+          ],
+          "resultLimitReached": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "filter": {
+          "condition": "contains",
+          "property": "Name",
+          "text": "Ada",
+          "type": "title"
+        },
+        "pageSize": 1,
+        "properties": [
+          "Name"
+        ],
+        "sorts": [
+          {
+            "direction": "ascending",
+            "property": "Name"
+          }
+        ],
+        "startCursor": "next-1"
+      },
+      "name": "queryDatabase-success",
+      "operation": "queryDatabase"
+    },
+    {
+      "callId": "6de425a8-9b92-58e8-8e44-7bf0b86fa0e9",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"error\",\"status\":400,\"code\":\"validation_error\",\"message\":\"secret provider text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/data_sources/2a4d6f80-1b3c-4d5e-8f70-112233445566/query",
+          "query": {
+            "filter_properties[]": [
+              "Name"
+            ]
+          },
+          "requestBody": {
+            "filter": {
+              "property": "Name",
+              "title": {
+                "contains": "Ada"
+              }
+            },
+            "page_size": 1,
+            "result_type": "page",
+            "sorts": [
+              {
+                "direction": "ascending",
+                "property": "Name"
+              }
+            ],
+            "start_cursor": "next-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+          "hasMore": false,
+          "pages": [],
+          "resultLimitReached": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "filter": {
+          "condition": "contains",
+          "property": "Name",
+          "text": "Ada",
+          "type": "title"
+        },
+        "pageSize": 1,
+        "properties": [
+          "Name"
+        ],
+        "sorts": [
+          {
+            "direction": "ascending",
+            "property": "Name"
+          }
+        ],
+        "startCursor": "next-1"
+      },
+      "name": "queryDatabase-rejected",
+      "operation": "queryDatabase"
+    },
+    {
+      "callId": "ac6d8e21-b974-5559-bf4f-d3e9c9526c51",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/data_sources/2a4d6f80-1b3c-4d5e-8f70-112233445566/query",
+          "query": {
+            "filter_properties[]": [
+              "Name"
+            ]
+          },
+          "requestBody": {
+            "filter": {
+              "property": "Name",
+              "title": {
+                "contains": "Ada"
+              }
+            },
+            "page_size": 1,
+            "result_type": "page",
+            "sorts": [
+              {
+                "direction": "ascending",
+                "property": "Name"
+              }
+            ],
+            "start_cursor": "next-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+          "hasMore": false,
+          "pages": [],
+          "resultLimitReached": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "filter": {
+          "condition": "contains",
+          "property": "Name",
+          "text": "Ada",
+          "type": "title"
+        },
+        "pageSize": 1,
+        "properties": [
+          "Name"
+        ],
+        "sorts": [
+          {
+            "direction": "ascending",
+            "property": "Name"
+          }
+        ],
+        "startCursor": "next-1"
+      },
+      "name": "queryDatabase-invalid-response",
+      "operation": "queryDatabase"
+    },
+    {
+      "callId": "7aaa87f9-155a-5cfb-b953-d766eb4bb77c",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"error\",\"status\":429,\"code\":\"rate_limited\",\"message\":\"secret provider text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/data_sources/2a4d6f80-1b3c-4d5e-8f70-112233445566/query",
+          "query": {
+            "filter_properties[]": [
+              "Name"
+            ]
+          },
+          "requestBody": {
+            "filter": {
+              "property": "Name",
+              "title": {
+                "contains": "Ada"
+              }
+            },
+            "page_size": 1,
+            "result_type": "page",
+            "sorts": [
+              {
+                "direction": "ascending",
+                "property": "Name"
+              }
+            ],
+            "start_cursor": "next-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "filter": {
+          "condition": "contains",
+          "property": "Name",
+          "text": "Ada",
+          "type": "title"
+        },
+        "pageSize": 1,
+        "properties": [
+          "Name"
+        ],
+        "sorts": [
+          {
+            "direction": "ascending",
+            "property": "Name"
+          }
+        ],
+        "startCursor": "next-1"
+      },
+      "name": "queryDatabase-rate-limit-retry",
+      "operation": "queryDatabase"
+    },
+    {
+      "callId": "2df02af2-7a62-5adb-b257-850162b42a39",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"error\",\"status\":503,\"code\":\"service_unavailable\",\"message\":\"secret provider text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/data_sources/2a4d6f80-1b3c-4d5e-8f70-112233445566/query",
+          "query": {
+            "filter_properties[]": [
+              "Name"
+            ]
+          },
+          "requestBody": {
+            "filter": {
+              "property": "Name",
+              "title": {
+                "contains": "Ada"
+              }
+            },
+            "page_size": 1,
+            "result_type": "page",
+            "sorts": [
+              {
+                "direction": "ascending",
+                "property": "Name"
+              }
+            ],
+            "start_cursor": "next-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "filter": {
+          "condition": "contains",
+          "property": "Name",
+          "text": "Ada",
+          "type": "title"
+        },
+        "pageSize": 1,
+        "properties": [
+          "Name"
+        ],
+        "sorts": [
+          {
+            "direction": "ascending",
+            "property": "Name"
+          }
+        ],
+        "startCursor": "next-1"
+      },
+      "name": "queryDatabase-server-retry",
+      "operation": "queryDatabase"
+    },
+    {
+      "callId": "ad948317-e1d3-596b-931b-fb4828fb45aa",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/data_sources/2a4d6f80-1b3c-4d5e-8f70-112233445566/query",
+          "query": {
+            "filter_properties[]": [
+              "Name"
+            ]
+          },
+          "requestBody": {
+            "filter": {
+              "property": "Name",
+              "title": {
+                "contains": "Ada"
+              }
+            },
+            "page_size": 1,
+            "result_type": "page",
+            "sorts": [
+              {
+                "direction": "ascending",
+                "property": "Name"
+              }
+            ],
+            "start_cursor": "next-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "filter": {
+          "condition": "contains",
+          "property": "Name",
+          "text": "Ada",
+          "type": "title"
+        },
+        "pageSize": 1,
+        "properties": [
+          "Name"
+        ],
+        "sorts": [
+          {
+            "direction": "ascending",
+            "property": "Name"
+          }
+        ],
+        "startCursor": "next-1"
+      },
+      "name": "queryDatabase-transport-retry",
+      "operation": "queryDatabase"
+    },
+    {
+      "callId": "f553974e-0880-5936-af72-27193b963c06",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"error\",\"status\":404,\"code\":\"object_not_found\",\"message\":\"secret provider text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/data_sources/2a4d6f80-1b3c-4d5e-8f70-112233445566/query",
+          "query": {
+            "filter_properties[]": [
+              "Name"
+            ]
+          },
+          "requestBody": {
+            "filter": {
+              "property": "Name",
+              "title": {
+                "contains": "Ada"
+              }
+            },
+            "page_size": 1,
+            "result_type": "page",
+            "sorts": [
+              {
+                "direction": "ascending",
+                "property": "Name"
+              }
+            ],
+            "start_cursor": "next-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+          "hasMore": false,
+          "pages": [],
+          "resultLimitReached": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "filter": {
+          "condition": "contains",
+          "property": "Name",
+          "text": "Ada",
+          "type": "title"
+        },
+        "pageSize": 1,
+        "properties": [
+          "Name"
+        ],
+        "sorts": [
+          {
+            "direction": "ascending",
+            "property": "Name"
+          }
+        ],
+        "startCursor": "next-1"
+      },
+      "name": "queryDatabase-not-found",
+      "operation": "queryDatabase"
+    },
+    {
+      "callId": "752b0959-5cdd-5973-a0d0-075581f6a124",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"database\",\"id\":\"3b5e7091-2c4d-4e6f-9081-223344556677\",\"data_sources\":[{\"id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/databases/3b5e7091-2c4d-4e6f-9081-223344556677",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"results\":[{\"object\":\"page\",\"id\":\"1f3c9a2e-5b7d-4e8a-9c01-23456789abcd\",\"url\":\"https://www.notion.so/1f3c9a2e5b7d4e8a9c0123456789abcd\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"3b5e7091-2c4d-4e6f-9081-223344556677\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"plain_text\":\"Ada Lovelace\",\"text\":{\"content\":\"Ada Lovelace\"}}]},\"Email\":{\"id\":\"em1\",\"type\":\"email\",\"email\":\"ada@example.com\"}},\"in_trash\":false,\"is_archived\":false}],\"next_cursor\":null,\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/data_sources/2a4d6f80-1b3c-4d5e-8f70-112233445566/query",
+          "query": {
+            "filter_properties[]": [
+              "Name"
+            ]
+          },
+          "requestBody": {
+            "filter": {
+              "property": "Name",
+              "title": {
+                "contains": "Ada"
+              }
+            },
+            "page_size": 1,
+            "result_type": "page",
+            "sorts": [
+              {
+                "direction": "ascending",
+                "property": "Name"
+              }
+            ],
+            "start_cursor": "next-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "queried",
+        "failureKind": "",
+        "output": {
+          "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+          "hasMore": false,
+          "pages": [
+            {
+              "archived": false,
+              "id": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+              "inTrash": false,
+              "parent": {
+                "databaseId": "3b5e7091-2c4d-4e6f-9081-223344556677",
+                "id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+                "type": "data_source_id"
+              },
+              "properties": {
+                "Email": {
+                  "email": "ada@example.com",
+                  "id": "em1",
+                  "plainText": "ada@example.com",
+                  "type": "email"
+                },
+                "Name": {
+                  "id": "title",
+                  "plainText": "Ada Lovelace",
+                  "text": "Ada Lovelace",
+                  "type": "title"
+                }
+              },
+              "title": "Ada Lovelace",
+              "url": "https://www.notion.so/1f3c9a2e5b7d4e8a9c0123456789abcd"
+            }
+          ],
+          "resultLimitReached": false
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "databaseId": "3b5e7091-2c4d-4e6f-9081-223344556677",
+        "filter": {
+          "condition": "contains",
+          "property": "Name",
+          "text": "Ada",
+          "type": "title"
+        },
+        "pageSize": 1,
+        "properties": [
+          "Name"
+        ],
+        "sorts": [
+          {
+            "direction": "ascending",
+            "property": "Name"
+          }
+        ],
+        "startCursor": "next-1"
+      },
+      "name": "queryDatabase-database-lookup",
+      "operation": "queryDatabase"
+    },
+    {
+      "callId": "67010834-8fbc-5f3f-91cd-aee8e46a39d7",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "dataSourceId": "",
+          "hasMore": false,
+          "pages": [],
+          "resultLimitReached": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dataSourceId": "invalid",
+        "filter": {
+          "condition": "contains",
+          "property": "Name",
+          "text": "Ada",
+          "type": "title"
+        },
+        "pageSize": 1,
+        "properties": [
+          "Name"
+        ],
+        "sorts": [
+          {
+            "direction": "ascending",
+            "property": "Name"
+          }
+        ],
+        "startCursor": "next-1"
+      },
+      "name": "queryDatabase-defect",
+      "operation": "queryDatabase"
+    },
+    {
+      "callId": "d59d7bcf-ddf4-53a2-a7a5-a9b351e0c630",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"page\",\"id\":\"1f3c9a2e-5b7d-4e8a-9c01-23456789abcd\",\"url\":\"https://www.notion.so/1f3c9a2e5b7d4e8a9c0123456789abcd\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"3b5e7091-2c4d-4e6f-9081-223344556677\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"plain_text\":\"Ada Lovelace\",\"text\":{\"content\":\"Ada Lovelace\"}}]},\"Email\":{\"id\":\"em1\",\"type\":\"email\",\"email\":\"ada@example.com\"}},\"in_trash\":false,\"is_archived\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/pages/1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "content": {
+            "blockCount": 0,
+            "hasMoreBlocks": false,
+            "nestedBlockCount": 0,
+            "skippedBlockCount": 0,
+            "text": "",
+            "textTruncated": false
+          },
+          "page": {
+            "archived": false,
+            "id": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+            "inTrash": false,
+            "parent": {
+              "databaseId": "3b5e7091-2c4d-4e6f-9081-223344556677",
+              "id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+              "type": "data_source_id"
+            },
+            "properties": {
+              "Email": {
+                "email": "ada@example.com",
+                "id": "em1",
+                "plainText": "ada@example.com",
+                "type": "email"
+              },
+              "Name": {
+                "id": "title",
+                "plainText": "Ada Lovelace",
+                "text": "Ada Lovelace",
+                "type": "title"
+              }
+            },
+            "title": "Ada Lovelace",
+            "url": "https://www.notion.so/1f3c9a2e5b7d4e8a9c0123456789abcd"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxBlocks": 1,
+        "maxTextCharacters": 100,
+        "pageId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+        "skipContent": true
+      },
+      "name": "getPage-success",
+      "operation": "getPage"
+    },
+    {
+      "callId": "2247cf99-68ef-51b2-909f-31f5487bc6ec",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"error\",\"status\":400,\"code\":\"validation_error\",\"message\":\"secret provider text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/pages/1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "content": {
+            "blockCount": 0,
+            "hasMoreBlocks": false,
+            "nestedBlockCount": 0,
+            "skippedBlockCount": 0,
+            "text": "",
+            "textTruncated": false
+          },
+          "page": {
+            "archived": false,
+            "id": "",
+            "inTrash": false,
+            "parent": {
+              "type": ""
+            },
+            "properties": {},
+            "title": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxBlocks": 1,
+        "maxTextCharacters": 100,
+        "pageId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+        "skipContent": true
+      },
+      "name": "getPage-rejected",
+      "operation": "getPage"
+    },
+    {
+      "callId": "714cceab-2c19-5378-b777-b0e79419ad94",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"wrong\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/pages/1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "content": {
+            "blockCount": 0,
+            "hasMoreBlocks": false,
+            "nestedBlockCount": 0,
+            "skippedBlockCount": 0,
+            "text": "",
+            "textTruncated": false
+          },
+          "page": {
+            "archived": false,
+            "id": "",
+            "inTrash": false,
+            "parent": {
+              "type": ""
+            },
+            "properties": {},
+            "title": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxBlocks": 1,
+        "maxTextCharacters": 100,
+        "pageId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+        "skipContent": true
+      },
+      "name": "getPage-invalid-response",
+      "operation": "getPage"
+    },
+    {
+      "callId": "d561cece-7c3c-570e-b725-6c0bf7255d58",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"error\",\"status\":429,\"code\":\"rate_limited\",\"message\":\"secret provider text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/pages/1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxBlocks": 1,
+        "maxTextCharacters": 100,
+        "pageId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+        "skipContent": true
+      },
+      "name": "getPage-rate-limit-retry",
+      "operation": "getPage"
+    },
+    {
+      "callId": "bf7fea55-25d2-5540-9edd-4227bbc2c63c",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"error\",\"status\":503,\"code\":\"service_unavailable\",\"message\":\"secret provider text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/pages/1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxBlocks": 1,
+        "maxTextCharacters": 100,
+        "pageId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+        "skipContent": true
+      },
+      "name": "getPage-server-retry",
+      "operation": "getPage"
+    },
+    {
+      "callId": "c5ad0a07-e1fb-59e3-92c6-030be3462831",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/pages/1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxBlocks": 1,
+        "maxTextCharacters": 100,
+        "pageId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+        "skipContent": true
+      },
+      "name": "getPage-transport-retry",
+      "operation": "getPage"
+    },
+    {
+      "callId": "03f1672d-da37-56a8-8ab7-6bbc5ecd8a26",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"error\",\"status\":404,\"code\":\"object_not_found\",\"message\":\"secret provider text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/pages/1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "content": {
+            "blockCount": 0,
+            "hasMoreBlocks": false,
+            "nestedBlockCount": 0,
+            "skippedBlockCount": 0,
+            "text": "",
+            "textTruncated": false
+          },
+          "page": {
+            "archived": false,
+            "id": "",
+            "inTrash": false,
+            "parent": {
+              "type": ""
+            },
+            "properties": {},
+            "title": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxBlocks": 1,
+        "maxTextCharacters": 100,
+        "pageId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+        "skipContent": true
+      },
+      "name": "getPage-not-found",
+      "operation": "getPage"
+    },
+    {
+      "callId": "5c7b5b3a-3c97-5e2b-9505-fcb326c25eae",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"page\",\"id\":\"1f3c9a2e-5b7d-4e8a-9c01-23456789abcd\",\"url\":\"https://www.notion.so/1f3c9a2e5b7d4e8a9c0123456789abcd\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"3b5e7091-2c4d-4e6f-9081-223344556677\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"plain_text\":\"Ada Lovelace\",\"text\":{\"content\":\"Ada Lovelace\"}}]},\"Email\":{\"id\":\"em1\",\"type\":\"email\",\"email\":\"ada@example.com\"}},\"in_trash\":false,\"is_archived\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/pages/1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"results\":[{\"object\":\"block\",\"id\":\"1f3c9a2e-5b7d-4e8a-9c01-23456789abcd\",\"type\":\"paragraph\",\"has_children\":false,\"paragraph\":{\"rich_text\":[{\"plain_text\":\"Hello\"}]}}],\"next_cursor\":null,\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/blocks/1f3c9a2e-5b7d-4e8a-9c01-23456789abcd/children",
+          "query": {
+            "page_size": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "content": {
+            "blockCount": 1,
+            "hasMoreBlocks": false,
+            "nestedBlockCount": 0,
+            "skippedBlockCount": 0,
+            "text": "Hello",
+            "textTruncated": false
+          },
+          "page": {
+            "archived": false,
+            "id": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+            "inTrash": false,
+            "parent": {
+              "databaseId": "3b5e7091-2c4d-4e6f-9081-223344556677",
+              "id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+              "type": "data_source_id"
+            },
+            "properties": {
+              "Email": {
+                "email": "ada@example.com",
+                "id": "em1",
+                "plainText": "ada@example.com",
+                "type": "email"
+              },
+              "Name": {
+                "id": "title",
+                "plainText": "Ada Lovelace",
+                "text": "Ada Lovelace",
+                "type": "title"
+              }
+            },
+            "title": "Ada Lovelace",
+            "url": "https://www.notion.so/1f3c9a2e5b7d4e8a9c0123456789abcd"
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxBlocks": 1,
+        "maxTextCharacters": 100,
+        "pageId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+        "skipContent": false
+      },
+      "name": "getPage-content",
+      "operation": "getPage"
+    },
+    {
+      "callId": "ccf0b30a-d9f4-5294-85bf-b00f99875320",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "content": {
+            "blockCount": 0,
+            "hasMoreBlocks": false,
+            "nestedBlockCount": 0,
+            "skippedBlockCount": 0,
+            "text": "",
+            "textTruncated": false
+          },
+          "page": {
+            "archived": false,
+            "id": "",
+            "inTrash": false,
+            "parent": {
+              "type": ""
+            },
+            "properties": {},
+            "title": ""
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxBlocks": 1,
+        "maxTextCharacters": 100,
+        "pageId": "invalid",
+        "skipContent": true
+      },
+      "name": "getPage-defect",
+      "operation": "getPage"
+    },
+    {
+      "callId": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"page\",\"id\":\"1f3c9a2e-5b7d-4e8a-9c01-23456789abcd\",\"url\":\"https://www.notion.so/1f3c9a2e5b7d4e8a9c0123456789abcd\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"3b5e7091-2c4d-4e6f-9081-223344556677\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"plain_text\":\"Ada Lovelace\",\"text\":{\"content\":\"Ada Lovelace\"}}]},\"Email\":{\"id\":\"em1\",\"type\":\"email\",\"email\":\"ada@example.com\"}},\"in_trash\":false,\"is_archived\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/pages",
+          "requestBody": {
+            "children": [
+              {
+                "object": "block",
+                "paragraph": {
+                  "rich_text": [
+                    {
+                      "text": {
+                        "content": "First paragraph"
+                      },
+                      "type": "text"
+                    }
+                  ]
+                },
+                "type": "paragraph"
+              },
+              {
+                "object": "block",
+                "paragraph": {
+                  "rich_text": [
+                    {
+                      "text": {
+                        "content": "Second paragraph"
+                      },
+                      "type": "text"
+                    }
+                  ]
+                },
+                "type": "paragraph"
+              }
+            ],
+            "parent": {
+              "data_source_id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+              "type": "data_source_id"
+            },
+            "properties": {
+              "Email": {
+                "email": "ada@example.com"
+              },
+              "Name": {
+                "title": [
+                  {
+                    "text": {
+                      "content": "Ada Lovelace"
+                    },
+                    "type": "text"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+          "page": {
+            "archived": false,
+            "id": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+            "inTrash": false,
+            "parent": {
+              "databaseId": "3b5e7091-2c4d-4e6f-9081-223344556677",
+              "id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+              "type": "data_source_id"
+            },
+            "properties": {
+              "Email": {
+                "email": "ada@example.com",
+                "id": "em1",
+                "plainText": "ada@example.com",
+                "type": "email"
+              },
+              "Name": {
+                "id": "title",
+                "plainText": "Ada Lovelace",
+                "text": "Ada Lovelace",
+                "type": "title"
+              }
+            },
+            "title": "Ada Lovelace",
+            "url": "https://www.notion.so/1f3c9a2e5b7d4e8a9c0123456789abcd"
+          },
+          "pageId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "input": {
+        "bodyText": "First paragraph\n\nSecond paragraph",
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "properties": {
+          "Email": {
+            "email": "ada@example.com",
+            "type": "email"
+          },
+          "Name": {
+            "text": "Ada Lovelace",
+            "type": "title"
+          }
+        }
+      },
+      "name": "createPage-success",
+      "operation": "createPage"
+    },
+    {
+      "callId": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"error\",\"status\":400,\"code\":\"validation_error\",\"message\":\"secret provider text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/pages",
+          "requestBody": {
+            "children": [
+              {
+                "object": "block",
+                "paragraph": {
+                  "rich_text": [
+                    {
+                      "text": {
+                        "content": "First paragraph"
+                      },
+                      "type": "text"
+                    }
+                  ]
+                },
+                "type": "paragraph"
+              },
+              {
+                "object": "block",
+                "paragraph": {
+                  "rich_text": [
+                    {
+                      "text": {
+                        "content": "Second paragraph"
+                      },
+                      "type": "text"
+                    }
+                  ]
+                },
+                "type": "paragraph"
+              }
+            ],
+            "parent": {
+              "data_source_id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+              "type": "data_source_id"
+            },
+            "properties": {
+              "Email": {
+                "email": "ada@example.com"
+              },
+              "Name": {
+                "title": [
+                  {
+                    "text": {
+                      "content": "Ada Lovelace"
+                    },
+                    "type": "text"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "input": {
+        "bodyText": "First paragraph\n\nSecond paragraph",
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "properties": {
+          "Email": {
+            "email": "ada@example.com",
+            "type": "email"
+          },
+          "Name": {
+            "text": "Ada Lovelace",
+            "type": "title"
+          }
+        }
+      },
+      "name": "createPage-rejected",
+      "operation": "createPage"
+    },
+    {
+      "callId": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"wrong\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/pages",
+          "requestBody": {
+            "children": [
+              {
+                "object": "block",
+                "paragraph": {
+                  "rich_text": [
+                    {
+                      "text": {
+                        "content": "First paragraph"
+                      },
+                      "type": "text"
+                    }
+                  ]
+                },
+                "type": "paragraph"
+              },
+              {
+                "object": "block",
+                "paragraph": {
+                  "rich_text": [
+                    {
+                      "text": {
+                        "content": "Second paragraph"
+                      },
+                      "type": "text"
+                    }
+                  ]
+                },
+                "type": "paragraph"
+              }
+            ],
+            "parent": {
+              "data_source_id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+              "type": "data_source_id"
+            },
+            "properties": {
+              "Email": {
+                "email": "ada@example.com"
+              },
+              "Name": {
+                "title": [
+                  {
+                    "text": {
+                      "content": "Ada Lovelace"
+                    },
+                    "type": "text"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "input": {
+        "bodyText": "First paragraph\n\nSecond paragraph",
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "properties": {
+          "Email": {
+            "email": "ada@example.com",
+            "type": "email"
+          },
+          "Name": {
+            "text": "Ada Lovelace",
+            "type": "title"
+          }
+        }
+      },
+      "name": "createPage-invalid-response",
+      "operation": "createPage"
+    },
+    {
+      "callId": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"error\",\"status\":429,\"code\":\"rate_limited\",\"message\":\"secret provider text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/pages",
+          "requestBody": {
+            "children": [
+              {
+                "object": "block",
+                "paragraph": {
+                  "rich_text": [
+                    {
+                      "text": {
+                        "content": "First paragraph"
+                      },
+                      "type": "text"
+                    }
+                  ]
+                },
+                "type": "paragraph"
+              },
+              {
+                "object": "block",
+                "paragraph": {
+                  "rich_text": [
+                    {
+                      "text": {
+                        "content": "Second paragraph"
+                      },
+                      "type": "text"
+                    }
+                  ]
+                },
+                "type": "paragraph"
+              }
+            ],
+            "parent": {
+              "data_source_id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+              "type": "data_source_id"
+            },
+            "properties": {
+              "Email": {
+                "email": "ada@example.com"
+              },
+              "Name": {
+                "title": [
+                  {
+                    "text": {
+                      "content": "Ada Lovelace"
+                    },
+                    "type": "text"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "input": {
+        "bodyText": "First paragraph\n\nSecond paragraph",
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "properties": {
+          "Email": {
+            "email": "ada@example.com",
+            "type": "email"
+          },
+          "Name": {
+            "text": "Ada Lovelace",
+            "type": "title"
+          }
+        }
+      },
+      "name": "createPage-rate-limit-retry",
+      "operation": "createPage"
+    },
+    {
+      "callId": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"error\",\"status\":503,\"code\":\"service_unavailable\",\"message\":\"secret provider text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/databases/3b5e7091-2c4d-4e6f-9081-223344556677",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "input": {
+        "bodyText": "First paragraph\n\nSecond paragraph",
+        "databaseId": "3b5e7091-2c4d-4e6f-9081-223344556677",
+        "properties": {
+          "Email": {
+            "email": "ada@example.com",
+            "type": "email"
+          },
+          "Name": {
+            "text": "Ada Lovelace",
+            "type": "title"
+          }
+        }
+      },
+      "name": "createPage-server-retry-on-lookup",
+      "operation": "createPage"
+    },
+    {
+      "callId": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"error\",\"status\":500,\"code\":\"internal_server_error\",\"message\":\"secret provider text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/pages",
+          "requestBody": {
+            "children": [
+              {
+                "object": "block",
+                "paragraph": {
+                  "rich_text": [
+                    {
+                      "text": {
+                        "content": "First paragraph"
+                      },
+                      "type": "text"
+                    }
+                  ]
+                },
+                "type": "paragraph"
+              },
+              {
+                "object": "block",
+                "paragraph": {
+                  "rich_text": [
+                    {
+                      "text": {
+                        "content": "Second paragraph"
+                      },
+                      "type": "text"
+                    }
+                  ]
+                },
+                "type": "paragraph"
+              }
+            ],
+            "parent": {
+              "data_source_id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+              "type": "data_source_id"
+            },
+            "properties": {
+              "Email": {
+                "email": "ada@example.com"
+              },
+              "Name": {
+                "title": [
+                  {
+                    "text": {
+                      "content": "Ada Lovelace"
+                    },
+                    "type": "text"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "input": {
+        "bodyText": "First paragraph\n\nSecond paragraph",
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "properties": {
+          "Email": {
+            "email": "ada@example.com",
+            "type": "email"
+          },
+          "Name": {
+            "text": "Ada Lovelace",
+            "type": "title"
+          }
+        }
+      },
+      "name": "createPage-uncertain",
+      "operation": "createPage"
+    },
+    {
+      "callId": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/pages",
+          "requestBody": {
+            "children": [
+              {
+                "object": "block",
+                "paragraph": {
+                  "rich_text": [
+                    {
+                      "text": {
+                        "content": "First paragraph"
+                      },
+                      "type": "text"
+                    }
+                  ]
+                },
+                "type": "paragraph"
+              },
+              {
+                "object": "block",
+                "paragraph": {
+                  "rich_text": [
+                    {
+                      "text": {
+                        "content": "Second paragraph"
+                      },
+                      "type": "text"
+                    }
+                  ]
+                },
+                "type": "paragraph"
+              }
+            ],
+            "parent": {
+              "data_source_id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+              "type": "data_source_id"
+            },
+            "properties": {
+              "Email": {
+                "email": "ada@example.com"
+              },
+              "Name": {
+                "title": [
+                  {
+                    "text": {
+                      "content": "Ada Lovelace"
+                    },
+                    "type": "text"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "input": {
+        "bodyText": "First paragraph\n\nSecond paragraph",
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "properties": {
+          "Email": {
+            "email": "ada@example.com",
+            "type": "email"
+          },
+          "Name": {
+            "text": "Ada Lovelace",
+            "type": "title"
+          }
+        }
+      },
+      "name": "createPage-transport-retry",
+      "operation": "createPage"
+    },
+    {
+      "callId": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"error\",\"status\":404,\"code\":\"object_not_found\",\"message\":\"secret provider text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/pages",
+          "requestBody": {
+            "children": [
+              {
+                "object": "block",
+                "paragraph": {
+                  "rich_text": [
+                    {
+                      "text": {
+                        "content": "First paragraph"
+                      },
+                      "type": "text"
+                    }
+                  ]
+                },
+                "type": "paragraph"
+              },
+              {
+                "object": "block",
+                "paragraph": {
+                  "rich_text": [
+                    {
+                      "text": {
+                        "content": "Second paragraph"
+                      },
+                      "type": "text"
+                    }
+                  ]
+                },
+                "type": "paragraph"
+              }
+            ],
+            "parent": {
+              "data_source_id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+              "type": "data_source_id"
+            },
+            "properties": {
+              "Email": {
+                "email": "ada@example.com"
+              },
+              "Name": {
+                "title": [
+                  {
+                    "text": {
+                      "content": "Ada Lovelace"
+                    },
+                    "type": "text"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "input": {
+        "bodyText": "First paragraph\n\nSecond paragraph",
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "properties": {
+          "Email": {
+            "email": "ada@example.com",
+            "type": "email"
+          },
+          "Name": {
+            "text": "Ada Lovelace",
+            "type": "title"
+          }
+        }
+      },
+      "name": "createPage-not-found",
+      "operation": "createPage"
+    },
+    {
+      "callId": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"page\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/databases/3b5e7091-2c4d-4e6f-9081-223344556677",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {},
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "input": {
+        "bodyText": "First paragraph\n\nSecond paragraph",
+        "databaseId": "3b5e7091-2c4d-4e6f-9081-223344556677",
+        "properties": {
+          "Email": {
+            "email": "ada@example.com",
+            "type": "email"
+          },
+          "Name": {
+            "text": "Ada Lovelace",
+            "type": "title"
+          }
+        }
+      },
+      "name": "createPage-invalid-database",
+      "operation": "createPage"
+    },
+    {
+      "callId": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {},
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "input": {
+        "bodyText": "First paragraph\n\nSecond paragraph",
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "databaseId": "3b5e7091-2c4d-4e6f-9081-223344556677",
+        "properties": {
+          "Email": {
+            "email": "ada@example.com",
+            "type": "email"
+          },
+          "Name": {
+            "text": "Ada Lovelace",
+            "type": "title"
+          }
+        }
+      },
+      "name": "createPage-defect",
+      "operation": "createPage"
+    },
+    {
+      "callId": "cc61e0de-0c83-53f6-b2af-a22e6a46a04b",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"page\",\"id\":\"1f3c9a2e-5b7d-4e8a-9c01-23456789abcd\",\"url\":\"https://www.notion.so/1f3c9a2e5b7d4e8a9c0123456789abcd\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"3b5e7091-2c4d-4e6f-9081-223344556677\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"plain_text\":\"Ada Lovelace\",\"text\":{\"content\":\"Ada Lovelace\"}}]},\"Email\":{\"id\":\"em1\",\"type\":\"email\",\"email\":\"ada@example.com\"}},\"in_trash\":false,\"is_archived\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v1/pages/1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "requestBody": {
+            "properties": {
+              "Email": {
+                "email": "ada@example.com"
+              },
+              "Name": {
+                "title": [
+                  {
+                    "text": {
+                      "content": "Ada Lovelace"
+                    },
+                    "type": "text"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "page": {
+            "archived": false,
+            "id": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+            "inTrash": false,
+            "parent": {
+              "databaseId": "3b5e7091-2c4d-4e6f-9081-223344556677",
+              "id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+              "type": "data_source_id"
+            },
+            "properties": {
+              "Email": {
+                "email": "ada@example.com",
+                "id": "em1",
+                "plainText": "ada@example.com",
+                "type": "email"
+              },
+              "Name": {
+                "id": "title",
+                "plainText": "Ada Lovelace",
+                "text": "Ada Lovelace",
+                "type": "title"
+              }
+            },
+            "title": "Ada Lovelace",
+            "url": "https://www.notion.so/1f3c9a2e5b7d4e8a9c0123456789abcd"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cc61e0de-0c83-53f6-b2af-a22e6a46a04b",
+      "input": {
+        "pageId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+        "properties": {
+          "Email": {
+            "email": "ada@example.com",
+            "type": "email"
+          },
+          "Name": {
+            "text": "Ada Lovelace",
+            "type": "title"
+          }
+        }
+      },
+      "name": "updatePageProperties-success",
+      "operation": "updatePageProperties"
+    },
+    {
+      "callId": "cc61e0de-0c83-53f6-b2af-a22e6a46a04b",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"error\",\"status\":400,\"code\":\"validation_error\",\"message\":\"secret provider text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v1/pages/1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "requestBody": {
+            "properties": {
+              "Email": {
+                "email": "ada@example.com"
+              },
+              "Name": {
+                "title": [
+                  {
+                    "text": {
+                      "content": "Ada Lovelace"
+                    },
+                    "type": "text"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "page": {
+            "archived": false,
+            "id": "",
+            "inTrash": false,
+            "parent": {
+              "type": ""
+            },
+            "properties": {},
+            "title": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cc61e0de-0c83-53f6-b2af-a22e6a46a04b",
+      "input": {
+        "pageId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+        "properties": {
+          "Email": {
+            "email": "ada@example.com",
+            "type": "email"
+          },
+          "Name": {
+            "text": "Ada Lovelace",
+            "type": "title"
+          }
+        }
+      },
+      "name": "updatePageProperties-rejected",
+      "operation": "updatePageProperties"
+    },
+    {
+      "callId": "cc61e0de-0c83-53f6-b2af-a22e6a46a04b",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"wrong\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v1/pages/1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "requestBody": {
+            "properties": {
+              "Email": {
+                "email": "ada@example.com"
+              },
+              "Name": {
+                "title": [
+                  {
+                    "text": {
+                      "content": "Ada Lovelace"
+                    },
+                    "type": "text"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "page": {
+            "archived": false,
+            "id": "",
+            "inTrash": false,
+            "parent": {
+              "type": ""
+            },
+            "properties": {},
+            "title": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cc61e0de-0c83-53f6-b2af-a22e6a46a04b",
+      "input": {
+        "pageId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+        "properties": {
+          "Email": {
+            "email": "ada@example.com",
+            "type": "email"
+          },
+          "Name": {
+            "text": "Ada Lovelace",
+            "type": "title"
+          }
+        }
+      },
+      "name": "updatePageProperties-invalid-response",
+      "operation": "updatePageProperties"
+    },
+    {
+      "callId": "cc61e0de-0c83-53f6-b2af-a22e6a46a04b",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"error\",\"status\":429,\"code\":\"rate_limited\",\"message\":\"secret provider text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v1/pages/1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "requestBody": {
+            "properties": {
+              "Email": {
+                "email": "ada@example.com"
+              },
+              "Name": {
+                "title": [
+                  {
+                    "text": {
+                      "content": "Ada Lovelace"
+                    },
+                    "type": "text"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cc61e0de-0c83-53f6-b2af-a22e6a46a04b",
+      "input": {
+        "pageId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+        "properties": {
+          "Email": {
+            "email": "ada@example.com",
+            "type": "email"
+          },
+          "Name": {
+            "text": "Ada Lovelace",
+            "type": "title"
+          }
+        }
+      },
+      "name": "updatePageProperties-rate-limit-retry",
+      "operation": "updatePageProperties"
+    },
+    {
+      "callId": "cc61e0de-0c83-53f6-b2af-a22e6a46a04b",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"error\",\"status\":503,\"code\":\"service_unavailable\",\"message\":\"secret provider text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v1/pages/1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "requestBody": {
+            "properties": {
+              "Email": {
+                "email": "ada@example.com"
+              },
+              "Name": {
+                "title": [
+                  {
+                    "text": {
+                      "content": "Ada Lovelace"
+                    },
+                    "type": "text"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cc61e0de-0c83-53f6-b2af-a22e6a46a04b",
+      "input": {
+        "pageId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+        "properties": {
+          "Email": {
+            "email": "ada@example.com",
+            "type": "email"
+          },
+          "Name": {
+            "text": "Ada Lovelace",
+            "type": "title"
+          }
+        }
+      },
+      "name": "updatePageProperties-server-retry",
+      "operation": "updatePageProperties"
+    },
+    {
+      "callId": "cc61e0de-0c83-53f6-b2af-a22e6a46a04b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v1/pages/1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "requestBody": {
+            "properties": {
+              "Email": {
+                "email": "ada@example.com"
+              },
+              "Name": {
+                "title": [
+                  {
+                    "text": {
+                      "content": "Ada Lovelace"
+                    },
+                    "type": "text"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cc61e0de-0c83-53f6-b2af-a22e6a46a04b",
+      "input": {
+        "pageId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+        "properties": {
+          "Email": {
+            "email": "ada@example.com",
+            "type": "email"
+          },
+          "Name": {
+            "text": "Ada Lovelace",
+            "type": "title"
+          }
+        }
+      },
+      "name": "updatePageProperties-transport-retry",
+      "operation": "updatePageProperties"
+    },
+    {
+      "callId": "cc61e0de-0c83-53f6-b2af-a22e6a46a04b",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"error\",\"status\":404,\"code\":\"object_not_found\",\"message\":\"secret provider text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v1/pages/1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "requestBody": {
+            "properties": {
+              "Email": {
+                "email": "ada@example.com"
+              },
+              "Name": {
+                "title": [
+                  {
+                    "text": {
+                      "content": "Ada Lovelace"
+                    },
+                    "type": "text"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "page": {
+            "archived": false,
+            "id": "",
+            "inTrash": false,
+            "parent": {
+              "type": ""
+            },
+            "properties": {},
+            "title": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cc61e0de-0c83-53f6-b2af-a22e6a46a04b",
+      "input": {
+        "pageId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+        "properties": {
+          "Email": {
+            "email": "ada@example.com",
+            "type": "email"
+          },
+          "Name": {
+            "text": "Ada Lovelace",
+            "type": "title"
+          }
+        }
+      },
+      "name": "updatePageProperties-not-found",
+      "operation": "updatePageProperties"
+    },
+    {
+      "callId": "cc61e0de-0c83-53f6-b2af-a22e6a46a04b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "page": {
+            "archived": false,
+            "id": "",
+            "inTrash": false,
+            "parent": {
+              "type": ""
+            },
+            "properties": {},
+            "title": ""
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cc61e0de-0c83-53f6-b2af-a22e6a46a04b",
+      "input": {
+        "pageId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+        "properties": {}
+      },
+      "name": "updatePageProperties-defect",
+      "operation": "updatePageProperties"
+    },
+    {
+      "callId": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"error\",\"status\":503,\"code\":\"service_unavailable\",\"additional_data\":{\"committed_resource_id\":\"1f3c9a2e-5b7d-4e8a-9c01-23456789abcd\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/pages",
+          "requestBody": {
+            "children": [
+              {
+                "object": "block",
+                "paragraph": {
+                  "rich_text": [
+                    {
+                      "text": {
+                        "content": "First paragraph"
+                      },
+                      "type": "text"
+                    }
+                  ]
+                },
+                "type": "paragraph"
+              },
+              {
+                "object": "block",
+                "paragraph": {
+                  "rich_text": [
+                    {
+                      "text": {
+                        "content": "Second paragraph"
+                      },
+                      "type": "text"
+                    }
+                  ]
+                },
+                "type": "paragraph"
+              }
+            ],
+            "parent": {
+              "data_source_id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+              "type": "data_source_id"
+            },
+            "properties": {
+              "Email": {
+                "email": "ada@example.com"
+              },
+              "Name": {
+                "title": [
+                  {
+                    "text": {
+                      "content": "Ada Lovelace"
+                    },
+                    "type": "text"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{\"object\":\"page\",\"id\":\"1f3c9a2e-5b7d-4e8a-9c01-23456789abcd\",\"url\":\"https://www.notion.so/1f3c9a2e5b7d4e8a9c0123456789abcd\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"3b5e7091-2c4d-4e6f-9081-223344556677\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"plain_text\":\"Ada Lovelace\",\"text\":{\"content\":\"Ada Lovelace\"}}]},\"Email\":{\"id\":\"em1\",\"type\":\"email\",\"email\":\"ada@example.com\"}},\"in_trash\":false,\"is_archived\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/pages/1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "confirmedAfterTimeout": true,
+          "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+          "page": {
+            "archived": false,
+            "id": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+            "inTrash": false,
+            "parent": {
+              "databaseId": "3b5e7091-2c4d-4e6f-9081-223344556677",
+              "id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+              "type": "data_source_id"
+            },
+            "properties": {
+              "Email": {
+                "email": "ada@example.com",
+                "id": "em1",
+                "plainText": "ada@example.com",
+                "type": "email"
+              },
+              "Name": {
+                "id": "title",
+                "plainText": "Ada Lovelace",
+                "text": "Ada Lovelace",
+                "type": "title"
+              }
+            },
+            "title": "Ada Lovelace",
+            "url": "https://www.notion.so/1f3c9a2e5b7d4e8a9c0123456789abcd"
+          },
+          "pageId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "input": {
+        "bodyText": "First paragraph\n\nSecond paragraph",
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "properties": {
+          "Email": {
+            "email": "ada@example.com",
+            "type": "email"
+          },
+          "Name": {
+            "text": "Ada Lovelace",
+            "type": "title"
+          }
+        }
+      },
+      "name": "createPage-committed-id",
+      "operation": "createPage"
+    },
+    {
+      "callId": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/pages",
+          "requestBody": {
+            "children": [
+              {
+                "object": "block",
+                "paragraph": {
+                  "rich_text": [
+                    {
+                      "text": {
+                        "content": "First paragraph"
+                      },
+                      "type": "text"
+                    }
+                  ]
+                },
+                "type": "paragraph"
+              },
+              {
+                "object": "block",
+                "paragraph": {
+                  "rich_text": [
+                    {
+                      "text": {
+                        "content": "Second paragraph"
+                      },
+                      "type": "text"
+                    }
+                  ]
+                },
+                "type": "paragraph"
+              }
+            ],
+            "parent": {
+              "data_source_id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+              "type": "data_source_id"
+            },
+            "properties": {
+              "Email": {
+                "email": "ada@example.com"
+              },
+              "Name": {
+                "title": [
+                  {
+                    "text": {
+                      "content": "Ada Lovelace"
+                    },
+                    "type": "text"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "input": {
+        "bodyText": "First paragraph\n\nSecond paragraph",
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "properties": {
+          "Email": {
+            "email": "ada@example.com",
+            "type": "email"
+          },
+          "Name": {
+            "text": "Ada Lovelace",
+            "type": "title"
+          }
+        }
+      },
+      "name": "createPage-after-send-uncertain",
+      "operation": "createPage"
+    },
+    {
+      "callId": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "output": {},
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "input": {
+        "bodyText": "First paragraph\n\nSecond paragraph",
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "properties": {
+          "Email": {
+            "email": "ada@example.com",
+            "type": "email"
+          },
+          "Name": {
+            "text": "Ada Lovelace",
+            "type": "title"
+          }
+        }
+      },
+      "name": "createPage-unconfirmed-claim",
+      "operation": "createPage",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"page\",\"id\":\"1f3c9a2e-5b7d-4e8a-9c01-23456789abcd\",\"url\":\"https://www.notion.so/1f3c9a2e5b7d4e8a9c0123456789abcd\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"3b5e7091-2c4d-4e6f-9081-223344556677\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"plain_text\":\"Ada Lovelace\",\"text\":{\"content\":\"Ada Lovelace\"}}]},\"Email\":{\"id\":\"em1\",\"type\":\"email\",\"email\":\"ada@example.com\"}},\"in_trash\":false,\"is_archived\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/pages/1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+          "page": {
+            "archived": false,
+            "id": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+            "inTrash": false,
+            "parent": {
+              "databaseId": "3b5e7091-2c4d-4e6f-9081-223344556677",
+              "id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+              "type": "data_source_id"
+            },
+            "properties": {
+              "Email": {
+                "email": "ada@example.com",
+                "id": "em1",
+                "plainText": "ada@example.com",
+                "type": "email"
+              },
+              "Name": {
+                "id": "title",
+                "plainText": "Ada Lovelace",
+                "text": "Ada Lovelace",
+                "type": "title"
+              }
+            },
+            "title": "Ada Lovelace",
+            "url": "https://www.notion.so/1f3c9a2e5b7d4e8a9c0123456789abcd"
+          },
+          "pageId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "input": {
+        "bodyText": "First paragraph\n\nSecond paragraph",
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "properties": {
+          "Email": {
+            "email": "ada@example.com",
+            "type": "email"
+          },
+          "Name": {
+            "text": "Ada Lovelace",
+            "type": "title"
+          }
+        }
+      },
+      "name": "createPage-recover-known-id",
+      "operation": "createPage",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+        "providerId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "bf449653-ec6a-5a0d-a386-59ebc3a68300",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"error\",\"status\":429,\"code\":\"rate_limited\",\"additional_data\":{\"rate_limit_reason\":\"public_api_request_blocked\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/search",
+          "requestBody": {
+            "filter": {
+              "property": "object",
+              "value": "data_source"
+            },
+            "page_size": 1,
+            "query": "Form",
+            "sort": {
+              "direction": "ascending",
+              "timestamp": "last_edited_time"
+            },
+            "start_cursor": "next-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "hasMore": false,
+          "matches": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "objectType": "data_source",
+        "pageSize": 1,
+        "query": "Form",
+        "sortDirection": "ascending",
+        "startCursor": "next-1"
+      },
+      "name": "search-blocked-rate-limit",
+      "operation": "search"
+    },
+    {
+      "callId": "cc61e0de-0c83-53f6-b2af-a22e6a46a04b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v1/pages/1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "requestBody": {
+            "properties": {
+              "Email": {
+                "email": "ada@example.com"
+              },
+              "Name": {
+                "title": [
+                  {
+                    "text": {
+                      "content": "Ada Lovelace"
+                    },
+                    "type": "text"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "cc61e0de-0c83-53f6-b2af-a22e6a46a04b",
+      "input": {
+        "pageId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+        "properties": {
+          "Email": {
+            "email": "ada@example.com",
+            "type": "email"
+          },
+          "Name": {
+            "text": "Ada Lovelace",
+            "type": "title"
+          }
+        }
+      },
+      "name": "updatePageProperties-after-send-retry",
+      "operation": "updatePageProperties"
+    },
+    {
+      "callId": "d59d7bcf-ddf4-53a2-a7a5-a9b351e0c630",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"page\",\"id\":\"1f3c9a2e-5b7d-4e8a-9c01-23456789abcd\",\"url\":\"https://www.notion.so/1f3c9a2e5b7d4e8a9c0123456789abcd\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"3b5e7091-2c4d-4e6f-9081-223344556677\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"plain_text\":\"Ada Lovelace\",\"text\":{\"content\":\"Ada Lovelace\"}}]},\"Email\":{\"id\":\"em1\",\"type\":\"email\",\"email\":\"ada@example.com\"}},\"in_trash\":false,\"is_archived\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/pages/1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"object\":\"error\",\"status\":503,\"code\":\"service_unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/blocks/1f3c9a2e-5b7d-4e8a-9c01-23456789abcd/children",
+          "query": {
+            "page_size": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxBlocks": 1,
+        "maxTextCharacters": 100,
+        "pageId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+        "skipContent": false
+      },
+      "name": "getPage-blocks-retry",
+      "operation": "getPage"
+    },
+    {
+      "callId": "752b0959-5cdd-5973-a0d0-075581f6a124",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"database\",\"id\":\"3b5e7091-2c4d-4e6f-9081-223344556677\",\"data_sources\":[{\"id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\"},{\"id\":\"1f3c9a2e-5b7d-4e8a-9c01-23456789abcd\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/databases/3b5e7091-2c4d-4e6f-9081-223344556677",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "dataSourceId": "",
+          "hasMore": false,
+          "pages": [],
+          "resultLimitReached": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "databaseId": "3b5e7091-2c4d-4e6f-9081-223344556677",
+        "filter": {
+          "condition": "contains",
+          "property": "Name",
+          "text": "Ada",
+          "type": "title"
+        },
+        "pageSize": 1,
+        "properties": [
+          "Name"
+        ],
+        "sorts": [
+          {
+            "direction": "ascending",
+            "property": "Name"
+          }
+        ],
+        "startCursor": "next-1"
+      },
+      "name": "queryDatabase-multiple-data-sources",
+      "operation": "queryDatabase"
+    },
+    {
+      "callId": "5d3c0222-69d7-57fd-9c46-69c9a82db598",
+      "exchanges": [
+        {
+          "body": "{\"results\":[{\"object\":\"page\",\"id\":\"1f3c9a2e-5b7d-4e8a-9c01-23456789abcd\",\"url\":\"https://www.notion.so/1f3c9a2e5b7d4e8a9c0123456789abcd\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"3b5e7091-2c4d-4e6f-9081-223344556677\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"plain_text\":\"Ada Lovelace\",\"text\":{\"content\":\"Ada Lovelace\"}}]},\"Email\":{\"id\":\"em1\",\"type\":\"email\",\"email\":\"ada@example.com\"}},\"in_trash\":false,\"is_archived\":false}],\"next_cursor\":null,\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/data_sources/2a4d6f80-1b3c-4d5e-8f70-112233445566/query",
+          "query": {
+            "filter_properties[]": [
+              "Name ~!$\u0026+*"
+            ]
+          },
+          "requestBody": {
+            "filter": {
+              "property": "Name",
+              "title": {
+                "contains": "Ada"
+              }
+            },
+            "page_size": 1,
+            "result_type": "page",
+            "sorts": [
+              {
+                "direction": "ascending",
+                "property": "Name"
+              }
+            ],
+            "start_cursor": "next-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "queried",
+        "failureKind": "",
+        "output": {
+          "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+          "hasMore": false,
+          "pages": [
+            {
+              "archived": false,
+              "id": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+              "inTrash": false,
+              "parent": {
+                "databaseId": "3b5e7091-2c4d-4e6f-9081-223344556677",
+                "id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+                "type": "data_source_id"
+              },
+              "properties": {
+                "Email": {
+                  "email": "ada@example.com",
+                  "id": "em1",
+                  "plainText": "ada@example.com",
+                  "type": "email"
+                },
+                "Name": {
+                  "id": "title",
+                  "plainText": "Ada Lovelace",
+                  "text": "Ada Lovelace",
+                  "type": "title"
+                }
+              },
+              "title": "Ada Lovelace",
+              "url": "https://www.notion.so/1f3c9a2e5b7d4e8a9c0123456789abcd"
+            }
+          ],
+          "resultLimitReached": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "filter": {
+          "condition": "contains",
+          "property": "Name",
+          "text": "Ada",
+          "type": "title"
+        },
+        "pageSize": 1,
+        "properties": [
+          "Name ~!$\u0026+*"
+        ],
+        "sorts": [
+          {
+            "direction": "ascending",
+            "property": "Name"
+          }
+        ],
+        "startCursor": "next-1"
+      },
+      "name": "queryDatabase-escaped-property",
+      "operation": "queryDatabase"
+    }
+  ],
+  "schemaVersion": 1
+}

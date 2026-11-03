@@ -8,6 +8,12 @@ metadata:
   version: v0.24.0
 spec:
   provider: notion
+  languages:
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-notion'
+      operations: [search, queryDatabase, getPage, createPage, updatePageProperties]
+      triggers: []
   codegen:
     go:
       package: notion
