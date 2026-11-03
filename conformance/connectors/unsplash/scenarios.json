@@ -1,0 +1,667 @@
+{
+  "connector": "unsplash",
+  "scenarios": [
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"total\": 1, \"total_pages\": 1, \"results\": [{\"id\": \"office-1\", \"description\": \"A sunlit office\", \"alt_description\": \"sunlit office interior\", \"urls\": {\"regular\": \"https://images.unsplash.com/photo-office-1\"}, \"links\": {\"html\": \"https://unsplash.com/photos/office-1\"}, \"user\": {\"name\": \"A. Photographer\", \"links\": {\"html\": \"https://unsplash.com/@photographer\"}}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search/photos",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "5"
+            ],
+            "query": [
+              "office"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Client-ID unsplash-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "searched",
+        "failureKind": "",
+        "output": {
+          "photos": [
+            {
+              "altDescription": "sunlit office interior",
+              "description": "A sunlit office",
+              "htmlUrl": "https://unsplash.com/photos/office-1",
+              "id": "office-1",
+              "photographerName": "A. Photographer",
+              "photographerURL": "https://unsplash.com/@photographer",
+              "regularUrl": "https://images.unsplash.com/photo-office-1"
+            }
+          ],
+          "total": 1,
+          "totalPages": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 5,
+        "query": "office"
+      },
+      "name": "searchPhotos-success",
+      "operation": "searchPhotos"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"total\": 0, \"total_pages\": 0, \"results\": []}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search/photos",
+          "query": {
+            "query": [
+              "nothing"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Client-ID unsplash-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "searched",
+        "failureKind": "",
+        "output": {
+          "photos": [],
+          "total": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": "nothing"
+      },
+      "name": "searchPhotos-empty",
+      "operation": "searchPhotos"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search/photos",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "5"
+            ],
+            "query": [
+              "office"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Client-ID unsplash-test-key"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "photos": [],
+          "total": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 5,
+        "query": "office"
+      },
+      "name": "searchPhotos-rejected",
+      "operation": "searchPhotos"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"total\":1,\"total_pages\":1,\"results\":[{}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search/photos",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "5"
+            ],
+            "query": [
+              "office"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Client-ID unsplash-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "photos": [],
+          "total": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 5,
+        "query": "office"
+      },
+      "name": "searchPhotos-invalid",
+      "operation": "searchPhotos"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "photos": [],
+          "total": 0,
+          "totalPages": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "query": " "
+      },
+      "name": "searchPhotos-defect",
+      "operation": "searchPhotos"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search/photos",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "5"
+            ],
+            "query": [
+              "office"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Client-ID unsplash-test-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 5,
+        "query": "office"
+      },
+      "name": "searchPhotos-429-retry",
+      "operation": "searchPhotos"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search/photos",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "5"
+            ],
+            "query": [
+              "office"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Client-ID unsplash-test-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 5,
+        "query": "office"
+      },
+      "name": "searchPhotos-5xx-retry",
+      "operation": "searchPhotos"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search/photos",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "5"
+            ],
+            "query": [
+              "office"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Client-ID unsplash-test-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 5,
+        "query": "office"
+      },
+      "name": "searchPhotos-transport-retry",
+      "operation": "searchPhotos"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"office-1\", \"description\": \"A sunlit office\", \"alt_description\": \"sunlit office interior\", \"urls\": {\"regular\": \"https://images.unsplash.com/photo-office-1\"}, \"links\": {\"html\": \"https://unsplash.com/photos/office-1\"}, \"user\": {\"name\": \"A. Photographer\", \"links\": {\"html\": \"https://unsplash.com/@photographer\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/photos/office-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Client-ID unsplash-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "altDescription": "sunlit office interior",
+          "description": "A sunlit office",
+          "htmlUrl": "https://unsplash.com/photos/office-1",
+          "id": "office-1",
+          "photographerName": "A. Photographer",
+          "photographerURL": "https://unsplash.com/@photographer",
+          "regularUrl": "https://images.unsplash.com/photo-office-1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "office-1"
+      },
+      "name": "getPhoto-found",
+      "operation": "getPhoto"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/photos/office-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Client-ID unsplash-test-key"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "htmlUrl": "",
+          "id": "",
+          "photographerName": "",
+          "photographerURL": "",
+          "regularUrl": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "office-1"
+      },
+      "name": "getPhoto-not-found",
+      "operation": "getPhoto"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/photos/office-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Client-ID unsplash-test-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "htmlUrl": "",
+          "id": "",
+          "photographerName": "",
+          "photographerURL": "",
+          "regularUrl": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "office-1"
+      },
+      "name": "getPhoto-rejected",
+      "operation": "getPhoto"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/photos/office-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Client-ID unsplash-test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "htmlUrl": "",
+          "id": "",
+          "photographerName": "",
+          "photographerURL": "",
+          "regularUrl": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "office-1"
+      },
+      "name": "getPhoto-invalid",
+      "operation": "getPhoto"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "htmlUrl": "",
+          "id": "",
+          "photographerName": "",
+          "photographerURL": "",
+          "regularUrl": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "/"
+      },
+      "name": "getPhoto-defect",
+      "operation": "getPhoto"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/photos/office-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Client-ID unsplash-test-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "office-1"
+      },
+      "name": "getPhoto-429-retry",
+      "operation": "getPhoto"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/photos/office-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Client-ID unsplash-test-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "office-1"
+      },
+      "name": "getPhoto-5xx-retry",
+      "operation": "getPhoto"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/photos/office-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Client-ID unsplash-test-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "office-1"
+      },
+      "name": "getPhoto-transport-retry",
+      "operation": "getPhoto"
+    }
+  ],
+  "schemaVersion": 1
+}
