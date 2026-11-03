@@ -22,6 +22,11 @@ it('queries server types, replays an idempotent write, and rolls back a row-limi
   const table = `dex_connector_ts_${randomUUID().replaceAll('-', '')}`;
   const call = { id: randomUUID(), idempotencyKey: randomUUID(), context: { cancellationSignal: new AbortController().signal } } as Parameters<ReturnType<SQLServerClient['query']>['invoke']>[0];
   try {
+    if (tlsCAFile) {
+      const wrongHost = new SQLServerClient({ ...config, host: '127.0.0.2' }, { resolve: async () => ({ password: new SecretString(password) }) });
+      const rejectedHost = await wrongHost.query().invoke(call, { statement: 'SELECT 1 AS answer', parameters: [] });
+      expect(rejectedHost).toMatchObject({ kind: 'branch', branch: 'providerRejected', failure: { kind: 'AUTHENTICATION' } });
+    }
     await admin.request().query(`CREATE TABLE dbo.${table} (id int IDENTITY PRIMARY KEY, idempotency_key uniqueidentifier NOT NULL UNIQUE, note nvarchar(20) NOT NULL, amount money NOT NULL DEFAULT 1.2300)`);
     const query = await provider.query().invoke(call, { statement: "SELECT CAST(@p1 AS bigint) AS big, CAST(@p2 AS decimal(12,2)) AS exact, CAST(N'héllo' AS nvarchar(10)) AS label", parameters: ['9007199254740993', '1200.5'] });
     expect(query.kind).toBe('branch');
@@ -29,6 +34,27 @@ it('queries server types, replays an idempotent write, and rolls back a row-limi
     const ordered = await provider.query().invoke(call, { statement: 'SELECT 1 AS [2], 2 AS [1]', parameters: [] });
     expect(ordered.kind).toBe('branch');
     if (ordered.kind === 'branch') expect(ordered.value.columns?.map(column => column?.name)).toEqual(['2', '1']);
+    const jsonChunks = await provider.query().invoke(call, { statement: 'SELECT 1 AS answer FOR JSON PATH', parameters: [] });
+    expect(jsonChunks).toMatchObject({ kind: 'branch', branch: 'completed' });
+    if (jsonChunks.kind === 'branch') {
+      const columnName = jsonChunks.value.columns?.[0]?.name;
+      expect(columnName).toBe('JSON_F52E2B61-18A1-11d1-B105-00805F49916B');
+      expect(JSON.parse(jsonChunks.value.rows?.map(row => row?.[columnName!]).join('') ?? '')).toEqual([{ answer: 1 }]);
+    }
+    const multipleJsonChunks = await provider.query().invoke(call, { statement: "SELECT REPLICATE(CAST(N'X' AS nvarchar(max)), 5000) AS answer FOR JSON PATH", parameters: [] });
+    expect(multipleJsonChunks).toMatchObject({ kind: 'branch', branch: 'completed' });
+    if (multipleJsonChunks.kind === 'branch') {
+      const columnName = multipleJsonChunks.value.columns?.[0]?.name;
+      expect(multipleJsonChunks.value.rows?.length).toBeGreaterThan(1);
+      expect(JSON.parse(multipleJsonChunks.value.rows?.map(row => row?.[columnName!]).join('') ?? '')[0].answer).toHaveLength(5000);
+    }
+    const xmlChunks = await provider.query().invoke(call, { statement: "SELECT 1 AS answer FOR XML PATH('row')", parameters: [] });
+    expect(xmlChunks).toMatchObject({ kind: 'branch', branch: 'completed' });
+    if (xmlChunks.kind === 'branch') {
+      const columnName = xmlChunks.value.columns?.[0]?.name;
+      expect(columnName).toBe('XML_F52E2B61-18A1-11d1-B105-00805F49916B');
+      expect(xmlChunks.value.rows?.map(row => row?.[columnName!]).join('')).toContain('<answer>1</answer>');
+    }
     const duplicateColumns = await provider.query().invoke(call, { statement: 'SELECT 1 AS repeated, 2 AS repeated', parameters: [] });
     expect(duplicateColumns.kind).toBe('branch');
     if (duplicateColumns.kind === 'branch') { expect(duplicateColumns.branch).toBe('defect'); expect(duplicateColumns.failure?.kind).toBe('VALIDATION'); }
@@ -108,6 +134,10 @@ it('queries server types, replays an idempotent write, and rolls back a row-limi
     const byteTruncated = await byteBounded.query().invoke(call, { statement: "SELECT N'wide result' AS answer", parameters: [] });
     expect(byteTruncated.kind).toBe('branch');
     if (byteTruncated.kind === 'branch') { expect(byteTruncated.branch).toBe('truncated'); expect(byteTruncated.value.rows).toEqual([]); }
+    const largeMaxValue = await byteBounded.query().invoke(call, { statement: "SELECT REPLICATE(CAST(N'X' AS nvarchar(max)), 2000000) AS answer", parameters: [] });
+    expect(largeMaxValue).toMatchObject({ kind: 'branch', branch: 'truncated' });
+    const largeJson = await byteBounded.query().invoke(call, { statement: "SELECT REPLICATE(CAST(N'X' AS nvarchar(max)), 2000000) AS answer FOR JSON PATH", parameters: [] });
+    expect(largeJson).toMatchObject({ kind: 'branch', branch: 'truncated' });
     const outputBounded = await byteBounded.execute().invoke(call, { statement: `UPDATE dbo.${table} SET note = @p1 OUTPUT INSERTED.note`, parameters: ['too-wide'], returnsOutputRows: true });
     expect(outputBounded.kind).toBe('branch');
     if (outputBounded.kind === 'branch') expect(outputBounded.branch).toBe('limitExceeded');

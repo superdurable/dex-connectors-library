@@ -22,11 +22,14 @@ valid UTC `Date` values, and `Buffer` values. It binds integers as `BIGINT`, flo
 has no `json.Number` or `json.RawMessage` value type: pass an exact decimal or JSON document as
 text and `CAST(@pN AS ...)` in the constant statement when SQL needs a specific type.
 
-For `mandatory` and `strict`, set `SQLSERVER_SSL_CA` in the Worker environment to a PEM bundle
+For `mandatory`, set `SQLSERVER_SSL_CA` in the Worker environment to a PEM bundle
 when the server uses a private CA. The connector rereads the file for every connection and treats
 an unreadable or invalid bundle as a configuration defect. Without it, Node uses its bundled CA
 roots by default; Node does not use the operating system's trust store unless configured through
-Node's own CA settings. TLS verification uses Node's SAN-first hostname and IP-address checks.
+Node's own CA settings. The connector verifies the certificate chain and matches only DNS or IP
+subject alternative names with Go's exact wildcard rules; the common name is ignored. Tedious
+does not expose the strict TDS 8 TLS socket before LOGIN7, so `strict` fails terminally before
+opening a connection. Use `mandatory` for verified TLS with this TypeScript package.
 
 The result mapping follows the [Go connector](../README.md): `BIGINT` is decimal text, binary
 values are base64, `UNIQUEIDENTIFIER` is lowercase, and supported date and time values use Go's
@@ -48,6 +51,13 @@ Tedious also parses `GEOGRAPHY` and `GEOMETRY` into objects instead of exposing 
 serialized bytes, and does not reliably expose `HIERARCHYID` as the Go driver's raw bytes. The
 connector rejects these CLR types and `sql_variant` from column metadata as terminal
 `invalidResponse`, even when no row follows, rather than returning a lossy value.
+
+Tedious materializes large `NVARCHAR(MAX)`, `VARBINARY(MAX)`, and `XML` values before emitting a
+row. The connector limits raw response bytes while the statement runs and closes the connection
+once `maxResponseBytes` plus 64 KiB of protocol overhead is exceeded. Queries then return
+`truncated`; executes return `limitExceeded` and roll back. `FOR JSON` and `FOR XML` results use
+Tedious's row events so each provider chunk is counted and returned as a row before `mssql`
+concatenates chunks into one value. This path relies on `mssql` 12's internal request hook.
 
 Run `npm run check` for unit tests, typecheck, and lint. CI runs the integration suite against its
 SQL Server service container, then repeats it with mandatory TLS and a generated CA bundle. Real

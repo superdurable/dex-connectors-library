@@ -23,6 +23,11 @@ it('honors nested comments, delimited identifiers, system variables, and USE HIN
   expect(() => validateStatement('SELECT @p1 AS [unterminated', [1], false)).toThrow('unterminated');
 });
 
+it('allows bounded FOR JSON and FOR XML result modes', () => {
+  expect(() => validateStatement('SELECT 1 AS answer FOR JSON PATH', [], false)).not.toThrow();
+  expect(() => validateStatement('SELECT 1 AS answer FOR XML AUTO', [], false)).not.toThrow();
+});
+
 it.each(['@p01', '@P1', '@p0', '@other', '@p2'])('rejects invalid or unbound placeholder %s', placeholder => {
   expect(() => validateStatement(`SELECT ${placeholder}`, [1], false)).toThrow();
 });

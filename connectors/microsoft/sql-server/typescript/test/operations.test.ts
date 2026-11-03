@@ -3,14 +3,17 @@
 
 import { describe, expect, it } from 'vitest';
 import { EventEmitter } from 'node:events';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { Socket } from 'node:net';
+import { X509Certificate } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { checkServerIdentity, rootCertificates } from 'node:tls';
+import { rootCertificates } from 'node:tls';
 import sql from 'mssql';
 import { ConnectionError as TediousConnectionError, RequestError as TediousRequestError } from 'tedious';
 import { SecretString } from '@superdurable/connectors-sdk';
-import { SQLServerClient, classifyDriverError } from '../src/client.js';
+import { ResponseBudget, SQLServerClient, certificateMatchesHost, classifyDriverError } from '../src/client.js';
 
 const client = new SQLServerClient({ host: '127.0.0.1', database: 'master', user: 'sa', encrypt: 'disable' }, {
   resolve: async () => ({ password: new SecretString('inert-test-password') }),
@@ -69,13 +72,53 @@ describe('Go-compatible SQL Server error decisions', () => {
     expect(classifyDriverError(serverReply(1205, 13), 'statement')).toMatchObject({ disposition: 'retry', kind: 'CONFLICT', number: 1205 });
     expect(classifyDriverError(serverReply(2627, 16), 'statement')).toMatchObject({ disposition: 'rejected', kind: 'CONFLICT', number: 2627 });
     expect(classifyDriverError(serverReply(40549, 21), 'statement')).toMatchObject({ disposition: 'rejected', kind: 'AVAILABILITY', number: 40549 });
+    expect(classifyDriverError(new sql.RequestError('timeout', 'ETIMEOUT'), 'begin')).toMatchObject({ disposition: 'retry', kind: 'TRANSPORT' });
+    expect(classifyDriverError(new sql.ConnectionError('server does not support encryption'), 'connect')).toMatchObject({ disposition: 'rejected', kind: 'PROVIDER_REJECTION' });
   });
-  it('uses Node TLS SAN verification with case-insensitive DNS and IP SANs', () => {
-    const certificate = { subject: { CN: 'other.example' }, subjectaltname: 'DNS:db.example, IP Address:127.0.0.1' } as Parameters<typeof checkServerIdentity>[1];
-    expect(checkServerIdentity('DB.EXAMPLE', certificate)).toBeUndefined();
-    expect(checkServerIdentity('127.0.0.1', certificate)).toBeUndefined();
-    expect((checkServerIdentity('other.example', certificate) as Error & { code: string }).code).toBe('ERR_TLS_CERT_ALTNAME_INVALID');
+  it('matches Go hostname rules against real CN-only, wildcard, and IP-SAN certificates', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'sql-server-hostname-'));
+    const issue = async (name: string, san?: string): Promise<X509Certificate> => {
+      const certificatePath = join(directory, `${name}.pem`);
+      execFileSync('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '1', '-keyout', join(directory, `${name}.key`), '-out', certificatePath, '-subj', '/CN=db.example.com', ...(san ? ['-addext', `subjectAltName=${san}`] : [])], { stdio: 'ignore' });
+      return new X509Certificate(await readFile(certificatePath));
+    };
+    try {
+      const commonNameOnly = await issue('common-name');
+      expect(certificateMatchesHost('db.example.com', commonNameOnly)).toBe(false);
+      const partialWildcard = await issue('partial-wildcard', 'DNS:db*.example.com');
+      expect(certificateMatchesHost('db1.example.com', partialWildcard)).toBe(false);
+      const wildcard = await issue('wildcard', 'DNS:*.com');
+      expect(certificateMatchesHost('EXAMPLE.COM', wildcard)).toBe(true);
+      const ipAddress = await issue('ip', 'IP:127.0.0.1,DNS:db.example.com');
+      expect(certificateMatchesHost('127.0.0.1', ipAddress)).toBe(true);
+      expect(certificateMatchesHost('127.0.0.2', ipAddress)).toBe(false);
+      expect(certificateMatchesHost('DB.EXAMPLE.COM', ipAddress)).toBe(true);
+    } finally { await rm(directory, { recursive: true, force: true }); }
   });
+});
+
+it('cuts off the raw response before a MAX value can fill driver memory', () => {
+  const socket = new Socket();
+  socket.on('error', () => {});
+  const budget = new ResponseBudget(socket, 2);
+  socket.emit('data', Buffer.alloc(65539));
+  expect(budget.hasExceeded).toBe(true);
+  expect(socket.destroyed).toBe(true);
+  budget.close();
+});
+
+it('records pool error events without an uncaught EventEmitter exception', async () => {
+  const originalPool = sql.ConnectionPool;
+  class TestPool extends EventEmitter {
+    async connect(): Promise<never> { this.emit('error', Object.assign(new Error('No event in state'), { code: 'EINVALIDSTATE' })); throw new Error('request also failed'); }
+  }
+  (sql as { ConnectionPool: typeof sql.ConnectionPool }).ConnectionPool = TestPool as unknown as typeof sql.ConnectionPool;
+  try {
+    const call = { id: 'test-call', context: { cancellationSignal: new AbortController().signal } } as Parameters<SQLServerClient['open']>[0];
+    const error = await client.open(call).catch(failure => failure);
+    expect(classifyDriverError(error, 'connect')).toMatchObject({ disposition: 'retry', kind: 'AVAILABILITY' });
+    expect((error as Error).message).toBe('No event in state');
+  } finally { (sql as { ConnectionPool: typeof sql.ConnectionPool }).ConnectionPool = originalPool; }
 });
 
 it('rejects unsafe configuration before opening a socket', () => {
@@ -105,6 +148,33 @@ it('rejects an unreadable SQLSERVER_SSL_CA bundle as a configuration defect', as
   }
 });
 
+it('rejects a malformed SQLSERVER_SSL_CA bundle before connecting', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'sql-server-invalid-ca-'));
+  const bundle = join(directory, 'root.pem');
+  await writeFile(bundle, 'this is not a PEM certificate');
+  const previous = process.env.SQLSERVER_SSL_CA;
+  process.env.SQLSERVER_SSL_CA = bundle;
+  try {
+    const secured = new SQLServerClient({ host: 'localhost', database: 'master', user: 'sa' }, { resolve: async () => ({ password: new SecretString('test-password') }) });
+    const call = { id: 'test-call', context: { cancellationSignal: new AbortController().signal } } as Parameters<SQLServerClient['open']>[0];
+    expect(classifyDriverError(await secured.open(call).catch(error => error), 'connect')).toMatchObject({ disposition: 'defect', kind: 'VALIDATION' });
+  } finally {
+    if (previous === undefined) delete process.env.SQLSERVER_SSL_CA;
+    else process.env.SQLSERVER_SSL_CA = previous;
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+it('treats credential-provider errors as authentication defects for both operations', async () => {
+  const unavailable = new SQLServerClient({ host: 'localhost', database: 'master', user: 'sa' }, { resolve: async () => { throw new Error('missing secret 4242'); } });
+  const call = { id: 'test-call', context: { cancellationSignal: new AbortController().signal } } as Parameters<SQLServerClient['open']>[0];
+  const query = await unavailable.query().invoke(call, { statement: 'SELECT 1 AS answer', parameters: [] });
+  const execute = await unavailable.execute().invoke(call, { statement: 'UPDATE dbo.t SET value = 1', parameters: [] });
+  expect(query).toMatchObject({ kind: 'branch', branch: 'defect', failure: { kind: 'AUTHENTICATION' } });
+  expect(execute).toMatchObject({ kind: 'branch', branch: 'defect', failure: { kind: 'AUTHENTICATION' } });
+  expect(JSON.stringify([query, execute])).not.toContain('4242');
+});
+
 it('captures a real login token and loads a private CA on every connect', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'sql-server-ca-test-'));
   const bundle = join(directory, 'root.pem');
@@ -112,8 +182,8 @@ it('captures a real login token and loads a private CA on every connect', async 
   const previousCA = process.env.SQLSERVER_SSL_CA;
   const originalPool = sql.ConnectionPool;
   let capturedConfiguration: sql.config | undefined;
-  class TestPool {
-    constructor(configuration: sql.config) { capturedConfiguration = configuration; }
+  class TestPool extends EventEmitter {
+    constructor(configuration: sql.config) { super(); capturedConfiguration = configuration; }
     async connect(): Promise<never> {
       const connection = new EventEmitter();
       capturedConfiguration?.beforeConnect?.(connection as Parameters<NonNullable<sql.config['beforeConnect']>>[0]);
@@ -133,9 +203,7 @@ it('captures a real login token and loads a private CA on every connect', async 
     expect(classifyDriverError(failure, 'connect').message).not.toContain('secret-card-4242');
     await writeFile(bundle, rootCertificates[1]!);
     const strict = new SQLServerClient({ host: 'localhost', database: 'master', user: 'sa', encrypt: 'strict' }, { resolve: async () => ({ password: new SecretString('test-password') }) });
-    await strict.open(call).catch(() => undefined);
-    expect(capturedConfiguration?.options?.encrypt).toBe('strict');
-    expect(capturedConfiguration?.options?.cryptoCredentialsDetails?.ca).toEqual(Buffer.from(rootCertificates[1]!));
+    expect(classifyDriverError(await strict.open(call).catch(error => error), 'connect')).toMatchObject({ disposition: 'rejected', kind: 'AUTHENTICATION' });
   } finally {
     (sql as { ConnectionPool: typeof sql.ConnectionPool }).ConnectionPool = originalPool;
     if (previousCA === undefined) delete process.env.SQLSERVER_SSL_CA;

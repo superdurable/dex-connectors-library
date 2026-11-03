@@ -339,11 +339,15 @@ jobs:
             docker exec -u root "$database_container" /opt/mssql/bin/mssql-conf set network.tlskey /var/opt/mssql/connector-server.key
             docker exec -u root "$database_container" /opt/mssql/bin/mssql-conf set network.forceencryption 1
             docker restart "$database_container"
+            login_ready=false
             for _ in $(seq 1 120); do
-              if (echo > /dev/tcp/127.0.0.1/1433) 2>/dev/null; then break; fi
+              if docker exec "$database_container" /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$SQLSERVER_CONNECTOR_TEST_PASSWORD" -Q 'SELECT 1' >/dev/null 2>&1; then
+                login_ready=true
+                break
+              fi
               sleep 1
             done
-            (echo > /dev/tcp/127.0.0.1/1433) 2>/dev/null
+            test "$login_ready" = true
             export SQLSERVER_CONNECTOR_TEST_ENCRYPT=mandatory
             export SQLSERVER_TLS_CA_FILE="$tls_directory/server.crt" SQLSERVER_TLS_HOST=127.0.0.1
             export SQLSERVER_SSL_CA="$SQLSERVER_TLS_CA_FILE"

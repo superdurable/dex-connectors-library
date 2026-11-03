@@ -5,10 +5,11 @@ import sql from 'mssql';
 import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Mutation, type MutationAttempt, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
 import { ExecuteStatementDefinition, QueryRowsDefinition } from './generated/definitions.js';
 import type { Column, ExecuteStatementInput, QueryRowsInput, RowSet, StatementExecution } from './generated/models.js';
-import { classifyDriverError, type ClassifiedFailure, type SQLServerClient } from './client.js';
+import { classifyDriverError, type ClassifiedFailure, type ResponseBudget, type SQLServerClient } from './client.js';
 
 const emptyRows = (): RowSet => ({ columns: [], rows: [] });
 const emptyExecution = (): StatementExecution => ({ rowsAffected: 0, columns: [], rows: [] });
+const chunkedResultColumns = new Set(['JSON_F52E2B61-18A1-11d1-B105-00805F49916B', 'XML_F52E2B61-18A1-11d1-B105-00805F49916B']);
 
 const deniedKeywords = new Set(`BEGIN COMMIT ROLLBACK SAVE TRAN TRANSACTION DISTRIBUTED EXEC EXECUTE USE SETUSER REVERT IF WHILE GOTO RETURN BREAK CONTINUE WAITFOR DECLARE DEALLOCATE CREATE ALTER DROP TRUNCATE GRANT DENY REVOKE TRIGGER STATISTICS BACKUP RESTORE DBCC KILL SHUTDOWN RECONFIGURE CHECKPOINT LOAD DUMP BULK OPENROWSET OPENDATASOURCE OPENQUERY ROWCOUNT TEXTSIZE IDENTITY_INSERT PRINT RAISERROR READTEXT WRITETEXT UPDATETEXT`.split(' '));
 type Token = { kind: 'word' | 'variable' | 'semicolon' | 'open' | 'other'; text: string };
@@ -216,7 +217,7 @@ export function decodeRows(result: sql.IResult<Record<string, unknown>>, maxRows
   for (const row of recordset) {
     if (rows.length >= maxRows) return { columns, rows, truncated: true };
     const decoded = decodeRow(row, metadata);
-    const rowBytes = Buffer.byteLength(JSON.stringify(decoded), 'utf8') + 1;
+    const rowBytes = encodedRowBytes(decoded);
     if (bytes + rowBytes > maxResponseBytes) return { columns, rows, truncated: true };
     bytes += rowBytes;
     rows.push(decoded);
@@ -224,28 +225,50 @@ export function decodeRows(result: sql.IResult<Record<string, unknown>>, maxRows
   return { columns, rows, truncated: false };
 }
 
+function encodedRowBytes(row: Record<string, unknown>): number {
+  return Buffer.byteLength(JSON.stringify(row).replace(/[<>&\u2028\u2029]/g, character => `\\u${character.charCodeAt(0).toString(16).padStart(4, '0')}`), 'utf8') + 1;
+}
+
 class BoundedResultCollector {
   private metadata: ColumnMetadata[] = [];
   private resultSetCount = 0;
   private bytes = 2;
   private failure: unknown;
+  private isChunkedResult = false;
   readonly rows: Array<Record<string, unknown>> = [];
   readonly rowsAffected: number[] = [];
   isTruncated = false;
 
-  constructor(private readonly request: sql.Request, private readonly maxRows: number, private readonly maxResponseBytes: number) {}
+  constructor(private readonly request: sql.Request, private readonly maxRows: number, private readonly maxResponseBytes: number, private readonly responseBudget: ResponseBudget) {}
 
   async run(statement: string): Promise<{ columns: Column[]; rows: Array<Record<string, unknown>>; truncated: boolean; rowsAffected: number[] }> {
     this.request.stream = true;
     this.request.arrayRowMode = true;
+    this.observeChunkedRows();
     this.request.on('recordset', columns => this.onRecordset(columns));
-    this.request.on('row', row => this.onRow(row));
+    this.request.on('row', row => { if (!this.isChunkedResult) this.onRow(row); });
     this.request.on('rowsaffected', count => this.rowsAffected.push(count));
     this.request.on('error', error => this.onError(error));
     try { await this.request.query(statement); }
-    catch (error) { if (!this.isTruncated) throw error; }
+    catch (error) { if (!this.isTruncated && !this.responseBudget.hasExceeded) throw error; }
+    finally { this.responseBudget.close(); }
+    if (this.responseBudget.hasExceeded) this.isTruncated = true;
     if (this.failure) throw this.failure;
     return { columns: this.metadata.map(({ name, typeName }) => ({ name, typeName })), rows: this.rows, truncated: this.isTruncated, rowsAffected: this.rowsAffected };
+  }
+
+  private observeChunkedRows(): void {
+    type TediousRowRequest = { on(event: 'columnMetadata', listener: (columns: Array<{ colName: string }>) => void): void; on(event: 'row', listener: (columns: Array<{ value: unknown }>) => void): void };
+    type NativeRequest = sql.Request & { _setCurrentRequest?: (request: TediousRowRequest) => unknown };
+    const nativeRequest = this.request as NativeRequest;
+    const original = nativeRequest._setCurrentRequest;
+    if (!original) throw new ResultShapeError('the SQL Server driver does not expose bounded chunk events');
+    // Observe Tedious chunks before mssql combines them into one row.
+    nativeRequest._setCurrentRequest = (tediousRequest: TediousRowRequest): unknown => {
+      tediousRequest.on('columnMetadata', columns => { this.isChunkedResult = columns.length === 1 && chunkedResultColumns.has(columns[0]!.colName); });
+      tediousRequest.on('row', columns => { if (this.isChunkedResult) this.onRow([columns[0]?.value]); });
+      return original.call(nativeRequest, tediousRequest);
+    };
   }
 
   private onRecordset(columns: unknown): void {
@@ -260,7 +283,7 @@ class BoundedResultCollector {
     if (this.rows.length >= this.maxRows) { this.isTruncated = true; this.cancel(); return; }
     try {
       const decoded = decodeRow(row, this.metadata);
-      const rowBytes = Buffer.byteLength(JSON.stringify(decoded), 'utf8') + 1;
+      const rowBytes = encodedRowBytes(decoded);
       if (this.bytes + rowBytes > this.maxResponseBytes) { this.isTruncated = true; this.cancel(); return; }
       this.bytes += rowBytes;
       this.rows.push(decoded);
@@ -268,7 +291,7 @@ class BoundedResultCollector {
   }
 
   private onError(error: unknown): void {
-    if (this.isTruncated && (error as { code?: string }).code === 'ECANCEL') return;
+    if (this.isTruncated && (error as { code?: string }).code === 'ECANCEL' || this.responseBudget.hasExceeded) return;
     if (!this.failure) this.failure = error;
   }
 
@@ -305,9 +328,12 @@ export class QueryRowsOperation implements Query<QueryRowsInput, RowSet> {
   async invoke(call: Call, input: QueryRowsInput): Promise<QueryAttempt<RowSet>> {
     try { validateStatement(input.statement, input.parameters ?? [], false); }
     catch { return queryFailure(this.client, call, { disposition: 'defect', kind: 'VALIDATION', message: 'the query statement or parameters are invalid' }); }
+    let password: string;
+    try { password = await this.client.resolvePassword(call); }
+    catch { return queryFailure(this.client, call, { disposition: 'defect', kind: 'AUTHENTICATION', message: 'SQL Server connection credentials are unavailable' }); }
     let pool: sql.ConnectionPool;
-    try { pool = await this.client.open(call); }
-    catch (error) { return queryFailure(this.client, call, error instanceof TypeError ? { disposition: 'defect', kind: 'AUTHENTICATION', message: 'SQL Server connection credentials are unavailable' } : classifyDriverError(error, 'connect')); }
+    try { pool = await this.client.open(call, password); }
+    catch (error) { return queryFailure(this.client, call, classifyDriverError(error, 'connect')); }
     let transaction: sql.Transaction | undefined;
     let phase: 'begin' | 'statement' = 'begin';
     try {
@@ -317,12 +343,12 @@ export class QueryRowsOperation implements Query<QueryRowsInput, RowSet> {
       phase = 'statement';
       const request = transaction.request();
       bindParameters(request, input.parameters ?? []);
-      const decoded = await new BoundedResultCollector(request, this.client.config.maxRows, this.client.config.maxResponseBytes).run(input.statement);
-      if (!decoded.columns.length) return queryFailure(this.client, call, { disposition: 'defect', kind: 'VALIDATION', message: 'the statement returned no result set' }, pool);
+      const decoded = await new BoundedResultCollector(request, this.client.config.maxRows, this.client.config.maxResponseBytes, this.client.startResponseBudget(pool)).run(input.statement);
       const output: RowSet = { columns: decoded.columns, rows: decoded.rows, ...(decoded.truncated ? { truncated: true } : {}) };
       if (decoded.truncated) return newQueryBranch('truncated', output, this.client.receipt(call, pool), this.client.failure('query', { disposition: 'rejected', kind: 'RESPONSE_TOO_LARGE', message: 'the statement returned more rows or bytes than maxRows or maxResponseBytes allow' }));
+      if (!decoded.columns.length) return queryFailure(this.client, call, { disposition: 'defect', kind: 'VALIDATION', message: 'the statement returned no result set' }, pool);
       return newQueryBranch('completed', output, this.client.receipt(call, pool));
-    } catch (error) { return queryFailure(this.client, call, error instanceof InvalidResultError ? { disposition: 'invalidResponse', kind: 'PROTOCOL', message: error.message } : error instanceof ResultShapeError ? { disposition: 'defect', kind: 'VALIDATION', message: error.message } : classifyDriverError(error, phase), pool); }
+    } catch (error) { return queryFailure(this.client, call, error instanceof InvalidResultError ? { disposition: 'invalidResponse', kind: 'PROTOCOL', message: error.message } : error instanceof ResultShapeError ? { disposition: 'defect', kind: 'VALIDATION', message: error.message } : classifyDriverError(this.client.recordedPoolError(pool) ?? error, phase), pool); }
     finally {
       if (transaction) { try { await transaction.rollback(); } catch { /* Closing the pool rolls back a failed or completed transaction. */ } }
       await pool.close();
@@ -344,9 +370,12 @@ export class ExecuteStatementOperation implements Mutation<ExecuteStatementInput
       if (input.maxRowsAffected !== undefined && (!Number.isSafeInteger(input.maxRowsAffected) || input.maxRowsAffected < 0)) throw new TypeError('invalid maxRowsAffected');
       validateStatement(input.statement, values, true);
     } catch { return executeFailure(this.client, call, { disposition: 'defect', kind: 'VALIDATION', message: 'the execute statement or parameters are invalid' }); }
+    let password: string;
+    try { password = await this.client.resolvePassword(call); }
+    catch { return executeFailure(this.client, call, { disposition: 'defect', kind: 'AUTHENTICATION', message: 'SQL Server connection credentials are unavailable' }); }
     let pool: sql.ConnectionPool;
-    try { pool = await this.client.open(call); }
-    catch (error) { return executeFailure(this.client, call, error instanceof TypeError ? { disposition: 'defect', kind: 'AUTHENTICATION', message: 'SQL Server connection credentials are unavailable' } : classifyDriverError(error, 'connect')); }
+    try { pool = await this.client.open(call, password); }
+    catch (error) { return executeFailure(this.client, call, classifyDriverError(error, 'connect')); }
     let transaction: sql.Transaction | undefined;
     let phase: 'begin' | 'statement' = 'begin';
     let committed = false;
@@ -357,7 +386,7 @@ export class ExecuteStatementOperation implements Mutation<ExecuteStatementInput
       phase = 'statement';
       const request = transaction.request();
       bindParameters(request, values);
-      const decoded = await new BoundedResultCollector(request, this.client.config.maxRows, this.client.config.maxResponseBytes).run(input.statement);
+      const decoded = await new BoundedResultCollector(request, this.client.config.maxRows, this.client.config.maxResponseBytes, this.client.startResponseBudget(pool)).run(input.statement);
       if (decoded.truncated) return newMutationBranch('limitExceeded', emptyExecution(), this.client.receipt(call, pool), this.client.failure('execute', { disposition: 'rejected', kind: 'RESPONSE_TOO_LARGE', message: 'OUTPUT rows exceeded maxRows or maxResponseBytes, so the transaction was rolled back' }));
       if (input.returnsOutputRows && !decoded.columns.length) return executeFailure(this.client, call, { disposition: 'defect', kind: 'VALIDATION', message: 'returnsOutputRows is set but the statement returned no OUTPUT result set' }, pool);
       if (!input.returnsOutputRows && decoded.columns.length) return executeFailure(this.client, call, { disposition: 'defect', kind: 'VALIDATION', message: 'the statement returned output rows but returnsOutputRows is not set' }, pool);
@@ -367,7 +396,7 @@ export class ExecuteStatementOperation implements Mutation<ExecuteStatementInput
       try { await transaction.commit(); committed = true; }
       catch (error) { return executeFailure(this.client, call, classifyDriverError(error, 'commit'), pool); }
       return newMutationBranch('completed', { rowsAffected, columns: decoded.columns, rows: decoded.rows }, this.client.receipt(call, pool));
-    } catch (error) { return executeFailure(this.client, call, error instanceof InvalidResultError ? { disposition: 'invalidResponse', kind: 'PROTOCOL', message: error.message } : error instanceof ResultShapeError ? { disposition: 'defect', kind: 'VALIDATION', message: error.message } : classifyDriverError(error, phase), pool); }
+    } catch (error) { return executeFailure(this.client, call, error instanceof InvalidResultError ? { disposition: 'invalidResponse', kind: 'PROTOCOL', message: error.message } : error instanceof ResultShapeError ? { disposition: 'defect', kind: 'VALIDATION', message: error.message } : classifyDriverError(this.client.recordedPoolError(pool) ?? error, phase), pool); }
     finally {
       if (transaction && !committed) { try { await transaction.rollback(); } catch { /* Closing the pool rolls back when the transaction has already ended. */ } }
       await pool.close();
