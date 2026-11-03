@@ -3391,6 +3391,550 @@
           "trelloCanRetry": true
         }
       }
+    },
+    {
+      "attempts": 2,
+      "callId": "fed5a116-c5f6-53ac-81b1-a823fb443a88",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cards",
+          "requestBody": {
+            "desc": "Details",
+            "due": "2026-10-26T16:20:00.000Z",
+            "idLabels": "6512f0a1c2d3e4f5a6b70201",
+            "idList": "6512f0a1c2d3e4f5a6b70101",
+            "idMembers": "6512f0a1c2d3e4f5a6b70301",
+            "name": "Approved request",
+            "pos": "top"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        },
+        {
+          "body": "{\"id\": \"6512f0a1c2d3e4f5a6b7c8d9\", \"idBoard\": \"6512f0a1c2d3e4f5a6b70001\", \"shortLink\": \"AbCd1234\", \"url\": \"https://trello.com/c/AbCd1234/approved\", \"shortUrl\": \"https://trello.com/c/AbCd1234\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cards",
+          "requestBody": {
+            "desc": "Details",
+            "due": "2026-10-26T16:20:00.000Z",
+            "idLabels": "6512f0a1c2d3e4f5a6b70201",
+            "idList": "6512f0a1c2d3e4f5a6b70101",
+            "idMembers": "6512f0a1c2d3e4f5a6b70301",
+            "name": "Approved request",
+            "pos": "top"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "boardId": "6512f0a1c2d3e4f5a6b70001",
+          "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
+          "listId": "6512f0a1c2d3e4f5a6b70101",
+          "name": "Approved request",
+          "shortLink": "AbCd1234",
+          "shortUrl": "https://trello.com/c/AbCd1234",
+          "url": "https://trello.com/c/AbCd1234/approved"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fed5a116-c5f6-53ac-81b1-a823fb443a88",
+      "input": {
+        "description": "Details",
+        "due": "2026-10-26T16:20:00Z",
+        "labelIds": [
+          "6512f0a1c2d3e4f5a6b70201"
+        ],
+        "listId": "6512f0a1c2d3e4f5a6b70101",
+        "memberIds": [
+          "6512f0a1c2d3e4f5a6b70301"
+        ],
+        "name": "Approved request",
+        "position": "top"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createCard-before-send-then-success",
+      "operation": "createCard"
+    },
+    {
+      "attempts": 2,
+      "callId": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9/actions/comments",
+          "requestBody": {
+            "text": "Approved."
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        },
+        {
+          "body": "{\"id\": \"6512f0a1c2d3e4f5a6b70401\", \"idMemberCreator\": \"6512f0a1c2d3e4f5a6b70301\", \"date\": \"2026-10-26T16:20:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9/actions/comments",
+          "requestBody": {
+            "text": "Approved."
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "authorMemberId": "6512f0a1c2d3e4f5a6b70301",
+          "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
+          "commentId": "6512f0a1c2d3e4f5a6b70401",
+          "createdAt": "2026-10-26T16:20:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
+      "input": {
+        "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
+        "text": "Approved."
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "addComment-before-send-then-success",
+      "operation": "addComment"
+    },
+    {
+      "callId": "1d5b3705-f348-5972-b2cb-b03a968343cb",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"6512f0a1c2d3e4f5a6b7c8d9\", \"idBoard\": \"6512f0a1c2d3e4f5a6b70001\", \"idList\": \"6512f0a1c2d3e4f5a6b70101\", \"name\": \"Approved request\", \"closed\": false, \"dueComplete\": false, \"pos\": 1024, \"idLabels\": [\"6512f0a1c2d3e4f5a6b70201\"]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "query": {
+            "fields": [
+              "id,shortLink,name,idBoard,idList,closed,due,dueComplete,start,idLabels,labels,idMembers,pos,url,shortUrl,dateLastActivity,desc"
+            ],
+            "list": [
+              "true"
+            ],
+            "member_fields": [
+              "fullName,username"
+            ],
+            "members": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "requestBody": {
+            "idLabels": "6512f0a1c2d3e4f5a6b70201,6512f0a1c2d3e4f5a6b70202"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\": \"6512f0a1c2d3e4f5a6b7c8d9\", \"idBoard\": \"6512f0a1c2d3e4f5a6b70001\", \"idList\": \"6512f0a1c2d3e4f5a6b70101\", \"name\": \"Approved request\", \"closed\": false, \"dueComplete\": false, \"pos\": 1024, \"idLabels\": [\"6512f0a1c2d3e4f5a6b70201\", \"6512f0a1c2d3e4f5a6b70202\"]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "query": {
+            "fields": [
+              "id,shortLink,name,idBoard,idList,closed,due,dueComplete,start,idLabels,labels,idMembers,pos,url,shortUrl,dateLastActivity,desc"
+            ],
+            "list": [
+              "true"
+            ],
+            "member_fields": [
+              "fullName,username"
+            ],
+            "members": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "card": {
+            "boardId": "6512f0a1c2d3e4f5a6b70001",
+            "id": "6512f0a1c2d3e4f5a6b7c8d9",
+            "isClosed": false,
+            "isDueComplete": false,
+            "labelIds": [
+              "6512f0a1c2d3e4f5a6b70201",
+              "6512f0a1c2d3e4f5a6b70202"
+            ],
+            "listId": "6512f0a1c2d3e4f5a6b70101",
+            "name": "Approved request",
+            "position": 1024
+          },
+          "cardId": "6512f0a1c2d3e4f5a6b7c8d9"
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d5b3705-f348-5972-b2cb-b03a968343cb",
+      "input": {
+        "addLabelIds": [
+          "6512f0a1c2d3e4f5a6b70202"
+        ],
+        "cardId": "6512f0a1c2d3e4f5a6b7c8d9"
+      },
+      "name": "updateCard-add-label-readback",
+      "operation": "updateCard"
+    },
+    {
+      "callId": "1d5b3705-f348-5972-b2cb-b03a968343cb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "requestBody": {
+            "closed": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "query": {
+            "fields": [
+              "id,shortLink,name,idBoard,idList,closed,due,dueComplete,start,idLabels,labels,idMembers,pos,url,shortUrl,dateLastActivity,desc"
+            ],
+            "list": [
+              "true"
+            ],
+            "member_fields": [
+              "fullName,username"
+            ],
+            "members": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d5b3705-f348-5972-b2cb-b03a968343cb",
+      "input": {
+        "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
+        "isClosed": true
+      },
+      "name": "updateCard-readback-503",
+      "operation": "updateCard"
+    },
+    {
+      "callId": "c5d798e6-9264-531c-98e8-c3fec46aa761",
+      "exchanges": [
+        {
+          "body": "[{\"id\": \"6512f0a1c2d3e4f5a6b7c8d9\", \"idBoard\": \"6512f0a1c2d3e4f5a6b70001\", \"idList\": \"6512f0a1c2d3e4f5a6b70101\", \"name\": \"Due request\", \"closed\": false, \"due\": \"2026-10-26T16:20:00Z\", \"dueComplete\": false, \"pos\": 1024}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards/6512f0a1c2d3e4f5a6b70001/cards",
+          "query": {
+            "fields": [
+              "id,shortLink,name,idBoard,idList,closed,due,dueComplete,start,idLabels,labels,idMembers,pos,url,shortUrl,dateLastActivity"
+            ],
+            "filter": [
+              "all"
+            ],
+            "limit": [
+              "1"
+            ],
+            "sort": [
+              "-id"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "cards": [
+            {
+              "boardId": "6512f0a1c2d3e4f5a6b70001",
+              "due": "2026-10-26T16:20:00Z",
+              "id": "6512f0a1c2d3e4f5a6b7c8d9",
+              "isClosed": false,
+              "isDueComplete": false,
+              "listId": "6512f0a1c2d3e4f5a6b70101",
+              "name": "Due request",
+              "position": 1024
+            }
+          ],
+          "nextBefore": "6512f0a1c2d3e4f5a6b7c8d9",
+          "scannedCardCount": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "6512f0a1c2d3e4f5a6b70001",
+        "dueAfter": "2026-10-01T00:00:00Z",
+        "dueBefore": "2026-11-01T00:00:00Z",
+        "hasDueDate": true,
+        "isDueComplete": false,
+        "pageSize": 1,
+        "status": "all"
+      },
+      "name": "listCards-due-filter",
+      "operation": "listCards"
+    },
+    {
+      "callId": "fed5a116-c5f6-53ac-81b1-a823fb443a88",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cards",
+          "requestBody": {
+            "desc": "Details",
+            "due": "2026-10-26T16:20:00.000Z",
+            "idLabels": "6512f0a1c2d3e4f5a6b70201",
+            "idList": "6512f0a1c2d3e4f5a6b70101",
+            "idMembers": "6512f0a1c2d3e4f5a6b70301",
+            "name": "Approved request",
+            "pos": "top"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "listId": "6512f0a1c2d3e4f5a6b70101",
+          "name": "Approved request"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "fed5a116-c5f6-53ac-81b1-a823fb443a88",
+      "input": {
+        "description": "Details",
+        "due": "2026-10-26T16:20:00Z",
+        "labelIds": [
+          "6512f0a1c2d3e4f5a6b70201"
+        ],
+        "listId": "6512f0a1c2d3e4f5a6b70101",
+        "memberIds": [
+          "6512f0a1c2d3e4f5a6b70301"
+        ],
+        "name": "Approved request",
+        "position": "top"
+      },
+      "name": "createCard-accepted-invalid-reference",
+      "operation": "createCard"
+    },
+    {
+      "callId": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9/actions/comments",
+          "requestBody": {
+            "text": "Approved."
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "cardId": "6512f0a1c2d3e4f5a6b7c8d9"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
+      "input": {
+        "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
+        "text": "Approved."
+      },
+      "name": "addComment-accepted-invalid-reference",
+      "operation": "addComment"
     }
   ],
   "schemaVersion": 1
