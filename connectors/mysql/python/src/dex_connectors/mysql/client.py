@@ -10,6 +10,7 @@ import os
 import re
 import socket
 import ssl
+import struct
 from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
@@ -30,10 +31,10 @@ from dex_connectors.sdk import (
     Receipt,
 )
 
-import mysql.connector
 from mysql.connector import Error as MySQLError
 from mysql.connector.connection import MySQLConnection
 from mysql.connector.constants import ClientFlag, FieldFlag, FieldType
+from mysql.connector.protocol import MySQLProtocol
 
 from ._generated.config import Config as Config
 from ._generated.config import Credentials as Credentials
@@ -117,6 +118,10 @@ class _DuplicateColumn(Exception):
     pass
 
 
+class _UndecodableColumn(Exception):
+    pass
+
+
 class _InvalidTrustedRoots(Exception):
     pass
 
@@ -139,7 +144,37 @@ class _SendMeter:
         return getattr(self.socket, name)
 
 
-class _StrictTLSConnection(MySQLConnection):
+class _ExactValueProtocol(MySQLProtocol):
+    @staticmethod
+    def _parse_binary_time(packet: bytes) -> tuple[bytes, timedelta]:
+        length = packet[0]
+        if length == 0:
+            return packet[1:], timedelta()
+        if length not in {8, 12} or packet[1] not in {0, 1}:
+            raise ValueError("invalid binary TIME")
+        days = struct.unpack_from("<I", packet, 2)[0]
+        microseconds = struct.unpack_from("<I", packet, 9)[0] if length == 12 else 0
+        duration = timedelta(
+            days=days, hours=packet[6], minutes=packet[7], seconds=packet[8], microseconds=microseconds
+        )
+        return packet[length + 1 :], -duration if packet[1] else duration
+
+    def _parse_binary_values(self, fields: Any, packet: bytes, charset: str = "utf-8") -> tuple[Any, ...]:
+        # The driver treats YEAR's two-byte integer as a length-encoded string.
+        integer_year_fields = [
+            (field[0], FieldType.SHORT, *field[2:]) if field[1] == FieldType.YEAR else field
+            for field in fields
+        ]
+        return super()._parse_binary_values(integer_year_fields, packet, charset)
+
+
+class _ExactValueConnection(MySQLConnection):
+    def _open_connection(self) -> None:
+        super()._open_connection()
+        self._protocol = _ExactValueProtocol()
+
+
+class _StrictTLSConnection(_ExactValueConnection):
     def _do_handshake(self) -> None:
         super()._do_handshake()
         capabilities = self._handshake.get("capabilities") if self._handshake is not None else None
@@ -237,7 +272,7 @@ class Client:
             options["ssl_disabled"] = False
             options["ssl_verify_cert"] = config.ssl_mode in {"verify-ca", "verify-identity"}
             options["ssl_verify_identity"] = config.ssl_mode == "verify-identity"
-            options["ssl_tls_versions"] = ["TLSv1.2", "TLSv1.3"]
+            options["tls_versions"] = ["TLSv1.2", "TLSv1.3"]
             trusted_roots = os.environ.get("MYSQL_SSL_CA")
             if trusted_roots and options["ssl_verify_cert"]:
                 try:
@@ -246,7 +281,7 @@ class Client:
                     raise _InvalidTrustedRoots() from error
                 options["ssl_ca"] = trusted_roots
             return _StrictTLSConnection(**options)
-        return mysql.connector.connect(**options)
+        return _ExactValueConnection(**options)
 
     def _session(self, connection: Any) -> tuple[str, str]:
         cursor = connection.cursor()
@@ -315,10 +350,10 @@ class QueryRowsOperation:
             cursor.execute("START TRANSACTION READ ONLY")
             cursor.close()
             phase = "statement"
-            cursor = connection.cursor(prepared=True)
-            cursor.execute(_driver_placeholders(input.statement), parameters)
-            columns, rows, truncated = _read_rows(cursor, self.client.config)
-            cursor.close()
+            prepared_cursor = connection.cursor(prepared=True)
+            prepared_cursor.execute(_driver_placeholders(input.statement), parameters)
+            columns, rows, truncated = _read_rows(prepared_cursor, self.client.config)
+            prepared_cursor.close()
             receipt = _receipt(call, metadata)
             if truncated:
                 failure = _failure(
@@ -399,10 +434,9 @@ class ExecuteStatementOperation:
             metadata.update(connectionId=identity, serverVersion=version)
             connection.start_transaction()
             phase = "statement"
-            cursor = connection.cursor(prepared=True)
-            cursor.execute(_driver_placeholders(input.statement), parameters)
-            columns, rows, truncated = _read_rows(cursor, self.client.config)
-            cursor.close()
+            prepared_cursor = connection.cursor(prepared=True)
+            prepared_cursor.execute(_driver_placeholders(input.statement), parameters)
+            columns, rows, truncated = _read_rows(prepared_cursor, self.client.config)
             if truncated:
                 return _execute_branch(
                     LIMIT_EXCEEDED,
@@ -414,6 +448,7 @@ class ExecuteStatementOperation:
             cursor.execute("SELECT ROW_COUNT(), LAST_INSERT_ID(), @@warning_count")
             outcome = cursor.fetchone()
             cursor.close()
+            prepared_cursor.close()
             if outcome is None or len(outcome) != 3:
                 raise ValueError(
                     "server returned an unreadable ROW_COUNT(), LAST_INSERT_ID(), or @@warning_count"
@@ -499,7 +534,12 @@ def _validate_statement(
         raise ValueError("statement must be valid UTF-8") from error
     if not statement.strip() or len(statement_bytes) > 1 << 20 or "\x00" in statement:
         raise ValueError("statement is required and must be valid UTF-8 without NUL characters")
-    leading = re.sub(r"\A(?:\s+|/\*.*?\*/|--[ \t][^\n]*\n|#[^\n]*\n)*", "", statement, flags=re.S)
+    leading = re.sub(
+        r"\A(?:\s+|\(|/\*(?![!]|M!).*?\*/|--(?=[\s\x00-\x1f\x7f])[^\n]*\n|#[^\n]*\n)*",
+        "",
+        statement,
+        flags=re.S,
+    )
     keyword = re.match(r"[A-Za-z]+", leading)
     if keyword is None or keyword.group().upper() not in allowed:
         raise ValueError("statement has an unsupported leading keyword")
@@ -596,7 +636,9 @@ def _read_rows(cursor: Any, config: Config) -> tuple[tuple[Column, ...], tuple[d
         if name in seen:
             raise _DuplicateColumn(f"statement returns column {name!r} more than once")
         seen.add(name)
-        type_name = _column_type_name(field_type, field[7])
+        if len(field) < 9:
+            raise _UndecodableColumn(f"column {name!r} has no character set metadata")
+        type_name = _column_type_name(field_type, field[7], field[8])
         columns.append(Column(name, type_name))
     encoded_bytes = 2
     rows: list[dict[str, Any]] = []
@@ -608,10 +650,15 @@ def _read_rows(cursor: Any, config: Config) -> tuple[tuple[Column, ...], tuple[d
             return tuple(columns), tuple(rows), False
         if len(rows) == config.max_rows:
             return tuple(columns), tuple(rows), True
-        row = {
-            column.name: _decode_value(column.type_name, value)
-            for column, value in zip(columns, raw, strict=True)
-        }
+        row = {}
+        for column, value in zip(columns, raw, strict=True):
+            try:
+                row[column.name] = _decode_value(column.type_name, value)
+            except (ValueError, TypeError, OverflowError, UnicodeError, struct.error) as error:
+                raise _UndecodableColumn(
+                    f"column {column.name!r} of type {column.type_name} "
+                    "returned a value the connector cannot decode"
+                ) from error
         encoded_bytes += len(json.dumps(row, ensure_ascii=False, separators=(",", ":")).encode()) + 1
         if encoded_bytes > config.max_response_bytes:
             return tuple(columns), tuple(rows), True
@@ -637,10 +684,28 @@ def _decode_value(type_name: str, value: Any) -> Any:
     }:
         return base64.b64encode(value).decode("ascii")
     if type_name == "JSON":
-        return json.loads(value)
+        return json.loads(
+            value,
+            parse_float=_decode_json_float,
+            parse_int=_decode_json_int,
+            parse_constant=lambda constant: _reject_json_constant(constant),
+        )
+    if type_name == "YEAR":
+        if not isinstance(value, int):
+            raise ValueError("invalid YEAR")
+        return value
+    if type_name == "FLOAT":
+        if not isinstance(value, float) or not math.isfinite(value):
+            raise ValueError("invalid FLOAT")
+        for precision in range(1, 10):
+            decimal_text = f"{value:.{precision}g}"
+            if struct.unpack("<f", struct.pack("<f", float(decimal_text)))[0] == value:
+                return float(decimal_text)
+        raise ValueError("FLOAT cannot be represented exactly")
     if isinstance(value, timedelta) and type_name == "TIME":
-        negative = value.total_seconds() < 0
-        micros = abs(int(value.total_seconds() * 1_000_000))
+        micros = value // timedelta(microseconds=1)
+        negative = micros < 0
+        micros = abs(micros)
         hours, remainder = divmod(micros, 3_600_000_000)
         minutes, remainder = divmod(remainder, 60_000_000)
         seconds, fractional = divmod(remainder, 1_000_000)
@@ -658,16 +723,34 @@ def _decode_value(type_name: str, value: Any) -> Any:
     return value
 
 
-def _column_type_name(field_type: int, flags: int) -> str:
+def _decode_json_float(decimal_text: str) -> float:
+    number = float(decimal_text)
+    if not math.isfinite(number) or repr(number) != decimal_text:
+        raise ValueError("JSON number cannot be represented without changing its text")
+    return number
+
+
+def _decode_json_int(integer_text: str) -> int:
+    number = int(integer_text)
+    if abs(number) > (1 << 53) - 1:
+        raise ValueError("JSON integer exceeds the exact JSON number range")
+    return number
+
+
+def _reject_json_constant(constant: str) -> None:
+    raise ValueError("JSON contains a nonstandard numeric constant")
+
+
+def _column_type_name(field_type: int, flags: int, charset: int) -> str:
     if flags & FieldFlag.ENUM:
         return "ENUM"
     if flags & FieldFlag.SET:
         return "SET"
     type_name = _TYPE_NAMES.get(field_type, "VARCHAR")
-    if field_type in {FieldType.STRING, FieldType.VAR_STRING, FieldType.VARCHAR} and flags & FieldFlag.BINARY:
+    if field_type in {FieldType.STRING, FieldType.VAR_STRING, FieldType.VARCHAR} and charset == 63:
         return "BINARY" if field_type == FieldType.STRING else "VARBINARY"
     if field_type in {FieldType.TINY_BLOB, FieldType.BLOB, FieldType.MEDIUM_BLOB, FieldType.LONG_BLOB}:
-        if not flags & FieldFlag.BINARY:
+        if charset != 63:
             return type_name.replace("BLOB", "TEXT")
     if flags & FieldFlag.UNSIGNED and type_name in {
         "TINYINT",
@@ -690,6 +773,8 @@ def _classify(error: Exception, phase: str) -> _Disposition:
         )
     if isinstance(error, _DuplicateColumn):
         return _Disposition("defect", FailureKind.VALIDATION, str(error))
+    if isinstance(error, _UndecodableColumn):
+        return _Disposition("invalidResponse", FailureKind.PROTOCOL, str(error))
     if isinstance(error, _CommitNotSent):
         return _Disposition(
             "retry",
@@ -712,7 +797,12 @@ def _classify(error: Exception, phase: str) -> _Disposition:
     if isinstance(error, MySQLError):
         number = error.errno or 0
         state = error.sqlstate or ""
-        if phase == "connect" and number == 2005:
+        cause = error.__cause__
+        is_dns_failure = isinstance(cause, socket.gaierror) and cause.errno in {
+            socket.EAI_NONAME,
+            getattr(socket, "EAI_NODATA", socket.EAI_NONAME),
+        }
+        if phase == "connect" and (number == 2005 or is_dns_failure):
             return _Disposition(
                 "providerRejected",
                 FailureKind.NOT_FOUND,

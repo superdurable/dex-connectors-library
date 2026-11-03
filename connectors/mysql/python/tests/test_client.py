@@ -3,17 +3,24 @@
 """Go parity checks for native-driver classification and statement safety."""
 
 import socket
+import struct
+from datetime import timedelta
 
 import pytest
 from dex_connectors.sdk import FailureKind
 from mysql.connector.connection import MySQLConnection
+from mysql.connector.constants import FieldFlag, FieldType
 from mysql.connector.errors import DatabaseError
 
+from dex_connectors.mysql import Client, Config
 from dex_connectors.mysql.client import (
     _classify,
+    _column_type_name,
     _commit_transaction,
     _CommitNotSent,
+    _decode_value,
     _driver_placeholders,
+    _ExactValueProtocol,
     _StrictTLSConnection,
     _TLSUnavailable,
     _validate_statement,
@@ -104,6 +111,79 @@ def test_driver_connect_errors_retry_or_reject_like_go() -> None:
     assert (missing.branch, missing.kind) == ("providerRejected", FailureKind.NOT_FOUND)
     lost = _classify(DatabaseError("secret", errno=2013, sqlstate="HY000"), "statement")
     assert (lost.branch, lost.kind) == ("retry", FailureKind.TRANSPORT)
+
+
+def test_wrapped_dns_failure_is_not_retried() -> None:
+    try:
+        raise socket.gaierror(socket.EAI_NONAME, "secret")
+    except socket.gaierror as cause:
+        error = DatabaseError("secret", errno=2003, sqlstate="HY000")
+        error.__cause__ = cause
+    classified = _classify(error, "connect")
+    assert (classified.branch, classified.kind) == ("providerRejected", FailureKind.NOT_FOUND)
+    assert "secret" not in classified.message
+
+
+def test_tls_modes_use_supported_driver_option(monkeypatch: pytest.MonkeyPatch) -> None:
+    import dex_connectors.mysql.client as client_module
+
+    captured: list[dict[str, object]] = []
+    monkeypatch.setattr(client_module, "_StrictTLSConnection", lambda **options: captured.append(options))
+    for mode in ("required", "verify-ca", "verify-identity"):
+        Client(Config("localhost", "app", "dex_app", ssl_mode=mode), object())._open("password")
+        assert captured[-1]["tls_versions"] == ["TLSv1.2", "TLSv1.3"]
+        assert "ssl_tls_versions" not in captured[-1]
+
+
+def test_binary_year_and_signed_time_preserve_wire_values() -> None:
+    protocol = _ExactValueProtocol()
+    year_field = ("year", FieldType.YEAR, None, None, None, None, None, 0, 63)
+    assert protocol._parse_binary_values([year_field], b"\x00" + struct.pack("<H", 2024)) == (2024,)
+    negative_time = b"\x0c\x01" + struct.pack("<I", 0) + b"\x0c\x22\x38" + struct.pack("<I", 123457)
+    assert protocol._parse_binary_time(negative_time)[1] == -timedelta(
+        hours=12, minutes=34, seconds=56, microseconds=123457
+    )
+    negative_millisecond = b"\x0c\x01" + struct.pack("<I", 0) + b"\x00\x00\x00" + struct.pack("<I", 1000)
+    assert _decode_value("TIME", protocol._parse_binary_time(negative_millisecond)[1]) == "-00:00:00.001"
+
+
+def test_float_and_large_time_use_exact_decimal_output() -> None:
+    widened = struct.unpack("<f", struct.pack("<f", 0.1))[0]
+    assert _decode_value("FLOAT", widened) == 0.1
+    duration = timedelta(days=24, seconds=83589, microseconds=742888)
+    assert _decode_value("TIME", duration) == "599:13:09.742888"
+
+
+def test_binary_collation_is_text_unless_charset_is_binary() -> None:
+    assert _column_type_name(FieldType.VAR_STRING, FieldFlag.BINARY, 46) == "VARCHAR"
+    assert _column_type_name(FieldType.BLOB, FieldFlag.BINARY, 46) == "TEXT"
+    assert _column_type_name(FieldType.VAR_STRING, FieldFlag.BINARY, 63) == "VARBINARY"
+    assert _column_type_name(FieldType.BLOB, FieldFlag.BINARY, 63) == "BLOB"
+
+
+def test_json_rejects_numbers_the_json_codec_would_change() -> None:
+    assert _decode_value("JSON", '{"ok":true,"count":2,"fraction":1.25}') == {
+        "ok": True,
+        "count": 2,
+        "fraction": 1.25,
+    }
+    for payload in ('{"n":1.10}', '{"n":12345678901234567890.123456789}', '{"n":9007199254740992}'):
+        with pytest.raises(ValueError):
+            _decode_value("JSON", payload)
+
+
+@pytest.mark.parametrize(
+    "statement",
+    ["(SELECT 1) UNION (SELECT 2)", "--\nSELECT 1", "--\x01comment\nSELECT 1", "#comment\nSELECT 1"],
+)
+def test_leading_keyword_accepts_go_comment_and_parenthesis_forms(statement: str) -> None:
+    assert _validate_statement(statement, (), frozenset({"SELECT"})) == ()
+
+
+@pytest.mark.parametrize("statement", ["/*!SELECT 1*/", "/*M!SELECT 1*/"])
+def test_executable_comments_remain_rejected(statement: str) -> None:
+    with pytest.raises(ValueError):
+        _validate_statement(statement, (), frozenset({"SELECT"}))
 
 
 def test_tls_required_rejects_a_server_without_tls_before_authentication(

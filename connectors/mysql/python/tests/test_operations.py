@@ -29,6 +29,7 @@ class _Cursor:
         self.description = description
         self.error = error
         self.sql: list[str] = []
+        self.did_close = False
 
     def execute(self, statement: str, parameters: tuple[Any, ...] = ()) -> None:
         self.sql.append(statement)
@@ -39,7 +40,7 @@ class _Cursor:
         return self.rows.pop(0) if self.rows else None
 
     def close(self) -> None:
-        pass
+        self.did_close = True
 
 
 class _Connection:
@@ -115,7 +116,7 @@ def _call(operation: str) -> Call:
 
 @pytest.mark.asyncio
 async def test_query_success_and_row_truncation(monkeypatch: pytest.MonkeyPatch) -> None:
-    column = ("id", FieldType.LONGLONG, None, None, None, None, None, 0)
+    column = ("id", FieldType.LONGLONG, None, None, None, None, None, 0, 63)
     connection = _Connection(_Cursor([(1,), (2,)], (column,)))
     attempt = (
         await _client(monkeypatch, connection, max_rows=1)
@@ -146,7 +147,7 @@ async def test_query_rejection_invalid_response_and_defect(monkeypatch: pytest.M
     assert rejected.branch == "providerRejected" and rejected.failure is not None
     assert rejected.failure.kind.value == "NOT_FOUND"
     duplicate_connection = _Connection(
-        _Cursor([(1,)], (("id", FieldType.LONG, None, None, None, None, None, 0),) * 2)
+        _Cursor([(1,)], (("id", FieldType.LONG, None, None, None, None, None, 0, 63),) * 2)
     )
     duplicate = (
         await _client(monkeypatch, duplicate_connection)
@@ -155,7 +156,7 @@ async def test_query_rejection_invalid_response_and_defect(monkeypatch: pytest.M
     )
     assert duplicate.branch == "defect"
     invalid_connection = _Connection(
-        _Cursor([(b"\xff",)], (("title", FieldType.VAR_STRING, None, None, None, None, None, 0),))
+        _Cursor([(b"\xff",)], (("title", FieldType.VAR_STRING, None, None, None, None, None, 0, 46),))
     )
     invalid = (
         await _client(monkeypatch, invalid_connection)
@@ -194,7 +195,7 @@ async def test_execute_success_limit_retry_and_uncertain(monkeypatch: pytest.Mon
     rejected = await _client(monkeypatch, rejected_connection).execute().invoke(_call("execute"), input)
     assert rejected.branch == "providerRejected"
     invalid_connection = _Connection(
-        _Cursor([(b"\xff",)], (("title", FieldType.VAR_STRING, None, None, None, None, None, 0),))
+        _Cursor([(b"\xff",)], (("title", FieldType.VAR_STRING, None, None, None, None, None, 0, 46),))
     )
     invalid = await _client(monkeypatch, invalid_connection).execute().invoke(_call("execute"), input)
     assert invalid.branch == "invalidResponse"
@@ -208,3 +209,49 @@ async def test_execute_success_limit_retry_and_uncertain(monkeypatch: pytest.Mon
     uncertain = await _client(monkeypatch, uncertain_connection).execute().invoke(_call("execute"), input)
     assert uncertain.kind == "uncertain"
     assert uncertain.failure is not None and uncertain.failure.kind.value == "TRANSPORT"
+
+
+@pytest.mark.asyncio
+async def test_execute_reads_session_outcome_before_prepared_cursor_close(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    prepared = _Cursor()
+
+    class OutcomeCursor(_Cursor):
+        def execute(self, statement: str, parameters: tuple[Any, ...] = ()) -> None:
+            assert not prepared.did_close
+            super().execute(statement, parameters)
+
+    connection = _Connection(prepared, OutcomeCursor([(2, 8, 1)]))
+    client = _client(monkeypatch, connection)
+    limited = await client.execute().invoke(
+        _call("execute"), ExecuteStatementInput("UPDATE t SET value = 1", max_rows_affected=1)
+    )
+    assert limited.branch == "limitExceeded" and not connection.did_commit
+    prepared = _Cursor()
+    connection = _Connection(prepared, OutcomeCursor([(2, 8, 1)]))
+    completed = (
+        await _client(monkeypatch, connection)
+        .execute()
+        .invoke(_call("execute"), ExecuteStatementInput("UPDATE t SET value = 1"))
+    )
+    assert completed.branch == "completed" and completed.value is not None
+    assert (completed.value.rows_affected, completed.value.last_insert_id, completed.value.warning_count) == (
+        2,
+        "8",
+        1,
+    )
+    assert prepared.did_close
+
+
+@pytest.mark.asyncio
+async def test_lossy_json_names_column_and_fails_terminally(monkeypatch: pytest.MonkeyPatch) -> None:
+    column = ("amounts", FieldType.JSON, None, None, None, None, None, 0, 63)
+    connection = _Connection(_Cursor([('{"n":1.10}',)], (column,)))
+    attempt = (
+        await _client(monkeypatch, connection)
+        .query()
+        .invoke(_call("query"), QueryRowsInput("SELECT amounts FROM t"))
+    )
+    assert attempt.branch == "invalidResponse" and attempt.failure is not None
+    assert "amounts" in attempt.failure.message

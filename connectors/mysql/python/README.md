@@ -16,6 +16,8 @@ Create a MySQL account with only the table permissions the Flow needs. Dex Web *
 
 The default `sslMode` requires TLS. `disabled` is accepted only on loopback or a local Unix socket. Set `MYSQL_SSL_CA` on the Worker when a private CA must be trusted. A read runs in a read-only transaction. A write uses server-side prepared parameters and commits only after returned rows and `maxRowsAffected` pass the configured limits.
 
+Result decoding preserves MySQL `FLOAT`, `YEAR`, signed `TIME`, and text with binary collations. JSON values whose numbers cannot survive Python's JSON codec exactly return `invalidResponse` with the column name instead of a rounded value. `rowsAffected`, `lastInsertId`, and `warningCount` come from the statement before its prepared cursor closes.
+
 ## Run the example
 
 [`examples/record_refund/flow.py`](examples/record_refund/flow.py) defines `RecordRefundFlow` with static `ConnectionName` `mysql-ledger`. It checks for an existing order with `query`, then uses `execute` for an idempotent insert. A possibly committed write is read back by its Step idempotency key. The runnable [`worker.py`](examples/record_refund/worker.py) contains the application registration:
