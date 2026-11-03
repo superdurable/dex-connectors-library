@@ -24,14 +24,19 @@ outputs, and exact Go recordings. Pending scenarios are rejected; other recovery
 remain a review requirement.
 
 The reviewed `conformance/exemptions.yaml` exempts only `connectors/postgresql`,
-`connectors/mysql`, and `connectors/microsoft/sql-server`: their database wire
-protocols cannot be recorded by the HTTP replay runner. Adding an exemption
-requires a tooling PR. For each exempt Python and TypeScript package, replace
-replay with unit tests for every Go-tested branch, retry, uncertain decision,
-and driver-error classification, plus real database integration tests in CI
-service containers. Use the Go connector live-test connection variables and
-scenarios; developers do not run Docker locally. Python integration tests live
-in `python/tests/integration/` and TypeScript integration tests in
+`connectors/mysql`, `connectors/microsoft/sql-server`, and
+`connectors/superdurable/email`: their native wire protocols cannot be recorded
+by the HTTP replay runner. Adding an exemption requires a tooling PR. For each
+exempt Python and TypeScript package, replace replay with unit tests for every
+Go-tested branch, retry, uncertain decision, and protocol-error classification,
+plus real protocol integration tests in CI service containers. Database ports
+use Go connector live-test scenarios and connection variables when available.
+Email ports mirror the Go connector's in-process `internal/mailtest` tests,
+including `send_message_test.go` and `search_messages_test.go`; their CI
+integration tests use the `EMAIL_CONNECTOR_TEST_*` GreenMail variables.
+GreenMail lacks STARTTLS, so protocol unit fakes cover that path.
+Developers do not run Docker locally. Python integration tests live in
+`python/tests/integration/` and TypeScript integration tests in
 `typescript/test/integration.test.ts`.
 
 A connector batch port PR may contain 5-8 connectors of one language when every
