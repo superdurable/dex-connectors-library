@@ -13,6 +13,11 @@ spec:
       version: v0.1.0
       operations: [getEvents, listDomains]
       triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-mailgun'
+      operations: [getEvents, listDomains]
+      triggers: []
   codegen:
     go:
       package: mailgun

@@ -9,6 +9,14 @@ This Dex connector exposes `listRows`, `getRow`. The runnable [sample Flow](go/e
 The Python package is [`dex-connector-coda`](python/README.md), imported as
 `dex_connectors.coda`.
 
+The TypeScript package is
+[`@superdurable/connector-coda`](typescript/README.md). Its
+[runnable Flow](typescript/examples/list-rows/flow/workflow.ts) uses the static
+`coda` connection and calls `listRows` through the generated Step factory.
+Its Go-recorded [conformance scenarios](../../conformance/connectors/coda/scenarios.json)
+cover both read operations. Live Coda authorization and permissions remain
+unverified for this package.
+
 ## Provider contract
 
 This connector is read-only. Coda accepts upserts asynchronously with HTTP 202, and the public contract does not establish safe deduplication of overlapping queued requests, so `upsertRows` is intentionally absent.
@@ -48,4 +56,4 @@ The mock defaults represent the same Meridian example resource across both opera
 
 ## Verification limits
 
-The provider HTTP behavior is tested with local `httptest` servers, and the sample's mapping has a deterministic unit test. No live provider account or Dex stack was used during this batch. Real provider authorization, permissions, response variants, and the mock-backed Dex integration remain unverified locally; CI covers the Dex integration.
+The provider HTTP behavior is tested with local `httptest` servers, and the sample's mapping has a deterministic unit test. The TypeScript package also passes Go-recorded provider conformance and a real Dex integration test against a local HTTP fixture. Real Coda authorization, permissions, and response variants remain unverified. The Go mock-backed Dex integration remains CI coverage.
