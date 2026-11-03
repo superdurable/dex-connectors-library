@@ -44,6 +44,6 @@ it.each(['EPIPE', 'EBADF', 'EPERM', 'ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED'])(
   expect(classifyFailure({ code }, 'COMMIT')).toMatchObject({ disposition: 'uncertain', kind: 'TRANSPORT' });
 });
 
-it.each(['UNABLE_TO_GET_ISSUER_CERT_LOCALLY', 'UNABLE_TO_GET_ISSUER_CERT', 'CERT_NOT_YET_VALID', 'CERT_UNTRUSTED', 'CERT_REVOKED', 'HOSTNAME_MISMATCH'])('rejects TLS verification code %s', code => {
+it.each(['UNABLE_TO_GET_ISSUER_CERT_LOCALLY', 'UNABLE_TO_GET_ISSUER_CERT', 'CERT_NOT_YET_VALID', 'CERT_UNTRUSTED', 'CERT_REVOKED', 'HOSTNAME_MISMATCH', 'INVALID_PURPOSE', 'CERT_SIGNATURE_FAILURE', 'CERT_CHAIN_TOO_LONG', 'INVALID_CA', 'PATH_LENGTH_EXCEEDED', 'CERT_REJECTED', 'UNABLE_TO_DECRYPT_CERT_SIGNATURE', 'UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY'])('rejects TLS verification code %s', code => {
   expect(classifyFailure({ code }, 'connect')).toMatchObject({ disposition: 'rejected', kind: 'AUTHENTICATION' });
 });

@@ -86,11 +86,11 @@ function placeholderCount(statement: string): number {
       }
       continue;
     }
-    if (statement[index] === '$') {
+    if (statement[index] === '$' && (index === 0 || !/[\p{L}\p{N}_$]/u.test(statement[index - 1] ?? ''))) {
       const remaining = statement.slice(index);
       const tag = /^\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$/.exec(remaining)?.[0];
       if (tag) { const end = statement.indexOf(tag, index + tag.length); index = end < 0 ? statement.length : end + tag.length; continue; }
-      const placeholder = /^\$([1-9][0-9]*)/.exec(remaining);
+      const placeholder = /^\$([0-9]+)/.exec(remaining);
       if (placeholder) { highest = Math.max(highest, Number(placeholder[1])); index += placeholder[0].length; continue; }
     }
     index++;
@@ -111,15 +111,37 @@ function describeColumns(fields: readonly FieldDef[]): Column[] {
 function parseExactJSON(value: string, column: Column): unknown {
   let isInsideString = false;
   let isEscaped = false;
+  let stringStart = 0;
+  const containers: Array<{ keys?: Set<string>; hasNonIndexKey?: boolean; lastIndexKey?: number }> = [];
   for (let index = 0; index < value.length; index++) {
     const character = value[index];
     if (isInsideString) {
       if (isEscaped) isEscaped = false;
       else if (character === '\\') isEscaped = true;
-      else if (character === '"') isInsideString = false;
+      else if (character === '"') {
+        isInsideString = false;
+        if (/^\s*:/u.test(value.slice(index + 1))) {
+          const container = containers.at(-1);
+          if (!container?.keys) throw new UndecodableValueError(column);
+          let key: string;
+          try { key = JSON.parse(value.slice(stringStart, index + 1)) as string; }
+          catch { throw new UndecodableValueError(column); }
+          if (container.keys.has(key)) throw new UndecodableValueError(column);
+          container.keys.add(key);
+          const isIndexKey = /^(?:0|[1-9][0-9]*)$/.test(key) && key.length <= 10 && Number(key) <= 4294967294;
+          if (isIndexKey) {
+            const keyNumber = Number(key);
+            if (container.hasNonIndexKey || (container.lastIndexKey !== undefined && keyNumber < container.lastIndexKey)) throw new UndecodableValueError(column);
+            container.lastIndexKey = keyNumber;
+          } else container.hasNonIndexKey = true;
+        }
+      }
       continue;
     }
-    if (character === '"') { isInsideString = true; continue; }
+    if (character === '"') { isInsideString = true; stringStart = index; continue; }
+    if (character === '{') { containers.push({ keys: new Set<string>() }); continue; }
+    if (character === '[') { containers.push({}); continue; }
+    if (character === '}' || character === ']') { containers.pop(); continue; }
     if (character === '-' || /[0-9]/.test(character ?? '')) {
       const number = /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/.exec(value.slice(index))?.[0];
       if (!number || !Number.isFinite(Number(number)) || JSON.stringify(Number(number)) !== number) throw new UndecodableValueError(column);
@@ -225,8 +247,8 @@ async function readRows(connection: PgClient, statement: string, values: Array<s
   }
 }
 
-function commandName(commandTag: string, fallback: string): string {
-  return (commandTag || fallback).replace(/(?: \d+)+$/, '');
+function commandName(commandTag: string, fallback: string | null | undefined): string {
+  return (commandTag || fallback || '').replace(/(?: \d+)+$/, '');
 }
 
 /** One read-only PostgreSQL statement using bound positional parameters. */

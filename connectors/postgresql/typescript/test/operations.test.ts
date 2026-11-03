@@ -11,10 +11,11 @@ const call = { id: '00000000-0000-4000-8000-000000000001', idempotencyKey: '0000
 const configuration = { host: '127.0.0.1', database: 'app', user: 'dex_app', sslMode: 'disable' };
 const columns = [{ name: 'id', dataTypeID: 20 }, { name: 'amount', dataTypeID: 1700 }];
 
-function fakeClient(statementResult: { rows?: unknown[][]; fields?: typeof columns; rowCount?: number; command?: string; commandTag?: string } = {}, errors: Record<string, unknown> = {}) {
+function fakeClient(statementResult: { rows?: unknown[][]; fields?: typeof columns; rowCount?: number; command?: string | null; commandTag?: string } = {}, errors: Record<string, unknown> = {}) {
   const queries: Array<{ text: string; values?: unknown[] }> = [];
   const driver = {
     processID: 1001,
+    on: vi.fn(),
     connect: vi.fn(async () => { if (errors.connect) throw errors.connect; }),
     end: vi.fn(async () => undefined),
     query: vi.fn((request: string | { text: string; values?: unknown[] }) => {
@@ -31,11 +32,11 @@ function fakeClient(statementResult: { rows?: unknown[][]; fields?: typeof colum
             if (isDone) { callback(undefined, [], undefined); return; }
             const rows = sourceRows.slice(offset, offset + count);
             offset += rows.length;
-            if (offset === sourceRows.length) {
+            if (offset === sourceRows.length && rows.length < count) {
               isDone = true;
-              (request as Cursor<unknown[]> & { handleCommandComplete?: (message: { text: string }) => void }).handleCommandComplete?.({ text: statementResult.commandTag ?? `${statementResult.command ?? 'SELECT'} ${statementResult.rowCount ?? sourceRows.length}` });
+              if (statementResult.command !== null) (request as Cursor<unknown[]> & { handleCommandComplete?: (message: { text: string }) => void }).handleCommandComplete?.({ text: statementResult.commandTag ?? `${statementResult.command ?? 'SELECT'} ${statementResult.rowCount ?? sourceRows.length}` });
             }
-            callback(undefined, rows, { command: statementResult.command ?? 'SELECT', fields: statementResult.fields ?? columns, rowCount: statementResult.rowCount ?? 1 });
+            callback(undefined, rows, { command: isDone ? (statementResult.command === undefined ? 'SELECT' : statementResult.command) : null, fields: statementResult.fields ?? columns, rowCount: isDone ? (statementResult.rowCount ?? sourceRows.length) : null });
           },
           close: async () => undefined,
         });
@@ -99,10 +100,41 @@ describe('PostgreSQL operations', () => {
   });
 
   it('routes row and byte bounds to truncated without committing', async () => {
-    const { driver } = fakeClient({ rows: [['1', '1.00'], ['2', '2.00']], rowCount: 2 });
+    const { driver } = fakeClient({ rows: [['1', '1.00'], ['2', '2.00'], ['3', '3.00']], rowCount: 3 });
     const bounded = new PostgreSQLClient({ ...configuration, maxRows: 1 }, { resolve: async () => ({ password: new SecretString('p') }) }, { createDriver: () => driver as unknown as PgClient });
     const result = await bounded.query().invoke(call, { statement: 'SELECT id, amount FROM ledger' });
     expect(result).toMatchObject({ kind: 'branch', branch: 'truncated', value: { truncated: true }, failure: { kind: 'RESPONSE_TOO_LARGE' } });
+    if (result.kind === 'branch') expect(result.value.rows).toHaveLength(1);
+    const byteBounded = new PostgreSQLClient({ ...configuration, maxResponseBytes: 5 }, { resolve: async () => ({ password: new SecretString('p') }) }, { createDriver: () => driver as unknown as PgClient });
+    expect(await byteBounded.query().invoke(call, { statement: 'SELECT id, amount FROM ledger' })).toMatchObject({ kind: 'branch', branch: 'truncated', value: { rows: [], truncated: true } });
+    expect(driver.on).toHaveBeenCalledWith('error', expect.any(Function));
+  });
+
+  it('handles empty query response without a command tag', async () => {
+    const { client } = fakeClient({ rows: [], fields: [], command: null });
+    expect(await client.query().invoke(call, { statement: '-- only a comment' })).toMatchObject({ kind: 'branch', branch: 'completed', value: { columns: [], rows: [] } });
+    expect(await client.execute().invoke(call, { statement: '-- only a comment' })).toMatchObject({ kind: 'branch', branch: 'completed', value: { command: '' } });
+  });
+
+  it('rolls back a RETURNING result that exceeds maxRows before CommandComplete', async () => {
+    const { driver, queries } = fakeClient({ fields: [{ name: 'id', dataTypeID: 20 }], rows: [['1'], ['2'], ['3']], command: 'INSERT' });
+    const bounded = new PostgreSQLClient({ ...configuration, maxRows: 2 }, { resolve: async () => ({ password: new SecretString('p') }) }, { createDriver: () => driver as unknown as PgClient });
+    expect(await bounded.execute().invoke(call, { statement: 'INSERT INTO ledger SELECT generate_series(1,3) RETURNING id' })).toMatchObject({ kind: 'branch', branch: 'limitExceeded' });
+    expect(queries.some(query => query.text === 'COMMIT')).toBe(false);
+  });
+
+  it('rejects duplicate or reordered JSON object keys by column', async () => {
+    for (const document of ['{"a":1,"a":2}', '{"b":1,"10":2}', '{"2":1,"1":2}', '{"a":{},"nested":{"x":1,"x":2}}']) {
+      const invalid = fakeClient({ fields: [{ name: 'document', dataTypeID: 114 }], rows: [[document]] });
+      expect(await invalid.client.query().invoke(call, { statement: 'SELECT document' })).toMatchObject({ kind: 'branch', branch: 'invalidResponse', failure: { kind: 'PROTOCOL', message: expect.stringContaining('document') } });
+    }
+  });
+
+  it('ignores dollar signs in identifiers and accepts leading-zero placeholders', async () => {
+    const { client, queries } = fakeClient();
+    expect(await client.query().invoke(call, { statement: 'SELECT 1 AS col$1' })).toMatchObject({ kind: 'branch', branch: 'completed' });
+    expect(await client.query().invoke(call, { statement: 'SELECT $01::int', parameters: [1] })).toMatchObject({ kind: 'branch', branch: 'completed' });
+    expect(queries.at(-1)?.values).toEqual(['1']);
   });
 
   it.each([

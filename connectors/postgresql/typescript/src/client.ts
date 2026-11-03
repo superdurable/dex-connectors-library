@@ -75,6 +75,8 @@ export class PostgreSQLClient {
       ...(rootCertificate ? { ca: readFileSync(rootCertificate, 'utf8') } : {}),
     };
     const connection = this.createDriver({ host: settings.host, port: settings.port, database: settings.database, user: settings.user, password, ssl, connectionTimeoutMillis: settings.connectTimeoutMs, application_name: 'dex-postgresql-connector', options: '-c client_encoding=UTF8' });
+    // pg rejects the active query separately; its error event must still have a listener.
+    connection.on('error', () => undefined);
     const protocol = connection as PgClient & { connection?: { stream?: { destroy(error: Error): void } } };
     const abortConnection = () => protocol.connection?.stream?.destroy(new Error('PostgreSQL call deadline passed'));
     if (signal?.aborted) abortConnection();
