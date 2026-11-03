@@ -9,8 +9,12 @@ metadata:
 spec:
   provider: trello
   languages:
-    typescript:
+    python:
       version: v0.1.0
+      operations: [listCards, getCard, createCard, updateCard, addComment]
+      triggers: []
+    typescript:
+      version: v0.1.1
       operations: [listCards, getCard, createCard, updateCard, addComment]
       triggers: []
   codegen:

@@ -10,7 +10,7 @@ spec:
   provider: clickup
   languages:
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       operations: [searchTasks, getTask, createTask, updateTask, updateTaskTags, addComment, findMemberByEmail]
       triggers: []
   codegen:

@@ -3,6 +3,7 @@
 
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { createServer } from 'node:http';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -12,6 +13,9 @@ import { Attribute, Client, Registry, StepList, Stream, Worker, forceComplete, j
 import { RetryError, goToBranch, newMutationBranch, newMutationRetry, newMutationStep, newMutationUncertain, newQueryBranch, newQueryRetry, newQueryStep } from '../../dist/index.js';
 import { branchCase, newMutation } from '../../dist/connectormock/index.js';
 import { newFence } from '../../dist/singledispatch/index.js';
+import { newTextGenerationQuery, textGenerationBranchDefinitions } from '../../dist/textgen/index.js';
+import { newWireFormat } from '../../dist/textgen/openaichat/index.js';
+import { runTextGenerationDexScenarios } from '../../dist/textgen/textgentest/index.js';
 
 const serverAddress = process.env.DEX_SERVER_ADDRESS ?? '127.0.0.1:18891';
 const failure = { kind: 'AVAILABILITY', provider: 'fixture', operation: 'getItem', message: 'temporary provider failure' };
@@ -148,6 +152,40 @@ scenarios.push({ flow: mutationFlow('MockReplay', (call, input) => {
   scripted.assertNoFailures();
 } });
 
+let textgenRequests = 0;
+const textgenProvider = createServer(async (request, response) => {
+  for await (const chunk of request) { void chunk; }
+  textgenRequests++;
+  if (textgenRequests === 1) { response.statusCode = 429; response.end('{"error":{"code":"rate_limit"}}'); return; }
+  await new Promise(resolve => setTimeout(resolve, 11_000));
+  response.setHeader('Content-Type', 'text/event-stream');
+  response.write(`data: ${JSON.stringify({ id: 'textgen-r1', model: 'fixture-model', choices: [{ index: 0, delta: { content: 'Hello ' }, finish_reason: null }] })}\n\n`);
+  response.write(`data: ${JSON.stringify({ choices: [{ index: 0, delta: { content: 'Dex' }, finish_reason: 'stop' }] })}\n\n`);
+  response.end('data: [DONE]\n\n');
+});
+await new Promise(resolve => textgenProvider.listen(0, '127.0.0.1', resolve));
+const textgenAddress = textgenProvider.address();
+if (!textgenAddress || typeof textgenAddress === 'string') throw new Error('textgen fixture address unavailable');
+const textgenDefinition = { operation: { connectorId: 'fixture', operationId: 'generateText' },
+  branches: textGenerationBranchDefinitions(), stepDefaults: { executeDurability: 'sync', executeMethodTimeoutMs: 20_000, heartbeatTimeoutMs: 10_000 } };
+const textgenQuery = newTextGenerationQuery({ definition: textgenDefinition, wireFormat: newWireFormat({ providerName: 'fixture', streaming: 'always' }),
+  baseURL: `http://127.0.0.1:${textgenAddress.port}/v1`, connectionModel: 'fixture-model', requestTimeoutMs: 15_000,
+  resolveCredential: () => 'fixture-key', maxResponseBytes: 65_536, maxStreamEventBytes: 4_096 });
+const textgenStream = new Stream('fixture-textgen-text', stringCodec, 1 << 20);
+const textgenDone = new Done('TextgenDone');
+const textgenStep = newQueryStep({ stepType: 'TextgenQuery', annotations, connection, mapToOperationInput: () => ({ messages: [{ role: 'user', text: 'Say hello.' }] }),
+  operation: textgenQuery, branches: [goToBranch('generated', textgenDone)], textStream: textgenStream,
+  stepOptionsOverride: { executeRetry: { ...retry.executeRetry, totalDurationMs: 30_000 }, executeDurability: 'sync', executeMethodTimeoutMs: 20_000, heartbeatTimeoutMs: 10_000 } });
+const textgenFlowType = `SdktsTextgen${randomUUID().replaceAll('-', '')}`;
+const textgenFlow = { getFlowType: () => textgenFlowType,
+  getSteps: () => StepList.startStep(textgenStep).otherSteps(textgenDone), getPersistenceSchema: () => ({ streams: [textgenStream] }) };
+flows.push(textgenFlow);
+scenarios.push({ flow: textgenFlow, status: 'completed', branch: 'generated', verify: async ({ client, flowId, result }) => {
+  assert.equal(textgenRequests, 2);
+  assert.equal(result.singleOutput().value.text, 'Hello Dex');
+  assert.deepEqual((await waitForStreamMessages(client, flowId, textgenStream, 1)).map(message => message.value), ['Hello Dex']);
+} });
+
 const registry = new Registry(flows);
 const cacheDirectory = await mkdtemp(join(tmpdir(), 'sdkts-dex-cache-'));
 const cache = openBlobCache({ directory: cacheDirectory, maxBytes: 64 * 1024 * 1024 });
@@ -165,11 +203,35 @@ try {
     await scenario.verify?.({ client, flowId, result });
     process.stdout.write(`Dex Run ${runId} (${flowId}): ${result.status}${scenario.branch ? `, branch ${scenario.branch}` : ''}\n`);
   }
+  const dexReply = (reply, finishReason) => ({ headers: { 'Content-Type': 'text/event-stream' },
+    body: `data: ${JSON.stringify({ id: reply.responseId, model: reply.servedModel,
+      choices: [{ index: 0, delta: { content: reply.text }, finish_reason: finishReason }],
+      usage: { prompt_tokens: reply.usage.inputTokens, completion_tokens: reply.usage.outputTokens,
+        total_tokens: reply.usage.totalTokens, prompt_tokens_details: { cached_tokens: reply.usage.cachedInputTokens },
+        completion_tokens_details: { reasoning_tokens: reply.usage.reasoningTokens } } })}\n\ndata: [DONE]\n\n` });
+  await runTextGenerationDexScenarios({ serverAddress, dialect: {
+    credentialHeader: { name: 'Authorization', prefix: 'Bearer ' },
+    connectionModel: 'fixture-model', alternateModel: 'fixture-alternate',
+    readRequestModel: recorded => JSON.parse(recorded.body.toString()).model,
+    generatedReply: reply => dexReply(reply, 'stop'),
+    truncatedReply: reply => dexReply(reply, 'length'),
+    blockedReply: reply => dexReply(reply, 'content_filter'),
+    errorReply: (statusCode, message) => ({ statusCode, body: JSON.stringify({ error: { code: 'provider_error', message } }) }),
+    quotaExhaustedReply: message => ({ statusCode: 402, body: JSON.stringify({ error: { code: 'quota', message } }) }),
+    malformedReply: () => ({ headers: { 'Content-Type': 'text/event-stream' }, body: 'data: malformed\n\n' }),
+    interruptedStreamReply: reply => ({ headers: { 'Content-Type': 'text/event-stream' },
+      body: `data: ${JSON.stringify({ choices: [{ index: 0, delta: { content: reply.text } }] })}\n\n` }),
+  }, newQuery: connection => newTextGenerationQuery({
+    definition: textgenDefinition, wireFormat: newWireFormat({ providerName: 'fixture', streaming: 'always' }),
+    baseURL: connection.baseURL, connectionModel: connection.model, requestTimeoutMs: connection.requestTimeoutMs ?? 15_000,
+    resolveCredential: () => connection.apiKey, maxResponseBytes: connection.maxResponseBytes, maxStreamEventBytes: 4096,
+  }) });
 } finally {
   await client.close();
   await worker.close();
   cache.close();
   await rm(cacheDirectory, { recursive: true, force: true });
+  await new Promise(resolve => textgenProvider.close(resolve));
 }
 
 async function waitForStreamMessages(client, flowId, stream, expectedCount) {
