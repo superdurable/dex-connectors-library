@@ -1,0 +1,9 @@
+# Mailgun TypeScript connector
+
+Install `@superdurable/connector-mailgun` for Dex TypeScript applications. The package provides `getEvents` and `listDomains` Queries, generated operation-specific Step factories, typed connection helpers, and manifest mocks. Both operations use the static provider identity `mailgun` and retry 408, 429, 5xx, and transport failures. Optional `providerRejected`, `invalidResponse`, and `defect` outcomes fail a Flow unless the application wires them for a business reaction.
+
+The [get events example](examples/get-events/README.md) is a runnable consuming Flow. It uses the static `mailgun` connection, persists only the returned page, and keeps the API key in the Dex project connection. Import `newGetEventsStep` or `newListDomainsStep` from the package; use `newProjectConnection` to bind a Worker to Dex Web configuration.
+
+For authorization, open [Mailgun API Security](https://app.mailgun.com/settings/api_security), then Mailgun > Settings > API Security > API Keys. Create or select a key with read access to the requested domain and save it in Dex Web Connections as secret `api_key`. Leave `baseUrl`, `timeout`, and `maxResponseBytes` blank for manifest defaults. Set `baseUrl` to `https://api.eu.mailgun.net` for EU domains. Input `domain` is a Mailgun sending domain, `limit` is a count from 0 to 300 for events or 0 to 1000 for domains, and `skip` is a zero-based domains offset. Zero limits defer to Mailgun's default page size.
+
+Run `npm run check` for TypeScript tests, types, and lint. Run `make test-connector-conformance CONNECTOR_DIRECTORY=connectors/mailgun` from the repository root for Go, Python, and TypeScript provider replay. Run `DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:<dex-port> npm run test:integration` against `dexcli dev` for the real Dex Worker and Client path. Live Mailgun API key authorization, region selection, and real provider replies remain unverified.
