@@ -195,7 +195,7 @@ class Client:
         content = None
         if form is not None:
             headers["Content-Type"] = "application/x-www-form-urlencoded"
-            content = urlencode(sorted(form)).encode("ascii")
+            content = urlencode(sorted(form, key=lambda pair: pair[0])).encode("ascii")
         try:
             request = self._http_client.build_request(method, url, headers=headers, content=content)
         except (httpx.HTTPError, ValueError):

@@ -5,13 +5,14 @@
       "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
       "exchanges": [
         {
-          "body": "{\"sid\":\"SMfedcba9876543210fedcba9876543210\",\"account_sid\":\"AC00000000000000000000000000000000\",\"messaging_service_sid\":\"MG00112233445566770011223344556677\",\"from\":null,\"to\":\"+14155550123\",\"status\":\"accepted\",\"direction\":\"outbound-api\",\"error_code\":null,\"num_segments\":\"0\",\"num_media\":\"1\",\"price\":null,\"price_unit\":null,\"date_created\":\"Wed, 30 Sep 2026 17:04:05 +0000\",\"date_sent\":null,\"date_updated\":null}",
+          "body": "{\"sid\":\"SMfedcba9876543210fedcba9876543210\",\"account_sid\":\"AC00000000000000000000000000000000\",\"messaging_service_sid\":\"MG00112233445566770011223344556677\",\"from\":null,\"to\":\"+14155550123\",\"status\":\"accepted\",\"direction\":\"outbound-api\",\"error_code\":null,\"num_segments\":\"0\",\"num_media\":\"2\",\"price\":null,\"price_unit\":null,\"date_created\":\"Wed, 30 Sep 2026 17:04:05 +0000\",\"date_sent\":null,\"date_updated\":null}",
           "form": {
             "Body": [
               "Your table is ready."
             ],
             "MediaUrl": [
-              "https://cdn.example.com/menu.png"
+              "https://cdn.example.com/b.png",
+              "https://cdn.example.com/a.png"
             ],
             "MessagingServiceSid": [
               "MG00112233445566770011223344556677"
@@ -45,7 +46,7 @@
           "accountSid": "AC00000000000000000000000000000000",
           "createdAt": "2026-09-30T17:04:05Z",
           "direction": "outbound-api",
-          "mediaCount": 1,
+          "mediaCount": 2,
           "messagingServiceSid": "MG00112233445566770011223344556677",
           "sentAt": "0001-01-01T00:00:00Z",
           "sid": "SMfedcba9876543210fedcba9876543210",
@@ -62,7 +63,8 @@
       "input": {
         "body": "Your table is ready.",
         "mediaUrls": [
-          "https://cdn.example.com/menu.png"
+          "https://cdn.example.com/b.png",
+          "https://cdn.example.com/a.png"
         ],
         "sender": "MG00112233445566770011223344556677",
         "to": "+14155550123"
