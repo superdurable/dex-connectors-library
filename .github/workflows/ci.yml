@@ -239,6 +239,92 @@ jobs:
         if: github.event_name == 'pull_request' || github.event_name == 'push'
         run: python3 script/connector_conformance.py --mutation-self-test
 
+  database-language-plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      count: ${{ steps.plan.outputs.count }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Select exempt database packages
+        id: plan
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+        run: |
+          args=(--database-ci-matrix)
+          if [ -n "$BASE_SHA" ] && git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+            args+=(--base "$BASE_SHA")
+          fi
+          matrix="$(python3 script/connector_conformance.py "${args[@]}")"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "count=$(python3 -c 'import json,sys; print(len(json.load(sys.stdin)["include"]))' <<< "$matrix")" >> "$GITHUB_OUTPUT"
+
+  database-language-integration:
+    needs: database-language-plan
+    if: needs.database-language-plan.outputs.count != '0'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.database-language-plan.outputs.matrix) }}
+    services:
+      database:
+        image: ${{ matrix.image }}
+        ports:
+          - ${{ matrix.port }}:${{ matrix.port }}
+        env:
+          POSTGRES_PASSWORD: connector_test
+          POSTGRES_DB: connector_test
+          MYSQL_ROOT_PASSWORD: connector_test
+          MYSQL_DATABASE: connector_test
+          ACCEPT_EULA: Y
+          MSSQL_SA_PASSWORD: Connector_test_123!
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Run native-driver integration suites
+        env:
+          CONNECTOR: ${{ matrix.connector }}
+          DATABASE_PORT: ${{ matrix.port }}
+        run: |
+          for _ in $(seq 1 120); do
+            if (echo > /dev/tcp/127.0.0.1/"$DATABASE_PORT") 2>/dev/null; then break; fi
+            sleep 1
+          done
+          (echo > /dev/tcp/127.0.0.1/"$DATABASE_PORT") 2>/dev/null
+          case "$CONNECTOR" in
+            connectors/postgresql)
+              export POSTGRESQL_CONNECTOR_TEST_HOST=127.0.0.1 POSTGRESQL_CONNECTOR_TEST_PORT=5432
+              export POSTGRESQL_CONNECTOR_TEST_DATABASE=connector_test POSTGRESQL_CONNECTOR_TEST_USER=postgres
+              export POSTGRESQL_CONNECTOR_TEST_PASSWORD=connector_test POSTGRESQL_CONNECTOR_TEST_SSL_MODE=disable
+              ;;
+            connectors/mysql)
+              export MYSQL_CONNECTOR_TEST_HOST=127.0.0.1 MYSQL_CONNECTOR_TEST_PORT=3306
+              export MYSQL_CONNECTOR_TEST_DATABASE=connector_test MYSQL_CONNECTOR_TEST_USER=root
+              export MYSQL_CONNECTOR_TEST_PASSWORD=connector_test MYSQL_CONNECTOR_TEST_SSL_MODE=disabled
+              ;;
+            connectors/microsoft/sql-server)
+              export SQLSERVER_CONNECTOR_TEST_HOST=127.0.0.1 SQLSERVER_CONNECTOR_TEST_PORT=1433
+              export SQLSERVER_CONNECTOR_TEST_DATABASE=master SQLSERVER_CONNECTOR_TEST_USER=sa
+              export SQLSERVER_CONNECTOR_TEST_PASSWORD='Connector_test_123!' SQLSERVER_CONNECTOR_TEST_ENCRYPT=disable
+              ;;
+          esac
+          if [ -f "$CONNECTOR/python/pyproject.toml" ]; then
+            test -d "$CONNECTOR/python/tests/integration"
+            uv sync --locked --project "$CONNECTOR/python"
+            uv run --project "$CONNECTOR/python" pytest "$CONNECTOR/python/tests/integration"
+          fi
+          if [ -f "$CONNECTOR/typescript/package.json" ]; then
+            test -f "$CONNECTOR/typescript/test/integration.test.ts"
+            npm ci --prefix "$CONNECTOR/typescript"
+            npm run build --prefix "$CONNECTOR/typescript"
+            "$CONNECTOR/typescript/node_modules/.bin/vitest" run test/integration.test.ts --root "$CONNECTOR/typescript"
+          fi
+
   connectors:
     needs: connector-plan
     if: needs.connector-plan.outputs.count != '0'
