@@ -9,6 +9,8 @@ Read Mailgun domain events and account domains. The manifest is the source of ge
 The Python package is [`dex-connector-mailgun`](python/README.md), imported as
 `dex_connectors.mailgun`.
 
+The TypeScript package is [`@superdurable/connector-mailgun`](typescript/README.md). Its [runnable get events Flow](typescript/examples/get-events/README.md) uses the same static `mailgun` connection.
+
 ## Operations and provider references
 
 | Operation | Dex kind | Official API reference |
