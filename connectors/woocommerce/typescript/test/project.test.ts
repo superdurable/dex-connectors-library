@@ -33,4 +33,21 @@ describe('WooCommerce project connection', () => {
     await connection.operations.listOrders().invoke(call, { page: 1 });
     expect(timeoutMs).toBe(2_000);
   });
+
+  it('uses Go defaults for zero timeout and response limit', async () => {
+    const requests: { timeoutMs: number | undefined; maxResponseBytes: number | undefined }[] = [];
+    const connection = newProjectConnection(project({ storeUrl: 'http://localhost/shop', timeout: 0, maxResponseBytes: 0 }), 'woocommerce', {
+      send: async request => {
+        requests.push({ timeoutMs: request.timeoutMs, maxResponseBytes: request.maxResponseBytes });
+        return { status: 200, headers: {}, body: Buffer.from('[]') };
+      },
+    });
+    const call: Call = {
+      id: 'project-zero-defaults', connection: connection.reference, operation: { connectorId: 'woocommerce', operationId: 'listOrders' },
+      context: { flowId: 'project-zero-defaults', cancellationSignal: new AbortController().signal } as Call['context'],
+      reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false,
+    };
+    await connection.operations.listOrders().invoke(call, { page: 1 });
+    expect(requests).toEqual([{ timeoutMs: 15_000, maxResponseBytes: 2_097_152 }]);
+  });
 });

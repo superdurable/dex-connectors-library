@@ -34,8 +34,8 @@ export class WooCommerceClient {
     const storeURL = validateBaseURL(config.storeUrl);
     if (storeURL.toLowerCase().endsWith('/wp-json/wc/v3')) throw new TypeError('storeUrl must be the WordPress Site Address without /wp-json/wc/v3');
     this.baseURL = `${storeURL}/wp-json/wc/v3`;
-    this.timeoutMs = config.timeoutMs ?? 15_000;
-    this.maxResponseBytes = config.maxResponseBytes ?? 2_097_152;
+    this.timeoutMs = config.timeoutMs || 15_000;
+    this.maxResponseBytes = config.maxResponseBytes || 2_097_152;
     if (!Number.isSafeInteger(this.timeoutMs) || this.timeoutMs <= 0 || !Number.isSafeInteger(this.maxResponseBytes) || this.maxResponseBytes <= 0) throw new TypeError('timeout and maxResponseBytes must be positive');
     this.credentials = credentials;
     this.send = options.send ?? sendProviderRequest;
