@@ -2,10 +2,10 @@
 
 `dex-connectors-sdk` is the Python core for Dex-native provider connectors. It
 uses the PEP 420 `dex_connectors` namespace and imports as `dex_connectors.sdk`.
-Version `0.2.0` supplies the models, provider
-operation contracts, credential helpers, OAuth token exchanges, and
-single-dispatch checkpoint values below. Query and Mutation Step factories
-use the released Dex SDK's instance-addressed async Steps.
+Version `0.2.0` supplies the models, provider operation contracts, credential
+helpers, OAuth token exchanges, portable text generation, and single-dispatch
+checkpoint values below. Query and Mutation Step factories use the released
+Dex SDK's instance-addressed async Steps.
 Dex Web FDG 2.0 connector metadata for Python requires upstream R4.
 
 Python 3.11 or newer and `dex-python-sdk>=1.28.0` are required. APIs are
@@ -15,7 +15,8 @@ never place credentials in Flow state.
 Runnable examples are [`examples/core.py`](examples/core.py),
 [`examples/credentials_and_project.py`](examples/credentials_and_project.py),
 [`examples/operations_and_oauth.py`](examples/operations_and_oauth.py),
-and [`examples/single_dispatch.py`](examples/single_dispatch.py).
+[`examples/single_dispatch.py`](examples/single_dispatch.py), and
+[`examples/text_generation.py`](examples/text_generation.py).
 [`examples/manifest_refresh.py`](examples/manifest_refresh.py) demonstrates
 manifest-declared refresh with an inert provider endpoint.
 Run each with `uv run python examples/<name>.py`.
@@ -314,7 +315,29 @@ branch routing, retry and exhaustion, uncertainty, the lost-response fence,
 safe resend from a persisted checkpoint, heartbeat cadence, mock replay,
 result Attribute, and progress/text Streams.
 
-The provider address-policy client and SSE reader are outside this release.
+## Portable text generation
+
+`dex_connectors.sdk.textgen` provides the provider-neutral `generateText`
+request, response, six branch definitions, schema validation, model ID rules,
+error rules, and async `TextGenerationQuery`. Its `openaichat` adapter accepts a
+declarative `Profile` for Chat Completions providers. The Query validates
+locally before resolving a credential, sends it only in the configured header,
+heartbeats every five seconds during an attempt, bounds bodies and stream
+events, and classifies transport failures as retries. Only `generated` is a
+required branch. `truncated`, `blocked`, `providerRejected`, `invalidResponse`,
+and `defect` are optional. The generated text Stream can contain provisional
+deltas from an attempt that later retries; the Result text is authoritative.
+
+The [runnable example](examples/text_generation.py) uses a local HTTP mock to
+exercise the complete Query without provider credentials. A connector supplies
+its generated `QueryDefinition`, model and base URL, credential resolver, and
+provider `Profile`. Its Step defaults must select sync Execute durability, a
+heartbeat timeout of zero or at least ten seconds, and an Execute timeout
+longer than the request timeout. Run the example with
+`uv run python examples/text_generation.py` from `sdkpython/`.
+
+The example exercises the SDK and mock HTTP exchange. A connector port still
+needs its own runnable Dex Flow and provider verification.
 
 ## 0.1.0 release notes
 
