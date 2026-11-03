@@ -357,7 +357,7 @@ func manifestGrants() []manifestGrant {
 			clientID:           "manifest-client-id",
 			secret:             "manifest-client-secret",
 			parameters:         map[string]string{"grant_type": "refresh_token", "refresh_token": "manifest-refresh-token"},
-			response:           map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "openid https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send", "token_type": "Bearer"},
+			response:           map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send", "token_type": "Bearer"},
 			updates:            map[string]string{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2"},
 			refreshToken:       "refresh_token",
 			terminalErrorCodes: []string{"invalid_grant", "invalid_client", "unauthorized_client"},

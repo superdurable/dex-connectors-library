@@ -17,6 +17,31 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+func TestPythonRefreshDeclarationUsesDecodedManifest(t *testing.T) {
+	manifestPath := filepath.Join("..", "..", "connectors", "google", "gmail", "connector.yaml")
+	manifest, err := load(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest.Spec.Auth.Methods[0].OAuth2.Refresh.AdditionalParameters = map[string]string{
+		"description": "retained", "protocol": "oauth2",
+	}
+	manifest.Spec.Auth.Methods[0].OAuth2.TokenEndpoint = schema.ValueSource{
+		FromCredential: "oauth_client_id", Values: map[string]string{"description": "https://example.com/token"},
+	}
+	files, err := generatedPythonFiles(manifestPath, manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join("..", "..", "connectors", "google", "gmail", "python", "src", "dex_connectors", "google_gmail", "_generated", "refresh.py")
+	declaration := string(files[path])
+	for _, expected := range []string{"'defaultMethod': 'google-oauth'", "'requiredScopes'", "'workspace-domain-delegation'", "'oauth_client_id': 'oauth_client_id'", "'description': 'retained'", "'protocol': 'oauth2'", "'values': {'description': 'https://example.com/token'}"} {
+		if !strings.Contains(declaration, expected) {
+			t.Errorf("generated refresh declaration omits %s", expected)
+		}
+	}
+}
+
 func TestPythonCodegenGoldenBitbucketMockUsesProviderIdentity(t *testing.T) {
 	manifestPath := filepath.Join("..", "..", "connectors", "atlassian", "bitbucket", "connector.yaml")
 	manifest, err := load(manifestPath)

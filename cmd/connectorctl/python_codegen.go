@@ -22,12 +22,13 @@ import (
 var pythonCodegenSource string
 
 type pythonCodegenInput struct {
-	Manifest             schema.Manifest     `json:"manifest"`
-	Models               []gomodel.Model     `json:"models"`
-	PackageName          string              `json:"packageName"`
-	MockPackageName      string              `json:"mockPackageName"`
-	ModelAliases         map[string]string   `json:"modelAliases"`
-	SharedRequiredFields map[string][]string `json:"sharedRequiredFields"`
+	Manifest               schema.Manifest     `json:"manifest"`
+	Models                 []gomodel.Model     `json:"models"`
+	PackageName            string              `json:"packageName"`
+	MockPackageName        string              `json:"mockPackageName"`
+	ModelAliases           map[string]string   `json:"modelAliases"`
+	SharedRequiredFields   map[string][]string `json:"sharedRequiredFields"`
+	HasDeclaredTokenGrants bool                `json:"hasDeclaredTokenGrants"`
 }
 
 var pythonModelAliasPattern = regexp.MustCompile(`(?m)^# connectorctl: model-alias ([A-Za-z_][A-Za-z_0-9]*)=([A-Za-z_][A-Za-z_0-9]*)$`)
@@ -85,7 +86,7 @@ func generatedPythonFiles(manifestPath string, manifest schema.Manifest) (map[st
 	if len(mockFacades) == 1 {
 		mockPackageName = filepath.Base(filepath.Dir(mockFacades[0]))
 	}
-	generated, err := renderPythonCodegen(pythonCodegenInput{Manifest: manifest, Models: models.Models, PackageName: packageName, MockPackageName: mockPackageName, ModelAliases: modelAliases})
+	generated, err := renderPythonCodegen(pythonCodegenInput{Manifest: manifest, Models: models.Models, PackageName: packageName, MockPackageName: mockPackageName, ModelAliases: modelAliases, HasDeclaredTokenGrants: codegen.HasDeclaredTokenGrants(manifest)})
 	if err != nil {
 		return nil, err
 	}

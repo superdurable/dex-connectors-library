@@ -5,12 +5,56 @@ package schema_test
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/schema"
 )
+
+func TestDecodedProviderTokenResponseRules(t *testing.T) {
+	for _, test := range []struct {
+		path            string
+		missingType     bool
+		exactScopes     bool
+		grantTokenTypes []string
+	}{
+		{path: "slack", grantTokenTypes: []string{"bot", "user"}},
+		{path: "linkedin", missingType: true, exactScopes: true},
+		{path: "atlassian/jira", missingType: true},
+		{path: "atlassian/confluence", missingType: true},
+		{path: "atlassian/jira-service-management", missingType: true},
+	} {
+		t.Run(test.path, func(t *testing.T) {
+			file, err := os.Open(filepath.Join("..", "connectors", test.path, "connector.yaml"))
+			require.NoError(t, err)
+			t.Cleanup(func() { require.NoError(t, file.Close()) })
+			manifest, err := schema.Decode(file)
+			require.NoError(t, err)
+			method := manifest.Spec.Auth.AuthMethods()[0]
+			refresh := method.OAuth2.Refresh
+			require.Equal(t, test.missingType, refresh.AcceptsMissingTokenType)
+			require.Equal(t, test.exactScopes, refresh.ExactScopes)
+			if len(test.grantTokenTypes) > 0 {
+				require.Len(t, refresh.Grants, len(test.grantTokenTypes))
+				for index, tokenType := range test.grantTokenTypes {
+					require.Equal(t, []string{tokenType}, refresh.Grants[index].AcceptedTokenTypes)
+					require.NotNil(t, refresh.Grants[index].ExactScopes)
+					require.True(t, *refresh.Grants[index].ExactScopes)
+				}
+			}
+		})
+	}
+}
+
+func TestGrantExactScopesFalseSurvivesJSONEncoding(t *testing.T) {
+	falseValue := false
+	encoded, err := json.Marshal(schema.OAuthRefreshGrant{ExactScopes: &falseValue})
+	require.NoError(t, err)
+	require.Contains(t, string(encoded), `"exactScopes":false`)
+}
 
 func TestDecodeTokenGrantDeclarations(t *testing.T) {
 	manifest := decodeFixture(t, "token-grants.yaml")

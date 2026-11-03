@@ -34,7 +34,45 @@ func generatedRefreshAgreementFiles(manifestPath string, manifest schema.Manifes
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", manifestPath, err)
 	}
-	return map[string][]byte{filepath.Join(directory, codegen.RefreshAgreementTestOutputFile): test}, nil
+	files := map[string][]byte{filepath.Join(directory, codegen.RefreshAgreementTestOutputFile): test}
+	cases, err := codegen.GenerateRefreshAgreementCases(manifest, samples)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", manifestPath, err)
+	}
+	connectorDirectory := filepath.Dir(manifestPath)
+	if manifest.Spec.Languages != nil && manifest.Spec.Languages.Python != nil {
+		pythonTests := filepath.Join(connectorDirectory, "python", "tests")
+		if _, err := os.Stat(pythonTests); err == nil {
+			files[filepath.Join(pythonTests, "refresh_agreement_cases.json")] = cases
+			pythonTest := filepath.Join(pythonTests, "test_refresh_agreement.py")
+			if _, err := os.Stat(pythonTest); err == nil {
+				relativeDirectory, err := connectorDirectoryInCatalog(manifestPath)
+				if err != nil {
+					return nil, err
+				}
+				files[pythonTest] = codegen.GeneratePythonRefreshAgreementTest(pythonImportPackageName(relativeDirectory))
+			} else if !os.IsNotExist(err) {
+				return nil, err
+			}
+		} else if !os.IsNotExist(err) {
+			return nil, err
+		}
+	}
+	if manifest.Spec.Languages != nil && manifest.Spec.Languages.TypeScript != nil {
+		typeScriptTests := filepath.Join(connectorDirectory, "typescript", "test")
+		if _, err := os.Stat(typeScriptTests); err == nil {
+			files[filepath.Join(typeScriptTests, "fixtures", "refresh-agreement-cases.json")] = cases
+			typeScriptTest := filepath.Join(typeScriptTests, "refresh_agreement.test.ts")
+			if _, err := os.Stat(typeScriptTest); err == nil {
+				files[typeScriptTest] = codegen.GenerateTypeScriptRefreshAgreementTest()
+			} else if !os.IsNotExist(err) {
+				return nil, err
+			}
+		} else if !os.IsNotExist(err) {
+			return nil, err
+		}
+	}
+	return files, nil
 }
 
 // staleRefreshAgreementFiles lists the agreement test that a manifest without token grants must not keep.

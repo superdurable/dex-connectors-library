@@ -4,6 +4,7 @@
 package codegen_test
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,6 +14,48 @@ import (
 	"github.com/superdurable/dex-connectors-library/internal/codegen"
 	"github.com/superdurable/dex-connectors-library/schema"
 )
+
+func TestGenerateRefreshAgreementCasesReusesGoSamples(t *testing.T) {
+	manifestFile, err := os.Open(filepath.Join("..", "..", "connectors", "google", "gmail", "connector.yaml"))
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, manifestFile.Close()) })
+	manifest, err := schema.Decode(manifestFile)
+	require.NoError(t, err)
+	encoded, err := codegen.GenerateRefreshAgreementCases(manifest, nil)
+	require.NoError(t, err)
+	var cases []codegen.RefreshAgreementCase
+	require.NoError(t, json.Unmarshal(encoded, &cases))
+	require.Len(t, cases, 10)
+	require.Equal(t, "google-oauth refresh", cases[0].Name)
+	require.Equal(t, "https://oauth2.googleapis.com/token", cases[0].Endpoint)
+	require.Equal(t, "manifest-client-id", cases[0].Parameters["client_id"])
+	require.Equal(t, "manifest-client-secret", cases[0].Parameters["client_secret"])
+	require.Equal(t, "manifest-refresh-token-2", cases[0].Updates["refresh_token"])
+	require.Equal(t, "retryable", cases[1].ExpectedError)
+	require.Equal(t, "reauthorization", cases[3].ExpectedError)
+	require.Equal(t, "workspace-domain-delegation jwtBearer", cases[5].Name)
+	require.Equal(t, "private_key", cases[5].PrivateKeyMember)
+	require.Equal(t, "manifest-issuer@example.com", cases[5].Assertion.Issuer)
+	require.Equal(t, int64(3600), cases[5].Assertion.LifetimeSeconds)
+}
+
+func TestGenerateRefreshAgreementCasesCoverGrantResponses(t *testing.T) {
+	manifestFile, err := os.Open(filepath.Join("..", "..", "connectors", "slack", "connector.yaml"))
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, manifestFile.Close()) })
+	manifest, err := schema.Decode(manifestFile)
+	require.NoError(t, err)
+	encoded, err := codegen.GenerateRefreshAgreementCases(manifest, nil)
+	require.NoError(t, err)
+	var cases []codegen.RefreshAgreementCase
+	require.NoError(t, json.Unmarshal(encoded, &cases))
+	require.NotEmpty(t, cases)
+	require.Equal(t, "bot", cases[0].Response["token_type"])
+	require.Equal(t, "client_secret_basic", cases[0].ClientAuth)
+	require.Equal(t, "reauthorization", cases[3].ExpectedError)
+	require.Equal(t, "manifest-ungranted-scope", cases[3].Response["scope"])
+	require.Equal(t, "reauthorization", cases[4].ExpectedError)
+}
 
 const refreshAgreementGoldenPath = "testdata/tokengrants/" + codegen.RefreshAgreementTestOutputFile
 

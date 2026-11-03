@@ -361,6 +361,16 @@ transports, clocks, test hooks, and idempotency functions are constructor
 options. Secret and OAuth fields belong in generated Credentials and are
 resolved through `CredentialProvider[C]`.
 
+For declared token grants, generation also emits a Python or TypeScript
+authorization value and credential field map for the SDK's manifest refresh
+driver. The SDK owns token exchange, refresh admission stays with the project
+credential provider, and generated agreement cases replay the Go driver's
+manifest samples in both languages. Project constructors use separate private
+and shared credential decoders; an empty stored `auth_method` selects the
+manifest default method. Scope matching and token-type acceptance are explicit
+manifest declarations. Connector-specific checks may wrap the generic driver
+without storing renewal material in Flow state.
+
 `Config` holds every `spec.configuration` field and then every auth method's
 configuration field as one flat struct. A method configuration field is always
 optional in Go: `Config.Validate` checks its type, such as an enum value or an

@@ -4,6 +4,8 @@
 package codegen
 
 import (
+	_ "embed"
+	"encoding/json"
 	"fmt"
 	"go/format"
 	"net/url"
@@ -14,6 +16,22 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/schema"
 )
+
+//go:embed templates/python_refresh_agreement.py
+var pythonRefreshAgreementTest string
+
+//go:embed templates/typescript_refresh_agreement.ts
+var typeScriptRefreshAgreementTest string
+
+// GeneratePythonRefreshAgreementTest emits a replay of generated cases through the manifest driver.
+func GeneratePythonRefreshAgreementTest(packageName string) []byte {
+	return []byte(strings.ReplaceAll(pythonRefreshAgreementTest, "{{PACKAGE}}", packageName))
+}
+
+// GenerateTypeScriptRefreshAgreementTest emits a replay of generated cases through the manifest driver.
+func GenerateTypeScriptRefreshAgreementTest() []byte {
+	return []byte(typeScriptRefreshAgreementTest)
+}
 
 const (
 	// RefreshAgreementTestOutputFile is the generated test that runs a connector's hand-written credential refresh
@@ -45,6 +63,199 @@ type RefreshAgreementSample struct {
 	Response map[string]string `json:"response,omitempty"`
 }
 
+// RefreshAgreementCase is one language-neutral token exchange derived from the Go agreement generator's samples.
+type RefreshAgreementCase struct {
+	Name                 string                     `json:"name"`
+	ExpectedError        string                     `json:"expectedError,omitempty"`
+	MethodID             string                     `json:"methodId,omitempty"`
+	Credentials          map[string]string          `json:"credentials"`
+	Settings             map[string]string          `json:"settings,omitempty"`
+	Endpoint             string                     `json:"endpoint"`
+	Encoding             string                     `json:"encoding"`
+	ClientAuth           string                     `json:"clientAuth"`
+	ClientID             string                     `json:"clientId,omitempty"`
+	ClientSecret         string                     `json:"clientSecret,omitempty"`
+	Parameters           map[string]string          `json:"parameters"`
+	Response             map[string]any             `json:"response"`
+	Updates              map[string]string          `json:"updates"`
+	TerminalErrorCodes   []string                   `json:"terminalErrorCodes"`
+	KeyCredential        string                     `json:"keyCredential,omitempty"`
+	PrivateKeyCredential string                     `json:"privateKeyCredential,omitempty"`
+	PrivateKeyMember     string                     `json:"privateKeyMember,omitempty"`
+	KeyMembers           map[string]string          `json:"keyMembers,omitempty"`
+	Assertion            *RefreshAgreementAssertion `json:"assertion,omitempty"`
+	MayRefuseWithoutCall bool                       `json:"mayRefuseWithoutCall,omitempty"`
+}
+
+// RefreshAgreementAssertion records the JWT claims and lifetime checked by the Go agreement harness.
+type RefreshAgreementAssertion struct {
+	Issuer          string `json:"issuer"`
+	Subject         string `json:"subject,omitempty"`
+	Audience        string `json:"audience"`
+	Scope           string `json:"scope,omitempty"`
+	LifetimeSeconds int64  `json:"lifetimeSeconds"`
+}
+
+// GenerateRefreshAgreementCases returns the Go agreement's sample cases for Python and TypeScript replay.
+func GenerateRefreshAgreementCases(manifest schema.Manifest, samples map[string]RefreshAgreementSample) ([]byte, error) {
+	agreement := &refreshAgreementGenerator{manifest: manifest, samples: samples}
+	var cases []RefreshAgreementCase
+	for _, grant := range declaredGrants(manifest) {
+		for _, variant := range agreement.variants(grant) {
+			isPublicClients := []bool{false}
+			if grant.kind == "refresh" && !agreement.isRequiredCredential(grant.method, grant.clientSecret) {
+				isPublicClients = append(isPublicClients, true)
+			}
+			for _, isPublicClient := range isPublicClients {
+				name := grant.name
+				if variant.field != "" {
+					name += fmt.Sprintf(" with %s %q", variant.field, variant.value)
+				}
+				if isPublicClient {
+					name += " without a client secret"
+				}
+				sample := agreement.sample(grant)
+				credentials := agreement.sampleCredentials(grant, variant, sample)
+				settings := agreement.sampleSettings(grant, variant, sample)
+				if isPublicClient {
+					credentials[grant.clientSecret] = ""
+				}
+				keyMembers := agreement.sampleKeyMembers(grant, variant)
+				endpoint, err := resolveSampleSource(grant.endpoint, credentials, settings, keyMembers)
+				if err != nil {
+					return nil, fmt.Errorf("%s tokenEndpoint: %w", name, err)
+				}
+				clientAuth := "none"
+				if grant.kind != "jwtBearer" {
+					clientAuth, err = resolveSampleSource(grant.authMethod, credentials, settings, keyMembers)
+					if err != nil {
+						return nil, fmt.Errorf("%s tokenEndpointAuthMethod: %w", name, err)
+					}
+				}
+				parameters := map[string]string{}
+				for key, value := range grant.additional {
+					parameters[key] = value
+				}
+				switch grant.kind {
+				case "refresh":
+					parameters["grant_type"] = "refresh_token"
+					parameters["refresh_token"] = credentials[grant.refreshToken]
+					if isPublicClient {
+						clientAuth = "public"
+					}
+				case "clientCredentials":
+					parameters["grant_type"] = "client_credentials"
+					if len(grant.requestScopes) > 0 {
+						parameters["scope"] = strings.Join(grant.requestScopes, " ")
+					}
+				case "jwtBearer":
+					parameters["grant_type"] = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+				}
+				clientID, clientSecret := credentials[grant.clientID], credentials[grant.clientSecret]
+				switch clientAuth {
+				case "client_secret_post":
+					parameters["client_id"], parameters["client_secret"] = clientID, clientSecret
+				case "public":
+					parameters["client_id"] = clientID
+				}
+				response, updates := agreement.sampleResponse(grant, credentials, sample)
+				result := RefreshAgreementCase{Name: name, MethodID: grant.method.ID, Credentials: credentials,
+					Settings: settings, Endpoint: endpoint, Encoding: grant.encoding, ClientAuth: clientAuth, ClientID: clientID, ClientSecret: clientSecret,
+					Parameters: parameters, Response: response, Updates: updates, TerminalErrorCodes: grant.terminalCodes,
+					MayRefuseWithoutCall: isPublicClient}
+				if grant.jwtBearer != nil {
+					result.KeyCredential = grant.jwtBearer.KeyCredential
+					result.PrivateKeyCredential = grant.jwtBearer.PrivateKey.FromCredential
+					result.PrivateKeyMember = grant.jwtBearer.PrivateKey.FromKey
+					result.KeyMembers = keyMembers
+					assertion, err := agreement.sampleAssertion(grant, credentials, settings, keyMembers)
+					if err != nil {
+						return nil, fmt.Errorf("%s assertion: %w", name, err)
+					}
+					result.Assertion = assertion
+				}
+				cases = append(cases, result)
+				for _, variation := range agreement.responseVariations(result, grant) {
+					cases = append(cases, variation)
+				}
+			}
+		}
+	}
+	encoded, err := json.MarshalIndent(cases, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("encode refresh agreement cases: %w", err)
+	}
+	return append(encoded, '\n'), nil
+}
+
+func (agreement *refreshAgreementGenerator) sampleAssertion(grant declaredGrant, credentials, settings, keyMembers map[string]string) (*RefreshAgreementAssertion, error) {
+	jwt := grant.jwtBearer
+	resolve := func(source schema.ValueSource) (string, error) {
+		return resolveSampleSource(source, credentials, settings, keyMembers)
+	}
+	issuer, err := resolve(jwt.Issuer)
+	if err != nil {
+		return nil, err
+	}
+	audience, err := resolve(jwt.Audience)
+	if err != nil {
+		return nil, err
+	}
+	subject := ""
+	if jwt.Subject != nil {
+		subject, err = resolve(*jwt.Subject)
+		if err != nil {
+			return nil, err
+		}
+	}
+	lifetime, err := time.ParseDuration(jwt.Lifetime)
+	if err != nil {
+		return nil, err
+	}
+	return &RefreshAgreementAssertion{Issuer: issuer, Subject: subject, Audience: audience,
+		Scope: strings.Join(jwt.Scopes, " "), LifetimeSeconds: int64(lifetime / time.Second)}, nil
+}
+
+func (agreement *refreshAgreementGenerator) responseVariations(base RefreshAgreementCase, grant declaredGrant) []RefreshAgreementCase {
+	clone := func(suffix, expectedError string) RefreshAgreementCase {
+		variation := base
+		variation.Name += suffix
+		variation.ExpectedError = expectedError
+		variation.Response = make(map[string]any, len(base.Response))
+		for name, value := range base.Response {
+			variation.Response[name] = value
+		}
+		variation.TerminalErrorCodes = nil
+		return variation
+	}
+	var variations []RefreshAgreementCase
+	wrongType := clone(" with unaccepted token type", "retryable")
+	wrongType.Response["token_type"] = "manifest-unaccepted-token-type"
+	variations = append(variations, wrongType)
+	missingType := clone(" without token type", "retryable")
+	delete(missingType.Response, "token_type")
+	if grant.acceptsMissingTokenType {
+		missingType.ExpectedError = ""
+	}
+	variations = append(variations, missingType)
+	if len(grant.responseScopes) > 0 {
+		partial := clone(" with partial scopes", "reauthorization")
+		partial.Response["scope"] = "manifest-ungranted-scope"
+		variations = append(variations, partial)
+		if grant.exactScopes {
+			extra := clone(" with extra scopes", "reauthorization")
+			extra.Response["scope"] = strings.Join(grant.responseScopes, " ") + " manifest-extra-scope"
+			variations = append(variations, extra)
+		}
+	}
+	if grant.missingExpiry == nil {
+		missingExpiry := clone(" without expires_in", "retryable")
+		delete(missingExpiry.Response, "expires_in")
+		variations = append(variations, missingExpiry)
+	}
+	return variations
+}
+
 // declaredGrant is one token request that a method declares.
 type declaredGrant struct {
 	name         string
@@ -60,12 +271,15 @@ type declaredGrant struct {
 	mappings     []schema.OAuthCredentialMapping
 	copies       []schema.CredentialCopy
 	// requestScopes are sent as the scope parameter or claim; responseScopes are what a successful response reports.
-	requestScopes  []string
-	responseScopes []string
-	terminalCodes  []string
-	missingExpiry  *schema.MissingExpiry
-	additional     map[string]string
-	jwtBearer      *schema.JWTBearerGrant
+	requestScopes           []string
+	responseScopes          []string
+	terminalCodes           []string
+	acceptedTokenTypes      []string
+	acceptsMissingTokenType bool
+	exactScopes             bool
+	missingExpiry           *schema.MissingExpiry
+	additional              map[string]string
+	jwtBearer               *schema.JWTBearerGrant
 }
 
 // HasDeclaredTokenGrants reports whether any method of manifest refreshes or mints a token.
@@ -174,8 +388,24 @@ func declaredGrants(manifest schema.Manifest) []declaredGrant {
 					name += " " + refreshGrant.RefreshTokenCredential
 				}
 				responseScopes := oauth.Scopes.List
+				if len(refresh.RequiredScopes) > 0 {
+					responseScopes = refresh.RequiredScopes
+				}
 				if refreshGrant.GrantedScopes == schema.UserScopes {
 					responseScopes = oauth.UserScopes
+				}
+				acceptedTokenTypes := refreshGrant.AcceptedTokenTypes
+				if len(acceptedTokenTypes) == 0 {
+					acceptedTokenTypes = refresh.AcceptedTokenTypes
+				}
+				acceptedTokenTypes = defaultStrings(acceptedTokenTypes, "Bearer")
+				acceptsMissingTokenType := refresh.AcceptsMissingTokenType
+				if refreshGrant.AcceptsMissingTokenType != nil {
+					acceptsMissingTokenType = *refreshGrant.AcceptsMissingTokenType
+				}
+				exactScopes := refresh.ExactScopes
+				if refreshGrant.ExactScopes != nil {
+					exactScopes = *refreshGrant.ExactScopes
 				}
 				grants = append(grants, declaredGrant{
 					name: name, methodLabel: label, method: method, kind: "refresh", endpoint: oauth.TokenEndpoint,
@@ -183,6 +413,7 @@ func declaredGrants(manifest schema.Manifest) []declaredGrant {
 					clientID: oauth.ClientIDCredential, clientSecret: oauth.ClientSecretCredential, refreshToken: refreshGrant.RefreshTokenCredential,
 					mappings: refreshGrant.CredentialMappings, responseScopes: withoutString(responseScopes, offlineAccessScope),
 					terminalCodes: defaultStrings(refresh.TerminalErrorCodes, "invalid_grant"), missingExpiry: refresh.MissingExpiry, additional: refresh.AdditionalParameters,
+					acceptedTokenTypes: acceptedTokenTypes, acceptsMissingTokenType: acceptsMissingTokenType, exactScopes: exactScopes,
 				})
 			}
 		}
@@ -193,6 +424,7 @@ func declaredGrants(manifest schema.Manifest) []declaredGrant {
 				clientID: clientCredentials.ClientIDCredential, clientSecret: clientCredentials.ClientSecretCredential, mappings: clientCredentials.CredentialMappings,
 				requestScopes: clientCredentials.Scopes, responseScopes: clientCredentials.Scopes,
 				terminalCodes: defaultStrings(clientCredentials.TerminalErrorCodes, "invalid_client"), missingExpiry: clientCredentials.MissingExpiry, additional: clientCredentials.AdditionalParameters,
+				acceptedTokenTypes: defaultStrings(clientCredentials.AcceptedTokenTypes, "Bearer"), acceptsMissingTokenType: clientCredentials.AcceptsMissingTokenType,
 			})
 		}
 		if method.ServiceAccount != nil && method.ServiceAccount.JWTBearer != nil {
@@ -202,6 +434,7 @@ func declaredGrants(manifest schema.Manifest) []declaredGrant {
 				encoding: schema.FormTokenRequestEncoding, mappings: jwtBearer.CredentialMappings, copies: jwtBearer.CredentialCopies,
 				requestScopes: jwtBearer.Scopes, responseScopes: jwtBearer.Scopes, terminalCodes: defaultStrings(jwtBearer.TerminalErrorCodes, "invalid_grant"),
 				missingExpiry: jwtBearer.MissingExpiry, jwtBearer: jwtBearer,
+				acceptedTokenTypes: defaultStrings(jwtBearer.AcceptedTokenTypes, "Bearer"), acceptsMissingTokenType: jwtBearer.AcceptsMissingTokenType,
 			})
 		}
 	}
@@ -520,7 +753,7 @@ func (agreement *refreshAgreementGenerator) sampleKeyMembers(grant declaredGrant
 
 // sampleResponse returns a successful token response and the credential values it must leave behind.
 func (agreement *refreshAgreementGenerator) sampleResponse(grant declaredGrant, credentials map[string]string, sample RefreshAgreementSample) (map[string]any, map[string]string) {
-	response := map[string]any{"token_type": "Bearer", "expires_in": sampleExpiresInSecond}
+	response := map[string]any{"token_type": grant.acceptedTokenTypes[0], "expires_in": sampleExpiresInSecond}
 	if len(grant.responseScopes) > 0 {
 		response["scope"] = strings.Join(grant.responseScopes, " ")
 	}

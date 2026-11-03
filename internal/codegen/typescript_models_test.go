@@ -16,6 +16,43 @@ import (
 	"github.com/superdurable/dex-connectors-library/schema"
 )
 
+func TestTypeScriptRefreshDeclarationUsesDecodedManifest(t *testing.T) {
+	manifestFile, err := os.Open(filepath.Join("..", "..", "connectors", "google", "gmail", "connector.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := manifestFile.Close(); err != nil {
+			t.Fatal(err)
+		}
+	})
+	manifest, err := schema.Decode(manifestFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest.Spec.Auth.Methods[0].OAuth2.Refresh.AdditionalParameters = map[string]string{
+		"description": "retained", "protocol": "oauth2",
+	}
+	manifest.Spec.Auth.Methods[0].OAuth2.TokenEndpoint = schema.ValueSource{
+		FromCredential: "oauth_client_id", Values: map[string]string{"description": "https://example.com/token"},
+	}
+	declaration, err := generateTypeScriptRefreshDeclaration(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, expected := range []string{`"defaultMethod": "google-oauth"`, `"requiredScopes"`,
+		`"workspace-domain-delegation"`, `"oauth_client_id": "oauthClientId"`,
+		`"description": "retained"`, `"protocol": "oauth2"`, `"description": "https://example.com/token"`} {
+		if !strings.Contains(string(declaration), expected) {
+			t.Errorf("generated refresh declaration omits %s", expected)
+		}
+	}
+	connection := string(generateTypeScriptConnection(manifest, nil))
+	if !strings.Contains(connection, "newRefreshingCredentialProvider(project.connections, { connectorId: ConnectorID, connectionName }, decode, encode, decodeShared)") {
+		t.Fatal("generated project credentials omit shared credential decoding")
+	}
+}
+
 func TestTypeScriptMultiAuthModelsGolden(t *testing.T) {
 	manifestFile, err := os.Open(filepath.Join("..", "..", "schema", "testdata", "multi-auth.yaml"))
 	if err != nil {

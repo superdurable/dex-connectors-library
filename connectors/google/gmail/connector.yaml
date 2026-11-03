@@ -10,11 +10,11 @@ spec:
   provider: google
   languages:
     python:
-      version: v0.1.1
+      version: v0.1.2
       operations: [getMessage, sendMessage, replyToMessage]
       triggers: []
     typescript:
-      version: v0.1.1
+      version: v0.1.2
       operations: [getMessage, sendMessage, replyToMessage]
       triggers: []
   codegen:
@@ -109,6 +109,7 @@ spec:
             - {credential: primary_email, endpoint: https://openidconnect.googleapis.com/v1/userinfo, source: email, verifiedBy: email_verified}
           pkce: true
           refresh:
+            requiredScopes: [https://www.googleapis.com/auth/gmail.readonly, https://www.googleapis.com/auth/gmail.send]
             terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
       - id: workspace-domain-delegation
         displayName: Workspace domain-wide delegation

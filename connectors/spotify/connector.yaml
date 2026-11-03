@@ -75,6 +75,7 @@ spec:
       pkce: true
       tokenEndpointAuthMethod: client_secret_basic
       refresh:
+        exactScopes: true
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client, access_denied]
   operations:
     - name: listPlaylistTracks

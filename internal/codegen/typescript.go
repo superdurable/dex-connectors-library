@@ -53,10 +53,69 @@ func GenerateTypeScript(manifest schema.Manifest, goDirectory string, publishedM
 	}
 	files["mock.ts"] = mock
 	files["connection.ts"] = generateTypeScriptConnection(manifest, operations)
+	if HasDeclaredTokenGrants(manifest) {
+		refreshDeclaration, err := generateTypeScriptRefreshDeclaration(manifest)
+		if err != nil {
+			return nil, err
+		}
+		files["refresh.ts"] = refreshDeclaration
+	}
 	for name, content := range files {
 		files[name] = append(bytes.TrimRight(content, "\n"), '\n')
 	}
 	return files, nil
+}
+
+func generateTypeScriptRefreshDeclaration(manifest schema.Manifest) ([]byte, error) {
+	authorizationJSON, err := json.Marshal(manifest.Spec.Auth)
+	if err != nil {
+		return nil, fmt.Errorf("encode refresh authorization: %w", err)
+	}
+	var authorizationFields map[string]any
+	if err := json.Unmarshal(authorizationJSON, &authorizationFields); err != nil {
+		return nil, fmt.Errorf("decode refresh authorization: %w", err)
+	}
+	trimTypeScriptRefreshMetadata(authorizationFields)
+	if len(manifest.Spec.Auth.Methods) > 0 {
+		delete(authorizationFields, "fields")
+	}
+	authorization, err := json.MarshalIndent(authorizationFields, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("encode refresh authorization: %w", err)
+	}
+	fieldNames := map[string]string{}
+	for _, method := range manifest.Spec.Auth.AuthMethods() {
+		for _, field := range method.Fields {
+			fieldNames[field.Name] = typeScriptFieldName(field.Name)
+		}
+	}
+	fields, err := json.MarshalIndent(fieldNames, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("encode refresh credential fields: %w", err)
+	}
+	return []byte(typeScriptHeader() + "/** Validated authorization declaration for manifest-backed token renewal. */\n" +
+		"export const Authorization = " + string(authorization) + ";\n\n" +
+		"/** Stored credential names mapped to runtime credential properties. */\n" +
+		"export const CredentialFields: Readonly<Record<string, string>> = " + string(fields) + ";\n"), nil
+}
+
+func trimTypeScriptRefreshMetadata(value any) {
+	switch fields := value.(type) {
+	case map[string]any:
+		for _, name := range []string{"description", "displayName", "goName", "guide", "connectionKind", "recommended", "methodLabel", "configuration", "authorizationEndpoint", "authorizationParameters", "credentialDerivations", "pkce", "oidc", "protocol"} {
+			delete(fields, name)
+		}
+		for name, field := range fields {
+			switch name {
+			case "methods", "fields", "oauth2", "clientCredentials", "serviceAccount", "refresh", "grants", "jwtBearer":
+				trimTypeScriptRefreshMetadata(field)
+			}
+		}
+	case []any:
+		for _, item := range fields {
+			trimTypeScriptRefreshMetadata(item)
+		}
+	}
 }
 
 func typeScriptHeader() string {
@@ -625,6 +684,9 @@ func generateTypeScriptConnection(manifest schema.Manifest, operations []schema.
 	}
 	output.WriteString(" } from '@superdurable/connectors-sdk';\n")
 	output.WriteString("import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';\n")
+	if HasDeclaredTokenGrants(manifest) {
+		output.WriteString("import { newRefreshingCredentialProvider, type CredentialDecoder, type CredentialEncoder, type SharedCredentialDecoder } from '@superdurable/connectors-sdk/projectconfig';\n")
+	}
 	var names []string
 	for _, operation := range operations {
 		names = append(names, operation.InputType, operation.OutputType)
@@ -650,6 +712,11 @@ func generateTypeScriptConnection(manifest schema.Manifest, operations []schema.
 	output.WriteString("  const selected = project.configuration.connections.find(entry => entry.connectorId === ConnectorID && entry.connectionName === connectionName);\n")
 	output.WriteString("  if (!selected || selected.provider !== ProviderID) throw new TypeError('project connection is not configured');\n")
 	output.WriteString("  return newConnection(createClient(project, connectionName), reference);\n}\n\n")
+	if HasDeclaredTokenGrants(manifest) {
+		output.WriteString("/** Bind renewable project credentials, including shared connection material. */\n")
+		output.WriteString("export function newProjectCredentialProvider<Credentials>(project: LoadedProject, connectionName: string, decode: CredentialDecoder<Credentials>, encode: CredentialEncoder<Credentials>, decodeShared: SharedCredentialDecoder<Credentials>) {\n")
+		output.WriteString("  return newRefreshingCredentialProvider(project.connections, { connectorId: ConnectorID, connectionName }, decode, encode, decodeShared);\n}\n\n")
+	}
 	fmt.Fprintf(&output, "/** Provider expected by named connections. */\nexport const ConnectionNameProvider = %s;\n", strconv.Quote(manifest.Spec.Provider))
 	return output.Bytes()
 }
