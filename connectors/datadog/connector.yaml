@@ -13,6 +13,11 @@ spec:
       version: v0.1.0
       operations: [queryMetrics, listMonitors]
       triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-datadog"
+      operations: [queryMetrics, listMonitors]
+      triggers: []
   codegen:
     go:
       package: datadog
