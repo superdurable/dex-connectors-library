@@ -307,6 +307,17 @@ seconds.
 refund in a ledger at most once. It uses `query` for the duplicate check and
 `execute` for the idempotent insert, and reconciles an uncertain `COMMIT`.
 
+## Python package
+
+Install `dex-connector-postgresql==0.1.0` for the Python `query` and `execute`
+Steps. The package uses the native Psycopg driver, including PostgreSQL's `$1`
+placeholders, and resolves the password for every call. Its
+[runnable refund Flow](python/examples/record_refund/README.md) binds the static
+`postgresql-ledger` connection and runs on a real Dex Worker. Python unit tests
+mirror the Go branch, retry, uncertainty, and driver-error cases. The native
+database integration test uses `POSTGRESQL_CONNECTOR_TEST_*` in CI's PostgreSQL
+service container; live provider behavior for the Python port remains unverified.
+
 ## Verification
 
 Run the standalone module checks from this directory:
