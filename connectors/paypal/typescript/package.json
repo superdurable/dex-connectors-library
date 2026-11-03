@@ -2,6 +2,7 @@
   "name": "@superdurable/connector-paypal",
   "version": "0.1.0",
   "description": "PayPal connector for Dex TypeScript applications",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/superdurable/dex-connectors-library.git",

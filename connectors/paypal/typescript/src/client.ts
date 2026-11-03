@@ -65,20 +65,27 @@ export class PayPalClient {
     let accessToken = this.token?.credentialHash === credentialHash && this.now().getTime() < this.token.expiresAt ? this.token.value : undefined;
     if (!accessToken) {
       let tokenResponse: ProviderResponse;
+      let isTokenBodyTooLarge = false;
       try {
         tokenResponse = await this.request('/v1/oauth2/token', 'POST', {
           Authorization: `Basic ${Buffer.from(`${credentials.clientId}:${credentials.clientSecret.reveal()}`).toString('base64')}`,
           'Content-Type': 'application/x-www-form-urlencoded',
         }, 65_536, Buffer.from('grant_type=client_credentials'), call);
       } catch (error) {
-        return { outcome: error instanceof BodyTooLargeError
-          ? this.failure(operation, 'invalidResponse', 'RESPONSE_TOO_LARGE', 'PayPal token response exceeded the limit')
-          : this.failure(operation, 'retry', 'AVAILABILITY', 'PayPal token exchange failed') };
+        if (error instanceof BodyTooLargeError && error.status !== undefined) {
+          tokenResponse = { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() };
+          isTokenBodyTooLarge = true;
+        } else {
+          return { outcome: error instanceof BodyTooLargeError
+            ? this.failure(operation, 'invalidResponse', 'RESPONSE_TOO_LARGE', 'PayPal token response exceeded the limit')
+            : this.failure(operation, 'retry', 'AVAILABILITY', 'PayPal token exchange failed') };
+        }
       }
       if (tokenResponse.status === 429 || tokenResponse.status === 408 || tokenResponse.status >= 500) {
         return { outcome: this.failure(operation, 'retry', 'AVAILABILITY', 'PayPal token exchange unavailable', this.retryAfter(tokenResponse)) };
       }
       if (tokenResponse.status !== 200) return { outcome: this.failure(operation, 'providerRejected', 'AUTHENTICATION', 'PayPal rejected client credentials') };
+      if (isTokenBodyTooLarge) return { outcome: this.failure(operation, 'invalidResponse', 'RESPONSE_TOO_LARGE', 'PayPal token response exceeded the limit') };
       let token: unknown;
       try { token = JSON.parse(Buffer.from(tokenResponse.body).toString('utf8')); } catch { /* Invalid JSON is classified below. */ }
       if (!isToken(token)) return { outcome: this.failure(operation, 'invalidResponse', 'PROTOCOL', 'PayPal returned an invalid token response') };
@@ -88,11 +95,17 @@ export class PayPalClient {
       }
     }
     let response: ProviderResponse;
+    let isReadBodyTooLarge = false;
     try { response = await this.request(path, 'GET', { Accept: 'application/json', Authorization: `Bearer ${accessToken}` }, this.maxResponseBytes, undefined, call); }
     catch (error) {
-      return { outcome: error instanceof BodyTooLargeError
-        ? this.failure(operation, 'invalidResponse', 'RESPONSE_TOO_LARGE', 'provider response exceeded the configured limit')
-        : this.failure(operation, 'retry', 'AVAILABILITY', 'provider read failed') };
+      if (error instanceof BodyTooLargeError && error.status !== undefined) {
+        response = { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() };
+        isReadBodyTooLarge = true;
+      } else {
+        return { outcome: error instanceof BodyTooLargeError
+          ? this.failure(operation, 'invalidResponse', 'RESPONSE_TOO_LARGE', 'provider response exceeded the configured limit')
+          : this.failure(operation, 'retry', 'AVAILABILITY', 'provider read failed') };
+      }
     }
     if (response.status === 429) return { outcome: this.failure(operation, 'retry', 'RATE_LIMIT', 'provider rate limited the read', this.retryAfter(response)) };
     if (response.status === 408 || response.status >= 500) return { outcome: this.failure(operation, 'retry', 'AVAILABILITY', 'provider read is temporarily unavailable', this.retryAfter(response)) };
@@ -100,6 +113,7 @@ export class PayPalClient {
     if (response.status === 401) { this.token = undefined; return { outcome: this.failure(operation, 'providerRejected', 'AUTHENTICATION', 'provider rejected credentials') }; }
     if (response.status === 403) return { outcome: this.failure(operation, 'providerRejected', 'AUTHORIZATION', 'provider denied access') };
     if (response.status !== 200) return { outcome: this.failure(operation, 'providerRejected', 'PROVIDER_REJECTION', `provider rejected read with HTTP ${response.status}`) };
+    if (isReadBodyTooLarge) return { outcome: this.failure(operation, 'invalidResponse', 'RESPONSE_TOO_LARGE', 'provider response exceeded the configured limit') };
     return { response };
   }
 

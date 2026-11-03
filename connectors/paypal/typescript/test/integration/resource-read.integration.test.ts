@@ -8,16 +8,17 @@ import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Client, Registry, Worker, openBlobCache } from '@superdurable/dex';
-import { SecretString } from '@superdurable/connectors-sdk';
+import { sendProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
+import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
 import { expect, it } from 'vitest';
-import { PayPalClient } from '../../src/client.js';
-import { newConnection, type Order } from '../../src/index.js';
+import { newProjectConnection, type Order } from '../../src/index.js';
 import { ConnectionName, ResourceReadFlow } from '../../examples/resource-read/flow/workflow.js';
 
 it('reads an order through real Dex and fails an unwired notFound branch', async () => {
   const dexAddress = process.env.DEX_FLOW_SERVICE_ADDRESS;
   if (!dexAddress) throw new Error('set DEX_FLOW_SERVICE_ADDRESS to a running dexcli dev server');
   const requests: string[] = [];
+  const requestTimeouts: number[] = [];
   const server = createServer((request, response) => {
     requests.push(`${request.method} ${request.url}`);
     if (request.url === '/v1/oauth2/token') {
@@ -40,10 +41,16 @@ it('reads an order through real Dex and fails an unwired notFound branch', async
   if (!address || typeof address === 'string') throw new Error('PayPal fixture port unavailable');
   const directory = await mkdtemp(join(tmpdir(), 'dex-paypal-integration-'));
   const cache = openBlobCache({ directory, maxBytes: 64 * 1024 * 1024 });
-  const provider = new PayPalClient({ baseUrl: `http://127.0.0.1:${address.port}` }, {
-    resolve: async () => ({ clientId: 'client-test', clientSecret: new SecretString('secret-test') }),
-  });
-  const flow = new ResourceReadFlow(newConnection(provider, { provider: 'paypal', name: ConnectionName }));
+  const project = {
+    configuration: { connections: [{ connectorId: 'paypal', connectionName: ConnectionName, provider: 'paypal',
+      configuration: { baseUrl: `http://127.0.0.1:${address.port}`, timeout: '2s' } }] },
+    resolveCredential: async () => ({ client_id: 'client-test', client_secret: 'secret-test' }),
+  } as unknown as LoadedProject;
+  const connection = newProjectConnection(project, ConnectionName, { send: request => {
+    requestTimeouts.push(request.timeoutMs ?? 0);
+    return sendProviderRequest(request);
+  } });
+  const flow = new ResourceReadFlow(connection);
   const registry = new Registry([flow]);
   const worker = new Worker(registry, cache, { serverAddress: dexAddress });
   const client = new Client(registry, cache, { serverAddress: dexAddress });
@@ -62,6 +69,7 @@ it('reads an order through real Dex and fails an unwired notFound branch', async
     expect(missing.errorMessage).toContain('notFound');
     expect(requests.filter(request => request.startsWith('POST'))).toHaveLength(1);
     expect(requests.filter(request => request.startsWith('GET'))).toHaveLength(2);
+    expect(requestTimeouts).toEqual([2_000, 2_000, 2_000]);
   } finally {
     await client.close(); await worker.close(); cache.close();
     await rm(directory, { recursive: true, force: true });
