@@ -1,0 +1,77 @@
+{
+  "connectorId": "algolia",
+  "releaseTag": "connectors/algolia/go/v0.2.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-algolia",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newSearchStep",
+      "kind": "query",
+      "operationId": "search",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "searched",
+          "field": "searched",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "name": "newSaveObjectStep",
+      "kind": "mutation",
+      "operationId": "saveObject",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "saved",
+          "field": "saved",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    }
+  ]
+}

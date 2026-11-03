@@ -1,6 +1,7 @@
 {
   "name": "@superdurable/connector-front",
   "version": "0.1.0",
+  "license": "MIT",
   "description": "Front conversation and contact operations for Dex Flows",
   "repository": {
     "type": "git",

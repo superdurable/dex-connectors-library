@@ -11,7 +11,10 @@ import { FindContactByEmailInputSchema, GetConversationInputSchema, ReplyToConve
 const scenarios = loadScenarios(new URL('../../../../conformance/connectors/front/scenarios.json', import.meta.url));
 const connection = { provider: 'front', name: 'front-test' };
 
-it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeFront));
+it.each(scenarios)('matches Go conformance: $name', scenario => replay({
+  ...scenario,
+  exchanges: scenario.exchanges.map(exchange => ({ ...exchange })),
+}, invokeFront));
 
 function productionMutation<Input, Output>(operation: Mutation<Input, Output>, call: Call, input: Input, key: string) {
   return invokeProductionMutation(operation, key,
@@ -20,10 +23,14 @@ function productionMutation<Input, Output>(operation: Mutation<Input, Output>, c
 
 async function invokeFront(scenario: Scenario, recorder: ExchangeRecorder, context: HeartbeatContext) {
   const sender = (request: ProviderRequest) => {
-    // Go records URL.Path decoded; operations.test.ts verifies the actual escaped URL separately.
     const target = new URL(request.url);
-    const canonicalPath = decodeURIComponent(target.pathname);
-    return answerRecordedRequest(recorder, { ...request, url: `${target.origin}${canonicalPath}${target.search}` }, before => new ProviderTransportError(before));
+    const exchange = scenario.exchanges[recorder.requestCount];
+    if (exchange !== undefined && decodeURIComponent(target.pathname) !== exchange.path) {
+      throw new Error(`decoded Front path ${decodeURIComponent(target.pathname)} differs from ${exchange.path}`);
+    }
+    // The shared recorder parses URL.pathname, while Go records a decoded path.
+    if (exchange !== undefined) exchange.path = target.pathname;
+    return answerRecordedRequest(recorder, request, before => new ProviderTransportError(before));
   };
   const client = new FrontClient({}, { resolve: async () => ({ apiToken: new SecretString('front-unit-test-token-0123456789') }) },
     { apiBaseURL: 'http://127.0.0.1:12345', send: sender });

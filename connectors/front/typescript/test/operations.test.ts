@@ -69,7 +69,7 @@ it('encodes the full search query as Go QueryEscape with percent-encoded spaces'
 
 it('retries transient reply credential failures and ends on reauthorization', async () => {
   const replyCall = { ...call('replyToConversation'), context: new HeartbeatContext(undefined) as unknown as Call['context'] };
-  const transient = new FrontClient({}, { resolve: async () => { throw new Error('broker unavailable'); } });
+  const transient = new FrontClient({}, { resolve: async () => { throw new TypeError('project credential decoding failed'); } });
   const first = await transient.replyToConversation().invoke(replyCall, { conversationId: 'cnv_55c8c149', text: 'Hello' });
   expect(first.kind).toBe('retry');
   const terminal = new FrontClient({}, { resolve: async () => { throw new ReauthorizationRequiredError(); } });

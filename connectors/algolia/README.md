@@ -16,6 +16,8 @@ Algolia index search and repeat-safe record replacement for Dex. The connector u
 The Python package is [`dex-connector-algolia`](python/README.md), imported as
 `dex_connectors.algolia`.
 
+The TypeScript package is [`@superdurable/connector-algolia`](typescript/README.md), with [runnable search and replacement Flows](typescript/examples/index-search).
+
 ## Authorization
 
 Sign in to the [Algolia API Keys page](https://www.algolia.com/account/api-keys/all) under **Settings > Team and Access > API Keys**. Copy your uppercase alphanumeric **Application ID** into `application_id`. Open [Restricted API Keys](https://www.algolia.com/account/api-keys/restricted), choose **Create API Key**, grant `search` and `addObject` ACLs for the intended index, and paste its secret key into `api_key`. Blank fields prevent requests. The key travels only in `x-algolia-api-key`; the application ID travels in `x-algolia-application-id` and the public host.

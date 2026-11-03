@@ -5,17 +5,17 @@
       "callId": "4654dcf5-d08e-5637-ab27-76dd2c85d38e",
       "exchanges": [
         {
-          "body": "{\"_results\":[{\"id\":\"cnv_55c8c149\",\"status\":\"unassigned\",\"created_at\":1767225600}],\"_total\":1,\"_pagination\":{\"next\":null}}",
+          "body": "{\"_results\":[{\"id\":\"cnv_100\",\"type\":\"conversation\",\"subject\":\"Order 88213\",\"status\":\"unassigned\",\"created_at\":1767323045,\"tags\":[{\"id\":\"tag_old\",\"name\":\"old\"}],\"assignee\":{\"id\":\"tea_old\",\"email\":\"old@example.com\"}}],\"_total\":1,\"_pagination\":{\"next\":\"https://api2.frontapp.com/conversations/search/refund?page_token=next_3\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/conversations/search/refund",
+          "path": "/conversations/search/refund inbox:inb_123 tag:tag_123 is:open is:unassigned recipient:jane@example.com assignee:tea_123 after:1767225600",
           "query": {
             "limit": [
-              "2"
+              "10"
             ],
             "page_token": [
-              "abc123"
+              "next_2"
             ]
           },
           "requestHeaders": {
@@ -35,12 +35,25 @@
         "output": {
           "conversations": [
             {
-              "createdAt": "2026-01-01T00:00:00Z",
-              "id": "cnv_55c8c149",
-              "status": "unassigned"
+              "assignee": {
+                "email": "old@example.com",
+                "id": "tea_old"
+              },
+              "createdAt": "2026-01-02T03:04:05Z",
+              "id": "cnv_100",
+              "status": "unassigned",
+              "subject": "Order 88213",
+              "tags": [
+                {
+                  "id": "tag_old",
+                  "name": "old"
+                }
+              ],
+              "type": "conversation"
             }
           ],
-          "query": "refund",
+          "nextPageToken": "next_3",
+          "query": "refund inbox:inb_123 tag:tag_123 is:open is:unassigned recipient:jane@example.com assignee:tea_123 after:1767225600",
           "totalCount": 1
         },
         "requestCount": 1,
@@ -49,28 +62,34 @@
         "uncertain": false
       },
       "input": {
-        "pageSize": 2,
-        "pageToken": "abc123",
+        "activityAfter": "2026-01-01T00:00:00Z",
+        "assigneeId": "tea_123",
+        "inboxId": "inb_123",
+        "pageSize": 10,
+        "pageToken": "next_2",
+        "recipientEmail": "jane@example.com",
+        "statuses": [
+          "open",
+          "unassigned"
+        ],
+        "tagId": "tag_123",
         "text": "refund"
       },
-      "name": "searchConversations-success",
+      "name": "search-all-filters",
       "operation": "searchConversations"
     },
     {
       "callId": "4654dcf5-d08e-5637-ab27-76dd2c85d38e",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"_results\":[],\"_total\":0}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
           "path": "/conversations/search/refund",
           "query": {
             "limit": [
-              "2"
-            ],
-            "page_token": [
-              "abc123"
+              "25"
             ]
           },
           "requestHeaders": {
@@ -81,126 +100,40 @@
               "Bearer front-unit-test-token-0123456789"
             ]
           },
-          "status": 429
+          "status": 200
         }
       ],
       "expected": {
-        "branch": "",
-        "failureKind": "RATE_LIMIT",
+        "branch": "searched",
+        "failureKind": "",
+        "output": {
+          "conversations": [],
+          "query": "refund",
+          "totalCount": 0
+        },
         "requestCount": 1,
-        "retry": true,
+        "retry": false,
         "retryAfterMs": 0,
         "uncertain": false
       },
       "input": {
-        "pageSize": 2,
-        "pageToken": "abc123",
         "text": "refund"
       },
-      "name": "searchConversations-rate-limit",
+      "name": "search-empty",
       "operation": "searchConversations"
     },
     {
       "callId": "4654dcf5-d08e-5637-ab27-76dd2c85d38e",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"_error\":\"denied\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
           "path": "/conversations/search/refund",
           "query": {
             "limit": [
-              "2"
-            ],
-            "page_token": [
-              "abc123"
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer front-unit-test-token-0123456789"
-            ]
-          },
-          "status": 503
-        }
-      ],
-      "expected": {
-        "branch": "",
-        "failureKind": "AVAILABILITY",
-        "requestCount": 1,
-        "retry": true,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "pageSize": 2,
-        "pageToken": "abc123",
-        "text": "refund"
-      },
-      "name": "searchConversations-unavailable",
-      "operation": "searchConversations"
-    },
-    {
-      "callId": "4654dcf5-d08e-5637-ab27-76dd2c85d38e",
-      "exchanges": [
-        {
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/conversations/search/refund",
-          "query": {
-            "limit": [
-              "2"
-            ],
-            "page_token": [
-              "abc123"
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer front-unit-test-token-0123456789"
-            ]
-          },
-          "transportFailure": "before-send"
-        }
-      ],
-      "expected": {
-        "branch": "",
-        "failureKind": "TRANSPORT",
-        "requestCount": 0,
-        "retry": true,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "pageSize": 2,
-        "pageToken": "abc123",
-        "text": "refund"
-      },
-      "name": "searchConversations-transport",
-      "operation": "searchConversations"
-    },
-    {
-      "callId": "4654dcf5-d08e-5637-ab27-76dd2c85d38e",
-      "exchanges": [
-        {
-          "body": "{}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/conversations/search/refund",
-          "query": {
-            "limit": [
-              "2"
-            ],
-            "page_token": [
-              "abc123"
+              "25"
             ]
           },
           "requestHeaders": {
@@ -228,28 +161,23 @@
         "uncertain": false
       },
       "input": {
-        "pageSize": 2,
-        "pageToken": "abc123",
         "text": "refund"
       },
-      "name": "searchConversations-rejected",
+      "name": "search-provider-rejected",
       "operation": "searchConversations"
     },
     {
       "callId": "4654dcf5-d08e-5637-ab27-76dd2c85d38e",
       "exchanges": [
         {
-          "body": "{\"bad\":true}",
+          "body": "{\"wrong\":1}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
           "path": "/conversations/search/refund",
           "query": {
             "limit": [
-              "2"
-            ],
-            "page_token": [
-              "abc123"
+              "25"
             ]
           },
           "requestHeaders": {
@@ -277,117 +205,45 @@
         "uncertain": false
       },
       "input": {
-        "pageSize": 2,
-        "pageToken": "abc123",
         "text": "refund"
       },
-      "name": "searchConversations-invalid",
+      "name": "search-invalid-response",
       "operation": "searchConversations"
     },
     {
-      "callId": "97532e1f-1eb5-53ea-a325-034199381088",
-      "exchanges": [
-        {
-          "body": "{\"id\":\"cnv_55c8c149\",\"status\":\"unassigned\",\"created_at\":1767225600}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/conversations/cnv_55c8c149",
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer front-unit-test-token-0123456789"
-            ]
-          },
-          "status": 200
-        },
-        {
-          "body": "{\"_results\":[{\"id\":\"msg_1\",\"is_inbound\":true,\"body\":\"Hello\",\"created_at\":1767225600}]}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/conversations/cnv_55c8c149/messages",
-          "query": {
-            "limit": [
-              "2"
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer front-unit-test-token-0123456789"
-            ]
-          },
-          "status": 200
-        },
-        {
-          "body": "{\"_results\":[{\"id\":\"com_1\",\"body\":\"Checking\",\"posted_at\":1767225600}]}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/conversations/cnv_55c8c149/comments",
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer front-unit-test-token-0123456789"
-            ]
-          },
-          "status": 200
-        }
-      ],
+      "callId": "4654dcf5-d08e-5637-ab27-76dd2c85d38e",
+      "exchanges": [],
       "expected": {
-        "branch": "found",
-        "failureKind": "",
+        "branch": "defect",
+        "failureKind": "VALIDATION",
         "output": {
-          "comments": [
-            {
-              "body": "Checking",
-              "id": "com_1",
-              "postedAt": "2026-01-01T00:00:00Z"
-            }
-          ],
-          "conversation": {
-            "createdAt": "2026-01-01T00:00:00Z",
-            "id": "cnv_55c8c149",
-            "status": "unassigned"
-          },
-          "messages": [
-            {
-              "body": "Hello",
-              "createdAt": "2026-01-01T00:00:00Z",
-              "id": "msg_1",
-              "isInbound": true
-            }
-          ]
+          "conversations": [],
+          "query": "",
+          "totalCount": 0
         },
-        "requestCount": 3,
+        "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": false
       },
-      "input": {
-        "commentLimit": 2,
-        "conversationId": "cnv_55c8c149",
-        "messageLimit": 2
-      },
-      "name": "getConversation-success",
-      "operation": "getConversation"
+      "input": {},
+      "name": "search-defect",
+      "operation": "searchConversations"
     },
     {
-      "callId": "97532e1f-1eb5-53ea-a325-034199381088",
+      "callId": "4654dcf5-d08e-5637-ab27-76dd2c85d38e",
       "exchanges": [
         {
           "body": "{}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/conversations/cnv_55c8c149",
+          "path": "/conversations/search/refund",
+          "query": {
+            "limit": [
+              "25"
+            ]
+          },
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -408,22 +264,25 @@
         "uncertain": false
       },
       "input": {
-        "commentLimit": 2,
-        "conversationId": "cnv_55c8c149",
-        "messageLimit": 2
+        "text": "refund"
       },
-      "name": "getConversation-rate-limit",
-      "operation": "getConversation"
+      "name": "search-retry-429",
+      "operation": "searchConversations"
     },
     {
-      "callId": "97532e1f-1eb5-53ea-a325-034199381088",
+      "callId": "4654dcf5-d08e-5637-ab27-76dd2c85d38e",
       "exchanges": [
         {
           "body": "{}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/conversations/cnv_55c8c149",
+          "path": "/conversations/search/refund",
+          "query": {
+            "limit": [
+              "25"
+            ]
+          },
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -444,20 +303,23 @@
         "uncertain": false
       },
       "input": {
-        "commentLimit": 2,
-        "conversationId": "cnv_55c8c149",
-        "messageLimit": 2
+        "text": "refund"
       },
-      "name": "getConversation-unavailable",
-      "operation": "getConversation"
+      "name": "search-retry-503",
+      "operation": "searchConversations"
     },
     {
-      "callId": "97532e1f-1eb5-53ea-a325-034199381088",
+      "callId": "4654dcf5-d08e-5637-ab27-76dd2c85d38e",
       "exchanges": [
         {
           "keyMode": "absent",
           "method": "GET",
-          "path": "/conversations/cnv_55c8c149",
+          "path": "/conversations/search/refund",
+          "query": {
+            "limit": [
+              "25"
+            ]
+          },
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -478,11 +340,124 @@
         "uncertain": false
       },
       "input": {
-        "commentLimit": 2,
-        "conversationId": "cnv_55c8c149",
+        "text": "refund"
+      },
+      "name": "search-transport",
+      "operation": "searchConversations"
+    },
+    {
+      "callId": "97532e1f-1eb5-53ea-a325-034199381088",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"cnv_100\",\"type\":\"conversation\",\"subject\":\"Order 88213\",\"status\":\"unassigned\",\"created_at\":1767323045,\"tags\":[{\"id\":\"tag_old\",\"name\":\"old\"}],\"assignee\":{\"id\":\"tea_old\",\"email\":\"old@example.com\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations/cnv_100",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"_results\":[{\"id\":\"msg_100\",\"type\":\"email\",\"is_inbound\":true,\"body\":\"Hello\",\"created_at\":1767323045,\"recipients\":[{\"handle\":\"jane@example.com\",\"role\":\"from\"}]}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations/cnv_100/messages",
+          "query": {
+            "limit": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"_results\":[{\"id\":\"com_100\",\"body\":\"triaged\",\"posted_at\":1767323050},{\"id\":\"com_101\",\"body\":\"older\",\"posted_at\":1767323040}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations/cnv_100/comments",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "comments": [
+            {
+              "body": "triaged",
+              "id": "com_100",
+              "postedAt": "2026-01-02T03:04:10Z"
+            }
+          ],
+          "conversation": {
+            "assignee": {
+              "email": "old@example.com",
+              "id": "tea_old"
+            },
+            "createdAt": "2026-01-02T03:04:05Z",
+            "id": "cnv_100",
+            "status": "unassigned",
+            "subject": "Order 88213",
+            "tags": [
+              {
+                "id": "tag_old",
+                "name": "old"
+              }
+            ],
+            "type": "conversation"
+          },
+          "hasOlderComments": true,
+          "messages": [
+            {
+              "body": "Hello",
+              "createdAt": "2026-01-02T03:04:05Z",
+              "id": "msg_100",
+              "isInbound": true,
+              "recipients": [
+                {
+                  "handle": "jane@example.com",
+                  "role": "from"
+                }
+              ],
+              "type": "email"
+            }
+          ]
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "commentLimit": 1,
+        "conversationId": "cnv_100",
         "messageLimit": 2
       },
-      "name": "getConversation-transport",
+      "name": "get-found",
       "operation": "getConversation"
     },
     {
@@ -491,11 +466,11 @@
         {
           "body": "{}",
           "headers": {
-            "Location": "https://api2.frontapp.com/conversations/cnv_merged"
+            "Location": "https://api2.frontapp.com/conversations/cnv_200"
           },
           "keyMode": "absent",
           "method": "GET",
-          "path": "/conversations/cnv_55c8c149",
+          "path": "/conversations/cnv_100",
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -517,7 +492,7 @@
             "id": "",
             "status": ""
           },
-          "mergedIntoConversationId": "cnv_merged",
+          "mergedIntoConversationId": "cnv_200",
           "messages": []
         },
         "requestCount": 1,
@@ -526,11 +501,11 @@
         "uncertain": false
       },
       "input": {
-        "commentLimit": 2,
-        "conversationId": "cnv_55c8c149",
+        "commentLimit": 1,
+        "conversationId": "cnv_100",
         "messageLimit": 2
       },
-      "name": "getConversation-merged",
+      "name": "get-merged",
       "operation": "getConversation"
     },
     {
@@ -541,7 +516,7 @@
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/conversations/cnv_55c8c149",
+          "path": "/conversations/cnv_100",
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -571,11 +546,11 @@
         "uncertain": false
       },
       "input": {
-        "commentLimit": 2,
-        "conversationId": "cnv_55c8c149",
+        "commentLimit": 1,
+        "conversationId": "cnv_100",
         "messageLimit": 2
       },
-      "name": "getConversation-not-found",
+      "name": "get-not-found",
       "operation": "getConversation"
     },
     {
@@ -586,7 +561,7 @@
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/conversations/cnv_55c8c149",
+          "path": "/conversations/cnv_100",
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -616,22 +591,22 @@
         "uncertain": false
       },
       "input": {
-        "commentLimit": 2,
-        "conversationId": "cnv_55c8c149",
+        "commentLimit": 1,
+        "conversationId": "cnv_100",
         "messageLimit": 2
       },
-      "name": "getConversation-rejected",
+      "name": "get-provider-rejected",
       "operation": "getConversation"
     },
     {
       "callId": "97532e1f-1eb5-53ea-a325-034199381088",
       "exchanges": [
         {
-          "body": "{\"bad\":true}",
+          "body": "{\"id\":\"bad\",\"status\":\"open\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/conversations/cnv_55c8c149",
+          "path": "/conversations/cnv_100",
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -661,25 +636,211 @@
         "uncertain": false
       },
       "input": {
-        "commentLimit": 2,
-        "conversationId": "cnv_55c8c149",
+        "commentLimit": 1,
+        "conversationId": "cnv_100",
         "messageLimit": 2
       },
-      "name": "getConversation-invalid",
+      "name": "get-invalid-response",
+      "operation": "getConversation"
+    },
+    {
+      "callId": "97532e1f-1eb5-53ea-a325-034199381088",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "comments": [],
+          "conversation": {
+            "createdAt": "0001-01-01T00:00:00Z",
+            "id": "",
+            "status": ""
+          },
+          "messages": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conversationId": "bad"
+      },
+      "name": "get-defect",
+      "operation": "getConversation"
+    },
+    {
+      "callId": "97532e1f-1eb5-53ea-a325-034199381088",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations/cnv_100",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "commentLimit": 1,
+        "conversationId": "cnv_100",
+        "messageLimit": 2
+      },
+      "name": "get-retry-429",
+      "operation": "getConversation"
+    },
+    {
+      "callId": "97532e1f-1eb5-53ea-a325-034199381088",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations/cnv_100",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "commentLimit": 1,
+        "conversationId": "cnv_100",
+        "messageLimit": 2
+      },
+      "name": "get-retry-503",
+      "operation": "getConversation"
+    },
+    {
+      "callId": "97532e1f-1eb5-53ea-a325-034199381088",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations/cnv_100",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "commentLimit": 1,
+        "conversationId": "cnv_100",
+        "messageLimit": 2
+      },
+      "name": "get-transport",
       "operation": "getConversation"
     },
     {
       "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
       "exchanges": [
         {
-          "body": "{\"id\":\"com_1ywg3f2\"}",
+          "body": "{\"message_uid\":\"abc123\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
-          "path": "/conversations/cnv_55c8c149/comments",
+          "path": "/conversations/cnv_100/messages",
           "requestBody": {
-            "author_id": "tea_2thf",
-            "body": "Refund issued"
+            "author_id": "tea_123",
+            "body": "\u003cp\u003eHello Jane\u003c/p\u003e",
+            "options": {
+              "archive": true
+            },
+            "text": "Hello Jane"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 202
+        }
+      ],
+      "expected": {
+        "branch": "replied",
+        "failureKind": "",
+        "output": {
+          "authorId": "tea_123",
+          "conversationId": "cnv_100",
+          "messageUid": "abc123"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+      "input": {
+        "authorId": "tea_123",
+        "conversationId": "cnv_100",
+        "shouldArchive": true,
+        "text": "Hello Jane"
+      },
+      "name": "reply-message",
+      "operation": "replyToConversation"
+    },
+    {
+      "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"com_100\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations/cnv_100/comments",
+          "requestBody": {
+            "author_id": "tea_123",
+            "body": "internal note"
           },
           "requestHeaders": {
             "Accept": [
@@ -699,9 +860,9 @@
         "branch": "replied",
         "failureKind": "",
         "output": {
-          "authorId": "tea_2thf",
-          "commentId": "com_1ywg3f2",
-          "conversationId": "cnv_55c8c149",
+          "authorId": "tea_123",
+          "commentId": "com_100",
+          "conversationId": "cnv_100",
           "isInternalNote": true
         },
         "requestCount": 1,
@@ -711,12 +872,12 @@
       },
       "idempotencyKey": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
       "input": {
-        "authorId": "tea_2thf",
-        "conversationId": "cnv_55c8c149",
+        "authorId": "tea_123",
+        "conversationId": "cnv_100",
         "isInternalNote": true,
-        "text": "Refund issued"
+        "text": "internal note"
       },
-      "name": "replyToConversation-success",
+      "name": "reply-comment",
       "operation": "replyToConversation"
     },
     {
@@ -727,193 +888,14 @@
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
-          "path": "/conversations/cnv_55c8c149/comments",
+          "path": "/conversations/cnv_100/messages",
           "requestBody": {
-            "author_id": "tea_2thf",
-            "body": "Refund issued"
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer front-unit-test-token-0123456789"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 429
-        }
-      ],
-      "expected": {
-        "branch": "",
-        "failureKind": "RATE_LIMIT",
-        "requestCount": 1,
-        "retry": true,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "idempotencyKey": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
-      "input": {
-        "authorId": "tea_2thf",
-        "conversationId": "cnv_55c8c149",
-        "isInternalNote": true,
-        "text": "Refund issued"
-      },
-      "name": "replyToConversation-rate-limit",
-      "operation": "replyToConversation"
-    },
-    {
-      "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
-      "exchanges": [
-        {
-          "body": "{}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/conversations/cnv_55c8c149/comments",
-          "requestBody": {
-            "author_id": "tea_2thf",
-            "body": "Refund issued"
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer front-unit-test-token-0123456789"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 503
-        }
-      ],
-      "expected": {
-        "branch": "",
-        "failureKind": "AVAILABILITY",
-        "requestCount": 1,
-        "retry": true,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "idempotencyKey": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
-      "input": {
-        "authorId": "tea_2thf",
-        "conversationId": "cnv_55c8c149",
-        "isInternalNote": true,
-        "text": "Refund issued"
-      },
-      "name": "replyToConversation-unavailable",
-      "operation": "replyToConversation"
-    },
-    {
-      "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
-      "exchanges": [
-        {
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/conversations/cnv_55c8c149/comments",
-          "requestBody": {
-            "author_id": "tea_2thf",
-            "body": "Refund issued"
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer front-unit-test-token-0123456789"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "transportFailure": "before-send"
-        }
-      ],
-      "expected": {
-        "branch": "",
-        "failureKind": "TRANSPORT",
-        "requestCount": 0,
-        "retry": true,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "idempotencyKey": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
-      "input": {
-        "authorId": "tea_2thf",
-        "conversationId": "cnv_55c8c149",
-        "isInternalNote": true,
-        "text": "Refund issued"
-      },
-      "name": "replyToConversation-transport",
-      "operation": "replyToConversation"
-    },
-    {
-      "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
-      "exchanges": [
-        {
-          "body": "{}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/conversations/cnv_55c8c149/comments",
-          "requestBody": {
-            "author_id": "tea_2thf",
-            "body": "Refund issued"
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer front-unit-test-token-0123456789"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 500
-        }
-      ],
-      "expected": {
-        "branch": "uncertain",
-        "failureKind": "AVAILABILITY",
-        "output": {
-          "authorId": "tea_2thf",
-          "conversationId": "cnv_55c8c149",
-          "isInternalNote": true
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": true
-      },
-      "idempotencyKey": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
-      "input": {
-        "authorId": "tea_2thf",
-        "conversationId": "cnv_55c8c149",
-        "isInternalNote": true,
-        "text": "Refund issued"
-      },
-      "name": "replyToConversation-uncertain",
-      "operation": "replyToConversation"
-    },
-    {
-      "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
-      "exchanges": [
-        {
-          "body": "{}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/conversations/cnv_55c8c149/comments",
-          "requestBody": {
-            "author_id": "tea_2thf",
-            "body": "Refund issued"
+            "author_id": "tea_123",
+            "body": "\u003cp\u003eHello Jane\u003c/p\u003e",
+            "options": {
+              "archive": true
+            },
+            "text": "Hello Jane"
           },
           "requestHeaders": {
             "Accept": [
@@ -933,9 +915,8 @@
         "branch": "notFound",
         "failureKind": "NOT_FOUND",
         "output": {
-          "authorId": "tea_2thf",
-          "conversationId": "cnv_55c8c149",
-          "isInternalNote": true
+          "authorId": "tea_123",
+          "conversationId": "cnv_100"
         },
         "requestCount": 1,
         "retry": false,
@@ -944,12 +925,12 @@
       },
       "idempotencyKey": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
       "input": {
-        "authorId": "tea_2thf",
-        "conversationId": "cnv_55c8c149",
-        "isInternalNote": true,
-        "text": "Refund issued"
+        "authorId": "tea_123",
+        "conversationId": "cnv_100",
+        "shouldArchive": true,
+        "text": "Hello Jane"
       },
-      "name": "replyToConversation-not-found",
+      "name": "reply-not-found",
       "operation": "replyToConversation"
     },
     {
@@ -960,10 +941,14 @@
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
-          "path": "/conversations/cnv_55c8c149/comments",
+          "path": "/conversations/cnv_100/messages",
           "requestBody": {
-            "author_id": "tea_2thf",
-            "body": "Refund issued"
+            "author_id": "tea_123",
+            "body": "\u003cp\u003eHello Jane\u003c/p\u003e",
+            "options": {
+              "archive": true
+            },
+            "text": "Hello Jane"
           },
           "requestHeaders": {
             "Accept": [
@@ -983,9 +968,8 @@
         "branch": "providerRejected",
         "failureKind": "AUTHORIZATION",
         "output": {
-          "authorId": "tea_2thf",
-          "conversationId": "cnv_55c8c149",
-          "isInternalNote": true
+          "authorId": "tea_123",
+          "conversationId": "cnv_100"
         },
         "requestCount": 1,
         "retry": false,
@@ -994,26 +978,30 @@
       },
       "idempotencyKey": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
       "input": {
-        "authorId": "tea_2thf",
-        "conversationId": "cnv_55c8c149",
-        "isInternalNote": true,
-        "text": "Refund issued"
+        "authorId": "tea_123",
+        "conversationId": "cnv_100",
+        "shouldArchive": true,
+        "text": "Hello Jane"
       },
-      "name": "replyToConversation-rejected",
+      "name": "reply-provider-rejected",
       "operation": "replyToConversation"
     },
     {
       "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
       "exchanges": [
         {
-          "body": "{\"status\":\"accepted\"}",
+          "body": "{}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
-          "path": "/conversations/cnv_55c8c149/comments",
+          "path": "/conversations/cnv_100/messages",
           "requestBody": {
-            "author_id": "tea_2thf",
-            "body": "Refund issued"
+            "author_id": "tea_123",
+            "body": "\u003cp\u003eHello Jane\u003c/p\u003e",
+            "options": {
+              "archive": true
+            },
+            "text": "Hello Jane"
           },
           "requestHeaders": {
             "Accept": [
@@ -1026,15 +1014,326 @@
               "application/json"
             ]
           },
-          "status": 202
+          "status": 500
         }
       ],
       "expected": {
         "branch": "uncertain",
-        "failureKind": "PROTOCOL",
+        "failureKind": "AVAILABILITY",
         "output": {
-          "authorId": "tea_2thf",
-          "conversationId": "cnv_55c8c149",
+          "authorId": "tea_123",
+          "conversationId": "cnv_100"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+      "input": {
+        "authorId": "tea_123",
+        "conversationId": "cnv_100",
+        "shouldArchive": true,
+        "text": "Hello Jane"
+      },
+      "name": "reply-uncertain",
+      "operation": "replyToConversation"
+    },
+    {
+      "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations/cnv_100/messages",
+          "requestBody": {
+            "author_id": "tea_123",
+            "body": "\u003cp\u003eHello Jane\u003c/p\u003e",
+            "options": {
+              "archive": true
+            },
+            "text": "Hello Jane"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "CONFLICT",
+        "output": {
+          "authorId": "tea_123",
+          "conversationId": "cnv_100"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+      "input": {
+        "authorId": "tea_123",
+        "conversationId": "cnv_100",
+        "shouldArchive": true,
+        "text": "Hello Jane"
+      },
+      "name": "reply-conflict",
+      "operation": "replyToConversation"
+    },
+    {
+      "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "conversationId": "cnv_100"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+      "input": {
+        "conversationId": "cnv_100",
+        "text": ""
+      },
+      "name": "reply-defect",
+      "operation": "replyToConversation"
+    },
+    {
+      "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations/cnv_100/messages",
+          "requestBody": {
+            "author_id": "tea_123",
+            "body": "\u003cp\u003eHello Jane\u003c/p\u003e",
+            "options": {
+              "archive": true
+            },
+            "text": "Hello Jane"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+      "input": {
+        "authorId": "tea_123",
+        "conversationId": "cnv_100",
+        "shouldArchive": true,
+        "text": "Hello Jane"
+      },
+      "name": "reply-retry-429",
+      "operation": "replyToConversation"
+    },
+    {
+      "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations/cnv_100/messages",
+          "requestBody": {
+            "author_id": "tea_123",
+            "body": "\u003cp\u003eHello Jane\u003c/p\u003e",
+            "options": {
+              "archive": true
+            },
+            "text": "Hello Jane"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+      "input": {
+        "authorId": "tea_123",
+        "conversationId": "cnv_100",
+        "shouldArchive": true,
+        "text": "Hello Jane"
+      },
+      "name": "reply-retry-503",
+      "operation": "replyToConversation"
+    },
+    {
+      "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations/cnv_100/messages",
+          "requestBody": {
+            "author_id": "tea_123",
+            "body": "\u003cp\u003eHello Jane\u003c/p\u003e",
+            "options": {
+              "archive": true
+            },
+            "text": "Hello Jane"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+      "input": {
+        "authorId": "tea_123",
+        "conversationId": "cnv_100",
+        "shouldArchive": true,
+        "text": "Hello Jane"
+      },
+      "name": "reply-transport",
+      "operation": "replyToConversation"
+    },
+    {
+      "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"msg_100\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/messages/alt:uid:abc123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "replied",
+        "failureKind": "",
+        "output": {
+          "authorId": "tea_123",
+          "conversationId": "cnv_100",
+          "messageUid": "abc123"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+      "input": {
+        "authorId": "tea_123",
+        "conversationId": "cnv_100",
+        "shouldArchive": true,
+        "text": "Hello Jane"
+      },
+      "name": "reply-readback-message",
+      "operation": "replyToConversation",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+        "providerId": "abc123",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/comments/com_100",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "authorId": "tea_123",
+          "conversationId": "cnv_100",
           "isInternalNote": true
         },
         "requestCount": 1,
@@ -1044,74 +1343,29 @@
       },
       "idempotencyKey": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
       "input": {
-        "authorId": "tea_2thf",
-        "conversationId": "cnv_55c8c149",
+        "authorId": "tea_123",
+        "conversationId": "cnv_100",
         "isInternalNote": true,
-        "text": "Refund issued"
+        "text": "internal note"
       },
-      "name": "replyToConversation-accepted-without-id",
-      "operation": "replyToConversation"
-    },
-    {
-      "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
-      "exchanges": [
-        {
-          "body": "{\"message_uid\":\"ABC123\"}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/conversations/cnv_55c8c149/messages",
-          "requestBody": {
-            "body": "\u003cp\u003eHello customer\u003c/p\u003e",
-            "options": {
-              "archive": true
-            },
-            "text": "Hello customer"
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer front-unit-test-token-0123456789"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 202
-        }
-      ],
-      "expected": {
-        "branch": "replied",
-        "failureKind": "",
-        "output": {
-          "conversationId": "cnv_55c8c149",
-          "messageUid": "ABC123"
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "idempotencyKey": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
-      "input": {
-        "conversationId": "cnv_55c8c149",
-        "shouldArchive": true,
-        "text": "Hello customer"
-      },
-      "name": "replyToConversation-reply",
-      "operation": "replyToConversation"
+      "name": "reply-readback-comment-missing",
+      "operation": "replyToConversation",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+        "providerId": "com_100",
+        "state": "claimed"
+      }
     },
     {
       "callId": "fac40e10-9424-5513-8a66-a056f749f076",
       "exchanges": [
         {
-          "body": "{\"id\":\"cnv_55c8c149\",\"status\":\"unassigned\",\"created_at\":1767225600}",
+          "body": "{\"id\":\"cnv_100\",\"type\":\"conversation\",\"subject\":\"Order 88213\",\"status\":\"unassigned\",\"created_at\":1767323045,\"tags\":[{\"id\":\"tag_old\",\"name\":\"old\"}],\"assignee\":{\"id\":\"tea_old\",\"email\":\"old@example.com\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/conversations/cnv_55c8c149",
+          "path": "/conversations/cnv_100",
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -1127,9 +1381,9 @@
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
-          "path": "/conversations/cnv_55c8c149",
+          "path": "/conversations/cnv_100",
           "requestBody": {
-            "assignee_id": "tea_2thf"
+            "status": "archived"
           },
           "requestHeaders": {
             "Accept": [
@@ -1145,35 +1399,11 @@
           "status": 200
         },
         {
-          "body": "{}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/conversations/cnv_55c8c149/tags",
-          "requestBody": {
-            "tag_ids": [
-              "tag_13o8r1"
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer front-unit-test-token-0123456789"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        },
-        {
-          "body": "{\"id\":\"cnv_55c8c149\",\"status\":\"assigned\",\"assignee\":{\"id\":\"tea_2thf\"},\"tags\":[{\"id\":\"tag_13o8r1\",\"name\":\"triaged\"}],\"created_at\":1767225600}",
+          "body": "{\"id\":\"cnv_100\",\"type\":\"conversation\",\"subject\":\"Order 88213\",\"status\":\"archived\",\"created_at\":1767323045,\"tags\":[{\"id\":\"tag_old\",\"name\":\"old\"}],\"assignee\":{\"id\":\"tea_old\",\"email\":\"old@example.com\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/conversations/cnv_55c8c149",
+          "path": "/conversations/cnv_100",
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -1191,20 +1421,166 @@
         "output": {
           "conversation": {
             "assignee": {
-              "id": "tea_2thf"
+              "email": "old@example.com",
+              "id": "tea_old"
             },
-            "createdAt": "2026-01-01T00:00:00Z",
-            "id": "cnv_55c8c149",
-            "status": "assigned",
+            "createdAt": "2026-01-02T03:04:05Z",
+            "id": "cnv_100",
+            "status": "archived",
+            "subject": "Order 88213",
             "tags": [
               {
-                "id": "tag_13o8r1",
-                "name": "triaged"
+                "id": "tag_old",
+                "name": "old"
               }
-            ]
+            ],
+            "type": "conversation"
           }
         },
-        "requestCount": 4,
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fac40e10-9424-5513-8a66-a056f749f076",
+      "input": {
+        "conversationId": "cnv_100",
+        "status": "archived"
+      },
+      "name": "update-status",
+      "operation": "updateConversation"
+    },
+    {
+      "callId": "fac40e10-9424-5513-8a66-a056f749f076",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"cnv_100\",\"type\":\"conversation\",\"subject\":\"Order 88213\",\"status\":\"unassigned\",\"created_at\":1767323045,\"tags\":[{\"id\":\"tag_old\",\"name\":\"old\"}],\"assignee\":{\"id\":\"tea_old\",\"email\":\"old@example.com\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations/cnv_100",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/conversations/cnv_100",
+          "requestBody": {
+            "assignee_id": "tea_new",
+            "status_id": "sts_123"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/conversations/cnv_100/tags",
+          "requestBody": {
+            "tag_ids": [
+              "tag_new"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/conversations/cnv_100/tags",
+          "requestBody": {
+            "tag_ids": [
+              "tag_old"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":\"cnv_100\",\"type\":\"conversation\",\"subject\":\"Order 88213\",\"status\":\"unassigned\",\"created_at\":1767323045,\"tags\":[{\"id\":\"tag_new\",\"name\":\"new\"}],\"assignee\":{\"id\":\"tea_new\",\"email\":\"new@example.com\"},\"status_id\":\"sts_123\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations/cnv_100",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "conversation": {
+            "assignee": {
+              "email": "new@example.com",
+              "id": "tea_new"
+            },
+            "createdAt": "2026-01-02T03:04:05Z",
+            "id": "cnv_100",
+            "status": "unassigned",
+            "statusId": "sts_123",
+            "subject": "Order 88213",
+            "tags": [
+              {
+                "id": "tag_new",
+                "name": "new"
+              }
+            ],
+            "type": "conversation"
+          }
+        },
+        "requestCount": 5,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": false
@@ -1212,23 +1588,27 @@
       "idempotencyKey": "fac40e10-9424-5513-8a66-a056f749f076",
       "input": {
         "addTagIds": [
-          "tag_13o8r1"
+          "tag_new"
         ],
-        "assigneeId": "tea_2thf",
-        "conversationId": "cnv_55c8c149"
+        "assigneeId": "tea_new",
+        "conversationId": "cnv_100",
+        "removeTagIds": [
+          "tag_old"
+        ],
+        "statusId": "sts_123"
       },
-      "name": "updateConversation-success",
+      "name": "update-all-fields",
       "operation": "updateConversation"
     },
     {
       "callId": "fac40e10-9424-5513-8a66-a056f749f076",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"id\":\"cnv_100\",\"type\":\"conversation\",\"subject\":\"Order 88213\",\"status\":\"unassigned\",\"created_at\":1767323045,\"tags\":[{\"id\":\"tag_old\",\"name\":\"old\"}],\"assignee\":{\"id\":\"tea_old\",\"email\":\"old@example.com\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/conversations/cnv_55c8c149",
+          "path": "/conversations/cnv_100",
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -1237,26 +1617,132 @@
               "Bearer front-unit-test-token-0123456789"
             ]
           },
-          "status": 429
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/conversations/cnv_100",
+          "requestBody": {
+            "assignee_id": null
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":\"cnv_100\",\"type\":\"conversation\",\"subject\":\"Order 88213\",\"status\":\"unassigned\",\"created_at\":1767323045,\"tags\":[{\"id\":\"tag_old\",\"name\":\"old\"}],\"assignee\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations/cnv_100",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ]
+          },
+          "status": 200
         }
       ],
       "expected": {
-        "branch": "",
-        "failureKind": "RATE_LIMIT",
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "conversation": {
+            "createdAt": "2026-01-02T03:04:05Z",
+            "id": "cnv_100",
+            "status": "unassigned",
+            "subject": "Order 88213",
+            "tags": [
+              {
+                "id": "tag_old",
+                "name": "old"
+              }
+            ],
+            "type": "conversation"
+          }
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fac40e10-9424-5513-8a66-a056f749f076",
+      "input": {
+        "conversationId": "cnv_100",
+        "isUnassigned": true
+      },
+      "name": "update-unassign",
+      "operation": "updateConversation"
+    },
+    {
+      "callId": "fac40e10-9424-5513-8a66-a056f749f076",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"cnv_100\",\"type\":\"conversation\",\"subject\":\"Order 88213\",\"status\":\"archived\",\"created_at\":1767323045,\"tags\":[{\"id\":\"tag_old\",\"name\":\"old\"}],\"assignee\":{\"id\":\"tea_old\",\"email\":\"old@example.com\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations/cnv_100",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "conversation": {
+            "assignee": {
+              "email": "old@example.com",
+              "id": "tea_old"
+            },
+            "createdAt": "2026-01-02T03:04:05Z",
+            "id": "cnv_100",
+            "status": "archived",
+            "subject": "Order 88213",
+            "tags": [
+              {
+                "id": "tag_old",
+                "name": "old"
+              }
+            ],
+            "type": "conversation"
+          },
+          "wasAlreadyApplied": true
+        },
         "requestCount": 1,
-        "retry": true,
+        "retry": false,
         "retryAfterMs": 0,
         "uncertain": false
       },
       "idempotencyKey": "fac40e10-9424-5513-8a66-a056f749f076",
       "input": {
-        "addTagIds": [
-          "tag_13o8r1"
-        ],
-        "assigneeId": "tea_2thf",
-        "conversationId": "cnv_55c8c149"
+        "conversationId": "cnv_100",
+        "status": "archived"
       },
-      "name": "updateConversation-rate-limit",
+      "name": "update-already-applied",
       "operation": "updateConversation"
     },
     {
@@ -1267,83 +1753,7 @@
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/conversations/cnv_55c8c149",
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer front-unit-test-token-0123456789"
-            ]
-          },
-          "status": 503
-        }
-      ],
-      "expected": {
-        "branch": "",
-        "failureKind": "AVAILABILITY",
-        "requestCount": 1,
-        "retry": true,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "idempotencyKey": "fac40e10-9424-5513-8a66-a056f749f076",
-      "input": {
-        "addTagIds": [
-          "tag_13o8r1"
-        ],
-        "assigneeId": "tea_2thf",
-        "conversationId": "cnv_55c8c149"
-      },
-      "name": "updateConversation-unavailable",
-      "operation": "updateConversation"
-    },
-    {
-      "callId": "fac40e10-9424-5513-8a66-a056f749f076",
-      "exchanges": [
-        {
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/conversations/cnv_55c8c149",
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer front-unit-test-token-0123456789"
-            ]
-          },
-          "transportFailure": "before-send"
-        }
-      ],
-      "expected": {
-        "branch": "",
-        "failureKind": "TRANSPORT",
-        "requestCount": 0,
-        "retry": true,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "idempotencyKey": "fac40e10-9424-5513-8a66-a056f749f076",
-      "input": {
-        "addTagIds": [
-          "tag_13o8r1"
-        ],
-        "assigneeId": "tea_2thf",
-        "conversationId": "cnv_55c8c149"
-      },
-      "name": "updateConversation-transport",
-      "operation": "updateConversation"
-    },
-    {
-      "callId": "fac40e10-9424-5513-8a66-a056f749f076",
-      "exchanges": [
-        {
-          "body": "{}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/conversations/cnv_55c8c149",
+          "path": "/conversations/cnv_100",
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -1372,24 +1782,21 @@
       },
       "idempotencyKey": "fac40e10-9424-5513-8a66-a056f749f076",
       "input": {
-        "addTagIds": [
-          "tag_13o8r1"
-        ],
-        "assigneeId": "tea_2thf",
-        "conversationId": "cnv_55c8c149"
+        "conversationId": "cnv_100",
+        "status": "archived"
       },
-      "name": "updateConversation-not-found",
+      "name": "update-not-found",
       "operation": "updateConversation"
     },
     {
       "callId": "fac40e10-9424-5513-8a66-a056f749f076",
       "exchanges": [
         {
-          "body": "{\"id\":\"cnv_55c8c149\",\"status\":\"unassigned\",\"created_at\":1767225600}",
+          "body": "{\"id\":\"cnv_100\",\"type\":\"conversation\",\"subject\":\"Order 88213\",\"status\":\"unassigned\",\"created_at\":1767323045,\"tags\":[{\"id\":\"tag_old\",\"name\":\"old\"}],\"assignee\":{\"id\":\"tea_old\",\"email\":\"old@example.com\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/conversations/cnv_55c8c149",
+          "path": "/conversations/cnv_100",
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -1405,9 +1812,9 @@
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
-          "path": "/conversations/cnv_55c8c149",
+          "path": "/conversations/cnv_100",
           "requestBody": {
-            "assignee_id": "tea_2thf"
+            "status": "archived"
           },
           "requestHeaders": {
             "Accept": [
@@ -1440,24 +1847,21 @@
       },
       "idempotencyKey": "fac40e10-9424-5513-8a66-a056f749f076",
       "input": {
-        "addTagIds": [
-          "tag_13o8r1"
-        ],
-        "assigneeId": "tea_2thf",
-        "conversationId": "cnv_55c8c149"
+        "conversationId": "cnv_100",
+        "status": "archived"
       },
-      "name": "updateConversation-rejected",
+      "name": "update-provider-rejected",
       "operation": "updateConversation"
     },
     {
       "callId": "fac40e10-9424-5513-8a66-a056f749f076",
       "exchanges": [
         {
-          "body": "{\"bad\":true}",
+          "body": "{\"id\":\"bad\",\"status\":\"open\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/conversations/cnv_55c8c149",
+          "path": "/conversations/cnv_100",
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -1486,240 +1890,47 @@
       },
       "idempotencyKey": "fac40e10-9424-5513-8a66-a056f749f076",
       "input": {
-        "addTagIds": [
-          "tag_13o8r1"
-        ],
-        "assigneeId": "tea_2thf",
-        "conversationId": "cnv_55c8c149"
+        "conversationId": "cnv_100",
+        "status": "archived"
       },
-      "name": "updateConversation-invalid",
+      "name": "update-invalid-response",
       "operation": "updateConversation"
     },
     {
       "callId": "fac40e10-9424-5513-8a66-a056f749f076",
-      "exchanges": [
-        {
-          "body": "{\"id\":\"cnv_55c8c149\",\"status\":\"assigned\",\"assignee\":{\"id\":\"tea_2thf\"},\"tags\":[{\"id\":\"tag_13o8r1\",\"name\":\"triaged\"}],\"created_at\":1767225600}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/conversations/cnv_55c8c149",
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer front-unit-test-token-0123456789"
-            ]
-          },
-          "status": 200
-        }
-      ],
+      "exchanges": [],
       "expected": {
-        "branch": "updated",
-        "failureKind": "",
+        "branch": "defect",
+        "failureKind": "VALIDATION",
         "output": {
           "conversation": {
-            "assignee": {
-              "id": "tea_2thf"
-            },
-            "createdAt": "2026-01-01T00:00:00Z",
-            "id": "cnv_55c8c149",
-            "status": "assigned",
-            "tags": [
-              {
-                "id": "tag_13o8r1",
-                "name": "triaged"
-              }
-            ]
-          },
-          "wasAlreadyApplied": true
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "idempotencyKey": "fac40e10-9424-5513-8a66-a056f749f076",
-      "input": {
-        "addTagIds": [
-          "tag_13o8r1"
-        ],
-        "assigneeId": "tea_2thf",
-        "conversationId": "cnv_55c8c149"
-      },
-      "name": "updateConversation-already-applied",
-      "operation": "updateConversation"
-    },
-    {
-      "callId": "fac40e10-9424-5513-8a66-a056f749f076",
-      "exchanges": [
-        {
-          "body": "{\"id\":\"cnv_55c8c149\",\"status\":\"assigned\",\"assignee\":{\"id\":\"tea_2thf\"},\"tags\":[{\"id\":\"tag_13o8r1\",\"name\":\"triaged\"}],\"created_at\":1767225600}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/conversations/cnv_55c8c149",
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer front-unit-test-token-0123456789"
-            ]
-          },
-          "status": 200
-        },
-        {
-          "body": "{}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "PATCH",
-          "path": "/conversations/cnv_55c8c149",
-          "requestBody": {
-            "assignee_id": null,
-            "status_id": "sts_5x"
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer front-unit-test-token-0123456789"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        },
-        {
-          "body": "{}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "DELETE",
-          "path": "/conversations/cnv_55c8c149/tags",
-          "requestBody": {
-            "tag_ids": [
-              "tag_13o8r1"
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer front-unit-test-token-0123456789"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        },
-        {
-          "body": "{\"id\":\"cnv_55c8c149\",\"status\":\"unassigned\",\"status_id\":\"sts_5x\",\"tags\":[],\"created_at\":1767225600}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/conversations/cnv_55c8c149",
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer front-unit-test-token-0123456789"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "updated",
-        "failureKind": "",
-        "output": {
-          "conversation": {
-            "createdAt": "2026-01-01T00:00:00Z",
-            "id": "cnv_55c8c149",
-            "status": "unassigned",
-            "statusId": "sts_5x"
+            "createdAt": "0001-01-01T00:00:00Z",
+            "id": "",
+            "status": ""
           }
         },
-        "requestCount": 4,
+        "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": false
       },
       "idempotencyKey": "fac40e10-9424-5513-8a66-a056f749f076",
       "input": {
-        "conversationId": "cnv_55c8c149",
-        "isUnassigned": true,
-        "removeTagIds": [
-          "tag_13o8r1"
-        ],
-        "statusId": "sts_5x"
+        "conversationId": "bad",
+        "status": "open"
       },
-      "name": "updateConversation-status-id-and-unassign",
+      "name": "update-defect",
       "operation": "updateConversation"
     },
     {
-      "callId": "07f31e76-43d8-5255-aac2-0e3131e09392",
-      "exchanges": [
-        {
-          "body": "{\"id\":\"crd_1y8sp71\",\"name\":\"Jane\",\"handles\":[{\"handle\":\"jane@acme.example.com\",\"source\":\"email\"}],\"updated_at\":1767225600}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/contacts/alt:email:jane@acme.example.com",
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer front-unit-test-token-0123456789"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "found",
-        "failureKind": "",
-        "output": {
-          "contacts": [
-            {
-              "handles": [
-                {
-                  "handle": "jane@acme.example.com",
-                  "source": "email"
-                }
-              ],
-              "id": "crd_1y8sp71",
-              "name": "Jane",
-              "updatedAt": "2026-01-01T00:00:00Z"
-            }
-          ]
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "email": "jane@acme.example.com"
-      },
-      "name": "findContactByEmail-success",
-      "operation": "findContactByEmail"
-    },
-    {
-      "callId": "07f31e76-43d8-5255-aac2-0e3131e09392",
+      "callId": "fac40e10-9424-5513-8a66-a056f749f076",
       "exchanges": [
         {
           "body": "{}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/contacts/alt:email:jane@acme.example.com",
+          "path": "/conversations/cnv_100",
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -1739,21 +1950,23 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "idempotencyKey": "fac40e10-9424-5513-8a66-a056f749f076",
       "input": {
-        "email": "jane@acme.example.com"
+        "conversationId": "cnv_100",
+        "status": "archived"
       },
-      "name": "findContactByEmail-rate-limit",
-      "operation": "findContactByEmail"
+      "name": "update-retry-429",
+      "operation": "updateConversation"
     },
     {
-      "callId": "07f31e76-43d8-5255-aac2-0e3131e09392",
+      "callId": "fac40e10-9424-5513-8a66-a056f749f076",
       "exchanges": [
         {
           "body": "{}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/contacts/alt:email:jane@acme.example.com",
+          "path": "/conversations/cnv_100",
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -1773,19 +1986,21 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "idempotencyKey": "fac40e10-9424-5513-8a66-a056f749f076",
       "input": {
-        "email": "jane@acme.example.com"
+        "conversationId": "cnv_100",
+        "status": "archived"
       },
-      "name": "findContactByEmail-unavailable",
-      "operation": "findContactByEmail"
+      "name": "update-retry-503",
+      "operation": "updateConversation"
     },
     {
-      "callId": "07f31e76-43d8-5255-aac2-0e3131e09392",
+      "callId": "fac40e10-9424-5513-8a66-a056f749f076",
       "exchanges": [
         {
           "keyMode": "absent",
           "method": "GET",
-          "path": "/contacts/alt:email:jane@acme.example.com",
+          "path": "/conversations/cnv_100",
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -1805,10 +2020,64 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "idempotencyKey": "fac40e10-9424-5513-8a66-a056f749f076",
       "input": {
-        "email": "jane@acme.example.com"
+        "conversationId": "cnv_100",
+        "status": "archived"
       },
-      "name": "findContactByEmail-transport",
+      "name": "update-transport",
+      "operation": "updateConversation"
+    },
+    {
+      "callId": "07f31e76-43d8-5255-aac2-0e3131e09392",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"crd_100\",\"name\":\"Jane\",\"handles\":[{\"handle\":\"jane@example.com\",\"source\":\"email\"}],\"lists\":[{\"name\":\"Customers\"}],\"updated_at\":1767323045}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/alt:email:jane@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "contacts": [
+            {
+              "handles": [
+                {
+                  "handle": "jane@example.com",
+                  "source": "email"
+                }
+              ],
+              "id": "crd_100",
+              "listNames": [
+                "Customers"
+              ],
+              "name": "Jane",
+              "updatedAt": "2026-01-02T03:04:05Z"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "jane@example.com"
+      },
+      "name": "contact-found",
       "operation": "findContactByEmail"
     },
     {
@@ -1819,7 +2088,7 @@
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/contacts/alt:email:jane@acme.example.com",
+          "path": "/contacts/alt:email:jane@example.com",
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -1843,9 +2112,9 @@
         "uncertain": false
       },
       "input": {
-        "email": "jane@acme.example.com"
+        "email": "jane@example.com"
       },
-      "name": "findContactByEmail-not-found",
+      "name": "contact-not-found",
       "operation": "findContactByEmail"
     },
     {
@@ -1856,7 +2125,7 @@
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/contacts/alt:email:jane@acme.example.com",
+          "path": "/contacts/alt:email:jane@example.com",
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -1880,20 +2149,20 @@
         "uncertain": false
       },
       "input": {
-        "email": "jane@acme.example.com"
+        "email": "jane@example.com"
       },
-      "name": "findContactByEmail-rejected",
+      "name": "contact-provider-rejected",
       "operation": "findContactByEmail"
     },
     {
       "callId": "07f31e76-43d8-5255-aac2-0e3131e09392",
       "exchanges": [
         {
-          "body": "{\"id\":\"crd_bad\",\"handles\":[]}",
+          "body": "{\"id\":\"bad\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/contacts/alt:email:jane@acme.example.com",
+          "path": "/contacts/alt:email:jane@example.com",
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -1917,453 +2186,10 @@
         "uncertain": false
       },
       "input": {
-        "email": "jane@acme.example.com"
+        "email": "jane@example.com"
       },
-      "name": "findContactByEmail-invalid",
+      "name": "contact-invalid-response",
       "operation": "findContactByEmail"
-    },
-    {
-      "callId": "fac40e10-9424-5513-8a66-a056f749f076",
-      "exchanges": [
-        {
-          "body": "{\"id\":\"cnv_55c8c149\",\"status\":\"unassigned\",\"created_at\":1767225600}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/conversations/cnv_55c8c149",
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer front-unit-test-token-0123456789"
-            ]
-          },
-          "status": 200
-        },
-        {
-          "body": "{}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "PATCH",
-          "path": "/conversations/cnv_55c8c149",
-          "requestBody": {
-            "status": "archived"
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer front-unit-test-token-0123456789"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        },
-        {
-          "body": "{\"id\":\"cnv_55c8c149\",\"status\":\"archived\",\"created_at\":1767225600}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/conversations/cnv_55c8c149",
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer front-unit-test-token-0123456789"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "updated",
-        "failureKind": "",
-        "output": {
-          "conversation": {
-            "createdAt": "2026-01-01T00:00:00Z",
-            "id": "cnv_55c8c149",
-            "status": "archived"
-          }
-        },
-        "requestCount": 3,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "idempotencyKey": "fac40e10-9424-5513-8a66-a056f749f076",
-      "input": {
-        "conversationId": "cnv_55c8c149",
-        "status": "archived"
-      },
-      "name": "updateConversation-status",
-      "operation": "updateConversation"
-    },
-    {
-      "callId": "4654dcf5-d08e-5637-ab27-76dd2c85d38e",
-      "exchanges": [
-        {
-          "body": "{\"_results\":[],\"_total\":0}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/conversations/search/inbox:inb_41w25",
-          "query": {
-            "limit": [
-              "25"
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer front-unit-test-token-0123456789"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "searched",
-        "failureKind": "",
-        "output": {
-          "conversations": [],
-          "query": "inbox:inb_41w25",
-          "totalCount": 0
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "inboxId": "inb_41w25"
-      },
-      "name": "searchConversations-inbox",
-      "operation": "searchConversations"
-    },
-    {
-      "callId": "4654dcf5-d08e-5637-ab27-76dd2c85d38e",
-      "exchanges": [
-        {
-          "body": "{\"_results\":[],\"_total\":0}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/conversations/search/tag:tag_13o8r1",
-          "query": {
-            "limit": [
-              "25"
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer front-unit-test-token-0123456789"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "searched",
-        "failureKind": "",
-        "output": {
-          "conversations": [],
-          "query": "tag:tag_13o8r1",
-          "totalCount": 0
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "tagId": "tag_13o8r1"
-      },
-      "name": "searchConversations-tag",
-      "operation": "searchConversations"
-    },
-    {
-      "callId": "4654dcf5-d08e-5637-ab27-76dd2c85d38e",
-      "exchanges": [
-        {
-          "body": "{\"_results\":[],\"_total\":0}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/conversations/search/is:open",
-          "query": {
-            "limit": [
-              "25"
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer front-unit-test-token-0123456789"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "searched",
-        "failureKind": "",
-        "output": {
-          "conversations": [],
-          "query": "is:open",
-          "totalCount": 0
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "statuses": [
-          "open"
-        ]
-      },
-      "name": "searchConversations-status",
-      "operation": "searchConversations"
-    },
-    {
-      "callId": "4654dcf5-d08e-5637-ab27-76dd2c85d38e",
-      "exchanges": [
-        {
-          "body": "{\"_results\":[],\"_total\":0}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/conversations/search/recipient:jane@acme.example.com",
-          "query": {
-            "limit": [
-              "25"
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer front-unit-test-token-0123456789"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "searched",
-        "failureKind": "",
-        "output": {
-          "conversations": [],
-          "query": "recipient:jane@acme.example.com",
-          "totalCount": 0
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "recipientEmail": "jane@acme.example.com"
-      },
-      "name": "searchConversations-recipient",
-      "operation": "searchConversations"
-    },
-    {
-      "callId": "4654dcf5-d08e-5637-ab27-76dd2c85d38e",
-      "exchanges": [
-        {
-          "body": "{\"_results\":[],\"_total\":0}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/conversations/search/assignee:tea_2thf",
-          "query": {
-            "limit": [
-              "25"
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer front-unit-test-token-0123456789"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "searched",
-        "failureKind": "",
-        "output": {
-          "conversations": [],
-          "query": "assignee:tea_2thf",
-          "totalCount": 0
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "assigneeId": "tea_2thf"
-      },
-      "name": "searchConversations-assignee",
-      "operation": "searchConversations"
-    },
-    {
-      "callId": "4654dcf5-d08e-5637-ab27-76dd2c85d38e",
-      "exchanges": [
-        {
-          "body": "{\"_results\":[],\"_total\":0}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/conversations/search/after:1649993520",
-          "query": {
-            "limit": [
-              "25"
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer front-unit-test-token-0123456789"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "searched",
-        "failureKind": "",
-        "output": {
-          "conversations": [],
-          "query": "after:1649993520",
-          "totalCount": 0
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "activityAfter": "2022-04-15T03:32:00Z"
-      },
-      "name": "searchConversations-activity",
-      "operation": "searchConversations"
-    },
-    {
-      "callId": "4654dcf5-d08e-5637-ab27-76dd2c85d38e",
-      "exchanges": [],
-      "expected": {
-        "branch": "defect",
-        "failureKind": "VALIDATION",
-        "output": {
-          "conversations": [],
-          "query": "",
-          "totalCount": 0
-        },
-        "requestCount": 0,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "text": " "
-      },
-      "name": "searchConversations-defect",
-      "operation": "searchConversations"
-    },
-    {
-      "callId": "97532e1f-1eb5-53ea-a325-034199381088",
-      "exchanges": [],
-      "expected": {
-        "branch": "defect",
-        "failureKind": "VALIDATION",
-        "output": {
-          "comments": [],
-          "conversation": {
-            "createdAt": "0001-01-01T00:00:00Z",
-            "id": "",
-            "status": ""
-          },
-          "messages": []
-        },
-        "requestCount": 0,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "conversationId": "bad"
-      },
-      "name": "getConversation-defect",
-      "operation": "getConversation"
-    },
-    {
-      "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
-      "exchanges": [],
-      "expected": {
-        "branch": "defect",
-        "failureKind": "VALIDATION",
-        "output": {
-          "conversationId": "bad"
-        },
-        "requestCount": 0,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "idempotencyKey": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
-      "input": {
-        "conversationId": "bad",
-        "text": "hello"
-      },
-      "name": "replyToConversation-defect",
-      "operation": "replyToConversation"
-    },
-    {
-      "callId": "fac40e10-9424-5513-8a66-a056f749f076",
-      "exchanges": [],
-      "expected": {
-        "branch": "defect",
-        "failureKind": "VALIDATION",
-        "output": {
-          "conversation": {
-            "createdAt": "0001-01-01T00:00:00Z",
-            "id": "",
-            "status": ""
-          }
-        },
-        "requestCount": 0,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "idempotencyKey": "fac40e10-9424-5513-8a66-a056f749f076",
-      "input": {
-        "conversationId": "bad",
-        "status": "archived"
-      },
-      "name": "updateConversation-defect",
-      "operation": "updateConversation"
     },
     {
       "callId": "07f31e76-43d8-5255-aac2-0e3131e09392",
@@ -2380,9 +2206,156 @@
         "uncertain": false
       },
       "input": {
-        "email": "invalid"
+        "email": "bad"
       },
-      "name": "findContactByEmail-defect",
+      "name": "contact-defect",
+      "operation": "findContactByEmail"
+    },
+    {
+      "callId": "07f31e76-43d8-5255-aac2-0e3131e09392",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/alt:email:jane@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "jane@example.com"
+      },
+      "name": "contact-retry-429",
+      "operation": "findContactByEmail"
+    },
+    {
+      "callId": "07f31e76-43d8-5255-aac2-0e3131e09392",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/alt:email:jane@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "jane@example.com"
+      },
+      "name": "contact-retry-503",
+      "operation": "findContactByEmail"
+    },
+    {
+      "callId": "07f31e76-43d8-5255-aac2-0e3131e09392",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/alt:email:jane@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "jane@example.com"
+      },
+      "name": "contact-transport",
+      "operation": "findContactByEmail"
+    },
+    {
+      "callId": "07f31e76-43d8-5255-aac2-0e3131e09392",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"crd_101\",\"handles\":[{\"handle\":\"jane+vip@example.com\",\"source\":\"email\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/alt:email:jane+vip@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer front-unit-test-token-0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "contacts": [
+            {
+              "handles": [
+                {
+                  "handle": "jane+vip@example.com",
+                  "source": "email"
+                }
+              ],
+              "id": "crd_101"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "jane+vip@example.com"
+      },
+      "name": "contact-plus-address",
       "operation": "findContactByEmail"
     },
     {
@@ -2393,10 +2366,13 @@
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
-          "path": "/conversations/cnv_55c8c149/comments",
+          "path": "/conversations/cnv_100/messages",
           "requestBody": {
-            "author_id": "tea_2thf",
-            "body": "Refund issued"
+            "body": "\u003cp\u003eHello\u003c/p\u003e",
+            "options": {
+              "archive": false
+            },
+            "text": "Hello"
           },
           "requestHeaders": {
             "Accept": [
@@ -2416,9 +2392,7 @@
         "branch": "providerRejected",
         "failureKind": "AUTHENTICATION",
         "output": {
-          "authorId": "tea_2thf",
-          "conversationId": "cnv_55c8c149",
-          "isInternalNote": true
+          "conversationId": "cnv_100"
         },
         "requestCount": 1,
         "retry": false,
@@ -2427,192 +2401,10 @@
       },
       "idempotencyKey": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
       "input": {
-        "authorId": "tea_2thf",
-        "conversationId": "cnv_55c8c149",
-        "isInternalNote": true,
-        "text": "Refund issued"
+        "conversationId": "cnv_100",
+        "text": "Hello"
       },
-      "name": "replyToConversation-unauthorized",
-      "operation": "replyToConversation"
-    },
-    {
-      "attempts": 2,
-      "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
-      "exchanges": [
-        {
-          "body": "{}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/conversations/cnv_55c8c149/comments",
-          "requestBody": {
-            "author_id": "tea_2thf",
-            "body": "Refund issued"
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer front-unit-test-token-0123456789"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 503
-        },
-        {
-          "body": "{\"id\":\"com_1ywg3f2\"}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/conversations/cnv_55c8c149/comments",
-          "requestBody": {
-            "author_id": "tea_2thf",
-            "body": "Refund issued"
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer front-unit-test-token-0123456789"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 201
-        }
-      ],
-      "expected": {
-        "branch": "replied",
-        "failureKind": "",
-        "output": {
-          "authorId": "tea_2thf",
-          "commentId": "com_1ywg3f2",
-          "conversationId": "cnv_55c8c149",
-          "isInternalNote": true
-        },
-        "requestCount": 2,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "idempotencyKey": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
-      "input": {
-        "authorId": "tea_2thf",
-        "conversationId": "cnv_55c8c149",
-        "isInternalNote": true,
-        "text": "Refund issued"
-      },
-      "intermediate": [
-        {
-          "exchangeCount": 1,
-          "failureKind": "AVAILABILITY",
-          "retryAfterMs": 0
-        }
-      ],
-      "name": "replyToConversation-retry-after-503",
-      "operation": "replyToConversation"
-    },
-    {
-      "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
-      "exchanges": [
-        {
-          "body": "{\"id\":\"com_1ywg3f2\"}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/comments/com_1ywg3f2",
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer front-unit-test-token-0123456789"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "replied",
-        "failureKind": "",
-        "output": {
-          "authorId": "tea_2thf",
-          "commentId": "com_1ywg3f2",
-          "conversationId": "cnv_55c8c149",
-          "isInternalNote": true
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "idempotencyKey": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
-      "input": {
-        "authorId": "tea_2thf",
-        "conversationId": "cnv_55c8c149",
-        "isInternalNote": true,
-        "text": "Refund issued"
-      },
-      "name": "replyToConversation-read-back-comment",
-      "operation": "replyToConversation",
-      "priorHeartbeat": {
-        "attempt": 1,
-        "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
-        "providerId": "com_1ywg3f2",
-        "state": "claimed"
-      }
-    },
-    {
-      "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
-      "exchanges": [
-        {
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/conversations/cnv_55c8c149/comments",
-          "requestBody": {
-            "author_id": "tea_2thf",
-            "body": "Refund issued"
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer front-unit-test-token-0123456789"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "transportFailure": "after-send"
-        }
-      ],
-      "expected": {
-        "branch": "uncertain",
-        "failureKind": "TRANSPORT",
-        "output": {
-          "authorId": "tea_2thf",
-          "conversationId": "cnv_55c8c149",
-          "isInternalNote": true
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": true
-      },
-      "idempotencyKey": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
-      "input": {
-        "authorId": "tea_2thf",
-        "conversationId": "cnv_55c8c149",
-        "isInternalNote": true,
-        "text": "Refund issued"
-      },
-      "name": "replyToConversation-after-send-transport",
+      "name": "reply-static-credential-rejected",
       "operation": "replyToConversation"
     }
   ],

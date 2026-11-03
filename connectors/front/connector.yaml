@@ -13,6 +13,11 @@ spec:
       package: "@superdurable/connector-front"
       operations: [searchConversations, getConversation, replyToConversation, updateConversation, findContactByEmail]
       triggers: []
+    python:
+      version: v0.1.0
+      package: dex-connector-front
+      operations: [searchConversations, getConversation, replyToConversation, updateConversation, findContactByEmail]
+      triggers: []
   provider: front
   codegen:
     go:

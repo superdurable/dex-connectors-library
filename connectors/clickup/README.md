@@ -25,6 +25,10 @@ webhooks through ClickUp API v2, `https://api.clickup.com/api/v2`:
 The `taskEvent` Trigger receives ClickUp's task webhook events, verified with
 their `X-Signature`.
 
+## TypeScript package
+
+The [TypeScript package](typescript/README.md) implements all seven task operations at `@superdurable/connector-clickup` v0.1.0. Its [runnable get-task Flow](typescript/examples/get-task/) uses the static `clickup-workspace` connection and is exercised against a real Dex Worker and Client with a local ClickUp HTTP fixture. The signed `taskEvent` Trigger remains Go only. The shared Go recordings cover 63 TypeScript provider scenarios; live ClickUp authorization and provider calls are unverified.
+
 ## Mocks
 
 The generated [`clickupmock`](go/clickupmock) package models a blocked SSO task,

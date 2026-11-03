@@ -8,6 +8,8 @@ import { SearchConversationsOperation, GetConversationOperation, ReplyToConversa
 
 const defaultEndpoint = 'https://api2.frontapp.com';
 
+class InvalidFrontTokenError extends Error {}
+
 /** One Front request, with an already escaped path. */
 export interface FrontRequest {
   /** HTTP method sent to the provider. */ method: string;
@@ -61,12 +63,12 @@ export class FrontClient {
   async resolveToken(call: Call): Promise<{ token: string } | { failure: Failure; terminal: boolean }> {
     try {
       const credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
-      if (!(credentials.apiToken instanceof SecretString)) throw new TypeError('invalid Front token');
+      if (!(credentials.apiToken instanceof SecretString)) throw new InvalidFrontTokenError();
       const token = credentials.apiToken.reveal();
-      if (!isHeaderSafeCredential(token)) throw new TypeError('invalid Front token');
+      if (!isHeaderSafeCredential(token)) throw new InvalidFrontTokenError();
       return { token };
     } catch (error) {
-      return { failure: this.failure('AUTHENTICATION', call.operation.operationId, 'the Front API token is unavailable, blank, or contains characters a header cannot carry'), terminal: error instanceof ReauthorizationRequiredError || error instanceof TypeError };
+      return { failure: this.failure('AUTHENTICATION', call.operation.operationId, 'the Front API token is unavailable, blank, or contains characters a header cannot carry'), terminal: error instanceof ReauthorizationRequiredError || error instanceof InvalidFrontTokenError };
     }
   }
 
