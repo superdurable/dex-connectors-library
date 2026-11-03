@@ -137,6 +137,34 @@ def test_sigv4_matches_aws_go_sdk_signer(target: str, token: str) -> None:
     assert headers["X-Amz-Date"] == "20261025T090000Z"
 
 
+@pytest.mark.parametrize(
+    ("explicit_port", "implicit_port"),
+    [
+        ("https://sqs.example.com:443/", "https://sqs.example.com/"),
+        ("http://localhost:80/", "http://localhost/"),
+    ],
+)
+def test_sigv4_uses_the_host_httpx_sends(explicit_port: str, implicit_port: str) -> None:
+    def authorization(url: str) -> str:
+        return sign_headers(
+            method="POST",
+            url=url,
+            headers={"Content-Type": "application/x-amz-json-1.0"},
+            body=b"{}",
+            access_key_id="AKIDEXAMPLE",
+            secret_access_key=SECRET,
+            session_token="",
+            region="eu-west-1",
+            service="sqs",
+            signing_time=NOW,
+        )["Authorization"]
+
+    assert httpx.Request("POST", explicit_port).headers["Host"] == httpx.Request(
+        "POST", implicit_port
+    ).headers["Host"]
+    assert authorization(explicit_port) == authorization(implicit_port)
+
+
 @pytest.mark.asyncio
 async def test_receive_sends_signed_json_request_and_validates_messages() -> None:
     requests: list[httpx.Request] = []
@@ -210,6 +238,8 @@ async def test_fifo_receive_sends_attempt_id_and_empty_batch_is_empty() -> None:
         {"Messages": [sqs_message(), sqs_message()]},
         {"Messages": [sqs_message(Body=None)]},
         {"Messages": [sqs_message(Attributes={"ApproximateReceiveCount": "0"})]},
+        {"Messages": [sqs_message(Attributes={"ApproximateReceiveCount": "1\n"})]},
+        {"Messages": [sqs_message(Attributes={"ApproximateReceiveCount": "1", "SentTimestamp": "1\n"})]},
         {"Messages": [sqs_message(MessageAttributes={"bad name": {"DataType": "String"}})]},
         {"Messages": [sqs_message(MessageAttributes={"kind": {"DataType": "Binary", "BinaryValue": "%%"}})]},
         {"Messages": "none"},
@@ -236,6 +266,11 @@ async def test_invalid_receive_batches(body: object) -> None:
         ReceiveMessagesInput("https://sqs.us-east-1.amazonaws.com/123456789012/orders"),
         ReceiveMessagesInput("https://sqs.eu-west-1.amazonaws.com/orders"),
         ReceiveMessagesInput(QUEUE + "?x=1"),
+        ReceiveMessagesInput(QUEUE + "\n"),
+        ReceiveMessagesInput(QUEUE.replace("orders", "ord\ners")),
+        ReceiveMessagesInput(QUEUE.replace("orders", "ord\ters")),
+        ReceiveMessagesInput(QUEUE.replace("orders", "ord\rers")),
+        ReceiveMessagesInput(QUEUE.replace("orders", "ord ers")),
     ],
 )
 @pytest.mark.asyncio
@@ -302,6 +337,23 @@ async def test_delete_error_classification(response: httpx.Response, branch: str
     assert SECRET not in result.failure.message and "expired" not in result.failure.message
     assert result.receipt.provider_request_id == "req-error"
     assert result.receipt.provider_object_id == QUEUE + "#order-1042"
+
+
+@pytest.mark.asyncio
+async def test_error_metadata_rejects_trailing_newlines() -> None:
+    response = httpx.Response(
+        400,
+        json={"__type": "InvalidClientTokenId\n"},
+        headers={"X-Amzn-Requestid": "req-error\n", "X-Amzn-Query-Error": "InvalidClientTokenId\n;Sender"},
+    )
+    result = await run_mutation(
+        make_client(answer(response)).delete_message(),
+        call_for(DELETE_MESSAGE_DEFINITION),
+        DeleteMessageInput(QUEUE, "receipt-1"),
+    )
+    assert result.branch == PROVIDER_REJECTED
+    assert result.failure is not None and result.failure.kind == FailureKind.PROVIDER_REJECTION
+    assert result.receipt.provider_request_id == ""
 
 
 @pytest.mark.parametrize(
@@ -395,6 +447,8 @@ def test_configuration_validation() -> None:
         Config(endpoint="http://sqs.example.com", default_queue_url="", region="eu-west-1"),
         Config(endpoint="", default_queue_url="", region="eu-west-1", max_messages_per_receive=11),
         Config(endpoint="", default_queue_url="https://example.com/orders", region="eu-west-1"),
+        Config(endpoint="", default_queue_url="", region="eu-west-1\n"),
+        Config(endpoint="", default_queue_url=QUEUE + "\n", region="eu-west-1"),
     ):
         with pytest.raises(ValueError):
             Client(config, provider)

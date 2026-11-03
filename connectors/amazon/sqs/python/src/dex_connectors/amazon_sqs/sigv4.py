@@ -7,6 +7,8 @@ import hmac
 from datetime import UTC, datetime
 from urllib.parse import quote, urlsplit
 
+import httpx
+
 _ALGORITHM = "AWS4-HMAC-SHA256"
 
 
@@ -36,7 +38,7 @@ def sign_headers(
     if session_token:
         signed["X-Amz-Security-Token"] = session_token
     canonical = {name.lower(): " ".join(value.strip().split()) for name, value in signed.items()}
-    canonical["host"] = parsed.netloc
+    canonical["host"] = httpx.URL(url).netloc.decode()
     if body:
         canonical["content-length"] = str(len(body))
     signed_header_names = ";".join(sorted(canonical))

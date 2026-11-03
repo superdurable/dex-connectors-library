@@ -20,6 +20,9 @@ endpoint must be in the signing Region. A FIFO receive sends the Call ID as
 `ReceiveRequestAttemptId`, so a retry within five minutes returns the same
 batch. Received messages are validated like Go, including the body's MD5
 digest; binary attribute values are standard base64 strings.
+Queue URLs must contain printable ASCII without whitespace; invalid URLs select
+`defect` before any provider request. Custom endpoints with explicit default
+ports are signed using the Host header sent by the HTTP client.
 
 Throttling, request timeouts, 5xx other than 501, and transport failures
 retry, honoring `Retry-After`. An invalid or expired receipt handle selects

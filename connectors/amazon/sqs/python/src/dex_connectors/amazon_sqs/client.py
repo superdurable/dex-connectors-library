@@ -241,7 +241,7 @@ class Client:
         if credentials is None:
             raise ValueError("credential provider is required")
         region = config.region or _DEFAULT_REGION
-        if not _REGION_PATTERN.match(region):
+        if not _REGION_PATTERN.fullmatch(region):
             raise ValueError("SQS region must be a Region code such as eu-west-1")
         self.endpoint, self.is_amazon_endpoint = _resolve_endpoint(config.endpoint, region)
         if config.default_queue_url:
@@ -336,7 +336,7 @@ class Client:
         """Read the error code from the query-compatibility header and the JSON __type."""
         code = ""
         query_code = str(response.headers.get(_QUERY_ERROR_HEADER, "")).partition(";")[0]
-        if _ERROR_CODE_PATTERN.match(query_code) and not _contains_credential(query_code, credentials):
+        if _ERROR_CODE_PATTERN.fullmatch(query_code) and not _contains_credential(query_code, credentials):
             code = query_code
         error = _ErrorResponse(
             response.status_code,
@@ -358,7 +358,7 @@ class Client:
             return error
         type_code = error_type.partition("#")[2] if "#" in error_type else error_type
         type_code = type_code.partition(":")[0]
-        if _ERROR_CODE_PATTERN.match(type_code) and not _contains_credential(type_code, credentials):
+        if _ERROR_CODE_PATTERN.fullmatch(type_code) and not _contains_credential(type_code, credentials):
             error = replace(error, code=type_code)
         return replace(error, is_about_receipt_handle=bool(_RECEIPT_HANDLE_MESSAGE_PATTERN.search(message)))
 
@@ -733,7 +733,7 @@ def _decode_message(received: dict[str, Any]) -> Message:
         raise ValueError("a message body does not match its MD5 digest")
     attributes = {name: value or "" for name, value in (received.get("Attributes") or {}).items()}
     count_text = attributes.get("ApproximateReceiveCount", "")
-    if not _INTEGER_PATTERN.match(count_text) or int(count_text) < 1:
+    if not _INTEGER_PATTERN.fullmatch(count_text) or int(count_text) < 1:
         raise ValueError("a receive count is not a positive integer")
     try:
         sent_at = _epoch_milliseconds(attributes.get("SentTimestamp", ""))
@@ -747,7 +747,7 @@ def _decode_message(received: dict[str, Any]) -> Message:
     for name, value in (received.get("MessageAttributes") or {}).items():
         attribute = value or {}
         data_type = attribute.get("DataType") or ""
-        if not _MESSAGE_ATTRIBUTE_NAME_PATTERN.match(name) or not data_type:
+        if not _MESSAGE_ATTRIBUTE_NAME_PATTERN.fullmatch(name) or not data_type:
             raise ValueError("a message attribute has an invalid name, data type, or value")
         binary = attribute.get("BinaryValue") or ""
         canonical_binary = (
@@ -774,7 +774,7 @@ def _decode_message(received: dict[str, Any]) -> Message:
 def _epoch_milliseconds(value: str) -> datetime:
     if not value:
         return ZERO_TIME
-    if not _INTEGER_PATTERN.match(value) or int(value) < 0:
+    if not _INTEGER_PATTERN.fullmatch(value) or int(value) < 0:
         raise ValueError("timestamp is not epoch milliseconds")
     return datetime(1970, 1, 1, tzinfo=UTC) + timedelta(milliseconds=int(value))
 
@@ -782,7 +782,9 @@ def _epoch_milliseconds(value: str) -> datetime:
 def _resolve_endpoint(configured: str, region: str) -> tuple[str, bool]:
     is_amazon_endpoint = not configured
     if is_amazon_endpoint:
-        suffix = next((suffix for pattern, suffix in _PARTITION_DNS_SUFFIXES if pattern.match(region)), "")
+        suffix = next(
+            (suffix for pattern, suffix in _PARTITION_DNS_SUFFIXES if pattern.fullmatch(region)), ""
+        )
         if not suffix:
             raise ValueError(
                 "SQS region is not an Amazon SQS Region; set endpoint for an SQS-compatible server"
@@ -793,7 +795,7 @@ def _resolve_endpoint(configured: str, region: str) -> tuple[str, bool]:
     except ValueError as error:
         raise ValueError(f"SQS endpoint: {error}") from None
     parsed = urlsplit(validated)
-    if not _ENDPOINT_PATH_PATTERN.match(parsed.path) or "%" in parsed.path:
+    if not _ENDPOINT_PATH_PATTERN.fullmatch(parsed.path) or "%" in parsed.path:
         raise ValueError("SQS endpoint path may contain only letters, digits, and - . _ ~ segments")
     if not parsed.path:
         validated += "/"
@@ -804,7 +806,9 @@ def _parse_queue_url(queue_url: str) -> _Queue:
     invalid = ValueError(
         "queueUrl must be a queue URL such as https://sqs.eu-west-1.amazonaws.com/123456789012/orders"
     )
-    if len(queue_url.encode("utf-8", "surrogatepass")) > _MAXIMUM_QUEUE_URL_BYTES:
+    if len(queue_url.encode("utf-8", "surrogatepass")) > _MAXIMUM_QUEUE_URL_BYTES or any(
+        ord(character) < 0x21 or ord(character) > 0x7E for character in queue_url
+    ):
         raise invalid
     try:
         parsed = urlsplit(queue_url)
@@ -821,16 +825,16 @@ def _parse_queue_url(queue_url: str) -> _Queue:
     ):
         raise invalid
     owner, separator, name = parsed.path.removeprefix("/").partition("/")
-    if not separator or not _QUEUE_OWNER_PATTERN.match(owner):
+    if not separator or not _QUEUE_OWNER_PATTERN.fullmatch(owner):
         raise invalid
     is_fifo = name.endswith(_FIFO_SUFFIX)
     base_name = name.removesuffix(_FIFO_SUFFIX)
-    if not _QUEUE_NAME_PATTERN.match(base_name) or len(name) > 80:
+    if not _QUEUE_NAME_PATTERN.fullmatch(base_name) or len(name) > 80:
         raise ValueError(
             "queueUrl must end with a queue name of 1 to 80 letters, digits, hyphens, and underscores, "
             "including any .fifo suffix"
         )
-    match = _AMAZON_QUEUE_HOST_PATTERN.match(hostname)
+    match = _AMAZON_QUEUE_HOST_PATTERN.fullmatch(hostname)
     return _Queue(queue_url, name, is_fifo, match.group(1) if match else "")
 
 
@@ -872,7 +876,7 @@ def _contains_credential(value: str, credentials: Credentials) -> bool:
 
 def _safe_request_id(headers: httpx.Headers) -> str:
     request_id = str(headers.get(_REQUEST_ID_HEADER, ""))
-    return request_id if _REQUEST_ID_PATTERN.match(request_id) else ""
+    return request_id if _REQUEST_ID_PATTERN.fullmatch(request_id) else ""
 
 
 def _transport_failure(operation: str, subject: str) -> Failure:
