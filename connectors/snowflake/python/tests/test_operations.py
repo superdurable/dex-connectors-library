@@ -5,6 +5,8 @@
 import base64
 import json
 from datetime import UTC, datetime
+from types import SimpleNamespace
+from typing import cast
 
 import pytest
 from cryptography.hazmat.primitives import serialization
@@ -41,6 +43,15 @@ def test_unterminated_statement_and_nonfinite_parameter_fail_locally() -> None:
         _bind_statement("SELECT 'unterminated", ())
     with pytest.raises(ValueError, match="finite"):
         _bind_statement("SELECT ?", (float("nan"),))
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [(150.0, "150"), (100000.0, "100000"), (1000000.0, "1e+06"),
+     (0.0001, "0.0001"), (0.00001, "1e-05"), (-0.0, "-0")],
+)
+def test_real_binding_matches_go_shortest_format(value: float, expected: str) -> None:
+    assert _bind_statement("SELECT ?", (value,))["1"]["value"] == expected
 
 
 @pytest.mark.parametrize(
@@ -103,7 +114,10 @@ def test_key_pair_jwt_has_snowflake_claims_and_valid_signature() -> None:
         ({"type": "timestamp_ntz"}, "-1.500000000", "1969-12-31T23:59:58.5"),
         ({"type": "timestamp_ltz"}, "1616173619.000000000", "2021-03-19T17:06:59Z"),
         ({"type": "timestamp_tz"}, "1616173619.000000000 1500", "2021-03-19T18:06:59+01:00"),
+        ({"type": "timestamp_tz"}, "1616173619.000000000 1440", "2021-03-19T17:06:59Z"),
+        ({"type": "timestamp_tz"}, "1616173619.000000000 1380", "2021-03-19T16:06:59-01:00"),
         ({"type": "variant"}, '{"amount":12345678901234567890}', {"amount": 12345678901234567890}),
+        ({"type": "variant"}, '{"amount":1.0}', {"amount": 1.0}),
     ],
 )
 def test_jsonv2_value_conversion(column: dict[str, object], text: str, expected: object) -> None:
@@ -116,3 +130,40 @@ def test_jsonv2_value_conversion(column: dict[str, object], text: str, expected:
     assert isinstance(precision, int) and isinstance(scale, int)
     described = Column(name="VALUE", type=str(column["type"]), precision=precision, scale=scale)
     assert _decode_value(described, text) == expected
+
+
+@pytest.mark.parametrize(
+    "text",
+    ['{"price":12345678901234567890.123}', '{"fraction":0.1234567890123456789}',
+     '{"price":1E5}', '{"price":1,"price":2}'],
+)
+def test_variant_rejects_json_that_python_codec_cannot_preserve(text: str) -> None:
+    from dex_connectors.snowflake import Column
+    from dex_connectors.snowflake.operations import _decode_value
+
+    with pytest.raises(ValueError, match="precision|text|duplicate"):
+        _decode_value(Column(name="VALUE", type="variant"), text)
+
+
+def test_result_byte_limit_counts_go_json_string_escapes() -> None:
+    from dex_connectors.snowflake import Column, GetStatementResultInput
+    from dex_connectors.snowflake.operations import _decode_result
+
+    value = "<>&\u2028\u2029"
+    encoded_row = '{"TEXT":"\\u003c\\u003e\\u0026\\u2028\\u2029"}'
+    row_limit = 2 + len(encoded_row.encode()) + 1
+    input = GetStatementResultInput(
+        statement_handle="00000000-0000-4000-8000-000000000003",
+        partition=1,
+        columns=(Column(name="TEXT", type="text"),),
+    )
+    complete = _decode_result([[value]], input, cast(Client, SimpleNamespace(config=SimpleNamespace(
+        max_rows=1, max_response_bytes=row_limit,
+    ))))
+    truncated = _decode_result([[value]], input, cast(Client, SimpleNamespace(config=SimpleNamespace(
+        max_rows=1, max_response_bytes=row_limit - 1,
+    ))))
+    assert complete.rows == ({"TEXT": value},)
+    assert not complete.truncated
+    assert truncated.rows == ()
+    assert truncated.truncated

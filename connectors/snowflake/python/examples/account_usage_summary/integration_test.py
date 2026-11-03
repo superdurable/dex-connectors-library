@@ -51,10 +51,11 @@ async def test_submit_read_and_cancel_in_real_dex() -> None:
                         "numRows": 1,
                         "partitionInfo": [{}],
                         "rowType": [
-                            {"name": "EVENT_COUNT", "type": "fixed", "precision": 18, "nullable": False}
+                            {"name": "EVENT_COUNT", "type": "fixed", "precision": 18, "nullable": False},
+                            {"name": "OBSERVED_AT", "type": "timestamp_tz", "nullable": False},
                         ],
                     },
-                    "data": [["128"]],
+                    "data": [["128", "1767225600.000000000 1440"]],
                 },
             )
         if request.url.path == f"/api/v2/statements/{HANDLE}/cancel" and request.method == "POST":
@@ -106,6 +107,7 @@ async def test_submit_read_and_cancel_in_real_dex() -> None:
                         assert read.statement_handle == HANDLE
                         assert read.rows[0] is not None
                         assert read.rows[0]["EVENT_COUNT"] == "128"
+                        assert read.rows[0]["OBSERVED_AT"] == "2026-01-01T00:00:00Z"
 
                         cancel_id = f"snowflake-python-cancel-{uuid4().hex}"
                         await dex_client.start_flow(

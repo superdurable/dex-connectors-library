@@ -466,10 +466,7 @@ def _bind_statement(statement: str, parameters: tuple[object, ...]) -> dict[str,
         elif isinstance(parameter, float):
             if not math.isfinite(parameter):
                 raise ValueError("float must be finite")
-            value = next(
-                formatted for precision in range(1, 18)
-                if float(formatted := format(parameter, f".{precision}g")) == parameter
-            )
+            value = _format_real_binding(parameter)
             kind = "REAL"
         elif isinstance(parameter, Decimal):
             value = str(parameter)
@@ -547,6 +544,16 @@ def _placeholder_count(statement: str) -> int:
     return count
 
 
+def _format_real_binding(value: float) -> str:
+    shortest = Decimal(repr(value)).normalize()
+    exponent = shortest.adjusted()
+    if -4 <= exponent < 6:
+        return format(shortest, "f")
+    coefficient, separator, exponent_text = format(shortest, "e").partition("e")
+    assert separator
+    return f"{coefficient}e{int(exponent_text):+03d}"
+
+
 def _decode_result(document: object, input: GetStatementResultInput, client: Client) -> StatementResult:
     if isinstance(document, list):
         raw_rows = document
@@ -609,7 +616,10 @@ def _decode_result(document: object, input: GetStatementResultInput, client: Cli
                 raise ValueError(
                     f'column "{column.name}" of type {column.type} returned text the connector cannot decode'
                 ) from None
-        encoded_bytes += len(json.dumps(row, ensure_ascii=False, separators=(",", ":")).encode()) + 1
+        encoded_row = json.dumps(row, ensure_ascii=False, separators=(",", ":"))
+        for character in ("<", ">", "&", "\u2028", "\u2029"):
+            encoded_row = encoded_row.replace(character, f"\\u{ord(character):04x}")
+        encoded_bytes += len(encoded_row.encode()) + 1
         if encoded_bytes > client.config.max_response_bytes:
             truncated = True
             break
@@ -677,7 +687,27 @@ def _decode_value(column: Column, text: str | None) -> object:
         def reject_constant(value: str) -> object:
             raise ValueError("invalid semi-structured JSON")
 
-        return json.loads(text, parse_constant=reject_constant)
+        def parse_exact_float(value: str) -> float:
+            decimal_value = Decimal(value)
+            floating = float(decimal_value)
+            if not math.isfinite(floating) or Decimal.from_float(floating) != decimal_value:
+                raise ValueError("semi-structured JSON number exceeds exact Python codec precision")
+            if json.dumps(floating) != value:
+                raise ValueError("semi-structured JSON number cannot retain its text through Python codec")
+            return floating
+
+        def reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict[str, object]:
+            value: dict[str, object] = {}
+            for key, item in pairs:
+                if key in value:
+                    raise ValueError("duplicate semi-structured JSON key")
+                value[key] = item
+            return value
+
+        return json.loads(
+            text, parse_float=parse_exact_float, parse_constant=reject_constant,
+            object_pairs_hook=reject_duplicate_keys,
+        )
     if kind == "date":
         days = int(text)
         if not re.fullmatch(r"-?[0-9]{1,9}", text):
@@ -715,6 +745,8 @@ def _decode_value(column: Column, text: str | None) -> object:
             return instant.strftime("%Y-%m-%dT%H:%M:%S") + fraction_text
         if kind == "timestamp_tz":
             zoned = instant + timedelta(minutes=offset_minutes)
+            if offset_minutes == 0:
+                return zoned.strftime("%Y-%m-%dT%H:%M:%S") + fraction_text + "Z"
             sign = "+" if offset_minutes >= 0 else "-"
             absolute_minutes = abs(offset_minutes)
             suffix = f"{sign}{absolute_minutes // 60:02d}:{absolute_minutes % 60:02d}"

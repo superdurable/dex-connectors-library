@@ -465,6 +465,70 @@
       "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
       "exchanges": [
         {
+          "body": "{\"statementHandle\":\"00000000-0000-4000-8000-000000000003\",\"resultSetMetaData\":{\"format\":\"jsonv2\",\"rowType\":[{\"name\":\"UTC_TIMESTAMP\",\"type\":\"timestamp_tz\",\"nullable\":false},{\"name\":\"OFFSET_TIMESTAMP\",\"type\":\"timestamp_tz\",\"nullable\":false}],\"partitionInfo\":[{}],\"numRows\":1},\"data\":[[\"1767225600.000000000 1440\",\"1767225600.000000000 1500\"]]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/statements/00000000-0000-4000-8000-000000000003",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "completed",
+        "failureKind": "",
+        "output": {
+          "columns": [
+            {
+              "name": "UTC_TIMESTAMP",
+              "nullable": false,
+              "type": "timestamp_tz"
+            },
+            {
+              "name": "OFFSET_TIMESTAMP",
+              "nullable": false,
+              "type": "timestamp_tz"
+            }
+          ],
+          "partition": 0,
+          "partitionCount": 1,
+          "rows": [
+            {
+              "OFFSET_TIMESTAMP": "2026-01-01T01:00:00+01:00",
+              "UTC_TIMESTAMP": "2026-01-01T00:00:00Z"
+            }
+          ],
+          "statementHandle": "00000000-0000-4000-8000-000000000003",
+          "totalRowCount": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "statementHandle": "00000000-0000-4000-8000-000000000003"
+      },
+      "name": "result timestamp zones",
+      "operation": "getStatementResult"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
           "body": "{\"statementHandle\":\"00000000-0000-4000-8000-000000000003\"}",
           "headers": {},
           "keyMode": "absent",
