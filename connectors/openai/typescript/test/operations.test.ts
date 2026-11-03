@@ -131,6 +131,42 @@ describe('createResponse checkpoint recovery', () => {
     }
   });
 
+  it('drains an oversized known response stream before reading it back', async () => {
+    const methods: string[] = [];
+    let hasFinishedStream = false;
+    let wasStreamClosedEarly = false;
+    let didReadBackBeforeStreamFinished = false;
+    const server = createServer((request, response) => {
+      methods.push(request.method ?? '');
+      if (request.method === 'GET') {
+        didReadBackBeforeStreamFinished = !hasFinishedStream;
+        response.setHeader('Content-Type', 'application/json');
+        response.end(JSON.stringify(wire));
+        return;
+      }
+      response.on('finish', () => { hasFinishedStream = true; });
+      response.on('close', () => { if (!response.writableFinished) wasStreamClosedEarly = true; });
+      response.setHeader('Content-Type', 'text/event-stream');
+      response.write(`data: ${JSON.stringify({ type: 'response.created', response: { id: 'resp_123', status: 'in_progress' } })}\n\n`);
+      setTimeout(() => response.write(`data: ${JSON.stringify({ type: 'response.output_text.delta', delta: 'x'.repeat(256) })}\n\n`), 10);
+      setTimeout(() => response.end('data: [DONE]\n\n'), 20);
+    });
+    server.listen(0, '127.0.0.1');
+    await once(server, 'listening');
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('test server address is unavailable');
+    try {
+      const provider = new OpenAIClient({ endpoint: `http://127.0.0.1:${address.port}`, model: 'gpt-test', maxResponseBytes: 300 }, { resolve: async () => ({ apiKey: new SecretString('test-key') }) });
+      const result = await provider.createResponse().invoke(call(1, undefined, true).invocation, input);
+      expect(result.kind).toBe('branch');
+      if (result.kind === 'branch') expect(result.value.id).toBe('resp_123');
+      expect(methods).toEqual(['POST', 'GET']);
+      expect(hasFinishedStream).toBe(true);
+      expect(wasStreamClosedEarly).toBe(false);
+      expect(didReadBackBeforeStreamFinished).toBe(false);
+    } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
+  });
+
   it('keeps create headers on an oversized body with no response ID', async () => {
     const provider = client(async () => { throw new BodyTooLargeError(200, { 'x-request-id': 'req_large', 'x-ratelimit-remaining-tokens': '80' }); });
     const result = await provider.createResponse().invoke(call().invocation, input);

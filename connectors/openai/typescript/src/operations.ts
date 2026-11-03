@@ -71,7 +71,10 @@ export class CreateResponseOperation implements Mutation<CreateRequest, Response
   private async sendCreate(call: Call, heartbeat: CheckpointHeartbeat, payload: Record<string, unknown>, streaming: boolean): Promise<MutationAttempt<Response>> {
     const stream = streaming ? new ResponseStream(call, heartbeat, this.client) : undefined;
     let prepared: ProviderRequest;
-    try { prepared = await this.client.prepareRequest(call, 'POST', '/responses', payload, stream?.onChunk); }
+    try {
+      prepared = await this.client.prepareRequest(call, 'POST', '/responses', payload, stream?.onChunk);
+      if (stream) prepared = { ...prepared, onBodyLimit: 'drain' };
+    }
     catch (error) {
       if (error instanceof CredentialFailure) return this.branch(call, 'defect', emptyResponse, 'AUTHENTICATION', error.message, false);
       if (error instanceof EncodingFailure) return this.branch(call, 'defect', emptyResponse, 'VALIDATION', error.message, false);
