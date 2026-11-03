@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Check Hiver transport status ordering and strict provider decoding."""
 
+import asyncio
 import json
 
 import httpx
@@ -46,6 +47,25 @@ async def test_error_status_precedes_response_limit(status: int, outcome: str) -
     assert exchange.outcome == outcome
 
 
+async def test_retry_after_hold_is_capped_at_one_minute() -> None:
+    """Match Go's maximumRateLimitHold even when Hiver requests an hour."""
+    reference = ConnectionRef("hiver", "test")
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(lambda _: httpx.Response(429, headers={"Retry-After": "3600"}))
+    ) as transport:
+        client = Client(
+            Config(request_interval_milliseconds=1),
+            StaticCredentialProvider({reference: Credentials(SecretString("inertKey"))}),
+            transport,
+            "http://127.0.0.1:12345/v1",
+        )
+        call = Call(CallID("call-id"), reference, OperationRef("hiver", "listInboxes"))
+        exchange = await client.exchange(call, "inertKey", "listInboxes", "GET", "/inboxes")
+        hold_seconds = client._next_request_at - asyncio.get_running_loop().time()
+    assert exchange.outcome == "rateLimited"
+    assert 59 <= hold_seconds <= 60
+
+
 def test_wrong_typed_provider_fields_are_not_coerced() -> None:
     """Reject a numeric page token and wrong-typed inbox fields as Go does."""
     with pytest.raises(ValueError):
@@ -59,6 +79,21 @@ def test_note_submicrosecond_precision_is_rejected_without_rounding() -> None:
     """Leave an accepted note unconfirmed when its timestamp cannot be represented exactly."""
     body = b'{"data":{"id":101,"created_at":"2026-11-03T15:00:00.123456789Z"}}'
     with pytest.raises(ValueError, match="created_at has precision beyond Python microseconds"):
+        decode_note(body)
+
+
+@pytest.mark.parametrize("author", [[], "", 0, False])
+def test_note_rejects_wrong_typed_falsy_author(author: object) -> None:
+    """Go rejects non-object author values during JSON decoding."""
+    body = json.dumps({"data": {"id": 101, "author": author}}).encode()
+    with pytest.raises(ValueError, match="note author is invalid"):
+        decode_note(body)
+
+
+def test_note_timestamp_underflow_is_a_protocol_value_error() -> None:
+    """Keep an unrepresentable Go timestamp within the decode error path."""
+    body = b'{"data":{"id":101,"created_at":"0001-01-01T00:00:00+01:00"}}'
+    with pytest.raises(ValueError, match="note created_at is not an RFC 3339 time"):
         decode_note(body)
 
 

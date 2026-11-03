@@ -312,8 +312,15 @@ def _conversation_path(inbox_id: str, conversation_id: str) -> str:
     return "/inboxes/" + path_escape(inbox_id) + "/conversations/" + path_escape(conversation_id)
 
 
+_GO_WHITESPACE = (
+    "\t\n\v\f\r \u0085\u00a0\u1680"
+    "\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a"
+    "\u2028\u2029\u202f\u205f\u3000"
+)
+
+
 def _validate_text(name: str, value: str, limit: int) -> None:
-    if not value.strip():
+    if not value.strip(_GO_WHITESPACE):
         raise ValueError(f"{name} is required")
     if len(value.encode()) > limit:
         raise ValueError(f"{name} exceeds {limit} bytes")

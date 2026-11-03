@@ -250,7 +250,7 @@ class Client:
             self._rate_limit_penalty = min(60, max(self.request_interval * 4, self._rate_limit_penalty * 2))
             self._next_request_at = max(
                 self._next_request_at,
-                asyncio.get_running_loop().time() + max(retry_after, self._rate_limit_penalty),
+                asyncio.get_running_loop().time() + min(max(retry_after, self._rate_limit_penalty), 60),
             )
         else:
             self._rate_limit_penalty = 0
@@ -522,7 +522,9 @@ def decode_note(body: bytes) -> Note:
     conversation_id = wire_id(raw.get("conversation_id"))
     if conversation_id:
         validate_id("note conversation_id", conversation_id)
-    author = raw.get("author") or {}
+    author = raw.get("author")
+    if author is None:
+        author = {}
     if not isinstance(author, dict):
         raise ValueError("note author is invalid")
     author_id = wire_id(author.get("id"))
@@ -611,5 +613,8 @@ def parse_go_rfc3339(value: str) -> datetime:
     )
     if zone != "Z":
         offset = timedelta(hours=int(zone[1:3]), minutes=int(zone[4:]))
-        instant = instant - offset if zone[0] == "+" else instant + offset
+        try:
+            instant = instant - offset if zone[0] == "+" else instant + offset
+        except OverflowError as error:
+            raise ValueError("created_at is not an RFC 3339 time") from error
     return instant

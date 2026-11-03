@@ -8,7 +8,7 @@ import pytest
 
 from dex_connectors.hiver import UpdateConversationInput
 from dex_connectors.hiver.client import parse_go_rfc3339
-from dex_connectors.hiver.operations import _validate_update
+from dex_connectors.hiver.operations import _validate_text, _validate_update
 
 
 @pytest.mark.parametrize(
@@ -51,3 +51,16 @@ def test_update_rejects_non_bare_addresses(address: str) -> None:
     """Reject malformed or display-name address forms before a provider request."""
     with pytest.raises(ValueError, match="bare email address"):
         _validate_update(UpdateConversationInput("105902", "573741352", assignee_email=address))
+
+
+@pytest.mark.parametrize("value", ["\x1c", "\x1d", "\x1e", "\x1f"])
+def test_text_accepts_go_non_whitespace_control_characters(value: str) -> None:
+    """Go strings.TrimSpace leaves ASCII file, group, record, and unit separators intact."""
+    _validate_text("content", value, 65536)
+
+
+@pytest.mark.parametrize("value", ["\t\n", "\u0085\u00a0", "\u3000"])
+def test_text_rejects_go_whitespace_only(value: str) -> None:
+    """Go strings.TrimSpace removes these Unicode whitespace characters."""
+    with pytest.raises(ValueError, match="content is required"):
+        _validate_text("content", value, 65536)
