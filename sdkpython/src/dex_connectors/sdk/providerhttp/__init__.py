@@ -13,6 +13,10 @@ from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 
+from .address_policy import AddressPolicy as AddressPolicy
+from .address_policy import AddressRefusal as AddressRefusal
+from .address_policy import _AddressPolicyTransport
+
 MAX_ERROR_BODY_BYTES = 64 << 10
 MAX_RETRY_AFTER_DELAY_SECONDS = 3600
 _ERROR_TOKEN = re.compile(r"^[A-Za-z0-9_.:-]{1,64}$")
@@ -61,12 +65,45 @@ class RequestTrace:
         return self.connection_failed_before_send and not self.request_headers_started
 
 
-def new_provider_http_client(request_timeout_seconds: float = 30, **options: Any) -> httpx.AsyncClient:
-    """Create an async client that returns redirects without replaying credentials."""
+def new_provider_http_client(
+    request_timeout_seconds: float = 30,
+    *,
+    address_policy: AddressPolicy = "unrestricted",
+    **options: Any,
+) -> httpx.AsyncClient:
+    """Create a redirect-safe async client with an optional provider address policy.
+
+    ``unrestricted`` preserves the existing caller-owned network behavior.
+    ``publicHTTPS`` allows only HTTPS to public addresses; ``privateNetworkHTTP``
+    also allows HTTP to private or loopback addresses. Restricted clients check
+    every DNS answer before dialing a checked IP, retain the original hostname
+    for Host and TLS verification, and refuse proxies or custom transports.
+    The caller owns and closes the returned client. Refusals raise AddressRefusal.
+    """
     if request_timeout_seconds <= 0:
         raise ValueError("provider request timeout must be positive")
     if "follow_redirects" in options or "timeout" in options:
         raise ValueError("redirect and timeout policy are owned by providerhttp")
+    if address_policy not in ("publicHTTPS", "privateNetworkHTTP", "unrestricted"):
+        raise ValueError("address policy is invalid")
+    if address_policy != "unrestricted":
+        if any(key in options for key in ("transport", "proxy", "mounts")):
+            raise ValueError("restricted address policy cannot use a custom transport or proxy")
+        if options.get("trust_env") is True:
+            raise ValueError("restricted address policy cannot use environment proxies")
+        options.pop("trust_env", None)
+        transport = _AddressPolicyTransport(
+            address_policy,
+            verify=options.pop("verify", True),
+            cert=options.pop("cert", None),
+            limits=options.pop("limits", httpx.Limits()),
+            http1=options.pop("http1", True),
+            http2=options.pop("http2", False),
+        )
+        return httpx.AsyncClient(
+            follow_redirects=False, timeout=request_timeout_seconds, transport=transport,
+            trust_env=False, **options
+        )
     return httpx.AsyncClient(follow_redirects=False, timeout=request_timeout_seconds, **options)
 
 
