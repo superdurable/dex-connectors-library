@@ -25,19 +25,95 @@ function bindParameters(request: sql.Request, values: unknown[]): void {
   values.forEach((value, index) => request.input(`p${index + 1}`, value));
 }
 
-function decodeRows(result: sql.IResult<Record<string, unknown>>, maxRows: number, maxResponseBytes: number): { columns: Column[]; rows: Array<Record<string, unknown>>; truncated: boolean } {
+/** An exact SQL value cannot be represented by the native driver. */
+export class InvalidResultError extends Error {
+  constructor(columnName: string, typeName: string) {
+    super(`column ${JSON.stringify(columnName)} of type ${typeName} returned a value the connector cannot decode`);
+  }
+}
+
+function formatTemporal(value: Date, typeName: string): string {
+  if (!Number.isFinite(value.getTime())) throw new TypeError('invalid temporal value');
+  const iso = value.toISOString();
+  if (typeName === 'DATE') return iso.slice(0, 10);
+  const nanosecondsDelta = (value as Date & { nanosecondsDelta?: number }).nanosecondsDelta ?? 0;
+  const subMillisecondDigits = Math.round(nanosecondsDelta * 10_000_000);
+  if (subMillisecondDigits < 0 || subMillisecondDigits > 9999) throw new TypeError('invalid temporal fraction');
+  const fractional = `${iso.slice(20, 23)}${String(subMillisecondDigits).padStart(4, '0')}`.replace(/0+$/, '');
+  const time = `${iso.slice(11, 19)}${fractional ? `.${fractional}` : ''}`;
+  return typeName === 'TIME' ? time : `${iso.slice(0, 10)}T${time}`;
+}
+
+function decodeColumnValue(value: unknown, typeName: string, scale: number | undefined): unknown {
+  if (value === null) return null;
+  if (typeName === 'DECIMAL') {
+    if (typeof value !== 'number' || !Number.isFinite(value) || scale === undefined || scale < 0 || scale > 15) throw new TypeError('invalid decimal');
+    return value.toFixed(scale);
+  }
+  if (typeName === 'REAL') {
+    if (typeof value !== 'number' || !Number.isFinite(value)) throw new TypeError('invalid real');
+    const float32 = Math.fround(value);
+    if (!Number.isFinite(float32)) throw new TypeError('invalid real');
+    for (let significantDigits = 1; significantDigits <= 9; significantDigits++) {
+      const rounded = Number(float32.toPrecision(significantDigits));
+      if (Math.fround(rounded) === float32) return rounded;
+    }
+    throw new TypeError('invalid real');
+  }
+  if (['DATE', 'TIME', 'DATETIME', 'SMALLDATETIME', 'DATETIME2'].includes(typeName)) {
+    if (!(value instanceof Date)) throw new TypeError('invalid temporal value');
+    return formatTemporal(value, typeName);
+  }
+  if (typeName === 'UNIQUEIDENTIFIER') {
+    if (typeof value !== 'string') throw new TypeError('invalid uniqueidentifier');
+    return value.toLowerCase();
+  }
+  if (typeName === 'BIGINT') {
+    if (typeof value !== 'string' && typeof value !== 'bigint') throw new TypeError('invalid bigint');
+    return String(value);
+  }
+  if (['TINYINT', 'SMALLINT', 'INT', 'FLOAT'].includes(typeName)) {
+    if (typeof value !== 'number' || !Number.isFinite(value)) throw new TypeError('invalid number');
+    return value;
+  }
+  if (typeName === 'BIT') {
+    if (typeof value !== 'boolean') throw new TypeError('invalid bit');
+    return value;
+  }
+  if (['CHAR', 'VARCHAR', 'TEXT', 'NCHAR', 'NVARCHAR', 'NTEXT', 'XML'].includes(typeName)) {
+    if (typeof value !== 'string') throw new TypeError('invalid text');
+    return value;
+  }
+  if (['BINARY', 'VARBINARY', 'IMAGE'].includes(typeName)) {
+    if (!Buffer.isBuffer(value)) throw new TypeError('invalid binary');
+    return value.toString('base64');
+  }
+  if (Buffer.isBuffer(value) && !['SQL_VARIANT', 'UDT'].includes(typeName)) return value.toString('base64');
+  throw new TypeError('unsupported SQL type');
+}
+
+export function decodeRows(result: sql.IResult<Record<string, unknown>>, maxRows: number, maxResponseBytes: number): { columns: Column[]; rows: Array<Record<string, unknown>>; truncated: boolean } {
   const recordset = result.recordset;
   if (!recordset) return { columns: [], rows: [], truncated: false };
-  const columns = Object.entries(recordset.columns).map(([name, metadata]) => ({ name, typeName: String((metadata.type as { declaration?: string; name?: string }).declaration ?? (metadata.type as { name?: string }).name ?? '').toUpperCase() }));
+  const metadata = Object.entries(recordset.columns).map(([name, details]) => {
+    const sqlType = details.type as { name?: string };
+    const typeName = (sqlType.name ?? '').toUpperCase();
+    return { name, typeName: typeName === 'NUMERIC' ? 'DECIMAL' : typeName, precision: details.precision, scale: details.scale };
+  });
+  const columns = metadata.map(({ name, typeName }) => ({ name, typeName }));
   if (new Set(columns.map(column => column.name)).size !== columns.length || columns.some(column => !column.name || !column.typeName)) throw new TypeError('SQL Server returned invalid column metadata');
+  for (const column of metadata) {
+    if (['MONEY', 'SMALLMONEY', 'DATETIMEOFFSET'].includes(column.typeName) || column.typeName === 'DECIMAL' && (column.precision === undefined || column.precision < 1 || column.precision > 15 || column.scale === undefined || column.scale < 0 || column.scale > column.precision))
+      throw new InvalidResultError(column.name, column.typeName);
+  }
   const rows: Array<Record<string, unknown>> = [];
   let bytes = 2;
   for (const row of recordset) {
     if (rows.length >= maxRows) return { columns, rows, truncated: true };
     const decoded: Record<string, unknown> = {};
-    for (const column of columns) {
-      const value = row[column.name];
-      decoded[column.name] = value instanceof Date ? value.toISOString().replace(/Z$/, '') : Buffer.isBuffer(value) ? value.toString('base64') : typeof value === 'bigint' ? value.toString() : value;
+    for (const column of metadata) {
+      try { decoded[column.name] = decodeColumnValue(row[column.name], column.typeName, column.scale); }
+      catch { throw new InvalidResultError(column.name, column.typeName); }
     }
     const rowBytes = Buffer.byteLength(JSON.stringify(decoded), 'utf8') + (rows.length ? 1 : 0);
     if (bytes + rowBytes > maxResponseBytes) return { columns, rows, truncated: true };
@@ -84,7 +160,7 @@ export class QueryRowsOperation implements Query<QueryRowsInput, RowSet> {
       const output: RowSet = { columns: decoded.columns, rows: decoded.rows, ...(decoded.truncated ? { truncated: true } : {}) };
       if (decoded.truncated) return newQueryBranch('truncated', output, this.client.receipt(call), this.client.failure('query', { disposition: 'rejected', kind: 'RESPONSE_TOO_LARGE', message: 'the statement returned more rows or bytes than maxRows or maxResponseBytes allow' }));
       return newQueryBranch('completed', output, this.client.receipt(call));
-    } catch (error) { return queryFailure(this.client, call, classifyDriverError(error, transaction ? 'statement' : 'begin')); }
+    } catch (error) { return queryFailure(this.client, call, error instanceof InvalidResultError ? { disposition: 'invalidResponse', kind: 'PROTOCOL', message: error.message } : classifyDriverError(error, transaction ? 'statement' : 'begin')); }
     finally {
       if (transaction) { try { await transaction.rollback(); } catch { /* Closing the pool rolls back a failed or completed transaction. */ } }
       await pool.close();
@@ -125,7 +201,7 @@ export class ExecuteStatementOperation implements Mutation<ExecuteStatementInput
       try { await transaction.commit(); committed = true; }
       catch (error) { return executeFailure(this.client, call, classifyDriverError(error, 'commit')); }
       return newMutationBranch('completed', { rowsAffected, columns: decoded.columns, rows: decoded.rows }, this.client.receipt(call));
-    } catch (error) { return executeFailure(this.client, call, classifyDriverError(error, transaction ? 'statement' : 'begin')); }
+    } catch (error) { return executeFailure(this.client, call, error instanceof InvalidResultError ? { disposition: 'invalidResponse', kind: 'PROTOCOL', message: error.message } : classifyDriverError(error, transaction ? 'statement' : 'begin')); }
     finally {
       if (transaction && !committed) { try { await transaction.rollback(); } catch { /* Closing the pool rolls back when the transaction has already ended. */ } }
       await pool.close();

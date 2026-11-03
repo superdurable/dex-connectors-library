@@ -74,7 +74,7 @@ export class SQLServerClient {
       server: this.config.host, port: this.config.port, database: this.config.database, user: this.config.user, password: credentials.password.reveal(),
       connectionTimeout: this.config.connectTimeoutMs, requestTimeout: this.config.statementTimeoutMs,
       pool: { min: 0, max: 1 },
-      options: { encrypt: this.config.encrypt === 'strict' ? 'strict' : this.config.encrypt !== 'disable', trustServerCertificate: this.config.encrypt === 'trust-server-certificate', enableArithAbort: true, fallbackToDefaultDb: false },
+      options: { encrypt: this.config.encrypt === 'strict' ? 'strict' : this.config.encrypt !== 'disable', trustServerCertificate: this.config.encrypt === 'trust-server-certificate', enableArithAbort: true, fallbackToDefaultDb: false, lowerCaseGuids: true, useUTC: true },
     };
     const pool = new sql.ConnectionPool(configuration);
     await pool.connect();

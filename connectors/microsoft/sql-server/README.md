@@ -415,6 +415,12 @@ SQLSERVER_CONNECTOR_TEST_PASSWORD=... SQLSERVER_CONNECTOR_TEST_ENCRYPT=mandatory
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=live ./... -count=1
 ```
 
+## TypeScript package
+
+The [TypeScript package](typescript/README.md) implements `query` and `execute` with the
+same operation and branch identities as Go. Its runnable Dex query Flow is under
+[`typescript/examples/query-rows`](typescript/examples/query-rows/README.md).
+
 ## Limitations
 
 - One statement per call, checked lexically as described above. Multi-statement batches, stored
