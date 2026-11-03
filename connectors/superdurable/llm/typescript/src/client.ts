@@ -46,9 +46,9 @@ async function checkLoopbackAddress(url: string): Promise<void> {
   }
 }
 
-/** Optional caller-owned transport and loopback test endpoint. */
+/** Optional transport validation and loopback test endpoint. */
 export interface ClientOptions {
-  /** HTTP transport; custom gateways still receive the address policy. */
+  /** Custom HTTP transports are unsupported because their DNS dial cannot be pinned safely. */
   httpClient?: ProviderHTTPClient;
   /** Override provider address with an exact loopback test server URL. */
   baseURLForTest?: string;
@@ -63,6 +63,7 @@ export class Client {
     if (!credentials) throw new TypeError('llm credential provider is required');
     const provider = config.provider.trim();
     if (!(provider in providerSettings)) throw new TypeError('llm configuration provider is invalid');
+    if (options.httpClient) throw new TypeError('llm requires the built-in HTTP transport');
     const settings = providerSettings[provider as keyof typeof providerSettings];
     const region = config.region || 'global';
     if (!(region in settings.urls)) throw new TypeError('llm provider does not serve the configured region');
@@ -98,9 +99,21 @@ export class Client {
       send: async request => {
         const isCustomLoopback = provider === 'openai-compatible' && isLoopbackHost(new URL(baseURL).hostname);
         if (isCustomLoopback || options.baseURLForTest) await checkLoopbackAddress(request.url);
-        const policy = provider === 'openai-compatible' && !isCustomLoopback && !options.baseURLForTest
-          ? 'publicHTTPS' : 'unrestricted';
-        return (options.httpClient ?? { send: sendProviderRequest }).send({ ...request, addressPolicy: policy });
+        if (provider === 'openai-compatible' && !isCustomLoopback && !options.baseURLForTest) {
+          const parsed = new URL(request.url);
+          const hostname = parsed.hostname.replace(/^\[|\]$/g, '');
+          let addresses: { address: string }[];
+          try { addresses = isIP(hostname) ? [{ address: hostname }] : await lookup(hostname, { all: true, verbatim: true }); }
+          catch { throw new AddressRefusal('provider address could not be resolved'); }
+          if (!addresses.length || addresses.some(candidate => !isAllowedOpenAICompatibleAddress(candidate.address, false))) {
+            throw new AddressRefusal('provider address is not allowed');
+          }
+          const selected = addresses[0]!;
+          parsed.hostname = isIP(selected.address) === 6 ? `[${selected.address}]` : selected.address;
+          return sendProviderRequest({ ...request, url: parsed.href,
+            headers: { ...request.headers, Host: new URL(request.url).host }, addressPolicy: 'unrestricted' });
+        }
+        return sendProviderRequest({ ...request, addressPolicy: 'unrestricted' });
       },
     };
     const wireFormat = provider === 'openai' ? newResponsesWireFormat()

@@ -16,7 +16,10 @@ Configure the `llm` connection in Dex Web using the
 credential storage and is resolved for each call. A changed provider, model,
 region, or endpoint requires restarting the Worker; replacing the key does not.
 The TypeScript package requires `@superdurable/connectors-sdk` 0.2.0 and Dex
-TypeScript SDK 1.28.0 or newer.
+TypeScript SDK 1.28.0 or newer. OpenAI-compatible endpoints use the built-in
+HTTP transport: each DNS answer is checked against the Go connector address
+policy before a credentialed request is sent to a pinned address. A custom
+`httpClient` is unsupported for all providers.
 
 From this package directory:
 
