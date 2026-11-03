@@ -39,4 +39,4 @@ ADAPTER = PythonOperationAdapter(
 @pytest.mark.parametrize("scenario", SCENARIOS, ids=lambda scenario: scenario["name"])
 async def test_connector_conformance(scenario: dict[str, object]) -> None:
     """Compare complete requests, retries, branches, outputs, and request counts."""
-    await replay(scenario, ADAPTER.invoke)
+    await replay(scenario, ADAPTER.invoke, "/1")
