@@ -1,0 +1,604 @@
+{
+  "connector": "cloudflare",
+  "scenarios": [
+    {
+      "callId": "11111111-1111-4111-8111-111111111111",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"id\":\"zone-meridian\",\"name\":\"meridian.example\",\"status\":\"active\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/zones",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-apitoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "result": [
+            {
+              "id": "zone-meridian",
+              "name": "meridian.example",
+              "status": "active"
+            }
+          ],
+          "success": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listZones-listed",
+      "operation": "listZones"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111112",
+      "exchanges": [
+        {
+          "body": "{\"success\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/zones",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-apitoken"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "result": [],
+          "success": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listZones-providerRejected",
+      "operation": "listZones"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111113",
+      "exchanges": [
+        {
+          "body": "{invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/zones",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-apitoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "result": [],
+          "success": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listZones-invalidResponse",
+      "operation": "listZones"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111114",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "result": [],
+          "success": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listZones-defect",
+      "operation": "listZones"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111115",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/zones",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-apitoken"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listZones-429",
+      "operation": "listZones"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111116",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/zones",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-apitoken"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listZones-503",
+      "operation": "listZones"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-111111111117",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/zones",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-apitoken"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listZones-transport",
+      "operation": "listZones"
+    },
+    {
+      "callId": "e7ff08f2-0c38-56f5-bf52-7b7dc48591f2",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":{\"id\":\"purge-meridian\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/zones/zone-meridian/purge_cache",
+          "requestBody": {
+            "files": [
+              "https://meridian.example/index.html"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-apitoken"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "purged",
+        "failureKind": "",
+        "output": {
+          "result": {
+            "id": "purge-meridian"
+          },
+          "success": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e7ff08f2-0c38-56f5-bf52-7b7dc48591f2",
+      "input": {
+        "urls": [
+          "https://meridian.example/index.html"
+        ],
+        "zoneId": "zone-meridian"
+      },
+      "name": "purgeCacheByURLs-purged",
+      "operation": "purgeCacheByURLs"
+    },
+    {
+      "callId": "e7ff08f2-0c38-56f5-bf52-7b7dc48591f2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/zones/zone-meridian/purge_cache",
+          "requestBody": {
+            "files": [
+              "https://meridian.example/index.html"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-apitoken"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "result": {
+            "id": ""
+          },
+          "success": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e7ff08f2-0c38-56f5-bf52-7b7dc48591f2",
+      "input": {
+        "urls": [
+          "https://meridian.example/index.html"
+        ],
+        "zoneId": "zone-meridian"
+      },
+      "name": "purgeCacheByURLs-notFound",
+      "operation": "purgeCacheByURLs"
+    },
+    {
+      "callId": "e7ff08f2-0c38-56f5-bf52-7b7dc48591f2",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errors\":[{\"message\":\"private\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/zones/zone-meridian/purge_cache",
+          "requestBody": {
+            "files": [
+              "https://meridian.example/index.html"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-apitoken"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "result": {
+            "id": ""
+          },
+          "success": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e7ff08f2-0c38-56f5-bf52-7b7dc48591f2",
+      "input": {
+        "urls": [
+          "https://meridian.example/index.html"
+        ],
+        "zoneId": "zone-meridian"
+      },
+      "name": "purgeCacheByURLs-providerRejected",
+      "operation": "purgeCacheByURLs"
+    },
+    {
+      "callId": "e7ff08f2-0c38-56f5-bf52-7b7dc48591f2",
+      "exchanges": [
+        {
+          "body": "{invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/zones/zone-meridian/purge_cache",
+          "requestBody": {
+            "files": [
+              "https://meridian.example/index.html"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-apitoken"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "result": {
+            "id": ""
+          },
+          "success": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e7ff08f2-0c38-56f5-bf52-7b7dc48591f2",
+      "input": {
+        "urls": [
+          "https://meridian.example/index.html"
+        ],
+        "zoneId": "zone-meridian"
+      },
+      "name": "purgeCacheByURLs-invalidResponse",
+      "operation": "purgeCacheByURLs"
+    },
+    {
+      "callId": "e7ff08f2-0c38-56f5-bf52-7b7dc48591f2",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "result": {
+            "id": ""
+          },
+          "success": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e7ff08f2-0c38-56f5-bf52-7b7dc48591f2",
+      "input": {
+        "urls": [
+          "https://meridian.example/index.html"
+        ],
+        "zoneId": ""
+      },
+      "name": "purgeCacheByURLs-defect",
+      "operation": "purgeCacheByURLs"
+    },
+    {
+      "callId": "e7ff08f2-0c38-56f5-bf52-7b7dc48591f2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/zones/zone-meridian/purge_cache",
+          "requestBody": {
+            "files": [
+              "https://meridian.example/index.html"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-apitoken"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e7ff08f2-0c38-56f5-bf52-7b7dc48591f2",
+      "input": {
+        "urls": [
+          "https://meridian.example/index.html"
+        ],
+        "zoneId": "zone-meridian"
+      },
+      "name": "purgeCacheByURLs-429",
+      "operation": "purgeCacheByURLs"
+    },
+    {
+      "callId": "e7ff08f2-0c38-56f5-bf52-7b7dc48591f2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/zones/zone-meridian/purge_cache",
+          "requestBody": {
+            "files": [
+              "https://meridian.example/index.html"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-apitoken"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e7ff08f2-0c38-56f5-bf52-7b7dc48591f2",
+      "input": {
+        "urls": [
+          "https://meridian.example/index.html"
+        ],
+        "zoneId": "zone-meridian"
+      },
+      "name": "purgeCacheByURLs-503",
+      "operation": "purgeCacheByURLs"
+    },
+    {
+      "callId": "e7ff08f2-0c38-56f5-bf52-7b7dc48591f2",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/zones/zone-meridian/purge_cache",
+          "requestBody": {
+            "files": [
+              "https://meridian.example/index.html"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-apitoken"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e7ff08f2-0c38-56f5-bf52-7b7dc48591f2",
+      "input": {
+        "urls": [
+          "https://meridian.example/index.html"
+        ],
+        "zoneId": "zone-meridian"
+      },
+      "name": "purgeCacheByURLs-transport",
+      "operation": "purgeCacheByURLs"
+    }
+  ],
+  "schemaVersion": 1
+}

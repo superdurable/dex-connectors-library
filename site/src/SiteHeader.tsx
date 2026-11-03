@@ -3,6 +3,10 @@
 
 import { useEffect, useRef } from "react";
 
+import { GitHubMarkIcon, GitHubStarIcon } from "./GitHubIcons";
+import { formatStarCount, formatStarredLinkLabel } from "./repositoryStarCount.mjs";
+import { useGitHubRepositoryStarCount } from "./useGitHubRepositoryStarCount";
+
 // Follows the shared superdurable.io header spec; resync markup and styles.css `.sd-*` rules together.
 
 type SuperDurableNavigationLink = {
@@ -12,12 +16,12 @@ type SuperDurableNavigationLink = {
 };
 
 const superDurableHomeUrl = "https://superdurable.io/";
-const superDurableGitHubUrl = "https://github.com/superdurable";
+const dexRepositoryGitHubUrl = "https://github.com/superdurable/dex";
 const dexLogInUrl = "https://dex.superdurable.io/login";
-const dexSignUpUrl = "https://dex.superdurable.io/register";
+const dexRepositoryApiUrl = "https://api.github.com/repos/superdurable/dex";
+const starCountCacheKey = "superdurable-dex-star-count";
 
 const superDurableNavigationLinks: SuperDurableNavigationLink[] = [
-  { label: "Dex Engine", href: "https://superdurable.io/dex-engine/" },
   { label: "Dex Cloud", href: "https://superdurable.io/dex-cloud/" },
   { label: "Dex Connectors", href: "https://connectors.superdurable.io/", isCurrentSite: true },
   { label: "Dex Docs", href: "https://docs.superdurable.io" },
@@ -47,13 +51,32 @@ export function SiteHeader() {
           <SuperDurableNavigationAnchors />
         </nav>
         <div className="sd-header-actions">
-          <a className="sd-quiet-link" href={superDurableGitHubUrl}>GitHub</a>
+          <GitHubRepositoryLink />
           <a className="sd-quiet-link" href={dexLogInUrl}>Log in</a>
-          <a className="sd-button sd-button-primary sd-button-small" href={dexSignUpUrl}>Sign up</a>
         </div>
         <MobileMenu />
       </div>
     </header>
+  );
+}
+
+function GitHubRepositoryLink() {
+  // The header renders without a count when GitHub is unreachable or rate limited.
+  const starCount = useGitHubRepositoryStarCount(dexRepositoryApiUrl, starCountCacheKey);
+  const accessibleLabel = formatStarredLinkLabel("GitHub", starCount);
+  return (
+    <a className="sd-github-link" href={dexRepositoryGitHubUrl} aria-label={accessibleLabel}>
+      <span className="sd-github-link-name">
+        <GitHubMarkIcon />
+        GitHub
+      </span>
+      {starCount === null ? null : (
+        <span className="sd-github-link-stars">
+          <GitHubStarIcon />
+          {formatStarCount(starCount)}
+        </span>
+      )}
+    </a>
   );
 }
 
@@ -92,9 +115,8 @@ function MobileMenu() {
       <summary ref={summaryRef}>Menu</summary>
       <nav aria-label="Mobile navigation">
         <SuperDurableNavigationAnchors />
-        <a href={superDurableGitHubUrl}>GitHub</a>
+        <a href={dexRepositoryGitHubUrl}>GitHub</a>
         <a href={dexLogInUrl}>Log in</a>
-        <a className="sd-button sd-button-primary" href={dexSignUpUrl}>Sign up</a>
       </nav>
     </details>
   );

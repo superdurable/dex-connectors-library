@@ -8,6 +8,11 @@ metadata:
   version: v0.23.0
 spec:
   provider: clickup
+  languages:
+    typescript:
+      version: v0.1.1
+      operations: [searchTasks, getTask, createTask, updateTask, updateTaskTags, addComment, findMemberByEmail]
+      triggers: []
   codegen:
     go:
       package: clickup

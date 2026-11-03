@@ -1,0 +1,898 @@
+{
+  "connector": "alphavantage",
+  "scenarios": [
+    {
+      "callId": "c7c09ac9-684f-5f2b-bca4-afe460d79c94",
+      "exchanges": [
+        {
+          "body": "{\"Global Quote\":{\"01. symbol\":\"IBM\",\"05. price\":\"255.25\",\"07. latest trading day\":\"2026-10-28\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "function": [
+              "GLOBAL_QUOTE"
+            ],
+            "symbol": [
+              "IBM"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "latestTradingDay": "2026-10-28",
+          "price": "255.25",
+          "symbol": "IBM"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "symbol": "IBM"
+      },
+      "name": "getGlobalQuote-found",
+      "operation": "getGlobalQuote"
+    },
+    {
+      "callId": "b8c5047f-d007-5c21-916c-9a4c01af03d4",
+      "exchanges": [
+        {
+          "body": "{\"Global Quote\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "function": [
+              "GLOBAL_QUOTE"
+            ],
+            "symbol": [
+              "IBM"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "latestTradingDay": "",
+          "price": "",
+          "symbol": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "symbol": "IBM"
+      },
+      "name": "getGlobalQuote-notFound",
+      "operation": "getGlobalQuote"
+    },
+    {
+      "callId": "efbbd50f-0a75-548d-aaf7-baa00ac609bc",
+      "exchanges": [
+        {
+          "body": "{\"Error Message\":\"private invalid symbol\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "function": [
+              "GLOBAL_QUOTE"
+            ],
+            "symbol": [
+              "IBM"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "latestTradingDay": "",
+          "price": "",
+          "symbol": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "symbol": "IBM"
+      },
+      "name": "getGlobalQuote-providerRejected",
+      "operation": "getGlobalQuote"
+    },
+    {
+      "callId": "3ec98b89-c2bc-5866-bd01-ef326f14e811",
+      "exchanges": [
+        {
+          "body": "{\"Global Quote\":{\"01. symbol\":\"IBM\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "function": [
+              "GLOBAL_QUOTE"
+            ],
+            "symbol": [
+              "IBM"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "latestTradingDay": "",
+          "price": "",
+          "symbol": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "symbol": "IBM"
+      },
+      "name": "getGlobalQuote-invalidResponse",
+      "operation": "getGlobalQuote"
+    },
+    {
+      "callId": "71c97070-46a6-5894-af48-fbce2276f648",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "function": [
+              "GLOBAL_QUOTE"
+            ],
+            "symbol": [
+              "IBM"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "latestTradingDay": "",
+          "price": "",
+          "symbol": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "symbol": "IBM"
+      },
+      "name": "getGlobalQuote-httpNotFound",
+      "operation": "getGlobalQuote"
+    },
+    {
+      "callId": "c8ea52a9-b897-5705-81b3-24ae624587b0",
+      "exchanges": [
+        {
+          "body": "{\"Note\":\"private quota message\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "function": [
+              "GLOBAL_QUOTE"
+            ],
+            "symbol": [
+              "IBM"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "symbol": "IBM"
+      },
+      "name": "getGlobalQuote-rateLimitNotice",
+      "operation": "getGlobalQuote"
+    },
+    {
+      "callId": "486a03da-d113-5f6b-817a-2d9ea56beb55",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "function": [
+              "GLOBAL_QUOTE"
+            ],
+            "symbol": [
+              "IBM"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "symbol": "IBM"
+      },
+      "name": "getGlobalQuote-http429",
+      "operation": "getGlobalQuote"
+    },
+    {
+      "callId": "e706262f-61e7-5de7-8863-d6bdb3b3bd23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "function": [
+              "GLOBAL_QUOTE"
+            ],
+            "symbol": [
+              "IBM"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "symbol": "IBM"
+      },
+      "name": "getGlobalQuote-http503",
+      "operation": "getGlobalQuote"
+    },
+    {
+      "callId": "56756ee9-3f0c-5e0f-b087-9bf4b2df30f0",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "function": [
+              "GLOBAL_QUOTE"
+            ],
+            "symbol": [
+              "IBM"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "symbol": "IBM"
+      },
+      "name": "getGlobalQuote-transportBeforeSend",
+      "operation": "getGlobalQuote"
+    },
+    {
+      "callId": "9f6dcb33-52e9-52c7-854c-66154958b881",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "latestTradingDay": "",
+          "price": "",
+          "symbol": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "symbol": "/invalid"
+      },
+      "name": "getGlobalQuote-defect",
+      "operation": "getGlobalQuote"
+    },
+    {
+      "callId": "bfc5b979-d55e-51f9-b9e7-37aca76c18bd",
+      "exchanges": [
+        {
+          "body": "{\"Time Series (Daily)\":{\"2026-10-27\":{\"1. open\":\"254.00\",\"2. high\":\"256.00\",\"3. low\":\"253.00\",\"4. close\":\"255.25\",\"5. volume\":\"1200000\"},\"2026-10-28\":{\"1. open\":\"254.00\",\"2. high\":\"256.00\",\"3. low\":\"253.00\",\"4. close\":\"255.25\",\"5. volume\":\"1200000\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "function": [
+              "TIME_SERIES_DAILY"
+            ],
+            "outputsize": [
+              "compact"
+            ],
+            "symbol": [
+              "IBM"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "days": [
+            {
+              "close": "255.25",
+              "date": "2026-10-28",
+              "high": "256.00",
+              "low": "253.00",
+              "open": "254.00",
+              "volume": "1200000"
+            },
+            {
+              "close": "255.25",
+              "date": "2026-10-27",
+              "high": "256.00",
+              "low": "253.00",
+              "open": "254.00",
+              "volume": "1200000"
+            }
+          ],
+          "symbol": "IBM"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "symbol": "IBM"
+      },
+      "name": "getTimeSeriesDaily-found",
+      "operation": "getTimeSeriesDaily"
+    },
+    {
+      "callId": "cef9a42a-b897-5128-94e9-44a48b9b8a65",
+      "exchanges": [
+        {
+          "body": "{\"Time Series (Daily)\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "function": [
+              "TIME_SERIES_DAILY"
+            ],
+            "outputsize": [
+              "compact"
+            ],
+            "symbol": [
+              "IBM"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "days": [],
+          "symbol": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "symbol": "IBM"
+      },
+      "name": "getTimeSeriesDaily-notFound",
+      "operation": "getTimeSeriesDaily"
+    },
+    {
+      "callId": "e8fa2208-0a69-582b-bf26-dfbd4fc81f7f",
+      "exchanges": [
+        {
+          "body": "{\"Error Message\":\"private invalid symbol\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "function": [
+              "TIME_SERIES_DAILY"
+            ],
+            "outputsize": [
+              "compact"
+            ],
+            "symbol": [
+              "IBM"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "days": [],
+          "symbol": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "symbol": "IBM"
+      },
+      "name": "getTimeSeriesDaily-providerRejected",
+      "operation": "getTimeSeriesDaily"
+    },
+    {
+      "callId": "5ca8563f-d312-5c56-b030-bbd6847f95a6",
+      "exchanges": [
+        {
+          "body": "{\"Time Series (Daily)\":{\"2026-10-28\":{\"1. open\":\"254.00\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "function": [
+              "TIME_SERIES_DAILY"
+            ],
+            "outputsize": [
+              "compact"
+            ],
+            "symbol": [
+              "IBM"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "days": [],
+          "symbol": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "symbol": "IBM"
+      },
+      "name": "getTimeSeriesDaily-invalidResponse",
+      "operation": "getTimeSeriesDaily"
+    },
+    {
+      "callId": "17f1e4ac-86fc-50fb-8b10-9d3d759bfb69",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "function": [
+              "TIME_SERIES_DAILY"
+            ],
+            "outputsize": [
+              "compact"
+            ],
+            "symbol": [
+              "IBM"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "days": [],
+          "symbol": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "symbol": "IBM"
+      },
+      "name": "getTimeSeriesDaily-httpNotFound",
+      "operation": "getTimeSeriesDaily"
+    },
+    {
+      "callId": "9098ee24-7a85-5fdb-8854-78c723096bf4",
+      "exchanges": [
+        {
+          "body": "{\"Note\":\"private quota message\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "function": [
+              "TIME_SERIES_DAILY"
+            ],
+            "outputsize": [
+              "compact"
+            ],
+            "symbol": [
+              "IBM"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "symbol": "IBM"
+      },
+      "name": "getTimeSeriesDaily-rateLimitNotice",
+      "operation": "getTimeSeriesDaily"
+    },
+    {
+      "callId": "40f9c2e3-ba89-5a17-8e82-577794694449",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "function": [
+              "TIME_SERIES_DAILY"
+            ],
+            "outputsize": [
+              "compact"
+            ],
+            "symbol": [
+              "IBM"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "symbol": "IBM"
+      },
+      "name": "getTimeSeriesDaily-http429",
+      "operation": "getTimeSeriesDaily"
+    },
+    {
+      "callId": "9072bdcd-5311-5f1c-ac42-fa8c0084c55d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "function": [
+              "TIME_SERIES_DAILY"
+            ],
+            "outputsize": [
+              "compact"
+            ],
+            "symbol": [
+              "IBM"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "symbol": "IBM"
+      },
+      "name": "getTimeSeriesDaily-http503",
+      "operation": "getTimeSeriesDaily"
+    },
+    {
+      "callId": "495ad989-5408-59af-be45-ad1e85f0298b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "apikey": [
+              "test-key-123"
+            ],
+            "function": [
+              "TIME_SERIES_DAILY"
+            ],
+            "outputsize": [
+              "compact"
+            ],
+            "symbol": [
+              "IBM"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "symbol": "IBM"
+      },
+      "name": "getTimeSeriesDaily-transportBeforeSend",
+      "operation": "getTimeSeriesDaily"
+    },
+    {
+      "callId": "48b8c74a-b5ef-512f-aae9-392a2c2794d2",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "days": [],
+          "symbol": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "symbol": "/invalid"
+      },
+      "name": "getTimeSeriesDaily-defect",
+      "operation": "getTimeSeriesDaily"
+    }
+  ],
+  "schemaVersion": 1
+}

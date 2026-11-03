@@ -9,6 +9,10 @@ This Dex connector exposes `getEntry`, `listEntries`. The runnable [sample Flow]
 The Python package is [`dex-connector-contentful`](python/README.md), imported as
 `dex_connectors.contentful`.
 
+The TypeScript package is [`@superdurable/connector-contentful`](typescript/README.md).
+Its [sample application](typescript/examples/sample-contentful/README.md) runs
+both `getEntry` and `listEntries` through the static `contentful` connection.
+
 ## Provider contract
 
 The Content Delivery API is read-only and returns published entries. The token travels in the Authorization header, never in a query parameter.
@@ -49,4 +53,7 @@ The mock defaults represent the same Meridian example resource across both opera
 
 ## Verification limits
 
-The provider HTTP behavior is tested with local `httptest` servers, and the sample's mapping has a deterministic unit test. No live provider account or Dex stack was used during this batch. Real provider authorization, permissions, response variants, and the mock-backed Dex integration remain unverified locally; CI covers the Dex integration.
+The Go provider behavior is tested with local `httptest` servers. The TypeScript
+package replays Go-recorded HTTP scenarios and runs both operations through a
+real local Dex Worker and Client with a loopback provider stand-in. Live
+Contentful authorization, permissions, and provider responses remain unverified.
