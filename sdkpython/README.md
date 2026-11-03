@@ -378,7 +378,8 @@ The portable schema accepts only `type`, `properties`, `required`,
 of a type and `null`. Depth is at most 10; count bounds are nonnegative
 integers below 2⁶³; numbers are finite and limited to 256 literal characters
 and exponent magnitude 400. String formats are RFC 3339 `date-time`, `date`,
-and `time`, or a hyphenated `uuid`. `validate_portable_request` checks locally;
+and `time`, or a hyphenated `uuid`. Fractional seconds may use `.` or `,` as
+the separator. `validate_portable_request` checks locally;
 `extract_structured_answer` removes an optional JSON fence and checks the
 original schema, raising `ValueError` with a JSON pointer and no answer text.
 
@@ -480,6 +481,11 @@ between-byte stall interval. `model_rules` applies the first matching
 selects the model; optional `temperature`, `reasoning_efforts`,
 `structured_output`, `max_tokens_field`, and `streaming` override the profile.
 `new_wire_format` validates the profile before constructing the adapter.
+
+The adapter accepts missing or null Chat messages and stream deltas as empty
+objects, then applies the finish reason. Usage counts accept integral JSON
+numbers and quoted numeric strings. Malformed choices invalidate the whole
+response, including choices after the first.
 
 The Python adapter currently parses SSE inside `decode_stream`; there is no
 public shared SSE reader in this release.

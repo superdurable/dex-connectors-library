@@ -37,9 +37,9 @@ _KEYWORDS = {
 }
 _TYPES = {"object", "array", "string", "number", "integer", "boolean", "null"}
 _FORMATS = {"date-time", "date", "time", "uuid"}
-_DATE_TIME = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})")
+_DATE_TIME = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:[.,]\d+)?(?:Z|[+-]\d{2}:\d{2})")
 _DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
-_TIME = re.compile(r"\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})")
+_TIME = re.compile(r"\d{2}:\d{2}:\d{2}(?:[.,]\d+)?(?:Z|[+-]\d{2}:\d{2})")
 
 
 def _go_json(value: object) -> str:
@@ -444,13 +444,13 @@ def _matches_format(value: str, format_name: str) -> bool:
             return bool(_UUID.fullmatch(value))
         if format_name == "date-time":
             return bool(_DATE_TIME.fullmatch(value)) and bool(
-                datetime.fromisoformat(value.replace("Z", "+00:00"))
+                datetime.fromisoformat(value.replace(",", ".").replace("Z", "+00:00"))
             )
         if format_name == "date":
             return bool(_DATE.fullmatch(value)) and bool(date.fromisoformat(value))
         if format_name == "time":
             return bool(_TIME.fullmatch(value)) and bool(
-                time.fromisoformat(value.replace("Z", "+00:00"))
+                time.fromisoformat(value.replace(",", ".").replace("Z", "+00:00"))
             )
     except ValueError:
         return False

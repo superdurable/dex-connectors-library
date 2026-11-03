@@ -36,6 +36,7 @@ from .contracts import (
 
 _FIELD = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 _HEADER = re.compile(r"^[!#$%&'*+.^_`|~0-9A-Za-z-]{1,128}$")
+_JSON_NUMBER = re.compile(r"-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?\Z")
 
 
 class InstructionsRole(StrEnum):
@@ -368,18 +369,29 @@ def _first_choice(value: object) -> dict[str, Any] | None:
         return None
     if not isinstance(value, list):
         raise ValueError("chat choices must be an array")
+    first: dict[str, Any] | None = None
     for item in value:
         if not isinstance(item, dict):
             raise ValueError("chat choice must be an object")
         index = item.get("index")
         if index is not None and (not isinstance(index, int) or isinstance(index, bool)):
             raise ValueError("chat choice index must be an integer")
-        if index in (None, 0):
-            return item
-    return None
+        _nullable_string(item.get("finish_reason"))
+        for field_name in ("message", "delta"):
+            delta = item.get(field_name)
+            if delta is not None:
+                if not isinstance(delta, dict):
+                    raise ValueError("chat message must be an object")
+                for string_field in ("reasoning_content", "refusal"):
+                    _nullable_string(delta.get(string_field))
+        if index in (None, 0) and first is None:
+            first = item
+    return first
 
 
 def _parts(delta: object) -> tuple[list[ResponsePart], bool]:
+    if delta is None:
+        delta = {}
     if not isinstance(delta, dict):
         raise ValueError("chat message must be an object")
     parts = []
@@ -414,7 +426,9 @@ def _parts(delta: object) -> tuple[list[ResponsePart], bool]:
 def _token_count(value: object) -> int:
     if value is None:
         return 0
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        raise ValueError("token count must be an integer")
+    if isinstance(value, str) and not _JSON_NUMBER.fullmatch(value):
         raise ValueError("token count must be an integer")
     try:
         number = Decimal(str(value))

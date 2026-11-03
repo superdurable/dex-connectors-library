@@ -640,6 +640,7 @@ async def test_attempt_records_inert_heartbeats_until_completion() -> None:
         (_completion(model=None), "generated"),
         ([], "invalidResponse"),
         (_completion(choices=[{"message": None, "finish_reason": "stop"}]), "invalidResponse"),
+        (_completion(choices=[{"message": 5, "finish_reason": "stop"}]), "invalidResponse"),
         (
             _completion(
                 choices=[{"message": {"content": [{"type": "text", "text": 5}]}, "finish_reason": "stop"}]
@@ -656,6 +657,86 @@ async def test_attempt_records_inert_heartbeats_until_completion() -> None:
 async def test_malformed_chat_response_never_escapes(body: object, branch: str) -> None:
     result = await _query(lambda request: httpx.Response(200, json=body)).invoke(_call(), _REQUEST)
     assert result.branch == branch
+
+
+@pytest.mark.parametrize(
+    "choice,branch",
+    [
+        ({"index": 0, "finish_reason": "length"}, "truncated"),
+        ({"index": 0, "finish_reason": "content_filter"}, "blocked"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_chat_finish_reason_applies_without_message(choice: dict[str, object], branch: str) -> None:
+    result = await _query(
+        lambda request: httpx.Response(200, json=_completion(choices=[choice]))
+    ).invoke(_call(), _REQUEST)
+    assert result.branch == branch
+
+
+@pytest.mark.parametrize("final_delta", [{}, {"delta": None}])
+@pytest.mark.asyncio
+async def test_chat_stream_finish_without_delta_keeps_generated_text(
+    final_delta: dict[str, object],
+) -> None:
+    stream = (
+        b'data: {"choices":[{"index":0,"delta":{"content":"hi"}}]}\n\n'
+        + b'data: {"choices":[{"index":0,"finish_reason":"stop"'
+        + (b',"delta":null' if "delta" in final_delta else b"")
+        + b'}]}\n\n'
+    )
+    query = _query(
+        lambda request: httpx.Response(200, headers={"content-type": "text/event-stream"}, content=stream),
+        Profile("chat-lab", streaming=StreamingPolicy.ALWAYS),
+    )
+    result = await query.invoke(_call(), _REQUEST)
+    assert result.branch == "generated"
+    assert result.value is not None and result.value.text == "hi"
+
+
+@pytest.mark.parametrize(
+    "later_choice", ["junk", {"index": 1, "finish_reason": 7}, {"index": 1, "message": []}]
+)
+@pytest.mark.asyncio
+async def test_chat_rejects_malformed_later_choice(later_choice: object) -> None:
+    choices = [{"index": 0, "message": {"content": "hi"}, "finish_reason": "stop"}, later_choice]
+    result = await _query(
+        lambda request: httpx.Response(200, json=_completion(choices=choices))
+    ).invoke(_call(), _REQUEST)
+    assert result.branch == "invalidResponse"
+
+
+@pytest.mark.asyncio
+async def test_chat_stream_rejects_malformed_later_choice() -> None:
+    stream = (
+        b'data: {"choices":[{"index":0,"delta":{"content":"hi"},"finish_reason":"stop"},'
+        b'{"index":1,"delta":{"refusal":7}}]}\n\n'
+    )
+    query = _query(
+        lambda request: httpx.Response(200, headers={"content-type": "text/event-stream"}, content=stream),
+        Profile("chat-lab", streaming=StreamingPolicy.ALWAYS),
+    )
+    result = await query.invoke(_call(), _REQUEST)
+    assert result.branch == "invalidResponse"
+
+
+@pytest.mark.parametrize("token_count", ["12", "12.0", "1.2e1"])
+@pytest.mark.asyncio
+async def test_chat_accepts_quoted_numeric_token_count(token_count: str) -> None:
+    result = await _query(
+        lambda request: httpx.Response(200, json=_completion(usage={"prompt_tokens": token_count}))
+    ).invoke(_call(), _REQUEST)
+    assert result.branch == "generated"
+    assert result.value is not None and result.value.usage.input_tokens == 12
+
+
+@pytest.mark.parametrize("token_count", [" 12", "+12", "012", "NaN", "١٢"])
+@pytest.mark.asyncio
+async def test_chat_rejects_non_json_quoted_token_count(token_count: str) -> None:
+    result = await _query(
+        lambda request: httpx.Response(200, json=_completion(usage={"prompt_tokens": token_count}))
+    ).invoke(_call(), _REQUEST)
+    assert result.branch == "invalidResponse"
 
 
 @pytest.mark.parametrize("trailer", [b"data: [DONE]\n", b'data: {"usage":'])
@@ -721,6 +802,24 @@ def test_structured_format_rejects_non_go_layouts(format_name: str, value: str) 
         )
 
 
+@pytest.mark.parametrize(
+    "format_name,value",
+    [("date-time", "2024-01-01T10:00:00,5Z"), ("time", "10:00:00,5Z")],
+)
+def test_structured_format_accepts_comma_fractional_seconds(format_name: str, value: str) -> None:
+    schema = {
+        "type": "object",
+        "properties": {"answer": {"type": "string", "format": format_name}},
+        "required": ["answer"],
+        "additionalProperties": False,
+    }
+    answer = extract_structured_answer(
+        replace(_REQUEST, structured_output=StructuredOutput("answer", schema)),
+        json.dumps({"answer": value}),
+    )
+    assert answer == json.dumps({"answer": value})
+
+
 @pytest.mark.asyncio
 async def test_request_deadline_bounds_supplied_client_body() -> None:
     class SlowBody(httpx.AsyncByteStream):
@@ -738,6 +837,21 @@ async def test_request_deadline_bounds_supplied_client_body() -> None:
     result = await query.invoke(_call(), _REQUEST)
     assert result.kind == "retry"
     assert result.failure is not None and result.failure.kind == FailureKind.TRANSPORT
+    assert result.failure.message == "provider response ended before it was complete"
+
+
+@pytest.mark.asyncio
+async def test_request_deadline_before_headers_reports_go_transport_message() -> None:
+    async def handler(request: httpx.Request) -> httpx.Response:
+        await asyncio.sleep(0.04)
+        return httpx.Response(200, json=_completion())
+
+    query = _query(handler)
+    query._config = replace(query._config, request_timeout_seconds=0.01)
+    result = await query.invoke(_call(), _REQUEST)
+    assert result.kind == "retry"
+    assert result.failure is not None
+    assert result.failure.message == "provider request failed before a response was received"
 
 
 @pytest.mark.asyncio
@@ -928,6 +1042,20 @@ async def test_shared_fake_provider_exchange_suite() -> None:
 
 
 @pytest.mark.asyncio
+async def test_shared_fake_provider_exchange_suite_reports_failed_expectation() -> None:
+    with pytest.raises(AssertionError, match="expected generated branch"):
+        await run_text_generation_exchange_suite(
+            lambda client: _query(lambda request: httpx.Response(500), context_client=client),
+            _call(),
+            _REQUEST,
+            CredentialHeader("Authorization", "Bearer "),
+            "sk-test",
+            FakeReply(body=b"not JSON"),
+            FakeReply(body=b"not JSON"),
+        )
+
+
+@pytest.mark.asyncio
 async def test_negative_usage_keeps_response_identifiers() -> None:
     body = _completion(usage={"prompt_tokens": -1})
     result = await _query(lambda request: httpx.Response(200, json=body)).invoke(_call(), _REQUEST)
@@ -991,6 +1119,23 @@ async def test_temperature_range_requires_both_bounds_and_uses_go_infinity_text(
     outside = await query.invoke(_call(), replace(_REQUEST, temperature=2))
     assert outside.branch == "defect"
     assert outside.failure is not None and "from -Inf through 1" in outside.failure.message
+
+
+@pytest.mark.parametrize(
+    "maximum,expected",
+    [(0.1234567, "0.1234567"), (1234567.0, "1.234567e+06")],
+)
+@pytest.mark.asyncio
+async def test_temperature_bound_uses_go_shortest_format(maximum: float, expected: str) -> None:
+    query = _query(lambda request: httpx.Response(200, json=_completion()))
+    query._wire_format = replace(
+        query._wire_format,
+        rules_for_model=lambda model: ModelRequestRules(temperature=temperature_range(0, maximum)),
+    )
+    result = await query.invoke(_call(), replace(_REQUEST, temperature=maximum + 1))
+    assert result.branch == "defect"
+    assert result.failure is not None
+    assert f"from 0 through {expected}" in result.failure.message
 
 
 @pytest.mark.asyncio

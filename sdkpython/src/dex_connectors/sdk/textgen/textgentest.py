@@ -175,11 +175,16 @@ async def run_text_generation_exchange_suite(
         generated = await query.invoke(call, request)
         malformed = await query.invoke(call, request)
         retry = await query.invoke(call, request)
-    assert generated.branch == "generated"
-    assert malformed.branch == "invalidResponse"
-    assert retry.kind == "retry"
-    assert len(provider.requests()) == 3
-    assert all(
+    if generated.branch != "generated":
+        raise AssertionError(f"expected generated branch, got {generated.branch!r}")
+    if malformed.branch != "invalidResponse":
+        raise AssertionError(f"expected invalidResponse branch, got {malformed.branch!r}")
+    if retry.kind != "retry":
+        raise AssertionError(f"expected retry attempt, got {retry.kind!r}")
+    if len(provider.requests()) != 3:
+        raise AssertionError(f"expected three provider requests, got {len(provider.requests())}")
+    if not all(
         record.has_credential_in_slot and not record.has_credential_outside_slot
         for record in provider.requests()
-    )
+    ):
+        raise AssertionError("provider request exposed its credential outside the declared header")

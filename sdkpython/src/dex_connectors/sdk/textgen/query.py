@@ -11,6 +11,7 @@ from collections.abc import AsyncGenerator, Awaitable, Callable
 from contextlib import aclosing
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from typing import Any
 
 import httpx
@@ -71,7 +72,13 @@ _SYNC_EXECUTE_DURABILITY = 1
 def _go_temperature_bound(value: float) -> str:
     if math.isinf(value):
         return "+Inf" if value > 0 else "-Inf"
-    return f"{value:g}"
+    if math.isnan(value):
+        return "NaN"
+    number = Decimal(repr(value)).normalize()
+    if number.adjusted() < -4 or number.adjusted() >= 6:
+        mantissa, exponent = format(number, "e").split("e")
+        return f"{mantissa}e{exponent[0]}{exponent[1:].zfill(2)}"
+    return format(number, "f")
 
 
 class _ProviderStalledError(TimeoutError):
@@ -451,7 +458,10 @@ class _TextGenerationAttempt:
     async def _exchange(
         self, encoded: EncodedRequest, canonical_schema: dict[str, Any] | None
     ) -> QueryAttempt[TextGenerationResponse]:
+        has_response = False
+
         async def dispatch(client: httpx.AsyncClient) -> QueryAttempt[TextGenerationResponse]:
+            nonlocal has_response
             headers = dict(encoded.headers)
             headers["Content-Type"] = "application/json"
             headers["Accept"] = "text/event-stream" if encoded.is_streaming else "application/json"
@@ -478,6 +488,7 @@ class _TextGenerationAttempt:
                     return self._retry(
                         FailureKind.TRANSPORT, "provider request failed before a response was received"
                     )
+                has_response = True
                 try:
                     receipt = self._receipt(response.headers)
                     if not 200 <= response.status_code <= 299:
@@ -556,8 +567,7 @@ class _TextGenerationAttempt:
                     await response.aclose()
             finally:
                 heartbeat.cancel()
-                if not heartbeat.cancelled():
-                    await asyncio.gather(heartbeat, return_exceptions=True)
+                await asyncio.gather(heartbeat, return_exceptions=True)
 
         try:
             async with asyncio.timeout(self.query._config.request_timeout_seconds):
@@ -566,7 +576,12 @@ class _TextGenerationAttempt:
                 async with new_provider_http_client(self.query._config.request_timeout_seconds) as client:
                     return await dispatch(client)
         except TimeoutError:
-            return self._retry(FailureKind.TRANSPORT, "provider request exceeded its timeout")
+            message = (
+                "provider response ended before it was complete"
+                if has_response
+                else "provider request failed before a response was received"
+            )
+            return self._retry(FailureKind.TRANSPORT, message)
 
     def _write_text_delta(self, text: str) -> None:
         try:
