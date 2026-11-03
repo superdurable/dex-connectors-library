@@ -56,7 +56,7 @@ describe('Stripe manifest drift', () => {
   it('matches every operation identity, kind, authorization, route and Execute default', () => {
     expect(manifest.metadata.name).toBe('stripe');
     expect(manifest.spec.provider).toBe('stripe');
-    expect(manifest.spec.languages.typescript.version).toBe('v0.1.0');
+    expect(manifest.spec.languages.typescript.version).toBe('v0.1.1');
     const manifestNames = manifest.spec.operations.map(operation => operation.name).sort();
     expect(manifestNames).toEqual(Object.keys(implementations).sort());
     for (const operation of manifest.spec.operations) {
