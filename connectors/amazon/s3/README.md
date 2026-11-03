@@ -12,6 +12,12 @@ The Amazon S3 Connector lists, inspects, reads, and stores objects in Amazon S3
 and in S3-compatible stores, such as Cloudflare R2 and MinIO, through the S3 REST
 API. It exposes operation-specific Dex Step factories:
 
+The [Python package](python/README.md) provides the same four operations with
+generated typed factories and a [runnable report archive Flow](python/examples/report_archive/).
+Its Go-recorded conformance fixture and local Dex integration test verify the
+Python provider behavior. Live Amazon S3, R2, and MinIO verification remains
+specific to the Go package described above.
+
 | Operation | Kind | S3 request | Durability | Happy branch | Other branches |
 | --- | --- | --- | --- | --- | --- |
 | `listObjects` | Query | `GET /?list-type=2` (ListObjectsV2) | async | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
