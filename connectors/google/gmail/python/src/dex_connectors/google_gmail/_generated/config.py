@@ -22,12 +22,13 @@ setattr(Config, '__module__', 'dex_connectors.google_gmail.client')
 @dataclass(frozen=True, slots=True)
 class Credentials:
 
-    oauth_client_id: str
-    oauth_client_secret: SecretString
-    access_token: SecretString
-    refresh_token: SecretString
-    primary_email: str
-    service_account_key: SecretString
-    delegated_user: str
+    auth_method_id: str = "google-oauth"
+    oauth_client_id: str | None = None
+    oauth_client_secret: SecretString | None = None
+    access_token: SecretString | None = None
+    refresh_token: SecretString | None = None
+    primary_email: str | None = None
+    service_account_key: SecretString | None = None
+    delegated_user: str | None = None
 
 setattr(Credentials, '__module__', 'dex_connectors.google_gmail.client')

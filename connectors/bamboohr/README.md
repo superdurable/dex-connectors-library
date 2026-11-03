@@ -50,6 +50,16 @@ remain unverified.
 This release has no Triggers, no Studio pickers, and no OAuth; see
 [Not in this release](#not-in-this-release).
 
+## TypeScript package
+
+The [TypeScript package](typescript/README.md) v0.1.0 implements all six
+operations with generated Step factories and a hand-written provider client.
+Its [runnable getEmployee Flow](typescript/examples/get-employee/) uses the
+static `bamboohr-employees` connection name. Go-recorded conformance scenarios
+cover provider requests, branches, retries, uncertainty, and duplicate safety;
+the example also ran through a real Dex Worker and Client with a local provider
+fixture. Live BambooHR behavior remains unverified.
+
 ## BambooHR setup
 
 A connection needs two values:

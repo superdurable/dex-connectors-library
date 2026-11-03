@@ -5,6 +5,7 @@ package bamboohr_test
 
 import (
 	"encoding/json"
+	"net"
 	"net/http"
 	"testing"
 
@@ -14,27 +15,34 @@ import (
 const conformanceEndpointPath = "/api/v1"
 const conformanceFixturePathPrefix = "/api/v1"
 
-type conformanceBambooHRContext struct{ *bambooHRDexContext }
-
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint string, transport *http.Client) conformanceInvoker {
-	context := &conformanceBambooHRContext{newBambooHRDexContext("conformance")}
+	t.Helper()
+	if scenario.Name == "addEmployee-transport-before-send" {
+		wrapped := *transport
+		wrapped.Transport = beforeSendConformanceTransport{transport.Transport}
+		transport = &wrapped
+	}
+	client, err := bamboohr.New(bamboohr.Config{CompanyDomain: testCompanyDomain}, testCredentialProvider(),
+		bamboohr.WithAPIBaseURL(endpoint), bamboohr.WithHTTPClient(transport))
+	if err != nil {
+		t.Fatal(err)
+	}
+	context := newBambooHRDexContext("conformance")
 	if len(scenario.PriorHeartbeat) != 0 {
+		context.previousHeartbeat = append(json.RawMessage(nil), scenario.PriorHeartbeat...)
 		var marker struct {
 			Attempt int32 `json:"attempt"`
 		}
 		if err := json.Unmarshal(scenario.PriorHeartbeat, &marker); err != nil {
 			t.Fatal(err)
 		}
-		context.previousHeartbeat = scenario.PriorHeartbeat
 		context.attempt = marker.Attempt + 1
-	}
-	client, err := bamboohr.New(bamboohr.Config{CompanyDomain: testCompanyDomain}, testCredentialProvider(), bamboohr.WithHTTPClient(transport), bamboohr.WithAPIBaseURL(endpoint))
-	if err != nil {
-		t.Fatal(err)
 	}
 	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
 		if attempt > 1 {
-			context.bambooHRDexContext = context.nextAttempt()
+			context.previousHeartbeat = append(json.RawMessage(nil), context.recordedHeartbeat...)
+			context.recordedHeartbeat = nil
+			context.attempt = int32(attempt)
 		}
 	}, actions: map[string]conformanceOperationInvocation{
 		"getEmployee":         newConformanceQueryInvocation(t, scenario.Input, context, client.GetEmployee(), bambooHRConnection),
@@ -44,4 +52,14 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		"updateEmployee":      newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateEmployee(), bambooHRConnection, scenario.CallID),
 		"addEmployee":         newConformanceMutationInvocation(t, scenario.Input, context, client.AddEmployee(), bambooHRConnection, scenario.CallID),
 	}}
+}
+
+type beforeSendConformanceTransport struct{ next http.RoundTripper }
+
+func (transport beforeSendConformanceTransport) RoundTrip(request *http.Request) (*http.Response, error) {
+	response, err := transport.next.RoundTrip(request)
+	if err != nil {
+		return nil, &net.OpError{Op: "dial", Err: err}
+	}
+	return response, nil
 }

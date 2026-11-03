@@ -23,6 +23,17 @@ transport failure per operation, uncertainty when declared, SDK-encoded exact
 outputs, and exact Go recordings. Pending scenarios are rejected; other recovery paths
 remain a review requirement.
 
+The reviewed `conformance/exemptions.yaml` exempts only `connectors/postgresql`,
+`connectors/mysql`, and `connectors/microsoft/sql-server`: their database wire
+protocols cannot be recorded by the HTTP replay runner. Adding an exemption
+requires a tooling PR. For each exempt Python and TypeScript package, replace
+replay with unit tests for every Go-tested branch, retry, uncertain decision,
+and driver-error classification, plus real database integration tests in CI
+service containers. Use the Go connector live-test connection variables and
+scenarios; developers do not run Docker locally. Python integration tests live
+in `python/tests/integration/` and TypeScript integration tests in
+`typescript/test/integration.test.ts`.
+
 A connector batch port PR may contain 5-8 connectors of one language when every
 package is a first `v0.1.0` release and passes conformance. The coordinator
 merges one batch at a time and confirms its Release run, including first publish

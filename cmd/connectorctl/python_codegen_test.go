@@ -14,6 +14,7 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/internal/codegen/gomodel"
 	"github.com/superdurable/dex-connectors-library/schema"
+	"gopkg.in/yaml.v3"
 )
 
 func TestPythonCodegenGoldenBitbucketMockUsesProviderIdentity(t *testing.T) {
@@ -45,6 +46,102 @@ func TestPythonCodegenGoldenBitbucketMockUsesProviderIdentity(t *testing.T) {
 		t.Error("mock helpers must name the real public mock module")
 	}
 }
+
+func TestPythonCodegenMultiAuthGolden(t *testing.T) {
+	manifestPath := filepath.Join("..", "..", "schema", "testdata", "multi-auth.yaml")
+	manifest, err := load(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest.Spec.Languages = &schema.Languages{Python: &schema.LanguagePackage{Operations: []string{"getThing"}}}
+	manifest.Spec.Configuration.Fields = []schema.Field{
+		{Name: "region", GoName: "Region", Type: "string", Description: "Optional region.", Required: false},
+		{Name: "accountId", GoName: "AccountID", Type: "string", Description: "Required account ID.", Required: true},
+	}
+	manifest.Spec.Auth.Methods[0].Configuration = &schema.Configuration{Fields: []schema.Field{{Name: "workspaceId", GoName: "WorkspaceID", Type: "string", Description: "Workspace for the selected method.", Required: true}}}
+	manifest.Spec.Auth.Methods[1].Fields = append(manifest.Spec.Auth.Methods[1].Fields, schema.Field{Name: "session_note", GoName: "SessionNote", Type: "string", Description: "Optional session note.", Required: false})
+	generated, err := renderPythonCodegen(pythonCodegenInput{Manifest: manifest, PackageName: "multi_auth_fixture", MockPackageName: "multiauthfixturemock"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"config.py", "connection.py"} {
+		goldenPath := filepath.Join("testdata", "multi-auth-golden", name)
+		if os.Getenv("UPDATE_MULTI_AUTH_GOLDEN") == "1" {
+			if err := os.MkdirAll(filepath.Dir(goldenPath), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(goldenPath, []byte(generated[name]), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		want, err := os.ReadFile(goldenPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if generated[name] != string(want) {
+			t.Errorf("%s differs from multi-auth golden output", name)
+		}
+	}
+	pythonSources, err := json.Marshal(map[string]string{"config.py": generated["config.py"], "connection.py": generated["connection.py"]})
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := exec.Command("python3", "-c", multiAuthPythonRuntimeTest)
+	command.Stdin = bytes.NewReader(pythonSources)
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("generated multi-auth credential behavior: %v\n%s", err, output)
+	}
+}
+
+const multiAuthPythonRuntimeTest = `
+import ast, asyncio, json, sys
+from dataclasses import dataclass
+from typing import Any
+sources = json.load(sys.stdin)
+config_tree = ast.parse(sources['config.py'])
+config_class = next(node for node in config_tree.body if isinstance(node, ast.ClassDef) and node.name == 'Config')
+config_namespace = {'__name__': '__main__', 'dataclass': dataclass}
+exec(compile(ast.Module(body=[config_class], type_ignores=[]), '<generated-config>', 'exec'), config_namespace)
+assert config_namespace['Config'](account_id='account').region == ''
+source = sources['connection.py']
+tree = ast.parse(source)
+credential_source = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == '_ProjectCredentialSource')
+config_decoder = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == '_decode_config')
+class SecretString:
+    def __init__(self, value): self.value = value
+class Credentials:
+    def __init__(self, **values): self.__dict__.update(values)
+class Config:
+    def __init__(self, **values): self.__dict__.update(values)
+class Project:
+    def __init__(self, values): self.values = values
+    async def resolve_credential(self, key, call_id): return self.values
+namespace = {'Any': Any, 'Call': object, 'LoadedProject': object, 'ConnectionKey': object, 'Credentials': Credentials, 'Config': Config, 'SecretString': SecretString}
+exec(compile(ast.Module(body=[credential_source, config_decoder], type_ignores=[]), '<generated>', 'exec'), namespace)
+Source = namespace['_ProjectCredentialSource']
+assert namespace['_decode_config']({'accountId':'account'}).workspace_id == ''
+assert namespace['_decode_config']({'accountId':'account', 'workspaceId':'workspace'}).workspace_id == 'workspace'
+class Call:
+    id = 'call'
+def resolve(values):
+    return asyncio.run(Source(Project(values), object()).resolve(Call()))
+default = resolve({'auth_method':None, 'oauth_client_id':'id', 'oauth_client_secret':'secret', 'access_token':'access', 'refresh_token':'refresh', 'service_account_key':17})
+assert default.auth_method_id == 'google-oauth' and not hasattr(default, 'service_account_key')
+alternate = resolve({'auth_method':'workspace-service-account', 'service_account_key':'key', 'delegated_user':'user', 'session_note':'note', 'oauth_client_id':17})
+assert alternate.auth_method_id == 'workspace-service-account' and alternate.service_account_key.value == 'key'
+assert alternate.session_note == 'note'
+assert not hasattr(alternate, 'oauth_client_id')
+optional_null = resolve({'auth_method':'workspace-service-account', 'service_account_key':'key', 'delegated_user':'user', 'session_note':None})
+assert not hasattr(optional_null, 'session_note')
+for values, message in (
+    ({'auth_method':'workspace-service-account', 'service_account_key':None, 'delegated_user':'user'}, 'credential service_account_key is required'),
+    ({'auth_method':'unknown'}, 'credential auth_method is invalid'),
+    ({'auth_method':0}, 'credential auth_method is invalid'),
+):
+    try: resolve(values)
+    except ValueError as error: assert message in str(error), str(error)
+    else: raise AssertionError('invalid selected method was accepted')
+`
 
 func TestPythonCodegenKeepsMockScenariosDistinctFromBranchHelpers(t *testing.T) {
 	connectorDirectory := filepath.Join("..", "..", "connectors", "google", "calendar")
@@ -168,6 +265,28 @@ func TestPythonCodegenPreservesOptionalPointerPresence(t *testing.T) {
 func TestPythonGenerateCheckDetectsModelDrift(t *testing.T) {
 	manifestSource := filepath.Join("..", "..", "connectors", "atlassian", "bitbucket", "connector.yaml")
 	manifestContents, err := os.ReadFile(manifestSource)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var manifestDocument map[string]any
+	if err := yaml.Unmarshal(manifestContents, &manifestDocument); err != nil {
+		t.Fatal(err)
+	}
+	manifestSpecification, ok := manifestDocument["spec"].(map[string]any)
+	if !ok {
+		t.Fatal("Bitbucket manifest has no spec")
+	}
+	languageDeclarations, ok := manifestSpecification["languages"].(map[string]any)
+	if !ok {
+		t.Fatal("Bitbucket manifest has no language declarations")
+	}
+	pythonDeclaration, ok := languageDeclarations["python"]
+	if !ok {
+		t.Fatal("Bitbucket manifest has no Python declaration")
+	}
+	// Keep the Python drift fixture independent of the real connector's other language packages.
+	manifestSpecification["languages"] = map[string]any{"python": pythonDeclaration}
+	manifestContents, err = yaml.Marshal(manifestDocument)
 	if err != nil {
 		t.Fatal(err)
 	}

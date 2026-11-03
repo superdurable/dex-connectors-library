@@ -100,7 +100,8 @@ def _valid_employee_id(value: str) -> bool:
 
 def _valid_email(value: str) -> bool:
     display, address = parseaddr(value)
-    return len(value) <= 254 and not display and address == value and bool(address.partition("@")[0])
+    local, separator, domain = address.partition("@")
+    return len(value) <= 254 and not display and address == value and bool(separator and local and domain)
 
 
 def _valid_date(value: str) -> bool:

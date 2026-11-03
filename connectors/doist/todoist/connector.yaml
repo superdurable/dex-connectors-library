@@ -8,6 +8,12 @@ metadata:
   version: v0.4.0
 spec:
   provider: todoist
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-doist-todoist
+      operations: [getTask, updateTaskContent, listTasks, createTask, deleteTask]
+      triggers: []
   codegen:
     go:
       package: todoist

@@ -13,6 +13,10 @@ spec:
       version: v0.1.0
       operations: [getEmployee, findEmployeeByEmail, listEmployeeChanges, listTimeOffRequests, updateEmployee, addEmployee]
       triggers: []
+    typescript:
+      version: v0.1.0
+      operations: [getEmployee, findEmployeeByEmail, listEmployeeChanges, listTimeOffRequests, updateEmployee, addEmployee]
+      triggers: []
   codegen:
     go:
       package: bamboohr
