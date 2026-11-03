@@ -3,7 +3,7 @@
 
 import { lookup as lookupAddresses } from 'node:dns/promises';
 import { createServer } from 'node:http';
-import { parseRetryAfter, sendProviderRequest } from '../dist/providerhttp/index.js';
+import { BodyTooLargeError, parseRetryAfter, sendProviderRequest } from '../dist/providerhttp/index.js';
 
 const localAddress = (await lookupAddresses('localhost', { all: true, verbatim: true }))[0]?.address;
 if (!localAddress) throw new Error('localhost has no resolved address');
@@ -19,6 +19,15 @@ try {
     addressPolicy: 'privateNetworkHTTP',
   });
   if (response.status !== 429 || parseRetryAfter(response.headers['retry-after']) !== 7000) throw new Error('HTTP example failed');
+  try {
+    await sendProviderRequest({
+      url: `http://localhost:${address.port}/`, method: 'GET', maxResponseBytes: 4,
+      onBodyLimit: 'drain', addressPolicy: 'privateNetworkHTTP',
+    });
+    throw new Error('expected response limit');
+  } catch (error) {
+    if (!(error instanceof BodyTooLargeError) || error.status !== 429 || error.headers?.['retry-after'] !== '7') throw error;
+  }
 } finally {
   await new Promise(resolve => server.close(resolve));
 }

@@ -72,6 +72,65 @@ describe('provider HTTP', () => {
     await expect(sendProviderRequest({ url: `${url}/drip`, method: 'GET', maxResponseBytes: 10_000, timeoutMs: 40, addressPolicy: 'privateNetworkHTTP' })).rejects.toMatchObject({ name: ProviderTransportError.name, isProvablyNotSent: false });
   });
 
+  it('drains an oversized response to EOF without retaining or observing later chunks', async () => {
+    let hasFinishedResponse = false;
+    const server = createServer((_request, response) => {
+      response.writeHead(200, { 'X-Request-ID': 'drained' });
+      response.write('abc');
+      setTimeout(() => response.write('def'), 20);
+      setTimeout(() => response.end('gh'), 40);
+      response.on('finish', () => { hasFinishedResponse = true; });
+    });
+    servers.push(server);
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('server address unavailable');
+    const observedChunks: string[] = [];
+    await expect(sendProviderRequest({
+      url: `http://127.0.0.1:${address.port}/`, method: 'GET', maxResponseBytes: 4,
+      onBodyLimit: 'drain', addressPolicy: 'privateNetworkHTTP',
+      onResponseChunk: chunk => { observedChunks.push(Buffer.from(chunk).toString()); },
+    })).rejects.toMatchObject({ name: BodyTooLargeError.name, status: 200, headers: { 'x-request-id': 'drained' } });
+    expect(hasFinishedResponse).toBe(true);
+    expect(observedChunks).toEqual(['abc']);
+  });
+
+  it('destroys an oversized response by default', async () => {
+    let hasFinishedResponse = false;
+    const server = createServer((_request, response) => {
+      response.write('oversized');
+      response.on('finish', () => { hasFinishedResponse = true; });
+      response.on('close', () => { response.destroy(); });
+    });
+    servers.push(server);
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('server address unavailable');
+    await expect(sendProviderRequest({ url: `http://127.0.0.1:${address.port}/`, method: 'GET', maxResponseBytes: 4, addressPolicy: 'privateNetworkHTTP' })).rejects.toBeInstanceOf(BodyTooLargeError);
+    expect(hasFinishedResponse).toBe(false);
+  });
+
+  it('honors cancellation while draining an oversized response', async () => {
+    const server = createServer((_request, response) => {
+      response.write('oversized');
+      response.on('close', () => { response.destroy(); });
+    });
+    servers.push(server);
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('server address unavailable');
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), 20);
+    await expect(sendProviderRequest({
+      url: `http://127.0.0.1:${address.port}/`, method: 'GET', maxResponseBytes: 4,
+      onBodyLimit: 'drain', addressPolicy: 'privateNetworkHTTP', signal: controller.signal,
+    })).rejects.toMatchObject({ name: ProviderTransportError.name, isProvablyNotSent: false });
+    await expect(sendProviderRequest({
+      url: `http://127.0.0.1:${address.port}/`, method: 'GET', maxResponseBytes: 4,
+      onBodyLimit: 'drain', addressPolicy: 'privateNetworkHTTP', timeoutMs: 20,
+    })).rejects.toMatchObject({ name: ProviderTransportError.name, isProvablyNotSent: false });
+  });
+
   it('returns redirects without replaying a credential', async () => {
     let requests = 0;
     const server = createServer((_request, response) => { requests++; response.writeHead(302, { Location: 'https://other.example.test/' }); response.end(); });

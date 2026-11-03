@@ -65,6 +65,7 @@ export interface ProviderRequest {
   /** Request headers, including provider credentials when needed. */ headers?: Record<string, string>;
   /** Caller-encoded request body. */ body?: Uint8Array;
   /** Maximum response body size in bytes. */ maxResponseBytes: number;
+  /** On a response limit, destroy the connection (default) or drain to EOF before rejecting. Drain can avoid canceling provider work; timeout and signal still apply. */ onBodyLimit?: 'destroy' | 'drain';
   /** Optional separate prefix limit for non-2xx error bodies. */ maxErrorResponseBytes?: number;
   /** Classify a non-2xx status even when its diagnostic body fails to read. */ ignoreErrorBodyReadFailure?: boolean;
   /** Network policy checked against all resolved addresses. */ addressPolicy: AddressPolicy;
@@ -146,6 +147,7 @@ export function readErrorTokens(body: Uint8Array, pointers: readonly string[]): 
 export async function sendProviderRequest(request: ProviderRequest): Promise<ProviderResponse> {
   if (!Number.isSafeInteger(request.maxResponseBytes) || request.maxResponseBytes < 0) throw new RangeError('response body limit must be a non-negative integer');
   if (request.maxErrorResponseBytes !== undefined && (!Number.isSafeInteger(request.maxErrorResponseBytes) || request.maxErrorResponseBytes < 0)) throw new RangeError('error body limit must be a non-negative integer');
+  if (request.onBodyLimit !== undefined && request.onBodyLimit !== 'destroy' && request.onBodyLimit !== 'drain') throw new TypeError('response body limit action is invalid');
   if (request.addressPolicy !== 'publicHTTPS' && request.addressPolicy !== 'privateNetworkHTTP' && request.addressPolicy !== 'unrestricted') throw new AddressRefusal('address policy is invalid');
   let parsed: URL;
   try { parsed = new URL(request.url); } catch { throw new AddressRefusal('URL is invalid'); }
@@ -180,6 +182,7 @@ export async function sendProviderRequest(request: ProviderRequest): Promise<Pro
         if (responseStallTimer) clearTimeout(responseStallTimer);
         const chunks: Uint8Array[] = [];
         let size = 0;
+        let isBodyTooLarge = false;
         let stallTimer: ReturnType<typeof setTimeout> | undefined;
         const observeProgress = () => {
           if (stallTimer) clearTimeout(stallTimer);
@@ -190,6 +193,7 @@ export async function sendProviderRequest(request: ProviderRequest): Promise<Pro
           try {
             for await (const chunk of response) {
               observeProgress();
+              if (isBodyTooLarge) continue;
               const isSuccess = (response.statusCode ?? 0) >= 200 && (response.statusCode ?? 0) <= 299;
               const limit = isSuccess ? request.maxResponseBytes : request.maxErrorResponseBytes ?? request.maxResponseBytes;
               if (!isSuccess && request.maxErrorResponseBytes !== undefined && size + chunk.length > limit) {
@@ -197,6 +201,11 @@ export async function sendProviderRequest(request: ProviderRequest): Promise<Pro
                 response.destroy();
                 resolve({ status: response.statusCode ?? 0, headers: response.headers, body: Buffer.concat(chunks) });
                 return;
+              }
+              if (request.onBodyLimit === 'drain' && size + chunk.length > limit) {
+                isBodyTooLarge = true;
+                chunks.length = 0;
+                continue;
               }
               const shouldContinue = request.onResponseChunk?.(chunk, response.statusCode ?? 0, response.headers);
               if (shouldContinue === false) {
@@ -207,6 +216,10 @@ export async function sendProviderRequest(request: ProviderRequest): Promise<Pro
               size += chunk.length;
               if (size > limit) throw new BodyTooLargeError(response.statusCode ?? 0, response.headers);
               chunks.push(chunk);
+            }
+            if (isBodyTooLarge) {
+              reject(new BodyTooLargeError(response.statusCode ?? 0, response.headers));
+              return;
             }
             resolve({ status: response.statusCode ?? 0, headers: response.headers, body: Buffer.concat(chunks) });
           } catch (error) {
