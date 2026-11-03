@@ -21,6 +21,9 @@ option with its discussion URL; a missing, deleted, or dead item selects
 responses select `providerRejected`. Item `text_html` is untrusted provider
 HTML.
 
+`Client` accepts an optional `now` callable for deterministic feed observation
+times and `Retry-After` parsing in provider tests. Normal callers omit it.
+
 ## Example
 
 [`examples/top_story`](examples/top_story/flow.py) reads a feed's first story ID
@@ -33,4 +36,4 @@ daily-digest example, which also summarizes stories with an LLM.
 
 `hackernewsmock.Mock` scripts both Queries and defaults to the manifest
 answers. Run `uv run pytest tests` for provider parity and manifest contract
-checks.
+checks, including Go-recorded conformance scenarios with a fixed clock.

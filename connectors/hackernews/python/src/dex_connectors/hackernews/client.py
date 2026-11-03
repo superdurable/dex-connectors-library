@@ -75,13 +75,15 @@ class Config(_GeneratedConfig):
 class Client:
     """One redirect-safe HTTP client for the public, unauthenticated API."""
 
-    def __init__(self, config: Config, http_client: httpx.AsyncClient | None = None) -> None:
+    def __init__(self, config: Config, http_client: httpx.AsyncClient | None = None,
+                 now: Callable[[], datetime] | None = None) -> None:
         if config is None:
             raise ValueError("Hacker News configuration is required")
         if config.timeout_seconds < 0 or config.max_response_bytes < 0:
             raise ValueError("Hacker News timeout and maxResponseBytes must be positive")
         self.base_url = validate_base_url(config.base_url or _DEFAULT_BASE_URL)
         self.max_response_bytes = config.max_response_bytes or _DEFAULT_MAX_RESPONSE_BYTES
+        self.now = now or (lambda: datetime.now(UTC))
         self.http_client = http_client or new_provider_http_client(
             config.timeout_seconds or _DEFAULT_TIMEOUT_SECONDS
         )
@@ -124,7 +126,7 @@ class Client:
             status = response.status_code
             if status in (408, 429) or status >= 500:
                 kind = FailureKind.RATE_LIMIT if status == 429 else FailureKind.AVAILABILITY
-                retry_after = parse_retry_after(response.headers.get("Retry-After", ""), datetime.now(UTC))
+                retry_after = parse_retry_after(response.headers.get("Retry-After", ""), self.now())
                 return _retry(operation, kind, "Hacker News is temporarily unavailable", retry_after)
             if status == 404 and operation == GET_ITEM_OPERATION_ID:
                 return _failed(
@@ -193,7 +195,10 @@ class ListStoryIDsOperation:
                 operation, DEFECT, StoryIDs(), FailureKind.VALIDATION, "limit must be from 1 through 500"
             )
         return await self.client.get_json(
-            operation, f"/{feed}stories.json", StoryIDs(), lambda body: _decode_story_ids(body, limit)
+            operation,
+            f"/{feed}stories.json",
+            StoryIDs(),
+            lambda body: _decode_story_ids(body, limit, self.client.now),
         )
 
 
@@ -232,7 +237,7 @@ def _retry(operation: str, kind: FailureKind, message: str, after_seconds: float
     return QueryAttempt.retry(Failure(kind, FAILURE_PROVIDER, operation, message), after_seconds)
 
 
-def _decode_story_ids(body: bytes, limit: int) -> QueryAttempt[StoryIDs]:
+def _decode_story_ids(body: bytes, limit: int, now: Callable[[], datetime]) -> QueryAttempt[StoryIDs]:
     operation = LIST_STORY_IDS_OPERATION_ID
     try:
         ids = json.loads(body)
@@ -255,7 +260,7 @@ def _decode_story_ids(body: bytes, limit: int) -> QueryAttempt[StoryIDs]:
             "Hacker News returned an invalid item ID",
         )
     return QueryAttempt.branch_result(
-        LISTED, StoryIDs(tuple(ids[:limit]), len(ids) > limit, datetime.now(UTC)), Receipt()
+        LISTED, StoryIDs(tuple(ids[:limit]), len(ids) > limit, now().astimezone(UTC)), Receipt()
     )
 
 
