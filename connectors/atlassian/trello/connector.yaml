@@ -10,7 +10,7 @@ spec:
   provider: trello
   languages:
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       operations: [listCards, getCard, createCard, updateCard, addComment]
       triggers: []
   codegen:
