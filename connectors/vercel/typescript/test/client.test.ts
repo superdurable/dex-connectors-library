@@ -18,7 +18,27 @@ describe('Vercel request behavior', () => {
     } });
     const result = await client.getDeployment().invoke(call, { idOrUrl: "app.example/a!b$&+;?'*", teamId: 'team ~*' });
     expect(result.kind).toBe('branch');
-    expect(requestedURL).toBe('http://127.0.0.1:30300/v13/deployments/app.example%2Fa%21b$&+%3B%3F%27%2A?teamId=team+%7E%2A');
+    expect(requestedURL).toBe('http://127.0.0.1:30300/v13/deployments/app.example%2Fa%21b$&+%3B%3F%27%2A?teamId=team+~%2A');
+  });
+  it('leaves a tilde unescaped in a list team ID', async () => {
+    let requestedURL = '';
+    const client = new VercelClient({ baseUrl: 'http://127.0.0.1:30300' }, credentials, { send: async request => {
+      requestedURL = request.url;
+      return { status: 200, headers: {}, body: Buffer.from('{"deployments":[],"pagination":{"next":null}}') };
+    } });
+    const result = await client.listDeployments().invoke(call, { teamId: 'team~1' });
+    expect(result.kind).toBe('branch');
+    if (result.kind === 'branch') expect(result.branch).toBe('listed');
+    expect(requestedURL).toBe('http://127.0.0.1:30300/v6/deployments?teamId=team~1');
+  });
+  it('decodes a null list entry as a zero deployment', async () => {
+    const client = new VercelClient({ baseUrl: 'http://127.0.0.1:30300' }, credentials, { send: async () => ({ status: 200, headers: {}, body: Buffer.from('{"deployments":[null],"pagination":{"next":null}}') }) });
+    const result = await client.listDeployments().invoke(call, {});
+    expect(result.kind).toBe('branch');
+    if (result.kind === 'branch') {
+      expect(result.branch).toBe('listed');
+      expect(result.value).toEqual({ deployments: [{ uid: '', id: '', name: '', url: '', state: '', readyState: '', created: 0 }], pagination: { next: null } });
+    }
   });
   it('rejects invalid response fields and oversized success bodies', async () => {
     const client = new VercelClient({ baseUrl: 'http://127.0.0.1:30300', maxResponseBytes: 20 }, credentials, { send: async () => ({ status: 200, headers: {}, body: Buffer.from('{"id":123,"name":"long"}') }) });
