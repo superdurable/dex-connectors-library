@@ -18,6 +18,10 @@ function mutationFailure<T>(client: GorgiasClient, call: Call, result: Exchange,
   const branch = result.outcome === 'invalid' ? 'invalidResponse' : result.outcome === 'defect' ? 'defect' : result.outcome === 'notFound' ? notFoundBranch : 'providerRejected';
   return newMutationBranch(branch, output, client.receipt(call, result, objectID), result.failure);
 }
+function unsentRequestAttempt<T>(client: GorgiasClient, call: Call, result: Exchange, output: T, notFoundBranch = 'providerRejected', objectID = 0): MutationAttempt<T> {
+  if (result.outcome === 'invalid') return newMutationRetry(result.failure!, result.retryAfterMs);
+  return mutationFailure(client, call, result, output, notFoundBranch, objectID);
+}
 function defect<T>(operation: string, output: T, error: unknown, isMutation: false): QueryAttempt<T>;
 function defect<T>(operation: string, output: T, error: unknown, isMutation: true): MutationAttempt<T>;
 function defect<T>(operation: string, output: T, error: unknown, isMutation: boolean): QueryAttempt<T> | MutationAttempt<T> {
@@ -43,8 +47,8 @@ function validateTags(tags: string[] | undefined, field: string): void {
     seen.add(tag);
   }
 }
-function validateStatus(status: string | undefined): void { if (status && status !== 'open' && status !== 'closed') throw new TypeError('status is not a Gorgias status'); }
-function validatePriority(priority: string | undefined): void { if (priority && !['low', 'normal', 'high', 'critical'].includes(priority)) throw new TypeError('priority is not a Gorgias priority'); }
+function validateStatus(status: string): void { if (status !== 'open' && status !== 'closed') throw new TypeError('status is not a Gorgias status'); }
+function validatePriority(priority: string): void { if (!['low', 'normal', 'high', 'critical'].includes(priority)) throw new TypeError('priority is not a Gorgias priority'); }
 function requireText(text: string, name: string): void { if (!text?.trim()) throw new TypeError(`${name} is required`); }
 function queryString(values: Record<string, string | number | undefined>): URLSearchParams {
   const query = new URLSearchParams();
@@ -82,7 +86,7 @@ export class SearchTicketsOperation implements Query<SearchTicketsInput, SearchT
         requesterID = matches.customers![0]!.id;
       } catch (error) { return protocol(this.client, call, 'searchTickets', emptySearchTicketsOutput, lookup, 'Gorgias returned an invalid customer page', error, false); }
     }
-    const query = queryString({ order_by: 'updated_datetime:desc', limit: input.pageSize || 30, trashed: 'false', customer_id: requesterID || undefined, view_id: input.viewId, cursor: input.cursor });
+    const query = queryString({ order_by: 'updated_datetime:desc', limit: input.pageSize || 30, trashed: 'false', customer_id: requesterID || undefined, view_id: input.viewId || undefined, cursor: input.cursor });
     const result = await this.client.exchange(call, resolved.credentials, 'searchTickets', 'GET', '/tickets', query);
     if (result.outcome !== 'succeeded') return queryFailure(this.client, call, result, emptySearchTicketsOutput);
     try { return newQueryBranch('searched', decodeTicketPage(result.response!.body, input), this.client.receipt(call, result)); }
@@ -136,9 +140,19 @@ async function recordDispatch(call: Call): Promise<boolean> {
 }
 async function releaseDispatch(call: Call): Promise<void> { try { await call.context.recordHeartbeat(null); } catch { /* A retained marker safely forces read-back. */ } }
 function reconcileDelay(delay: number, minimum: number): number { return Math.min(60_000, Math.max(delay, minimum)); }
-async function reconcile<T>(call: Call, failure: Failure, output: T, receipt: Receipt, delay = 0): Promise<MutationAttempt<T>> {
+async function reconcile<T>(call: Call, failure: Failure, output: T, receipt: Receipt, delay = 0, uncertainFailure = failure): Promise<MutationAttempt<T>> {
   if (call.context.attempt < 4 && await recordDispatch(call)) return newMutationRetry(failure, reconcileDelay(delay, 15_000));
-  return newMutationUncertain(output, failure, receipt);
+  return newMutationUncertain(output, uncertainFailure, receipt);
+}
+async function reconcileCredentialFailure<T>(call: Call, failure: Failure, output: T, operation: string): Promise<MutationAttempt<T>> {
+  const uncertainFailure = gorgiasFailure(failure.kind, operation, 'an earlier attempt of this Step sent the request and the connection credentials are unavailable to confirm it, so it is not sent again');
+  return reconcile(call, failure, output, {} as Receipt, 0, uncertainFailure);
+}
+async function reconcileLookupFailure<T>(call: Call, result: Exchange, output: T, receipt: Receipt, operation: string): Promise<MutationAttempt<T>> {
+  const failure = result.failure!;
+  const uncertainFailure = gorgiasFailure(failure.kind, operation, `an earlier attempt of this Step sent the request and Gorgias could not confirm it, so it is not sent again: ${failure.message}`);
+  if (['rateLimited', 'notSent', 'unavailable', 'invalid'].includes(result.outcome)) return reconcile(call, failure, output, receipt, result.retryAfterMs, uncertainFailure);
+  return newMutationUncertain(output, uncertainFailure, receipt);
 }
 async function sendOutcome<T>(call: Call, result: Exchange, client: GorgiasClient, output: T, notFoundBranch = 'providerRejected'): Promise<MutationAttempt<T> | undefined> {
   if (result.outcome === 'succeeded') return undefined;
@@ -160,14 +174,15 @@ export class CreateTicketOperation implements Mutation<CreateTicketInput, Create
       if ([...input.subject].length > 998) throw new TypeError('subject is too long');
       if (!isBareEmail(input.requester.email)) throw new TypeError('requester.email must be one bare email address');
       if (input.requester.name && input.requester.name !== input.requester.name.trim()) throw new TypeError('requester.name cannot have surrounding spaces');
-      validateStatus(input.status); validatePriority(input.priority); validateTags(input.tags, 'tags'); optionalID(input.assigneeUserId, 'assigneeUserId'); optionalID(input.assigneeTeamId, 'assigneeTeamId');
+      if (input.status) validateStatus(input.status); if (input.priority) validatePriority(input.priority);
+      validateTags(input.tags, 'tags'); optionalID(input.assigneeUserId, 'assigneeUserId'); optionalID(input.assigneeTeamId, 'assigneeTeamId');
     } catch (error) { return defect('createTicket', emptyCreateTicketOutput, error, true); }
     const earlier = hasEarlierDispatch(call);
     const resolved = await this.client.resolveCredentials(call, 'createTicket');
-    if (!resolved.credentials) return earlier ? reconcile(call, resolved.failure!, emptyCreateTicketOutput, {} as Receipt) : newMutationBranch('defect', emptyCreateTicketOutput, {} as Receipt, resolved.failure);
+    if (!resolved.credentials) return earlier ? reconcileCredentialFailure(call, resolved.failure!, emptyCreateTicketOutput, 'createTicket') : newMutationBranch('defect', emptyCreateTicketOutput, {} as Receipt, resolved.failure);
     if (earlier || call.context.attempt > 1) {
       const lookup = await this.lookup(call, resolved.credentials);
-      if (lookup.result.outcome !== 'succeeded') return earlier ? reconcile(call, lookup.result.failure!, emptyCreateTicketOutput, lookup.receipt, lookup.result.retryAfterMs) : mutationFailure(this.client, call, lookup.result, emptyCreateTicketOutput);
+      if (lookup.result.outcome !== 'succeeded') return earlier ? reconcileLookupFailure(call, lookup.result, emptyCreateTicketOutput, lookup.receipt, 'createTicket') : unsentRequestAttempt(this.client, call, lookup.result, emptyCreateTicketOutput);
       if (lookup.ticket) return newMutationBranch('created', { ticket: lookup.ticket, wasCreatedByEarlierAttempt: true }, lookup.receipt);
       if (earlier) return reconcile(call, gorgiasFailure('TRANSPORT', 'createTicket', 'an earlier attempt of this Step sent the request and Gorgias shows no ticket with its external ID, so it is not sent again'), emptyCreateTicketOutput, lookup.receipt);
     }
@@ -208,7 +223,7 @@ export class UpdateTicketOperation implements Mutation<UpdateTicketInput, Update
   /** Read, compare, and apply one update attempt. */
   async invoke(call: Call, input: UpdateTicketInput): Promise<MutationAttempt<UpdateTicketOutput>> {
     try {
-      requireID(input.ticketId, 'ticketId'); validateStatus(input.status); validatePriority(input.priority);
+      requireID(input.ticketId, 'ticketId'); if (input.status) validateStatus(input.status); if (input.priority) validatePriority(input.priority);
       optionalID(input.assigneeUserId, 'assigneeUserId'); optionalID(input.assigneeTeamId, 'assigneeTeamId');
       validateTags(input.addTags, 'addTags'); validateTags(input.removeTags, 'removeTags');
       if (input.addTags?.some(tag => input.removeTags?.includes(tag))) throw new TypeError('tag is in both addTags and removeTags');
@@ -281,8 +296,10 @@ function replyRoute(ticketWire: Record<string, unknown>): { supportAddress: stri
   const messages = messageList(ticketWire);
   const newestCustomer = messages.filter(message => !message.from_agent && message.channel === 'email' && isBareEmail(address(messageSource(message)?.from)) && recipientAddresses(message).length).sort(newestMessage)[0];
   if (!newestCustomer) throw new TypeError('the ticket has no email from the customer to reply to; add an internal note instead');
-  const integrationID = Number(newestCustomer.integration_id) || 0;
-  const newestAgent = messages.filter(message => message.from_agent === true && message.channel === 'email' && Number(message.integration_id) === integrationID && isBareEmail(address(messageSource(message)?.from))).sort(newestMessage)[0];
+  const integrationID = typeof newestCustomer.integration_id === 'number' ? newestCustomer.integration_id : 0;
+  const newestAgent = typeof newestCustomer.integration_id === 'number'
+    ? messages.filter(message => message.from_agent === true && message.channel === 'email' && typeof message.integration_id === 'number' && message.integration_id === integrationID && isBareEmail(address(messageSource(message)?.from))).sort(newestMessage)[0]
+    : undefined;
   const recipients = recipientAddresses(newestCustomer);
   const supportAddress = newestAgent ? address(messageSource(newestAgent)?.from) : recipients.length === 1 ? recipients[0] : '';
   if (!supportAddress) throw new TypeError("the customer's newest email reached several addresses and none is known to be the helpdesk's");
@@ -301,10 +318,10 @@ export class AddNoteOperation implements Mutation<AddNoteInput, AddNoteOutput> {
     catch (error) { return defect('addNote', emptyAddNoteOutput, error, true); }
     const earlier = hasEarlierDispatch(call);
     const resolved = await this.client.resolveCredentials(call, 'addNote');
-    if (!resolved.credentials) return earlier ? reconcile(call, resolved.failure!, emptyAddNoteOutput, {} as Receipt) : newMutationBranch('defect', emptyAddNoteOutput, {} as Receipt, resolved.failure);
+    if (!resolved.credentials) return earlier ? reconcileCredentialFailure(call, resolved.failure!, emptyAddNoteOutput, 'addNote') : newMutationBranch('defect', emptyAddNoteOutput, {} as Receipt, resolved.failure);
     if (earlier || call.context.attempt > 1) {
       const lookup = await this.lookup(call, resolved.credentials, input.ticketId);
-      if (lookup.result.outcome !== 'succeeded') return earlier ? reconcile(call, lookup.result.failure!, emptyAddNoteOutput, lookup.receipt, lookup.result.retryAfterMs) : mutationFailure(this.client, call, lookup.result, emptyAddNoteOutput, 'notFound', input.ticketId);
+      if (lookup.result.outcome !== 'succeeded') return earlier ? reconcileLookupFailure(call, lookup.result, emptyAddNoteOutput, lookup.receipt, 'addNote') : unsentRequestAttempt(this.client, call, lookup.result, emptyAddNoteOutput, 'notFound', input.ticketId);
       if (lookup.message) return newMutationBranch('added', { message: lookup.message, wasCreatedByEarlierAttempt: true }, lookup.receipt);
       if (earlier) return reconcile(call, gorgiasFailure('TRANSPORT', 'addNote', 'an earlier attempt of this Step sent the request and Gorgias shows no message with its external ID, so it is not sent again'), emptyAddNoteOutput, lookup.receipt);
     }

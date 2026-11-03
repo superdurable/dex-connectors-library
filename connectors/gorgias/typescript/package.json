@@ -2,6 +2,7 @@
   "name": "@superdurable/connector-gorgias",
   "version": "0.1.0",
   "description": "Gorgias ticket and customer operations for Dex",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/superdurable/dex-connectors-library.git",
