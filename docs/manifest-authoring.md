@@ -381,6 +381,12 @@ required fields are validated. The project connection stores the selected
 method as `auth_method` in the credential and as `AuthMethodID` in the
 connection configuration.
 
+For generated Python project connections with optional credential fields, a missing or
+blank optional credential resolves as an empty value, while required credentials
+must be nonempty. Blank optional configuration fields use their manifest default
+or type zero value. TypeScript credentials mark optional fields with `?` and
+accept blank strings without runtime credential decoding.
+
 The optional `auth.methodLabel` is the singular noun the setup UI uses for a
 method, such as `Provider`. It is 1 to 32 characters without surrounding
 whitespace, and only a manifest with `methods` declares it.
@@ -1072,14 +1078,19 @@ constructor per branch and per manifest mock, `<Operation>Retry`, and
 
 # Cross-language connector conformance
 
-PostgreSQL, MySQL, and SQL Server use the reviewed database wire protocol
+PostgreSQL, MySQL, SQL Server, and Email use the reviewed native wire protocol
 exemptions in [`conformance/exemptions.yaml`](../conformance/exemptions.yaml).
-Their Python and TypeScript packages use native drivers, so HTTP replay does
+Their Python and TypeScript packages use native protocols, so HTTP replay does
 not apply. Require unit coverage for Go-tested branches, Retry, uncertainty,
-and driver-error classification, plus real database integration tests in CI
-service containers. Follow the Go connector live-test setup and scenarios.
+and protocol-error classification, plus real protocol integration tests in CI
+service containers. Database ports follow Go connector live-test setup and
+scenarios when available. Email ports mirror the Go connector's in-process
+`internal/mailtest` tests, including `send_message_test.go` and
+`search_messages_test.go`, and use the GreenMail `EMAIL_CONNECTOR_TEST_*`
+variables in CI. GreenMail lacks STARTTLS, so protocol unit fakes cover that
+path.
 Developers do not run Docker locally. See
-[`conformance/connectors/README.md`](../conformance/connectors/README.md#database-wire-protocol-exemptions).
+[`conformance/connectors/README.md`](../conformance/connectors/README.md#native-wire-protocol-exemptions).
 
 Python and TypeScript connector packages replay the Go-verified provider
 [scenarios](../conformance/connectors/README.md). Create
