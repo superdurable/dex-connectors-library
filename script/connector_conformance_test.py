@@ -13,6 +13,7 @@ from unittest.mock import patch
 from script import connector_conformance
 
 
+
 class LegacyConformanceSelectionTest(unittest.TestCase):
     def test_go_only_change_warns_for_existing_package(self) -> None:
         with tempfile.TemporaryDirectory() as directory, patch.object(connector_conformance, "ROOT", Path(directory)), patch.object(connector_conformance, "conformance_exemptions", return_value={}):
@@ -98,6 +99,16 @@ class DatabaseExemptionTest(unittest.TestCase):
 
 
 class CoverageValidationTest(unittest.TestCase):
+    def test_optional_clock_requires_rfc3339_timestamp(self) -> None:
+        cases = json.loads((Path(__file__).resolve().parents[1] / "conformance/runners/clock_cases.json").read_text())
+        for clock in cases["valid"]:
+            with self.subTest(clock=clock):
+                connector_conformance.validate_scenario_clock({"name": "fixed", "clock": clock})
+        for clock in cases["invalid"]:
+            with self.subTest(clock=clock):
+                with self.assertRaises(ValueError):
+                    connector_conformance.validate_scenario_clock({"name": "fixed", "clock": clock})
+
     def validate_fixture(self, scenarios: list[dict[str, object]], error: str) -> None:
         with tempfile.TemporaryDirectory() as directory, patch.object(connector_conformance, "ROOT", Path(directory)), patch.object(connector_conformance, "conformance_exemptions", return_value={}):
             root = Path(directory)

@@ -46,6 +46,29 @@ class HeartbeatContext:
         self.marker = value
 
 
+_CLOCK_FORMAT = re.compile(r"^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,3})?Z$")
+
+
+def scenario_clock(scenario: dict[str, Any]) -> Callable[[], datetime]:
+    """Return the scenario's fixed clock for a connector's clock dependency."""
+    if "clock" not in scenario:
+        return lambda: datetime.now(UTC)
+    clock = scenario["clock"]
+    if not isinstance(clock, str) or not _CLOCK_FORMAT.fullmatch(clock):
+        raise ValueError(f"{scenario['name']}: clock must be an RFC3339 timestamp")
+    try:
+        fixed = datetime.fromisoformat(clock)
+    except ValueError as error:
+        raise ValueError(f"{scenario['name']}: invalid clock timestamp") from error
+    precision = len(clock.split(".", 1)[1]) - 1 if "." in clock else 0
+    formatted = fixed.strftime("%Y-%m-%dT%H:%M:%S")
+    if precision:
+        formatted += "." + f"{fixed.microsecond:06d}"[:precision]
+    if formatted + "Z" != clock:
+        raise ValueError(f"{scenario['name']}: invalid clock timestamp")
+    return lambda: fixed
+
+
 def _keys(value: object, required: set[str], optional: set[str], where: str) -> dict[str, Any]:
     if not isinstance(value, dict) or required - value.keys() or value.keys() - required - optional:
         raise ValueError(f"{where}: missing or unknown fields")
@@ -63,10 +86,12 @@ def load_scenarios(path: Path) -> list[dict[str, Any]]:
         raise ValueError(f"{path}: scenarios must be nonempty")
     for scenario in scenarios:
         _keys(scenario, {"name", "operation", "callId", "input", "exchanges", "expected"},
-              {"idempotencyKey", "attempts", "intermediate", "priorHeartbeat"}, str(path))
+              {"idempotencyKey", "attempts", "intermediate", "priorHeartbeat", "clock"}, str(path))
         if any(not isinstance(scenario[field], str) or not scenario[field]
                for field in ("name", "operation", "callId")):
             raise ValueError(f"{scenario['name']}: invalid Call ID")
+        if "clock" in scenario:
+            scenario_clock(scenario)
         if not isinstance(scenario["input"], dict) or not isinstance(scenario["exchanges"], list):
             raise TypeError(f"{scenario['name']}: invalid input or exchanges")
         for exchange in scenario["exchanges"]:

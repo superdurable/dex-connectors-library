@@ -23,14 +23,21 @@ type httpClientOption struct{ client *http.Client }
 
 func (option httpClientOption) applyClientOption(client *Client) { client.httpClient = option.client }
 
+type clockOption struct{ now func() time.Time }
+
+func (option clockOption) applyClientOption(client *Client) { client.now = option.now }
+
 // WithHTTPClient supplies a transport. New copies the client, preserves a nonzero timeout, and disables redirects.
 func WithHTTPClient(client *http.Client) Option { return httpClientOption{client} }
+
+func withClock(now func() time.Time) Option { return clockOption{now} }
 
 // Client holds immutable HTTP configuration and is safe for concurrent calls.
 type Client struct {
 	baseURL          string
 	maxResponseBytes int64
 	httpClient       *http.Client
+	now              func() time.Time
 }
 
 // ListStoryIDsInput selects one feed snapshot. It does not select a historical time window.
@@ -107,9 +114,12 @@ func New(config Config, _ sdkgo.CredentialProvider[Credentials], options ...Opti
 	if err != nil {
 		return nil, fmt.Errorf("Hacker News base URL: %w", err)
 	}
-	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes}
+	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, now: time.Now}
 	for _, option := range options {
 		option.applyClientOption(client)
+	}
+	if client.now == nil {
+		return nil, errors.New("Hacker News clock is required")
 	}
 	client.httpClient = providerhttp.NewProviderHTTPClient(client.httpClient, config.Timeout)
 	return client, nil
@@ -141,11 +151,11 @@ func (operation ListStoryIDsOperation) Invoke(call sdkgo.Call, input ListStoryID
 		return failedBranch[StoryIDs]("listStoryIDs", ListStoryIDsBranchDefect, sdkgo.FailureValidation, "limit must be from 1 through 500")
 	}
 	return getJSON(operation.client, call, "listStoryIDs", "/"+input.Feed+"stories.json", func(body []byte) sdkgo.QueryAttempt[StoryIDs] {
-		return decodeStoryIDs(body, input.Limit)
+		return decodeStoryIDs(body, input.Limit, operation.client.now)
 	})
 }
 
-func decodeStoryIDs(body []byte, limit int) sdkgo.QueryAttempt[StoryIDs] {
+func decodeStoryIDs(body []byte, limit int, now func() time.Time) sdkgo.QueryAttempt[StoryIDs] {
 	var ids []int64
 	if err := json.Unmarshal(body, &ids); err != nil || ids == nil {
 		return failedBranch[StoryIDs]("listStoryIDs", ListStoryIDsBranchInvalidResponse, sdkgo.FailureProtocol, "Hacker News returned an invalid feed")
@@ -157,7 +167,7 @@ func decodeStoryIDs(body []byte, limit int) sdkgo.QueryAttempt[StoryIDs] {
 	}
 	result := StoryIDs{
 		IDs:     ids[:min(limit, len(ids))],
-		HasMore: len(ids) > limit, ObservedAt: time.Now().UTC(),
+		HasMore: len(ids) > limit, ObservedAt: now().UTC(),
 	}
 	return sdkgo.NewQueryBranch(ListStoryIDsBranchListed, result, nil, sdkgo.Receipt{})
 }
@@ -219,7 +229,7 @@ func getJSON[T any](client *Client, call sdkgo.Call, operation, path string, dec
 		if response.StatusCode == http.StatusTooManyRequests {
 			kind = sdkgo.FailureRateLimit
 		}
-		return sdkgo.NewQueryRetry[T](failure(operation, kind, "Hacker News is temporarily unavailable"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
+		return sdkgo.NewQueryRetry[T](failure(operation, kind, "Hacker News is temporarily unavailable"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), client.now()))
 	case response.StatusCode == http.StatusNotFound && operation == "getItem":
 		return failedBranch[T](operation, GetItemBranchNotFound, sdkgo.FailureNotFound, "Hacker News resource was not found")
 	case response.StatusCode != http.StatusOK:
