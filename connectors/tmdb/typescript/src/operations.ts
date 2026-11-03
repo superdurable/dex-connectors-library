@@ -53,7 +53,7 @@ function failed<T>(operation: string, branch: string, kind: Failure['kind'], zer
   return newQueryBranch(branch, zero, {}, { provider: 'tmdb', operation, kind, message });
 }
 
-function queryEscape(value: string): string { return encodeURIComponent(value).replace(/%20/g, '+').replace(/~/g, '%7E').replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`); }
+function queryEscape(value: string): string { return encodeURIComponent(value).replace(/%20/g, '+').replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`); }
 
 function decodePage(body: Uint8Array): MoviePage {
   const raw = JSON.parse(Buffer.from(body).toString('utf8')) as unknown;
@@ -62,6 +62,7 @@ function decodePage(body: Uint8Array): MoviePage {
 }
 
 function decodeMovie(raw: unknown): Movie {
+  if (raw === null) return { ...emptyMovie };
   const object = asObject(raw);
   return { id: intField(object, 'id'), title: stringField(object, 'title'), overview: stringField(object, 'overview'), release_date: stringField(object, 'release_date') };
 }

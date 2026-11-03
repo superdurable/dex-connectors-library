@@ -27,3 +27,29 @@ it('uses the configured request timeout and rejects an oversized successful resp
   expect(result.branch).toBe('invalidResponse');
   expect(result.failure?.kind).toBe('RESPONSE_TOO_LARGE');
 });
+
+it('keeps a tilde unescaped in a movie search query', async () => {
+  let observedURL = '';
+  const client = new TMDBClient({ baseUrl: 'http://127.0.0.1:29800/3' }, {
+    resolve: async () => ({ apiKey: new SecretString('test-secret-token') }),
+  }, { send: async request => {
+    observedURL = request.url;
+    return { status: 200, headers: {}, body: Buffer.from('{"page":1,"results":[]}') };
+  } });
+  const result = await client.searchMovies().invoke(call, { query: 'a~b', page: 1 });
+  expect(observedURL).toBe('http://127.0.0.1:29800/3/search/movie?page=1&query=a~b');
+  expect(result.kind).toBe('branch');
+  if (result.kind !== 'branch') throw new Error('expected searched branch');
+  expect(result.branch).toBe('searched');
+});
+
+it('decodes a null search result as a zero movie', async () => {
+  const client = new TMDBClient({ baseUrl: 'http://127.0.0.1:29800/3' }, {
+    resolve: async () => ({ apiKey: new SecretString('test-secret-token') }),
+  }, { send: async () => ({ status: 200, headers: {}, body: Buffer.from('{"page":1,"results":[null]}') }) });
+  const result = await client.searchMovies().invoke(call, { query: 'Jack Reacher', page: 1 });
+  expect(result.kind).toBe('branch');
+  if (result.kind !== 'branch') throw new Error('expected searched branch');
+  expect(result.branch).toBe('searched');
+  expect(result.value?.results).toEqual([{ id: 0, title: '', overview: '', release_date: '' }]);
+});
