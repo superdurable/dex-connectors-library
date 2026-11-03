@@ -2843,6 +2843,195 @@
       ],
       "name": "addEmployee-unavailable-then-created",
       "operation": "addEmployee"
+    },
+    {
+      "callId": "6c9e932e-fe09-5f01-8889-39650948771e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees/140",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "employeeId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "6c9e932e-fe09-5f01-8889-39650948771e",
+      "input": {
+        "fields": {
+          "customITProvisioning": "Pending"
+        },
+        "firstName": "Sam",
+        "hireDate": "2026-10-01",
+        "homeEmail": "sam@home.example.com",
+        "lastName": "Park",
+        "preferredName": "Samuel",
+        "workEmail": "sam@example.com"
+      },
+      "name": "addEmployee-read-back-missing",
+      "operation": "addEmployee",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "6c9e932e-fe09-5f01-8889-39650948771e",
+        "providerId": "140",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "6c9e932e-fe09-5f01-8889-39650948771e",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "employeeId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "6c9e932e-fe09-5f01-8889-39650948771e",
+      "input": {
+        "fields": {
+          "customITProvisioning": "Pending"
+        },
+        "firstName": "Sam",
+        "hireDate": "2026-10-01",
+        "homeEmail": "sam@home.example.com",
+        "lastName": "Park",
+        "preferredName": "Samuel",
+        "workEmail": "sam@example.com"
+      },
+      "name": "addEmployee-no-resend",
+      "operation": "addEmployee",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "6c9e932e-fe09-5f01-8889-39650948771e",
+        "state": "claimed"
+      }
+    },
+    {
+      "attempts": 2,
+      "callId": "040acc95-2028-5ed8-8c49-215b4fa87426",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"123\",\"workEmail\":\"old@example.com\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees/123",
+          "query": {
+            "fields": [
+              "workEmail"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/employees/123",
+          "requestBody": {
+            "workEmail": "ava@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{\"id\":\"123\",\"workEmail\":\"ava@example.com\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees/123",
+          "query": {
+            "fields": [
+              "workEmail"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "employee": {
+            "employeeId": "123",
+            "fields": {
+              "workEmail": "ava@example.com"
+            }
+          },
+          "wasAlreadyApplied": true
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "040acc95-2028-5ed8-8c49-215b4fa87426",
+      "input": {
+        "employeeId": "123",
+        "fields": {
+          "workEmail": "ava@example.com"
+        }
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "updateEmployee-write-503-then-applied",
+      "operation": "updateEmployee"
     }
   ],
   "schemaVersion": 1
