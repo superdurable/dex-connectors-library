@@ -366,6 +366,13 @@ follows up on their open ticket about an issue or creates one, sets its
 priority, adds one internal triage note, and optionally emails the customer
 an acknowledgement.
 
+The [Python package](python/README.md) implements all six operations at
+`v0.1.0`. Its [ticket triage example](python/examples/triage_issue/README.md)
+binds the static `gorgias` connection, reads a ticket and its latest messages,
+and has a real Dex Worker and Client integration test. The Python conformance
+suite replays Go-recorded provider requests, branches, retries, and uncertainty.
+Live Gorgias behavior for the Python package has not been verified.
+
 ## Verification
 
 ```bash
