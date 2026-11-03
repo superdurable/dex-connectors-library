@@ -251,6 +251,16 @@ twice across Flows needs its own guard, such as a `MERGE` keyed by a business ID
 aggregate over a usage table, waits on a durable Timer between status reads, and cancels the
 statement when its wait budget runs out. A rejected statement fails the Flow.
 
+### Python package
+
+Install `dex-connector-snowflake==0.1.0` for typed Python factories for all three operations.
+[`python/examples/account_usage_summary`](python/examples/account_usage_summary/README.md)
+contains two runnable Flows with the static `snowflake-warehouse` connection: one submits a
+statement and reads a result that is ready immediately, and the other cancels a known handle.
+The Python Worker resolves the manifest-selected key-pair or programmatic access token credential
+for every call. Its Dex integration test runs both Flows through a real Worker and Client against
+an inert SQL API stand-in. Long-running status polling remains demonstrated by the Go Flow above.
+
 ## Verification
 
 ```bash

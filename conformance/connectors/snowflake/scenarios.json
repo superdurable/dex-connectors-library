@@ -1,0 +1,1597 @@
+{
+  "connector": "snowflake",
+  "scenarios": [
+    {
+      "callId": "b538db50-a7a6-5df9-a65e-65164301c8b6",
+      "exchanges": [
+        {
+          "body": "{\"statementHandle\":\"00000000-0000-4000-8000-000000000003\",\"createdOn\":1790750400000}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/statements",
+          "query": {
+            "async": [
+              "true"
+            ],
+            "requestId": [
+              "b538db50-a7a6-5df9-a65e-65164301c8b6"
+            ],
+            "retry": [
+              "true"
+            ]
+          },
+          "requestBody": {
+            "bindings": {
+              "1": {
+                "type": "TEXT",
+                "value": "128"
+              }
+            },
+            "database": "ANALYTICS",
+            "parameters": {
+              "MULTI_STATEMENT_COUNT": "1"
+            },
+            "role": "DEX_REPORTING",
+            "schema": "BILLING",
+            "statement": "SELECT ? AS EVENT_COUNT",
+            "timeout": 3600,
+            "warehouse": "REPORTING_WH"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 202
+        }
+      ],
+      "expected": {
+        "branch": "submitted",
+        "failureKind": "",
+        "output": {
+          "statementHandle": "00000000-0000-4000-8000-000000000003",
+          "submittedAt": "2026-09-30T06:40:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b538db50-a7a6-5df9-a65e-65164301c8b6",
+      "input": {
+        "parameters": [
+          "128"
+        ],
+        "statement": "SELECT ? AS EVENT_COUNT"
+      },
+      "name": "submit accepted",
+      "operation": "submitStatement"
+    },
+    {
+      "callId": "b538db50-a7a6-5df9-a65e-65164301c8b6",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"001003\",\"sqlState\":\"42000\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/statements",
+          "query": {
+            "async": [
+              "true"
+            ],
+            "requestId": [
+              "b538db50-a7a6-5df9-a65e-65164301c8b6"
+            ],
+            "retry": [
+              "true"
+            ]
+          },
+          "requestBody": {
+            "bindings": {
+              "1": {
+                "type": "TEXT",
+                "value": "128"
+              }
+            },
+            "database": "ANALYTICS",
+            "parameters": {
+              "MULTI_STATEMENT_COUNT": "1"
+            },
+            "role": "DEX_REPORTING",
+            "schema": "BILLING",
+            "statement": "SELECT ? AS EVENT_COUNT",
+            "timeout": 3600,
+            "warehouse": "REPORTING_WH"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "statementHandle": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b538db50-a7a6-5df9-a65e-65164301c8b6",
+      "input": {
+        "parameters": [
+          "128"
+        ],
+        "statement": "SELECT ? AS EVENT_COUNT"
+      },
+      "name": "submit rejected",
+      "operation": "submitStatement"
+    },
+    {
+      "callId": "b538db50-a7a6-5df9-a65e-65164301c8b6",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "statementHandle": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b538db50-a7a6-5df9-a65e-65164301c8b6",
+      "input": {
+        "statement": ""
+      },
+      "name": "submit defect",
+      "operation": "submitStatement"
+    },
+    {
+      "callId": "b538db50-a7a6-5df9-a65e-65164301c8b6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/statements",
+          "query": {
+            "async": [
+              "true"
+            ],
+            "requestId": [
+              "b538db50-a7a6-5df9-a65e-65164301c8b6"
+            ],
+            "retry": [
+              "true"
+            ]
+          },
+          "requestBody": {
+            "bindings": {
+              "1": {
+                "type": "TEXT",
+                "value": "128"
+              }
+            },
+            "database": "ANALYTICS",
+            "parameters": {
+              "MULTI_STATEMENT_COUNT": "1"
+            },
+            "role": "DEX_REPORTING",
+            "schema": "BILLING",
+            "statement": "SELECT ? AS EVENT_COUNT",
+            "timeout": 3600,
+            "warehouse": "REPORTING_WH"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b538db50-a7a6-5df9-a65e-65164301c8b6",
+      "input": {
+        "parameters": [
+          "128"
+        ],
+        "statement": "SELECT ? AS EVENT_COUNT"
+      },
+      "name": "submit rate limit",
+      "operation": "submitStatement"
+    },
+    {
+      "callId": "b538db50-a7a6-5df9-a65e-65164301c8b6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/statements",
+          "query": {
+            "async": [
+              "true"
+            ],
+            "requestId": [
+              "b538db50-a7a6-5df9-a65e-65164301c8b6"
+            ],
+            "retry": [
+              "true"
+            ]
+          },
+          "requestBody": {
+            "bindings": {
+              "1": {
+                "type": "TEXT",
+                "value": "128"
+              }
+            },
+            "database": "ANALYTICS",
+            "parameters": {
+              "MULTI_STATEMENT_COUNT": "1"
+            },
+            "role": "DEX_REPORTING",
+            "schema": "BILLING",
+            "statement": "SELECT ? AS EVENT_COUNT",
+            "timeout": 3600,
+            "warehouse": "REPORTING_WH"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b538db50-a7a6-5df9-a65e-65164301c8b6",
+      "input": {
+        "parameters": [
+          "128"
+        ],
+        "statement": "SELECT ? AS EVENT_COUNT"
+      },
+      "name": "submit server failure",
+      "operation": "submitStatement"
+    },
+    {
+      "callId": "b538db50-a7a6-5df9-a65e-65164301c8b6",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/statements",
+          "query": {
+            "async": [
+              "true"
+            ],
+            "requestId": [
+              "b538db50-a7a6-5df9-a65e-65164301c8b6"
+            ],
+            "retry": [
+              "true"
+            ]
+          },
+          "requestBody": {
+            "bindings": {
+              "1": {
+                "type": "TEXT",
+                "value": "128"
+              }
+            },
+            "database": "ANALYTICS",
+            "parameters": {
+              "MULTI_STATEMENT_COUNT": "1"
+            },
+            "role": "DEX_REPORTING",
+            "schema": "BILLING",
+            "statement": "SELECT ? AS EVENT_COUNT",
+            "timeout": 3600,
+            "warehouse": "REPORTING_WH"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b538db50-a7a6-5df9-a65e-65164301c8b6",
+      "input": {
+        "parameters": [
+          "128"
+        ],
+        "statement": "SELECT ? AS EVENT_COUNT"
+      },
+      "name": "submit transport",
+      "operation": "submitStatement"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"statementHandle\":\"00000000-0000-4000-8000-000000000003\",\"resultSetMetaData\":{\"format\":\"jsonv2\",\"rowType\":[{\"name\":\"EVENT_COUNT\",\"type\":\"fixed\",\"precision\":18,\"nullable\":false}],\"partitionInfo\":[{}],\"numRows\":1},\"data\":[[\"128\"]]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/statements/00000000-0000-4000-8000-000000000003",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "completed",
+        "failureKind": "",
+        "output": {
+          "columns": [
+            {
+              "name": "EVENT_COUNT",
+              "nullable": false,
+              "precision": 18,
+              "type": "fixed"
+            }
+          ],
+          "partition": 0,
+          "partitionCount": 1,
+          "rows": [
+            {
+              "EVENT_COUNT": "128"
+            }
+          ],
+          "statementHandle": "00000000-0000-4000-8000-000000000003",
+          "totalRowCount": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "statementHandle": "00000000-0000-4000-8000-000000000003"
+      },
+      "name": "result completed",
+      "operation": "getStatementResult"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"statementHandle\":\"00000000-0000-4000-8000-000000000003\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/statements/00000000-0000-4000-8000-000000000003",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 202
+        }
+      ],
+      "expected": {
+        "branch": "running",
+        "failureKind": "",
+        "output": {
+          "columns": [],
+          "partition": 0,
+          "rows": [],
+          "statementHandle": "00000000-0000-4000-8000-000000000003"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "statementHandle": "00000000-0000-4000-8000-000000000003"
+      },
+      "name": "result running",
+      "operation": "getStatementResult"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"statementHandle\":\"00000000-0000-4000-8000-000000000003\",\"resultSetMetaData\":{\"format\":\"jsonv2\",\"rowType\":[{\"name\":\"EVENT_COUNT\",\"type\":\"fixed\",\"precision\":18,\"nullable\":false}],\"partitionInfo\":[{}],\"numRows\":1},\"data\":[[\"128\"],[\"129\"]]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/statements/00000000-0000-4000-8000-000000000003",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "truncated",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "columns": [
+            {
+              "name": "EVENT_COUNT",
+              "nullable": false,
+              "precision": 18,
+              "type": "fixed"
+            }
+          ],
+          "partition": 0,
+          "partitionCount": 1,
+          "rows": [
+            {
+              "EVENT_COUNT": "128"
+            }
+          ],
+          "statementHandle": "00000000-0000-4000-8000-000000000003",
+          "totalRowCount": 1,
+          "truncated": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "statementHandle": "00000000-0000-4000-8000-000000000003"
+      },
+      "name": "result truncated",
+      "operation": "getStatementResult"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "[[\"42\"]]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/statements/00000000-0000-4000-8000-000000000003",
+          "query": {
+            "partition": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "completed",
+        "failureKind": "",
+        "output": {
+          "columns": [
+            {
+              "name": "EVENT_COUNT",
+              "nullable": false,
+              "precision": 18,
+              "type": "fixed"
+            }
+          ],
+          "partition": 1,
+          "rows": [
+            {
+              "EVENT_COUNT": "42"
+            }
+          ],
+          "statementHandle": "00000000-0000-4000-8000-000000000003"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "columns": [
+          {
+            "name": "EVENT_COUNT",
+            "nullable": false,
+            "precision": 18,
+            "type": "fixed"
+          }
+        ],
+        "partition": 1,
+        "statementHandle": "00000000-0000-4000-8000-000000000003"
+      },
+      "name": "result later partition",
+      "operation": "getStatementResult"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"000709\",\"sqlState\":\"02000\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/statements/00000000-0000-4000-8000-000000000003",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "columns": [],
+          "partition": 0,
+          "rows": [],
+          "statementHandle": "00000000-0000-4000-8000-000000000003"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "statementHandle": "00000000-0000-4000-8000-000000000003"
+      },
+      "name": "result rejected",
+      "operation": "getStatementResult"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"statementHandle\":\"00000000-0000-4000-8000-000000000003\",\"data\":[[\"128\"]]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/statements/00000000-0000-4000-8000-000000000003",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "columns": [],
+          "partition": 0,
+          "rows": [],
+          "statementHandle": "00000000-0000-4000-8000-000000000003"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "statementHandle": "00000000-0000-4000-8000-000000000003"
+      },
+      "name": "result invalid response",
+      "operation": "getStatementResult"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "columns": [],
+          "partition": 0,
+          "rows": [],
+          "statementHandle": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "statementHandle": "bad"
+      },
+      "name": "result defect",
+      "operation": "getStatementResult"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/statements/00000000-0000-4000-8000-000000000003",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "statementHandle": "00000000-0000-4000-8000-000000000003"
+      },
+      "name": "result rate limit",
+      "operation": "getStatementResult"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/statements/00000000-0000-4000-8000-000000000003",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "statementHandle": "00000000-0000-4000-8000-000000000003"
+      },
+      "name": "result server failure",
+      "operation": "getStatementResult"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/statements/00000000-0000-4000-8000-000000000003",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "statementHandle": "00000000-0000-4000-8000-000000000003"
+      },
+      "name": "result transport",
+      "operation": "getStatementResult"
+    },
+    {
+      "callId": "b595b4b4-ed9d-5454-9890-6235e1c6cbcc",
+      "exchanges": [
+        {
+          "body": "{\"statementHandle\":\"00000000-0000-4000-8000-000000000003\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/statements/00000000-0000-4000-8000-000000000003/cancel",
+          "query": {
+            "requestId": [
+              "b595b4b4-ed9d-5454-9890-6235e1c6cbcc"
+            ]
+          },
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "canceled",
+        "failureKind": "",
+        "output": {
+          "statementHandle": "00000000-0000-4000-8000-000000000003"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b595b4b4-ed9d-5454-9890-6235e1c6cbcc",
+      "input": {
+        "statementHandle": "00000000-0000-4000-8000-000000000003"
+      },
+      "name": "cancel accepted",
+      "operation": "cancelStatement"
+    },
+    {
+      "callId": "b595b4b4-ed9d-5454-9890-6235e1c6cbcc",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"000709\",\"sqlState\":\"02000\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/statements/00000000-0000-4000-8000-000000000003/cancel",
+          "query": {
+            "requestId": [
+              "b595b4b4-ed9d-5454-9890-6235e1c6cbcc"
+            ]
+          },
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "statementHandle": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b595b4b4-ed9d-5454-9890-6235e1c6cbcc",
+      "input": {
+        "statementHandle": "00000000-0000-4000-8000-000000000003"
+      },
+      "name": "cancel rejected",
+      "operation": "cancelStatement"
+    },
+    {
+      "callId": "b595b4b4-ed9d-5454-9890-6235e1c6cbcc",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "statementHandle": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b595b4b4-ed9d-5454-9890-6235e1c6cbcc",
+      "input": {
+        "statementHandle": "bad"
+      },
+      "name": "cancel defect",
+      "operation": "cancelStatement"
+    },
+    {
+      "callId": "b595b4b4-ed9d-5454-9890-6235e1c6cbcc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/statements/00000000-0000-4000-8000-000000000003/cancel",
+          "query": {
+            "requestId": [
+              "b595b4b4-ed9d-5454-9890-6235e1c6cbcc"
+            ]
+          },
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b595b4b4-ed9d-5454-9890-6235e1c6cbcc",
+      "input": {
+        "statementHandle": "00000000-0000-4000-8000-000000000003"
+      },
+      "name": "cancel rate limit",
+      "operation": "cancelStatement"
+    },
+    {
+      "callId": "b595b4b4-ed9d-5454-9890-6235e1c6cbcc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/statements/00000000-0000-4000-8000-000000000003/cancel",
+          "query": {
+            "requestId": [
+              "b595b4b4-ed9d-5454-9890-6235e1c6cbcc"
+            ]
+          },
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b595b4b4-ed9d-5454-9890-6235e1c6cbcc",
+      "input": {
+        "statementHandle": "00000000-0000-4000-8000-000000000003"
+      },
+      "name": "cancel server failure",
+      "operation": "cancelStatement"
+    },
+    {
+      "callId": "b595b4b4-ed9d-5454-9890-6235e1c6cbcc",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/statements/00000000-0000-4000-8000-000000000003/cancel",
+          "query": {
+            "requestId": [
+              "b595b4b4-ed9d-5454-9890-6235e1c6cbcc"
+            ]
+          },
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b595b4b4-ed9d-5454-9890-6235e1c6cbcc",
+      "input": {
+        "statementHandle": "00000000-0000-4000-8000-000000000003"
+      },
+      "name": "cancel transport",
+      "operation": "cancelStatement"
+    },
+    {
+      "callId": "b538db50-a7a6-5df9-a65e-65164301c8b6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/statements",
+          "query": {
+            "async": [
+              "true"
+            ],
+            "requestId": [
+              "b538db50-a7a6-5df9-a65e-65164301c8b6"
+            ],
+            "retry": [
+              "true"
+            ]
+          },
+          "requestBody": {
+            "bindings": {
+              "1": {
+                "type": "TEXT",
+                "value": "128"
+              }
+            },
+            "database": "ANALYTICS",
+            "parameters": {
+              "MULTI_STATEMENT_COUNT": "1"
+            },
+            "role": "DEX_REPORTING",
+            "schema": "BILLING",
+            "statement": "SELECT ? AS EVENT_COUNT",
+            "timeout": 3600,
+            "warehouse": "REPORTING_WH"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "statementHandle": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b538db50-a7a6-5df9-a65e-65164301c8b6",
+      "input": {
+        "parameters": [
+          "128"
+        ],
+        "statement": "SELECT ? AS EVENT_COUNT"
+      },
+      "name": "submit unauthorized",
+      "operation": "submitStatement"
+    },
+    {
+      "attempts": 2,
+      "callId": "b538db50-a7a6-5df9-a65e-65164301c8b6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/statements",
+          "query": {
+            "async": [
+              "true"
+            ],
+            "requestId": [
+              "b538db50-a7a6-5df9-a65e-65164301c8b6"
+            ],
+            "retry": [
+              "true"
+            ]
+          },
+          "requestBody": {
+            "bindings": {
+              "1": {
+                "type": "TEXT",
+                "value": "128"
+              }
+            },
+            "database": "ANALYTICS",
+            "parameters": {
+              "MULTI_STATEMENT_COUNT": "1"
+            },
+            "role": "DEX_REPORTING",
+            "schema": "BILLING",
+            "statement": "SELECT ? AS EVENT_COUNT",
+            "timeout": 3600,
+            "warehouse": "REPORTING_WH"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 429
+        },
+        {
+          "body": "{\"statementHandle\":\"00000000-0000-4000-8000-000000000003\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/statements",
+          "query": {
+            "async": [
+              "true"
+            ],
+            "requestId": [
+              "b538db50-a7a6-5df9-a65e-65164301c8b6"
+            ],
+            "retry": [
+              "true"
+            ]
+          },
+          "requestBody": {
+            "bindings": {
+              "1": {
+                "type": "TEXT",
+                "value": "128"
+              }
+            },
+            "database": "ANALYTICS",
+            "parameters": {
+              "MULTI_STATEMENT_COUNT": "1"
+            },
+            "role": "DEX_REPORTING",
+            "schema": "BILLING",
+            "statement": "SELECT ? AS EVENT_COUNT",
+            "timeout": 3600,
+            "warehouse": "REPORTING_WH"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 202
+        }
+      ],
+      "expected": {
+        "branch": "submitted",
+        "failureKind": "",
+        "output": {
+          "statementHandle": "00000000-0000-4000-8000-000000000003"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b538db50-a7a6-5df9-a65e-65164301c8b6",
+      "input": {
+        "parameters": [
+          "128"
+        ],
+        "statement": "SELECT ? AS EVENT_COUNT"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "RATE_LIMIT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "submit retry then accepted",
+      "operation": "submitStatement"
+    },
+    {
+      "attempts": 2,
+      "callId": "b538db50-a7a6-5df9-a65e-65164301c8b6",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/statements",
+          "query": {
+            "async": [
+              "true"
+            ],
+            "requestId": [
+              "b538db50-a7a6-5df9-a65e-65164301c8b6"
+            ],
+            "retry": [
+              "true"
+            ]
+          },
+          "requestBody": {
+            "bindings": {
+              "1": {
+                "type": "TEXT",
+                "value": "128"
+              }
+            },
+            "database": "ANALYTICS",
+            "parameters": {
+              "MULTI_STATEMENT_COUNT": "1"
+            },
+            "role": "DEX_REPORTING",
+            "schema": "BILLING",
+            "statement": "SELECT ? AS EVENT_COUNT",
+            "timeout": 3600,
+            "warehouse": "REPORTING_WH"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "body": "{\"statementHandle\":\"00000000-0000-4000-8000-000000000003\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/statements",
+          "query": {
+            "async": [
+              "true"
+            ],
+            "requestId": [
+              "b538db50-a7a6-5df9-a65e-65164301c8b6"
+            ],
+            "retry": [
+              "true"
+            ]
+          },
+          "requestBody": {
+            "bindings": {
+              "1": {
+                "type": "TEXT",
+                "value": "128"
+              }
+            },
+            "database": "ANALYTICS",
+            "parameters": {
+              "MULTI_STATEMENT_COUNT": "1"
+            },
+            "role": "DEX_REPORTING",
+            "schema": "BILLING",
+            "statement": "SELECT ? AS EVENT_COUNT",
+            "timeout": 3600,
+            "warehouse": "REPORTING_WH"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 202
+        }
+      ],
+      "expected": {
+        "branch": "submitted",
+        "failureKind": "",
+        "output": {
+          "statementHandle": "00000000-0000-4000-8000-000000000003"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b538db50-a7a6-5df9-a65e-65164301c8b6",
+      "input": {
+        "parameters": [
+          "128"
+        ],
+        "statement": "SELECT ? AS EVENT_COUNT"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "submit lost response then accepted",
+      "operation": "submitStatement"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"statementHandle\":\"00000000-0000-4000-8000-000000000003\",\"resultSetMetaData\":{\"format\":\"jsonv2\",\"rowType\":[{\"name\":\"EVENT_COUNT\",\"type\":\"fixed\",\"precision\":18,\"nullable\":false}],\"partitionInfo\":[{}],\"numRows\":1},\"data\":[[\"12abc\"]]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/statements/00000000-0000-4000-8000-000000000003",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "columns": [],
+          "partition": 0,
+          "rows": [],
+          "statementHandle": "00000000-0000-4000-8000-000000000003"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "statementHandle": "00000000-0000-4000-8000-000000000003"
+      },
+      "name": "result invalid value",
+      "operation": "getStatementResult"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"statementHandle\":\"00000000-0000-4000-8000-000000000003\",\"resultSetMetaData\":{\"format\":\"jsonv2\",\"rowType\":[{\"name\":\"ID\",\"type\":\"text\"},{\"name\":\"ID\",\"type\":\"text\"}]},\"data\":[[\"a\",\"b\"]]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/statements/00000000-0000-4000-8000-000000000003",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "columns": [],
+          "partition": 0,
+          "rows": [],
+          "statementHandle": "00000000-0000-4000-8000-000000000003"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "statementHandle": "00000000-0000-4000-8000-000000000003"
+      },
+      "name": "result duplicate column",
+      "operation": "getStatementResult"
+    }
+  ],
+  "schemaVersion": 1
+}
