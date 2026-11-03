@@ -11,6 +11,27 @@ payload = json.load(sys.stdin)
 manifest = payload["manifest"]
 metadata = manifest["metadata"]
 spec = manifest["spec"]
+auth_methods = spec["auth"].get("methods", [])
+
+
+def auth_fields():
+    if not auth_methods:
+        return spec["auth"].get("fields", [])
+    fields = {}
+    for method in auth_methods:
+        for field in method["fields"]:
+            fields.setdefault(field["name"], field)
+    return list(fields.values())
+
+
+def configuration_fields():
+    fields = list(spec["configuration"]["fields"])
+    for method in auth_methods:
+        for field in (method.get("configuration") or {}).get("fields", []):
+            fields.append({**field, "required": False})
+    return fields
+
+
 operations_by_name = {operation["name"]: operation for operation in spec["operations"]}
 operations = [
     operations_by_name[name] for name in spec["languages"]["python"]["operations"]
@@ -403,7 +424,7 @@ def render_config():
         "",
         "from dataclasses import dataclass",
     ]
-    credential_fields = spec["auth"].get("fields", [])
+    credential_fields = auth_fields()
     if any(field["type"] == "secretString" for field in credential_fields):
         lines += ["", "from dex_connectors.sdk import SecretString"]
     lines += [
@@ -413,12 +434,10 @@ def render_config():
         "class Config:",
         "",
     ]
-    config_fields = spec["configuration"]["fields"]
-    config_fields = sorted(
-        config_fields, key=lambda field_info: "default" in field_info
-    )
+    config_fields = configuration_fields()
     if not config_fields:
         lines.append("    pass")
+    rendered_config_fields = []
     for field_info in config_fields:
         name = snake(field_info["name"])
         if field_info["type"] == "duration":
@@ -449,6 +468,15 @@ def render_config():
             raise ValueError(
                 f"unsupported Python configuration type {field_info['type']!r}"
             )
+        if auth_methods and default is None and not field_info["required"]:
+            default = {
+                "string": "''", "url": "''", "enum": "''", "stringList": "()",
+                "integer": "0", "number": "0.0", "boolean": "False", "duration": "0.0",
+            }[field_info["type"]]
+        rendered_config_fields.append((name, field_type, default))
+    for name, field_type, default in sorted(
+        rendered_config_fields, key=lambda field: field[2] is not None
+    ):
         lines.append(
             f"    {name}: {field_type}"
             + (f" = {default}" if default is not None else "")
@@ -465,11 +493,16 @@ def render_config():
             "class Credentials:",
             "",
         ]
+        if auth_methods:
+            lines.append(f"    auth_method_id: str = {quoted(spec['auth']['defaultMethod'])}")
         for field_info in credential_fields:
             field_type = (
                 "SecretString" if field_info["type"] == "secretString" else "str"
             )
-            lines.append(f"    {snake(field_info['name'])}: {field_type}")
+            if auth_methods:
+                lines.append(f"    {snake(field_info['name'])}: {field_type} | None = None")
+            else:
+                lines.append(f"    {snake(field_info['name'])}: {field_type}")
         lines += [
             "",
             f"setattr(Credentials, '__module__', 'dex_connectors.{package_name}.client')",
@@ -633,18 +666,16 @@ def render_connection():
         "",
         "import httpx",
         "from dex_connectors.sdk import "
-        + ", ".join(
-            imports + (["Call", "SecretString"] if spec["auth"].get("fields") else [])
-        ),
+        + ", ".join(imports + (["Call", "SecretString"] if auth_fields() else [])),
         "from dex_connectors.sdk.projectconfig import "
         + (
             "ConnectionKey, LoadedProject"
-            if spec["auth"].get("fields")
+            if auth_fields()
             else "LoadedProject"
         ),
         "",
         "from ..client import Client, Config"
-        + (", Credentials" if spec["auth"].get("fields") else ""),
+        + (", Credentials" if auth_fields() else ""),
         "from .definitions import CONNECTOR_ID, " + ", ".join(definition_names),
         "from ..models import " + ", ".join(model_names),
         "",
@@ -738,7 +769,7 @@ def render_connection():
         f"setattr(new_connection_with_operations, '__module__', 'dex_connectors.{package_name}.connection')",
         "",
     ]
-    credential_fields = spec["auth"].get("fields", [])
+    credential_fields = auth_fields()
     if credential_fields:
         lines += [
             "",
@@ -747,34 +778,68 @@ def render_connection():
             "    def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:",
             "        self.project = project",
             "        self.key = key",
+        ]
+        lines += [
             "",
             "    async def resolve(self, call: Call) -> Credentials:",
             "        material = await self.project.resolve_credential(self.key, str(call.id))",
         ]
-        for field_info in credential_fields:
-            name = snake(field_info["name"])
+        if auth_methods:
             lines += [
-                f"        {name} = material.get({quoted(field_info['name'])})",
+                "        selected_method = material.get('auth_method')",
+                "        if selected_method is None:",
+                "            selected_method = ''",
+                "        if not isinstance(selected_method, str):",
+                f"            raise ValueError({quoted(connection_label + ' credential auth_method is invalid')})",
+                "        method = selected_method or "
+                + quoted(spec["auth"]["defaultMethod"]),
+                "        values: dict[str, Any] = {'auth_method_id': method}",
             ]
-            if field_info["required"]:
+            for index, method in enumerate(auth_methods):
+                lines.append(("        if" if index == 0 else "        elif") + f" method == {quoted(method['id'])}:")
+                for field_info in method["fields"]:
+                    name = snake(field_info["name"])
+                    lines += [
+                        f"            {name} = material.get({quoted(field_info['name'])})",
+                        f"            if {name} is not None and not isinstance({name}, str):",
+                        f"                raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' has an invalid type')})",
+                    ]
+                    if field_info["required"]:
+                        lines += [
+                            f"            if not {name}:",
+                            f"                raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' is required')})",
+                        ]
+                    expression = f"SecretString({name})" if field_info["type"] == "secretString" else name
+                    lines.append(f"            if {name}:")
+                    lines.append(f"                values[{quoted(name)}] = {expression}")
+            lines += [
+                "        else:",
+                f"            raise ValueError({quoted(connection_label + ' credential auth_method is invalid')})",
+                "        return Credentials(**values)", "",
+            ]
+        else:
+            for field_info in credential_fields:
+                name = snake(field_info["name"])
                 lines += [
-                    f"        if not isinstance({name}, str) or not {name}:",
-                    f"            raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' is required')})",
+                    f"        {name} = material.get({quoted(field_info['name'])})",
                 ]
-            else:
-                lines += [
-                    f"        if {name} is None:",
-                    f"            {name} = ''",
-                    f"        if not isinstance({name}, str):",
-                    f"            raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' has an invalid type')})",
-                ]
-        values = [
-            f"SecretString({snake(field_info['name'])})"
-            if field_info["type"] == "secretString"
-            else snake(field_info["name"])
-            for field_info in credential_fields
-        ]
-        lines += ["        return Credentials(" + ", ".join(values) + ")", ""]
+                if field_info["required"]:
+                    lines += [
+                        f"        if not isinstance({name}, str) or not {name}:",
+                        f"            raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' is required')})",
+                    ]
+                else:
+                    lines += [
+                        f"        if {name} is None:",
+                        f"            {name} = ''",
+                        f"        if not isinstance({name}, str):",
+                        f"            raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' has an invalid type')})",
+                    ]
+            values = [
+                f"SecretString({snake(field_info['name'])})" if field_info["type"] == "secretString" else snake(field_info["name"])
+                for field_info in credential_fields
+            ]
+            lines += ["        return Credentials(" + ", ".join(values) + ")", ""]
     lines += [
         "",
         "def new_project_connection(",
@@ -813,10 +878,10 @@ def render_connection():
         "",
         "def _decode_config(value: dict[str, Any]) -> Config:",
     ]
-    config_fields = spec["configuration"]["fields"]
+    config_fields = configuration_fields()
     # Preserve generated behavior for published packages without optional credentials.
-    has_optional_credential = any(
-        not field_info["required"] for field_info in spec["auth"].get("fields", [])
+    has_optional_credential = not auth_methods and any(
+        not field_info["required"] for field_info in credential_fields
     )
     allowed = (
         "{"

@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // Follows the shared superdurable.io header spec; resync markup and styles.css `.sd-*` rules together.
 
@@ -12,12 +12,16 @@ type SuperDurableNavigationLink = {
 };
 
 const superDurableHomeUrl = "https://superdurable.io/";
-const superDurableGitHubUrl = "https://github.com/superdurable";
+const dexRepositoryGitHubUrl = "https://github.com/superdurable/dex";
 const dexLogInUrl = "https://dex.superdurable.io/login";
-const dexSignUpUrl = "https://dex.superdurable.io/register";
+const dexRepositoryApiUrl = "https://api.github.com/repos/superdurable/dex";
+const starCountCacheKey = "superdurable-dex-star-count";
+// Unauthenticated GitHub API allows 60 requests per hour per IP.
+const starCountCacheMilliseconds = 60 * 60 * 1000;
+const failedFetchCacheMilliseconds = 10 * 60 * 1000;
+const starCountFetchTimeoutMilliseconds = 5000;
 
 const superDurableNavigationLinks: SuperDurableNavigationLink[] = [
-  { label: "Dex Engine", href: "https://superdurable.io/dex-engine/" },
   { label: "Dex Cloud", href: "https://superdurable.io/dex-cloud/" },
   { label: "Dex Connectors", href: "https://connectors.superdurable.io/", isCurrentSite: true },
   { label: "Dex Docs", href: "https://docs.superdurable.io" },
@@ -47,14 +51,126 @@ export function SiteHeader() {
           <SuperDurableNavigationAnchors />
         </nav>
         <div className="sd-header-actions">
-          <a className="sd-quiet-link" href={superDurableGitHubUrl}>GitHub</a>
+          <GitHubRepositoryLink />
           <a className="sd-quiet-link" href={dexLogInUrl}>Log in</a>
-          <a className="sd-button sd-button-primary sd-button-small" href={dexSignUpUrl}>Sign up</a>
         </div>
         <MobileMenu />
       </div>
     </header>
   );
+}
+
+function GitHubRepositoryLink() {
+  const starCount = useDexRepositoryStarCount();
+  const accessibleLabel =
+    starCount === null ? undefined : `GitHub, ${formatStarCount(starCount)} ${starCount === 1 ? "star" : "stars"}`;
+  return (
+    <a className="sd-github-link" href={dexRepositoryGitHubUrl} aria-label={accessibleLabel}>
+      <span className="sd-github-link-name">
+        <svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16">
+          <path
+            fill="currentColor"
+            d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8Z"
+          />
+        </svg>
+        GitHub
+      </span>
+      {starCount === null ? null : (
+        <span className="sd-github-link-stars">
+          <svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="14" height="14">
+            <path
+              fill="currentColor"
+              d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"
+            />
+          </svg>
+          {formatStarCount(starCount)}
+        </span>
+      )}
+    </a>
+  );
+}
+
+// The header renders without a count when GitHub is unreachable or rate limited.
+function useDexRepositoryStarCount(): number | null {
+  const [starCount, setStarCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    const cachedStarCount = readCachedStarCount();
+    if (cachedStarCount !== undefined) {
+      setStarCount(cachedStarCount);
+      return;
+    }
+    const controller = new AbortController();
+    const fetchTimeout = window.setTimeout(() => controller.abort(), starCountFetchTimeoutMilliseconds);
+    fetch(dexRepositoryApiUrl, { signal: controller.signal, headers: { Accept: "application/vnd.github+json" } })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((repository: unknown) => {
+        const fetchedStarCount = (repository as { stargazers_count?: unknown } | null)?.stargazers_count;
+        if (isValidStarCount(fetchedStarCount)) {
+          setStarCount(fetchedStarCount);
+          writeCachedStarCount(fetchedStarCount);
+        } else {
+          writeFailedFetchUnlessCountCached();
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          writeFailedFetchUnlessCountCached();
+        }
+      })
+      .finally(() => window.clearTimeout(fetchTimeout));
+    return () => {
+      window.clearTimeout(fetchTimeout);
+      controller.abort();
+    };
+  }, []);
+
+  return starCount;
+}
+
+// Returns undefined on a cache miss and null for a cached failure.
+function readCachedStarCount(): number | null | undefined {
+  try {
+    const cached = JSON.parse(window.localStorage.getItem(starCountCacheKey) ?? "null") as
+      | { starCount?: unknown; fetchedAt?: unknown }
+      | null;
+    if (!cached || typeof cached.fetchedAt !== "number") {
+      return undefined;
+    }
+    const cacheAgeMilliseconds = Date.now() - cached.fetchedAt;
+    if (cached.starCount === null) {
+      return cacheAgeMilliseconds >= 0 && cacheAgeMilliseconds < failedFetchCacheMilliseconds ? null : undefined;
+    }
+    if (isValidStarCount(cached.starCount) && cacheAgeMilliseconds >= 0 && cacheAgeMilliseconds < starCountCacheMilliseconds) {
+      return cached.starCount;
+    }
+  } catch {
+    // Storage may be blocked or hold malformed data; fetch instead.
+  }
+  return undefined;
+}
+
+function writeCachedStarCount(starCount: number | null) {
+  try {
+    window.localStorage.setItem(starCountCacheKey, JSON.stringify({ starCount, fetchedAt: Date.now() }));
+  } catch {
+    // Storage may be blocked; the next visit fetches again.
+  }
+}
+
+// Another page on this origin may have cached a fresh count meanwhile; keep it.
+function writeFailedFetchUnlessCountCached() {
+  if (typeof readCachedStarCount() !== "number") {
+    writeCachedStarCount(null);
+  }
+}
+
+function isValidStarCount(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+}
+
+function formatStarCount(starCount: number): string {
+  return starCount >= 1000 ? `${Math.round(starCount / 100) / 10}k` : String(starCount);
 }
 
 // The native <details> stays uncontrolled so it toggles without script; listeners only add closing paths.
@@ -92,9 +208,8 @@ function MobileMenu() {
       <summary ref={summaryRef}>Menu</summary>
       <nav aria-label="Mobile navigation">
         <SuperDurableNavigationAnchors />
-        <a href={superDurableGitHubUrl}>GitHub</a>
+        <a href={dexRepositoryGitHubUrl}>GitHub</a>
         <a href={dexLogInUrl}>Log in</a>
-        <a className="sd-button sd-button-primary" href={dexSignUpUrl}>Sign up</a>
       </nav>
     </details>
   );
