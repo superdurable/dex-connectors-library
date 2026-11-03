@@ -2321,6 +2321,116 @@
       ],
       "name": "addNote-retry-then-added",
       "operation": "addNote"
+    },
+    {
+      "callId": "703d7ec0-692e-50db-a914-86d5fecf7dcc",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "ticket": {
+            "createdAt": "0001-01-01T00:00:00Z",
+            "id": 0,
+            "priority": 0,
+            "status": 0,
+            "updatedAt": "0001-01-01T00:00:00Z"
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "703d7ec0-692e-50db-a914-86d5fecf7dcc",
+      "input": {
+        "description": "Please check this address",
+        "requester": {
+          "email": ".a@x.com"
+        },
+        "subject": "Email validation"
+      },
+      "name": "createTicket-invalid-email-leading-dot",
+      "operation": "createTicket"
+    },
+    {
+      "callId": "703d7ec0-692e-50db-a914-86d5fecf7dcc",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "ticket": {
+            "createdAt": "0001-01-01T00:00:00Z",
+            "id": 0,
+            "priority": 0,
+            "status": 0,
+            "updatedAt": "0001-01-01T00:00:00Z"
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "703d7ec0-692e-50db-a914-86d5fecf7dcc",
+      "input": {
+        "description": "Please check this address",
+        "requester": {
+          "email": "a.@x.com"
+        },
+        "subject": "Email validation"
+      },
+      "name": "createTicket-invalid-email-trailing-dot",
+      "operation": "createTicket"
+    },
+    {
+      "callId": "7cef9582-bccd-5a39-bfde-3dc0bac4728c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "tickets": [],
+          "totalMatched": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "requesterEmail": ".a@x.com",
+        "statuses": [
+          2
+        ]
+      },
+      "name": "searchTickets-invalid-email-leading-dot",
+      "operation": "searchTickets"
+    },
+    {
+      "callId": "7be4ca47-7791-5250-920b-ec9a7104c6a4",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "tickets": [],
+          "totalMatched": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "requesterEmail": "a.@x.com",
+        "statuses": [
+          2
+        ]
+      },
+      "name": "searchTickets-invalid-email-trailing-dot",
+      "operation": "searchTickets"
     }
   ],
   "schemaVersion": 1

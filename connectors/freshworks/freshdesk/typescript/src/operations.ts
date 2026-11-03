@@ -26,7 +26,7 @@ function validatePriority(value: number): void { if (!Number.isSafeInteger(value
 function validateText(value: string): void { if (!value?.trim()) throw new TypeError('Freshdesk text is required'); }
 function validateEmail(value: string): void {
   // Matches Go mail.ParseAddress's bare addr-spec restriction for the supported ASCII mailbox shape.
-  if (!/^[A-Za-z0-9.!#$%&*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?$/.test(value) || value.includes('..') || /["'()<>,;\s]/.test(value)) throw new TypeError('Freshdesk requester email is invalid');
+  if (!/^[A-Za-z0-9.!#$%&*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?$/.test(value) || value.includes('..') || value.startsWith('.') || value.slice(0, value.indexOf('@')).endsWith('.') || /["'()<>,;\s]/.test(value)) throw new TypeError('Freshdesk requester email is invalid');
 }
 function encodeHTML(text: string): string { return text.replaceAll('\r\n', '\n').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&#34;').replaceAll("'", '&#39;').replaceAll('\n', '<br>'); }
 function object(value: unknown): Record<string, unknown> { if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('Freshdesk response is not an object'); return value as Record<string, unknown>; }
@@ -70,23 +70,23 @@ function conversation(value: unknown): TicketConversation {
   return { id, source: wireNumber(wire.source), isPrivate: wireBoolean(wire.private), body: body.text, createdAt: timestamp(wire.created_at),
     ...optionalField(wireNumber(wire.ticket_id), 'ticketId'), ...optionalField(wireNumber(wire.user_id), 'userId'), ...(wireBoolean(wire.incoming) ? { isIncoming: true } : {}), ...(body.isTruncated ? { isBodyTruncated: true } : {}) };
 }
-function queryFailure<T>(client: FreshdeskClient, call: Call, operation: string, branch: string, value: T, kind: Failure['kind'], message: string, response?: ProviderResponse): QueryAttempt<T> {
-  return newQueryBranch(branch, value, client.receipt(call, response), client.failure(operation, kind, message));
+function queryFailure<T>(client: FreshdeskClient, call: Call, operation: string, branch: string, value: T, kind: Failure['kind'], message: string, response?: ProviderResponse, objectID = 0): QueryAttempt<T> {
+  return newQueryBranch(branch, value, client.receipt(call, response, objectID), client.failure(operation, kind, message));
 }
-function mutationFailure<T>(client: FreshdeskClient, call: Call, operation: string, branch: string, value: T, kind: Failure['kind'], message: string, response?: ProviderResponse): MutationAttempt<T> {
-  return newMutationBranch(branch, value, client.receipt(call, response), client.failure(operation, kind, message));
+function mutationFailure<T>(client: FreshdeskClient, call: Call, operation: string, branch: string, value: T, kind: Failure['kind'], message: string, response?: ProviderResponse, objectID = 0): MutationAttempt<T> {
+  return newMutationBranch(branch, value, client.receipt(call, response, objectID), client.failure(operation, kind, message));
 }
-function queryExchange<T>(client: FreshdeskClient, call: Call, exchange: Exchange, zero: T, notFoundBranch: string): QueryAttempt<T> | undefined {
+function queryExchange<T>(client: FreshdeskClient, call: Call, exchange: Exchange, zero: T, notFoundBranch: string, objectID = 0): QueryAttempt<T> | undefined {
   if (exchange.outcome === 'succeeded') return undefined;
   if (['rateLimited', 'notSent', 'serviceUnavailable', 'unavailable'].includes(exchange.outcome)) return newQueryRetry(exchange.failure, exchange.retryAfterMs);
   const branch = exchange.outcome === 'notFound' ? notFoundBranch : exchange.outcome === 'invalid' ? 'invalidResponse' : exchange.outcome === 'defect' ? 'defect' : 'providerRejected';
-  return newQueryBranch(branch, zero, client.receipt(call, exchange.response), exchange.failure);
+  return newQueryBranch(branch, zero, client.receipt(call, exchange.response, objectID), exchange.failure);
 }
-function updateExchange(client: FreshdeskClient, call: Call, exchange: Exchange, value: UpdateTicketOutput): MutationAttempt<UpdateTicketOutput> | undefined {
+function updateExchange(client: FreshdeskClient, call: Call, exchange: Exchange, value: UpdateTicketOutput, objectID: number): MutationAttempt<UpdateTicketOutput> | undefined {
   if (exchange.outcome === 'succeeded') return undefined;
   if (['rateLimited', 'notSent', 'serviceUnavailable', 'unavailable'].includes(exchange.outcome)) return newMutationRetry(exchange.failure, exchange.retryAfterMs);
   const branch = exchange.outcome === 'notFound' ? 'notFound' : exchange.outcome === 'invalid' ? 'invalidResponse' : exchange.outcome === 'defect' ? 'defect' : 'providerRejected';
-  return newMutationBranch(branch, value, client.receipt(call, exchange.response), exchange.failure);
+  return newMutationBranch(branch, value, client.receipt(call, exchange.response, objectID), exchange.failure);
 }
 async function credential(client: FreshdeskClient, call: Call, operation: string): Promise<{ key: string } | { failure: Failure; transient: boolean }> { return client.resolveCredential(call, operation); }
 
@@ -141,23 +141,23 @@ export class GetTicketOperation implements Query<GetTicketInput, TicketDetails> 
     if ('failure' in resolved) return resolved.transient ? newQueryRetry(resolved.failure) : newQueryBranch('defect', zero, {}, resolved.failure);
     const path = `/tickets/${input.ticketId}`;
     const first = await this.client.exchange(call, operation, resolved.key, 'GET', path, new URLSearchParams({ include: 'requester' }));
-    const terminal = queryExchange(this.client, call, first, zero, 'notFound'); if (terminal) return terminal;
+    const terminal = queryExchange(this.client, call, first, zero, 'notFound', input.ticketId); if (terminal) return terminal;
     let details: TicketDetails;
     try {
       const wire = object(parse((first as { response: ProviderResponse }).response.body));
       details = { ticket: ticket(wire, input.ticketId), conversations: [] };
       if (wire.requester) { const requester = object(wire.requester); const id = number(requester.id); if (positive(id)) { if (id !== details.ticket.requesterId) throw new TypeError('requester mismatch'); details.requester = { id, ...optionalField(wireText(requester.name), 'name'), ...optionalField(wireText(requester.email), 'email') }; } }
-    } catch { return queryFailure(this.client, call, operation, 'invalidResponse', zero, 'PROTOCOL', 'Freshdesk returned an invalid ticket', first.response); }
+    } catch { return queryFailure(this.client, call, operation, 'invalidResponse', zero, 'PROTOCOL', 'Freshdesk returned an invalid ticket', first.response, input.ticketId); }
     const limit = input.conversationLimit || 10;
     const second = await this.client.exchange(call, operation, resolved.key, 'GET', `${path}/conversations`, new URLSearchParams({ per_page: String(limit), page: '1' }));
-    const secondTerminal = queryExchange(this.client, call, second, zero, 'notFound'); if (secondTerminal) return secondTerminal;
+    const secondTerminal = queryExchange(this.client, call, second, zero, 'notFound', input.ticketId); if (secondTerminal) return secondTerminal;
     try {
       const rows = parse((second as { response: ProviderResponse }).response.body);
       if (!Array.isArray(rows) || rows.length > limit) throw new TypeError('invalid conversation page');
       details.conversations = rows.map(item => conversation(item)).sort((left, right) => left.createdAt.localeCompare(right.createdAt) || left.id - right.id);
       if (String(second.response!.headers.link ?? '').includes('rel="next"')) details.hasMoreConversations = true;
       return newQueryBranch('found', details, this.client.receipt(call, second.response, input.ticketId));
-    } catch { return queryFailure(this.client, call, operation, 'invalidResponse', zero, 'PROTOCOL', 'Freshdesk returned an invalid conversation page', second.response); }
+    } catch { return queryFailure(this.client, call, operation, 'invalidResponse', zero, 'PROTOCOL', 'Freshdesk returned an invalid conversation page', second.response, input.ticketId); }
   }
 }
 
@@ -256,10 +256,10 @@ export class UpdateTicketOperation implements Mutation<UpdateTicketInput, Update
     if ('failure' in resolved) return resolved.transient ? newMutationRetry(resolved.failure) : newMutationBranch('defect', zero, {}, resolved.failure);
     const path = `/tickets/${input.ticketId}`;
     const read = await this.client.exchange(call, operation, resolved.key, 'GET', path);
-    const readTerminal = updateExchange(this.client, call, read, zero); if (readTerminal) return readTerminal;
+    const readTerminal = updateExchange(this.client, call, read, zero, input.ticketId); if (readTerminal) return readTerminal;
     let current: Ticket;
     try { current = ticket(parse((read as { response: ProviderResponse }).response.body), input.ticketId); }
-    catch { return mutationFailure(this.client, call, operation, 'invalidResponse', zero, 'PROTOCOL', 'Freshdesk returned an invalid ticket', read.response); }
+    catch { return mutationFailure(this.client, call, operation, 'invalidResponse', zero, 'PROTOCOL', 'Freshdesk returned an invalid ticket', read.response, input.ticketId); }
     const change: Record<string, unknown> = {};
     if (input.status && input.status !== current.status) change.status = input.status;
     if (input.priority && input.priority !== current.priority) change.priority = input.priority;
@@ -270,9 +270,9 @@ export class UpdateTicketOperation implements Mutation<UpdateTicketInput, Update
     if (JSON.stringify(tags) !== JSON.stringify(current.tags ?? [])) change.tags = tags;
     if (!Object.keys(change).length) return newMutationBranch('updated', { ticket: current, wasAlreadyApplied: true }, this.client.receipt(call, read.response, input.ticketId));
     const write = await this.client.exchange(call, operation, resolved.key, 'PUT', path, undefined, change);
-    const writeTerminal = updateExchange(this.client, call, write, { ticket: current }); if (writeTerminal) return writeTerminal;
+    const writeTerminal = updateExchange(this.client, call, write, { ticket: current }, input.ticketId); if (writeTerminal) return writeTerminal;
     try { return newMutationBranch('updated', { ticket: ticket(parse((write as { response: ProviderResponse }).response.body), input.ticketId) }, this.client.receipt(call, write.response, input.ticketId)); }
-    catch { return mutationFailure(this.client, call, operation, 'invalidResponse', { ticket: current }, 'PROTOCOL', 'Freshdesk returned an invalid updated ticket', write.response); }
+    catch { return mutationFailure(this.client, call, operation, 'invalidResponse', { ticket: current }, 'PROTOCOL', 'Freshdesk returned an invalid updated ticket', write.response, input.ticketId); }
   }
 }
 

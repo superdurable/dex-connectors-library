@@ -1,6 +1,7 @@
 {
   "name": "@superdurable/connector-freshdesk",
   "version": "0.1.0",
+  "license": "MIT",
   "description": "Freshdesk ticket operations for Dex Flows",
   "repository": {
     "type": "git",

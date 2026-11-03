@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { once } from 'node:events';
 import { createServer } from 'node:net';
 import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
-import { BodyTooLargeError, ProviderTransportError } from '@superdurable/connectors-sdk/providerhttp';
+import { AddressRefusal, BodyTooLargeError, ProviderTransportError } from '@superdurable/connectors-sdk/providerhttp';
 import { FreshdeskClient } from '../src/client.js';
 
 function testCall() {
@@ -54,6 +54,34 @@ describe('Freshdesk operation boundaries', () => {
       { freshdeskDispatchedCallId: call.id, freshdeskDispatchedAttempt: 1 },
       { freshdeskDispatchedCallId: call.id, freshdeskRetryAttempt: 2 },
     ]);
+  });
+
+  it('retries an address-policy refusal and permits a later create attempt', async () => {
+    const client = new FreshdeskClient({ domain: 'acme' }, { resolve: async () => ({ apiKey: new SecretString('inertKey') }) }, {
+      send: async () => { throw new AddressRefusal('resolved address violates policy'); },
+    });
+    const { call, heartbeats } = testCall();
+    const attempt = await client.createTicket().invoke(call, createInput);
+    expect(attempt.kind).toBe('retry');
+    expect(attempt.failure?.kind).toBe('TRANSPORT');
+    expect(heartbeats).toEqual([
+      { freshdeskDispatchedCallId: call.id, freshdeskDispatchedAttempt: 1 },
+      { freshdeskDispatchedCallId: call.id, freshdeskRetryAttempt: 2 },
+    ]);
+  });
+
+  it('records the ticket ID on get and update rejection receipts', async () => {
+    const client = new FreshdeskClient({ domain: 'acme' }, { resolve: async () => ({ apiKey: new SecretString('inertKey') }) }, {
+      send: async () => ({ status: 404, headers: {}, body: Buffer.from('{}') }),
+    });
+    const { call } = testCall();
+    const getAttempt = await client.getTicket().invoke(call, { ticketId: 1201 });
+    const updateAttempt = await client.updateTicket().invoke(call, { ticketId: 1201, status: 3 });
+    expect(getAttempt.kind).toBe('branch');
+    expect(updateAttempt.kind).toBe('branch');
+    if (getAttempt.kind !== 'branch' || updateAttempt.kind !== 'branch') throw new Error('expected rejection branches');
+    expect(getAttempt.receipt.providerObjectId).toBe('1201');
+    expect(updateAttempt.receipt.providerObjectId).toBe('1201');
   });
 
   it('does not resend when an earlier write may have reached Freshdesk', async () => {

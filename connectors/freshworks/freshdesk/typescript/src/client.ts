@@ -81,7 +81,7 @@ export class FreshdeskClient {
         }
         return { outcome: 'invalid', failure: this.failure(operation, 'RESPONSE_TOO_LARGE', 'Freshdesk response exceeds the configured maxResponseBytes limit'), retryAfterMs: 0 };
       }
-      if (error instanceof AddressRefusal) return { outcome: 'defect', failure: this.failure(operation, 'LOCAL_DEFECT', 'Freshdesk request could not be built'), retryAfterMs: 0 };
+      if (error instanceof AddressRefusal) return { outcome: 'notSent', failure: this.failure(operation, 'TRANSPORT', 'Freshdesk could not be reached; no request was sent'), retryAfterMs: 0 };
       if (error instanceof ProviderTransportError && error.isProvablyNotSent) return { outcome: 'notSent', failure: this.failure(operation, 'TRANSPORT', 'Freshdesk could not be reached; no request was sent'), retryAfterMs: 0 };
       return { outcome: 'unavailable', failure: this.failure(operation, 'TRANSPORT', 'Freshdesk request failed before a response arrived'), retryAfterMs: 0 };
     }
