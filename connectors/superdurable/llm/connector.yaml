@@ -8,6 +8,12 @@ metadata:
   version: v0.25.0
 spec:
   provider: llm
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-superdurable-llm
+      operations: [generateText]
+      triggers: []
   codegen:
     go:
       package: llm

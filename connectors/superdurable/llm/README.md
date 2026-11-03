@@ -1,5 +1,10 @@
 # LLM Connector
 
+The [Python package](python/README.md) provides the same provider-neutral
+`generateText` operation. Its runnable
+[summary Flow](python/examples/summarize_text/README.md) loads a Dex Web
+connection and verifies the operation across a real local Dex Worker.
+
 Moved from `github.com/superdurable/dex-connectors-library/connectors/superdurable/llm`.
 
 The LLM Connector is the one text generation connector for Dex
