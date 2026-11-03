@@ -1,0 +1,1240 @@
+{
+  "connector": "openai",
+  "scenarios": [
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"resp_001\",\"model\":\"gpt-test\",\"status\":\"completed\",\"output\":[{\"content\":[{\"type\":\"output_text\",\"text\":\"Done.\"}]}],\"usage\":{\"input_tokens\":10,\"input_tokens_details\":{\"cached_tokens\":2},\"output_tokens\":3,\"output_tokens_details\":{\"reasoning_tokens\":1},\"total_tokens\":13}}",
+          "headers": {
+            "X-RateLimit-Remaining-Tokens": "900",
+            "X-Request-Id": "req_001"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/responses",
+          "requestBody": {
+            "input": "Summarize this",
+            "instructions": "Be brief",
+            "model": "gpt-test",
+            "text": {
+              "format": {
+                "description": "Short summary",
+                "name": "summary",
+                "schema": {
+                  "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Client-Request-Id": [
+              "8a771c3d-aac1-5b5a-97fd-182c7091fa9e"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "completed",
+        "failureKind": "",
+        "output": {
+          "id": "resp_001",
+          "model": "gpt-test",
+          "outputText": "Done.",
+          "status": "completed",
+          "usage": {
+            "cachedInputTokens": 2,
+            "inputTokens": 10,
+            "outputTokens": 3,
+            "reasoningOutputTokens": 1,
+            "totalTokens": 13
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "input": {
+        "Input": "Summarize this",
+        "Instructions": "Be brief",
+        "Model": "gpt-test",
+        "StructuredOutput": {
+          "description": "Short summary",
+          "name": "summary",
+          "schema": {
+            "type": "object"
+          },
+          "strict": true
+        }
+      },
+      "name": "create-completed",
+      "operation": "createResponse"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"resp_001\",\"model\":\"gpt-test\",\"status\":\"failed\",\"output\":[{\"content\":[{\"type\":\"output_text\",\"text\":\"Done.\"}]}],\"usage\":{\"input_tokens\":10,\"input_tokens_details\":{\"cached_tokens\":2},\"output_tokens\":3,\"output_tokens_details\":{\"reasoning_tokens\":1},\"total_tokens\":13}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/responses",
+          "requestBody": {
+            "input": "Summarize this",
+            "instructions": "Be brief",
+            "model": "gpt-test",
+            "text": {
+              "format": {
+                "description": "Short summary",
+                "name": "summary",
+                "schema": {
+                  "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Client-Request-Id": [
+              "8a771c3d-aac1-5b5a-97fd-182c7091fa9e"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "failed",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "resp_001",
+          "model": "gpt-test",
+          "outputText": "Done.",
+          "status": "failed",
+          "usage": {
+            "cachedInputTokens": 2,
+            "inputTokens": 10,
+            "outputTokens": 3,
+            "reasoningOutputTokens": 1,
+            "totalTokens": 13
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "input": {
+        "Input": "Summarize this",
+        "Instructions": "Be brief",
+        "Model": "gpt-test",
+        "StructuredOutput": {
+          "description": "Short summary",
+          "name": "summary",
+          "schema": {
+            "type": "object"
+          },
+          "strict": true
+        }
+      },
+      "name": "create-failed",
+      "operation": "createResponse"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/responses",
+          "requestBody": {
+            "input": "Summarize this",
+            "instructions": "Be brief",
+            "model": "gpt-test",
+            "text": {
+              "format": {
+                "description": "Short summary",
+                "name": "summary",
+                "schema": {
+                  "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Client-Request-Id": [
+              "8a771c3d-aac1-5b5a-97fd-182c7091fa9e"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "model": "",
+          "outputText": "",
+          "status": "",
+          "usage": {
+            "cachedInputTokens": 0,
+            "inputTokens": 0,
+            "outputTokens": 0,
+            "reasoningOutputTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "input": {
+        "Input": "Summarize this",
+        "Instructions": "Be brief",
+        "Model": "gpt-test",
+        "StructuredOutput": {
+          "description": "Short summary",
+          "name": "summary",
+          "schema": {
+            "type": "object"
+          },
+          "strict": true
+        }
+      },
+      "name": "create-rejected",
+      "operation": "createResponse"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/responses",
+          "requestBody": {
+            "input": "Summarize this",
+            "instructions": "Be brief",
+            "model": "gpt-test",
+            "text": {
+              "format": {
+                "description": "Short summary",
+                "name": "summary",
+                "schema": {
+                  "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Client-Request-Id": [
+              "8a771c3d-aac1-5b5a-97fd-182c7091fa9e"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "id": "",
+          "model": "",
+          "outputText": "",
+          "status": "",
+          "usage": {
+            "cachedInputTokens": 0,
+            "inputTokens": 0,
+            "outputTokens": 0,
+            "reasoningOutputTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "input": {
+        "Input": "Summarize this",
+        "Instructions": "Be brief",
+        "Model": "gpt-test",
+        "StructuredOutput": {
+          "description": "Short summary",
+          "name": "summary",
+          "schema": {
+            "type": "object"
+          },
+          "strict": true
+        }
+      },
+      "name": "create-uncertain-server",
+      "operation": "createResponse"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/responses",
+          "requestBody": {
+            "input": "Summarize this",
+            "instructions": "Be brief",
+            "model": "gpt-test",
+            "text": {
+              "format": {
+                "description": "Short summary",
+                "name": "summary",
+                "schema": {
+                  "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Client-Request-Id": [
+              "8a771c3d-aac1-5b5a-97fd-182c7091fa9e"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "CONFLICT",
+        "output": {
+          "id": "",
+          "model": "",
+          "outputText": "",
+          "status": "",
+          "usage": {
+            "cachedInputTokens": 0,
+            "inputTokens": 0,
+            "outputTokens": 0,
+            "reasoningOutputTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "input": {
+        "Input": "Summarize this",
+        "Instructions": "Be brief",
+        "Model": "gpt-test",
+        "StructuredOutput": {
+          "description": "Short summary",
+          "name": "summary",
+          "schema": {
+            "type": "object"
+          },
+          "strict": true
+        }
+      },
+      "name": "create-uncertain-conflict",
+      "operation": "createResponse"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "model": "",
+          "outputText": "",
+          "status": "",
+          "usage": {
+            "cachedInputTokens": 0,
+            "inputTokens": 0,
+            "outputTokens": 0,
+            "reasoningOutputTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "input": {
+        "Input": null,
+        "Instructions": "Be brief",
+        "Model": "gpt-test",
+        "StructuredOutput": {
+          "description": "Short summary",
+          "name": "summary",
+          "schema": {
+            "type": "object"
+          },
+          "strict": true
+        }
+      },
+      "name": "create-defect",
+      "operation": "createResponse"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/responses",
+          "requestBody": {
+            "input": "Summarize this",
+            "instructions": "Be brief",
+            "model": "gpt-test",
+            "text": {
+              "format": {
+                "description": "Short summary",
+                "name": "summary",
+                "schema": {
+                  "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Client-Request-Id": [
+              "8a771c3d-aac1-5b5a-97fd-182c7091fa9e"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3000,
+        "uncertain": false
+      },
+      "idempotencyKey": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "input": {
+        "Input": "Summarize this",
+        "Instructions": "Be brief",
+        "Model": "gpt-test",
+        "StructuredOutput": {
+          "description": "Short summary",
+          "name": "summary",
+          "schema": {
+            "type": "object"
+          },
+          "strict": true
+        }
+      },
+      "name": "create-retry-429",
+      "operation": "createResponse"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/responses",
+          "requestBody": {
+            "input": "Summarize this",
+            "instructions": "Be brief",
+            "model": "gpt-test",
+            "text": {
+              "format": {
+                "description": "Short summary",
+                "name": "summary",
+                "schema": {
+                  "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Client-Request-Id": [
+              "8a771c3d-aac1-5b5a-97fd-182c7091fa9e"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "input": {
+        "Input": "Summarize this",
+        "Instructions": "Be brief",
+        "Model": "gpt-test",
+        "StructuredOutput": {
+          "description": "Short summary",
+          "name": "summary",
+          "schema": {
+            "type": "object"
+          },
+          "strict": true
+        }
+      },
+      "name": "create-retry-503",
+      "operation": "createResponse"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/responses",
+          "requestBody": {
+            "input": "Summarize this",
+            "instructions": "Be brief",
+            "model": "gpt-test",
+            "text": {
+              "format": {
+                "description": "Short summary",
+                "name": "summary",
+                "schema": {
+                  "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Client-Request-Id": [
+              "8a771c3d-aac1-5b5a-97fd-182c7091fa9e"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "input": {
+        "Input": "Summarize this",
+        "Instructions": "Be brief",
+        "Model": "gpt-test",
+        "StructuredOutput": {
+          "description": "Short summary",
+          "name": "summary",
+          "schema": {
+            "type": "object"
+          },
+          "strict": true
+        }
+      },
+      "name": "create-transport-before-send",
+      "operation": "createResponse"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/responses",
+          "requestBody": {
+            "input": "Summarize this",
+            "instructions": "Be brief",
+            "model": "gpt-test",
+            "text": {
+              "format": {
+                "description": "Short summary",
+                "name": "summary",
+                "schema": {
+                  "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Client-Request-Id": [
+              "8a771c3d-aac1-5b5a-97fd-182c7091fa9e"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "id": "",
+          "model": "",
+          "outputText": "",
+          "status": "",
+          "usage": {
+            "cachedInputTokens": 0,
+            "inputTokens": 0,
+            "outputTokens": 0,
+            "reasoningOutputTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "input": {
+        "Input": "Summarize this",
+        "Instructions": "Be brief",
+        "Model": "gpt-test",
+        "StructuredOutput": {
+          "description": "Short summary",
+          "name": "summary",
+          "schema": {
+            "type": "object"
+          },
+          "strict": true
+        }
+      },
+      "name": "create-transport-after-send",
+      "operation": "createResponse"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"resp_001\",\"model\":\"gpt-test\",\"status\":\"queued\",\"output\":[{\"content\":[{\"type\":\"output_text\",\"text\":\"Done.\"}]}],\"usage\":{\"input_tokens\":10,\"input_tokens_details\":{\"cached_tokens\":2},\"output_tokens\":3,\"output_tokens_details\":{\"reasoning_tokens\":1},\"total_tokens\":13}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/responses",
+          "requestBody": {
+            "input": "Summarize this",
+            "instructions": "Be brief",
+            "model": "gpt-test",
+            "text": {
+              "format": {
+                "description": "Short summary",
+                "name": "summary",
+                "schema": {
+                  "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Client-Request-Id": [
+              "8a771c3d-aac1-5b5a-97fd-182c7091fa9e"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":\"resp_001\",\"model\":\"gpt-test\",\"status\":\"completed\",\"output\":[{\"content\":[{\"type\":\"output_text\",\"text\":\"Done.\"}]}],\"usage\":{\"input_tokens\":10,\"input_tokens_details\":{\"cached_tokens\":2},\"output_tokens\":3,\"output_tokens_details\":{\"reasoning_tokens\":1},\"total_tokens\":13}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/responses/resp_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "completed",
+        "failureKind": "",
+        "output": {
+          "id": "resp_001",
+          "model": "gpt-test",
+          "outputText": "Done.",
+          "status": "completed",
+          "usage": {
+            "cachedInputTokens": 2,
+            "inputTokens": 10,
+            "outputTokens": 3,
+            "reasoningOutputTokens": 1,
+            "totalTokens": 13
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "input": {
+        "Input": "Summarize this",
+        "Instructions": "Be brief",
+        "Model": "gpt-test",
+        "StructuredOutput": {
+          "description": "Short summary",
+          "name": "summary",
+          "schema": {
+            "type": "object"
+          },
+          "strict": true
+        }
+      },
+      "name": "create-read-back",
+      "operation": "createResponse"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"resp_001\",\"model\":\"gpt-test\",\"status\":\"completed\",\"output\":[{\"content\":[{\"type\":\"output_text\",\"text\":\"Done.\"}]}],\"usage\":{\"input_tokens\":10,\"input_tokens_details\":{\"cached_tokens\":2},\"output_tokens\":3,\"output_tokens_details\":{\"reasoning_tokens\":1},\"total_tokens\":13}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/responses/resp_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "resp_001",
+          "model": "gpt-test",
+          "outputText": "Done.",
+          "status": "completed",
+          "usage": {
+            "cachedInputTokens": 2,
+            "inputTokens": 10,
+            "outputTokens": 3,
+            "reasoningOutputTokens": 1,
+            "totalTokens": 13
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ResponseID": "resp_001"
+      },
+      "name": "retrieve-found",
+      "operation": "retrieveResponse"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/responses/resp_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "model": "",
+          "outputText": "",
+          "status": "",
+          "usage": {
+            "cachedInputTokens": 0,
+            "inputTokens": 0,
+            "outputTokens": 0,
+            "reasoningOutputTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ResponseID": "resp_001"
+      },
+      "name": "retrieve-not-found",
+      "operation": "retrieveResponse"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/responses/resp_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": "",
+          "model": "",
+          "outputText": "",
+          "status": "",
+          "usage": {
+            "cachedInputTokens": 0,
+            "inputTokens": 0,
+            "outputTokens": 0,
+            "reasoningOutputTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ResponseID": "resp_001"
+      },
+      "name": "retrieve-rejected",
+      "operation": "retrieveResponse"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "body": "{\"id\":",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/responses/resp_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "model": "",
+          "outputText": "",
+          "status": "",
+          "usage": {
+            "cachedInputTokens": 0,
+            "inputTokens": 0,
+            "outputTokens": 0,
+            "reasoningOutputTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ResponseID": "resp_001"
+      },
+      "name": "retrieve-invalid",
+      "operation": "retrieveResponse"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "model": "",
+          "outputText": "",
+          "status": "",
+          "usage": {
+            "cachedInputTokens": 0,
+            "inputTokens": 0,
+            "outputTokens": 0,
+            "reasoningOutputTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ResponseID": ""
+      },
+      "name": "retrieve-defect",
+      "operation": "retrieveResponse"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/responses/resp_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3000,
+        "uncertain": false
+      },
+      "input": {
+        "ResponseID": "resp_001"
+      },
+      "name": "retrieve-retry-429",
+      "operation": "retrieveResponse"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/responses/resp_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 502
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ResponseID": "resp_001"
+      },
+      "name": "retrieve-retry-5xx",
+      "operation": "retrieveResponse"
+    },
+    {
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/responses/resp_001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ResponseID": "resp_001"
+      },
+      "name": "retrieve-transport",
+      "operation": "retrieveResponse"
+    },
+    {
+      "attempts": 2,
+      "callId": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/responses",
+          "requestBody": {
+            "input": "Summarize this",
+            "instructions": "Be brief",
+            "model": "gpt-test",
+            "text": {
+              "format": {
+                "description": "Short summary",
+                "name": "summary",
+                "schema": {
+                  "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Client-Request-Id": [
+              "8a771c3d-aac1-5b5a-97fd-182c7091fa9e"
+            ]
+          },
+          "status": 429
+        },
+        {
+          "body": "{\"id\":\"resp_001\",\"model\":\"gpt-test\",\"status\":\"completed\",\"output\":[{\"content\":[{\"type\":\"output_text\",\"text\":\"Done.\"}]}],\"usage\":{\"input_tokens\":10,\"input_tokens_details\":{\"cached_tokens\":2},\"output_tokens\":3,\"output_tokens_details\":{\"reasoning_tokens\":1},\"total_tokens\":13}}",
+          "headers": {
+            "X-RateLimit-Remaining-Tokens": "900",
+            "X-Request-Id": "req_001"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/responses",
+          "requestBody": {
+            "input": "Summarize this",
+            "instructions": "Be brief",
+            "model": "gpt-test",
+            "text": {
+              "format": {
+                "description": "Short summary",
+                "name": "summary",
+                "schema": {
+                  "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Client-Request-Id": [
+              "8a771c3d-aac1-5b5a-97fd-182c7091fa9e"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "completed",
+        "failureKind": "",
+        "output": {
+          "id": "resp_001",
+          "model": "gpt-test",
+          "outputText": "Done.",
+          "status": "completed",
+          "usage": {
+            "cachedInputTokens": 2,
+            "inputTokens": 10,
+            "outputTokens": 3,
+            "reasoningOutputTokens": 1,
+            "totalTokens": 13
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8a771c3d-aac1-5b5a-97fd-182c7091fa9e",
+      "input": {
+        "Input": "Summarize this",
+        "Instructions": "Be brief",
+        "Model": "gpt-test",
+        "StructuredOutput": {
+          "description": "Short summary",
+          "name": "summary",
+          "schema": {
+            "type": "object"
+          },
+          "strict": true
+        }
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "RATE_LIMIT",
+          "retryAfterMs": 3000
+        }
+      ],
+      "name": "create-retry-then-success",
+      "operation": "createResponse"
+    }
+  ],
+  "schemaVersion": 1
+}
