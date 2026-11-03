@@ -6,9 +6,17 @@ connection, resolves the password at call time, and closes the connection after
 one transaction. The Connector manifest and [root README](../README.md) define
 the connection fields, transaction limits, type mapping, and SQL restrictions.
 `BIGINT` values remain decimal strings and `FLOAT` values use their shortest
-float32 representation. JSON numbers that cannot be returned without changing
-their text cause the `invalidResponse` branch, with the column named in the
-failure. Queries use prepared execution, so chained SQL statements are rejected.
+float32 representation. Negative zero in `FLOAT` or `DOUBLE` fails with
+`invalidResponse` because Dex JSON cannot preserve its sign. JSON numbers that
+cannot be returned without changing their text cause the `invalidResponse`
+branch, with the column named in the failure. Queries use prepared execution,
+so chained SQL statements are rejected.
+
+For TypeScript, `verify-identity` requires a DNS host name. The mysql2 TLS
+upgrade verifies that name against the server certificate. It cannot verify an
+IP address against the certificate IP SAN, so the connector rejects an IP
+literal before connecting. Use a DNS name that appears in the certificate or
+`verify-ca` if validating the certificate chain without host identity suffices.
 
 Install the package with `npm install @superdurable/connector-mysql`. Configure
 a MySQL connection named `mysql-refunds` in Dex Web, then run the checked-in

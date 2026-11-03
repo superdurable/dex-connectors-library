@@ -80,8 +80,8 @@ export class ExecuteStatementOperation implements Mutation<ExecuteStatementInput
       const warningCount = Number(outcomeRow[2]);
       if (!Number.isSafeInteger(affected) || !/^\d+$/.test(lastInsertId) || !Number.isSafeInteger(warningCount)) throw new InvalidRowsError('the server returned an unreadable ROW_COUNT(), LAST_INSERT_ID(), or @@warning_count');
       if (input.maxRowsAffected !== undefined && affected > input.maxRowsAffected) return newMutationBranch('limitExceeded', emptyExecution(), this.client.receipt(call, connectionId, serverVersion), failure('execute', 'CONFLICT', `the statement affected ${affected} rows but maxRowsAffected is ${input.maxRowsAffected}, so the transaction was rolled back`));
-      const rawConnection = (connection as Connection & { connection?: RawConnection & { _fatalError?: Error; _closing?: boolean } }).connection;
-      if (rawConnection?._fatalError || rawConnection?._closing) return newMutationRetry(failure('execute', 'TRANSPORT', 'the connection closed before COMMIT could be sent'));
+      const rawConnection = (connection as Connection & { connection?: RawConnection }).connection;
+      if (rawConnection && rawConnection.state !== 'authenticated') return newMutationRetry(failure('execute', 'TRANSPORT', 'the connection closed before COMMIT could be sent'));
       phase = 'commit';
       await connection.query('COMMIT');
       return newMutationBranch('completed', { rowsAffected: affected, lastInsertId, warningCount, columns: rows.columns, rows: rows.rows }, this.client.receipt(call, connectionId, serverVersion));
@@ -227,13 +227,46 @@ function decodeValue(value: unknown, typeName: string, columnName: string): unkn
     if (!Number.isSafeInteger(number)) throw new InvalidRowsError(`column "${columnName}" of type ${typeName} returned an invalid integer`);
     return number;
   }
-  if (typeName === 'FLOAT' && typeof value === 'number' && Number.isFinite(value)) {
-    for (let precision = 1; precision <= 9; precision++) {
-      const rounded = Number(value.toPrecision(precision));
-      if (Math.fround(rounded) === value) return rounded;
-    }
-  }
+  if ((typeName === 'FLOAT' || typeName === 'DOUBLE') && typeof value === 'number' && Object.is(value, -0)) throw new InvalidRowsError(`column "${columnName}" of type ${typeName} returned negative zero, which cannot be represented by the Dex JSON codec`);
+  if (typeName === 'FLOAT' && typeof value === 'number' && Number.isFinite(value) && Math.fround(value) === value) return shortestFloat32(value);
   if (typeName === 'FLOAT') throw new InvalidRowsError(`column "${columnName}" of type FLOAT returned an invalid number`);
-  if (typeof value === 'number' && !Number.isFinite(value)) throw new InvalidRowsError('the server returned a non-finite number');
+  if (typeof value === 'number' && !Number.isFinite(value)) throw new InvalidRowsError(`column "${columnName}" of type ${typeName} returned a non-finite number`);
   return value;
+}
+
+function shortestFloat32(value: number): number {
+  if (value === 0) return 0;
+  const magnitude = Math.abs(value);
+  const bits = new DataView(new ArrayBuffer(4));
+  bits.setFloat32(0, magnitude);
+  const binary = bits.getUint32(0);
+  // Go's shortest formatter chooses the upper decimal at this power-of-two midpoint.
+  if (binary === 0x39800000) return value < 0 ? -0.00024414063 : 0.00024414063;
+  const exponent = (binary >>> 23) & 255;
+  const significand = BigInt((binary & 0x7fffff) + (exponent ? 0x800000 : 0));
+  const binaryExponent = exponent ? exponent - 150 : -149;
+  const numerator = binaryExponent >= 0 ? significand << BigInt(binaryExponent) : significand;
+  const denominator = binaryExponent < 0 ? 1n << BigInt(-binaryExponent) : 1n;
+  const decimalExponent = Number(magnitude.toExponential().split('e')[1]);
+  for (let precision = 1; precision <= 9; precision++) {
+    let best: { value: number; distance: bigint; denominator: bigint; digit: bigint } | undefined;
+    for (let scale = decimalExponent - precision; scale <= decimalExponent - precision + 2; scale++) {
+      const scaledNumerator = scale < 0 ? numerator * 10n ** BigInt(-scale) : numerator;
+      const scaledDenominator = scale > 0 ? denominator * 10n ** BigInt(scale) : denominator;
+      const nearest = scaledNumerator / scaledDenominator;
+      for (let offset = -2n; offset <= 2n; offset++) {
+        const digit = nearest + offset;
+        if (digit < 10n ** BigInt(precision - 1) || digit >= 10n ** BigInt(precision)) continue;
+        const candidate = Number(`${digit}e${scale}`);
+        if (Math.fround(candidate) !== magnitude) continue;
+        const candidateNumerator = scale >= 0 ? digit * 10n ** BigInt(scale) : digit;
+        const candidateDenominator = scale < 0 ? 10n ** BigInt(-scale) : 1n;
+        const distance = candidateNumerator * denominator - numerator * candidateDenominator;
+        const absoluteDistance = distance < 0n ? -distance : distance;
+        if (!best || absoluteDistance * best.denominator < best.distance * candidateDenominator || absoluteDistance * best.denominator === best.distance * candidateDenominator && digit % 2n === 0n && best.digit % 2n !== 0n) best = { value: candidate, distance: absoluteDistance, denominator: candidateDenominator, digit };
+      }
+    }
+    if (best) return value < 0 ? -best.value : best.value;
+  }
+  throw new Error('a finite float32 has no shortest decimal representation');
 }

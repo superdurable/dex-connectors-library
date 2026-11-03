@@ -3,6 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { Readable } from 'node:stream';
+import type { ConnectionOptions } from 'mysql2/promise';
 import { SecretString, type Call } from '@superdurable/connectors-sdk';
 import { MySQLClient } from '../src/client.js';
 import { classifyDriverError } from '../src/failures.js';
@@ -33,7 +34,7 @@ describe('Go-compatible driver classification', () => {
     expect(classifyDriverError({ code: 'ECONNREFUSED' }, 'connect')).toMatchObject({ disposition: 'retry', kind: 'AVAILABILITY' });
     expect(classifyDriverError({ code: 'ECONNRESET' }, 'statement')).toMatchObject({ disposition: 'retry', kind: 'TRANSPORT' });
     expect(classifyDriverError({ code: 'ECONNRESET' }, 'commit')).toMatchObject({ disposition: 'uncertain', kind: 'TRANSPORT' });
-    expect(classifyDriverError({ code: 'PROTOCOL_ENQUEUE_AFTER_FATAL_ERROR' }, 'commit')).toMatchObject({ disposition: 'retry', kind: 'TRANSPORT' });
+    expect(classifyDriverError({ fatal: true, message: "Can't add new command when connection is in closed state" }, 'commit')).toMatchObject({ disposition: 'uncertain', kind: 'TRANSPORT' });
   });
   it.each(['SELF_SIGNED_CERT_IN_CHAIN', 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY', 'CERT_NOT_YET_VALID', 'ERR_TLS_CERT_ALTNAME_INVALID'])('rejects certificate failure %s', code => {
     expect(classifyDriverError({ code }, 'connect')).toMatchObject({ disposition: 'providerRejected', kind: 'AUTHENTICATION' });
@@ -43,6 +44,25 @@ describe('Go-compatible driver classification', () => {
   it('keeps unrelated SSL handshake failures retryable', () => {
     expect(classifyDriverError({ code: 'HANDSHAKE_SSL_ERROR', message: 'socket closed' }, 'connect')).toMatchObject({ disposition: 'retry', kind: 'AVAILABILITY' });
   });
+});
+
+it.each([
+  ['required', undefined],
+  ['verify-ca', undefined],
+  ['verify-identity', true],
+] as const)('passes mysql2 TLS identity option for %s', async (sslMode, verifyIdentity) => {
+  let captured: ConnectionOptions = {};
+  const connection = { query: async () => [[[7, '8.4.0']], []], destroy: () => undefined };
+  const client = new MySQLClient({ ...config, sslMode }, credentials, { connect: async options => { captured = options; return connection as never; } });
+  await client.openSession('secret');
+  expect(captured.ssl && typeof captured.ssl !== 'string' ? captured.ssl.verifyIdentity : undefined).toBe(verifyIdentity);
+});
+
+it.each(['127.0.0.1', '::1'])('rejects verify-identity for IP literal %s before connecting', async host => {
+  let connections = 0;
+  const client = new MySQLClient({ ...config, host, sslMode: 'verify-identity' }, credentials, { connect: async () => { connections++; throw new Error('should not connect'); } });
+  expect(await client.query().invoke(call, { statement: 'SELECT 1' })).toMatchObject({ kind: 'branch', branch: 'providerRejected', failure: { kind: 'AUTHENTICATION', message: expect.stringContaining('IP SAN') } });
+  expect(connections).toBe(0);
 });
 
 it('decodes exact MySQL type metadata and values', async () => {
@@ -85,6 +105,8 @@ it.each([
   ['BIGINT', 8, 5],
   ['JSON', 245, { a: 1 }],
   ['FLOAT', 4, 0.123456789],
+  ['FLOAT', 4, -0],
+  ['DOUBLE', 5, -0],
 ] as const)('rejects driver-decoded %s values before they can lose precision', async (typeName, columnType, value) => {
   const connection = {
     query: async (sql: string) => sql === 'SELECT CONNECTION_ID(), VERSION()' ? [[[7, '8.4.0']], []] : [[], []],
@@ -95,13 +117,40 @@ it.each([
   expect(await client.query().invoke(call, { statement: 'SELECT typed_value FROM exact_values' })).toMatchObject({ kind: 'branch', branch: 'invalidResponse', failure: { kind: 'PROTOCOL', message: expect.stringContaining(`column "typed_value" of type ${typeName}`) } });
 });
 
-it('retries when the driver closes before COMMIT is enqueued', async () => {
+it.each([
+  [1048576.25, 1048576.2],
+  [2097152.25, 2097152.2],
+  [4144757.25, 4144757.2],
+  [Math.fround(1.2621775e-29), 1.2621775e-29],
+  [Math.fround(1.5474251e26), 1.5474251e26],
+  [Math.fround(0.000244140625), 0.00024414063],
+  [Math.fround(0.1), 0.1],
+  [Math.fround(1.401298464324817e-45), 1e-45],
+] as const)('decodes FLOAT %s as Go shortest decimal %s', async (single, expected) => {
+  const connection = {
+    query: async () => [[[7, '8.4.0']], []],
+    execute: async () => [[[single]], [{ name: 'single', columnType: 4, flags: 0 }]],
+    destroy: () => undefined,
+  };
+  const client = new MySQLClient(config, credentials, { connect: async () => connection as never });
+  expect(await client.query().invoke(call, { statement: 'SELECT single FROM exact_values' })).toMatchObject({ kind: 'branch', branch: 'completed', value: { rows: [{ single: expected }] } });
+});
+
+it.each(['fatal', 'protocol', 'closing', 'destroyed'])('retries when the driver has a %s connection before COMMIT is enqueued', async connectionFailure => {
   const issued: string[] = [];
-  const rawConnection = { _fatalError: new Error('closed'), execute: () => ({ stream: () => {
-    const rows = Readable.from([], { objectMode: true });
-    queueMicrotask(() => rows.emit('fields', []));
-    return rows;
-  } }) };
+  const rawConnection = {
+    _fatalError: connectionFailure === 'fatal' ? new Error('fatal') : undefined,
+    _protocolError: connectionFailure === 'protocol' ? new Error('protocol') : undefined,
+    _closing: connectionFailure === 'closing',
+    stream: { destroyed: connectionFailure === 'destroyed' },
+    authorized: true,
+    get state() { return this._fatalError || this._protocolError ? 'error' : this._closing || this.stream.destroyed ? 'disconnected' : this.authorized ? 'authenticated' : 'connecting'; },
+    execute: () => ({ stream: () => {
+      const rows = Readable.from([], { objectMode: true });
+      queueMicrotask(() => rows.emit('fields', []));
+      return rows;
+    } }),
+  };
   const connection = {
     connection: rawConnection,
     query: async (sql: string) => {

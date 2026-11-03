@@ -27,7 +27,7 @@ const notFound = new Set([1049, 1054, 1109, 1146, 1305]);
 const conflict = new Set([3819, 4025]);
 const statementTimeout = new Set([1317, 1969, 3024]);
 const validation = new Set([1235, 1295, 1366]);
-const connectionLoss = new Set(['ECONNRESET', 'ECONNREFUSED', 'EPIPE', 'ETIMEDOUT', 'PROTOCOL_CONNECTION_LOST', 'PROTOCOL_ENQUEUE_AFTER_FATAL_ERROR']);
+const connectionLoss = new Set(['ECONNRESET', 'ECONNREFUSED', 'EPIPE', 'ETIMEDOUT', 'PROTOCOL_CONNECTION_LOST']);
 const certificateErrors = new Set(['CERT_HAS_EXPIRED', 'CERT_NOT_YET_VALID', 'DEPTH_ZERO_SELF_SIGNED_CERT', 'SELF_SIGNED_CERT_IN_CHAIN', 'UNABLE_TO_VERIFY_LEAF_SIGNATURE', 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY', 'ERR_TLS_CERT_ALTNAME_INVALID']);
 
 /** Classify a native driver error by the same COMMIT boundary and server rules as Go. */
@@ -37,6 +37,7 @@ export function classifyDriverError(error: unknown, phase: SessionPhase): Classi
   const sqlState = typeof driverError.sqlState === 'string' ? driverError.sqlState : '';
   const code = typeof driverError.code === 'string' ? driverError.code : '';
   const cause = driverError.cause && typeof driverError.cause === 'object' ? driverError.cause as Record<string, unknown> : {};
+  if (phase === 'connect' && code === 'MYSQL_IP_IDENTITY_UNSUPPORTED') return { disposition: 'providerRejected', kind: 'AUTHENTICATION', message: 'sslMode verify-identity requires a DNS host name because mysql2 cannot verify an IP address against the certificate IP SAN' };
   const certificateFailure = certificateErrors.has(code) || certificateErrors.has(String(cause.code ?? '')) || (code === 'HANDSHAKE_SSL_ERROR' && /certificat|self.signed|unable to (?:verify|get issuer)|hostname|altname/i.test(String(driverError.message ?? '')));
   if (phase === 'connect' && certificateFailure) return { disposition: 'providerRejected', kind: 'AUTHENTICATION', message: 'the MySQL server certificate failed sslMode verification' };
   if (number > 0) {
@@ -62,7 +63,6 @@ export function classifyDriverError(error: unknown, phase: SessionPhase): Classi
     if (code === 'HANDSHAKE_NO_SSL_SUPPORT' || code === 'ERR_SSL_WRONG_VERSION_NUMBER') return { disposition: 'providerRejected', kind: 'PROVIDER_REJECTION', message: 'the MySQL server does not accept TLS, which sslMode requires' };
     return { disposition: 'retry', kind: 'AVAILABILITY', message: 'the MySQL server is unreachable or did not finish connecting in time' };
   }
-  if (phase === 'commit' && code === 'PROTOCOL_ENQUEUE_AFTER_FATAL_ERROR') return { disposition: 'retry', kind: 'TRANSPORT', message: 'the connection closed before COMMIT could be sent' };
   if (phase === 'commit') return { disposition: 'uncertain', kind: 'TRANSPORT', message: 'the connection failed after COMMIT was sent, so whether the transaction committed is unknown' };
   if (connectionLoss.has(code) || code === 'ABORT_ERR') return { disposition: 'retry', kind: 'TRANSPORT', message: `the connection failed during ${phase} before anything was committed` };
   return { disposition: 'invalidResponse', kind: 'PROTOCOL', message: `the driver could not decode the server's reply during ${phase}; nothing was committed` };

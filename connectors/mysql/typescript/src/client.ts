@@ -8,6 +8,11 @@ import { SecretString, type Call, type CredentialProvider, type ReceiptDraft } f
 import type { Config, Credentials } from './generated/models.js';
 import { ExecuteStatementOperation, QueryRowsOperation } from './operations.js';
 
+class MySQLIPIdentityError extends Error {
+  readonly code = 'MYSQL_IP_IDENTITY_UNSUPPORTED';
+  constructor() { super('MySQL sslMode verify-identity requires a DNS host name; mysql2 cannot verify an IP address against the certificate IP SAN'); }
+}
+
 /** Error raised while initializing an authenticated session. */
 export class MySQLSessionSetupError extends Error {
   /** Preserve the driver error for secret-safe classification. */
@@ -72,6 +77,7 @@ export class MySQLClient {
 
   /** Open and initialize one MySQL session with pinned server settings. */
   async openSession(password: string): Promise<{ connection: Connection; connectionId: string; serverVersion: string }> {
+    if (this.config.sslMode === 'verify-identity' && isIP(this.config.host)) throw new MySQLIPIdentityError();
     const settings: ConnectionOptions = {
       ...(this.config.host.startsWith('/') ? { socketPath: this.config.host } : { host: this.config.host, port: this.config.port }),
       database: this.config.database, user: this.config.user, password,
@@ -86,7 +92,7 @@ export class MySQLClient {
         try { ca = readFileSync(certificatePath); }
         catch { throw new TypeError('the file named by MYSQL_SSL_CA is unreadable'); }
       }
-      settings.ssl = { minVersion: 'TLSv1.2', rejectUnauthorized: this.config.sslMode !== 'required', ...(ca ? { ca } : {}), ...(this.config.sslMode === 'verify-ca' ? { checkServerIdentity: () => undefined } : {}) };
+      settings.ssl = { minVersion: 'TLSv1.2', rejectUnauthorized: this.config.sslMode !== 'required', ...(ca ? { ca } : {}), ...(this.config.sslMode === 'verify-identity' ? { verifyIdentity: true } : {}) };
     }
     const connection = await this.connect(settings);
     try {

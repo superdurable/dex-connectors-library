@@ -32,6 +32,19 @@ it.skipIf(!host)('runs both operations against the CI MySQL service and rolls ba
     const typed = await provider.query().invoke(call('query'), { statement: `SELECT big_value, unsigned_big, bits, single, choice, tags, year_value, document FROM ${table} WHERE order_id = ?`, parameters: ['88213'] });
     expect(typed).toMatchObject({ kind: 'branch', branch: 'completed', value: { rows: [{ big_value: '9007199254740993', unsigned_big: '18446744073709551615', bits: '21', single: 0.1, choice: 'open', tags: 'a,b', year_value: 2026, document: { a: 1, b: 'ok' } }] } });
     if (typed.kind === 'branch') expect(Object.fromEntries((typed.value.columns ?? []).map(column => [column.name, column.typeName]))).toMatchObject({ big_value: 'BIGINT', unsigned_big: 'UNSIGNED BIGINT', bits: 'BIT', single: 'FLOAT', choice: 'ENUM', tags: 'SET', year_value: 'YEAR', document: 'JSON' });
+    await administration.query(`UPDATE ${table} SET single = 1048576.25 WHERE order_id = '88213'`);
+    const tiedFloat = await provider.query().invoke(call('query'), { statement: `SELECT single FROM ${table} WHERE order_id = ?`, parameters: ['88213'] });
+    expect(tiedFloat).toMatchObject({ kind: 'branch', branch: 'completed', value: { rows: [{ single: 1048576.2 }] } });
+    await administration.query(`UPDATE ${table} SET single = 1.2621775e-29 WHERE order_id = '88213'`);
+    const boundaryFloat = await provider.query().invoke(call('query'), { statement: `SELECT single FROM ${table} WHERE order_id = ?`, parameters: ['88213'] });
+    expect(boundaryFloat).toMatchObject({ kind: 'branch', branch: 'completed', value: { rows: [{ single: 1.2621775e-29 }] } });
+    const [negativeZeroRows] = await administration.execute('SELECT -0e0 AS negative_zero');
+    const negativeZero = await provider.query().invoke(call('query'), { statement: 'SELECT -0e0 AS negative_zero' });
+    if (Object.is((negativeZeroRows as unknown[][])[0]?.[0], -0)) {
+      expect(negativeZero).toMatchObject({ kind: 'branch', branch: 'invalidResponse', failure: { kind: 'PROTOCOL', message: expect.stringContaining('column "negative_zero"') } });
+    } else {
+      expect(negativeZero).toMatchObject({ kind: 'branch', branch: 'completed' });
+    }
     await administration.query(`UPDATE ${table} SET document = '{"a":1.10,"b":12345678901234567890.123456789}' WHERE order_id = '88213'`);
     const lossy = await provider.query().invoke(call('query'), { statement: `SELECT document FROM ${table} WHERE order_id = ?`, parameters: ['88213'] });
     expect(lossy).toMatchObject({ kind: 'branch', branch: 'invalidResponse', failure: { kind: 'PROTOCOL', message: expect.stringContaining('column "document"') } });
@@ -61,7 +74,25 @@ it.skipIf(!host)('runs both operations against the CI MySQL service and rolls ba
     await new Promise<void>(resolve => listener.close(() => resolve()));
     const refused = new MySQLClient({ host: '127.0.0.1', port: address.port, database, user, sslMode: 'disabled' }, { resolve: async () => ({ password: new SecretString(password) }) });
     expect(await refused.query().invoke(call('query'), { statement: 'SELECT 1' })).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+    const connectionClosedBeforeCommit = new MySQLClient({ host: host!, port, database, user, sslMode }, { resolve: async () => ({ password: new SecretString(password) }) }, { connect: async options => {
+      const nativeConnection = await mysql.createConnection(options);
+      return {
+        connection: (nativeConnection as unknown as { connection: unknown }).connection,
+        query: async (sql: string) => {
+          const result = await nativeConnection.query(sql);
+          if (sql === 'SELECT ROW_COUNT(), LAST_INSERT_ID(), @@warning_count') nativeConnection.destroy();
+          return result;
+        },
+        destroy: () => nativeConnection.destroy(),
+      } as never;
+    } });
+    expect(await connectionClosedBeforeCommit.execute().invoke(call('execute'), { statement: `UPDATE ${table} SET amount = ? WHERE order_id = ?`, parameters: ['250.00', '88213'] })).toMatchObject({ kind: 'retry', failure: { kind: 'TRANSPORT' } });
     const verifying = new MySQLClient({ host: host!, port, database, user, sslMode: 'verify-ca' }, { resolve: async () => ({ password: new SecretString(password) }) });
-    expect(await verifying.query().invoke(call('query'), { statement: 'SELECT 1' })).toMatchObject({ kind: 'branch', branch: 'providerRejected', failure: { kind: 'AUTHENTICATION' } });
+    if (process.env.CI && !process.env.MYSQL_TLS_CA_FILE) throw new Error('MYSQL_TLS_CA_FILE is required for MySQL TLS integration in CI');
+    expect(await verifying.query().invoke(call('query'), { statement: 'SELECT 1' })).toMatchObject({ kind: 'branch', branch: 'completed' });
+    const identityByIP = new MySQLClient({ host: '127.0.0.1', port, database, user, sslMode: 'verify-identity' }, { resolve: async () => ({ password: new SecretString(password) }) });
+    expect(await identityByIP.query().invoke(call('query'), { statement: 'SELECT 1' })).toMatchObject({ kind: 'branch', branch: 'providerRejected', failure: { kind: 'AUTHENTICATION' } });
+    const identityByName = new MySQLClient({ host: 'localhost', port, database, user, sslMode: 'verify-identity' }, { resolve: async () => ({ password: new SecretString(password) }) });
+    expect(await identityByName.query().invoke(call('query'), { statement: 'SELECT 1' })).toMatchObject({ kind: 'branch', branch: 'providerRejected', failure: { kind: 'AUTHENTICATION' } });
   } finally { await administration.query(`DROP TABLE IF EXISTS ${table}`); await administration.end(); }
 }, 60_000);
