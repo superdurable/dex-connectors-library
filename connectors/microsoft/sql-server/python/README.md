@@ -36,9 +36,10 @@ values as base64 with their SQL type names. Unknown SQL types fail `invalidRespo
 
 ## Operations
 
-`new_query_step` runs a parameterized `SELECT` or `WITH` statement in a transaction it
-always rolls back. It returns `completed` with bounded rows, `truncated` when the row or
-JSON byte bound is reached, `providerRejected` for conclusive SQL Server errors,
+`new_query_step` runs a parameterized `SELECT` or `WITH` statement in a transaction. Closing
+its connection without COMMIT makes SQL Server roll it back. It returns `completed` with
+bounded rows, `truncated` when the row or JSON byte bound is reached, `providerRejected`
+for conclusive SQL Server errors,
 `invalidResponse` for undecodable values, and `defect` for invalid local input. Transient
 failures retry.
 
@@ -46,14 +47,14 @@ failures retry.
 statement in its own transaction. The optional final `@pN` idempotency-key placeholder
 binds Dex's stable Call ID. A write that exceeds `maxRowsAffected` or an OUTPUT bound
 rolls back and selects `limitExceeded`. A failed COMMIT whose outcome is unknown selects
-`uncertain`; failures before COMMIT retry only when safe. Make every write statement
-idempotent across retries and Worker replacement.
+`uncertain`; a COMMIT failure retries only when no bytes were sent. Failures before COMMIT
+retry only when safe. Make every write statement idempotent across retries and Worker replacement.
 `rowsAffected` sums all SQL Server DONE counts, including trigger statements. If the server
 supplies no count, `maxRowsAffected` fails `invalidResponse` before COMMIT. Receipts include
 the session process ID and server version; server errors add number, state, and severity.
 The connector enforces an attempt deadline and a response read budget in addition to the
 configured row and JSON response bounds. Exhausting the read budget returns truncated
-query rows or rolls back an execute operation before COMMIT.
+query rows or closes an execute session before COMMIT, causing SQL Server to roll it back.
 
 Both operations accept `@p1` through `@pN` positional parameters in SQL text. Do not
 interpolate user input into the statement. The connector checks for one allowed statement,

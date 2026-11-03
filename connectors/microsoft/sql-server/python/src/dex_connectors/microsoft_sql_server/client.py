@@ -2,8 +2,11 @@
 # SPDX-License-Identifier: MIT
 """One native TDS connection per SQL Server operation attempt."""
 
+from __future__ import annotations
+
 import math
 import os
+import socket
 import ssl
 import threading
 from collections.abc import Callable
@@ -21,7 +24,7 @@ from ._generated.config import Config, Credentials
 from ._generated.definitions import CONNECTOR_ID, EXECUTE_DEFINITION, QUERY_DEFINITION
 
 if TYPE_CHECKING:
-    from .operations import ExecuteStatementOperation, QueryRowsOperation
+    from .operations import ExecuteStatementOperation, QueryRowsOperation, _AttemptDeadline
 
 _SESSION_SETTINGS = (
     "SET LANGUAGE us_english",
@@ -41,6 +44,7 @@ _SESSION_SETTINGS = (
 )
 _TLS_HOST_VALIDATION = threading.local()
 _ORIGINAL_HOST_VALIDATOR = tls.validate_host
+_ORIGINAL_SOCKET_CONNECTION = socket.create_connection
 
 
 def _verify_server_hostname(cert: Any, name: bytes) -> bool:
@@ -77,6 +81,25 @@ def _dispatch_host_validation(cert: Any, name: bytes) -> bool:
 
 
 tls.validate_host = _dispatch_host_validation
+
+
+def _dispatch_socket_connection(*args: Any, **kwargs: Any) -> socket.socket:
+    deadline = getattr(_TLS_HOST_VALIDATION, "deadline", None)
+    if deadline is not None:
+        deadline.check()
+        arguments = list(args)
+        if len(arguments) > 1:
+            arguments[1] = min(arguments[1], deadline.remaining_seconds())
+        elif "timeout" in kwargs:
+            kwargs["timeout"] = min(kwargs["timeout"], deadline.remaining_seconds())
+        args = tuple(arguments)
+    connected_socket = _ORIGINAL_SOCKET_CONNECTION(*args, **kwargs)
+    if deadline is not None:
+        deadline.attach_socket(connected_socket)
+    return connected_socket
+
+
+socket.create_connection = _dispatch_socket_connection
 
 
 class Client:
@@ -162,13 +185,13 @@ class Client:
         self.credentials = credentials
         self.connection_factory = connection_factory
 
-    def query(self) -> "QueryRowsOperation":
+    def query(self) -> QueryRowsOperation:
         """Bind the read operation to this client."""
         from .operations import QueryRowsOperation
 
         return QueryRowsOperation(self)
 
-    def execute(self) -> "ExecuteStatementOperation":
+    def execute(self) -> ExecuteStatementOperation:
         """Bind the transactional write operation to this client."""
         from .operations import ExecuteStatementOperation
 
@@ -177,7 +200,7 @@ class Client:
     async def aclose(self) -> None:
         """Release client resources; individual calls already close their sessions."""
 
-    def open_connection(self, password: str) -> Any:
+    def open_connection(self, password: str, deadline: _AttemptDeadline | None = None) -> Any:
         """Open and pin a native session with per-connection certificate verification."""
         ca_file: str | None = None
         if self.config.encrypt == "mandatory":
@@ -211,31 +234,51 @@ class Client:
             autocommit=False,
             appname="dex-sql-server-connector",
         )
-        if self.config.encrypt == "mandatory" and self.connection_factory is pytds.connect:
+        if self.connection_factory is pytds.connect:
             # pytds performs this check after the handshake and before it sends login credentials.
-            _TLS_HOST_VALIDATION.is_sql_server_connection = True
+            _TLS_HOST_VALIDATION.is_sql_server_connection = self.config.encrypt == "mandatory"
+            _TLS_HOST_VALIDATION.deadline = deadline
             try:
                 connection = self.connection_factory(**connection_settings)
             finally:
                 _TLS_HOST_VALIDATION.is_sql_server_connection = False
+                _TLS_HOST_VALIDATION.deadline = None
         else:
             connection = self.connection_factory(**connection_settings)
         try:
+            if deadline is not None:
+                deadline.attach_connection(connection)
+                deadline.check()
             cursor = connection.cursor()
-            for setting in _SESSION_SETTINGS:
-                cursor.execute(setting)
-            cursor.execute(f"SET LOCK_TIMEOUT {int(self.config.statement_timeout_seconds * 1000 + 0.999)}")
+            lock_timeout = int(self.config.statement_timeout_seconds * 1000 + 0.999)
+            settings = (*_SESSION_SETTINGS, f"SET LOCK_TIMEOUT {lock_timeout}")
             if self.connection_factory is pytds.connect:
-                cursor.execute("SELECT @@SPID, CONVERT(nvarchar(128), SERVERPROPERTY('ProductVersion'))")
+                from .operations import _InvalidResponse
+
+                identity_statement = (
+                    "SELECT @@SPID, CONVERT(nvarchar(128), SERVERPROPERTY('ProductVersion'))"
+                )
+                cursor.execute("; ".join((*settings, identity_statement)))
                 identity = cursor.fetchone()
-                if identity is None or len(identity) != 2:
-                    raise ValueError("SQL Server did not return session identity")
+                if (
+                    identity is None
+                    or len(identity) != 2
+                    or type(identity[0]) is not int
+                    or identity[0] < 0
+                    or not isinstance(identity[1], str)
+                ):
+                    raise _InvalidResponse("SQL Server did not return a valid session identity")
                 connection._dex_receipt_metadata = {}
                 process_id, server_version = str(identity[0]), str(identity[1])
                 if process_id.isdecimal() and len(process_id) <= 20:
                     connection._dex_receipt_metadata["processId"] = process_id
                 if 0 < len(server_version) <= 128 and all(32 <= ord(char) <= 126 for char in server_version):
                     connection._dex_receipt_metadata["serverVersion"] = server_version
+            else:
+                for setting in settings:
+                    cursor.execute(setting)
+            if deadline is not None:
+                deadline.check()
             cursor.close()
         except Exception:
             connection.close()

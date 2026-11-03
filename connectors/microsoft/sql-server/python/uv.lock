@@ -321,11 +321,11 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "certifi", specifier = ">=2024.2.2" },
-    { name = "cryptography", specifier = ">=42" },
+    { name = "cryptography", specifier = ">=42,<51" },
     { name = "dex-connectors-sdk", specifier = "==0.1.0" },
     { name = "dex-python-sdk", specifier = ">=1.28.0" },
     { name = "httpx", specifier = ">=0.27" },
-    { name = "pyopenssl", specifier = ">=24" },
+    { name = "pyopenssl", specifier = ">=24,<27" },
     { name = "python-tds", specifier = ">=1.17.1,<1.18" },
 ]
 

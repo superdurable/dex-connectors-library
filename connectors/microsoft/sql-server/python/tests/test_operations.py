@@ -3,6 +3,7 @@
 """Native SQL Server operation decisions without a database dependency."""
 
 import asyncio
+import importlib
 import socket
 from dataclasses import dataclass
 from datetime import UTC, datetime, time, timedelta
@@ -411,9 +412,21 @@ def test_native_read_budget_stops_a_large_value_before_buffering_it() -> None:
     assert budgeted.recv_into(buffer, 4) == 4
     with pytest.raises(Exception, match="read budget"):
         budgeted.recv_into(buffer, 4)
+    with pytest.raises(_ReadBudgetExceeded):
+        budgeted.recv_into(buffer, 1)
 
 
-def test_read_budget_truncates_rows_and_restores_transport() -> None:
+def test_completed_read_keeps_a_control_budget() -> None:
+    reader = SimpleNamespace(_transport=SimpleNamespace())
+    cursor = FakeCursor()
+    cursor._session = SimpleNamespace(_reader=reader)
+    _read_rows(cursor, 1000, 1000)
+    assert isinstance(reader._transport, _ReadBudgetTransport)
+    assert reader._transport.byte_limit == 4 << 20
+    assert not reader._transport.is_poisoned
+
+
+def test_read_budget_truncates_rows_and_poisons_transport() -> None:
     class ChunkTransport:
         def recv_into(self, buffer: bytearray, length: int) -> int:
             buffer[:length] = b"x" * length
@@ -432,9 +445,13 @@ def test_read_budget_truncates_rows_and_restores_transport() -> None:
     assert columns[0].name == "value"
     assert rows == ({"value": "17"},)
     assert truncated
-    assert reader._transport is original_transport
+    assert reader._transport.is_poisoned
+    with pytest.raises(_ReadBudgetExceeded):
+        reader._transport.recv_into(bytearray(1), 1)
 
+    reader = SimpleNamespace(_transport=ChunkTransport())
     mutation_connection = FakeConnection(cursor)
+    cursor._session._reader = reader
     cursor.rows = ((17,), (18,))
     outcome = asyncio.run(
         client(mutation_connection, max_response_bytes=100)
@@ -448,7 +465,8 @@ def test_read_budget_truncates_rows_and_restores_transport() -> None:
     )
     assert outcome.branch == "limitExceeded"
     assert not mutation_connection.committed
-    assert reader._transport is original_transport
+    assert reader._transport.is_poisoned
+    assert not mutation_connection.rolled_back
 
 
 def test_commit_read_budget_failure_is_uncertain() -> None:
@@ -459,7 +477,58 @@ def test_commit_read_budget_failure_is_uncertain() -> None:
         .invoke(call("execute"), ExecuteStatementInput("UPDATE dbo.t SET x = @p1", (1,)))
     )
     assert outcome.kind == "uncertain"
-    assert connection.rolled_back
+    assert not connection.rolled_back
+
+
+@pytest.mark.parametrize(
+    ("bytes_accepted", "expected_kind"),
+    [(0, "retry"), (1, "uncertain"), (6, "uncertain")],
+)
+@pytest.mark.parametrize("is_tls_wrapped", [False, True])
+def test_commit_send_failure_uses_actual_bytes_accepted(
+    bytes_accepted: int, expected_kind: str, is_tls_wrapped: bool
+) -> None:
+    class CountedSocket:
+        def __init__(self) -> None:
+            self.accepted = 0
+
+        def send(self, data: memoryview, _flags: int) -> int:
+            accepted = min(len(data), bytes_accepted - self.accepted)
+            self.accepted += accepted
+            return accepted
+
+    class SendConnection(FakeConnection):
+        def __init__(self) -> None:
+            super().__init__(FakeCursor(description=()))
+            raw_transport = CountedSocket()
+            if is_tls_wrapped:
+                class EncryptedTransport:
+                    def __init__(self, transport: CountedSocket) -> None:
+                        self._transport = transport
+
+                    def sendall(self, data: bytes) -> None:
+                        self._transport.sendall(data)
+
+                writer_transport = EncryptedTransport(raw_transport)
+            else:
+                writer_transport = raw_transport
+            writer = SimpleNamespace(_transport=writer_transport)
+            self._tds_socket = SimpleNamespace(main_session=SimpleNamespace(_writer=writer))
+
+        def commit(self) -> None:
+            self._tds_socket.main_session._writer._transport.sendall(b"COMMIT")
+            raise EOFError("commit response was lost")
+
+    connection = SendConnection()
+    outcome = asyncio.run(
+        client(connection)
+        .execute()
+        .invoke(call("execute"), ExecuteStatementInput("UPDATE dbo.t SET x = @p1", (1,)))
+    )
+    assert outcome.kind == expected_kind
+    if bytes_accepted == 0:
+        assert outcome.failure.kind == FailureKind.TRANSPORT
+    assert connection.closed
 
 
 def test_precommit_deadline_retries_when_commit_was_not_sent(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -472,7 +541,7 @@ def test_precommit_deadline_retries_when_commit_was_not_sent(monkeypatch: pytest
         nonlocal call_count
         if deadline.timer.interval > native_client.config.statement_timeout_seconds:
             call_count += 1
-            if call_count == 3:
+            if call_count == 5:
                 raise TimeoutError("attempt deadline")
         original_check(deadline)
 
@@ -636,6 +705,81 @@ def test_mandatory_tls_supplies_per_connection_ca_and_hostname_check(
     )
 
 
+def test_attempt_deadline_attaches_before_session_settings() -> None:
+    deadline = _AttemptDeadline(10)
+    connection: FakeConnection
+
+    class SettingsCursor(FakeCursor):
+        def execute(self, statement: str, _parameters: object = None) -> None:
+            assert deadline.connection is connection
+
+    connection = FakeConnection(SettingsCursor())
+    native = Client(
+        Config("localhost", "master", "sa", encrypt="disable"),
+        CredentialsSource(),
+        connection_factory=lambda **_settings: connection,
+    )
+    try:
+        assert native.open_connection("inert", deadline) is connection
+    finally:
+        deadline.close()
+
+
+def test_attempt_deadline_shuts_down_socket_during_login(monkeypatch: pytest.MonkeyPatch) -> None:
+    client_module = importlib.import_module("dex_connectors.microsoft_sql_server.client")
+    deadline = _AttemptDeadline(10)
+    observed: dict[str, object] = {}
+
+    class LoginSocket:
+        def shutdown(self, _how: int) -> None:
+            observed["shut_down"] = True
+
+    login_socket = LoginSocket()
+
+    def connect(_address: object, timeout: float) -> LoginSocket:
+        observed["timeout"] = timeout
+        return login_socket
+
+    monkeypatch.setattr(client_module, "_ORIGINAL_SOCKET_CONNECTION", connect)
+    client_module._TLS_HOST_VALIDATION.deadline = deadline
+    try:
+        assert client_module._dispatch_socket_connection(("localhost", 1433), 30) is login_socket
+        assert 0 < observed["timeout"] < 10
+        deadline._expire()
+        assert observed["shut_down"] is True
+    finally:
+        client_module._TLS_HOST_VALIDATION.deadline = None
+        deadline.close()
+
+
+def test_invalid_session_identity_is_a_protocol_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    client_module = importlib.import_module("dex_connectors.microsoft_sql_server.client")
+    statements: list[str] = []
+
+    class IdentityCursor(FakeCursor):
+        def execute(self, statement: str, _parameters: object = None) -> None:
+            statements.append(statement)
+
+    cursor = IdentityCursor(rows=(("invalid", "16.0"),))
+    connection = FakeConnection(cursor)
+
+    def connect(**_settings: object) -> FakeConnection:
+        return connection
+
+    monkeypatch.setattr(client_module.pytds, "connect", connect)
+    native = Client(
+        Config("localhost", "master", "sa", encrypt="disable"),
+        CredentialsSource(),
+        connection_factory=connect,
+    )
+    with pytest.raises(Exception, match="session identity") as failure:
+        native.open_connection("inert")
+    assert _classify(failure.value, "connect")[0] == "invalid"
+    assert len(statements) == 1
+    assert "SET LOCK_TIMEOUT" in statements[0] and "SELECT @@SPID" in statements[0]
+    assert connection.closed
+
+
 def test_ca_signed_certificate_uses_san_precedence_dns_case_and_ip_san() -> None:
     ca_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     ca_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Test CA")])
@@ -686,7 +830,7 @@ def test_query_completed_and_truncated() -> None:
     )
     assert completed.branch == "completed"
     assert completed.value.rows == ({"value": "17"},)
-    assert completed_connection.rolled_back and completed_connection.closed
+    assert not completed_connection.rolled_back and completed_connection.closed
     truncated_connection = FakeConnection(FakeCursor(rows=((17,), (18,))))
     truncated = asyncio.run(
         client(truncated_connection, max_rows=1)
@@ -783,7 +927,7 @@ def test_execute_completed_and_output_bound() -> None:
         )
     )
     assert bounded.branch == "limitExceeded"
-    assert bounded_connection.rolled_back
+    assert not bounded_connection.rolled_back
     assert not bounded_connection.committed
 
 

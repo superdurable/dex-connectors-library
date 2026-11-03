@@ -11,6 +11,7 @@ import socket
 import ssl
 import struct
 import threading
+import time as clock_time
 import unicodedata
 import uuid
 from datetime import UTC, date, datetime, time
@@ -188,13 +189,45 @@ class _ReadBudgetTransport:
         self.transport = transport
         self.byte_limit = byte_limit
         self.bytes_read = 0
+        self.is_poisoned = False
 
     def recv_into(self, buffer: Any, length: int = 0) -> int:
+        if self.is_poisoned:
+            raise _ReadBudgetExceeded("SQL Server reply exceeded the read budget")
         received = int(self.transport.recv_into(buffer, length))
         self.bytes_read += received
         if self.bytes_read > self.byte_limit:
+            self.is_poisoned = True
             raise _ReadBudgetExceeded("SQL Server reply exceeded the read budget")
         return received
+
+    def set_control_budget(self) -> None:
+        self.byte_limit = 4 << 20
+        self.bytes_read = 0
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.transport, name)
+
+
+class _CommitWriteTransport:
+    def __init__(self, transport: Any) -> None:
+        self.transport = transport
+        self.bytes_sent = 0
+        self.has_unobservable_write = False
+
+    def sendall(self, data: Any, flags: int = 0) -> None:
+        if not callable(getattr(self.transport, "send", None)):
+            self.has_unobservable_write = True
+            self.transport.sendall(data, flags)
+            return
+        data_view = memoryview(data)
+        offset = 0
+        while offset < len(data_view):
+            sent = self.transport.send(data_view[offset:], flags)
+            if sent <= 0:
+                raise ConnectionError("SQL Server socket closed before COMMIT was sent")
+            self.bytes_sent += sent
+            offset += sent
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self.transport, name)
@@ -202,28 +235,65 @@ class _ReadBudgetTransport:
 
 class _AttemptDeadline:
     def __init__(self, seconds: float) -> None:
+        self.expires_at = clock_time.monotonic() + seconds
         self.connection: Any = None
+        self.sockets: list[socket.socket] = []
+        self.lock = threading.Lock()
         self.expired = threading.Event()
         self.timer = threading.Timer(seconds, self._expire)
         self.timer.daemon = True
         self.timer.start()
 
     def _expire(self) -> None:
-        self.expired.set()
-        if self.connection is None:
-            return
-        tds_socket = getattr(self.connection, "_tds_socket", None)
+        with self.lock:
+            self.expired.set()
+            sockets = tuple(self.sockets)
+            connection = self.connection
+        for connected_socket in sockets:
+            self._shutdown_socket(connected_socket)
+        if connection is not None:
+            self._shutdown_connection(connection)
+
+    @staticmethod
+    def _shutdown_socket(connected_socket: Any) -> None:
+        try:
+            connected_socket.shutdown(socket.SHUT_RDWR)
+        except (AttributeError, OSError):
+            pass
+
+    def _shutdown_connection(self, connection: Any) -> None:
+        tds_socket = getattr(connection, "_tds_socket", None)
         encrypted_socket = getattr(tds_socket, "sock", None)
         raw_socket = getattr(encrypted_socket, "_transport", encrypted_socket)
         if raw_socket is not None:
-            try:
-                raw_socket.shutdown(socket.SHUT_RDWR)
-            except (AttributeError, OSError):
-                pass
+            self._shutdown_socket(raw_socket)
+
+    def attach_socket(self, connected_socket: socket.socket) -> None:
+        with self.lock:
+            self.sockets.append(connected_socket)
+            has_expired = self.expired.is_set()
+        if has_expired:
+            self._shutdown_socket(connected_socket)
+            self.check()
+
+    def attach_connection(self, connection: Any) -> None:
+        with self.lock:
+            self.connection = connection
+            has_expired = self.expired.is_set()
+        if has_expired:
+            self._shutdown_connection(connection)
+            self.check()
 
     def check(self) -> None:
         if self.expired.is_set():
             raise TimeoutError("SQL Server attempt exceeded its deadline")
+
+    def remaining_seconds(self) -> float:
+        self.check()
+        remaining = self.expires_at - clock_time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError("SQL Server attempt exceeded its deadline")
+        return remaining
 
     def close(self) -> None:
         self.timer.cancel()
@@ -603,10 +673,10 @@ def _read_rows(
         columns.append(Column(name, type_name))
     rows: list[dict[str, Any]] = []
     reader = getattr(getattr(cursor, "_session", None), "_reader", None)
-    original_transport = None
+    budget_transport = None
     if reader is not None:
-        original_transport = reader._transport
-        reader._transport = _ReadBudgetTransport(original_transport, max_bytes + (64 << 10))
+        budget_transport = _ReadBudgetTransport(reader._transport, max_bytes + (64 << 10))
+        reader._transport = budget_transport
     encoded_bytes = 2
     try:
         while True:
@@ -644,8 +714,8 @@ def _read_rows(
     except _ReadBudgetExceeded:
         return tuple(columns), tuple(rows), True
     finally:
-        if reader is not None:
-            reader._transport = original_transport
+        if budget_transport is not None:
+            budget_transport.set_control_budget()
 
 
 class QueryRowsOperation:
@@ -698,12 +768,11 @@ class QueryRowsOperation:
             self.client.config.connect_timeout_seconds + self.client.config.statement_timeout_seconds + 5
         )
         try:
-            connection = self.client.open_connection(password)
-            deadline.connection = connection
+            connection = self.client.open_connection(password, deadline)
             deadline.check()
             phase = "statement"
             statement_deadline = _AttemptDeadline(self.client.config.statement_timeout_seconds)
-            statement_deadline.connection = connection
+            statement_deadline.attach_connection(connection)
             cursor = connection.cursor()
             cursor.execute(statement, parameters)
             deadline.check()
@@ -745,20 +814,15 @@ class QueryRowsOperation:
             )
             return QueryAttempt.branch_result(branch, RowSet(), _receipt(call, metadata, connection), failure)
         finally:
-            deadline.close()
             if statement_deadline is not None:
                 statement_deadline.close()
             if connection is not None:
-                try:
-                    connection.rollback()
-                except Exception:
-                    # Closing the session also abandons the read transaction.
-                    pass
                 try:
                     connection.close()
                 except Exception:
                     # The read outcome was already classified and the session cannot be reused.
                     pass
+            deadline.close()
 
 
 class ExecuteStatementOperation:
@@ -820,18 +884,16 @@ class ExecuteStatementOperation:
     ) -> MutationAttempt[StatementExecution]:
         phase = "connect"
         connection = None
-        was_committed = False
         statement_deadline: _AttemptDeadline | None = None
         deadline = _AttemptDeadline(
             self.client.config.connect_timeout_seconds + self.client.config.statement_timeout_seconds + 5
         )
         try:
-            connection = self.client.open_connection(password)
-            deadline.connection = connection
+            connection = self.client.open_connection(password, deadline)
             deadline.check()
             phase = "statement"
             statement_deadline = _AttemptDeadline(self.client.config.statement_timeout_seconds)
-            statement_deadline.connection = connection
+            statement_deadline.attach_connection(connection)
             cursor = connection.cursor()
             done_counts: list[int] = []
             session = getattr(cursor, "_session", None)
@@ -892,8 +954,30 @@ class ExecuteStatementOperation:
             except TimeoutError as error:
                 raise _CommitNotSent() from error
             phase = "commit"
-            connection.commit()
-            was_committed = True
+            commit_session = getattr(getattr(connection, "_tds_socket", None), "main_session", None)
+            writer = getattr(commit_session, "_writer", None)
+            commit_transport = None
+            transport_owner = None
+            if writer is not None:
+                writer_transport = writer._transport
+                transport_owner = (
+                    writer_transport if hasattr(writer_transport, "_transport") else writer
+                )
+                commit_transport = _CommitWriteTransport(transport_owner._transport)
+                transport_owner._transport = commit_transport
+            try:
+                connection.commit()
+            except Exception as error:
+                if (
+                    commit_transport is not None
+                    and commit_transport.bytes_sent == 0
+                    and not commit_transport.has_unobservable_write
+                ):
+                    raise _CommitNotSent() from error
+                raise
+            finally:
+                if commit_transport is not None and transport_owner is not None:
+                    transport_owner._transport = commit_transport.transport
             return MutationAttempt.branch_result(COMPLETED, value, _receipt(call, connection=connection))
         except Exception as error:
             has_timed_out = deadline.expired.is_set() or (
@@ -923,18 +1007,12 @@ class ExecuteStatementOperation:
                 branch, StatementExecution(), _receipt(call, metadata, connection), failure
             )
         finally:
-            deadline.close()
             if statement_deadline is not None:
                 statement_deadline.close()
             if connection is not None:
-                if not was_committed:
-                    try:
-                        connection.rollback()
-                    except Exception:
-                        # Closing the session abandons an uncommitted transaction.
-                        pass
                 try:
                     connection.close()
                 except Exception:
                     # Outcome was already classified and the native connection is unusable.
                     pass
+            deadline.close()

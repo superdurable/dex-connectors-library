@@ -65,8 +65,27 @@ def administration_connection(config: Config, *, autocommit: bool) -> pytds.Conn
         user=config.user,
         password=os.environ["SQLSERVER_CONNECTOR_TEST_PASSWORD"],
         cafile=ca_file,
+        validate_host=False,
         autocommit=autocommit,
     )
+
+
+def test_administration_tls_connection_verifies_ca_without_legacy_host_validator(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("SQLSERVER_TLS_CA_FILE", "/test/ca.pem")
+    monkeypatch.setenv("SQLSERVER_CONNECTOR_TEST_PASSWORD", "test-only-password")
+    observed: dict[str, object] = {}
+
+    def connect(**settings: object) -> object:
+        observed.update(settings)
+        return object()
+
+    monkeypatch.setattr(pytds, "connect", connect)
+    config = Config("127.0.0.1", "master", "sa", encrypt="mandatory")
+    administration_connection(config, autocommit=True)
+    assert observed["cafile"] == "/test/ca.pem"
+    assert observed["validate_host"] is False
 
 
 def test_query_type_mapping_and_row_limit() -> None:
