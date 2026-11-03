@@ -306,6 +306,10 @@ def mutation_self_test(connectors: list[Path]) -> None:
                                           for intermediate in item.get("intermediate", []))), None)
         final_heartbeat_scenario = next((item for item in original["scenarios"]
                                          if "heartbeat" in item["expected"]), None)
+        cleared_heartbeat_scenario = next((item for item in original["scenarios"]
+                                           if item["expected"].get("heartbeat") == {"cleared": True}
+                                           or any(value.get("heartbeat") == {"cleared": True}
+                                                  for value in item.get("intermediate", []))), None)
         no_heartbeat_scenario = next((item for item in original["scenarios"]
                                       if declared_operations[item["operation"]]["kind"] == "mutation"
                                       and "priorHeartbeat" in item and "heartbeat" not in item["expected"]), None)
@@ -320,6 +324,7 @@ def mutation_self_test(connectors: list[Path]) -> None:
             ("wrong-nonempty-list", list_output_scenario),
             ("wrong-heartbeat-shape", heartbeat_scenario),
             ("port-heartbeat-shape", heartbeat_scenario),
+            ("present-null-for-clear", cleared_heartbeat_scenario),
             ("wrong-final-heartbeat-shape", final_heartbeat_scenario),
             ("extra-heartbeat", no_heartbeat_scenario),
         ) if source is not None)
@@ -368,9 +373,7 @@ def mutation_self_test(connectors: list[Path]) -> None:
                 intermediate["heartbeat"] = {"__wrong_heartbeat_shape__": True}
             elif mutation == "wrong-final-heartbeat-shape":
                 changed["expected"]["heartbeat"] = {"__wrong_heartbeat_shape__": True}
-            elif mutation == "port-heartbeat-shape":
-                pass
-            elif mutation == "extra-heartbeat":
+            elif mutation in ("port-heartbeat-shape", "present-null-for-clear", "extra-heartbeat"):
                 pass
             elif mutation.startswith("mime-"):
                 exchange = next(exchange for exchange in changed["exchanges"]
@@ -410,13 +413,15 @@ def mutation_self_test(connectors: list[Path]) -> None:
                 fixture = Path(directory) / "scenarios.json"
                 fixture.write_text(json.dumps(document))
                 selected_commands = ({language: value for language, value in commands.items() if language != "go"}
-                                     if mutation in ("port-heartbeat-shape", "extra-heartbeat") else commands)
+                                     if mutation in ("port-heartbeat-shape", "present-null-for-clear", "extra-heartbeat") else commands)
                 for language, (command, cwd) in selected_commands.items():
                     result = subprocess.run(command, cwd=cwd, text=True, capture_output=True, check=False,
                                             env={**os.environ, "GOWORK": "off",
                                                  "CONNECTOR_CONFORMANCE_FIXTURE": str(fixture),
-                                                 **({"CONNECTOR_CONFORMANCE_MUTATE_HEARTBEAT": "1"}
+                                                 **({"CONNECTOR_CONFORMANCE_MUTATE_HEARTBEAT": changed["name"]}
                                                     if mutation == "port-heartbeat-shape" else {}),
+                                                 **({"CONNECTOR_CONFORMANCE_MUTATE_CLEAR_AS_NULL": changed["name"]}
+                                                    if mutation == "present-null-for-clear" else {}),
                                                  **({"CONNECTOR_CONFORMANCE_MUTATE_EXTRA_HEARTBEAT": changed["name"]}
                                                     if mutation == "extra-heartbeat" else {})})
                     if result.returncode == 0:

@@ -3220,8 +3220,8 @@
       "priorHeartbeat": {
         "attempt": 1,
         "value": {
-          "trelloDispatchedCallId": "fed5a116-c5f6-53ac-81b1-a823fb443a88",
-          "trelloAttempt": 1
+          "trelloAttempt": 1,
+          "trelloDispatchedCallId": "fed5a116-c5f6-53ac-81b1-a823fb443a88"
         }
       }
     },
@@ -3297,9 +3297,9 @@
       "priorHeartbeat": {
         "attempt": 1,
         "value": {
-          "trelloDispatchedCallId": "fed5a116-c5f6-53ac-81b1-a823fb443a88",
           "trelloAttempt": 1,
-          "trelloCanRetry": true
+          "trelloCanRetry": true,
+          "trelloDispatchedCallId": "fed5a116-c5f6-53ac-81b1-a823fb443a88"
         }
       }
     },
@@ -3327,8 +3327,8 @@
       "priorHeartbeat": {
         "attempt": 1,
         "value": {
-          "trelloDispatchedCallId": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
-          "trelloAttempt": 1
+          "trelloAttempt": 1,
+          "trelloDispatchedCallId": "51be6994-d0a6-57b8-95b1-e9f58f355a43"
         }
       }
     },
@@ -3386,9 +3386,9 @@
       "priorHeartbeat": {
         "attempt": 1,
         "value": {
-          "trelloDispatchedCallId": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
           "trelloAttempt": 1,
-          "trelloCanRetry": true
+          "trelloCanRetry": true,
+          "trelloDispatchedCallId": "51be6994-d0a6-57b8-95b1-e9f58f355a43"
         }
       }
     },
@@ -3454,6 +3454,10 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "trelloAttempt": 2,
+          "trelloDispatchedCallId": "fed5a116-c5f6-53ac-81b1-a823fb443a88"
+        },
         "output": {
           "boardId": "6512f0a1c2d3e4f5a6b70001",
           "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
@@ -3486,6 +3490,11 @@
         {
           "exchangeCount": 1,
           "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "trelloAttempt": 1,
+            "trelloCanRetry": true,
+            "trelloDispatchedCallId": "fed5a116-c5f6-53ac-81b1-a823fb443a88"
+          },
           "retryAfterMs": 0
         }
       ],
@@ -3542,6 +3551,10 @@
       "expected": {
         "branch": "added",
         "failureKind": "",
+        "heartbeat": {
+          "trelloAttempt": 2,
+          "trelloDispatchedCallId": "51be6994-d0a6-57b8-95b1-e9f58f355a43"
+        },
         "output": {
           "authorMemberId": "6512f0a1c2d3e4f5a6b70301",
           "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
@@ -3562,6 +3575,11 @@
         {
           "exchangeCount": 1,
           "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "trelloAttempt": 1,
+            "trelloCanRetry": true,
+            "trelloDispatchedCallId": "51be6994-d0a6-57b8-95b1-e9f58f355a43"
+          },
           "retryAfterMs": 0
         }
       ],
@@ -3865,6 +3883,10 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "trelloAttempt": 1,
+          "trelloDispatchedCallId": "fed5a116-c5f6-53ac-81b1-a823fb443a88"
+        },
         "output": {
           "listId": "6512f0a1c2d3e4f5a6b70101",
           "name": "Approved request"
@@ -3920,6 +3942,10 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "trelloAttempt": 1,
+          "trelloDispatchedCallId": "51be6994-d0a6-57b8-95b1-e9f58f355a43"
+        },
         "output": {
           "cardId": "6512f0a1c2d3e4f5a6b7c8d9"
         },

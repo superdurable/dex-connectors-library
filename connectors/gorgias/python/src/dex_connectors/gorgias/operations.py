@@ -553,7 +553,10 @@ async def _checkpoint(call: Call, state: State) -> bool:
     if call.context is None:
         return False
     try:
-        await call.context.heartbeat(_DispatchMarker(call.id) if state == State.CLAIMED else None)
+        if state == State.CLAIMED:
+            await call.context.heartbeat(_DispatchMarker(call.id))
+        else:
+            await call.context.heartbeat()
         return True
     except Exception:
         return False

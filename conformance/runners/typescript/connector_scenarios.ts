@@ -38,7 +38,7 @@ export class HeartbeatContext {
   readonly deadline = new Date(Date.now() + 30_000);
   readonly cancellationSignal = new AbortController().signal;
   readonly flowId = 'conformance-flow';
-  constructor(priorHeartbeat: unknown, fixedClock?: string) {
+  constructor(priorHeartbeat: unknown, fixedClock?: string, readonly scenarioName = '') {
     this.fixedClock = new Date(fixedClock ?? '1970-01-01T00:00:01Z');
     this.flowStartedAt = new Date('1970-01-01T00:00:01Z');
     this.marker = priorHeartbeat && typeof priorHeartbeat === 'object' && 'value' in priorHeartbeat
@@ -48,8 +48,9 @@ export class HeartbeatContext {
   hasLastHeartbeatValue(): boolean { return this.marker !== undefined; }
   getLastHeartbeatValue(): unknown { return this.marker; }
   async recordHeartbeat(value: unknown): Promise<void> {
-    this.marker = process.env.CONNECTOR_CONFORMANCE_MUTATE_HEARTBEAT === '1'
+    this.marker = process.env.CONNECTOR_CONFORMANCE_MUTATE_HEARTBEAT === this.scenarioName
       ? { __wrong_heartbeat_shape__: true } : value;
+    if (value === undefined && process.env.CONNECTOR_CONFORMANCE_MUTATE_CLEAR_AS_NULL === this.scenarioName) this.marker = null;
     this.hasWrittenHeartbeat = true;
   }
 }
@@ -389,6 +390,11 @@ function assertHeartbeat(scenario: Scenario, context: HeartbeatContext, expected
     throw new Error(`${scenario.name}: heartbeat write differs from Go recording`);
   }
   if ('heartbeat' in expected) {
+    const isClear = isDeepStrictEqual(expected.heartbeat, { cleared: true });
+    if ((context.marker === undefined) !== isClear) {
+      throw new Error(`${scenario.name}: heartbeat clear differs from Go recording`);
+    }
+    if (isClear) return;
     const encoded = outputCodec.encode(context.marker);
     if (encoded.kind !== 'json' || typeof encoded.data !== 'string') throw new Error('SDK heartbeat codec did not encode JSON');
     const heartbeat = JSON.parse(encoded.data);
@@ -415,7 +421,7 @@ export async function replay(
   };
   const outputCodec = dexSDK.jsonCodec();
   const recorder = new ExchangeRecorder(scenario, pathPrefix);
-  const context = new HeartbeatContext(scenario.priorHeartbeat, scenario.fixedClock);
+  const context = new HeartbeatContext(scenario.priorHeartbeat, scenario.fixedClock, scenario.name);
   for (const intermediate of scenario.intermediate ?? []) {
     context.hasWrittenHeartbeat = false;
     const attempt = await invoke(scenario, recorder, context);

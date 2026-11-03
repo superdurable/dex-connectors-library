@@ -92,6 +92,7 @@ type conformanceOutcome struct {
  Err error
  IdempotencyKey string
  Heartbeat json.RawMessage
+ HeartbeatCleared bool
 }
 
 type conformanceInvoker interface { Invoke(attempt int) conformanceOutcome; InputFields() []string }
@@ -146,8 +147,10 @@ func newConformanceMutationInvocation[Input, Output any](t *testing.T, raw json.
 
 func (invocation conformanceMutationInvocation[Input, Output]) Invoke() conformanceOutcome {
  invocation.context.lastHeartbeat = nil
+ invocation.context.lastHeartbeatCleared = false
  outcome := invokeConformanceMutation(invocation.t, invocation.raw, invocation.context, invocation.operation, invocation.connection, invocation.callID)
  outcome.Heartbeat = append(json.RawMessage(nil), invocation.context.lastHeartbeat...)
+ outcome.HeartbeatCleared = invocation.context.lastHeartbeatCleared
  return outcome
 }
 func (invocation conformanceMutationInvocation[Input, Output]) InputFields() []string { return conformanceInputFields[Input]() }
@@ -155,6 +158,7 @@ func (invocation conformanceMutationInvocation[Input, Output]) InputFields() []s
 type conformanceHeartbeatContext struct {
  dex.Context
  lastHeartbeat json.RawMessage
+ lastHeartbeatCleared bool
 }
 
 func (context *conformanceHeartbeatContext) RecordHeartbeat(value any) error {
@@ -162,6 +166,7 @@ func (context *conformanceHeartbeatContext) RecordHeartbeat(value any) error {
  encoded, err := json.Marshal(value)
  if err != nil { return err }
  context.lastHeartbeat = encoded
+ context.lastHeartbeatCleared = value == nil
  return nil
 }
 
@@ -244,7 +249,7 @@ func TestConnectorConformance(t *testing.T) {
     outcome := invoker.Invoke(index + 1)
     decision := conformanceRetryDecision(t, outcome)
     decision["exchangeCount"] = recorder.requestCount
-    if len(outcome.Heartbeat) > 0 { var heartbeat any; require.NoError(t, json.Unmarshal(outcome.Heartbeat, &heartbeat)); decision["heartbeat"] = heartbeat }
+    if outcome.HeartbeatCleared { decision["heartbeat"] = map[string]any{"cleared": true} } else if len(outcome.Heartbeat) > 0 { var heartbeat any; require.NoError(t, json.Unmarshal(outcome.Heartbeat, &heartbeat)); decision["heartbeat"] = heartbeat }
     recordedIntermediate = append(recordedIntermediate, decision)
    }
    outcome := invoker.Invoke(scenario.Attempts)
@@ -312,7 +317,7 @@ func recordConformanceScenario(scenario conformanceScenario, recorder *conforman
  if len(intermediate) > 0 { recorded["intermediate"] = intermediate } else { delete(recorded, "intermediate") }
  if outcome.IdempotencyKey != "" { recorded["idempotencyKey"] = outcome.IdempotencyKey } else { delete(recorded, "idempotencyKey") }
  decision := map[string]any{"branch": string(outcome.Branch), "failureKind": "", "retry": false, "retryAfterMs": 0, "uncertain": outcome.Branch == sdkgo.UncertainBranchID, "requestCount": recorder.providerRequestCount}
- if len(outcome.Heartbeat) > 0 { var heartbeat any; if err := json.Unmarshal(outcome.Heartbeat, &heartbeat); err != nil { return nil, err }; decision["heartbeat"] = heartbeat }
+ if outcome.HeartbeatCleared { decision["heartbeat"] = map[string]any{"cleared": true} } else if len(outcome.Heartbeat) > 0 { var heartbeat any; if err := json.Unmarshal(outcome.Heartbeat, &heartbeat); err != nil { return nil, err }; decision["heartbeat"] = heartbeat }
  if outcome.Err != nil {
   var retry *sdkgo.RetryError
   if !errors.As(outcome.Err, &retry) { return nil, outcome.Err }

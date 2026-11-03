@@ -21,12 +21,15 @@ from dex import CodecRegistry, Value, WireKind
 from dex_connectors import sdk
 from dex_connectors.sdk.singledispatch import Marker
 
+_NO_HEARTBEAT_VALUE = object()
+
 
 class HeartbeatContext:
     """Persist the connector's encoded heartbeat across fixture attempts."""
 
     def __init__(self, prior_heartbeat: dict[str, Any] | None = None,
-                 fixed_clock: str | None = None) -> None:
+                 fixed_clock: str | None = None, scenario_name: str = "") -> None:
+        self.scenario_name = scenario_name
         self.attempt = prior_heartbeat["attempt"] + 1 if prior_heartbeat is not None else 1
         self.run_id = "run"
         self.fixed_clock = (datetime.fromisoformat(fixed_clock)
@@ -35,15 +38,16 @@ class HeartbeatContext:
         self.deadline = datetime.now(UTC) + timedelta(seconds=30)
         self.heartbeat_payload = (prior_heartbeat.get("value", prior_heartbeat)
                                   if prior_heartbeat is not None else None)
+        self.has_heartbeat_value = prior_heartbeat is not None
         self.has_written_heartbeat = False
 
     def has_last_heartbeat_value(self) -> bool:
         """Report whether a prior Dex attempt persisted a heartbeat."""
-        return self.heartbeat_payload is not None
+        return self.has_heartbeat_value
 
     def get_last_heartbeat_value(self, value_type: type[object]) -> object:
         """Decode the exact Go-recorded payload into the requested heartbeat type."""
-        if self.heartbeat_payload is None:
+        if not self.has_heartbeat_value:
             return None
         if value_type is Marker:
             return Marker.from_wire(self.heartbeat_payload)
@@ -51,13 +55,18 @@ class HeartbeatContext:
             Value(WireKind.JSON, json.dumps(self.heartbeat_payload))
         )
 
-    async def heartbeat(self, value: object) -> None:
+    async def heartbeat(self, value: object = _NO_HEARTBEAT_VALUE) -> None:
         """Record the last heartbeat for the next fixture invocation."""
-        encoded = (value.to_wire() if isinstance(value, Marker)
+        is_clear = value is _NO_HEARTBEAT_VALUE
+        encoded = (None if is_clear else value.to_wire() if isinstance(value, Marker)
                    else json.loads(CodecRegistry().resolve(type(value)).encode(value).data))
-        if os.environ.get("CONNECTOR_CONFORMANCE_MUTATE_HEARTBEAT") == "1":
+        if os.environ.get("CONNECTOR_CONFORMANCE_MUTATE_HEARTBEAT") == self.scenario_name:
             encoded = {"__wrong_heartbeat_shape__": True}
+            is_clear = False
+        if is_clear and os.environ.get("CONNECTOR_CONFORMANCE_MUTATE_CLEAR_AS_NULL") == self.scenario_name:
+            is_clear = False
         self.heartbeat_payload = encoded
+        self.has_heartbeat_value = not is_clear
         self.has_written_heartbeat = True
 
 
@@ -504,7 +513,7 @@ async def replay(
 ) -> None:
     """Replay all attempts, then check transport mismatches and the final decision."""
     recorder = ExchangeRecorder(scenario, scenario["callId"], path_prefix)
-    context = HeartbeatContext(scenario.get("priorHeartbeat"), scenario.get("fixedClock"))
+    context = HeartbeatContext(scenario.get("priorHeartbeat"), scenario.get("fixedClock"), scenario["name"])
     for intermediate in scenario.get("intermediate", []):
         context.has_written_heartbeat = False
         attempt = await invoke(scenario, recorder, context)
@@ -516,11 +525,7 @@ async def replay(
             f"{scenario['name']}: heartbeat write differs from Go recording"
         )
         if "heartbeat" in intermediate:
-            assert _same_json_value(context.heartbeat_payload, intermediate["heartbeat"]), (
-                f"{scenario['name']}: heartbeat {context.heartbeat_payload!r} "
-                f"differs from Go recording {intermediate['heartbeat']!r}"
-            )
-            context.heartbeat_payload = intermediate["heartbeat"]
+            _assert_recorded_heartbeat(scenario["name"], context, intermediate["heartbeat"])
         context.attempt += 1
     context.has_written_heartbeat = False
     attempt = await invoke(scenario, recorder, context)
@@ -533,7 +538,16 @@ async def replay(
         f"{scenario['name']}: heartbeat write differs from Go recording"
     )
     if "heartbeat" in expected:
-        assert _same_json_value(context.heartbeat_payload, expected["heartbeat"]), (
-            f"{scenario['name']}: heartbeat {context.heartbeat_payload!r} "
-            f"differs from Go recording {expected['heartbeat']!r}"
+        _assert_recorded_heartbeat(scenario["name"], context, expected["heartbeat"])
+
+
+def _assert_recorded_heartbeat(name: str, context: HeartbeatContext, recorded: object) -> None:
+    is_clear = (isinstance(recorded, dict) and set(recorded) == {"cleared"}
+                and recorded["cleared"] is True)
+    assert context.has_heartbeat_value != is_clear, f"{name}: heartbeat clear differs from Go recording"
+    if not is_clear:
+        assert _same_json_value(context.heartbeat_payload, recorded), (
+            f"{name}: heartbeat {context.heartbeat_payload!r} differs from Go recording {recorded!r}"
         )
+    context.heartbeat_payload = None if is_clear else recorded
+    context.has_heartbeat_value = not is_clear

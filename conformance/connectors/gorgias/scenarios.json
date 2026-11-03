@@ -1537,7 +1537,9 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
-        "heartbeat": null,
+        "heartbeat": {
+          "cleared": true
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -2169,7 +2171,9 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
-        "heartbeat": null,
+        "heartbeat": {
+          "cleared": true
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -2778,7 +2782,9 @@
         {
           "exchangeCount": 1,
           "failureKind": "RATE_LIMIT",
-          "heartbeat": null,
+          "heartbeat": {
+            "cleared": true
+          },
           "retryAfterMs": 0
         }
       ],
@@ -2854,7 +2860,9 @@
         {
           "exchangeCount": 1,
           "failureKind": "RATE_LIMIT",
-          "heartbeat": null,
+          "heartbeat": {
+            "cleared": true
+          },
           "retryAfterMs": 0
         }
       ],
