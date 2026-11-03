@@ -1,0 +1,55 @@
+// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+
+import { randomUUID } from 'node:crypto';
+import { once } from 'node:events';
+import { createServer } from 'node:net';
+import mysql from 'mysql2/promise';
+import { SecretString, type Call } from '@superdurable/connectors-sdk';
+import { expect, it } from 'vitest';
+import { MySQLClient } from '../src/client.js';
+
+const host = process.env.MYSQL_CONNECTOR_TEST_HOST;
+it.skipIf(!host)('runs both operations against the CI MySQL service and rolls back a limited write', async () => {
+  const database = process.env.MYSQL_CONNECTOR_TEST_DATABASE || 'connector_test';
+  const user = process.env.MYSQL_CONNECTOR_TEST_USER || 'root';
+  const password = process.env.MYSQL_CONNECTOR_TEST_PASSWORD || '';
+  const port = Number(process.env.MYSQL_CONNECTOR_TEST_PORT || '3306');
+  const sslMode = process.env.MYSQL_CONNECTOR_TEST_SSL_MODE || 'disabled';
+  const administration = await mysql.createConnection({ host: host!, port, database, user, password, rowsAsArray: true, ...(sslMode === 'disabled' ? {} : { ssl: { rejectUnauthorized: false } }) });
+  const table = `connector_ts_${randomUUID().replaceAll('-', '')}`;
+  const provider = new MySQLClient({ host: host!, port, database, user, sslMode }, { resolve: async () => ({ password: new SecretString(password) }) });
+  const call = (operationId: string): Call => ({ id: randomUUID(), idempotencyKey: randomUUID(), connection: { provider: 'mysql', name: 'live' }, operation: { connectorId: 'mysql', operationId }, context: { cancellationSignal: new AbortController().signal } }) as Call;
+  try {
+    await administration.query(`CREATE TABLE ${table} (id BIGINT AUTO_INCREMENT PRIMARY KEY, order_id VARCHAR(64) UNIQUE NOT NULL, amount DECIMAL(10,2) NOT NULL, idempotency_key CHAR(36) UNIQUE) ENGINE=InnoDB`);
+    const inserted = await provider.execute().invoke(call('execute'), { statement: `INSERT INTO ${table} (order_id, amount) VALUES (?, ?)`, parameters: ['88213', '250.00'] });
+    expect(inserted).toMatchObject({ kind: 'branch', branch: 'completed', value: { rowsAffected: 1 } });
+    const selected = await provider.query().invoke(call('query'), { statement: `SELECT id, order_id, amount FROM ${table} WHERE order_id = ?`, parameters: ['88213'] });
+    expect(selected).toMatchObject({ kind: 'branch', branch: 'completed' });
+    if (selected.kind === 'branch') expect(selected.value.rows?.[0]).toMatchObject({ order_id: '88213', amount: '250.00' });
+    const bounded = new MySQLClient({ host: host!, port, database, user, sslMode, maxRows: 1 }, { resolve: async () => ({ password: new SecretString(password) }) });
+    const truncated = await bounded.query().invoke(call('query'), { statement: 'SELECT 1 AS n UNION ALL SELECT 2 AS n' });
+    expect(truncated).toMatchObject({ kind: 'branch', branch: 'truncated', value: { rows: [{ n: 1 }] } });
+    const limited = await provider.execute().invoke(call('execute'), { statement: `UPDATE ${table} SET amount = ? WHERE order_id = ?`, parameters: ['251.00', '88213'], maxRowsAffected: 0 });
+    expect(limited).toMatchObject({ kind: 'branch', branch: 'limitExceeded' });
+    const unchanged = await provider.query().invoke(call('query'), { statement: `SELECT amount FROM ${table} WHERE order_id = ?`, parameters: ['88213'] });
+    if (unchanged.kind === 'branch') expect(unchanged.value.rows?.[0]).toMatchObject({ amount: '250.00' });
+    const duplicate = await provider.execute().invoke(call('execute'), { statement: `INSERT INTO ${table} (order_id, amount) VALUES (?, ?)`, parameters: ['88213', '1.00'] });
+    expect(duplicate).toMatchObject({ kind: 'branch', branch: 'providerRejected', failure: { kind: 'CONFLICT' } });
+    const keyedCall = call('execute');
+    const keyed = await provider.execute().invoke(keyedCall, { statement: `INSERT INTO ${table} (order_id, amount, idempotency_key) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE amount = amount`, parameters: ['88214', '5.00'], idempotencyKeyPlaceholder: 3 });
+    expect(keyed).toMatchObject({ kind: 'branch', branch: 'completed', value: { rowsAffected: 1 } });
+    const replay = await provider.execute().invoke(keyedCall, { statement: `INSERT INTO ${table} (order_id, amount, idempotency_key) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE amount = amount`, parameters: ['88214', '5.00'], idempotencyKeyPlaceholder: 3 });
+    expect(replay).toMatchObject({ kind: 'branch', branch: 'completed', value: { rowsAffected: 0 } });
+    const missing = await provider.query().invoke(call('query'), { statement: 'SELECT id FROM missing_mysql_connector_table' });
+    expect(missing).toMatchObject({ kind: 'branch', branch: 'providerRejected', failure: { kind: 'NOT_FOUND' } });
+    const listener = createServer();
+    listener.listen(0, '127.0.0.1');
+    await once(listener, 'listening');
+    const address = listener.address();
+    if (!address || typeof address === 'string') throw new Error('free port unavailable');
+    await new Promise<void>(resolve => listener.close(() => resolve()));
+    const refused = new MySQLClient({ host: '127.0.0.1', port: address.port, database, user, sslMode: 'disabled' }, { resolve: async () => ({ password: new SecretString(password) }) });
+    expect(await refused.query().invoke(call('query'), { statement: 'SELECT 1' })).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+  } finally { await administration.query(`DROP TABLE IF EXISTS ${table}`); await administration.end(); }
+}, 60_000);
