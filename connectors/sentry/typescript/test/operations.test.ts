@@ -29,4 +29,12 @@ describe('Sentry provider adapter', () => {
     const retry = await refused.getIssue().invoke(call, { organization: 'acme', id: '123' });
     expect(retry.kind).toBe('retry');
   });
+  it('encodes search query bytes like Go url.QueryEscape', async () => {
+    let request: ProviderRequest | undefined;
+    const client = new SentryClient({ baseUrl: 'http://127.0.0.1:12345' }, {
+      resolve: async () => ({ apiKey: new SecretString('test-secret-token') }),
+    }, { send: async sent => { request = sent; return { status: 200, headers: {}, body: Buffer.from('[]') }; } });
+    await client.listIssues().invoke(call, { organization: 'acme', query: 'error *~' });
+    expect(request?.url).toBe('http://127.0.0.1:12345/organizations/acme/issues/?query=error+%2A~');
+  });
 });

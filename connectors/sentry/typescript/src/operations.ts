@@ -16,13 +16,13 @@ export class ListIssuesOperation implements Query<ListIssuesInput, IssuePage> {
   /** Validate and invoke one list attempt. */
   async invoke(call: Call, input: ListIssuesInput): Promise<QueryAttempt<IssuePage>> {
     if (!input.organization) return queryFailure('listIssues', 'defect', 'VALIDATION', 'organization slug is required', emptyPage);
-    const path = `/organizations/${pathEscape(input.organization)}/issues/${input.query ? `?query=${new URLSearchParams({ query: input.query }).toString().slice(6)}` : ''}`;
+    const path = `/organizations/${pathEscape(input.organization)}/issues/${input.query ? `?query=${queryEscape(input.query)}` : ''}`;
     const exchange = await this.client.exchange(call, 'listIssues', 'GET', path);
     if ('branch' in exchange) return queryExchange(exchange, emptyPage);
     try {
       const value: unknown = JSON.parse(Buffer.from(exchange.body).toString('utf8'));
       if (!Array.isArray(value)) throw new Error('issues missing');
-      return newQueryBranch('listed', { issues: value.map(decodeIssue) }, {});
+      return newQueryBranch('listed', { issues: value.map(decodeListedIssue) }, {});
     } catch { return queryFailure('listIssues', 'invalidResponse', 'PROTOCOL', 'provider response is incomplete or malformed', emptyPage); }
   }
 }
@@ -63,7 +63,20 @@ function pathEscape(value: string): string {
   return encodeURIComponent(value).replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`)
     .replace(/%(24|26|2B|3D|3A|40)/gi, encoded => String.fromCharCode(parseInt(encoded.slice(1), 16)));
 }
+function queryEscape(value: string): string {
+  return encodeURIComponent(value).replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`)
+    .replace(/%20/g, '+');
+}
 function decodeIssue(value: unknown): Issue {
+  const issue = decodeIssueFields(value);
+  if (!issue.id) throw new Error('issue ID missing');
+  return issue;
+}
+function decodeListedIssue(value: unknown): Issue {
+  return decodeIssueFields(value);
+}
+function decodeIssueFields(value: unknown): Issue {
+  if (value === null) return emptyIssue;
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('invalid issue');
   const object = value as Record<string, unknown>;
   const field = (name: string): string => {
@@ -72,9 +85,7 @@ function decodeIssue(value: unknown): Issue {
     if (typeof found !== 'string') throw new Error('invalid issue field');
     return found;
   };
-  const issue = { id: field('id'), shortId: field('shortId'), title: field('title'), status: field('status') };
-  if (!issue.id) throw new Error('issue ID missing');
-  return issue;
+  return { id: field('id'), shortId: field('shortId'), title: field('title'), status: field('status') };
 }
 function queryExchange<Output>(exchange: Exclude<SentryExchange, { body: Uint8Array }>, empty: Output): QueryAttempt<Output> {
   if (exchange.branch === 'retry') return newQueryRetry(exchange.failure, exchange.retryAfterMs);

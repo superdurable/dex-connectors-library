@@ -58,6 +58,71 @@
       "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
       "exchanges": [
         {
+          "body": "[{\"shortId\":\"A-1\"},{},null]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/organizations/acme/issues/",
+          "query": {
+            "query": [
+              "level:error urgent"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-sentry/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "issues": [
+            {
+              "id": "",
+              "shortId": "A-1",
+              "title": "",
+              "status": ""
+            },
+            {
+              "id": "",
+              "shortId": "",
+              "title": "",
+              "status": ""
+            },
+            {
+              "id": "",
+              "shortId": "",
+              "title": "",
+              "status": ""
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "organization": "acme",
+        "query": "level:error urgent"
+      },
+      "name": "listIssues-missing-ids-and-null-element",
+      "operation": "listIssues"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
           "body": "{}",
           "headers": {},
           "keyMode": "absent",
