@@ -10,7 +10,7 @@ import { assignee, createdStoryFields, createdTaskFields, customFieldValues, dec
 
 const zeroTime = '0001-01-01T00:00:00Z';
 const emptyTask: Task = { id: '', name: '', isCompleted: false, createdAt: zeroTime, modifiedAt: zeroTime };
-const emptyList: ListTasksOutput = { tasks: null };
+const emptyList: ListTasksOutput = { tasks: [] };
 const retryableStatus = (status: number) => status === 408 || status === 429 || status >= 500;
 const successStatus = (status: number) => status >= 200 && status < 300;
 const record = (value: unknown): Record<string, unknown> => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};

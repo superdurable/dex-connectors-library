@@ -8,6 +8,10 @@ metadata:
   version: v0.23.0
 spec:
   languages:
+    python:
+      version: v0.1.0
+      operations: [listTasks, getTask, createTask, updateTask, addComment]
+      triggers: []
     typescript:
       version: v0.1.0
       operations: [listTasks, getTask, createTask, updateTask, addComment]

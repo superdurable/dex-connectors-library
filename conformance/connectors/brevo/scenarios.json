@@ -1,0 +1,761 @@
+{
+  "connector": "brevo",
+  "scenarios": [
+    {
+      "callId": "264ed41b-2784-5fcd-9187-1d24d8d931fd",
+      "exchanges": [
+        {
+          "body": "{\"id\":21}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/contacts",
+          "requestBody": {
+            "attributes": {
+              "FNAME": "Meridian"
+            },
+            "email": "member@meridian.example",
+            "updateEnabled": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "saved",
+        "failureKind": "",
+        "output": {
+          "created": true,
+          "email": "member@meridian.example",
+          "id": 21
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "264ed41b-2784-5fcd-9187-1d24d8d931fd",
+      "input": {
+        "attributes": {
+          "FNAME": "Meridian"
+        },
+        "email": "member@meridian.example"
+      },
+      "name": "create-contact",
+      "operation": "createOrUpdateContact"
+    },
+    {
+      "callId": "264ed41b-2784-5fcd-9187-1d24d8d931fd",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/contacts",
+          "requestBody": {
+            "attributes": {
+              "FNAME": "Meridian"
+            },
+            "email": "member@meridian.example",
+            "updateEnabled": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "saved",
+        "failureKind": "",
+        "output": {
+          "created": false,
+          "email": "member@meridian.example"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "264ed41b-2784-5fcd-9187-1d24d8d931fd",
+      "input": {
+        "attributes": {
+          "FNAME": "Meridian"
+        },
+        "email": "member@meridian.example"
+      },
+      "name": "update-contact",
+      "operation": "createOrUpdateContact"
+    },
+    {
+      "callId": "264ed41b-2784-5fcd-9187-1d24d8d931fd",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"invalid_parameter\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/contacts",
+          "requestBody": {
+            "attributes": {
+              "FNAME": "Meridian"
+            },
+            "email": "member@meridian.example",
+            "updateEnabled": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "created": false,
+          "email": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "264ed41b-2784-5fcd-9187-1d24d8d931fd",
+      "input": {
+        "attributes": {
+          "FNAME": "Meridian"
+        },
+        "email": "member@meridian.example"
+      },
+      "name": "upsert-rejected",
+      "operation": "createOrUpdateContact"
+    },
+    {
+      "callId": "264ed41b-2784-5fcd-9187-1d24d8d931fd",
+      "exchanges": [
+        {
+          "body": "{\"id\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/contacts",
+          "requestBody": {
+            "attributes": {
+              "FNAME": "Meridian"
+            },
+            "email": "member@meridian.example",
+            "updateEnabled": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "created": false,
+          "email": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "264ed41b-2784-5fcd-9187-1d24d8d931fd",
+      "input": {
+        "attributes": {
+          "FNAME": "Meridian"
+        },
+        "email": "member@meridian.example"
+      },
+      "name": "upsert-invalid-response",
+      "operation": "createOrUpdateContact"
+    },
+    {
+      "callId": "264ed41b-2784-5fcd-9187-1d24d8d931fd",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "created": false,
+          "email": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "264ed41b-2784-5fcd-9187-1d24d8d931fd",
+      "input": {
+        "email": "bad"
+      },
+      "name": "upsert-defect",
+      "operation": "createOrUpdateContact"
+    },
+    {
+      "callId": "264ed41b-2784-5fcd-9187-1d24d8d931fd",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/contacts",
+          "requestBody": {
+            "attributes": {
+              "FNAME": "Meridian"
+            },
+            "email": "member@meridian.example",
+            "updateEnabled": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "264ed41b-2784-5fcd-9187-1d24d8d931fd",
+      "input": {
+        "attributes": {
+          "FNAME": "Meridian"
+        },
+        "email": "member@meridian.example"
+      },
+      "name": "upsert-429-retry",
+      "operation": "createOrUpdateContact"
+    },
+    {
+      "callId": "264ed41b-2784-5fcd-9187-1d24d8d931fd",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/contacts",
+          "requestBody": {
+            "attributes": {
+              "FNAME": "Meridian"
+            },
+            "email": "member@meridian.example",
+            "updateEnabled": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "264ed41b-2784-5fcd-9187-1d24d8d931fd",
+      "input": {
+        "attributes": {
+          "FNAME": "Meridian"
+        },
+        "email": "member@meridian.example"
+      },
+      "name": "upsert-503-retry",
+      "operation": "createOrUpdateContact"
+    },
+    {
+      "callId": "264ed41b-2784-5fcd-9187-1d24d8d931fd",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/contacts",
+          "requestBody": {
+            "attributes": {
+              "FNAME": "Meridian"
+            },
+            "email": "member@meridian.example",
+            "updateEnabled": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "264ed41b-2784-5fcd-9187-1d24d8d931fd",
+      "input": {
+        "attributes": {
+          "FNAME": "Meridian"
+        },
+        "email": "member@meridian.example"
+      },
+      "name": "upsert-transport-before-send",
+      "operation": "createOrUpdateContact"
+    },
+    {
+      "attempts": 2,
+      "callId": "264ed41b-2784-5fcd-9187-1d24d8d931fd",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/contacts",
+          "requestBody": {
+            "attributes": {
+              "FNAME": "Meridian"
+            },
+            "email": "member@meridian.example",
+            "updateEnabled": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v3/contacts",
+          "requestBody": {
+            "attributes": {
+              "FNAME": "Meridian"
+            },
+            "email": "member@meridian.example",
+            "updateEnabled": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "saved",
+        "failureKind": "",
+        "output": {
+          "created": false,
+          "email": "member@meridian.example"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "264ed41b-2784-5fcd-9187-1d24d8d931fd",
+      "input": {
+        "attributes": {
+          "FNAME": "Meridian"
+        },
+        "email": "member@meridian.example"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "upsert-after-send-converges",
+      "operation": "createOrUpdateContact"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-000000000010",
+      "exchanges": [
+        {
+          "body": "{\"id\":21,\"email\":\"member@meridian.example\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/contacts/member@meridian.example",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "email": "member@meridian.example",
+          "id": 21
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "member@meridian.example"
+      },
+      "name": "find-contact",
+      "operation": "getContact"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-000000000011",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/contacts/member@meridian.example",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "email": "",
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "member@meridian.example"
+      },
+      "name": "contact-not-found",
+      "operation": "getContact"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-000000000012",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/contacts/member@meridian.example",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "email": "",
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "member@meridian.example"
+      },
+      "name": "lookup-rejected",
+      "operation": "getContact"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-000000000013",
+      "exchanges": [
+        {
+          "body": "{\"id\":0,\"email\":\"bad\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/contacts/member@meridian.example",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "email": "",
+          "id": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "member@meridian.example"
+      },
+      "name": "lookup-invalid-response",
+      "operation": "getContact"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-000000000014",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "email": "",
+          "id": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "bad"
+      },
+      "name": "lookup-defect",
+      "operation": "getContact"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-000000000015",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/contacts/member@meridian.example",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "email": "member@meridian.example"
+      },
+      "name": "lookup-429-retry",
+      "operation": "getContact"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-000000000016",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/contacts/member@meridian.example",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "member@meridian.example"
+      },
+      "name": "lookup-503-retry",
+      "operation": "getContact"
+    },
+    {
+      "callId": "11111111-1111-4111-8111-000000000017",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/contacts/member@meridian.example",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Key": [
+              "brevo-test-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "member@meridian.example"
+      },
+      "name": "lookup-transport-before-send",
+      "operation": "getContact"
+    }
+  ],
+  "schemaVersion": 1
+}

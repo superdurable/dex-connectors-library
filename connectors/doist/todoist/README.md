@@ -32,6 +32,15 @@ return a `Task` projection with `ID`, `ProjectID`, `Content`,
 provider fields are ignored. Provider text is untrusted; escape it when rendering.
 Completed tasks are outside the get-active-task operation's scope.
 
+## Python package
+
+Install `dex-connector-doist-todoist==0.1.0` for the five typed Todoist
+operations in Python. The [Python package README](python/README.md) describes
+provider outcomes and the [runnable CRUD Flow](python/examples/task_crud/README.md)
+that creates, reads, updates, lists, and deletes one disposable task. Its
+conformance suite replays Go-recorded provider requests and results. Live
+Todoist authorization and provider behavior have not been verified.
+
 ## Partial updates
 
 `UpdateTaskInput` requires `TaskID` and at least one of `Content` or

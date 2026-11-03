@@ -21,7 +21,8 @@ setattr(Config, '__module__', 'dex_connectors.stripe.client')
 @dataclass(frozen=True, slots=True)
 class Credentials:
 
-    secret_key: SecretString
-    webhook_secret: SecretString
+    auth_method_id: str = "api-key-with-webhook"
+    secret_key: SecretString | None = None
+    webhook_secret: SecretString | None = None
 
 setattr(Credentials, '__module__', 'dex_connectors.stripe.client')

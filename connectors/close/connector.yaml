@@ -13,6 +13,11 @@ spec:
       version: v0.1.0
       operations: [listLeads, getLead]
       triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-close'
+      operations: [listLeads, getLead]
+      triggers: []
   codegen:
     go:
       package: close
