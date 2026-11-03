@@ -16,10 +16,10 @@ func TestSharedStringFormatCases(t *testing.T) {
 	}
 	var fixture struct {
 		Cases []struct {
-			Name string `json:"name"`
+			Name   string `json:"name"`
 			Format string `json:"format"`
-			Value string `json:"value"`
-			Valid bool `json:"valid"`
+			Value  string `json:"value"`
+			Valid  bool   `json:"valid"`
 		} `json:"cases"`
 	}
 	if err := json.Unmarshal(contents, &fixture); err != nil {

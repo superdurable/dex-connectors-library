@@ -49,7 +49,10 @@ export class ProviderStalledError extends Error {
 /** Public HTTPS, owned private HTTP, or caller-owned unrestricted transport. */
 export type AddressPolicy = 'publicHTTPS' | 'privateNetworkHTTP' | 'unrestricted';
 
-/** Caller-owned transport for a provider exchange; implementations must not replay redirects. */
+/** Caller-owned transport for a provider exchange; implementations must not replay redirects.
+ * A client may return a complete body without calling onResponseChunk. If it calls the callback,
+ * it must feed every received chunk in order before returning and honor false by stopping the response.
+ */
 export interface ProviderHTTPClient {
   /** Send one request and return its bounded response. */
   send(request: ProviderRequest): Promise<ProviderResponse>;

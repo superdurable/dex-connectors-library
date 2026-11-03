@@ -149,6 +149,38 @@ it('allows an injected HTTP client to return the Go-compatible complete response
   if (outcome.kind === 'branch') expect(outcome.branch).toBe('generated');
 });
 
+it('decodes a buffered event stream from an injected HTTP client', async () => {
+  const format = newWireFormat({ providerName: 'chat', streaming: 'always' });
+  const providerQuery = query('https://private.example.test', format, config => {
+    config.httpClient = { send: async () => ({
+      status: 200, headers: { 'content-type': 'text/event-stream' },
+      body: Buffer.from('data: {"choices":[{"index":0,"delta":{"content":"ok"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n'),
+    }) };
+  });
+  const outcome = await providerQuery.invoke(call(), request());
+  expect(outcome.kind).toBe('branch');
+  if (outcome.kind === 'branch') {
+    expect(outcome.branch).toBe('generated');
+    expect(outcome.value.text).toBe('ok');
+  }
+});
+
+it('uses Retry-After when the provider retry-delay reader throws on an HTML 503', async () => {
+  const format = newWireFormat({ providerName: 'chat' });
+  format.readErrorRetryDelay = body => JSON.parse(Buffer.from(body).toString('utf8')) as number;
+  const providerQuery = query('https://private.example.test', format, config => {
+    config.httpClient = { send: async () => ({
+      status: 503, headers: { 'retry-after': '7' }, body: Buffer.from('<html>unavailable</html>'),
+    }) };
+  });
+  const outcome = await providerQuery.invoke(call(), request());
+  expect(outcome.kind).toBe('retry');
+  if (outcome.kind === 'retry') {
+    expect(outcome.failure.kind).toBe('AVAILABILITY');
+    expect(outcome.retryAfterMs).toBe(7000);
+  }
+});
+
 it('keeps the copied wire-format finish mapping after caller mutation', async () => {
   const format = newWireFormat({ providerName: 'chat' });
   const providerQuery = query('https://private.example.test', format, config => {

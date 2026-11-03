@@ -173,13 +173,20 @@ export class TextGenerationQuery implements Query<TextGenerationRequest, TextGen
       if (status < 200 || status >= 300) {
         const tokens = safeTokens(readErrorTokens(providerResponse.body.slice(0, 64 << 10), format.errorTokenPointers ?? []), credential);
         const outcome = classifyError(format.errorRules ?? [], status, tokens);
-        let delay = outcome.disposition === 'retry' ? Math.max(0, format.readErrorRetryDelay?.(providerResponse.body) ?? 0) : 0;
-        if (!delay && outcome.disposition === 'retry') delay = parseRetryAfter(String(providerResponse.headers['retry-after'] ?? ''));
+        let delay = 0;
+        if (outcome.disposition === 'retry') {
+          try {
+            const providerDelay = format.readErrorRetryDelay?.(providerResponse.body);
+            if (typeof providerDelay === 'number' && Number.isFinite(providerDelay) && providerDelay > 0) delay = providerDelay;
+          } catch { /* An unreadable provider delay leaves Retry-After authoritative. */ }
+          if (!delay) delay = parseRetryAfter(String(providerResponse.headers['retry-after'] ?? ''));
+        }
         return classifyOutcome(outcome, `provider returned HTTP ${status}${tokens.length ? ` ${tokens.join(' ')}` : ''}`, delay, receipt, attempt);
       }
       let decoded: DecodedResponse;
       try {
         if (stream.wasEventStream) {
+          if (!stream.hasObservedChunk) stream.onChunk(providerResponse.body, status, providerResponse.headers);
           if (stream.error) throw stream.error;
           if (!stream.state.isDone && !stream.state.hasFinished) return attempt.retry('TRANSPORT','provider response ended before it was complete');
           decoded = stream.state.response;
@@ -278,6 +285,7 @@ class TextGenerationStreamAttempt {
   readonly #decoder: ServerSentEventDecoder;
   error: unknown;
   wasEventStream = false;
+  hasObservedChunk = false;
   responseHeaders: Record<string, unknown> | undefined;
 
   constructor(readonly call: Call, readonly format: WireFormat, readonly isStreaming: boolean, maxEventBytes: number, maxTotalBytes: number) {
@@ -287,6 +295,7 @@ class TextGenerationStreamAttempt {
   onChunk(chunk: Uint8Array, status: number, headers: Record<string, unknown>): boolean | void {
     if (status < 200 || status >= 300 || !this.isStreaming || !isEventStream(headers)) return;
     this.wasEventStream = true;
+    this.hasObservedChunk = true;
     this.responseHeaders = headers;
     try { return this.#decoder.feed(chunk, this.decodeEvent.bind(this)); }
     catch (error) { this.error = error; throw error; }

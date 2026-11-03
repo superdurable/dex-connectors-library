@@ -74,7 +74,7 @@ export interface WireFormat {
   /** Accepted provider token to normalized finish reason. */ finishReasons: Record<string, FinishReason>;
   /** Ordered provider-specific error rules. */ errorRules?: ErrorRule[];
   /** JSON pointers for safe error tokens. */ errorTokenPointers?: string[];
-  /** Optional provider-specific retry delay reader in milliseconds. */ readErrorRetryDelay?: (body: Uint8Array) => number;
+  /** Optional provider-specific retry delay reader in milliseconds; thrown or non-finite values defer to Retry-After. */ readErrorRetryDelay?: (body: Uint8Array) => number;
   /** Response header preference for request ID. */ requestIDHeaders?: string[];
   /** Whitelisted receipt metadata headers. */ rateLimitHeaders?: string[];
   /** No-byte timeout in milliseconds; zero disables it. */ stallTimeoutMs?: number;
