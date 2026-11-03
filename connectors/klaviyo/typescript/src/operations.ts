@@ -17,7 +17,7 @@ function mutationFailure(branch: string, kind: Failure['kind'], message: string)
 function isRetryStatus(status: number): boolean { return status === 408 || status === 409 || status === 429 || status >= 500; }
 function rejectionKind(status: number): Failure['kind'] { return status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : 'PROVIDER_REJECTION'; }
 function retryHeader(headers: Record<string, unknown>): string { const value = headers['retry-after']; return Array.isArray(value) ? String(value[0] ?? '') : typeof value === 'string' ? value : ''; }
-function pathEscape(value: string): string { return Buffer.from(value, 'utf8').reduce((result, byte) => result + (/[A-Za-z0-9\-._~!$&'()*+,;=:@?]/.test(String.fromCharCode(byte)) ? String.fromCharCode(byte) : `%${byte.toString(16).toUpperCase().padStart(2, '0')}`), ''); }
+function pathEscape(value: string): string { return Buffer.from(value, 'utf8').reduce((result, byte) => result + (/[A-Za-z0-9\-._~$&+=:@]/.test(String.fromCharCode(byte)) ? String.fromCharCode(byte) : `%${byte.toString(16).toUpperCase().padStart(2, '0')}`), ''); }
 function validEmail(value: string): boolean {
   // Go's mail.ParseAddress returns a different Address for quoted local parts and display names.
   const atom = "[A-Za-z0-9!#$%&'*+/=?^_`{|}~\\-\\p{L}\\p{N}\\p{M}\\p{S}]+";

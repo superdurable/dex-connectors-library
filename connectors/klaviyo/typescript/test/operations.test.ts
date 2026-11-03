@@ -21,9 +21,9 @@ it('escapes opaque profile IDs like Go url.PathEscape', async () => {
       return { status: 200, headers: {}, body: Buffer.from('{"data":{"type":"profile","id":"profile,one+two 😀"}}') };
     },
   });
-  const result = await client.getProfile().invoke(call, { id: 'profile,one+two 😀' });
+  const result = await client.getProfile().invoke(call, { id: "profile,one;two!it's(ok)*+$=:@ 😀" });
   expect(result.kind).toBe('branch');
-  expect(requestUrl).toBe('https://a.klaviyo.com/api/profiles/profile,one+two%20%F0%9F%98%80');
+  expect(requestUrl).toBe('https://a.klaviyo.com/api/profiles/profile%2Cone%3Btwo%21it%27s%28ok%29%2A+$=:@%20%F0%9F%98%80');
 });
 
 it('treats unavailable credentials as a terminal defect before transmission', async () => {

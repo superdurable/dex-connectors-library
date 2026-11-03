@@ -49,6 +49,50 @@
       "callId": "1e5ce0c8-02cd-4db3-94af-e108d8d28f4a",
       "exchanges": [
         {
+          "body": "{\"data\":{\"type\":\"profile\",\"id\":\"profile,one;two!\",\"attributes\":{\"email\":\"member@meridian.co\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/profiles/profile,one;two!",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.api+json"
+            ],
+            "Authorization": [
+              "Klaviyo-API-Key pk_test_key"
+            ],
+            "Content-Type": [
+              "application/vnd.api+json"
+            ],
+            "Revision": [
+              "2026-10-15"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "email": "member@meridian.co",
+          "id": "profile,one;two!"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "profile,one;two!"
+      },
+      "name": "profile-punctuation-id",
+      "operation": "getProfile"
+    },
+    {
+      "callId": "1e5ce0c8-02cd-4db3-94af-e108d8d28f4a",
+      "exchanges": [
+        {
           "body": "",
           "headers": {},
           "keyMode": "absent",
