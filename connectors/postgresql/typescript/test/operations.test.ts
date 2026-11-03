@@ -133,6 +133,7 @@ describe('PostgreSQL operations', () => {
   it('ignores dollar signs in identifiers and accepts leading-zero placeholders', async () => {
     const { client, queries } = fakeClient();
     expect(await client.query().invoke(call, { statement: 'SELECT 1 AS col$1' })).toMatchObject({ kind: 'branch', branch: 'completed' });
+    expect(await client.query().invoke(call, { statement: 'SELECT 1 AS €$1' })).toMatchObject({ kind: 'branch', branch: 'completed' });
     expect(await client.query().invoke(call, { statement: 'SELECT $01::int', parameters: [1] })).toMatchObject({ kind: 'branch', branch: 'completed' });
     expect(queries.at(-1)?.values).toEqual(['1']);
   });

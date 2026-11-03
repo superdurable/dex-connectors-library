@@ -86,7 +86,7 @@ function placeholderCount(statement: string): number {
       }
       continue;
     }
-    if (statement[index] === '$' && (index === 0 || !/[\p{L}\p{N}_$]/u.test(statement[index - 1] ?? ''))) {
+    if (statement[index] === '$' && (index === 0 || (statement.charCodeAt(index - 1) < 128 && !/[A-Za-z0-9_$]/.test(statement[index - 1] ?? '')))) {
       const remaining = statement.slice(index);
       const tag = /^\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$/.exec(remaining)?.[0];
       if (tag) { const end = statement.indexOf(tag, index + tag.length); index = end < 0 ? statement.length : end + tag.length; continue; }
@@ -228,8 +228,6 @@ async function readRows(connection: PgClient, statement: string, values: Array<s
     if (batch.rows.length === 0) return { columns, rows, truncated: false, command: commandName(commandTag, latestResult.command), rowCount: latestResult.rowCount ?? 0 };
     for (const rawRow of batch.rows) {
       if (rows.length === maxRows) {
-        // Closing is best effort: the enclosing connection is discarded after this bounded read.
-        await cursor.close().catch(() => undefined);
         return { columns, rows, truncated: true, command: commandName(commandTag, latestResult.command), rowCount: latestResult.rowCount ?? 0 };
       }
       if (!Array.isArray(rawRow) || rawRow.length !== columns.length) throw new UndecodableValueError({ name: '*', typeOid: 0 });
@@ -237,8 +235,6 @@ async function readRows(connection: PgClient, statement: string, values: Array<s
       columns.forEach((column, index) => { row[column.name] = decodeValue(column, rawRow[index]); });
       bytes += Buffer.byteLength(JSON.stringify(row), 'utf8') + 1;
       if (bytes > maxResponseBytes) {
-        // Closing is best effort: the enclosing connection is discarded after this bounded read.
-        await cursor.close().catch(() => undefined);
         return { columns, rows, truncated: true, command: commandName(commandTag, latestResult.command), rowCount: latestResult.rowCount ?? 0 };
       }
       rows.push(row);

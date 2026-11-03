@@ -292,10 +292,16 @@ jobs:
           DATABASE_PORT: ${{ matrix.port }}
         run: |
           for _ in $(seq 1 120); do
-            if (echo > /dev/tcp/127.0.0.1/"$DATABASE_PORT") 2>/dev/null; then break; fi
+            if [ "$CONNECTOR" = connectors/postgresql ]; then
+              if docker exec "${{ job.services.database.id }}" pg_isready -U postgres -d connector_test >/dev/null 2>&1; then break; fi
+            elif (echo > /dev/tcp/127.0.0.1/"$DATABASE_PORT") 2>/dev/null; then break; fi
             sleep 1
           done
-          (echo > /dev/tcp/127.0.0.1/"$DATABASE_PORT") 2>/dev/null
+          if [ "$CONNECTOR" = connectors/postgresql ]; then
+            docker exec "${{ job.services.database.id }}" pg_isready -U postgres -d connector_test
+          else
+            (echo > /dev/tcp/127.0.0.1/"$DATABASE_PORT") 2>/dev/null
+          fi
           case "$CONNECTOR" in
             connectors/postgresql)
               export POSTGRESQL_CONNECTOR_TEST_HOST=127.0.0.1 POSTGRESQL_CONNECTOR_TEST_PORT=5432
