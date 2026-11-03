@@ -60,7 +60,7 @@ export class ListMembersOperation implements Query<ListMembersInput, ListMembers
     if (classified) return classified;
     try {
       const page = parseObject(result.body);
-      const wires = page.members;
+      const wires = page.members ?? [];
       if (!Array.isArray(wires) || !Number.isInteger(page.total_items) || Number(page.total_items) < 0 || wires.length > pageSize) throw new Error('invalid page');
       const members = wires.map(wire => decodeMemberObject(wire, ''));
       const totalItems = Number(page.total_items);
@@ -184,8 +184,14 @@ function credentialMutationDefect<T>(operation: string, zero: T): MutationAttemp
 function validateResourceID(name: string, value: string): string { return /^[A-Za-z0-9]{1,64}$/.test(value) ? '' : `${name} must be a Mailchimp ID of 1 to 64 letters and digits`; }
 function validateEmail(value: string): string {
   if (!value || Buffer.byteLength(value) > 254) return 'emailAddress must be one email address of at most 254 bytes';
-  // Go mail.ParseAddress accepts quoted local parts and requires a bare, unchanged mailbox.
-  if (/\s|[<>(),;:\\]/.test(value) || !/^(?:[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+|"[^"\r\n]+")@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?$/.test(value) || value.includes('..')) return 'emailAddress must be one bare email address such as jane@example.com';
+  // Go's bare-address check rejects quoted local parts because ParseAddress removes their quotes.
+  const atom = /^[\p{L}\p{N}!#$%&'*+/=?^_`{|}~-]+$/u;
+  const [local, domain, extra] = value.split('@');
+  const validLocal = !!local && local.split('.').every(part => atom.test(part));
+  const validDomain = !!domain && (domain.startsWith('[') && domain.endsWith(']')
+    ? /^[\x21-\x5A\x5E-\x7E]+$/.test(domain.slice(1, -1))
+    : domain.split('.').every(part => /^[\p{L}\p{N}](?:[\p{L}\p{N}-]*[\p{L}\p{N}])?$/u.test(part)));
+  if (extra !== undefined || !validLocal || !validDomain) return 'emailAddress must be one bare email address such as jane@example.com';
   return '';
 }
 function validateMemberAddress(listID: string, email: string): string { return validateResourceID('listId', listID) || validateEmail(email); }
@@ -196,10 +202,13 @@ function validateListInput(input: ListMembersInput): string {
   if (input.status && !readableStatuses.has(input.status)) return 'status is not a Mailchimp contact status';
   if (input.pageSize !== undefined && (!Number.isInteger(input.pageSize) || input.pageSize < 0 || input.pageSize > 1000)) return 'pageSize must be 1 to 1000, or zero for 100';
   if (input.offset !== undefined && (!Number.isInteger(input.offset) || input.offset < 0 || input.offset > 2_147_483_647)) return 'offset must be a non-negative number of contacts';
-  for (const bound of [input.changedSince, input.optedInSince]) if (bound && Number.isNaN(Date.parse(bound))) return 'time bound is invalid';
+  for (const bound of [input.changedSince, input.optedInSince]) {
+    if (!bound) continue;
+    try { timestamp(bound); } catch { return 'time bound is invalid'; }
+  }
   return '';
 }
-function formatMailchimpTime(value: string): string { return new Date(value).toISOString().slice(0, 19) + '+00:00'; }
+function formatMailchimpTime(value: string): string { return timestamp(value)!.slice(0, 19) + '+00:00'; }
 function validateUpsertInput(input: UpsertMemberInput): string {
   const addressError = validateMemberAddress(input.listId, input.emailAddress); if (addressError) return addressError;
   if (!writableStatuses.has(input.statusIfNew)) return 'statusIfNew is required';
@@ -209,7 +218,7 @@ function validateUpsertInput(input: UpsertMemberInput): string {
     if (Object.keys(input.mergeFields).length > 30) return 'mergeFields holds at most 30 fields';
     for (const [tag, value] of Object.entries(input.mergeFields)) {
       if (!/^[A-Z0-9_]{1,50}$/.test(tag)) return `merge tag ${tag} is invalid`;
-      const validText = (text: string) => Buffer.byteLength(text) <= 1024 && !/[\u0000-\u0008\u000b-\u001f\u007f]/.test(text);
+      const validText = (text: string) => Buffer.byteLength(text) <= 1024 && !/[\u0000-\u0008\u000b-\u001f\u007f]/.test(text); // eslint-disable-line no-control-regex
       if (typeof value === 'string' && validText(value)) continue;
       if (typeof value === 'number' && Number.isFinite(value)) continue;
       if (value && typeof value === 'object' && !Array.isArray(value) && Object.entries(value).every(([key, text]) => /^[a-z][a-z0-9_]{0,31}$/.test(key) && typeof text === 'string' && validText(text))) continue;
@@ -231,7 +240,7 @@ function validateTagsInput(input: UpdateMemberTagsInput): string {
   if (!tags.length || tags.length > 50) return 'addTags and removeTags must hold 1 to 50 tags together';
   const seen = new Set<string>();
   for (const tag of tags) {
-    if (!tag || Buffer.byteLength(tag) > 100 || tag.trim() !== tag || /[\u0000-\u001f\u007f]/.test(tag)) return 'tag name is invalid';
+    if (!tag || Buffer.byteLength(tag) > 100 || tag.trim() !== tag || /[\u0000-\u001f\u007f]/.test(tag)) return 'tag name is invalid'; // eslint-disable-line no-control-regex
     const lower = tag.toLowerCase(); if (seen.has(lower)) return 'tag appears more than once'; seen.add(lower);
   }
   return '';
@@ -241,28 +250,71 @@ function parseObject(body: Uint8Array): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('invalid object');
   return value as Record<string, unknown>;
 }
-function text(object: Record<string, unknown>, key: string): string { return typeof object[key] === 'string' ? object[key] as string : ''; }
-function number(object: Record<string, unknown>, key: string): number { return typeof object[key] === 'number' ? object[key] as number : 0; }
-function timestamp(value: string): string | undefined { if (!value) return undefined; const parsed = Date.parse(value); if (Number.isNaN(parsed)) throw new Error('invalid timestamp'); return new Date(parsed).toISOString().replace(/\.000Z$/, 'Z'); }
+function text(object: Record<string, unknown>, key: string): string {
+  const value = object[key];
+  if (value === undefined || value === null) return '';
+  if (typeof value !== 'string') throw new Error(`invalid ${key}`);
+  return value;
+}
+function number(object: Record<string, unknown>, key: string): number {
+  const value = object[key];
+  if (value === undefined || value === null) return 0;
+  if (typeof value !== 'number' || !Number.isSafeInteger(value)) throw new Error(`invalid ${key}`);
+  return value;
+}
+function boolean(object: Record<string, unknown>, key: string): boolean {
+  const value = object[key];
+  if (value === undefined || value === null) return false;
+  if (typeof value !== 'boolean') throw new Error(`invalid ${key}`);
+  return value;
+}
+function object(object: Record<string, unknown>, key: string): Record<string, unknown> {
+  const value = object[key];
+  if (value === undefined || value === null) return {};
+  if (typeof value !== 'object' || Array.isArray(value)) throw new Error(`invalid ${key}`);
+  return value as Record<string, unknown>;
+}
+function timestamp(value: string): string | undefined {
+  if (!value) return undefined;
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:[.,](\d+))?(Z|[+-]\d{2}:\d{2})$/.exec(value);
+  if (!match) throw new Error('invalid timestamp');
+  const [year, month, day, hour, minute, second] = match.slice(1, 7).map(Number) as [number, number, number, number, number, number];
+  const fractionText = match[7];
+  const zone = match[8] ?? 'Z';
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (month < 1 || month > 12 || day < 1 || day > (days[month - 1] ?? 0) || hour > 23 || minute > 59 || second > 59) throw new Error('invalid timestamp');
+  const offsetHours = zone === 'Z' ? 0 : Number(zone.slice(1, 3));
+  const offsetMinutes = zone === 'Z' ? 0 : Number(zone.slice(4));
+  if (offsetMinutes > 59) throw new Error('invalid timestamp');
+  const instant = new Date(0);
+  instant.setUTCFullYear(year, month - 1, day);
+  instant.setUTCHours(hour, minute, second);
+  instant.setTime(instant.getTime() - (zone.startsWith('-') ? -1 : 1) * (offsetHours * 60 + offsetMinutes) * 60_000);
+  if (Number.isNaN(instant.getTime())) throw new Error('invalid timestamp');
+  const fraction = fractionText?.replace(/0+$/, '');
+  return instant.toISOString().slice(0, 19) + (fraction ? `.${fraction}` : '') + 'Z';
+}
 function decodeMember(body: Uint8Array, hash: string): Member { return decodeMemberObject(parseObject(body), hash); }
 function decodeMemberObject(value: unknown, expectedHash: string): Member {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('invalid contact');
   const wire = value as Record<string, unknown>; const id = text(wire, 'id');
   if (!/^[0-9a-f]{32}$/.test(id) || expectedHash && id !== expectedHash || !text(wire, 'email_address') || !text(wire, 'status')) throw new Error('invalid contact');
-  const tags = Array.isArray(wire.tags) ? wire.tags.map(value => typeof value === 'object' && value !== null ? text(value as Record<string, unknown>, 'name') : '') : [];
-  const mergeFields = wire.merge_fields && typeof wire.merge_fields === 'object' && !Array.isArray(wire.merge_fields) ? wire.merge_fields as Record<string, unknown> : undefined;
+  if (wire.tags !== undefined && wire.tags !== null && !Array.isArray(wire.tags)) throw new Error('invalid tags');
+  const tags = Array.isArray(wire.tags) ? wire.tags.map(value => text(object({ tag: value }, 'tag'), 'name')) : [];
+  const mergeFields = wire.merge_fields === undefined || wire.merge_fields === null ? undefined : object(wire, 'merge_fields');
   return { subscriberHash: id, emailAddress: text(wire, 'email_address'), status: text(wire, 'status'), tagCount: number(wire, 'tags_count'), listId: text(wire, 'list_id'),
     ...(text(wire, 'contact_id') ? { contactId: text(wire, 'contact_id') } : {}), ...(text(wire, 'full_name') ? { fullName: text(wire, 'full_name') } : {}),
     ...(text(wire, 'email_type') ? { emailType: text(wire, 'email_type') } : {}), ...(mergeFields && Object.keys(mergeFields).length ? { mergeFields } : {}),
-    ...(tags.length ? { tags } : {}), ...(wire.vip ? { isVip: true } : {}), ...(text(wire, 'language') ? { language: text(wire, 'language') } : {}),
+    ...(tags.length ? { tags } : {}), ...(boolean(wire, 'vip') ? { isVip: true } : {}), ...(text(wire, 'language') ? { language: text(wire, 'language') } : {}),
     ...(number(wire, 'web_id') ? { webId: number(wire, 'web_id') } : {}),
     ...(timestamp(text(wire, 'timestamp_signup')) ? { signedUpAt: timestamp(text(wire, 'timestamp_signup')) } : {}),
     ...(timestamp(text(wire, 'timestamp_opt')) ? { optedInAt: timestamp(text(wire, 'timestamp_opt')) } : {}),
     ...(timestamp(text(wire, 'last_changed')) ? { lastChangedAt: timestamp(text(wire, 'last_changed')) } : {}) };
 }
 function decodeCampaign(body: Uint8Array, expectedID: string): Campaign {
-  const wire = parseObject(body); const settings = wire.settings && typeof wire.settings === 'object' ? wire.settings as Record<string, unknown> : {};
-  const recipients = wire.recipients && typeof wire.recipients === 'object' ? wire.recipients as Record<string, unknown> : {};
+  const wire = parseObject(body); const settings = object(wire, 'settings');
+  const recipients = object(wire, 'recipients');
   if (text(wire, 'id') !== expectedID || !text(wire, 'status') || !text(wire, 'type')) throw new Error('invalid campaign');
   return { id: expectedID, type: text(wire, 'type'), status: text(wire, 'status'), recipientCount: number(recipients, 'recipient_count'), emailsSent: number(wire, 'emails_sent'),
     ...(number(wire, 'web_id') ? { webId: number(wire, 'web_id') } : {}), ...(text(settings, 'title') ? { title: text(settings, 'title') } : {}),

@@ -2509,6 +2509,206 @@
       },
       "name": "sendCampaign-defect",
       "operation": "sendCampaign"
+    },
+    {
+      "callId": "76aa8474-c963-57bd-944d-8dbc845c462a",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"cb63c7306d1853af527b11f0cb244d45\",\"email_address\":\"Urist.McVankab@example.com\",\"contact_id\":\"contact-urist\",\"full_name\":\"Urist McVankab\",\"web_id\":17,\"email_type\":\"html\",\"status\":\"unsubscribed\",\"merge_fields\":{\"FNAME\":\"Urist\"},\"vip\":true,\"language\":\"en\",\"timestamp_signup\":\"2026-10-01T12:00:00Z\",\"timestamp_opt\":\"2026-10-02T12:00:00Z\",\"last_changed\":\"2026-10-25T10:00:00Z\",\"tags_count\":\"two\",\"tags\":[{\"name\":\"spring-launch\"},{\"name\":\"vip\"}],\"list_id\":\"57afe96172\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members/cb63c7306d1853af527b11f0cb244d45",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "emailAddress": "",
+          "listId": "",
+          "status": "",
+          "subscriberHash": "",
+          "tagCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "Urist.McVankab@example.com",
+        "listId": "57afe96172"
+      },
+      "name": "getMember-wrong-typed-tag-count",
+      "operation": "getMember"
+    },
+    {
+      "callId": "76aa8474-c963-57bd-944d-8dbc845c462a",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"cb63c7306d1853af527b11f0cb244d45\",\"email_address\":\"Urist.McVankab@example.com\",\"contact_id\":\"contact-urist\",\"full_name\":\"Urist McVankab\",\"web_id\":17,\"email_type\":\"html\",\"status\":\"unsubscribed\",\"merge_fields\":{\"FNAME\":\"Urist\"},\"vip\":true,\"language\":\"en\",\"timestamp_signup\":\"2026-10-01T12:00:00Z\",\"timestamp_opt\":\"2026-10-02T12:00:00Z\",\"last_changed\":\"2025-02-29T10:00:00Z\",\"tags_count\":2,\"tags\":[{\"name\":\"spring-launch\"},{\"name\":\"vip\"}],\"list_id\":\"57afe96172\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members/cb63c7306d1853af527b11f0cb244d45",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "emailAddress": "",
+          "listId": "",
+          "status": "",
+          "subscriberHash": "",
+          "tagCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "Urist.McVankab@example.com",
+        "listId": "57afe96172"
+      },
+      "name": "getMember-invalid-leap-day",
+      "operation": "getMember"
+    },
+    {
+      "callId": "76aa8474-c963-57bd-944d-8dbc845c462a",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"63665667804a247bb7126bab8ca84903\",\"email_address\":\"üser@exämple.com\",\"contact_id\":\"contact-urist\",\"full_name\":\"Urist McVankab\",\"web_id\":17,\"email_type\":\"html\",\"status\":\"unsubscribed\",\"merge_fields\":{\"FNAME\":\"Urist\"},\"vip\":true,\"language\":\"en\",\"timestamp_signup\":\"2026-10-01T12:00:00Z\",\"timestamp_opt\":\"2026-10-02T12:00:00Z\",\"last_changed\":\"2026-10-25T10:00:00Z\",\"tags_count\":2,\"tags\":[{\"name\":\"spring-launch\"},{\"name\":\"vip\"}],\"list_id\":\"57afe96172\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members/63665667804a247bb7126bab8ca84903",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "contactId": "contact-urist",
+          "emailAddress": "üser@exämple.com",
+          "emailType": "html",
+          "fullName": "Urist McVankab",
+          "isVip": true,
+          "language": "en",
+          "lastChangedAt": "2026-10-25T10:00:00Z",
+          "listId": "57afe96172",
+          "mergeFields": {
+            "FNAME": "Urist"
+          },
+          "optedInAt": "2026-10-02T12:00:00Z",
+          "signedUpAt": "2026-10-01T12:00:00Z",
+          "status": "unsubscribed",
+          "subscriberHash": "63665667804a247bb7126bab8ca84903",
+          "tagCount": 2,
+          "tags": [
+            "spring-launch",
+            "vip"
+          ],
+          "webId": 17
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "üser@exämple.com",
+        "listId": "57afe96172"
+      },
+      "name": "getMember-unicode-address",
+      "operation": "getMember"
+    },
+    {
+      "callId": "76aa8474-c963-57bd-944d-8dbc845c462a",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"9c5a999f863927498836029e6fd89bbd\",\"email_address\":\"user@[127.0.0.1]\",\"contact_id\":\"contact-urist\",\"full_name\":\"Urist McVankab\",\"web_id\":17,\"email_type\":\"html\",\"status\":\"unsubscribed\",\"merge_fields\":{\"FNAME\":\"Urist\"},\"vip\":true,\"language\":\"en\",\"timestamp_signup\":\"2026-10-01T12:00:00Z\",\"timestamp_opt\":\"2026-10-02T12:00:00Z\",\"last_changed\":\"2026-10-25T10:00:00Z\",\"tags_count\":2,\"tags\":[{\"name\":\"spring-launch\"},{\"name\":\"vip\"}],\"list_id\":\"57afe96172\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members/9c5a999f863927498836029e6fd89bbd",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "contactId": "contact-urist",
+          "emailAddress": "user@[127.0.0.1]",
+          "emailType": "html",
+          "fullName": "Urist McVankab",
+          "isVip": true,
+          "language": "en",
+          "lastChangedAt": "2026-10-25T10:00:00Z",
+          "listId": "57afe96172",
+          "mergeFields": {
+            "FNAME": "Urist"
+          },
+          "optedInAt": "2026-10-02T12:00:00Z",
+          "signedUpAt": "2026-10-01T12:00:00Z",
+          "status": "unsubscribed",
+          "subscriberHash": "9c5a999f863927498836029e6fd89bbd",
+          "tagCount": 2,
+          "tags": [
+            "spring-launch",
+            "vip"
+          ],
+          "webId": 17
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "user@[127.0.0.1]",
+        "listId": "57afe96172"
+      },
+      "name": "getMember-domain-literal",
+      "operation": "getMember"
     }
   ],
   "schemaVersion": 1

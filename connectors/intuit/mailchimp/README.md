@@ -2,6 +2,8 @@
 
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/intuit/mailchimp/go@v0.23.0`.
 
+The TypeScript package `@superdurable/connector-intuit-mailchimp@0.1.0` implements all five operations with `@superdurable/connectors-sdk@0.1.1`. See its [package README](typescript/README.md) and [runnable get-member Flow](typescript/examples/get-member/README.md). Its provider replay and Dex integration test use local stand-ins; live Mailchimp behavior remains unverified.
+
 Moved from `github.com/superdurable/dex-connectors-library/connectors/intuit/mailchimp`.
 
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Mailchimp; no live Mailchimp account was used. See
