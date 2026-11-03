@@ -8,10 +8,9 @@ import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Client, Registry, Worker, openBlobCache } from '@superdurable/dex';
-import { SecretString } from '@superdurable/connectors-sdk';
+import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
 import { expect, it } from 'vitest';
-import { OpenWeatherMapClient } from '../../src/client.js';
-import { newConnection, type CurrentWeatherOutput } from '../../src/index.js';
+import { newProjectConnection, type CurrentWeatherOutput } from '../../src/index.js';
 import { ConnectionName, WeatherFlow } from '../../examples/weather/flow/workflow.js';
 
 it('reads weather through real Dex and fails an unwired provider rejection', async () => {
@@ -34,10 +33,11 @@ it('reads weather through real Dex and fails an unwired provider rejection', asy
   if (!address || typeof address === 'string') throw new Error('provider fixture port unavailable');
   const directory = await mkdtemp(join(tmpdir(), 'dex-openweathermap-integration-'));
   const cache = openBlobCache({ directory, maxBytes: 64 * 1024 * 1024 });
-  const provider = new OpenWeatherMapClient({ baseUrl: `http://127.0.0.1:${address.port}` }, {
-    resolve: async () => ({ apiKey: new SecretString('test-key-123') }),
-  });
-  const flow = new WeatherFlow(newConnection(provider, { provider: 'openweathermap', name: ConnectionName }));
+  const project = {
+    configuration: { connections: [{ connectorId: 'openweathermap', connectionName: ConnectionName, provider: 'openweathermap', configuration: { baseUrl: `http://127.0.0.1:${address.port}`, timeout: '1m' } }] },
+    resolveCredential: async () => ({ api_key: 'test-key-123' }),
+  } as unknown as LoadedProject;
+  const flow = new WeatherFlow(newProjectConnection(project, ConnectionName));
   const registry = new Registry([flow]);
   const worker = new Worker(registry, cache, { serverAddress: dexAddress });
   const client = new Client(registry, cache, { serverAddress: dexAddress });

@@ -2,6 +2,7 @@
   "name": "@superdurable/connector-openweathermap",
   "version": "0.1.0",
   "description": "OpenWeatherMap weather operations for Dex Flows",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/superdurable/dex-connectors-library.git",

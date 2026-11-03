@@ -6,6 +6,8 @@ The `@superdurable/connector-openweathermap` package provides `getCurrentWeather
 
 [The weather example](examples/weather/flow/workflow.ts) calls `getCurrentWeather` from a Dex Worker using the static connection name `openweathermap`. Only `found` is wired. The `notFound`, `providerRejected`, `invalidResponse`, and `defect` outcomes fail the Flow. The input contains coordinates and units, never an API key.
 
+The project connection accepts the manifest `timeout` setting as a Go duration such as `1m` or an integer nanosecond value; it applies that limit to each provider request. Leave it blank to use the manifest default.
+
 Start `dexcli dev` and set `DEX_FLOW_SERVICE_ADDRESS` to its gRPC address. In Dex Web Connections, create the `openweathermap` connection and follow the API-key guide at <https://home.openweathermap.org/api_keys>. Keep the secret in the connection. Set `DEX_CONNECTOR_CONFIG_FILE` to the private Dex Web `connections.json` file, then run these commands from this package directory:
 
 ```sh
