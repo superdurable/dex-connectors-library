@@ -22,7 +22,7 @@ try {
   try {
     await sendProviderRequest({
       url: `http://localhost:${address.port}/`, method: 'GET', maxResponseBytes: 4,
-      onBodyLimit: 'drain', addressPolicy: 'privateNetworkHTTP',
+      onBodyLimit: 'drain', timeoutMs: 5_000, addressPolicy: 'privateNetworkHTTP',
     });
     throw new Error('expected response limit');
   } catch (error) {

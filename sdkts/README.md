@@ -1,6 +1,6 @@
 # Connector TypeScript SDK
 
-`@superdurable/connectors-sdk` is the provider-neutral TypeScript SDK for Dex connectors. It provides stable value contracts, typed Query and Mutation operations, Dex Step factories, credential refresh, OAuth token exchanges, HTTP safety helpers, project configuration loading, scripted mocks, and single-dispatch marker decisions. The package is at version `0.2.0`, requires Node 22 or 24, and uses `@superdurable/dex` 1.28.0 or newer. It is ESM-only, matching Dex: use `import`; direct `require()` fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`.
+`@superdurable/connectors-sdk` is the provider-neutral TypeScript SDK for Dex connectors. It provides stable value contracts, typed Query and Mutation operations, Dex Step factories, credential refresh, OAuth token exchanges, HTTP safety helpers, project configuration loading, scripted mocks, and single-dispatch marker decisions. The package is at version `0.3.0`, requires Node 22 or 24, and uses `@superdurable/dex` 1.28.0 or newer. It is ESM-only, matching Dex: use `import`; direct `require()` fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`.
 
 Install dependencies and verify the package from this directory:
 
@@ -119,7 +119,7 @@ if (result.kind !== 'branch' || retryPolicy.totalDurationMs !== 3600000 || crede
 
 The [complete runnable HTTP example](examples/providerhttp.mjs) sends one bounded request to a local server. `sendProviderRequest` resolves every address before connecting, pins the chosen address for IP literals and hostnames, and returns redirects without following them. `ProviderTransportError.isProvablyNotSent` is true for DNS, TCP connect, or TLS handshake failures before a usable connection could send HTTP bytes. Failures after connection or request writing have an unknown dispatch outcome, matching the Go connectors' DNS, connect, TLS, and obtained-connection trace.
 `BodyTooLargeError` preserves the response `status` and `headers`, so a caller can classify a 429 or 503 and its `Retry-After` even when the response body exceeds its limit.
-`ProviderRequest.onBodyLimit` defaults to `destroy`, closing an oversized response immediately. Set it to `drain` for provider calls that continue or bill work after a client disconnect: the SDK drops buffered bytes, stops chunk callbacks, reads to EOF, then rejects with `BodyTooLargeError`. The request deadline, abort signal, and stall timeout still apply while draining. The runnable example exercises `drain` with a local server.
+`ProviderRequest.onBodyLimit` defaults to `destroy`, closing an oversized response immediately. Set it to `drain` for provider calls that continue or bill work after a client disconnect: the SDK releases buffered bytes, delivers callback bytes only through the limit, reads to EOF, then rejects with `BodyTooLargeError`. Drain requires at least one positive `timeoutMs`, positive `stallTimeoutMs`, or `signal`; otherwise `sendProviderRequest` throws `TypeError`. These bounds remain active while draining. For non-2xx responses, an explicit `maxErrorResponseBytes` takes precedence and truncates the body immediately instead of draining. Once drain begins, a later read failure still rejects with `BodyTooLargeError`, including when `ignoreErrorBodyReadFailure` is set. The runnable example exercises `drain` with a local server.
 
 ```js
 import { createServer } from 'node:http';
@@ -280,6 +280,10 @@ await fence.recordProviderId(result.providerId);
 ```
 
 ## Release notes
+
+### 0.3.0
+
+Adds opt-in draining of oversized Provider HTTP responses with bounded cancellation and byte-exact chunk callbacks. OAuth refresh declaration support is planned for the same SDK release.
 
 ### 0.2.0
 

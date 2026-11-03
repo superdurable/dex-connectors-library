@@ -88,47 +88,91 @@ describe('provider HTTP', () => {
     const observedChunks: string[] = [];
     await expect(sendProviderRequest({
       url: `http://127.0.0.1:${address.port}/`, method: 'GET', maxResponseBytes: 4,
-      onBodyLimit: 'drain', addressPolicy: 'privateNetworkHTTP',
+      onBodyLimit: 'drain', timeoutMs: 1_000, addressPolicy: 'privateNetworkHTTP',
       onResponseChunk: chunk => { observedChunks.push(Buffer.from(chunk).toString()); },
     })).rejects.toMatchObject({ name: BodyTooLargeError.name, status: 200, headers: { 'x-request-id': 'drained' } });
     expect(hasFinishedResponse).toBe(true);
-    expect(observedChunks).toEqual(['abc']);
+    expect(observedChunks).toEqual(['abc', 'd']);
   });
 
   it('destroys an oversized response by default', async () => {
-    let hasFinishedResponse = false;
+    let wasSocketDestroyedBeforeEOF = false;
+    let responseClosed: () => void = () => {};
+    const responseClose = new Promise<void>(resolve => { responseClosed = resolve; });
     const server = createServer((_request, response) => {
+      const socket = response.socket;
       response.write('oversized');
-      response.on('finish', () => { hasFinishedResponse = true; });
-      response.on('close', () => { response.destroy(); });
+      const finishTimer = setTimeout(() => response.end('finished'), 100);
+      response.on('close', () => {
+        wasSocketDestroyedBeforeEOF = Boolean(socket?.destroyed) && !response.writableEnded;
+        clearTimeout(finishTimer);
+        responseClosed();
+      });
     });
     servers.push(server);
     await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
     const address = server.address();
     if (!address || typeof address === 'string') throw new Error('server address unavailable');
     await expect(sendProviderRequest({ url: `http://127.0.0.1:${address.port}/`, method: 'GET', maxResponseBytes: 4, addressPolicy: 'privateNetworkHTTP' })).rejects.toBeInstanceOf(BodyTooLargeError);
-    expect(hasFinishedResponse).toBe(false);
+    await responseClose;
+    expect(wasSocketDestroyedBeforeEOF).toBe(true);
   });
 
   it('honors cancellation while draining an oversized response', async () => {
     const server = createServer((_request, response) => {
+      response.writeHead(429, { 'Retry-After': '7' });
       response.write('oversized');
-      response.on('close', () => { response.destroy(); });
     });
     servers.push(server);
     await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
     const address = server.address();
     if (!address || typeof address === 'string') throw new Error('server address unavailable');
     const controller = new AbortController();
-    setTimeout(() => controller.abort(), 20);
+    let hasCrossedLimit = false;
     await expect(sendProviderRequest({
       url: `http://127.0.0.1:${address.port}/`, method: 'GET', maxResponseBytes: 4,
       onBodyLimit: 'drain', addressPolicy: 'privateNetworkHTTP', signal: controller.signal,
-    })).rejects.toMatchObject({ name: ProviderTransportError.name, isProvablyNotSent: false });
+      ignoreErrorBodyReadFailure: true,
+      onResponseChunk: () => { hasCrossedLimit = true; setTimeout(() => controller.abort(), 10); },
+    })).rejects.toMatchObject({ name: BodyTooLargeError.name, status: 429, headers: { 'retry-after': '7' } });
+    expect(hasCrossedLimit).toBe(true);
+    hasCrossedLimit = false;
     await expect(sendProviderRequest({
       url: `http://127.0.0.1:${address.port}/`, method: 'GET', maxResponseBytes: 4,
-      onBodyLimit: 'drain', addressPolicy: 'privateNetworkHTTP', timeoutMs: 20,
-    })).rejects.toMatchObject({ name: ProviderTransportError.name, isProvablyNotSent: false });
+      onBodyLimit: 'drain', addressPolicy: 'privateNetworkHTTP', timeoutMs: 50,
+      onResponseChunk: () => { hasCrossedLimit = true; },
+    })).rejects.toMatchObject({ name: BodyTooLargeError.name, status: 429 });
+    expect(hasCrossedLimit).toBe(true);
+  });
+
+  it('validates drain bounds and the body limit action', async () => {
+    const request = { url: 'http://127.0.0.1:1/', method: 'GET', maxResponseBytes: 4, addressPolicy: 'privateNetworkHTTP' as const };
+    await expect(sendProviderRequest({ ...request, onBodyLimit: 'drain' })).rejects.toBeInstanceOf(TypeError);
+    await expect(sendProviderRequest({ ...request, onBodyLimit: 'drain', timeoutMs: 0 })).rejects.toBeInstanceOf(TypeError);
+    await expect(sendProviderRequest({ ...request, onBodyLimit: 'invalid' as 'drain' })).rejects.toBeInstanceOf(TypeError);
+  });
+
+  it('accepts an exact-limit body and drains an oversized non-2xx body', async () => {
+    let hasFinishedResponse = false;
+    const server = createServer((request, response) => {
+      if (request.url === '/exact') { response.end('abcd'); return; }
+      response.writeHead(429, { 'Retry-After': '7' });
+      response.write('abc');
+      setTimeout(() => response.end('def'), 20);
+      response.on('finish', () => { hasFinishedResponse = true; });
+    });
+    servers.push(server);
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('server address unavailable');
+    const url = `http://127.0.0.1:${address.port}`;
+    const exact = await sendProviderRequest({ url: `${url}/exact`, method: 'GET', maxResponseBytes: 4, onBodyLimit: 'drain', timeoutMs: 1_000, addressPolicy: 'privateNetworkHTTP' });
+    expect(Buffer.from(exact.body).toString()).toBe('abcd');
+    await expect(sendProviderRequest({ url, method: 'GET', maxResponseBytes: 4, onBodyLimit: 'drain', timeoutMs: 1_000, addressPolicy: 'privateNetworkHTTP' })).rejects.toMatchObject({ name: BodyTooLargeError.name, status: 429, headers: { 'retry-after': '7' } });
+    expect(hasFinishedResponse).toBe(true);
+    const truncated = await sendProviderRequest({ url, method: 'GET', maxResponseBytes: 4, maxErrorResponseBytes: 4, onBodyLimit: 'drain', timeoutMs: 1_000, addressPolicy: 'privateNetworkHTTP' });
+    expect(truncated.status).toBe(429);
+    expect(Buffer.from(truncated.body).toString()).toBe('abcd');
   });
 
   it('returns redirects without replaying a credential', async () => {
