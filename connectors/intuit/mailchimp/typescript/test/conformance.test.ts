@@ -6,7 +6,8 @@ import { RetryError, runMutation, SecretString, type Call, type Mutation } from 
 import { ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { answerRecordedRequest, ExchangeRecorder, invokeProductionMutation, loadScenarios, replay, scenarioCall, type HeartbeatContext, type Scenario } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 import { MailchimpClient } from '../src/client.js';
-import { GetMemberInputSchema, ListMembersInputSchema, UpsertMemberInputSchema, UpdateMemberTagsInputSchema, SendCampaignInputSchema, type UpsertMemberInput, type UpdateMemberTagsInput, type SendCampaignInput } from '../src/generated/models.js';
+import { GetMemberInputSchema, UpsertMemberInputSchema, UpdateMemberTagsInputSchema, SendCampaignInputSchema, type UpsertMemberInput, type UpdateMemberTagsInput, type SendCampaignInput } from '../src/generated/models.js';
+import { ListMembersInputSchema } from '../src/schema.js';
 
 const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/intuit/mailchimp/scenarios.json', import.meta.url));
 const connection = { provider: 'mailchimp', name: 'mailchimp-test' };

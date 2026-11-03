@@ -6,6 +6,7 @@ import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBran
 import { GetMemberDefinition, ListMembersDefinition, UpsertMemberDefinition, UpdateMemberTagsDefinition, SendCampaignDefinition } from './generated/definitions.js';
 import type { Campaign, GetMemberInput, ListMembersInput, ListMembersOutput, Member, SendCampaignInput, SendCampaignOutput, UpdateMemberTagsInput, UpdateMemberTagsOutput, UpsertMemberInput, UpsertMemberOutput } from './generated/models.js';
 import { mailchimpFailure, type MailchimpClient, type MailchimpExchange } from './client.js';
+import { goRFC3339UTC, goSimpleLower, goTrimSpace, isGoBareEmailAddress } from './go-parity.js';
 
 const emptyMember: Member = { subscriberHash: '', emailAddress: '', status: '', tagCount: 0, listId: '' };
 const emptyPage: ListMembersOutput = { members: [], totalItems: 0 };
@@ -131,7 +132,11 @@ export class SendCampaignOperation implements Mutation<SendCampaignInput, SendCa
     const connection = await this.client.resolveConnection(call);
     if (!connection) return credentialMutationDefect(operation, emptySend);
     const query = new URLSearchParams({ fields: campaignFields });
-    const earlier = call.context.hasLastHeartbeatValue();
+    let earlier = false;
+    try {
+      const previous = call.context.hasLastHeartbeatValue() ? call.context.getLastHeartbeatValue() : undefined;
+      earlier = previous !== undefined && previous !== null;
+    } catch { earlier = true; }
     const read = await this.client.exchange(call, connection, operation, 'GET', `/campaigns/${input.campaignId}`, query);
     const readReceipt = this.client.receipt(call, read, input.campaignId);
     if (earlier) {
@@ -184,18 +189,11 @@ function credentialMutationDefect<T>(operation: string, zero: T): MutationAttemp
 function validateResourceID(name: string, value: string): string { return /^[A-Za-z0-9]{1,64}$/.test(value) ? '' : `${name} must be a Mailchimp ID of 1 to 64 letters and digits`; }
 function validateEmail(value: string): string {
   if (!value || Buffer.byteLength(value) > 254) return 'emailAddress must be one email address of at most 254 bytes';
-  // Go's bare-address check rejects quoted local parts because ParseAddress removes their quotes.
-  const atom = /^[\p{L}\p{N}!#$%&'*+/=?^_`{|}~-]+$/u;
-  const [local, domain, extra] = value.split('@');
-  const validLocal = !!local && local.split('.').every(part => atom.test(part));
-  const validDomain = !!domain && (domain.startsWith('[') && domain.endsWith(']')
-    ? /^[\x21-\x5A\x5E-\x7E]+$/.test(domain.slice(1, -1))
-    : domain.split('.').every(part => /^[\p{L}\p{N}](?:[\p{L}\p{N}-]*[\p{L}\p{N}])?$/u.test(part)));
-  if (extra !== undefined || !validLocal || !validDomain) return 'emailAddress must be one bare email address such as jane@example.com';
+  if (!isGoBareEmailAddress(value)) return 'emailAddress must be one bare email address such as jane@example.com';
   return '';
 }
 function validateMemberAddress(listID: string, email: string): string { return validateResourceID('listId', listID) || validateEmail(email); }
-function subscriberHash(email: string): string { return createHash('md5').update(email.toLowerCase(), 'utf8').digest('hex'); }
+function subscriberHash(email: string): string { return createHash('md5').update(goSimpleLower(email), 'utf8').digest('hex'); }
 function memberPath(listID: string, hash: string): string { return `/lists/${listID}/members/${hash}`; }
 function validateListInput(input: ListMembersInput): string {
   if (validateResourceID('listId', input.listId)) return validateResourceID('listId', input.listId);
@@ -204,7 +202,7 @@ function validateListInput(input: ListMembersInput): string {
   if (input.offset !== undefined && (!Number.isInteger(input.offset) || input.offset < 0 || input.offset > 2_147_483_647)) return 'offset must be a non-negative number of contacts';
   for (const bound of [input.changedSince, input.optedInSince]) {
     if (!bound) continue;
-    try { timestamp(bound); } catch { return 'time bound is invalid'; }
+    try { if (timestamp(bound) === '0001-01-01T00:00:00Z') return 'time bound is invalid'; } catch { return 'time bound is invalid'; }
   }
   return '';
 }
@@ -218,7 +216,7 @@ function validateUpsertInput(input: UpsertMemberInput): string {
     if (Object.keys(input.mergeFields).length > 30) return 'mergeFields holds at most 30 fields';
     for (const [tag, value] of Object.entries(input.mergeFields)) {
       if (!/^[A-Z0-9_]{1,50}$/.test(tag)) return `merge tag ${tag} is invalid`;
-      const validText = (text: string) => Buffer.byteLength(text) <= 1024 && !/[\u0000-\u0008\u000b-\u001f\u007f]/.test(text); // eslint-disable-line no-control-regex
+      const validText = (text: string) => Buffer.byteLength(text) <= 1024 && !/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/.test(text); // eslint-disable-line no-control-regex
       if (typeof value === 'string' && validText(value)) continue;
       if (typeof value === 'number' && Number.isFinite(value)) continue;
       if (value && typeof value === 'object' && !Array.isArray(value) && Object.entries(value).every(([key, text]) => /^[a-z][a-z0-9_]{0,31}$/.test(key) && typeof text === 'string' && validText(text))) continue;
@@ -240,8 +238,8 @@ function validateTagsInput(input: UpdateMemberTagsInput): string {
   if (!tags.length || tags.length > 50) return 'addTags and removeTags must hold 1 to 50 tags together';
   const seen = new Set<string>();
   for (const tag of tags) {
-    if (!tag || Buffer.byteLength(tag) > 100 || tag.trim() !== tag || /[\u0000-\u001f\u007f]/.test(tag)) return 'tag name is invalid'; // eslint-disable-line no-control-regex
-    const lower = tag.toLowerCase(); if (seen.has(lower)) return 'tag appears more than once'; seen.add(lower);
+    if (!tag || Buffer.byteLength(tag) > 100 || goTrimSpace(tag) !== tag || /[\u0000-\u001f\u007f-\u009f]/.test(tag)) return 'tag name is invalid'; // eslint-disable-line no-control-regex
+    const lower = goSimpleLower(tag); if (seen.has(lower)) return 'tag appears more than once'; seen.add(lower);
   }
   return '';
 }
@@ -274,27 +272,7 @@ function object(object: Record<string, unknown>, key: string): Record<string, un
   if (typeof value !== 'object' || Array.isArray(value)) throw new Error(`invalid ${key}`);
   return value as Record<string, unknown>;
 }
-function timestamp(value: string): string | undefined {
-  if (!value) return undefined;
-  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:[.,](\d+))?(Z|[+-]\d{2}:\d{2})$/.exec(value);
-  if (!match) throw new Error('invalid timestamp');
-  const [year, month, day, hour, minute, second] = match.slice(1, 7).map(Number) as [number, number, number, number, number, number];
-  const fractionText = match[7];
-  const zone = match[8] ?? 'Z';
-  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
-  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-  if (month < 1 || month > 12 || day < 1 || day > (days[month - 1] ?? 0) || hour > 23 || minute > 59 || second > 59) throw new Error('invalid timestamp');
-  const offsetHours = zone === 'Z' ? 0 : Number(zone.slice(1, 3));
-  const offsetMinutes = zone === 'Z' ? 0 : Number(zone.slice(4));
-  if (offsetMinutes > 59) throw new Error('invalid timestamp');
-  const instant = new Date(0);
-  instant.setUTCFullYear(year, month - 1, day);
-  instant.setUTCHours(hour, minute, second);
-  instant.setTime(instant.getTime() - (zone.startsWith('-') ? -1 : 1) * (offsetHours * 60 + offsetMinutes) * 60_000);
-  if (Number.isNaN(instant.getTime())) throw new Error('invalid timestamp');
-  const fraction = fractionText?.replace(/0+$/, '');
-  return instant.toISOString().slice(0, 19) + (fraction ? `.${fraction}` : '') + 'Z';
-}
+function timestamp(value: string): string | undefined { return value ? goRFC3339UTC(value) : undefined; }
 function decodeMember(body: Uint8Array, hash: string): Member { return decodeMemberObject(parseObject(body), hash); }
 function decodeMemberObject(value: unknown, expectedHash: string): Member {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('invalid contact');

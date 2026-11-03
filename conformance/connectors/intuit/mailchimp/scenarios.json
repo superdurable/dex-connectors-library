@@ -2709,6 +2709,1344 @@
       },
       "name": "getMember-domain-literal",
       "operation": "getMember"
+    },
+    {
+      "callId": "76aa8474-c963-57bd-944d-8dbc845c462a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members/cb63c7306d1853af527b11f0cb244d45",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "Urist.McVankab@example.com",
+        "listId": "57afe96172"
+      },
+      "name": "getMember-transport-before-send",
+      "operation": "getMember"
+    },
+    {
+      "callId": "beda088e-96a5-560d-b1aa-14bbf925b979",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "fields": [
+              "members.id,members.email_address,members.contact_id,members.full_name,members.web_id,members.email_type,members.status,members.merge_fields,members.vip,members.language,members.timestamp_signup,members.timestamp_opt,members.last_changed,members.tags_count,members.tags,members.list_id,list_id,total_items"
+            ],
+            "offset": [
+              "1"
+            ],
+            "since_last_changed": [
+              "2026-10-01T12:00:00+00:00"
+            ],
+            "since_timestamp_opt": [
+              "2026-10-02T12:00:00+00:00"
+            ],
+            "sort_dir": [
+              "ASC"
+            ],
+            "sort_field": [
+              "last_changed"
+            ],
+            "status": [
+              "unsubscribed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "changedSince": "2026-10-01T12:00:00Z",
+        "listId": "57afe96172",
+        "offset": 1,
+        "optedInSince": "2026-10-02T12:00:00Z",
+        "pageSize": 2,
+        "status": "unsubscribed"
+      },
+      "name": "listMembers-transport-before-send",
+      "operation": "listMembers"
+    },
+    {
+      "callId": "2b931676-b663-5a16-bd69-9d43a17efc7f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/lists/57afe96172/members/cb63c7306d1853af527b11f0cb244d45",
+          "query": {
+            "skip_merge_validation": [
+              "true"
+            ]
+          },
+          "requestBody": {
+            "email_address": "Urist.McVankab@example.com",
+            "marketing_permissions": [
+              {
+                "enabled": true,
+                "marketing_permission_id": "permission1"
+              }
+            ],
+            "merge_fields": {
+              "ADDRESS": {
+                "addr1": "1 Main",
+                "city": "Portland"
+              },
+              "AGE": 30,
+              "FNAME": "Urist"
+            },
+            "status": "unsubscribed",
+            "status_if_new": "pending"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b931676-b663-5a16-bd69-9d43a17efc7f",
+      "input": {
+        "emailAddress": "Urist.McVankab@example.com",
+        "isResubscribeAllowed": true,
+        "listId": "57afe96172",
+        "marketingPermissions": [
+          {
+            "isEnabled": true,
+            "marketingPermissionId": "permission1"
+          }
+        ],
+        "mergeFields": {
+          "ADDRESS": {
+            "addr1": "1 Main",
+            "city": "Portland"
+          },
+          "AGE": 30,
+          "FNAME": "Urist"
+        },
+        "shouldSkipMergeValidation": true,
+        "status": "unsubscribed",
+        "statusIfNew": "pending"
+      },
+      "name": "upsertMember-transport-before-send",
+      "operation": "upsertMember"
+    },
+    {
+      "callId": "e25ce930-a423-596f-b992-602689b73e65",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/57afe96172/members/cb63c7306d1853af527b11f0cb244d45/tags",
+          "requestBody": {
+            "is_syncing": true,
+            "tags": [
+              {
+                "name": "spring-launch",
+                "status": "active"
+              },
+              {
+                "name": "old-tag",
+                "status": "inactive"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e25ce930-a423-596f-b992-602689b73e65",
+      "input": {
+        "addTags": [
+          "spring-launch"
+        ],
+        "emailAddress": "Urist.McVankab@example.com",
+        "listId": "57afe96172",
+        "removeTags": [
+          "old-tag"
+        ],
+        "shouldSuppressAutomations": true
+      },
+      "name": "updateMemberTags-transport-before-send",
+      "operation": "updateMemberTags"
+    },
+    {
+      "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "input": {
+        "campaignId": "42694e9e57",
+        "expectedListId": "57afe96172"
+      },
+      "name": "sendCampaign-transport-before-send",
+      "operation": "sendCampaign"
+    },
+    {
+      "attempts": 2,
+      "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"42694e9e57\", \"web_id\": 42, \"type\": \"regular\", \"status\": \"save\", \"emails_sent\": 0, \"create_time\": \"2026-10-25T10:00:00Z\", \"send_time\": \"\", \"settings\": {\"title\": \"Spring Launch\", \"subject_line\": \"Hello\"}, \"recipients\": {\"list_id\": \"57afe96172\", \"list_name\": \"Audience\", \"recipient_count\": 100}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"title\":\"Too Many Requests\"}",
+          "headers": {
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/42694e9e57/actions/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 429
+        },
+        {
+          "body": "{\"id\": \"42694e9e57\", \"web_id\": 42, \"type\": \"regular\", \"status\": \"save\", \"emails_sent\": 0, \"create_time\": \"2026-10-25T10:00:00Z\", \"send_time\": \"\", \"settings\": {\"title\": \"Spring Launch\", \"subject_line\": \"Hello\"}, \"recipients\": {\"list_id\": \"57afe96172\", \"list_name\": \"Audience\", \"recipient_count\": 100}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/42694e9e57/actions/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "output": {
+          "campaign": {
+            "createdAt": "2026-10-25T10:00:00Z",
+            "emailsSent": 0,
+            "id": "42694e9e57",
+            "listId": "57afe96172",
+            "listName": "Audience",
+            "recipientCount": 100,
+            "status": "save",
+            "subjectLine": "Hello",
+            "title": "Spring Launch",
+            "type": "regular",
+            "webId": 42
+          }
+        },
+        "requestCount": 4,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "input": {
+        "campaignId": "42694e9e57",
+        "expectedListId": "57afe96172"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 2,
+          "failureKind": "RATE_LIMIT",
+          "retryAfterMs": 3000
+        }
+      ],
+      "name": "sendCampaign-post-429-then-send",
+      "operation": "sendCampaign"
+    },
+    {
+      "attempts": 2,
+      "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"42694e9e57\", \"web_id\": 42, \"type\": \"regular\", \"status\": \"save\", \"emails_sent\": 0, \"create_time\": \"2026-10-25T10:00:00Z\", \"send_time\": \"\", \"settings\": {\"title\": \"Spring Launch\", \"subject_line\": \"Hello\"}, \"recipients\": {\"list_id\": \"57afe96172\", \"list_name\": \"Audience\", \"recipient_count\": 100}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/42694e9e57/actions/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "transportFailure": "before-send"
+        },
+        {
+          "body": "{\"id\": \"42694e9e57\", \"web_id\": 42, \"type\": \"regular\", \"status\": \"save\", \"emails_sent\": 0, \"create_time\": \"2026-10-25T10:00:00Z\", \"send_time\": \"\", \"settings\": {\"title\": \"Spring Launch\", \"subject_line\": \"Hello\"}, \"recipients\": {\"list_id\": \"57afe96172\", \"list_name\": \"Audience\", \"recipient_count\": 100}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/42694e9e57/actions/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "output": {
+          "campaign": {
+            "createdAt": "2026-10-25T10:00:00Z",
+            "emailsSent": 0,
+            "id": "42694e9e57",
+            "listId": "57afe96172",
+            "listName": "Audience",
+            "recipientCount": 100,
+            "status": "save",
+            "subjectLine": "Hello",
+            "title": "Spring Launch",
+            "type": "regular",
+            "webId": 42
+          }
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "input": {
+        "campaignId": "42694e9e57",
+        "expectedListId": "57afe96172"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendCampaign-post-before-send-then-send",
+      "operation": "sendCampaign"
+    },
+    {
+      "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"42694e9e57\", \"web_id\": 42, \"type\": \"regular\", \"status\": \"save\", \"emails_sent\": 0, \"create_time\": \"2026-10-25T10:00:00Z\", \"send_time\": \"\", \"settings\": {\"title\": \"Spring Launch\", \"subject_line\": \"Hello\"}, \"recipients\": {\"list_id\": \"57afe96172\", \"list_name\": \"Audience\", \"recipient_count\": 100}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/campaigns/42694e9e57/actions/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "campaign": {
+            "createdAt": "2026-10-25T10:00:00Z",
+            "emailsSent": 0,
+            "id": "42694e9e57",
+            "listId": "57afe96172",
+            "listName": "Audience",
+            "recipientCount": 100,
+            "status": "save",
+            "subjectLine": "Hello",
+            "title": "Spring Launch",
+            "type": "regular",
+            "webId": 42
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "input": {
+        "campaignId": "42694e9e57",
+        "expectedListId": "57afe96172"
+      },
+      "name": "sendCampaign-post-after-send-uncertain",
+      "operation": "sendCampaign"
+    },
+    {
+      "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"42694e9e57\", \"web_id\": 42, \"type\": \"regular\", \"status\": \"sending\", \"emails_sent\": 0, \"create_time\": \"2026-10-25T10:00:00Z\", \"send_time\": \"\", \"settings\": {\"title\": \"Spring Launch\", \"subject_line\": \"Hello\"}, \"recipients\": {\"list_id\": \"57afe96172\", \"list_name\": \"Audience\", \"recipient_count\": 100}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "alreadySent",
+        "failureKind": "",
+        "output": {
+          "campaign": {
+            "createdAt": "2026-10-25T10:00:00Z",
+            "emailsSent": 0,
+            "id": "42694e9e57",
+            "listId": "57afe96172",
+            "listName": "Audience",
+            "recipientCount": 100,
+            "status": "sending",
+            "subjectLine": "Hello",
+            "title": "Spring Launch",
+            "type": "regular",
+            "webId": 42
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "input": {
+        "campaignId": "42694e9e57",
+        "expectedListId": "57afe96172"
+      },
+      "name": "sendCampaign-prior-sending",
+      "operation": "sendCampaign",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"42694e9e57\", \"web_id\": 42, \"type\": \"regular\", \"status\": \"sent\", \"emails_sent\": 0, \"create_time\": \"2026-10-25T10:00:00Z\", \"send_time\": \"\", \"settings\": {\"title\": \"Spring Launch\", \"subject_line\": \"Hello\"}, \"recipients\": {\"list_id\": \"57afe96172\", \"list_name\": \"Audience\", \"recipient_count\": 100}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "alreadySent",
+        "failureKind": "",
+        "output": {
+          "campaign": {
+            "createdAt": "2026-10-25T10:00:00Z",
+            "emailsSent": 0,
+            "id": "42694e9e57",
+            "listId": "57afe96172",
+            "listName": "Audience",
+            "recipientCount": 100,
+            "status": "sent",
+            "subjectLine": "Hello",
+            "title": "Spring Launch",
+            "type": "regular",
+            "webId": 42
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "input": {
+        "campaignId": "42694e9e57",
+        "expectedListId": "57afe96172"
+      },
+      "name": "sendCampaign-prior-sent",
+      "operation": "sendCampaign",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"42694e9e57\", \"web_id\": 42, \"type\": \"regular\", \"status\": \"save\", \"emails_sent\": 0, \"create_time\": \"2026-10-25T10:00:00Z\", \"send_time\": \"\", \"settings\": {\"title\": \"Spring Launch\", \"subject_line\": \"Hello\"}, \"recipients\": {\"list_id\": \"57afe96172\", \"list_name\": \"Audience\", \"recipient_count\": 100}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "campaign": {
+            "createdAt": "2026-10-25T10:00:00Z",
+            "emailsSent": 0,
+            "id": "42694e9e57",
+            "listId": "57afe96172",
+            "listName": "Audience",
+            "recipientCount": 100,
+            "status": "save",
+            "subjectLine": "Hello",
+            "title": "Spring Launch",
+            "type": "regular",
+            "webId": 42
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "input": {
+        "campaignId": "42694e9e57",
+        "expectedListId": "57afe96172"
+      },
+      "name": "sendCampaign-prior-save",
+      "operation": "sendCampaign",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "exchanges": [
+        {
+          "body": "{\"title\":\"Unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaigns/42694e9e57",
+          "query": {
+            "fields": [
+              "id,web_id,type,status,emails_sent,create_time,send_time,settings.title,settings.subject_line,recipients.list_id,recipients.list_name,recipients.recipient_count"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "campaign": {
+            "emailsSent": 0,
+            "id": "",
+            "recipientCount": 0,
+            "status": "",
+            "type": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
+      "input": {
+        "campaignId": "42694e9e57",
+        "expectedListId": "57afe96172"
+      },
+      "name": "sendCampaign-prior-unreadable",
+      "operation": "sendCampaign",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "76aa8474-c963-57bd-944d-8dbc845c462a",
+      "exchanges": [
+        {
+          "body": "{\"title\":\"Resource Not Found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members/854223bfd32dcd33db93698548baf303",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "emailAddress": "",
+          "listId": "",
+          "status": "",
+          "subscriberHash": "",
+          "tagCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "jane@ex_ample.com",
+        "listId": "57afe96172"
+      },
+      "name": "getMember-domain-punctuation",
+      "operation": "getMember"
+    },
+    {
+      "callId": "76aa8474-c963-57bd-944d-8dbc845c462a",
+      "exchanges": [
+        {
+          "body": "{\"title\":\"Resource Not Found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members/d0ccdd98e5f81384ff361cb4de24c574",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "emailAddress": "",
+          "listId": "",
+          "status": "",
+          "subscriberHash": "",
+          "tagCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "ΟΔΥΣΣΕΑΣ@example.gr",
+        "listId": "57afe96172"
+      },
+      "name": "getMember-greek-hash",
+      "operation": "getMember"
+    },
+    {
+      "callId": "76aa8474-c963-57bd-944d-8dbc845c462a",
+      "exchanges": [
+        {
+          "body": "{\"title\":\"Resource Not Found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members/11c775d3b46ce7f30f5d98b4f4f2310e",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "emailAddress": "",
+          "listId": "",
+          "status": "",
+          "subscriberHash": "",
+          "tagCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "İ@x.com",
+        "listId": "57afe96172"
+      },
+      "name": "getMember-turkish-hash",
+      "operation": "getMember"
+    },
+    {
+      "callId": "76aa8474-c963-57bd-944d-8dbc845c462a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "emailAddress": "",
+          "listId": "",
+          "status": "",
+          "subscriberHash": "",
+          "tagCount": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "jane@[a]",
+        "listId": "57afe96172"
+      },
+      "name": "getMember-invalid-domain-literal",
+      "operation": "getMember"
+    },
+    {
+      "callId": "76aa8474-c963-57bd-944d-8dbc845c462a",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"cb63c7306d1853af527b11f0cb244d45\", \"email_address\": \"Urist.McVankab@example.com\", \"contact_id\": \"contact-urist\", \"full_name\": \"Urist McVankab\", \"web_id\": 17, \"email_type\": \"html\", \"status\": \"unsubscribed\", \"merge_fields\": {\"FNAME\": \"Urist\"}, \"vip\": true, \"language\": \"en\", \"timestamp_signup\": \"2026-10-01T12:00:00Z\", \"timestamp_opt\": \"2026-10-02T12:00:00Z\", \"last_changed\": \"2026-10-25T10:00:00.0000000001Z\", \"tags_count\": 2, \"tags\": [{\"name\": \"spring-launch\"}, {\"name\": \"vip\"}], \"list_id\": \"57afe96172\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members/cb63c7306d1853af527b11f0cb244d45",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "contactId": "contact-urist",
+          "emailAddress": "Urist.McVankab@example.com",
+          "emailType": "html",
+          "fullName": "Urist McVankab",
+          "isVip": true,
+          "language": "en",
+          "lastChangedAt": "2026-10-25T10:00:00Z",
+          "listId": "57afe96172",
+          "mergeFields": {
+            "FNAME": "Urist"
+          },
+          "optedInAt": "2026-10-02T12:00:00Z",
+          "signedUpAt": "2026-10-01T12:00:00Z",
+          "status": "unsubscribed",
+          "subscriberHash": "cb63c7306d1853af527b11f0cb244d45",
+          "tagCount": 2,
+          "tags": [
+            "spring-launch",
+            "vip"
+          ],
+          "webId": 17
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "Urist.McVankab@example.com",
+        "listId": "57afe96172"
+      },
+      "name": "getMember-nanosecond-truncation",
+      "operation": "getMember"
+    },
+    {
+      "callId": "76aa8474-c963-57bd-944d-8dbc845c462a",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"cb63c7306d1853af527b11f0cb244d45\", \"email_address\": \"Urist.McVankab@example.com\", \"contact_id\": \"contact-urist\", \"full_name\": \"Urist McVankab\", \"web_id\": 17, \"email_type\": \"html\", \"status\": \"unsubscribed\", \"merge_fields\": {\"FNAME\": \"Urist\"}, \"vip\": true, \"language\": \"en\", \"timestamp_signup\": \"2026-10-01T12:00:00Z\", \"timestamp_opt\": \"2026-10-02T12:00:00Z\", \"last_changed\": \"2026-10-25T1:00:00Z\", \"tags_count\": 2, \"tags\": [{\"name\": \"spring-launch\"}, {\"name\": \"vip\"}], \"list_id\": \"57afe96172\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members/cb63c7306d1853af527b11f0cb244d45",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "contactId": "contact-urist",
+          "emailAddress": "Urist.McVankab@example.com",
+          "emailType": "html",
+          "fullName": "Urist McVankab",
+          "isVip": true,
+          "language": "en",
+          "lastChangedAt": "2026-10-25T01:00:00Z",
+          "listId": "57afe96172",
+          "mergeFields": {
+            "FNAME": "Urist"
+          },
+          "optedInAt": "2026-10-02T12:00:00Z",
+          "signedUpAt": "2026-10-01T12:00:00Z",
+          "status": "unsubscribed",
+          "subscriberHash": "cb63c7306d1853af527b11f0cb244d45",
+          "tagCount": 2,
+          "tags": [
+            "spring-launch",
+            "vip"
+          ],
+          "webId": 17
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "Urist.McVankab@example.com",
+        "listId": "57afe96172"
+      },
+      "name": "getMember-one-digit-hour",
+      "operation": "getMember"
+    },
+    {
+      "callId": "beda088e-96a5-560d-b1aa-14bbf925b979",
+      "exchanges": [
+        {
+          "body": "{\"members\": [{\"id\": \"cb63c7306d1853af527b11f0cb244d45\", \"email_address\": \"Urist.McVankab@example.com\", \"contact_id\": \"contact-urist\", \"full_name\": \"Urist McVankab\", \"web_id\": 17, \"email_type\": \"html\", \"status\": \"unsubscribed\", \"merge_fields\": {\"FNAME\": \"Urist\"}, \"vip\": true, \"language\": \"en\", \"timestamp_signup\": \"2026-10-01T12:00:00Z\", \"timestamp_opt\": \"2026-10-02T12:00:00Z\", \"last_changed\": \"2026-10-25T10:00:00Z\", \"tags_count\": 2, \"tags\": [{\"name\": \"spring-launch\"}, {\"name\": \"vip\"}], \"list_id\": \"57afe96172\"}], \"total_items\": 5}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/57afe96172/members",
+          "query": {
+            "count": [
+              "2"
+            ],
+            "fields": [
+              "members.id,members.email_address,members.contact_id,members.full_name,members.web_id,members.email_type,members.status,members.merge_fields,members.vip,members.language,members.timestamp_signup,members.timestamp_opt,members.last_changed,members.tags_count,members.tags,members.list_id,list_id,total_items"
+            ],
+            "offset": [
+              "1"
+            ],
+            "since_last_changed": [
+              "2026-10-25T08:00:00+00:00"
+            ],
+            "since_timestamp_opt": [
+              "2026-10-02T12:00:00+00:00"
+            ],
+            "sort_dir": [
+              "ASC"
+            ],
+            "sort_field": [
+              "last_changed"
+            ],
+            "status": [
+              "unsubscribed"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "members": [
+            {
+              "contactId": "contact-urist",
+              "emailAddress": "Urist.McVankab@example.com",
+              "emailType": "html",
+              "fullName": "Urist McVankab",
+              "isVip": true,
+              "language": "en",
+              "lastChangedAt": "2026-10-25T10:00:00Z",
+              "listId": "57afe96172",
+              "mergeFields": {
+                "FNAME": "Urist"
+              },
+              "optedInAt": "2026-10-02T12:00:00Z",
+              "signedUpAt": "2026-10-01T12:00:00Z",
+              "status": "unsubscribed",
+              "subscriberHash": "cb63c7306d1853af527b11f0cb244d45",
+              "tagCount": 2,
+              "tags": [
+                "spring-launch",
+                "vip"
+              ],
+              "webId": 17
+            }
+          ],
+          "nextOffset": 2,
+          "totalItems": 5
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "changedSince": "2026-10-25T10:00:00+01:60",
+        "listId": "57afe96172",
+        "offset": 1,
+        "optedInSince": "2026-10-02T12:00:00Z",
+        "pageSize": 2,
+        "status": "unsubscribed"
+      },
+      "name": "listMembers-minute-60",
+      "operation": "listMembers"
+    },
+    {
+      "callId": "beda088e-96a5-560d-b1aa-14bbf925b979",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "members": [],
+          "totalItems": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "changedSince": "0001-01-01T00:00:00Z",
+        "listId": "57afe96172",
+        "offset": 1,
+        "optedInSince": "2026-10-02T12:00:00Z",
+        "pageSize": 2,
+        "status": "unsubscribed"
+      },
+      "name": "listMembers-zero-time",
+      "operation": "listMembers"
+    },
+    {
+      "callId": "2b931676-b663-5a16-bd69-9d43a17efc7f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "member": {
+            "emailAddress": "",
+            "listId": "",
+            "status": "",
+            "subscriberHash": "",
+            "tagCount": 0
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b931676-b663-5a16-bd69-9d43a17efc7f",
+      "input": {
+        "emailAddress": "Urist.McVankab@example.com",
+        "isResubscribeAllowed": true,
+        "listId": "57afe96172",
+        "marketingPermissions": [
+          {
+            "isEnabled": true,
+            "marketingPermissionId": "permission1"
+          }
+        ],
+        "mergeFields": {
+          "FNAME": "ab"
+        },
+        "shouldSkipMergeValidation": true,
+        "status": "unsubscribed",
+        "statusIfNew": "pending"
+      },
+      "name": "upsertMember-c1-control",
+      "operation": "upsertMember"
+    },
+    {
+      "callId": "e25ce930-a423-596f-b992-602689b73e65",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "subscriberHash": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e25ce930-a423-596f-b992-602689b73e65",
+      "input": {
+        "addTags": [
+          "ab"
+        ],
+        "emailAddress": "Urist.McVankab@example.com",
+        "listId": "57afe96172",
+        "removeTags": [
+          "old-tag"
+        ],
+        "shouldSuppressAutomations": true
+      },
+      "name": "updateMemberTags-c1-control",
+      "operation": "updateMemberTags"
+    },
+    {
+      "callId": "e25ce930-a423-596f-b992-602689b73e65",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/lists/57afe96172/members/cb63c7306d1853af527b11f0cb244d45/tags",
+          "requestBody": {
+            "is_syncing": true,
+            "tags": [
+              {
+                "name": "﻿new-tag",
+                "status": "active"
+              },
+              {
+                "name": "old-tag",
+                "status": "inactive"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer TESTKEY1-us6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "activeTags": [
+            "﻿new-tag"
+          ],
+          "inactiveTags": [
+            "old-tag"
+          ],
+          "subscriberHash": "cb63c7306d1853af527b11f0cb244d45"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e25ce930-a423-596f-b992-602689b73e65",
+      "input": {
+        "addTags": [
+          "﻿new-tag"
+        ],
+        "emailAddress": "Urist.McVankab@example.com",
+        "listId": "57afe96172",
+        "removeTags": [
+          "old-tag"
+        ],
+        "shouldSuppressAutomations": true
+      },
+      "name": "updateMemberTags-bom-name",
+      "operation": "updateMemberTags"
     }
   ],
   "schemaVersion": 1

@@ -6,4 +6,6 @@ Install with `npm install @superdurable/connector-intuit-mailchimp@0.1.0`. Confi
 
 The runnable [get-member example](examples/get-member/README.md) shows the static connection name, Worker, and Flow. Its integration test uses a local Mailchimp stand-in and a real `dexcli dev` server. The Go-recorded [conformance scenarios](../../../../conformance/connectors/intuit/mailchimp/scenarios.json) cover all five operations, including retries and campaign send recovery.
 
+For `sendCampaign`, a Mailchimp throttle or a connection failure proven to occur before the send clears the dispatch checkpoint and retries. A send that might have reached Mailchimp keeps the checkpoint; a later attempt reads campaign status and reports `alreadySent` only when Mailchimp shows `sending` or `sent`, otherwise `uncertain`.
+
 Live Mailchimp provider authorization and behavior have not been verified for this TypeScript package.
