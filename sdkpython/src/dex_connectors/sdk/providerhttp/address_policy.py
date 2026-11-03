@@ -7,12 +7,14 @@ from __future__ import annotations
 import ipaddress
 import socket
 from collections.abc import Iterable
+from contextvars import ContextVar
 from typing import Any, Literal
 
 import anyio
 import httpcore
 import httpx
 
+# AddressPolicy selects public HTTPS, private-network HTTP, or unrestricted dialing.
 AddressPolicy = Literal["publicHTTPS", "privateNetworkHTTP", "unrestricted"]
 _SocketOption = (
     tuple[int, int, int]
@@ -78,6 +80,9 @@ async def _resolve_addresses(host: str, port: int) -> list[str]:
     return addresses
 
 
+_request_scheme: ContextVar[str | None] = ContextVar("provider_address_policy_scheme", default=None)
+
+
 class _AddressPolicyBackend(httpcore.AsyncNetworkBackend):
     """Resolve and check every address, then connect to a checked IP.
 
@@ -86,11 +91,10 @@ class _AddressPolicyBackend(httpcore.AsyncNetworkBackend):
     its underlying TCP connector. Callers close the owning HTTP client.
     """
 
-    def __init__(self, policy: AddressPolicy, scheme: str) -> None:
+    def __init__(self, policy: AddressPolicy) -> None:
         if policy not in ("publicHTTPS", "privateNetworkHTTP"):
             raise ValueError("address policy is invalid")
         self.policy = policy
-        self.scheme = scheme
         self._network_backend = httpcore.AnyIOBackend()
 
     async def connect_tcp(
@@ -102,24 +106,34 @@ class _AddressPolicyBackend(httpcore.AsyncNetworkBackend):
         socket_options: Iterable[_SocketOption] | None = None,
     ) -> httpcore.AsyncNetworkStream:
         """Dial only after every DNS answer passes the selected policy."""
-        addresses = await _resolve_addresses(host, port)
-        checked = []
-        for address in addresses:
-            reason = _refusal_reason(address, self.scheme, self.policy)
-            if reason:
-                raise AddressRefusal(reason)
-            checked.append(str(_checked_ip(address)))
-        last_error: httpcore.ConnectError | httpcore.ConnectTimeout | None = None
-        for address in checked:
-            try:
-                return await self._network_backend.connect_tcp(
-                    address, port, timeout=timeout, local_address=local_address,
-                    socket_options=socket_options,
-                )
-            except (httpcore.ConnectError, httpcore.ConnectTimeout) as error:
-                last_error = error
-        assert last_error is not None
-        raise last_error
+        scheme = _request_scheme.get()
+        if scheme not in ("http", "https"):
+            raise AddressRefusal("URL scheme is not allowed")
+        try:
+            with anyio.fail_after(timeout) as deadline:
+                addresses = await _resolve_addresses(host, port)
+                checked = []
+                for address in addresses:
+                    reason = _refusal_reason(address, scheme, self.policy)
+                    if reason:
+                        raise AddressRefusal(reason)
+                    checked.append(str(_checked_ip(address)))
+                last_error: httpcore.ConnectError | httpcore.ConnectTimeout | None = None
+                for address in checked:
+                    remaining = (
+                        None if timeout is None else max(0.0, deadline.deadline - anyio.current_time())
+                    )
+                    try:
+                        return await self._network_backend.connect_tcp(
+                            address, port, timeout=remaining, local_address=local_address,
+                            socket_options=socket_options,
+                        )
+                    except (httpcore.ConnectError, httpcore.ConnectTimeout) as error:
+                        last_error = error
+                assert last_error is not None
+                raise last_error
+        except TimeoutError:
+            raise httpcore.ConnectTimeout("provider address connection timed out") from None
 
     async def connect_unix_socket(
         self, path: str, timeout: float | None = None,
@@ -138,25 +152,26 @@ class _AddressPolicyTransport(httpx.AsyncBaseTransport):
         self, policy: AddressPolicy, *, verify: Any = True, cert: Any = None,
         limits: httpx.Limits | None = None, http1: bool = True, http2: bool = False,
     ) -> None:
-        limits = limits or httpx.Limits()
-        self._plain = httpx.AsyncHTTPTransport(
-            verify=verify, cert=cert, trust_env=False, limits=limits, http1=http1, http2=http2
+        self._transport = httpx.AsyncHTTPTransport(
+            verify=verify, cert=cert, trust_env=True,
+            limits=limits or httpx.Limits(max_connections=100, max_keepalive_connections=20),
+            http1=http1, http2=http2,
         )
-        self._secure = httpx.AsyncHTTPTransport(
-            verify=verify, cert=cert, trust_env=False, limits=limits, http1=http1, http2=http2
-        )
-        for transport, scheme in ((self._plain, "http"), (self._secure, "https")):
-            # httpx lacks a backend constructor; the fresh pool still owns the original URL origin for TLS.
-            pool = transport._pool
-            pool._network_backend = _AddressPolicyBackend(policy, scheme)
+        pool = self._transport._pool
+        if not isinstance(pool, httpcore.AsyncConnectionPool) or not isinstance(
+            getattr(pool, "_network_backend", None), httpcore.AsyncNetworkBackend
+        ):
+            raise RuntimeError("restricted address policy requires a compatible httpcore pool")
+        pool._network_backend = _AddressPolicyBackend(policy)
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
-        if request.url.scheme == "http":
-            return await self._plain.handle_async_request(request)
-        if request.url.scheme == "https":
-            return await self._secure.handle_async_request(request)
-        raise AddressRefusal("URL scheme is not allowed")
+        if request.url.scheme not in ("http", "https"):
+            raise AddressRefusal("URL scheme is not allowed")
+        token = _request_scheme.set(request.url.scheme)
+        try:
+            return await self._transport.handle_async_request(request)
+        finally:
+            _request_scheme.reset(token)
 
     async def aclose(self) -> None:
-        await self._plain.aclose()
-        await self._secure.aclose()
+        await self._transport.aclose()

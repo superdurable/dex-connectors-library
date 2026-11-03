@@ -20,6 +20,10 @@ from .address_policy import _AddressPolicyTransport
 MAX_ERROR_BODY_BYTES = 64 << 10
 MAX_RETRY_AFTER_DELAY_SECONDS = 3600
 _ERROR_TOKEN = re.compile(r"^[A-Za-z0-9_.:-]{1,64}$")
+_RESTRICTED_CLIENT_OPTIONS = frozenset({
+    "headers", "auth", "params", "cookies", "base_url", "event_hooks", "max_redirects",
+    "default_encoding", "verify", "cert", "limits", "http1", "http2", "trust_env",
+})
 
 
 class BodyTooLargeError(ValueError):
@@ -77,7 +81,8 @@ def new_provider_http_client(
     ``publicHTTPS`` allows only HTTPS to public addresses; ``privateNetworkHTTP``
     also allows HTTP to private or loopback addresses. Restricted clients check
     every DNS answer before dialing a checked IP, retain the original hostname
-    for Host and TLS verification, and refuse proxies or custom transports.
+    for Host and TLS verification, and accept only known safe client options.
+    Environment CA certificates are honored without enabling environment proxies.
     The caller owns and closes the returned client. Refusals raise AddressRefusal.
     """
     if request_timeout_seconds <= 0:
@@ -87,8 +92,8 @@ def new_provider_http_client(
     if address_policy not in ("publicHTTPS", "privateNetworkHTTP", "unrestricted"):
         raise ValueError("address policy is invalid")
     if address_policy != "unrestricted":
-        if any(key in options for key in ("transport", "proxy", "mounts")):
-            raise ValueError("restricted address policy cannot use a custom transport or proxy")
+        if set(options) - _RESTRICTED_CLIENT_OPTIONS:
+            raise ValueError("restricted address policy received an unsupported client option")
         if options.get("trust_env") is True:
             raise ValueError("restricted address policy cannot use environment proxies")
         options.pop("trust_env", None)
@@ -96,7 +101,7 @@ def new_provider_http_client(
             address_policy,
             verify=options.pop("verify", True),
             cert=options.pop("cert", None),
-            limits=options.pop("limits", httpx.Limits()),
+            limits=options.pop("limits", None),
             http1=options.pop("http1", True),
             http2=options.pop("http2", False),
         )

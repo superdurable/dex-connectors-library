@@ -31,6 +31,12 @@ async def main() -> None:
                 pass
             else:
                 raise AssertionError("publicHTTPS accepted a loopback address")
+        try:
+            new_provider_http_client(address_policy="publicHTTPS", proxies="http://127.0.0.1:3128")
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("publicHTTPS accepted a proxy option")
     finally:
         server.close()
         await server.wait_closed()

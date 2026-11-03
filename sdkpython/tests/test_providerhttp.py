@@ -4,8 +4,10 @@
 
 import asyncio
 import ssl
+import subprocess
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
+from importlib.metadata import requires
 from pathlib import Path
 from typing import Any
 
@@ -23,6 +25,7 @@ from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
     RequestTrace,
+    address_policy,
     is_header_safe_credential,
     new_provider_http_client,
     parse_retry_after,
@@ -31,7 +34,6 @@ from dex_connectors.sdk.providerhttp import (
     send_traced,
     validate_base_url,
 )
-from dex_connectors.sdk.providerhttp import address_policy as netpolicy
 
 
 @pytest.mark.parametrize(
@@ -72,7 +74,7 @@ from dex_connectors.sdk.providerhttp import address_policy as netpolicy
 def test_go_address_policy_table(
     addresses: list[str], private_http: bool, private_https: bool, public_https: bool
 ) -> None:
-    """Replay Go's address sets, including broadcast and IPv6 metadata."""
+    """Replay Go's address sets plus the broadcast refusal shared with sdkts."""
     scenarios: tuple[tuple[str, AddressPolicy, bool], ...] = (
         ("http", "privateNetworkHTTP", private_http),
         ("https", "privateNetworkHTTP", private_https),
@@ -80,8 +82,13 @@ def test_go_address_policy_table(
         ("https", "publicHTTPS", public_https),
     )
     for scheme, policy, expected in scenarios:
-        is_allowed = all(not netpolicy._refusal_reason(address, scheme, policy) for address in addresses)
+        is_allowed = all(not address_policy._refusal_reason(address, scheme, policy) for address in addresses)
         assert is_allowed == expected
+
+
+def test_supported_httpx_floor_excludes_legacy_proxy_mounts() -> None:
+    requirements = requires("dex-connectors-sdk") or []
+    assert any(requirement.startswith("httpx>=0.28") for requirement in requirements)
 
 
 @pytest.mark.asyncio
@@ -98,7 +105,7 @@ async def test_policy_checks_all_dns_answers_and_pins_checked_address(monkeypatc
         dialed.append(host)
         raise httpcore.ConnectError("local test dial")
 
-    monkeypatch.setattr(netpolicy, "_resolve_addresses", resolve)
+    monkeypatch.setattr(address_policy, "_resolve_addresses", resolve)
     monkeypatch.setattr(httpcore.AnyIOBackend, "connect_tcp", connect)
     async with new_provider_http_client(address_policy="privateNetworkHTTP") as client:
         with pytest.raises(AddressRefusal):
@@ -115,7 +122,7 @@ async def test_policy_dns_failure_is_provably_not_sent(monkeypatch: Any) -> None
     async def fail(host: str, port: int) -> list[str]:
         raise httpcore.ConnectError("provider address resolution failed")
 
-    monkeypatch.setattr(netpolicy, "_resolve_addresses", fail)
+    monkeypatch.setattr(address_policy, "_resolve_addresses", fail)
     async with new_provider_http_client(address_policy="publicHTTPS") as client:
         with pytest.raises(ProviderTransportError) as caught:
             request = client.build_request("POST", "https://provider.test/", content=b"write")
@@ -123,21 +130,99 @@ async def test_policy_dns_failure_is_provably_not_sent(monkeypatch: Any) -> None
         assert caught.value.provably_not_sent
 
 
-def test_restricted_policy_refuses_proxy_and_custom_transport() -> None:
+@pytest.mark.asyncio
+async def test_restricted_policy_accepts_only_safe_client_options() -> None:
     with pytest.raises(ValueError, match="address policy is invalid"):
         new_provider_http_client(address_policy="unknown")  # type: ignore[arg-type]
-    with pytest.raises(ValueError, match="custom transport or proxy"):
-        new_provider_http_client(
-            address_policy="publicHTTPS", transport=httpx.MockTransport(lambda request: httpx.Response(200))
-        )
-    with pytest.raises(ValueError, match="custom transport or proxy"):
-        new_provider_http_client(address_policy="publicHTTPS", proxy="http://127.0.0.1:3128")
+    unsafe_options = {
+        "transport": httpx.MockTransport(lambda request: httpx.Response(200)),
+        "proxy": "http://127.0.0.1:3128",
+        "proxies": "http://127.0.0.1:3128",
+        "mounts": {},
+        "app": object(),
+    }
+    for name, value in unsafe_options.items():
+        unsafe_option: dict[str, Any] = {name: value}
+        with pytest.raises(ValueError, match="unsupported client option"):
+            new_provider_http_client(address_policy="publicHTTPS", **unsafe_option)
     with pytest.raises(ValueError, match="environment proxies"):
         new_provider_http_client(address_policy="publicHTTPS", trust_env=True)
+    client = new_provider_http_client(address_policy="publicHTTPS", headers={"X-Test": "yes"})
+    assert client.headers["X-Test"] == "yes"
+    await client.aclose()
 
 
 @pytest.mark.asyncio
-async def test_tls_uses_original_hostname_for_sni_and_certificate(monkeypatch: Any, tmp_path: Path) -> None:
+async def test_policy_dns_resolution_obeys_connect_timeout(monkeypatch: Any) -> None:
+    """A slow resolver exhausts the connect budget before any HTTP bytes are sent."""
+    dialed = False
+
+    async def resolve(host: str, port: int) -> list[str]:
+        await asyncio.sleep(1)
+        return ["127.0.0.1"]
+
+    async def connect(self: Any, host: str, port: int, **kwargs: Any) -> Any:
+        nonlocal dialed
+        dialed = True
+        raise AssertionError("resolver timeout should precede dial")
+
+    monkeypatch.setattr(address_policy, "_resolve_addresses", resolve)
+    monkeypatch.setattr(httpcore.AnyIOBackend, "connect_tcp", connect)
+    async with new_provider_http_client(0.05, address_policy="publicHTTPS") as client:
+        with pytest.raises(ProviderTransportError) as caught:
+            await send_traced(client, client.build_request("POST", "https://provider.test/"))
+        assert caught.value.provably_not_sent
+        assert not dialed
+
+
+@pytest.mark.asyncio
+async def test_policy_dial_attempts_share_connect_timeout(monkeypatch: Any) -> None:
+    """A second address gets only the connect budget left after the first dial."""
+    dial_timeouts: list[float] = []
+
+    async def resolve(host: str, port: int) -> list[str]:
+        return ["127.0.0.1", "127.0.0.2"]
+
+    async def connect(self: Any, host: str, port: int, **kwargs: Any) -> Any:
+        dial_timeouts.append(kwargs["timeout"])
+        await asyncio.sleep(0.04)
+        raise httpcore.ConnectError("local test dial")
+
+    monkeypatch.setattr(address_policy, "_resolve_addresses", resolve)
+    monkeypatch.setattr(httpcore.AnyIOBackend, "connect_tcp", connect)
+    async with new_provider_http_client(0.06, address_policy="privateNetworkHTTP") as client:
+        with pytest.raises(ProviderTransportError) as caught:
+            await send_traced(client, client.build_request("POST", "http://provider.test/"))
+        assert caught.value.provably_not_sent
+    assert len(dial_timeouts) == 2
+    assert 0 < dial_timeouts[1] < dial_timeouts[0]
+
+
+@pytest.mark.asyncio
+async def test_restricted_pool_uses_default_limits_and_checked_backend(monkeypatch: Any) -> None:
+    client = new_provider_http_client(address_policy="publicHTTPS")
+    transport = client._transport
+    assert isinstance(transport, address_policy._AddressPolicyTransport)
+    pool = transport._transport._pool
+    assert pool._max_connections == 100
+    assert pool._max_keepalive_connections == 20
+    assert isinstance(pool._network_backend, address_policy._AddressPolicyBackend)
+    await client.aclose()
+
+    class IncompatibleTransport:
+        def __init__(self, **kwargs: Any) -> None:
+            self._pool = object()
+
+    monkeypatch.setattr(httpx, "AsyncHTTPTransport", IncompatibleTransport)
+    with pytest.raises(RuntimeError, match="compatible httpcore pool"):
+        new_provider_http_client(address_policy="publicHTTPS")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("certificate_env", [None, "SSL_CERT_FILE", "SSL_CERT_DIR"])
+async def test_tls_uses_original_hostname_for_sni_and_certificate(
+    monkeypatch: Any, tmp_path: Path, certificate_env: str | None
+) -> None:
     """The checked loopback IP is dialed while SNI and certificate checks use provider.test."""
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     subject = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "provider.test")])
@@ -181,8 +266,24 @@ async def test_tls_uses_original_hostname_for_sni_and_certificate(monkeypatch: A
         assert host == "provider.test" and requested_port == port
         return ["127.0.0.1"]
 
-    monkeypatch.setattr(netpolicy, "_resolve_addresses", resolve)
-    client_context = ssl.create_default_context(cafile=str(certificate_path))
+    monkeypatch.setattr(address_policy, "_resolve_addresses", resolve)
+    monkeypatch.delenv("SSL_CERT_FILE", raising=False)
+    monkeypatch.delenv("SSL_CERT_DIR", raising=False)
+    monkeypatch.setenv("HTTPS_PROXY", "http://127.0.0.1:1")
+    monkeypatch.setenv("NO_PROXY", "")
+    if certificate_env == "SSL_CERT_FILE":
+        monkeypatch.setenv(certificate_env, str(certificate_path))
+    elif certificate_env == "SSL_CERT_DIR":
+        certificate_directory = tmp_path / "trust"
+        certificate_directory.mkdir()
+        subject_hash = subprocess.check_output(
+            ["openssl", "x509", "-hash", "-noout", "-in", str(certificate_path)], text=True
+        ).strip()
+        (certificate_directory / f"{subject_hash}.0").symlink_to(certificate_path)
+        monkeypatch.setenv(certificate_env, str(certificate_directory))
+    client_context = (
+        ssl.create_default_context(cafile=str(certificate_path)) if certificate_env is None else True
+    )
     try:
         async with new_provider_http_client(
             address_policy="privateNetworkHTTP", verify=client_context

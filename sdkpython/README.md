@@ -227,9 +227,14 @@ Both restricted policies reject link-local, metadata, multicast, unspecified,
 and broadcast addresses. `publicHTTPS` also rejects shared addresses. They
 resolve and check every DNS answer, then dial a checked IP while retaining the
 URL hostname for Host, TLS
-SNI, and certificate verification. Restricted clients refuse custom transports
-and proxies. An `AddressRefusal` contains a safe rule, never a host or secret;
-DNS and connect failures before dispatch produce
+SNI, and certificate verification. DNS resolution and every dial share one
+connect timeout. Restricted clients accept only safe `httpx.AsyncClient` options;
+they refuse custom transports, applications, mounts, and proxies, including
+the legacy `proxies` option. `SSL_CERT_FILE` and `SSL_CERT_DIR` supply trusted
+certificates without enabling environment proxies. The restricted client uses
+one HTTP/HTTPS connection pool with the standard 100 connection and 20 keepalive
+defaults, or caller-supplied `limits`. An `AddressRefusal` contains a safe rule,
+never a host or secret. DNS and connect failures before dispatch produce
 `ProviderTransportError.provably_not_sent=True`. The caller closes the client.
 For example, [the runnable policy example](examples/provider_address_policy.py)
 uses `new_provider_http_client(address_policy="privateNetworkHTTP")` for a
