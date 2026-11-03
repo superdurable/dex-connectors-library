@@ -25,17 +25,27 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	context := newTrelloDexContext("conformance")
 	initialAttempt := int32(1)
 	if len(scenario.PriorHeartbeat) > 0 {
-		var marker struct {
-			CallID  string `json:"callId"`
-			Attempt int32  `json:"attempt"`
-			State   string `json:"state"`
+		var wrapped struct {
+			Attempt int32           `json:"attempt"`
+			Value   json.RawMessage `json:"value"`
 		}
-		require.NoError(t, json.Unmarshal(scenario.PriorHeartbeat, &marker))
-		initialAttempt = marker.Attempt + 1
-		context.previousHeartbeat, err = json.Marshal(map[string]any{
-			"trelloDispatchedCallId": marker.CallID, "trelloAttempt": marker.Attempt, "trelloCanRetry": marker.State == "canResend" || marker.State == "notSent",
-		})
-		require.NoError(t, err)
+		require.NoError(t, json.Unmarshal(scenario.PriorHeartbeat, &wrapped))
+		if len(wrapped.Value) > 0 {
+			initialAttempt = wrapped.Attempt + 1
+			context.previousHeartbeat = wrapped.Value
+		} else {
+			var marker struct {
+				CallID  string `json:"callId"`
+				Attempt int32  `json:"attempt"`
+				State   string `json:"state"`
+			}
+			require.NoError(t, json.Unmarshal(scenario.PriorHeartbeat, &marker))
+			initialAttempt = marker.Attempt + 1
+			context.previousHeartbeat, err = json.Marshal(map[string]any{
+				"trelloDispatchedCallId": marker.CallID, "trelloAttempt": marker.Attempt, "trelloCanRetry": marker.State == "canResend" || marker.State == "notSent",
+			})
+			require.NoError(t, err)
+		}
 	}
 	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
 		if attempt == 1 {

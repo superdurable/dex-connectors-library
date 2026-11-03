@@ -3219,8 +3219,10 @@
       "operation": "createCard",
       "priorHeartbeat": {
         "attempt": 1,
-        "callId": "fed5a116-c5f6-53ac-81b1-a823fb443a88",
-        "state": "claimed"
+        "value": {
+          "trelloDispatchedCallId": "fed5a116-c5f6-53ac-81b1-a823fb443a88",
+          "trelloAttempt": 1
+        }
       }
     },
     {
@@ -3294,8 +3296,11 @@
       "operation": "createCard",
       "priorHeartbeat": {
         "attempt": 1,
-        "callId": "fed5a116-c5f6-53ac-81b1-a823fb443a88",
-        "state": "canResend"
+        "value": {
+          "trelloDispatchedCallId": "fed5a116-c5f6-53ac-81b1-a823fb443a88",
+          "trelloAttempt": 1,
+          "trelloCanRetry": true
+        }
       }
     },
     {
@@ -3321,8 +3326,10 @@
       "operation": "addComment",
       "priorHeartbeat": {
         "attempt": 1,
-        "callId": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
-        "state": "claimed"
+        "value": {
+          "trelloDispatchedCallId": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
+          "trelloAttempt": 1
+        }
       }
     },
     {
@@ -3378,8 +3385,11 @@
       "operation": "addComment",
       "priorHeartbeat": {
         "attempt": 1,
-        "callId": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
-        "state": "canResend"
+        "value": {
+          "trelloDispatchedCallId": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
+          "trelloAttempt": 1,
+          "trelloCanRetry": true
+        }
       }
     }
   ],
