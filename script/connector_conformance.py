@@ -14,13 +14,14 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DATABASE_WIRE_CONNECTORS = frozenset({
+NATIVE_WIRE_CONNECTORS = frozenset({
     "connectors/postgresql", "connectors/mysql", "connectors/microsoft/sql-server",
+    "connectors/superdurable/email",
 })
 
 
 def conformance_exemptions() -> dict[str, str]:
-    """Load reviewed database-wire exemptions; never exempt an HTTP connector."""
+    """Load reviewed native-wire exemptions; never exempt an HTTP connector."""
     exemption_file = ROOT / "conformance/exemptions.yaml"
     document = json.loads(exemption_file.read_text())
     entries = document.get("exemptions")
@@ -31,8 +32,8 @@ def conformance_exemptions() -> dict[str, str]:
         if not isinstance(entry, dict) or set(entry) != {"connector", "reason"}:
             raise ValueError("conformance exemption needs connector and reason")
         connector, reason = entry["connector"], entry["reason"]
-        if connector not in DATABASE_WIRE_CONNECTORS:
-            raise ValueError(f"{connector} is not an approved database-wire connector")
+        if connector not in NATIVE_WIRE_CONNECTORS:
+            raise ValueError(f"{connector} is not an approved native-wire connector")
         if not isinstance(reason, str) or not reason.strip():
             raise ValueError(f"{connector} has no exemption reason")
         if connector in exemptions:
@@ -54,6 +55,8 @@ def database_ci_matrix(paths: list[str]) -> list[dict[str, str]]:
                                  ".github/workflows/ci.yml"} for path in paths)
     matrix = []
     for connector in conformance_exemptions():
+        if connector not in images:
+            continue
         if paths and not shared_change and not any(path.startswith(connector + "/") for path in paths):
             continue
         if not any((ROOT / connector / language / package).is_file() for language, package in (
@@ -63,6 +66,23 @@ def database_ci_matrix(paths: list[str]) -> list[dict[str, str]]:
         image, port = images[connector]
         matrix.append({"connector": connector, "image": image, "port": port})
     return matrix
+
+
+def email_ci_matrix(paths: list[str]) -> list[dict[str, str]]:
+    """Select the exempt email connector when it has a language package to test."""
+    connector = "connectors/superdurable/email"
+    shared_change = any(path in {"conformance/exemptions.yaml", "script/connector_conformance.py",
+                                 ".github/workflows/ci.yml"} for path in paths)
+    if paths and not shared_change and not any(path.startswith(connector + "/") for path in paths):
+        return []
+    if connector not in conformance_exemptions():
+        return []
+    if not any((ROOT / connector / language / package).is_file() for language, package in (
+        ("python", "pyproject.toml"), ("typescript", "package.json")
+    )):
+        return []
+    return [{"connector": connector}]
+
 
 def connector_for_path(path: str) -> Path | None:
     """Find the registered connector owning one source or conformance path."""
@@ -367,11 +387,16 @@ def main() -> None:
     parser.add_argument("--connector", action="append", default=[])
     parser.add_argument("--mutation-self-test", action="store_true")
     parser.add_argument("--database-ci-matrix", action="store_true")
+    parser.add_argument("--email-ci-matrix", action="store_true")
     arguments = parser.parse_args()
     exemptions = conformance_exemptions()
     if arguments.database_ci_matrix:
         paths = changed_paths(arguments.base, arguments.head) if arguments.base else []
         print(json.dumps({"include": database_ci_matrix(paths)}))
+        return
+    if arguments.email_ci_matrix:
+        paths = changed_paths(arguments.base, arguments.head) if arguments.base else []
+        print(json.dumps({"include": email_ci_matrix(paths)}))
         return
     if arguments.mutation_self_test:
         connectors = changed_connectors(changed_paths(arguments.base, arguments.head)) if arguments.base else sorted(

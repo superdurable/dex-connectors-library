@@ -10,18 +10,20 @@ The Python and TypeScript runners compare requests and production Dex SDK codec 
 
 Run `make test-connector-conformance CONNECTOR_DIRECTORY=connectors/<directory>` locally. `connectorctl generate --check` checks the generated Go test. CI runs all fixture-backed changed connectors and `python3 script/connector_conformance.py --mutation-self-test`, which corrupts representative branch, output (including a wrong nonempty list), request, MIME, idempotency, read 5xx, and pending fields to prove the runners reject them. New or edited Python and TypeScript packages require fixtures. Existing packages without fixtures warn `missing conformance (legacy)` on Go-only changes. Provider replay supplements the connector's runnable Dex example; it is not live-provider verification.
 
-## Database wire protocol exemptions
+## Native wire protocol exemptions
 
 The reviewed list in [`conformance/exemptions.yaml`](../exemptions.yaml) exempts
-PostgreSQL, MySQL, and SQL Server. Their native database drivers use wire
-protocols that the HTTP replay runner cannot record. The conformance gate
+PostgreSQL, MySQL, SQL Server, and Email. Their native database, SMTP, and IMAP
+protocols cannot be recorded by the HTTP replay runner. The conformance gate
 reports `exempt (reason)` and rejects exemptions for HTTP connectors. Changing
 the list requires a tooling PR.
 
 Each exempt Python or TypeScript package needs unit tests for every Go-tested
-branch, Retry, uncertain decision, and driver-error classification. It also
-needs real database integration tests in CI service containers, using the Go
-connector's `live_test.go` scenarios and connection variables as the reference.
+branch, Retry, uncertain decision, and protocol-error classification. It also
+needs real protocol integration tests in CI service containers. Follow the Go
+connector's live-test scenarios and connection variables when available. Email
+packages use the `EMAIL_CONNECTOR_TEST_*` variables exported by the GreenMail
+CI job for SMTP, SMTPS, IMAP, IMAPS, and the test mailbox.
 Place Python integration tests in `python/tests/integration/` and TypeScript
 integration tests in `typescript/test/integration.test.ts`. Developers do not
 run Docker locally. CI selects only exempt connectors with a language package.

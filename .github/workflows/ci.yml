@@ -325,6 +325,88 @@ jobs:
             "$CONNECTOR/typescript/node_modules/.bin/vitest" run test/integration.test.ts --root "$CONNECTOR/typescript"
           fi
 
+  email-language-plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      count: ${{ steps.plan.outputs.count }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Select exempt email packages
+        id: plan
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+        run: |
+          args=(--email-ci-matrix)
+          if [ -n "$BASE_SHA" ] && git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+            args+=(--base "$BASE_SHA")
+          fi
+          matrix="$(python3 script/connector_conformance.py "${args[@]}")"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "count=$(python3 -c 'import json,sys; print(len(json.load(sys.stdin)["include"]))' <<< "$matrix")" >> "$GITHUB_OUTPUT"
+
+  email-language-integration:
+    needs: email-language-plan
+    if: needs.email-language-plan.outputs.count != '0'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.email-language-plan.outputs.matrix) }}
+    services:
+      mail:
+        image: greenmail/standalone:2.1.15
+        ports:
+          - 3025:3025
+          - 3143:3143
+          - 3465:3465
+          - 3993:3993
+        env:
+          GREENMAIL_OPTS: >-
+            -Dgreenmail.setup.test.all
+            -Dgreenmail.hostname=0.0.0.0
+            -Dgreenmail.users=connector:connector_test@example.com
+            -Dgreenmail.tls.keystore.file=/home/greenmail/greenmail.p12
+            -Dgreenmail.tls.keystore.password=changeit
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Run SMTP and IMAP integration suites
+        env:
+          CONNECTOR: ${{ matrix.connector }}
+          EMAIL_CONNECTOR_TEST_SMTP_HOST: 127.0.0.1
+          EMAIL_CONNECTOR_TEST_SMTP_PORT: '3025'
+          EMAIL_CONNECTOR_TEST_SMTPS_PORT: '3465'
+          EMAIL_CONNECTOR_TEST_IMAP_HOST: 127.0.0.1
+          EMAIL_CONNECTOR_TEST_IMAP_PORT: '3143'
+          EMAIL_CONNECTOR_TEST_IMAPS_PORT: '3993'
+          EMAIL_CONNECTOR_TEST_USERNAME: connector
+          EMAIL_CONNECTOR_TEST_PASSWORD: connector_test
+          EMAIL_CONNECTOR_TEST_ADDRESS: connector@example.com
+        run: |
+          for port in "$EMAIL_CONNECTOR_TEST_SMTP_PORT" "$EMAIL_CONNECTOR_TEST_IMAP_PORT" "$EMAIL_CONNECTOR_TEST_SMTPS_PORT" "$EMAIL_CONNECTOR_TEST_IMAPS_PORT"; do
+            for _ in $(seq 1 120); do
+              if (echo > /dev/tcp/127.0.0.1/"$port") 2>/dev/null; then break; fi
+              sleep 1
+            done
+            (echo > /dev/tcp/127.0.0.1/"$port") 2>/dev/null
+          done
+          if [ -f "$CONNECTOR/python/pyproject.toml" ]; then
+            test -d "$CONNECTOR/python/tests/integration"
+            uv sync --locked --project "$CONNECTOR/python"
+            uv run --project "$CONNECTOR/python" pytest "$CONNECTOR/python/tests/integration"
+          fi
+          if [ -f "$CONNECTOR/typescript/package.json" ]; then
+            test -f "$CONNECTOR/typescript/test/integration.test.ts"
+            npm ci --prefix "$CONNECTOR/typescript"
+            npm run build --prefix "$CONNECTOR/typescript"
+            "$CONNECTOR/typescript/node_modules/.bin/vitest" run test/integration.test.ts --root "$CONNECTOR/typescript"
+          fi
+
   connectors:
     needs: connector-plan
     if: needs.connector-plan.outputs.count != '0'
