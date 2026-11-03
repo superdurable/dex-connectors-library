@@ -14,7 +14,7 @@ spec:
       operations: [getEntry, listEntries]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       package: '@superdurable/connector-contentful'
       operations: [getEntry, listEntries]
       triggers: []
