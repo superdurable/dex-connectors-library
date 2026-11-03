@@ -8,8 +8,8 @@ import dex_connectors.sdk as sdk
 import httpx
 import pytest
 
-from dex_connectors.typeform import Client, Config, Credentials, GetFormInput
-from dex_connectors.typeform.operations import _response, _timestamp
+from dex_connectors.typeform import Client, Config, Credentials, GetFormInput, UpsertWebhookInput
+from dex_connectors.typeform.operations import _classify_status, _form, _response, _timestamp
 
 
 @pytest.mark.parametrize(
@@ -54,6 +54,64 @@ def test_wrong_typed_provider_fields_are_invalid(malformed: dict[str, object]) -
     """Reject values that Go's typed JSON decoder cannot read."""
     with pytest.raises(ValueError):
         _response({"token": "response1", **malformed})
+
+
+@pytest.mark.parametrize(
+    ("header", "expected_delay"),
+    [("86400", 3600.0), ("inf", 0.0), ("1e9", 0.0), ("1.5", 0.0)],
+)
+def test_rate_limit_retry_after_matches_provider_parser(header: str, expected_delay: float) -> None:
+    """Cap valid delays and discard non-integer Retry-After values."""
+    branch, _, _, delay = _classify_status(429, httpx.Headers({"Retry-After": header}), b"")
+    assert branch == "retry"
+    assert delay == expected_delay
+
+
+def test_null_form_field_collections_use_go_zero_values() -> None:
+    """Treat JSON null choices, nested fields, and required as empty or false."""
+    form = _form(
+        {
+            "id": "form123",
+            "fields": [
+                {
+                    "id": "field123",
+                    "type": "multiple_choice",
+                    "properties": {"choices": None, "fields": None},
+                    "validations": {"required": None},
+                }
+            ],
+        }
+    )
+    assert len(form.fields) == 1
+    assert form.fields[0].choices == ()
+    assert form.fields[0].is_required is False
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("url", ["https://[", "https://example.com/\tpath", "https://example.com/\npath"])
+async def test_invalid_webhook_url_returns_defect_without_provider_request(url: str) -> None:
+    """Classify malformed URLs before credential loading or provider I/O."""
+    connection = sdk.ConnectionRef("typeform", "forms")
+    credentials = sdk.StaticCredentialProvider(
+        {connection: Credentials(access_token=sdk.SecretString("inert-token"))}
+    )
+
+    def unexpected_request(_: httpx.Request) -> httpx.Response:
+        raise AssertionError("invalid webhook URL reached provider")
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(unexpected_request)) as transport:
+        client = Client(Config(), credentials, transport)
+        call = sdk.Call(
+            sdk.CallID("test-call"),
+            connection,
+            sdk.OperationRef("typeform", "upsertWebhook"),
+            sdk.IdempotencyKey("test-call"),
+        )
+        attempt = await client.upsert_webhook().invoke(
+            call, UpsertWebhookInput(form_id="form123", tag="hook", url=url)
+        )
+    assert attempt.kind == "branch"
+    assert attempt.branch == "defect"
 
 
 @pytest.mark.asyncio

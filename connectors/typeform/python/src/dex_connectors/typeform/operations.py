@@ -5,7 +5,6 @@
 import json
 import re
 from datetime import UTC, datetime, timedelta
-from email.utils import parsedate_to_datetime
 from typing import Any, Literal, TypeVar, overload
 from urllib.parse import urlsplit
 
@@ -24,6 +23,7 @@ from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
     is_header_safe_credential,
+    parse_retry_after,
 )
 
 from ._generated import definitions as definitions
@@ -206,15 +206,7 @@ def _parse_body(body: bytes) -> dict[str, Any]:
 
 def _classify_status(status: int, headers: httpx.Headers, body: bytes) -> tuple[str, FailureKind, str, float]:
     if status == 429:
-        delay = 0.0
-        raw = headers.get("Retry-After", "")
-        try:
-            delay = max(0.0, float(raw))
-        except ValueError:
-            try:
-                delay = max(0.0, (parsedate_to_datetime(raw) - datetime.now(UTC)).total_seconds())
-            except (ValueError, TypeError, OverflowError):
-                pass
+        delay = parse_retry_after(headers.get("Retry-After", ""), datetime.now(UTC))
         return (
             "retry",
             FailureKind.RATE_LIMIT,
@@ -413,7 +405,7 @@ def _form_fields(sources: list[Any], parent: str = "", depth: int = 1) -> tuple[
                 ref=_string(choice.get("ref")),
                 label=_string(choice.get("label")),
             )
-            for choice in properties.get("choices", [])
+            for choice in properties.get("choices") or []
         )
         fields.append(
             FormField(
@@ -421,12 +413,12 @@ def _form_fields(sources: list[Any], parent: str = "", depth: int = 1) -> tuple[
                 ref=_string(source.get("ref")),
                 title=_string(source.get("title")),
                 type=kind,
-                is_required=_boolean(validations.get("required", False)),
+                is_required=_boolean(validations.get("required") or False),
                 group_field_id=parent,
                 choices=choices,
             )
         )
-        fields.extend(_form_fields(properties.get("fields", []), field_id, depth + 1))
+        fields.extend(_form_fields(properties.get("fields") or [], field_id, depth + 1))
     return tuple(fields)
 
 
@@ -765,11 +757,16 @@ class UpsertWebhookOperation(_Operation):
     async def invoke(self, call: Call, input: UpsertWebhookInput) -> MutationAttempt[Webhook]:
         """Invoke upsertWebhook once for the Dex Execute attempt."""
         operation, empty = "upsertWebhook", Webhook()
-        parsed = urlsplit(input.url)
+        try:
+            parsed = urlsplit(input.url)
+        except ValueError:
+            parsed = None
         if (
             not _ID.fullmatch(input.form_id)
             or not _TAG.fullmatch(input.tag)
             or len(input.url.encode()) > 2048
+            or any(ord(character) < 33 or ord(character) > 126 for character in input.url)
+            or parsed is None
             or parsed.scheme != "https"
             or not parsed.hostname
             or parsed.username is not None
