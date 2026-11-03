@@ -14,7 +14,10 @@ The connection needs a host, database, SQL authentication user and secret passwo
 timeouts, row limits, and encryption have manifest defaults.
 
 The Python package supports `encrypt=mandatory` with a verified server certificate from the
-system CA file, or from `SQLSERVER_SSL_CA` on the Worker host, and `encrypt=disable` only for
+system CA file, a bundled `certifi` CA fallback when Python exposes no system CA file, or
+`SQLSERVER_SSL_CA` on the Worker host. An explicitly configured CA path must exist. Hostname
+verification uses Subject Alternative Names, including DNS names and IP addresses; a Common
+Name alone is insufficient. `encrypt=disable` is allowed only for
 `localhost`, `127.0.0.1`, or `::1`. `python-tds` 1.17.1 has no public per-connection mode for
 TDS 8.0 strict encryption or for encryption without certificate validation. The Python
 package therefore rejects `encrypt=strict` and `encrypt=trust-server-certificate` during
@@ -27,6 +30,9 @@ Python's microsecond-resolution types. For a result column with scale 7, this pa
 selects `invalidResponse` and names the column before emitting any row, because the
 seventh fractional digit would otherwise be lost. Use a SQL `CAST` to scale 6 or lower
 when microsecond precision is sufficient. Scales 0 through 6 retain their exact values.
+The package restores declared DECIMAL/NUMERIC scale and MONEY/SMALLMONEY's four decimal
+places after driver decoding. It returns serialized GEOGRAPHY, GEOMETRY, and HIERARCHYID
+values as base64 with their SQL type names. Unknown SQL types fail `invalidResponse`.
 
 ## Operations
 
@@ -42,6 +48,11 @@ binds Dex's stable Call ID. A write that exceeds `maxRowsAffected` or an OUTPUT 
 rolls back and selects `limitExceeded`. A failed COMMIT whose outcome is unknown selects
 `uncertain`; failures before COMMIT retry only when safe. Make every write statement
 idempotent across retries and Worker replacement.
+`rowsAffected` sums all SQL Server DONE counts, including trigger statements. If the server
+supplies no count, `maxRowsAffected` fails `invalidResponse` before COMMIT. Receipts include
+the session process ID and server version; server errors add number, state, and severity.
+The connector enforces an attempt deadline and a response read budget in addition to the
+configured row and JSON response bounds.
 
 Both operations accept `@p1` through `@pN` positional parameters in SQL text. Do not
 interpolate user input into the statement. The connector checks for one allowed statement,
@@ -54,6 +65,7 @@ the exact application call pattern.
 The package unit tests cover routing, driver error numbers, input validation, row bounds,
 and commit uncertainty. The example integration test runs its Worker and Client against a
 real `dexcli dev` server with scripted connector operations. CI runs
-`tests/integration/test_database.py` against a real SQL Server service container. No live
+`tests/integration/test_database.py` against a real SQL Server service container, including
+mandatory TLS with a workflow CA. No live
 SQL Server, Azure SQL Database, or Azure SQL Managed Instance has been verified through a
 user-controlled Dex Web connection for this Python package.

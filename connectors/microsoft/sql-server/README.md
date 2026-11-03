@@ -34,6 +34,10 @@ The Python package has a real Dex example integration test and SQL Server servic
 integration tests in CI. Live provider behavior remains unverified.
 Python also selects `invalidResponse` for `TIME`, `DATETIME2`, or `DATETIMEOFFSET`
 result columns at scale 7, because its native driver would lose the seventh digit.
+The Python package preserves declared decimal and money scales, returns SQL CLR values as
+typed base64, sums trigger row counts, and verifies certificate DNS and IP Subject Alternative
+Names before login. Its mandatory TLS mode uses a system CA file or `certifi` fallback;
+`SQLSERVER_SSL_CA` can select a private CA file on the Worker.
 
 ## Company directory
 

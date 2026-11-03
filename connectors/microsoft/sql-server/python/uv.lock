@@ -301,6 +301,7 @@ name = "dex-connector-microsoft-sql-server"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "certifi" },
     { name = "dex-connectors-sdk" },
     { name = "dex-python-sdk" },
     { name = "httpx" },
@@ -318,6 +319,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "certifi", specifier = ">=2024.2.2" },
     { name = "dex-connectors-sdk", specifier = "==0.1.0" },
     { name = "dex-python-sdk", specifier = ">=1.28.0" },
     { name = "httpx", specifier = ">=0.27" },

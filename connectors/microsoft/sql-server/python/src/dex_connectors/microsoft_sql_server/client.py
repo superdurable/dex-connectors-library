@@ -2,15 +2,20 @@
 # SPDX-License-Identifier: MIT
 """One native TDS connection per SQL Server operation attempt."""
 
+import math
 import os
 import ssl
+import threading
 from collections.abc import Callable
 from dataclasses import replace
 from ipaddress import ip_address
 from typing import TYPE_CHECKING, Any
 
+import certifi
 import pytds  # type: ignore[import-untyped]
+from cryptography import x509
 from dex_connectors.sdk import CredentialProvider
+from pytds import tls
 
 from ._generated.config import Config, Credentials
 from ._generated.definitions import CONNECTOR_ID, EXECUTE_DEFINITION, QUERY_DEFINITION
@@ -34,6 +39,34 @@ _SESSION_SETTINGS = (
     "SET TEXTSIZE 2147483647",
     "SET TRANSACTION ISOLATION LEVEL READ COMMITTED",
 )
+_TLS_VALIDATION_LOCK = threading.Lock()
+
+
+def _verify_server_hostname(cert: Any, name: bytes) -> bool:
+    certificate = cert.to_cryptography()
+    try:
+        subject_alternative_names = certificate.extensions.get_extension_for_class(
+            x509.SubjectAlternativeName
+        ).value
+    except x509.ExtensionNotFound:
+        return False
+    try:
+        host = name.decode("ascii")
+    except UnicodeDecodeError:
+        return False
+    try:
+        address = ip_address(host)
+    except ValueError:
+        host_labels = host.lower().split(".")
+        for dns_name in subject_alternative_names.get_values_for_type(x509.DNSName):
+            pattern_labels = dns_name.lower().split(".")
+            if len(pattern_labels) == len(host_labels) and (
+                pattern_labels == host_labels
+                or (pattern_labels[0] == "*" and pattern_labels[1:] == host_labels[1:])
+            ):
+                return True
+        return False
+    return address in subject_alternative_names.get_values_for_type(x509.IPAddress)
 
 
 class Client:
@@ -68,8 +101,10 @@ class Client:
         if (
             not config.host
             or config.host != config.host.strip()
-            or any(character in config.host for character in "/\\,;@")
+            or any(character in config.host for character in "/\\,;@'\"= ")
+            or any(ord(character) < 32 or ord(character) == 127 for character in config.host)
             or "://" in config.host
+            or config.host.lower().startswith("tcp:")
         ):
             raise ValueError("SQL Server host must be one DNS name or IP address without a port or instance")
         if ":" in config.host:
@@ -77,6 +112,8 @@ class Client:
                 ip_address(config.host)
             except ValueError as error:
                 raise ValueError("SQL Server host must not include a port") from error
+            if "%" in config.host:
+                raise ValueError("SQL Server host must be an IP address without a scope identifier")
         if not 1 <= config.port <= 65535:
             raise ValueError("SQL Server port must be from 1 through 65535")
         if (
@@ -90,14 +127,25 @@ class Client:
             or "\\" in config.user
         ):
             raise ValueError("SQL Server database and SQL authentication user are required")
-        if config.encrypt == "disable" and config.host not in ("localhost", "127.0.0.1", "::1"):
+        if (
+            config.encrypt == "disable"
+            and config.host != "localhost"
+            and not (_is_loopback_address(config.host))
+        ):
             raise ValueError("SQL Server encrypt disable is allowed only for a loopback host")
         if config.encrypt in ("strict", "trust-server-certificate"):
             raise ValueError(f"SQL Server Python driver does not support encrypt={config.encrypt}")
         if config.encrypt not in ("mandatory", "disable"):
             raise ValueError("SQL Server encrypt mode is invalid")
-        if config.connect_timeout_seconds <= 0 or config.statement_timeout_seconds < 0.001:
+        if (
+            not math.isfinite(config.connect_timeout_seconds)
+            or not math.isfinite(config.statement_timeout_seconds)
+            or config.connect_timeout_seconds <= 0
+            or config.statement_timeout_seconds < 0.001
+        ):
             raise ValueError("SQL Server timeouts must be positive; statementTimeout is at least 1ms")
+        if int(config.statement_timeout_seconds * 1000 + 0.999) > (1 << 31) - 1:
+            raise ValueError("SQL Server statementTimeout exceeds SQL Server LOCK_TIMEOUT range")
         if not 1 <= config.max_rows <= 100_000 or not 1 <= config.max_response_bytes <= 16 << 20:
             raise ValueError("SQL Server row and response bounds are invalid")
         self.config = config
@@ -123,10 +171,13 @@ class Client:
         """Open and pin a native session with per-connection certificate verification."""
         ca_file: str | None = None
         if self.config.encrypt == "mandatory":
-            ca_file = os.environ.get("SQLSERVER_SSL_CA") or ssl.get_default_verify_paths().cafile
+            configured_ca_file = os.environ.get("SQLSERVER_SSL_CA")
+            ca_file = configured_ca_file or ssl.get_default_verify_paths().cafile
+            if not configured_ca_file and (not ca_file or not os.path.isfile(ca_file)):
+                ca_file = certifi.where()
             if not ca_file or not os.path.isfile(ca_file):
                 raise ValueError("SQL Server trusted CA bundle is unavailable")
-        connection = self.connection_factory(
+        connection_settings = dict(
             server=self.config.host,
             port=self.config.port,
             database=self.config.database,
@@ -141,16 +192,45 @@ class Client:
             autocommit=False,
             appname="dex-sql-server-connector",
         )
+        if self.config.encrypt == "mandatory" and self.connection_factory is pytds.connect:
+            # pytds performs this check after the handshake and before it sends login credentials.
+            with _TLS_VALIDATION_LOCK:
+                original_validator = tls.validate_host
+                tls.validate_host = _verify_server_hostname
+                try:
+                    connection = self.connection_factory(**connection_settings)
+                finally:
+                    tls.validate_host = original_validator
+        else:
+            connection = self.connection_factory(**connection_settings)
         try:
             cursor = connection.cursor()
             for setting in _SESSION_SETTINGS:
                 cursor.execute(setting)
             cursor.execute(f"SET LOCK_TIMEOUT {int(self.config.statement_timeout_seconds * 1000 + 0.999)}")
+            if self.connection_factory is pytds.connect:
+                cursor.execute("SELECT @@SPID, CONVERT(nvarchar(128), SERVERPROPERTY('ProductVersion'))")
+                identity = cursor.fetchone()
+                if identity is None or len(identity) != 2:
+                    raise ValueError("SQL Server did not return session identity")
+                connection._dex_receipt_metadata = {}
+                process_id, server_version = str(identity[0]), str(identity[1])
+                if process_id.isdecimal() and len(process_id) <= 20:
+                    connection._dex_receipt_metadata["processId"] = process_id
+                if 0 < len(server_version) <= 128 and all(32 <= ord(char) <= 126 for char in server_version):
+                    connection._dex_receipt_metadata["serverVersion"] = server_version
             cursor.close()
         except Exception:
             connection.close()
             raise
         return connection
+
+
+def _is_loopback_address(host: str) -> bool:
+    try:
+        return ip_address(host).is_loopback
+    except ValueError:
+        return False
 
 
 __all__ = ["Client", "Config", "Credentials", "CONNECTOR_ID", "EXECUTE_DEFINITION", "QUERY_DEFINITION"]

@@ -10,9 +10,11 @@ import re
 import socket
 import ssl
 import struct
+import threading
+import unicodedata
 import uuid
 from datetime import UTC, date, datetime, time
-from decimal import Decimal
+from decimal import Decimal, localcontext
 from typing import Any
 
 from dex_connectors.sdk import (
@@ -28,6 +30,8 @@ from dex_connectors.sdk import (
     ReauthorizationRequiredError,
     Receipt,
 )
+from OpenSSL import SSL
+from pytds import tds_base  # type: ignore[import-untyped]
 
 from ._generated.definitions import (
     COMPLETED,
@@ -171,6 +175,64 @@ class _InvalidResponse(Exception):
     pass
 
 
+class _ReadBudgetTransport:
+    def __init__(self, transport: Any, byte_limit: int) -> None:
+        self.transport = transport
+        self.byte_limit = byte_limit
+        self.bytes_read = 0
+
+    def recv_into(self, buffer: Any, length: int = 0) -> int:
+        received = int(self.transport.recv_into(buffer, length))
+        self.bytes_read += received
+        if self.bytes_read > self.byte_limit:
+            raise _InvalidResponse("SQL Server reply exceeded the read budget")
+        return received
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.transport, name)
+
+
+class _AttemptDeadline:
+    def __init__(self, seconds: float) -> None:
+        self.connection: Any = None
+        self.expired = threading.Event()
+        self.timer = threading.Timer(seconds, self._expire)
+        self.timer.daemon = True
+        self.timer.start()
+
+    def _expire(self) -> None:
+        self.expired.set()
+        if self.connection is None:
+            return
+        tds_socket = getattr(self.connection, "_tds_socket", None)
+        encrypted_socket = getattr(tds_socket, "sock", None)
+        raw_socket = getattr(encrypted_socket, "_transport", encrypted_socket)
+        if raw_socket is not None:
+            try:
+                raw_socket.shutdown(socket.SHUT_RDWR)
+            except (AttributeError, OSError):
+                pass
+
+    def check(self) -> None:
+        if self.expired.is_set():
+            raise TimeoutError("SQL Server attempt exceeded its deadline")
+
+    def close(self) -> None:
+        self.timer.cancel()
+
+
+def _is_sql_letter(character: str) -> bool:
+    return unicodedata.category(character).startswith("L")
+
+
+def _is_sql_digit(character: str) -> bool:
+    return unicodedata.category(character) == "Nd"
+
+
+def _is_sql_identifier_character(character: str) -> bool:
+    return _is_sql_letter(character) or _is_sql_digit(character) or character in "_#$@"
+
+
 def _scan_sql(statement: str) -> list[tuple[str, str, int, int]]:
     tokens: list[tuple[str, str, int, int]] = []
     offset = 0
@@ -217,12 +279,12 @@ def _scan_sql(statement: str) -> list[tuple[str, str, int, int]]:
                 raise ValueError("statement has an unterminated literal or identifier")
         elif character == "@":
             offset += 1
-            while offset < len(statement) and (statement[offset].isalnum() or statement[offset] in "_#$@"):
+            while offset < len(statement) and _is_sql_identifier_character(statement[offset]):
                 offset += 1
             tokens.append(("variable", statement[start:offset], start, offset))
-        elif character.isalpha() or character in "_#$":
+        elif _is_sql_letter(character) or character in "_#$":
             offset += 1
-            while offset < len(statement) and (statement[offset].isalnum() or statement[offset] in "_#$@"):
+            while offset < len(statement) and _is_sql_identifier_character(statement[offset]):
                 offset += 1
             tokens.append(("word", statement[start:offset], start, offset))
         elif character == ";":
@@ -231,6 +293,11 @@ def _scan_sql(statement: str) -> list[tuple[str, str, int, int]]:
         elif character == "(":
             offset += 1
             tokens.append(("open", "(", start, offset))
+        elif _is_sql_digit(character):
+            offset += 1
+            while offset < len(statement) and _is_sql_identifier_character(statement[offset]):
+                offset += 1
+            tokens.append(("other", statement[start:offset], start, offset))
         else:
             offset += 1
             tokens.append(("other", character, start, offset))
@@ -249,7 +316,10 @@ def _bind_statement(
     if len(parameters) + (key is not None) > 2098:
         raise ValueError("statement cannot bind more than 2098 parameters")
     tokens = _scan_sql(statement)
-    first = next((text.upper() for kind, text, _, _ in tokens if kind != "open"), "")
+    first = next(
+        (text.upper() if kind == "word" else "" for kind, text, _, _ in tokens if kind != "open"),
+        "",
+    )
     allowed = {"INSERT", "UPDATE", "DELETE", "MERGE", "WITH"} if write else {"SELECT", "WITH"}
     if first not in allowed:
         raise ValueError("statement starts with an operation this connector does not allow")
@@ -286,7 +356,7 @@ def _bind_statement(
     for index, parameter in enumerate((*parameters, *((key,) if key is not None else ())), 1):
         if isinstance(parameter, bool) or parameter is None:
             size = 1 if parameter is not None else 0
-        elif isinstance(parameter, int) and -(1 << 63) <= parameter < 1 << 64:
+        elif isinstance(parameter, int) and -(1 << 63) <= parameter < 1 << 63:
             size = 8
         elif isinstance(parameter, float) and math.isfinite(parameter):
             size = 8
@@ -327,11 +397,7 @@ def _classify(error: BaseException, phase: str) -> tuple[str, FailureKind, str, 
             return "uncertain", FailureKind.AVAILABILITY, "SQL Server commit outcome is unknown", metadata
         if number in _RETRY_CONFLICT:
             return "retry", FailureKind.CONFLICT, "SQL Server transaction conflict; retry", metadata
-        if (
-            number in _RETRY_AVAILABILITY
-            or getattr(error, "severity", 0) >= 20
-            and number not in (_SESSION_LIMIT | {40544})
-        ):
+        if number in _RETRY_AVAILABILITY:
             return "retry", FailureKind.AVAILABILITY, "SQL Server is temporarily unavailable", metadata
         for numbers, failure_kind in (
             (_AUTHENTICATION, FailureKind.AUTHENTICATION),
@@ -344,6 +410,8 @@ def _classify(error: BaseException, phase: str) -> tuple[str, FailureKind, str, 
         ):
             if number in numbers:
                 return "rejected", failure_kind, f"SQL Server rejected request with error {number}", metadata
+        if getattr(error, "severity", 0) >= 20:
+            return "retry", FailureKind.AVAILABILITY, "SQL Server is temporarily unavailable", metadata
         return (
             "rejected",
             FailureKind.PROVIDER_REJECTION,
@@ -353,6 +421,11 @@ def _classify(error: BaseException, phase: str) -> tuple[str, FailureKind, str, 
     if isinstance(error, _InvalidResponse):
         return "invalid", FailureKind.PROTOCOL, str(error), {}
     error_text = str(error).lower()
+    if phase == "connect" and (
+        "you requested encryption but it is not supported by server" in error_text
+        or "server returned unexpected encrypt_on value" in error_text
+    ):
+        return "rejected", FailureKind.PROVIDER_REJECTION, "SQL Server does not accept required TLS", {}
     if (
         isinstance(error, ssl.SSLError)
         or "certificate" in type(error).__name__.lower()
@@ -362,6 +435,8 @@ def _classify(error: BaseException, phase: str) -> tuple[str, FailureKind, str, 
         return "rejected", FailureKind.AUTHENTICATION, "SQL Server certificate was rejected", {}
     if isinstance(error, ValueError):
         return "defect", FailureKind.VALIDATION, str(error), {}
+    if isinstance(error, tds_base.DataError):
+        return "defect", FailureKind.VALIDATION, "SQL Server driver rejected a parameter value", {}
     if phase == "commit":
         return "uncertain", FailureKind.TRANSPORT, "SQL Server commit outcome is unknown", {}
     if isinstance(error, TimeoutError) and phase == "statement":
@@ -380,28 +455,53 @@ def _classify(error: BaseException, phase: str) -> tuple[str, FailureKind, str, 
         if isinstance(error, socket.gaierror) and error.errno == socket.EAI_NONAME:
             return "rejected", FailureKind.NOT_FOUND, "SQL Server host was not found", {}
         return "retry", FailureKind.AVAILABILITY, "SQL Server is unreachable or did not finish connecting", {}
-    if isinstance(error, (OSError, EOFError, ConnectionError, TimeoutError)):
+    if isinstance(error, tds_base.Error) and any(
+        phrase in error_text
+        for phrase in ("connection closed", "closed connection", "server closed connection")
+    ):
+        return "retry", FailureKind.TRANSPORT, "SQL Server connection failed before commit", {}
+    if isinstance(
+        error,
+        (
+            OSError,
+            EOFError,
+            ConnectionError,
+            TimeoutError,
+            tds_base.ClosedConnectionError,
+            SSL.SysCallError,
+            SSL.ZeroReturnError,
+        ),
+    ):
         return "retry", FailureKind.TRANSPORT, "SQL Server connection failed before commit", {}
     return "invalid", FailureKind.PROTOCOL, "SQL Server driver could not decode the reply", {}
 
 
-def _receipt(call: Call, metadata: dict[str, str] | None = None) -> Receipt:
+def _receipt(call: Call, metadata: dict[str, str] | None = None, connection: Any = None) -> Receipt:
+    receipt_metadata = dict(getattr(connection, "_dex_receipt_metadata", {}))
+    receipt_metadata.update(metadata or {})
     return Receipt(
         CallID(str(call.id)),
         CONNECTOR_ID,
         datetime.now(UTC),
         IdempotencyKey(str(call.idempotency_key)),
-        metadata=metadata or {},
+        metadata=receipt_metadata,
     )
 
 
-def _row_value(value: Any, type_name: str) -> Any:
+def _row_value(value: Any, type_name: str, scale: int | None = None) -> Any:
     if value is None:
         return None
     if type_name == "BIGINT" and isinstance(value, int):
         return str(value)
     if type_name in ("DECIMAL", "MONEY", "SMALLMONEY") and isinstance(value, (Decimal, str)):
-        return format(value, "f") if isinstance(value, Decimal) else value
+        if isinstance(value, str):
+            value = Decimal(value)
+        declared_scale = 4 if type_name in ("MONEY", "SMALLMONEY") else scale
+        if declared_scale is None or not 0 <= declared_scale <= 38:
+            raise _InvalidResponse("SQL Server decimal scale is unavailable")
+        with localcontext() as decimal_context:
+            decimal_context.prec = 50
+            return format(value.quantize(Decimal(1).scaleb(-declared_scale)), "f")
     if type_name in ("TINYINT", "SMALLINT", "INT") and type(value) is int:
         return value
     if type_name == "BIT" and isinstance(value, bool):
@@ -420,7 +520,14 @@ def _row_value(value: Any, type_name: str) -> Any:
                 if struct.pack("!f", candidate) == packed:
                     return candidate
         return value
-    if type_name in ("BINARY", "VARBINARY", "IMAGE") and isinstance(value, bytes):
+    if isinstance(value, bytes) and type_name in (
+        "BINARY",
+        "VARBINARY",
+        "IMAGE",
+        "GEOGRAPHY",
+        "GEOMETRY",
+        "HIERARCHYID",
+    ):
         return base64.b64encode(value).decode("ascii")
     if type_name == "UNIQUEIDENTIFIER" and isinstance(value, uuid.UUID):
         return str(value)
@@ -458,6 +565,20 @@ def _read_rows(
         type_name = (
             _SQL_TYPES.get(field[1], "UNKNOWN") if isinstance(field[1], int) else str(field[1]).upper()
         )
+        if field[1] == 240:
+            native_columns = getattr(
+                getattr(getattr(cursor, "_session", None), "res_info", None), "columns", ()
+            )
+            serializer = (
+                getattr(native_columns[len(columns)], "serializer", None)
+                if len(native_columns) > len(columns)
+                else None
+            )
+            type_name = str(getattr(serializer, "type_name", "UNKNOWN")).upper()
+            if type_name not in ("GEOGRAPHY", "GEOMETRY", "HIERARCHYID"):
+                raise _InvalidResponse(f'column "{name}" has an unsupported SQL CLR type')
+        elif type_name == "UNKNOWN":
+            raise _InvalidResponse(f'column "{name}" has an unsupported SQL type')
         if type_name in ("TIME", "DATETIME2", "DATETIMEOFFSET"):
             temporal_scale = (
                 field[5]
@@ -471,22 +592,39 @@ def _read_rows(
                 )
         columns.append(Column(name, type_name))
     rows: list[dict[str, Any]] = []
+    reader = getattr(getattr(cursor, "_session", None), "_reader", None)
+    if reader is not None:
+        reader._transport = _ReadBudgetTransport(reader._transport, max_bytes + (64 << 10))
     encoded_bytes = 2
     while True:
         raw = cursor.fetchone()
         if raw is None:
-            if callable(getattr(cursor, "nextset", None)) and cursor.nextset():
-                raise ValueError("statement returned more than one result set")
+            while callable(getattr(cursor, "nextset", None)) and cursor.nextset():
+                if cursor.description:
+                    raise ValueError("statement returned more than one result set")
             return tuple(columns), tuple(rows), False
         if len(rows) >= max_rows:
             return tuple(columns), tuple(rows), True
         row = {
-            column.name: _row_value(value, column.type_name)
-            for column, value in zip(columns, raw, strict=True)
+            column.name: _row_value(
+                value,
+                column.type_name,
+                description[index][5]
+                if len(description[index]) > 5 and isinstance(description[index][5], int)
+                else None,
+            )
+            for index, (column, value) in enumerate(zip(columns, raw, strict=True))
         }
-        encoded_bytes += len(json.dumps(row, separators=(",", ":"), ensure_ascii=False).encode("utf-8")) + (
-            1 if rows else 0
-        )
+        encoded_row = json.dumps(row, separators=(",", ":"), sort_keys=True, ensure_ascii=False)
+        for character, escaped in (
+            ("<", "\\u003c"),
+            (">", "\\u003e"),
+            ("&", "\\u0026"),
+            ("\u2028", "\\u2028"),
+            ("\u2029", "\\u2029"),
+        ):
+            encoded_row = encoded_row.replace(character, escaped)
+        encoded_bytes += len(encoded_row.encode("utf-8")) + 1
         if encoded_bytes > max_bytes:
             return tuple(columns), tuple(rows), True
         rows.append(row)
@@ -537,14 +675,26 @@ class QueryRowsOperation:
     ) -> QueryAttempt[RowSet]:
         phase = "connect"
         connection = None
+        statement_deadline: _AttemptDeadline | None = None
+        deadline = _AttemptDeadline(
+            self.client.config.connect_timeout_seconds + self.client.config.statement_timeout_seconds + 5
+        )
         try:
             connection = self.client.open_connection(password)
+            deadline.connection = connection
+            deadline.check()
             phase = "statement"
+            statement_deadline = _AttemptDeadline(self.client.config.statement_timeout_seconds)
+            statement_deadline.connection = connection
             cursor = connection.cursor()
             cursor.execute(statement, parameters)
+            deadline.check()
+            statement_deadline.check()
             columns, rows, truncated = _read_rows(
                 cursor, self.client.config.max_rows, self.client.config.max_response_bytes
             )
+            deadline.check()
+            statement_deadline.check()
             if not columns:
                 raise ValueError("query statement returned no result set")
             value = RowSet(columns, rows, truncated)
@@ -555,10 +705,16 @@ class QueryRowsOperation:
                     QUERY_OPERATION_ID,
                     "SQL Server rows exceeded maxRows or maxResponseBytes",
                 )
-                return QueryAttempt.branch_result(TRUNCATED, value, _receipt(call), failure)
-            return QueryAttempt.branch_result(COMPLETED, value, _receipt(call))
+                return QueryAttempt.branch_result(
+                    TRUNCATED, value, _receipt(call, connection=connection), failure
+                )
+            return QueryAttempt.branch_result(COMPLETED, value, _receipt(call, connection=connection))
         except Exception as error:
-            disposition, kind, message, metadata = _classify(error, phase)
+            has_timed_out = deadline.expired.is_set() or (
+                statement_deadline is not None and statement_deadline.expired.is_set()
+            )
+            classified_error = TimeoutError("SQL Server statement timed out") if has_timed_out else error
+            disposition, kind, message, metadata = _classify(classified_error, phase)
             failure = Failure(kind, CONNECTOR_ID, QUERY_OPERATION_ID, message)
             if disposition in ("retry", "uncertain"):
                 return QueryAttempt.retry(failure)
@@ -569,8 +725,11 @@ class QueryRowsOperation:
                 if disposition == "invalid"
                 else PROVIDER_REJECTED
             )
-            return QueryAttempt.branch_result(branch, RowSet(), _receipt(call, metadata), failure)
+            return QueryAttempt.branch_result(branch, RowSet(), _receipt(call, metadata, connection), failure)
         finally:
+            deadline.close()
+            if statement_deadline is not None:
+                statement_deadline.close()
             if connection is not None:
                 try:
                     connection.rollback()
@@ -644,11 +803,32 @@ class ExecuteStatementOperation:
         phase = "connect"
         connection = None
         was_committed = False
+        statement_deadline: _AttemptDeadline | None = None
+        deadline = _AttemptDeadline(
+            self.client.config.connect_timeout_seconds + self.client.config.statement_timeout_seconds + 5
+        )
         try:
             connection = self.client.open_connection(password)
+            deadline.connection = connection
+            deadline.check()
             phase = "statement"
+            statement_deadline = _AttemptDeadline(self.client.config.statement_timeout_seconds)
+            statement_deadline.connection = connection
             cursor = connection.cursor()
+            done_counts: list[int] = []
+            session = getattr(cursor, "_session", None)
+            if session is not None:
+                process_end = session.process_end
+
+                def capture_done_count(marker: int) -> None:
+                    process_end(marker)
+                    if session.done_flags & tds_base.TDS_DONE_COUNT:
+                        done_counts.append(int(session.rows_affected))
+
+                session.process_end = capture_done_count
             cursor.execute(statement, parameters)
+            deadline.check()
+            statement_deadline.check()
             if input.returns_output_rows:
                 columns, rows, truncated = _read_rows(
                     cursor, self.client.config.max_rows, self.client.config.max_response_bytes
@@ -661,13 +841,22 @@ class ExecuteStatementOperation:
                         "SQL Server OUTPUT rows exceeded bounds",
                     )
                     return MutationAttempt.branch_result(
-                        LIMIT_EXCEEDED, StatementExecution(), _receipt(call), failure
+                        LIMIT_EXCEEDED, StatementExecution(), _receipt(call, connection=connection), failure
                     )
                 if not columns:
                     raise ValueError("returnsOutputRows is set but no OUTPUT result set was returned")
                 value = StatementExecution(len(rows), columns, rows)
             else:
-                value = StatementExecution(max(0, int(cursor.rowcount)))
+                fallback_counts = [int(cursor.rowcount)] if session is None and cursor.rowcount >= 0 else []
+                while cursor.nextset():
+                    if session is None and cursor.rowcount >= 0:
+                        fallback_counts.append(int(cursor.rowcount))
+                counts = done_counts if session is not None else fallback_counts
+                rows_affected = sum(counts)
+                has_count = bool(counts)
+                if not has_count and input.max_rows_affected is not None:
+                    raise _InvalidResponse("SQL Server did not report rows affected")
+                value = StatementExecution(rows_affected)
             if input.max_rows_affected is not None and value.rows_affected > input.max_rows_affected:
                 failure = Failure(
                     FailureKind.CONFLICT,
@@ -676,19 +865,29 @@ class ExecuteStatementOperation:
                     "SQL Server rows affected exceeded maxRowsAffected",
                 )
                 return MutationAttempt.branch_result(
-                    LIMIT_EXCEEDED, StatementExecution(), _receipt(call), failure
+                    LIMIT_EXCEEDED, StatementExecution(), _receipt(call, connection=connection), failure
                 )
+            statement_deadline.check()
+            statement_deadline.close()
             phase = "commit"
+            deadline.check()
             connection.commit()
+            deadline.check()
             was_committed = True
-            return MutationAttempt.branch_result(COMPLETED, value, _receipt(call))
+            return MutationAttempt.branch_result(COMPLETED, value, _receipt(call, connection=connection))
         except Exception as error:
-            disposition, kind, message, metadata = _classify(error, phase)
+            has_timed_out = deadline.expired.is_set() or (
+                statement_deadline is not None and statement_deadline.expired.is_set()
+            )
+            classified_error = TimeoutError("SQL Server statement timed out") if has_timed_out else error
+            disposition, kind, message, metadata = _classify(classified_error, phase)
             failure = Failure(kind, CONNECTOR_ID, EXECUTE_OPERATION_ID, message)
             if disposition == "retry":
                 return MutationAttempt.retry(failure)
             if disposition == "uncertain":
-                return MutationAttempt.uncertain(StatementExecution(), failure, _receipt(call, metadata))
+                return MutationAttempt.uncertain(
+                    StatementExecution(), failure, _receipt(call, metadata, connection)
+                )
             branch = (
                 DEFECT
                 if disposition == "defect"
@@ -697,9 +896,12 @@ class ExecuteStatementOperation:
                 else PROVIDER_REJECTED
             )
             return MutationAttempt.branch_result(
-                branch, StatementExecution(), _receipt(call, metadata), failure
+                branch, StatementExecution(), _receipt(call, metadata, connection), failure
             )
         finally:
+            deadline.close()
+            if statement_deadline is not None:
+                statement_deadline.close()
             if connection is not None:
                 if not was_committed:
                     try:
