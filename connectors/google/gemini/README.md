@@ -66,7 +66,7 @@ effect without a restart. Configuration is captured at startup:
 | --- | --- | --- |
 | `model` | `gemini-3.5-flash-lite` | Model that `generateContent` calls when the request sets no `Model`. Blank uses the default. Accepts `gemini-3.8-flash` or `models/gemini-3.8-flash`; `New` and `NewProjectConnection` reject anything else. |
 | `endpoint` | `https://generativelanguage.googleapis.com/v1beta` | API base URL. HTTPS is required except for loopback test servers. |
-| `maxResponseBytes` | `8388608` (8 MiB) | Larger responses select `invalidResponse`; nothing is truncated silently. |
+| `maxResponseBytes` | `8388608` (8 MiB) | Successful responses above this limit select `invalidResponse` without silent truncation; HTTP errors retain status-based retry or rejection. |
 
 `gemini-3.5-flash-lite` and `gemini-3.8-flash` are the stable models that
 Google [recommends for new projects](https://ai.google.dev/gemini-api/docs/models);

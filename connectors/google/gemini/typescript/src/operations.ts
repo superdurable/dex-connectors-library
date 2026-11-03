@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { newQueryBranch, newQueryRetry, type Call, type Failure, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
-import { BodyTooLargeError } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { GeminiClient, GeminiCredentialError, retryDelay } from './client.js';
 import { GenerateContentDefinition } from './generated/definitions.js';
 import type { GenerateContentRequest, GenerateContentResponse, Usage } from './generated/models.js';
@@ -22,12 +22,14 @@ export class GenerateContentOperation implements Query<GenerateContentRequest, G
     let body: Uint8Array;
     try { ({ model, body } = encodeRequest(input, this.client.model)); }
     catch { return branch('defect', zeroResponse, 'VALIDATION', 'Gemini request is invalid'); }
-    let response;
+    let response: ProviderResponse;
     try { response = await this.client.exchange(call, model, body); }
     catch (error) {
       if (error instanceof GeminiCredentialError) return branch('defect', zeroResponse, 'AUTHENTICATION', 'connection credentials are unavailable');
-      if (error instanceof BodyTooLargeError) return branch('invalidResponse', zeroResponse, 'RESPONSE_TOO_LARGE', 'provider response exceeds the configured size limit');
-      return newQueryRetry(failure('TRANSPORT', 'provider request failed before a response was received'));
+      if (error instanceof BodyTooLargeError) {
+        if (error.status === undefined || (error.status >= 200 && error.status <= 299)) return branch('invalidResponse', zeroResponse, 'RESPONSE_TOO_LARGE', 'provider response exceeds the configured size limit');
+        response = { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() };
+      } else return newQueryRetry(failure('TRANSPORT', 'provider request failed before a response was received'));
     }
     const receipt = this.client.receipt(call, response);
     if (response.status < 200 || response.status > 299) {
@@ -35,6 +37,7 @@ export class GenerateContentOperation implements Query<GenerateContentRequest, G
       if (response.status === 408 || response.status === 429 || (response.status >= 500 && response.status !== 501)) return newQueryRetry(failure(kind, message), retryDelay(response, this.client.now()));
       return newQueryBranch('providerRejected', zeroResponse, receipt, failure(kind, message));
     }
+    if (response.body.byteLength > this.client.maxResponseBytes) return branch('invalidResponse', zeroResponse, 'RESPONSE_TOO_LARGE', 'provider response exceeds the configured size limit', receipt);
     let wire: unknown;
     try { wire = JSON.parse(Buffer.from(response.body).toString('utf8')) as unknown; }
     catch { return branch('invalidResponse', zeroResponse, 'PROTOCOL', 'provider response is not valid JSON', receipt); }

@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { isHeaderSafeCredential, MaxErrorBodyBytes, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { SecretString, type Call, type CredentialProvider, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import type { Config, Credentials } from './generated/models.js';
 import { GenerateContentOperation } from './operations.js';
@@ -58,7 +58,7 @@ export class GeminiClient {
     const request: ProviderRequest = {
       url: `${this.endpoint}/models/${encodeURIComponent(model)}:generateContent`, method: 'POST',
       headers: { 'x-goog-api-key': credentials.apiKey.reveal(), 'Content-Type': 'application/json', Accept: 'application/json' },
-      body, maxResponseBytes: this.maxResponseBytes, timeoutMs: 270_000,
+      body, maxResponseBytes: Math.max(this.maxResponseBytes, MaxErrorBodyBytes), timeoutMs: 270_000,
       addressPolicy: this.endpoint.startsWith('http:') ? 'privateNetworkHTTP' : 'publicHTTPS',
       signal: call.context.cancellationSignal,
     };
