@@ -3934,6 +3934,1081 @@
       },
       "name": "queryDatabase-escaped-property",
       "operation": "queryDatabase"
+    },
+    {
+      "callId": "802080c4-8c00-566e-969a-9ff697e85986",
+      "exchanges": [
+        {
+          "body": "{\"results\":[],\"next_cursor\":null,\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/search",
+          "requestBody": {
+            "filter": {
+              "property": "object",
+              "value": "data_source"
+            },
+            "page_size": 1,
+            "query": "Form",
+            "sort": {
+              "direction": "ascending",
+              "timestamp": "last_edited_time"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "noMatch",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "hasMore": false,
+          "matches": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "objectType": "data_source",
+        "pageSize": 1,
+        "query": "Form",
+        "sortDirection": "ascending",
+        "startCursor": "  "
+      },
+      "name": "search-whitespace-cursor-no-match",
+      "operation": "search"
+    },
+    {
+      "callId": "d612e49a-f083-5ef4-ab81-dff523d83e3b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "dataSourceId": "",
+          "hasMore": false,
+          "pages": [],
+          "resultLimitReached": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "filter": {
+          "condition": "after",
+          "date": "2026-09-30",
+          "timestamp": "created_time",
+          "type": "date"
+        },
+        "pageSize": 1,
+        "properties": [
+          "Name"
+        ],
+        "sorts": [
+          {
+            "direction": "ascending",
+            "property": "Name"
+          }
+        ],
+        "startCursor": "next-1"
+      },
+      "name": "queryDatabase-timestamp-with-type-defect",
+      "operation": "queryDatabase"
+    },
+    {
+      "callId": "81467250-6c33-5bd7-872e-cda30951a0ad",
+      "exchanges": [
+        {
+          "body": "{\"results\":[{\"object\":\"page\",\"id\":\"1f3c9a2e-5b7d-4e8a-9c01-23456789abcd\",\"url\":\"https://www.notion.so/1f3c9a2e5b7d4e8a9c0123456789abcd\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"3b5e7091-2c4d-4e6f-9081-223344556677\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"plain_text\":\"Ada Lovelace\",\"text\":{\"content\":\"Ada Lovelace\"}}]},\"Email\":{\"id\":\"em1\",\"type\":\"email\",\"email\":\"ada@example.com\"},\"BigNumber\":{\"id\":\"num\",\"type\":\"number\",\"number\":1e+21},\"SmallFormula\":{\"id\":\"fm\",\"type\":\"formula\",\"formula\":{\"type\":\"number\",\"number\":1e-07}},\"Rollup\":{\"id\":\"roll\",\"type\":\"rollup\",\"rollup\":{\"type\":\"array\",\"array\":[{\"type\":\"rollup\",\"rollup\":{\"type\":\"array\",\"array\":[{\"type\":\"number\",\"number\":2}]}},{\"type\":\"number\",\"number\":3}]}}},\"in_trash\":false,\"is_archived\":false}],\"next_cursor\":null,\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/data_sources/2a4d6f80-1b3c-4d5e-8f70-112233445566/query",
+          "query": {
+            "filter_properties[]": [
+              "Name"
+            ]
+          },
+          "requestBody": {
+            "filter": {
+              "property": "Name",
+              "title": {
+                "contains": "Ada"
+              }
+            },
+            "page_size": 1,
+            "result_type": "page",
+            "sorts": [
+              {
+                "direction": "ascending",
+                "property": "Name"
+              }
+            ],
+            "start_cursor": "next-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "queried",
+        "failureKind": "",
+        "output": {
+          "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+          "hasMore": false,
+          "pages": [
+            {
+              "archived": false,
+              "id": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+              "inTrash": false,
+              "parent": {
+                "databaseId": "3b5e7091-2c4d-4e6f-9081-223344556677",
+                "id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+                "type": "data_source_id"
+              },
+              "properties": {
+                "BigNumber": {
+                  "id": "num",
+                  "number": 1e+21,
+                  "plainText": "1000000000000000000000",
+                  "type": "number"
+                },
+                "Email": {
+                  "email": "ada@example.com",
+                  "id": "em1",
+                  "plainText": "ada@example.com",
+                  "type": "email"
+                },
+                "Name": {
+                  "id": "title",
+                  "plainText": "Ada Lovelace",
+                  "text": "Ada Lovelace",
+                  "type": "title"
+                },
+                "Rollup": {
+                  "id": "roll",
+                  "plainText": "3",
+                  "type": "rollup"
+                },
+                "SmallFormula": {
+                  "id": "fm",
+                  "number": 1e-7,
+                  "plainText": "0.0000001",
+                  "type": "formula"
+                }
+              },
+              "title": "Ada Lovelace",
+              "url": "https://www.notion.so/1f3c9a2e5b7d4e8a9c0123456789abcd"
+            }
+          ],
+          "resultLimitReached": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "filter": {
+          "condition": "contains",
+          "property": "Name",
+          "text": "Ada",
+          "type": "title"
+        },
+        "pageSize": 1,
+        "properties": [
+          "Name"
+        ],
+        "sorts": [
+          {
+            "direction": "ascending",
+            "property": "Name"
+          }
+        ],
+        "startCursor": "next-1"
+      },
+      "name": "queryDatabase-number-and-nested-rollup",
+      "operation": "queryDatabase"
+    },
+    {
+      "callId": "44a0e55e-4023-59ef-bcd3-541f76d713b8",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"page\",\"id\":\"1f3c9a2e-5b7d-4e8a-9c01-23456789abcd\",\"url\":\"https://www.notion.so/1f3c9a2e5b7d4e8a9c0123456789abcd\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"3b5e7091-2c4d-4e6f-9081-223344556677\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"plain_text\":\"Ada Lovelace\",\"text\":{\"content\":\"Ada Lovelace\"}}]},\"Email\":{\"id\":\"em1\",\"type\":\"email\",\"email\":\"ada@example.com\"}},\"in_trash\":false,\"is_archived\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/pages/1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"results\":[{\"object\":\"block\",\"id\":\"empty-row\",\"type\":\"table_row\",\"has_children\":false,\"table_row\":{\"cells\":[]}}],\"next_cursor\":null,\"has_more\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/blocks/1f3c9a2e-5b7d-4e8a-9c01-23456789abcd/children",
+          "query": {
+            "page_size": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "content": {
+            "blockCount": 1,
+            "hasMoreBlocks": false,
+            "nestedBlockCount": 0,
+            "skippedBlockCount": 1,
+            "text": "",
+            "textTruncated": false
+          },
+          "page": {
+            "archived": false,
+            "id": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+            "inTrash": false,
+            "parent": {
+              "databaseId": "3b5e7091-2c4d-4e6f-9081-223344556677",
+              "id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+              "type": "data_source_id"
+            },
+            "properties": {
+              "Email": {
+                "email": "ada@example.com",
+                "id": "em1",
+                "plainText": "ada@example.com",
+                "type": "email"
+              },
+              "Name": {
+                "id": "title",
+                "plainText": "Ada Lovelace",
+                "text": "Ada Lovelace",
+                "type": "title"
+              }
+            },
+            "title": "Ada Lovelace",
+            "url": "https://www.notion.so/1f3c9a2e5b7d4e8a9c0123456789abcd"
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxBlocks": 1,
+        "maxTextCharacters": 100,
+        "pageId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+        "skipContent": false
+      },
+      "name": "getPage-empty-table-row",
+      "operation": "getPage"
+    },
+    {
+      "callId": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {},
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "input": {
+        "bodyText": "First paragraph\n\nSecond paragraph",
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "properties": {
+          "Date": {
+            "date": {
+              "start": "2026-09-30",
+              "timeZone": "Not a zone!"
+            },
+            "type": "date"
+          },
+          "Email": {
+            "email": "ada@example.com",
+            "type": "email"
+          },
+          "Name": {
+            "text": "Ada Lovelace",
+            "type": "title"
+          }
+        }
+      },
+      "name": "createPage-invalid-time-zone",
+      "operation": "createPage"
+    },
+    {
+      "callId": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"page\",\"id\":\"1f3c9a2e-5b7d-4e8a-9c01-23456789abcd\",\"url\":\"https://www.notion.so/1f3c9a2e5b7d4e8a9c0123456789abcd\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"3b5e7091-2c4d-4e6f-9081-223344556677\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"plain_text\":\"Ada Lovelace\",\"text\":{\"content\":\"Ada Lovelace\"}}]},\"Email\":{\"id\":\"em1\",\"type\":\"email\",\"email\":\"ada@example.com\"}},\"in_trash\":false,\"is_archived\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/pages",
+          "requestBody": {
+            "children": [
+              {
+                "object": "block",
+                "paragraph": {
+                  "rich_text": [
+                    {
+                      "text": {
+                        "content": "First paragraph"
+                      },
+                      "type": "text"
+                    }
+                  ]
+                },
+                "type": "paragraph"
+              },
+              {
+                "object": "block",
+                "paragraph": {
+                  "rich_text": [
+                    {
+                      "text": {
+                        "content": "Second paragraph"
+                      },
+                      "type": "text"
+                    }
+                  ]
+                },
+                "type": "paragraph"
+              }
+            ],
+            "parent": {
+              "data_source_id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+              "type": "data_source_id"
+            },
+            "properties": {
+              "Date": {
+                "date": {
+                  "start": "2026-09-30",
+                  "time_zone": "America/Los_Angeles"
+                }
+              },
+              "Email": {
+                "email": "ada@example.com"
+              },
+              "Name": {
+                "title": [
+                  {
+                    "text": {
+                      "content": "Ada Lovelace"
+                    },
+                    "type": "text"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+          "page": {
+            "archived": false,
+            "id": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+            "inTrash": false,
+            "parent": {
+              "databaseId": "3b5e7091-2c4d-4e6f-9081-223344556677",
+              "id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+              "type": "data_source_id"
+            },
+            "properties": {
+              "Email": {
+                "email": "ada@example.com",
+                "id": "em1",
+                "plainText": "ada@example.com",
+                "type": "email"
+              },
+              "Name": {
+                "id": "title",
+                "plainText": "Ada Lovelace",
+                "text": "Ada Lovelace",
+                "type": "title"
+              }
+            },
+            "title": "Ada Lovelace",
+            "url": "https://www.notion.so/1f3c9a2e5b7d4e8a9c0123456789abcd"
+          },
+          "pageId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "input": {
+        "bodyText": "First paragraph\n\nSecond paragraph",
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "properties": {
+          "Date": {
+            "date": {
+              "end": "  ",
+              "start": "2026-09-30",
+              "timeZone": " America/Los_Angeles "
+            },
+            "type": "date"
+          },
+          "Email": {
+            "email": "ada@example.com",
+            "type": "email"
+          },
+          "Name": {
+            "text": "Ada Lovelace",
+            "type": "title"
+          }
+        }
+      },
+      "name": "createPage-whitespace-date-end",
+      "operation": "createPage"
+    },
+    {
+      "callId": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"page\",\"id\":\"1f3c9a2e-5b7d-4e8a-9c01-23456789abcd\",\"url\":\"https://www.notion.so/1f3c9a2e5b7d4e8a9c0123456789abcd\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"3b5e7091-2c4d-4e6f-9081-223344556677\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"plain_text\":\"Ada Lovelace\",\"text\":{\"content\":\"Ada Lovelace\"}}]},\"Email\":{\"id\":\"em1\",\"type\":\"email\",\"email\":\"ada@example.com\"}},\"in_trash\":false,\"is_archived\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/pages",
+          "requestBody": {
+            "children": [
+              {
+                "object": "block",
+                "paragraph": {
+                  "rich_text": [
+                    {
+                      "text": {
+                        "content": "First paragraph"
+                      },
+                      "type": "text"
+                    }
+                  ]
+                },
+                "type": "paragraph"
+              },
+              {
+                "object": "block",
+                "paragraph": {
+                  "rich_text": [
+                    {
+                      "text": {
+                        "content": "Second paragraph"
+                      },
+                      "type": "text"
+                    }
+                  ]
+                },
+                "type": "paragraph"
+              }
+            ],
+            "parent": {
+              "data_source_id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+              "type": "data_source_id"
+            },
+            "properties": {
+              "Email": {
+                "email": "josé@example.com"
+              },
+              "Name": {
+                "title": [
+                  {
+                    "text": {
+                      "content": "Ada Lovelace"
+                    },
+                    "type": "text"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+          "page": {
+            "archived": false,
+            "id": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+            "inTrash": false,
+            "parent": {
+              "databaseId": "3b5e7091-2c4d-4e6f-9081-223344556677",
+              "id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+              "type": "data_source_id"
+            },
+            "properties": {
+              "Email": {
+                "email": "ada@example.com",
+                "id": "em1",
+                "plainText": "ada@example.com",
+                "type": "email"
+              },
+              "Name": {
+                "id": "title",
+                "plainText": "Ada Lovelace",
+                "text": "Ada Lovelace",
+                "type": "title"
+              }
+            },
+            "title": "Ada Lovelace",
+            "url": "https://www.notion.so/1f3c9a2e5b7d4e8a9c0123456789abcd"
+          },
+          "pageId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "input": {
+        "bodyText": "First paragraph\n\nSecond paragraph",
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "properties": {
+          "Email": {
+            "email": "josé@example.com",
+            "type": "email"
+          },
+          "Name": {
+            "text": "Ada Lovelace",
+            "type": "title"
+          }
+        }
+      },
+      "name": "createPage-email-unicode-local",
+      "operation": "createPage"
+    },
+    {
+      "callId": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"page\",\"id\":\"1f3c9a2e-5b7d-4e8a-9c01-23456789abcd\",\"url\":\"https://www.notion.so/1f3c9a2e5b7d4e8a9c0123456789abcd\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"3b5e7091-2c4d-4e6f-9081-223344556677\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"plain_text\":\"Ada Lovelace\",\"text\":{\"content\":\"Ada Lovelace\"}}]},\"Email\":{\"id\":\"em1\",\"type\":\"email\",\"email\":\"ada@example.com\"}},\"in_trash\":false,\"is_archived\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/pages",
+          "requestBody": {
+            "children": [
+              {
+                "object": "block",
+                "paragraph": {
+                  "rich_text": [
+                    {
+                      "text": {
+                        "content": "First paragraph"
+                      },
+                      "type": "text"
+                    }
+                  ]
+                },
+                "type": "paragraph"
+              },
+              {
+                "object": "block",
+                "paragraph": {
+                  "rich_text": [
+                    {
+                      "text": {
+                        "content": "Second paragraph"
+                      },
+                      "type": "text"
+                    }
+                  ]
+                },
+                "type": "paragraph"
+              }
+            ],
+            "parent": {
+              "data_source_id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+              "type": "data_source_id"
+            },
+            "properties": {
+              "Email": {
+                "email": "user@例え.jp"
+              },
+              "Name": {
+                "title": [
+                  {
+                    "text": {
+                      "content": "Ada Lovelace"
+                    },
+                    "type": "text"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+          "page": {
+            "archived": false,
+            "id": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+            "inTrash": false,
+            "parent": {
+              "databaseId": "3b5e7091-2c4d-4e6f-9081-223344556677",
+              "id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+              "type": "data_source_id"
+            },
+            "properties": {
+              "Email": {
+                "email": "ada@example.com",
+                "id": "em1",
+                "plainText": "ada@example.com",
+                "type": "email"
+              },
+              "Name": {
+                "id": "title",
+                "plainText": "Ada Lovelace",
+                "text": "Ada Lovelace",
+                "type": "title"
+              }
+            },
+            "title": "Ada Lovelace",
+            "url": "https://www.notion.so/1f3c9a2e5b7d4e8a9c0123456789abcd"
+          },
+          "pageId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "input": {
+        "bodyText": "First paragraph\n\nSecond paragraph",
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "properties": {
+          "Email": {
+            "email": "user@例え.jp",
+            "type": "email"
+          },
+          "Name": {
+            "text": "Ada Lovelace",
+            "type": "title"
+          }
+        }
+      },
+      "name": "createPage-email-unicode-domain",
+      "operation": "createPage"
+    },
+    {
+      "callId": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"page\",\"id\":\"1f3c9a2e-5b7d-4e8a-9c01-23456789abcd\",\"url\":\"https://www.notion.so/1f3c9a2e5b7d4e8a9c0123456789abcd\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"3b5e7091-2c4d-4e6f-9081-223344556677\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"plain_text\":\"Ada Lovelace\",\"text\":{\"content\":\"Ada Lovelace\"}}]},\"Email\":{\"id\":\"em1\",\"type\":\"email\",\"email\":\"ada@example.com\"}},\"in_trash\":false,\"is_archived\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/pages",
+          "requestBody": {
+            "children": [
+              {
+                "object": "block",
+                "paragraph": {
+                  "rich_text": [
+                    {
+                      "text": {
+                        "content": "First paragraph"
+                      },
+                      "type": "text"
+                    }
+                  ]
+                },
+                "type": "paragraph"
+              },
+              {
+                "object": "block",
+                "paragraph": {
+                  "rich_text": [
+                    {
+                      "text": {
+                        "content": "Second paragraph"
+                      },
+                      "type": "text"
+                    }
+                  ]
+                },
+                "type": "paragraph"
+              }
+            ],
+            "parent": {
+              "data_source_id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+              "type": "data_source_id"
+            },
+            "properties": {
+              "Email": {
+                "email": "a@exam_ple.com"
+              },
+              "Name": {
+                "title": [
+                  {
+                    "text": {
+                      "content": "Ada Lovelace"
+                    },
+                    "type": "text"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+          "page": {
+            "archived": false,
+            "id": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+            "inTrash": false,
+            "parent": {
+              "databaseId": "3b5e7091-2c4d-4e6f-9081-223344556677",
+              "id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+              "type": "data_source_id"
+            },
+            "properties": {
+              "Email": {
+                "email": "ada@example.com",
+                "id": "em1",
+                "plainText": "ada@example.com",
+                "type": "email"
+              },
+              "Name": {
+                "id": "title",
+                "plainText": "Ada Lovelace",
+                "text": "Ada Lovelace",
+                "type": "title"
+              }
+            },
+            "title": "Ada Lovelace",
+            "url": "https://www.notion.so/1f3c9a2e5b7d4e8a9c0123456789abcd"
+          },
+          "pageId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "input": {
+        "bodyText": "First paragraph\n\nSecond paragraph",
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "properties": {
+          "Email": {
+            "email": "a@exam_ple.com",
+            "type": "email"
+          },
+          "Name": {
+            "text": "Ada Lovelace",
+            "type": "title"
+          }
+        }
+      },
+      "name": "createPage-email-underscore-domain",
+      "operation": "createPage"
+    },
+    {
+      "callId": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"page\",\"id\":\"1f3c9a2e-5b7d-4e8a-9c01-23456789abcd\",\"url\":\"https://www.notion.so/1f3c9a2e5b7d4e8a9c0123456789abcd\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"3b5e7091-2c4d-4e6f-9081-223344556677\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"type\":\"text\",\"plain_text\":\"Ada Lovelace\",\"text\":{\"content\":\"Ada Lovelace\"}}]},\"Email\":{\"id\":\"em1\",\"type\":\"email\",\"email\":\"ada@example.com\"}},\"in_trash\":false,\"is_archived\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/pages",
+          "requestBody": {
+            "children": [
+              {
+                "object": "block",
+                "paragraph": {
+                  "rich_text": [
+                    {
+                      "text": {
+                        "content": "First paragraph"
+                      },
+                      "type": "text"
+                    }
+                  ]
+                },
+                "type": "paragraph"
+              },
+              {
+                "object": "block",
+                "paragraph": {
+                  "rich_text": [
+                    {
+                      "text": {
+                        "content": "Second paragraph"
+                      },
+                      "type": "text"
+                    }
+                  ]
+                },
+                "type": "paragraph"
+              }
+            ],
+            "parent": {
+              "data_source_id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+              "type": "data_source_id"
+            },
+            "properties": {
+              "Email": {
+                "email": "a@-c.com"
+              },
+              "Name": {
+                "title": [
+                  {
+                    "text": {
+                      "content": "Ada Lovelace"
+                    },
+                    "type": "text"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+          "page": {
+            "archived": false,
+            "id": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+            "inTrash": false,
+            "parent": {
+              "databaseId": "3b5e7091-2c4d-4e6f-9081-223344556677",
+              "id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+              "type": "data_source_id"
+            },
+            "properties": {
+              "Email": {
+                "email": "ada@example.com",
+                "id": "em1",
+                "plainText": "ada@example.com",
+                "type": "email"
+              },
+              "Name": {
+                "id": "title",
+                "plainText": "Ada Lovelace",
+                "text": "Ada Lovelace",
+                "type": "title"
+              }
+            },
+            "title": "Ada Lovelace",
+            "url": "https://www.notion.so/1f3c9a2e5b7d4e8a9c0123456789abcd"
+          },
+          "pageId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "input": {
+        "bodyText": "First paragraph\n\nSecond paragraph",
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "properties": {
+          "Email": {
+            "email": "a@-c.com",
+            "type": "email"
+          },
+          "Name": {
+            "text": "Ada Lovelace",
+            "type": "title"
+          }
+        }
+      },
+      "name": "createPage-email-leading-hyphen-domain",
+      "operation": "createPage"
+    },
+    {
+      "callId": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {},
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "input": {
+        "bodyText": "First paragraph\n\nSecond paragraph",
+        "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+        "properties": {
+          "Email": {
+            "email": "\"a b\"@c.com",
+            "type": "email"
+          },
+          "Name": {
+            "text": "Ada Lovelace",
+            "type": "title"
+          }
+        }
+      },
+      "name": "createPage-quoted-email-defect",
+      "operation": "createPage"
     }
   ],
   "schemaVersion": 1

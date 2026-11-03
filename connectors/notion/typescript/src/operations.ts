@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
+import { isIP } from 'node:net';
 import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { newFence } from '@superdurable/connectors-sdk/singledispatch';
 import type { NotionClient, NotionExchange } from './client.js';
@@ -51,7 +52,7 @@ export class SearchOperation implements Query<SearchInput, SearchOutput> {
           ...(text(resource.url) ? { url: text(resource.url) } : {}), ...(text(resource.last_edited_time) ? { lastEditedTime: text(resource.last_edited_time) } : {}) });
       }
       const output: SearchOutput = { matches, hasMore: body.has_more === true, ...(body.has_more === true && nextCursor ? { nextCursor } : {}) };
-      return queryBranch('search', matches.length === 0 && !input.startCursor ? 'noMatch' : 'searched', output, matches.length === 0 && !input.startCursor ? failure('search', 'NOT_FOUND', 'no title matched') : undefined, result.receipt);
+      return queryBranch('search', matches.length === 0 && !request.start_cursor ? 'noMatch' : 'searched', output, matches.length === 0 && !request.start_cursor ? failure('search', 'NOT_FOUND', 'no title matched') : undefined, result.receipt);
     } catch { return queryBranch('search', 'invalidResponse', emptySearch, failure('search', 'PROTOCOL', 'Notion returned an invalid search page'), result.receipt); }
   }
 }
@@ -77,7 +78,7 @@ export class QueryDatabaseOperation implements Query<QueryDatabaseInput, QueryDa
     if (typeof resolved !== 'string') return readAttempt('queryDatabase', resolved, emptyQuery, 'providerRejected', 'notFound');
     const output = { ...emptyQuery, dataSourceId: resolved };
     const suffix = properties.length ? `?${properties.map(property => `filter_properties%5B%5D=${queryEscape(property)}`).join('&')}` : '';
-    const result = await this.client.exchange(call, 'queryDatabase', 'database query', 'POST', `/data_sources/${pathEscape(resolved)}/query${suffix}`, body);
+    const result = await this.client.exchange(call, 'queryDatabase', 'database query', 'POST', `/data_sources/${pathEscape(resolved)}/query${suffix}`, body, 'read', undefined, undefined, resolved);
     if (!('response' in result)) return readAttempt('queryDatabase', result, output, 'providerRejected', 'notFound');
     try {
       const page = objectJSON(result.response.body);
@@ -101,7 +102,7 @@ export class GetPageOperation implements Query<GetPageInput, GetPageOutput> {
       pageId = parseID(input.pageId); maxBlocks = input.maxBlocks || 100; maxTextCharacters = input.maxTextCharacters || 20_000;
       if (!Number.isInteger(maxBlocks) || maxBlocks < 1 || maxBlocks > 500 || !Number.isInteger(maxTextCharacters) || maxTextCharacters < 1 || maxTextCharacters > 100_000) throw new Error('invalid content bounds');
     } catch { return queryBranch('getPage', 'defect', emptyGet, failure('getPage', 'VALIDATION', 'invalid page input')); }
-    const result = await this.client.exchange(call, 'getPage', 'page read', 'GET', `/pages/${pathEscape(pageId)}`);
+    const result = await this.client.exchange(call, 'getPage', 'page read', 'GET', `/pages/${pathEscape(pageId)}`, undefined, 'read', undefined, undefined, pageId);
     if (!('response' in result)) return readAttempt('getPage', result, emptyGet, 'providerRejected', 'notFound');
     let page: Page;
     try { page = decodePage(objectJSON(result.response.body)); }
@@ -110,7 +111,7 @@ export class GetPageOperation implements Query<GetPageInput, GetPageOutput> {
     const content = { ...emptyContent }; const lines: string[] = []; let cursor = ''; let listNumber = 0;
     for (;;) {
       const query = `page_size=${Math.min(100, maxBlocks - content.blockCount)}${cursor ? `&start_cursor=${queryEscape(cursor)}` : ''}`;
-      const blocks = await this.client.exchange(call, 'getPage', 'page content read', 'GET', `/blocks/${pathEscape(page.id)}/children?${query}`);
+      const blocks = await this.client.exchange(call, 'getPage', 'page content read', 'GET', `/blocks/${pathEscape(page.id)}/children?${query}`, undefined, 'read', undefined, undefined, pageId);
       if (!('response' in blocks)) return readAttempt('getPage', blocks, emptyGet, 'providerRejected', 'notFound');
       let blockList: Record<string, unknown>;
       try { blockList = objectJSON(blocks.response.body); if (array(blockList.results).length > Math.min(100, maxBlocks - content.blockCount)) throw new Error('too many blocks'); }
@@ -225,7 +226,7 @@ export class UpdatePagePropertiesOperation implements Mutation<UpdatePagePropert
     let pageId: string; let properties: Record<string, unknown>;
     try { pageId = parseID(input.pageId); if (!input.properties || Object.keys(input.properties).length === 0) throw new Error('properties required'); properties = encodeProperties(input.properties); }
     catch { return mutationBranch('updatePageProperties', 'defect', emptyUpdate, failure('updatePageProperties', 'VALIDATION', 'invalid page update')); }
-    const result = await this.client.exchange(call, 'updatePageProperties', 'page update', 'PATCH', `/pages/${pathEscape(pageId)}`, { properties }, 'repeatableWrite');
+    const result = await this.client.exchange(call, 'updatePageProperties', 'page update', 'PATCH', `/pages/${pathEscape(pageId)}`, { properties }, 'repeatableWrite', undefined, undefined, pageId);
     if (!('response' in result)) return writeAttempt('updatePageProperties', result, emptyUpdate, 'providerRejected', 'notFound');
     try {
       const page = decodePage(objectJSON(result.response.body));
@@ -278,7 +279,7 @@ function selectDataSource(dataSourceId?: string, databaseId?: string): { dataSou
 }
 async function resolveDataSource(client: NotionClient, call: Call, operation: string, selection: { dataSourceId?: string; databaseId?: string }, resolvedToken?: string): Promise<string | Exclude<NotionExchange, { response: unknown }>> {
   if (selection.dataSourceId) return selection.dataSourceId;
-  const result = await client.exchange(call, operation, 'database lookup', 'GET', `/databases/${pathEscape(selection.databaseId!)}`, undefined, 'read', undefined, resolvedToken);
+  const result = await client.exchange(call, operation, 'database lookup', 'GET', `/databases/${pathEscape(selection.databaseId!)}`, undefined, 'read', undefined, resolvedToken, selection.databaseId!);
   if (!('response' in result)) return result;
   try {
     const body = objectJSON(result.response.body); if (body.object !== 'database') throw new Error('invalid database');
@@ -310,10 +311,10 @@ function titleOfProperties(properties: Record<string, PageProperty> | null): str
   if (!properties) return '';
   return Object.values(properties).find(property => property.type === 'title')?.text ?? '';
 }
-function decodeProperty(value: unknown): PageProperty {
+function decodeProperty(value: unknown, canNest = true): PageProperty {
   const resource = objectOrEmpty(value); const type = text(resource.type); const property: PageProperty = { id: text(resource.id), type, plainText: '' };
   if (type === 'title' || type === 'rich_text') { const rendered = joinRichText(resource[type]); if (rendered) property.text = rendered; property.plainText = rendered; }
-  else if (type === 'number' && typeof resource.number === 'number') { property.number = resource.number; property.plainText = String(resource.number); }
+  else if (type === 'number' && typeof resource.number === 'number') { property.number = resource.number; property.plainText = decimalNumber(resource.number); }
   else if (type === 'checkbox' && typeof resource.checkbox === 'boolean') { property.checkbox = resource.checkbox; property.plainText = String(resource.checkbox); }
   else if (type === 'select' || type === 'status') { const name = text(objectOrEmpty(resource[type]).name); if (name) property.option = name; property.plainText = name; }
   else if (type === 'multi_select') { const options = Array.isArray(resource.multi_select) ? resource.multi_select.map(item => text(objectOrEmpty(item).name)) : []; if (options.length) property.options = options; property.plainText = options.join(', '); }
@@ -323,10 +324,10 @@ function decodeProperty(value: unknown): PageProperty {
   else if (type === 'people') { const people = arrayOrEmpty(resource.people).map(objectOrEmpty); if (people.length) property.userIds = people.map(item => text(item.id)); property.plainText = people.map(item => text(item.name) || text(item.id)).join(', '); }
   else if (type === 'relation') { const ids = arrayOrEmpty(resource.relation).map(item => text(objectOrEmpty(item).id)); if (ids.length) property.pageIds = ids; property.plainText = ids.join(', '); if (resource.has_more === true) property.truncated = true; }
   else if (type === 'formula') assignComputed(property, resource.formula, false);
-  else if (type === 'rollup') assignComputed(property, resource.rollup, true);
+  else if (type === 'rollup') assignComputed(property, resource.rollup, canNest);
   else if (type === 'created_time' || type === 'last_edited_time') { const start = text(resource[type]); property.date = { start }; property.plainText = start; }
   else if (type === 'created_by' || type === 'last_edited_by') { const user = objectOrEmpty(resource[type]); if (Object.keys(user).length) { property.userIds = [text(user.id)]; property.plainText = text(user.name) || text(user.id); } }
-  else if (type === 'unique_id') { const unique = objectOrEmpty(resource.unique_id); if (typeof unique.number === 'number') { property.number = unique.number; property.text = text(unique.prefix) ? `${text(unique.prefix)}-${unique.number}` : String(unique.number); property.plainText = property.text; } }
+  else if (type === 'unique_id') { const unique = objectOrEmpty(resource.unique_id); if (typeof unique.number === 'number') { property.number = unique.number; property.text = text(unique.prefix) ? `${text(unique.prefix)}-${decimalNumber(unique.number)}` : decimalNumber(unique.number); property.plainText = property.text; } }
   else if (type === 'verification') property.plainText = text(objectOrEmpty(resource.verification).state);
   else if (type === 'files') property.plainText = Array.isArray(resource.files) ? resource.files.map(item => text(objectOrEmpty(item).name)).join(', ') : '';
   return property;
@@ -342,10 +343,10 @@ function assignComputed(property: PageProperty, raw: unknown, isRollup: boolean)
   if (!raw) return;
   const computed = objectOrEmpty(raw);
   if (computed.type === 'string') { const value = text(computed.string); if (value) property.text = value; property.plainText = value; }
-  else if (computed.type === 'number' && typeof computed.number === 'number') { property.number = computed.number; property.plainText = String(computed.number); }
+  else if (computed.type === 'number' && typeof computed.number === 'number') { property.number = computed.number; property.plainText = decimalNumber(computed.number); }
   else if (computed.type === 'boolean' && typeof computed.boolean === 'boolean') { property.checkbox = computed.boolean; property.plainText = String(computed.boolean); }
   else if (computed.type === 'date') assignDate(property, computed.date);
-  else if (isRollup && computed.type === 'array') { const entries = arrayOrEmpty(computed.array); if (entries.length > 25) property.truncated = true; property.plainText = entries.slice(0, 25).map(decodeProperty).map(item => item.plainText).filter(Boolean).join(', '); }
+  else if (isRollup && computed.type === 'array') { const entries = arrayOrEmpty(computed.array); if (entries.length > 25) property.truncated = true; property.plainText = entries.slice(0, 25).map(entry => decodeProperty(entry, false)).map(item => item.plainText).filter(Boolean).join(', '); }
 }
 function renderBlock(block: Record<string, unknown>, number: number): string | null {
   const type = text(block.type); const content = objectOrEmpty(block[type]); const richText = joinRichText(content.rich_text);
@@ -356,7 +357,7 @@ function renderBlock(block: Record<string, unknown>, number: number): string | n
   if (type === 'child_page' || type === 'child_database') return text(content.title) || null;
   if (type === 'equation') return text(content.expression) || null;
   if (['bookmark', 'embed', 'link_preview'].includes(type)) return text(content.url) || null;
-  if (type === 'table_row') return Array.isArray(content.cells) ? content.cells.map(joinRichText).join(' | ') : null;
+  if (type === 'table_row') return Array.isArray(content.cells) && content.cells.length > 0 ? content.cells.map(joinRichText).join(' | ') : null;
   if (['image', 'video', 'file', 'pdf', 'audio'].includes(type)) return joinRichText(content.caption) || null;
   return null;
 }
@@ -372,7 +373,7 @@ function encodeFilter(filter: QueryFilter, depth = 0, counter = { count: 0 }): R
     return { [key]: children.map(child => encodeFilter(child, depth + 1, counter)) };
   }
   const kind = filter.timestamp ? 'date' : filter.type;
-  if (filter.timestamp && !['created_time', 'last_edited_time'].includes(filter.timestamp)) throw new Error('invalid timestamp');
+  if (filter.timestamp && (filter.type || !['created_time', 'last_edited_time'].includes(filter.timestamp))) throw new Error('invalid timestamp filter');
   if (filter.property && (!filter.property.trim() || filter.property.trim() !== filter.property || [...filter.property].length > 256)) throw new Error('invalid property');
   const condition = filter.condition ?? ''; if (!condition) throw new Error('condition required');
   counter.count++; if (counter.count > 100) throw new Error('too many conditions');
@@ -436,7 +437,12 @@ function encodeProperty(value: PropertyValue): Record<string, unknown> {
     const names = options.map(optionName); if (new Set(names).size !== names.length) throw new Error('repeated option');
     return { multi_select: names.map(name => ({ name })) };
   }
-  if (type === 'date') return { date: value.date ? { start: validDate(value.date.start), ...(value.date.end ? { end: validDate(value.date.end) } : {}), ...(value.date.timeZone ? { time_zone: value.date.timeZone } : {}) } : null };
+  if (type === 'date') {
+    if (!value.date) return { date: null };
+    const timeZone = value.date.timeZone?.trim() ?? '';
+    if (timeZone && (timeZone.length > 64 || !/^[A-Za-z][A-Za-z0-9_+-]*(\/[A-Za-z0-9_+-]+){0,3}$/.test(timeZone))) throw new Error('invalid timeZone');
+    return { date: { start: validDate(value.date.start), ...(value.date.end?.trim() ? { end: validDate(value.date.end) } : {}), ...(timeZone ? { time_zone: timeZone } : {}) } };
+  }
   if (type === 'url') { if (value.url) { const url = new URL(value.url.trim()); if (!url.host || value.url.length > 2000) throw new Error('invalid URL'); } return { url: value.url?.trim() || null }; }
   if (type === 'email') { const email = value.email?.trim() ?? ''; if (email && !isPlainEmailAddress(email)) throw new Error('invalid email'); return { email: email || null }; }
   if (type === 'phone_number') { const phone = value.phoneNumber?.trim() ?? ''; if ([...phone].length > 200 || /[\r\n]/.test(phone)) throw new Error('invalid phone'); return { phone_number: phone || null }; }
@@ -472,10 +478,28 @@ function validDate(value: string): string {
   if (zone && zone !== 'Z' && (Number(zone.slice(1, 3)) > 23 || Number(zone.slice(4, 6)) > 59)) throw new Error('invalid date');
   return date;
 }
+function decimalNumber(value: number): string {
+  const rendered = String(value);
+  if (!/[eE]/.test(rendered)) return rendered;
+  const [mantissa, exponentText] = rendered.toLowerCase().split('e');
+  const exponent = Number(exponentText);
+  const sign = mantissa!.startsWith('-') ? '-' : '';
+  const digits = mantissa!.replace('-', '').replace('.', '');
+  const integerDigits = mantissa!.replace('-', '').split('.')[0]!.length + exponent;
+  if (integerDigits <= 0) return `${sign}0.${'0'.repeat(-integerDigits)}${digits}`;
+  if (integerDigits >= digits.length) return `${sign}${digits}${'0'.repeat(integerDigits - digits.length)}`;
+  return `${sign}${digits.slice(0, integerDigits)}.${digits.slice(integerDigits)}`;
+}
 function isPlainEmailAddress(value: string): boolean {
-  if (value.length > 200 || /[\r\n<>]/.test(value)) return false;
-  const address = value.match(/^("(?:[^"\\\r\n]|\\[^\r\n])*"|[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*)@(.+)$/);
-  if (!address) return false;
-  const domain = address[2]!;
-  return /^(?:[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*$/.test(domain) || /^\[[!-~]+\]$/.test(domain);
+  if (Buffer.byteLength(value) > 200 || /[\r\n]/.test(value)) return false;
+  const at = value.indexOf('@');
+  if (at < 1 || at !== value.lastIndexOf('@')) return false;
+  const local = value.slice(0, at); const domain = value.slice(at + 1);
+  const atom = (part: string) => part.length > 0 && !part.startsWith('.') && !part.endsWith('.') && !part.includes('..') && [...part].every(character => {
+    const codePoint = character.codePointAt(0)!;
+    return (codePoint >= 33 && codePoint <= 126 || codePoint >= 128) && !'()<>[]:;@\\,"'.includes(character);
+  });
+  if (!atom(local)) return false;
+  if (domain.startsWith('[') && domain.endsWith(']')) return isIP(domain.slice(1, -1)) !== 0;
+  return atom(domain);
 }

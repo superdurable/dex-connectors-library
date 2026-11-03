@@ -74,10 +74,10 @@ export class NotionClient {
   }
 
   /** Send one bounded API request and classify its transport and HTTP outcome. */
-  async exchange(call: Call, operation: string, subject: string, method: string, path: string, body?: unknown, mode: 'read' | 'repeatableWrite' | 'unkeyedWrite' = 'read', signal?: AbortSignal, resolvedToken?: string): Promise<NotionExchange> {
-    const emptyReceipt = this.receipt(call);
+  async exchange(call: Call, operation: string, subject: string, method: string, path: string, body?: unknown, mode: 'read' | 'repeatableWrite' | 'unkeyedWrite' = 'read', signal?: AbortSignal, resolvedToken?: string, providerObjectId = ''): Promise<NotionExchange> {
+    const emptyReceipt = this.receipt(call, undefined, providerObjectId);
     const credentials = resolvedToken ? { token: resolvedToken } : await this.resolveToken(call, operation, signal);
-    if ('outcome' in credentials) return credentials.outcome;
+    if ('outcome' in credentials) return { ...credentials.outcome, receipt: emptyReceipt };
     const token = credentials.token;
     let encoded: Uint8Array | undefined;
     try { if (body !== undefined) encoded = Buffer.from(JSON.stringify(body)); }
@@ -100,7 +100,7 @@ export class NotionClient {
         return { disposition, failure: failure(operation, 'TRANSPORT', `Notion ${subject} is temporarily unavailable`), receipt: emptyReceipt, isProvablyNotSent };
       }
     }
-    const receipt = this.receipt(call, response);
+    const receipt = this.receipt(call, response, providerObjectId);
     const status = response.status;
     const isBlocked = status === 429 && readToken(response.body, 'additional_data', 'rate_limit_reason') === 'public_api_request_blocked';
     if (isBlocked) return { disposition: 'providerRejected', failure: failure(operation, 'PROVIDER_REJECTION', 'Notion blocked API access'), receipt };

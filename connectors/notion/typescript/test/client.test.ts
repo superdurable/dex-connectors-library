@@ -47,3 +47,23 @@ it('records a not-sent checkpoint before retrying unavailable create credentials
   expect(attempt.kind).toBe('retry');
   expect(context.marker).toMatchObject({ state: 'notSent', callId: invocation.id });
 });
+
+it('records the selected provider object on terminal read and write receipts', async () => {
+  const pageId = '1f3c9a2e-5b7d-4e8a-9c01-23456789abcd';
+  const dataSourceId = '2a4d6f80-1b3c-4d5e-8f70-112233445566';
+  const databaseId = '3b5e7091-2c4d-4e6f-9081-223344556677';
+  for (const [status, body] of [[404, '{}'], [400, '{}'], [200, 'not-json']] as const) {
+    const client = new NotionClient({}, { resolve: async () => ({ apiToken: new SecretString('ntn_test_token_value') }) }, {
+      send: async () => ({ status, headers: {}, body: Buffer.from(body) }),
+    });
+    const get = await client.getPage().invoke(call('getPage'), { pageId });
+    const query = await client.queryDatabase().invoke(call('queryDatabase'), { dataSourceId });
+    const lookup = await client.queryDatabase().invoke(call('queryDatabase'), { databaseId });
+    const update = await client.updatePageProperties().invoke(call('updatePageProperties'), { pageId, properties: { Name: { type: 'title', text: 'Ada' } } });
+    const create = await client.createPage().invoke(call('createPage'), { databaseId, properties: { Name: { type: 'title', text: 'Ada' } } });
+    for (const [attempt, expectedId] of [[get, pageId], [query, dataSourceId], [lookup, databaseId], [update, pageId], [create, databaseId]] as const) {
+      expect(attempt.kind).toBe('branch');
+      if (attempt.kind === 'branch') expect(attempt.receipt.providerObjectId).toBe(expectedId);
+    }
+  }
+});
