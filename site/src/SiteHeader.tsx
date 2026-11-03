@@ -18,6 +18,8 @@ const dexRepositoryApiUrl = "https://api.github.com/repos/superdurable/dex";
 const starCountCacheKey = "superdurable-dex-star-count";
 // Unauthenticated GitHub API allows 60 requests per hour per IP.
 const starCountCacheMilliseconds = 60 * 60 * 1000;
+const failedFetchCacheMilliseconds = 10 * 60 * 1000;
+const starCountFetchTimeoutMilliseconds = 5000;
 
 const superDurableNavigationLinks: SuperDurableNavigationLink[] = [
   { label: "Dex Cloud", href: "https://superdurable.io/dex-cloud/" },
@@ -60,7 +62,8 @@ export function SiteHeader() {
 
 function GitHubRepositoryLink() {
   const starCount = useDexRepositoryStarCount();
-  const accessibleLabel = starCount === null ? "Dex on GitHub" : `Dex on GitHub, ${starCount} ${starCount === 1 ? "star" : "stars"}`;
+  const accessibleLabel =
+    starCount === null ? undefined : `GitHub, ${formatStarCount(starCount)} ${starCount === 1 ? "star" : "stars"}`;
   return (
     <a className="sd-github-link" href={dexRepositoryGitHubUrl} aria-label={accessibleLabel}>
       <span className="sd-github-link-name">
@@ -89,52 +92,65 @@ function GitHubRepositoryLink() {
 
 // The header renders without a count when GitHub is unreachable or rate limited.
 function useDexRepositoryStarCount(): number | null {
-  const [starCount, setStarCount] = useState<number | null>(readCachedStarCount);
+  const [starCount, setStarCount] = useState<number | null>(null);
 
   useEffect(() => {
-    if (starCount !== null) {
+    const cachedStarCount = readCachedStarCount();
+    if (cachedStarCount !== undefined) {
+      setStarCount(cachedStarCount);
       return;
     }
     const controller = new AbortController();
+    const fetchTimeout = window.setTimeout(() => controller.abort(), starCountFetchTimeoutMilliseconds);
     fetch(dexRepositoryApiUrl, { signal: controller.signal, headers: { Accept: "application/vnd.github+json" } })
       .then((response) => (response.ok ? response.json() : null))
       .then((repository: unknown) => {
         const fetchedStarCount = (repository as { stargazers_count?: unknown } | null)?.stargazers_count;
-        if (typeof fetchedStarCount === "number") {
+        if (isValidStarCount(fetchedStarCount)) {
           setStarCount(fetchedStarCount);
           writeCachedStarCount(fetchedStarCount);
+        } else {
+          writeFailedFetchUnlessCountCached();
         }
       })
       .catch(() => {
-        // Best effort: the link still works without a count.
-      });
-    return () => controller.abort();
-  }, [starCount]);
+        if (!controller.signal.aborted) {
+          writeFailedFetchUnlessCountCached();
+        }
+      })
+      .finally(() => window.clearTimeout(fetchTimeout));
+    return () => {
+      window.clearTimeout(fetchTimeout);
+      controller.abort();
+    };
+  }, []);
 
   return starCount;
 }
 
-function readCachedStarCount(): number | null {
+// Returns undefined on a cache miss and null for a cached failure.
+function readCachedStarCount(): number | null | undefined {
   try {
     const cached = JSON.parse(window.localStorage.getItem(starCountCacheKey) ?? "null") as
       | { starCount?: unknown; fetchedAt?: unknown }
       | null;
-    if (
-      cached &&
-      typeof cached.starCount === "number" &&
-      typeof cached.fetchedAt === "number" &&
-      Date.now() >= cached.fetchedAt &&
-      Date.now() - cached.fetchedAt < starCountCacheMilliseconds
-    ) {
+    if (!cached || typeof cached.fetchedAt !== "number") {
+      return undefined;
+    }
+    const cacheAgeMilliseconds = Date.now() - cached.fetchedAt;
+    if (cached.starCount === null) {
+      return cacheAgeMilliseconds >= 0 && cacheAgeMilliseconds < failedFetchCacheMilliseconds ? null : undefined;
+    }
+    if (isValidStarCount(cached.starCount) && cacheAgeMilliseconds >= 0 && cacheAgeMilliseconds < starCountCacheMilliseconds) {
       return cached.starCount;
     }
   } catch {
     // Storage may be blocked or hold malformed data; fetch instead.
   }
-  return null;
+  return undefined;
 }
 
-function writeCachedStarCount(starCount: number) {
+function writeCachedStarCount(starCount: number | null) {
   try {
     window.localStorage.setItem(starCountCacheKey, JSON.stringify({ starCount, fetchedAt: Date.now() }));
   } catch {
@@ -142,8 +158,19 @@ function writeCachedStarCount(starCount: number) {
   }
 }
 
+// Another page on this origin may have cached a fresh count meanwhile; keep it.
+function writeFailedFetchUnlessCountCached() {
+  if (typeof readCachedStarCount() !== "number") {
+    writeCachedStarCount(null);
+  }
+}
+
+function isValidStarCount(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+}
+
 function formatStarCount(starCount: number): string {
-  return starCount >= 1000 ? `${(starCount / 1000).toFixed(1).replace(/\.0$/, "")}k` : String(starCount);
+  return starCount >= 1000 ? `${Math.round(starCount / 100) / 10}k` : String(starCount);
 }
 
 // The native <details> stays uncontrolled so it toggles without script; listeners only add closing paths.
