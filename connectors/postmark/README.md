@@ -5,13 +5,17 @@ Install the Go module with `go get github.com/superdurable/dex-connectors-librar
 Moved from `github.com/superdurable/dex-connectors-library/connectors/postmark`.
 
 This Dex connector calls the public Postmark JSON API. Its
-manifest version is `v0.1.0`; the Go module requires connector SDK `v0.33.0`
+manifest version is `v0.2.0`; the Go module requires connector SDK `v0.33.0`
     and Dex Go SDK `v1.5.0` or newer. The runnable
 [`outbound-lookup` example](go/examples/outbound-lookup/README.md) shows a
 complete Worker and the generated operation-specific Step factory.
 
 The Python package is [`dex-connector-postmark`](python/README.md), imported as
 `dex_connectors.postmark`.
+
+The TypeScript package is [`@superdurable/connector-postmark`](typescript/README.md).
+Its [outbound lookup example](typescript/examples/outbound-lookup/README.md)
+uses the static `postmark` connection and a real Dex Worker and Client.
 
 ## Operations
 
@@ -65,7 +69,8 @@ flow := NewFlow(mock.Connection())
 - [https://postmarkapp.com/developer/api/overview](https://postmarkapp.com/developer/api/overview)
 
 The HTTP unit tests verify request shapes and local classification against
-an `httptest` server. Provider authorization, live API response variations,
-and real Dex integration remain unverified locally. CI runs the mock backed
-real Dex test; a user-controlled live connection is still needed to confirm
-the provider account and permissions.
+an `httptest` server. The TypeScript example's Worker and Client integration
+test exercises a local provider stand-in through real Dex. Provider
+authorization and live API response variations remain unverified; a
+user-controlled live connection is still needed to confirm the account and
+permissions.
