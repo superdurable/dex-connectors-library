@@ -35,8 +35,9 @@ export class ListOrdersOperation implements Query<ListOrdersInput, OrderPage> {
   async invoke(call: Call, input: ListOrdersInput): Promise<QueryAttempt<OrderPage>> {
     const limit = input.limit ?? 0;
     if (!Number.isSafeInteger(limit) || limit < 0 || limit > 250) return failed('defect', 'listOrders', 'VALIDATION', 'limit must be 1 through 250, or zero for provider default', emptyPage);
-    const query = new URLSearchParams({ status: 'any' });
+    const query = new URLSearchParams();
     if (limit > 0) query.set('limit', String(limit));
+    query.set('status', 'any');
     const result = await this.client.read(call, 'listOrders', '/orders.json', query);
     if ('outcome' in result) return classify(result.outcome, emptyPage);
     try {

@@ -25,6 +25,22 @@ it('uses the configured timeout and limit on one order request', async () => {
   expect(observed?.url).toBe('https://test-shop.myshopify.com/admin/api/2026-10/orders/101.json');
 });
 
+it('encodes list order query parameters in Go URL order', async () => {
+  const requests: string[] = [];
+  const client = new ShopifyClient({ shopSubdomain: 'test-shop' }, credentials, {
+    send: async request => {
+      requests.push(request.url);
+      return { status: 200, headers: {}, body: Buffer.from('{"orders":[]}') };
+    },
+  });
+  await client.listOrders().invoke(call, { limit: 10 });
+  await client.listOrders().invoke(call, { limit: 0 });
+  expect(requests).toEqual([
+    'https://test-shop.myshopify.com/admin/api/2026-10/orders.json?limit=10&status=any',
+    'https://test-shop.myshopify.com/admin/api/2026-10/orders.json?status=any',
+  ]);
+});
+
 it('classifies large error bodies by status and large success bodies as invalid', async () => {
   const limited = new ShopifyClient({ shopSubdomain: 'test-shop' }, credentials, {
     send: async () => { throw new BodyTooLargeError(429, { 'retry-after': '3' }); },
