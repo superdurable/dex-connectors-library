@@ -13,6 +13,11 @@ In Dex Web Connections, create a `figma` connection named `figma`. Open [Account
 The Python package is [`dex-connector-figma`](python/README.md), imported as
 `dex_connectors.figma`.
 
+The TypeScript package is [`@superdurable/connector-figma`](typescript/README.md).
+It provides generated operation-specific Step factories, a call-time credential
+client, and a [runnable Dex Flow](typescript/examples/figma-lookup/README.md)
+that reads a file and its comments using the static `figma` connection.
+
 ## Operations
 
 | Operation | Official API reference |
