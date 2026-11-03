@@ -1,0 +1,859 @@
+# Copyright (c) 2026 Super Durable
+# SPDX-License-Identifier: MIT
+"""Native MySQL client and the two Dex operation invocations."""
+
+import asyncio
+import base64
+import json
+import math
+import os
+import re
+import socket
+import ssl
+from dataclasses import dataclass, replace
+from datetime import UTC, date, datetime, time, timedelta
+from decimal import Decimal
+from typing import Any
+
+import httpx
+from dex_connectors.sdk import (
+    Call,
+    CallID,
+    CredentialProvider,
+    Failure,
+    FailureKind,
+    IdempotencyKey,
+    MutationAttempt,
+    MutationDefinition,
+    QueryAttempt,
+    QueryDefinition,
+    Receipt,
+)
+
+import mysql.connector
+from mysql.connector import Error as MySQLError
+from mysql.connector.connection import MySQLConnection
+from mysql.connector.constants import ClientFlag, FieldFlag, FieldType
+
+from ._generated.config import Config as Config
+from ._generated.config import Credentials as Credentials
+from ._generated.definitions import (
+    COMPLETED,
+    DEFECT,
+    EXECUTE_DEFINITION,
+    LIMIT_EXCEEDED,
+    PROVIDER_REJECTED,
+    QUERY_DEFINITION,
+    TRUNCATED,
+)
+from .models import Column, ExecuteStatementInput, QueryRowsInput, RowSet, StatementExecution
+
+_READ_WORDS = frozenset({"SELECT", "WITH", "TABLE", "VALUES", "SHOW", "EXPLAIN", "DESCRIBE", "DESC"})
+_WRITE_WORDS = frozenset({"INSERT", "UPDATE", "DELETE", "REPLACE", "WITH"})
+_SQL_MODE = (
+    "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,"
+    "ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION"
+)
+_RETRY_CONFLICT = frozenset({1205, 1213})
+_RETRY_AVAILABILITY = frozenset(
+    {1021, 1037, 1040, 1041, 1053, 1158, 1159, 1160, 1161, 1203, 1615, 1637, 1927, 4031}
+)
+_AUTHENTICATION = frozenset({1045, 1129, 1130, 1251, 1698, 1820, 1862, 3118, 3159, 4151})
+_AUTHORIZATION = frozenset({1044, 1142, 1143, 1227, 1290, 1370, 1792, 1836})
+_NOT_FOUND = frozenset({1049, 1054, 1109, 1146, 1305})
+_CONFLICT = frozenset({3819, 4025})
+_TIMEOUT = frozenset({1317, 1969, 3024})
+_VALIDATION = frozenset({1235, 1295, 1366})
+_TYPE_NAMES = {
+    FieldType.TINY: "TINYINT",
+    FieldType.SHORT: "SMALLINT",
+    FieldType.INT24: "MEDIUMINT",
+    FieldType.LONG: "INT",
+    FieldType.LONGLONG: "BIGINT",
+    FieldType.YEAR: "YEAR",
+    FieldType.FLOAT: "FLOAT",
+    FieldType.DOUBLE: "DOUBLE",
+    FieldType.DECIMAL: "DECIMAL",
+    FieldType.NEWDECIMAL: "DECIMAL",
+    FieldType.DATE: "DATE",
+    FieldType.DATETIME: "DATETIME",
+    FieldType.TIMESTAMP: "TIMESTAMP",
+    FieldType.TIME: "TIME",
+    FieldType.BIT: "BIT",
+    FieldType.JSON: "JSON",
+    FieldType.NULL: "NULL",
+    FieldType.ENUM: "ENUM",
+    FieldType.SET: "SET",
+    FieldType.VARCHAR: "VARCHAR",
+    FieldType.VAR_STRING: "VARCHAR",
+    FieldType.STRING: "CHAR",
+    FieldType.TINY_BLOB: "TINYBLOB",
+    FieldType.BLOB: "BLOB",
+    FieldType.MEDIUM_BLOB: "MEDIUMBLOB",
+    FieldType.LONG_BLOB: "LONGBLOB",
+    FieldType.GEOMETRY: "GEOMETRY",
+    FieldType.VECTOR: "VECTOR",
+}
+
+
+@dataclass(frozen=True)
+class _Disposition:
+    branch: str
+    kind: FailureKind
+    message: str
+    number: int = 0
+    sql_state: str = ""
+
+
+class _TLSUnavailable(Exception):
+    pass
+
+
+class _CommitNotSent(Exception):
+    pass
+
+
+class _DuplicateColumn(Exception):
+    pass
+
+
+class _InvalidTrustedRoots(Exception):
+    pass
+
+
+class _SendMeter:
+    def __init__(self, socket: Any) -> None:
+        self.socket = socket
+        self.written_bytes = 0
+
+    def sendall(self, payload: bytes) -> None:
+        remaining = memoryview(payload)
+        while remaining:
+            written = self.socket.send(remaining)
+            if written == 0:
+                raise ConnectionError("socket closed before COMMIT was sent")
+            self.written_bytes += written
+            remaining = remaining[written:]
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.socket, name)
+
+
+class _StrictTLSConnection(MySQLConnection):
+    def _do_handshake(self) -> None:
+        super()._do_handshake()
+        capabilities = self._handshake.get("capabilities") if self._handshake is not None else None
+        if not isinstance(capabilities, int) or not capabilities & ClientFlag.SSL:
+            raise _TLSUnavailable("the MySQL server does not accept TLS")
+
+
+class Client:
+    """Create a fresh native driver connection for every MySQL operation."""
+
+    def __init__(
+        self,
+        config: Config,
+        credentials: CredentialProvider[Credentials],
+        http_client: httpx.AsyncClient | None = None,
+    ) -> None:
+        if config is None or credentials is None:
+            raise ValueError("MySQL config and credential source are required")
+        config = replace(
+            config,
+            port=config.port or 3306,
+            ssl_mode=config.ssl_mode or "required",
+            connect_timeout_seconds=config.connect_timeout_seconds or 5,
+            statement_timeout_seconds=config.statement_timeout_seconds or 5,
+            max_rows=config.max_rows or 1000,
+            max_response_bytes=config.max_response_bytes or 1 << 20,
+        )
+        host = config.host
+        if (
+            not host
+            or host.strip() != host
+            or "://" in host
+            or "," in host
+            or "\x00" in host
+            or "'" in host
+            or (":" in host and not _is_ipv6(host))
+            or host.startswith("[")
+        ):
+            raise ValueError("MySQL host must identify one server without a scheme or port")
+        if not 1 <= config.port <= 65535 or not config.database.strip() or not config.user.strip():
+            raise ValueError("MySQL port, database, or user is invalid")
+        if any(ord(char) < 32 for char in config.database + config.user):
+            raise ValueError("MySQL database or user contains a control character")
+        if config.ssl_mode not in {"required", "verify-ca", "verify-identity", "disabled"}:
+            raise ValueError("MySQL sslMode is invalid")
+        is_socket = host.startswith("/")
+        if config.ssl_mode == "disabled" and host not in {"localhost", "127.0.0.1", "::1"} and not is_socket:
+            raise ValueError("MySQL sslMode disabled requires a local host")
+        if is_socket and config.ssl_mode != "disabled":
+            raise ValueError("MySQL Unix sockets require sslMode disabled")
+        if (
+            config.connect_timeout_seconds <= 0
+            or config.statement_timeout_seconds < 0.001
+            or not 1 <= config.max_rows <= 100000
+            or not 1 <= config.max_response_bytes <= 16 << 20
+        ):
+            raise ValueError("MySQL timeouts or response limits are invalid")
+        self.config = config
+        self.credentials = credentials
+        # Generated project connections pass the HTTP argument used by other connectors.
+        self._unused_http_client = http_client
+
+    def query(self) -> "QueryRowsOperation":
+        """Bind the read-only query operation."""
+        return QueryRowsOperation(self)
+
+    def execute(self) -> "ExecuteStatementOperation":
+        """Bind the transactional write operation."""
+        return ExecuteStatementOperation(self)
+
+    async def aclose(self) -> None:
+        """Release no resources: each invocation closes its own connection."""
+
+    def _open(self, password: str) -> Any:
+        config = self.config
+        options: dict[str, Any] = {
+            "user": config.user,
+            "password": password,
+            "database": config.database,
+            "connection_timeout": config.connect_timeout_seconds,
+            "read_timeout": math.ceil(config.statement_timeout_seconds + 5),
+            "write_timeout": math.ceil(config.statement_timeout_seconds + 5),
+            "autocommit": True,
+            "use_pure": True,
+            "allow_local_infile": False,
+            "consume_results": False,
+        }
+        if config.host.startswith("/"):
+            options["unix_socket"] = config.host
+        else:
+            options.update(host=config.host, port=config.port)
+        if config.ssl_mode == "disabled":
+            options["ssl_disabled"] = True
+        else:
+            options["ssl_disabled"] = False
+            options["ssl_verify_cert"] = config.ssl_mode in {"verify-ca", "verify-identity"}
+            options["ssl_verify_identity"] = config.ssl_mode == "verify-identity"
+            options["ssl_tls_versions"] = ["TLSv1.2", "TLSv1.3"]
+            trusted_roots = os.environ.get("MYSQL_SSL_CA")
+            if trusted_roots and options["ssl_verify_cert"]:
+                try:
+                    ssl.create_default_context(cafile=trusted_roots)
+                except (OSError, ssl.SSLError) as error:
+                    raise _InvalidTrustedRoots() from error
+                options["ssl_ca"] = trusted_roots
+            return _StrictTLSConnection(**options)
+        return mysql.connector.connect(**options)
+
+    def _session(self, connection: Any) -> tuple[str, str]:
+        cursor = connection.cursor()
+        try:
+            cursor.execute("SELECT CONNECTION_ID(), VERSION()")
+            identity = cursor.fetchone()
+            if identity is None or len(identity) != 2 or not str(identity[0]).isdigit():
+                raise ValueError("server returned an unreadable CONNECTION_ID() or VERSION()")
+            connection_id, version = str(identity[0]), str(identity[1])
+            timeout = self.config.statement_timeout_seconds
+            settings = [
+                "time_zone = '+00:00'",
+                f"sql_mode = '{_SQL_MODE}'",
+                "wait_timeout = 30",
+                f"innodb_lock_wait_timeout = {math.ceil(timeout)}",
+                f"lock_wait_timeout = {math.ceil(timeout)}",
+            ]
+            if "mariadb" in version.lower():
+                settings.append(f"max_statement_time = {timeout:.6f}")
+            else:
+                settings.append(f"max_execution_time = {math.ceil(timeout * 1000)}")
+            cursor.execute("SET SESSION " + ", ".join(settings))
+            return connection_id, version
+        finally:
+            cursor.close()
+
+
+class QueryRowsOperation:
+    """Run one prepared statement in a read-only transaction."""
+
+    def __init__(self, client: Client) -> None:
+        self.client = client
+
+    def definition(self) -> QueryDefinition:
+        """Return the manifest's query identity and branches."""
+        return QUERY_DEFINITION
+
+    async def invoke(self, call: Call, input: QueryRowsInput) -> QueryAttempt[RowSet]:
+        """Classify one bounded read attempt."""
+        try:
+            parameters = _validate_statement(input.statement, input.parameters, _READ_WORDS)
+        except ValueError as error:
+            return _query_branch(DEFECT, FailureKind.VALIDATION, str(error))
+        try:
+            password = (await self.client.credentials.resolve(call)).password.reveal()
+            if not password:
+                raise ValueError("empty password")
+        except (ValueError, LookupError, OSError):
+            return _query_branch(
+                DEFECT, FailureKind.AUTHENTICATION, "MySQL connection credentials are unavailable"
+            )
+        return await asyncio.to_thread(self._invoke_sync, call, input, parameters, password)
+
+    def _invoke_sync(
+        self, call: Call, input: QueryRowsInput, parameters: tuple[Any, ...], password: str
+    ) -> QueryAttempt[RowSet]:
+        connection = None
+        metadata: dict[str, str] = {}
+        phase = "connect"
+        try:
+            connection = self.client._open(password)
+            phase = "begin"
+            identity, version = self.client._session(connection)
+            metadata.update(connectionId=identity, serverVersion=version)
+            cursor = connection.cursor()
+            cursor.execute("START TRANSACTION READ ONLY")
+            cursor.close()
+            phase = "statement"
+            cursor = connection.cursor(prepared=True)
+            cursor.execute(_driver_placeholders(input.statement), parameters)
+            columns, rows, truncated = _read_rows(cursor, self.client.config)
+            cursor.close()
+            receipt = _receipt(call, metadata)
+            if truncated:
+                failure = _failure(
+                    "query",
+                    FailureKind.RESPONSE_TOO_LARGE,
+                    "the statement returned more rows or bytes than maxRows or maxResponseBytes allow",
+                )
+                return QueryAttempt.branch_result(TRUNCATED, RowSet(columns, rows, True), receipt, failure)
+            return QueryAttempt.branch_result(COMPLETED, RowSet(columns, rows), receipt)
+        except Exception as error:
+            disposition = _classify(error, phase)
+            metadata.update(_error_metadata(disposition))
+            if disposition.branch == "retry":
+                return QueryAttempt.retry(_failure("query", disposition.kind, disposition.message))
+            branch = (
+                "invalidResponse"
+                if disposition.branch == "invalidResponse"
+                else "defect"
+                if disposition.branch == "defect"
+                else PROVIDER_REJECTED
+            )
+            return _query_branch(branch, disposition.kind, disposition.message, _receipt(call, metadata))
+        finally:
+            if connection is not None:
+                try:
+                    connection.close()
+                except (MySQLError, OSError):
+                    # A failed close cannot change an already classified operation result.
+                    pass
+
+
+class ExecuteStatementOperation:
+    """Run one prepared write and commit only after all limits pass."""
+
+    def __init__(self, client: Client) -> None:
+        self.client = client
+
+    def definition(self) -> MutationDefinition:
+        """Return the manifest's mutation identity and branches."""
+        return EXECUTE_DEFINITION
+
+    def idempotency_key(self, call_id: CallID, input: ExecuteStatementInput) -> IdempotencyKey:
+        """Keep the Call ID stable across retries of one Step execution."""
+        return IdempotencyKey(str(call_id))
+
+    async def invoke(self, call: Call, input: ExecuteStatementInput) -> MutationAttempt[StatementExecution]:
+        """Classify one write, including a possibly received COMMIT."""
+        try:
+            parameters = _validate_statement(input.statement, input.parameters, _WRITE_WORDS)
+            if input.max_rows_affected is not None and input.max_rows_affected < 0:
+                raise ValueError("maxRowsAffected cannot be negative")
+            if input.idempotency_key_placeholder not in {0, len(parameters) + 1}:
+                raise ValueError("idempotencyKeyPlaceholder must be the last placeholder")
+            if input.idempotency_key_placeholder:
+                parameters += (str(call.idempotency_key),)
+        except ValueError as error:
+            return _execute_branch(DEFECT, FailureKind.VALIDATION, str(error))
+        try:
+            password = (await self.client.credentials.resolve(call)).password.reveal()
+            if not password:
+                raise ValueError("empty password")
+        except (ValueError, LookupError, OSError):
+            return _execute_branch(
+                DEFECT, FailureKind.AUTHENTICATION, "MySQL connection credentials are unavailable"
+            )
+        return await asyncio.to_thread(self._invoke_sync, call, input, parameters, password)
+
+    def _invoke_sync(
+        self, call: Call, input: ExecuteStatementInput, parameters: tuple[Any, ...], password: str
+    ) -> MutationAttempt[StatementExecution]:
+        connection = None
+        metadata: dict[str, str] = {}
+        phase = "connect"
+        try:
+            connection = self.client._open(password)
+            phase = "begin"
+            identity, version = self.client._session(connection)
+            metadata.update(connectionId=identity, serverVersion=version)
+            connection.start_transaction()
+            phase = "statement"
+            cursor = connection.cursor(prepared=True)
+            cursor.execute(_driver_placeholders(input.statement), parameters)
+            columns, rows, truncated = _read_rows(cursor, self.client.config)
+            cursor.close()
+            if truncated:
+                return _execute_branch(
+                    LIMIT_EXCEEDED,
+                    FailureKind.RESPONSE_TOO_LARGE,
+                    "RETURNING rows exceeded maxRows or maxResponseBytes, so the transaction was rolled back",
+                    _receipt(call, metadata),
+                )
+            cursor = connection.cursor()
+            cursor.execute("SELECT ROW_COUNT(), LAST_INSERT_ID(), @@warning_count")
+            outcome = cursor.fetchone()
+            cursor.close()
+            if outcome is None or len(outcome) != 3:
+                raise ValueError(
+                    "server returned an unreadable ROW_COUNT(), LAST_INSERT_ID(), or @@warning_count"
+                )
+            affected = int(outcome[0])
+            if affected < 0:
+                affected = len(rows)
+            if input.max_rows_affected is not None and affected > input.max_rows_affected:
+                return _execute_branch(
+                    LIMIT_EXCEEDED,
+                    FailureKind.CONFLICT,
+                    (
+                        f"the statement affected {affected} rows but maxRowsAffected is "
+                        f"{input.max_rows_affected}, so the transaction was rolled back"
+                    ),
+                    _receipt(call, metadata),
+                )
+            phase = "commit"
+            _commit_transaction(connection)
+            result = StatementExecution(affected, str(outcome[1]), int(outcome[2]), columns, rows)
+            return MutationAttempt.branch_result(COMPLETED, result, _receipt(call, metadata))
+        except Exception as error:
+            disposition = _classify(error, phase)
+            metadata.update(_error_metadata(disposition))
+            failure = _failure("execute", disposition.kind, disposition.message)
+            if disposition.branch == "retry":
+                return MutationAttempt.retry(failure)
+            if disposition.branch == "uncertain":
+                return MutationAttempt.uncertain(_empty_execution(), failure, _receipt(call, metadata))
+            branch = (
+                "invalidResponse"
+                if disposition.branch == "invalidResponse"
+                else "defect"
+                if disposition.branch == "defect"
+                else PROVIDER_REJECTED
+            )
+            return MutationAttempt.branch_result(
+                branch, _empty_execution(), _receipt(call, metadata), failure
+            )
+        finally:
+            if connection is not None:
+                try:
+                    connection.close()
+                except (MySQLError, OSError):
+                    # A failed close cannot change an already classified operation result.
+                    pass
+
+
+def _is_ipv6(host: str) -> bool:
+    try:
+        socket.inet_pton(socket.AF_INET6, host)
+        return True
+    except OSError:
+        return False
+
+
+def _commit_transaction(connection: Any) -> None:
+    transport = getattr(connection, "_socket", None)
+    if transport is None:
+        connection.commit()
+        return
+    socket = transport.sock
+    if socket is None:
+        raise _CommitNotSent()
+    meter = _SendMeter(socket)
+    transport.sock = meter
+    try:
+        connection.commit()
+    except Exception as error:
+        if meter.written_bytes == 0:
+            raise _CommitNotSent() from error
+        raise
+    finally:
+        transport.sock = socket
+
+
+def _validate_statement(
+    statement: str, parameters: tuple[Any, ...], allowed: frozenset[str]
+) -> tuple[Any, ...]:
+    try:
+        statement_bytes = statement.encode("utf-8")
+    except UnicodeError as error:
+        raise ValueError("statement must be valid UTF-8") from error
+    if not statement.strip() or len(statement_bytes) > 1 << 20 or "\x00" in statement:
+        raise ValueError("statement is required and must be valid UTF-8 without NUL characters")
+    leading = re.sub(r"\A(?:\s+|/\*.*?\*/|--[ \t][^\n]*\n|#[^\n]*\n)*", "", statement, flags=re.S)
+    keyword = re.match(r"[A-Za-z]+", leading)
+    if keyword is None or keyword.group().upper() not in allowed:
+        raise ValueError("statement has an unsupported leading keyword")
+    if len(parameters) > 65535:
+        raise ValueError("statement cannot bind more than 65535 parameters")
+    encoded: list[Any] = []
+    size = 0
+    for parameter in parameters:
+        value: Any
+        if isinstance(parameter, bool) or parameter is None:
+            value = parameter
+            size += 1
+        elif isinstance(parameter, int) and -(1 << 63) <= parameter < 1 << 64:
+            value = parameter
+            size += 8
+        elif isinstance(parameter, float) and math.isfinite(parameter):
+            value = parameter
+            size += 8
+        elif isinstance(parameter, (str, bytes)):
+            value = parameter
+            try:
+                size += len(parameter.encode("utf-8") if isinstance(parameter, str) else parameter)
+            except UnicodeError as error:
+                raise ValueError("text parameter must be valid UTF-8") from error
+        elif isinstance(parameter, Decimal) and parameter.is_finite():
+            value = str(parameter)
+            size += len(value)
+        elif isinstance(parameter, datetime):
+            value = parameter.astimezone(UTC).strftime("%Y-%m-%d %H:%M:%S.%f")
+            size += len(value)
+        else:
+            raise ValueError("statement parameter has an unsupported type")
+        encoded.append(value)
+        if size > 16 << 20:
+            raise ValueError("parameters exceed 16777216 bytes combined")
+    return tuple(encoded)
+
+
+def _driver_placeholders(statement: str) -> str:
+    # The native prepared cursor accepts %s; preserve quoted question marks and SQL percent signs.
+    parts: list[str] = []
+    quote = ""
+    comment = ""
+    index = 0
+    while index < len(statement):
+        char = statement[index]
+        following = statement[index + 1] if index + 1 < len(statement) else ""
+        if comment == "line":
+            parts.append(char)
+            if char == "\n":
+                comment = ""
+        elif comment == "block":
+            parts.append(char)
+            if char == "*" and following == "/":
+                index += 1
+                parts.append("/")
+                comment = ""
+        elif quote:
+            parts.append(char)
+            if char == "\\" and index + 1 < len(statement):
+                index += 1
+                parts.append(statement[index])
+            elif char == quote:
+                if index + 1 < len(statement) and statement[index + 1] == quote:
+                    index += 1
+                    parts.append(statement[index])
+                else:
+                    quote = ""
+        elif char == "#" or (
+            char == "-" and following == "-" and index + 2 < len(statement) and statement[index + 2].isspace()
+        ):
+            comment = "line"
+            parts.append(char)
+        elif char == "/" and following == "*":
+            comment = "block"
+            parts.append(char)
+        elif char in {"'", '"', "`"}:
+            quote = char
+            parts.append(char)
+        elif char == "?":
+            parts.append("%s")
+        else:
+            parts.append(char)
+        index += 1
+    return "".join(parts)
+
+
+def _read_rows(cursor: Any, config: Config) -> tuple[tuple[Column, ...], tuple[dict[str, Any], ...], bool]:
+    description = cursor.description or ()
+    columns: list[Column] = []
+    seen: set[str] = set()
+    for field in description:
+        name, field_type = field[0], field[1]
+        if name in seen:
+            raise _DuplicateColumn(f"statement returns column {name!r} more than once")
+        seen.add(name)
+        type_name = _column_type_name(field_type, field[7])
+        columns.append(Column(name, type_name))
+    encoded_bytes = 2
+    rows: list[dict[str, Any]] = []
+    if not columns:
+        return (), (), False
+    while True:
+        raw = cursor.fetchone()
+        if raw is None:
+            return tuple(columns), tuple(rows), False
+        if len(rows) == config.max_rows:
+            return tuple(columns), tuple(rows), True
+        row = {
+            column.name: _decode_value(column.type_name, value)
+            for column, value in zip(columns, raw, strict=True)
+        }
+        encoded_bytes += len(json.dumps(row, ensure_ascii=False, separators=(",", ":")).encode()) + 1
+        if encoded_bytes > config.max_response_bytes:
+            return tuple(columns), tuple(rows), True
+        rows.append(row)
+
+
+def _decode_value(type_name: str, value: Any) -> Any:
+    if value is None:
+        return None
+    if type_name == "BIT":
+        return str(int.from_bytes(value, "big"))
+    if type_name in {"BIGINT", "UNSIGNED BIGINT", "DECIMAL"}:
+        return str(value)
+    if type_name in {
+        "BINARY",
+        "VARBINARY",
+        "BLOB",
+        "TINYBLOB",
+        "MEDIUMBLOB",
+        "LONGBLOB",
+        "GEOMETRY",
+        "VECTOR",
+    }:
+        return base64.b64encode(value).decode("ascii")
+    if type_name == "JSON":
+        return json.loads(value)
+    if isinstance(value, timedelta) and type_name == "TIME":
+        negative = value.total_seconds() < 0
+        micros = abs(int(value.total_seconds() * 1_000_000))
+        hours, remainder = divmod(micros, 3_600_000_000)
+        minutes, remainder = divmod(remainder, 60_000_000)
+        seconds, fractional = divmod(remainder, 1_000_000)
+        text = f"{'-' if negative else ''}{hours:02}:{minutes:02}:{seconds:02}"
+        return text + (f".{fractional:06}".rstrip("0") if fractional else "")
+    if isinstance(value, (datetime, date, time, timedelta)):
+        if isinstance(value, datetime):
+            text = value.isoformat(timespec="microseconds").rstrip("0").rstrip(".")
+            return text + ("Z" if type_name == "TIMESTAMP" else "")
+        return str(value)
+    if isinstance(value, Decimal):
+        return str(value)
+    if isinstance(value, bytes):
+        return value.decode("utf-8")
+    return value
+
+
+def _column_type_name(field_type: int, flags: int) -> str:
+    if flags & FieldFlag.ENUM:
+        return "ENUM"
+    if flags & FieldFlag.SET:
+        return "SET"
+    type_name = _TYPE_NAMES.get(field_type, "VARCHAR")
+    if field_type in {FieldType.STRING, FieldType.VAR_STRING, FieldType.VARCHAR} and flags & FieldFlag.BINARY:
+        return "BINARY" if field_type == FieldType.STRING else "VARBINARY"
+    if field_type in {FieldType.TINY_BLOB, FieldType.BLOB, FieldType.MEDIUM_BLOB, FieldType.LONG_BLOB}:
+        if not flags & FieldFlag.BINARY:
+            return type_name.replace("BLOB", "TEXT")
+    if flags & FieldFlag.UNSIGNED and type_name in {
+        "TINYINT",
+        "SMALLINT",
+        "MEDIUMINT",
+        "INT",
+        "BIGINT",
+    }:
+        return "UNSIGNED " + type_name
+    return type_name
+
+
+def _classify(error: Exception, phase: str) -> _Disposition:
+    if isinstance(error, _InvalidTrustedRoots):
+        return _Disposition(
+            "defect",
+            FailureKind.VALIDATION,
+            "the file named by the Worker's MYSQL_SSL_CA environment variable is "
+            "unreadable or holds no PEM certificate",
+        )
+    if isinstance(error, _DuplicateColumn):
+        return _Disposition("defect", FailureKind.VALIDATION, str(error))
+    if isinstance(error, _CommitNotSent):
+        return _Disposition(
+            "retry",
+            FailureKind.TRANSPORT,
+            "the connection ended or the call deadline passed before COMMIT was sent, "
+            "so nothing was committed",
+        )
+    if isinstance(error, _TLSUnavailable) and phase == "connect":
+        return _Disposition(
+            "providerRejected",
+            FailureKind.PROVIDER_REJECTION,
+            "the MySQL server does not accept TLS, which sslMode requires",
+        )
+    if phase == "connect" and isinstance(error.__cause__, (ssl.SSLError, ssl.CertificateError)):
+        return _Disposition(
+            "providerRejected",
+            FailureKind.AUTHENTICATION,
+            "the MySQL server certificate failed sslMode verification",
+        )
+    if isinstance(error, MySQLError):
+        number = error.errno or 0
+        state = error.sqlstate or ""
+        if phase == "connect" and number == 2005:
+            return _Disposition(
+                "providerRejected",
+                FailureKind.NOT_FOUND,
+                "the MySQL host name does not resolve",
+                number,
+                state,
+            )
+        if phase == "connect" and number == 2026:
+            return _Disposition(
+                "providerRejected",
+                FailureKind.AUTHENTICATION,
+                "the MySQL server certificate failed sslMode verification",
+                number,
+                state,
+            )
+        if phase in {"begin", "statement"} and number in {2006, 2013, 2055}:
+            return _Disposition(
+                "retry",
+                FailureKind.TRANSPORT,
+                "the connection failed before anything was committed",
+                number,
+                state,
+            )
+        if phase == "statement" and number == 1210:
+            return _Disposition(
+                "defect",
+                FailureKind.VALIDATION,
+                "the prepared statement parameter count does not match its placeholders",
+                number,
+                state,
+            )
+        if phase == "connect" and number in {2002, 2003, 2006, 2013, 2055}:
+            return _Disposition(
+                "retry",
+                FailureKind.AVAILABILITY,
+                "the MySQL server is unreachable or did not finish connecting in time",
+                number,
+                state,
+            )
+        if (
+            phase == "commit"
+            and number not in _RETRY_CONFLICT
+            and state != "40001"
+            and not state.startswith("23")
+        ):
+            return _Disposition(
+                "uncertain",
+                FailureKind.AVAILABILITY,
+                "the server returned an error while committing, so whether the transaction "
+                "committed is unknown",
+                number,
+                state,
+            )
+        if number in _RETRY_CONFLICT or state == "40001":
+            branch, kind = "retry", FailureKind.CONFLICT
+        elif number in _RETRY_AVAILABILITY:
+            branch, kind = "retry", FailureKind.AVAILABILITY
+        elif number == 1226:
+            branch, kind = "providerRejected", FailureKind.QUOTA_EXHAUSTED
+        elif state.startswith("08"):
+            branch, kind = "retry", FailureKind.TRANSPORT
+        elif number in _AUTHENTICATION or state.startswith("28"):
+            branch, kind = "providerRejected", FailureKind.AUTHENTICATION
+        elif number in _AUTHORIZATION or state == "25006":
+            branch, kind = "providerRejected", FailureKind.AUTHORIZATION
+        elif number in _NOT_FOUND or state.startswith("42S"):
+            branch, kind = "providerRejected", FailureKind.NOT_FOUND
+        elif number in _CONFLICT or state.startswith("23"):
+            branch, kind = "providerRejected", FailureKind.CONFLICT
+        elif number in _TIMEOUT:
+            branch, kind = "providerRejected", FailureKind.AVAILABILITY
+        elif number in _VALIDATION or state.startswith(("22", "42", "0A")):
+            branch, kind = "providerRejected", FailureKind.VALIDATION
+        else:
+            branch, kind = "providerRejected", FailureKind.PROVIDER_REJECTION
+        return _Disposition(branch, kind, f"the server returned error {number} during {phase}", number, state)
+    if isinstance(error, (ssl.SSLError, ssl.CertificateError)) and phase == "connect":
+        return _Disposition(
+            "providerRejected",
+            FailureKind.AUTHENTICATION,
+            "the MySQL server certificate failed sslMode verification",
+        )
+    if isinstance(error, socket.gaierror) and phase == "connect" and error.errno == socket.EAI_NONAME:
+        return _Disposition("providerRejected", FailureKind.NOT_FOUND, "the MySQL host name does not resolve")
+    if isinstance(error, ValueError):
+        return _Disposition(
+            "invalidResponse", FailureKind.PROTOCOL, "the server returned an unreadable value"
+        )
+    if phase == "connect":
+        return _Disposition(
+            "retry",
+            FailureKind.AVAILABILITY,
+            "the MySQL server is unreachable or did not finish connecting in time",
+        )
+    if phase == "commit":
+        return _Disposition(
+            "uncertain",
+            FailureKind.TRANSPORT,
+            "the connection failed after COMMIT was sent, so whether the transaction committed is unknown",
+        )
+    if isinstance(error, (OSError, ConnectionError, TimeoutError)):
+        return _Disposition(
+            "retry", FailureKind.TRANSPORT, "the connection failed before anything was committed"
+        )
+    return _Disposition(
+        "invalidResponse", FailureKind.PROTOCOL, "the driver could not decode the server reply"
+    )
+
+
+def _error_metadata(disposition: _Disposition) -> dict[str, str]:
+    result = {}
+    if disposition.number:
+        result["errorNumber"] = str(disposition.number)
+    if disposition.sql_state:
+        result["sqlState"] = disposition.sql_state
+    return result
+
+
+def _receipt(call: Call, metadata: dict[str, str]) -> Receipt:
+    return Receipt(call.id, "mysql", datetime.now(UTC), call.idempotency_key, metadata=metadata)
+
+
+def _failure(operation: str, kind: FailureKind, message: str) -> Failure:
+    return Failure(kind, "mysql", operation, message)
+
+
+def _query_branch(
+    branch: str, kind: FailureKind, message: str, receipt: Receipt | None = None
+) -> QueryAttempt[RowSet]:
+    return QueryAttempt.branch_result(
+        branch, RowSet(), receipt or Receipt(), _failure("query", kind, message)
+    )
+
+
+def _empty_execution() -> StatementExecution:
+    return StatementExecution(last_insert_id="0")
+
+
+def _execute_branch(
+    branch: str, kind: FailureKind, message: str, receipt: Receipt | None = None
+) -> MutationAttempt[StatementExecution]:
+    return MutationAttempt.branch_result(
+        branch, _empty_execution(), receipt or Receipt(), _failure("execute", kind, message)
+    )
