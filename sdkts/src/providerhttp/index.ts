@@ -40,6 +40,11 @@ export class ProviderTransportError extends Error {
   }
 }
 
+/** Provider emitted no response byte within the configured stall timeout. */
+export class ProviderStalledError extends Error {
+  constructor() { super('provider sent no bytes within the stall timeout'); this.name = 'ProviderStalledError'; }
+}
+
 /** Public-only HTTPS or explicitly owned private-network HTTP. */
 export type AddressPolicy = 'publicHTTPS' | 'privateNetworkHTTP';
 
@@ -50,9 +55,12 @@ export interface ProviderRequest {
   /** Request headers, including provider credentials when needed. */ headers?: Record<string, string>;
   /** Caller-encoded request body. */ body?: Uint8Array;
   /** Maximum response body size in bytes. */ maxResponseBytes: number;
+  /** Optional separate prefix limit for non-2xx error bodies. */ maxErrorResponseBytes?: number;
   /** Network policy checked against all resolved addresses. */ addressPolicy: AddressPolicy;
   /** Request deadline in milliseconds. */ timeoutMs?: number;
   /** Caller cancellation. */ signal?: AbortSignal;
+  /** Observe response chunks in arrival order before the bounded body completes. */ onResponseChunk?: (chunk: Uint8Array, status: number, headers: http.IncomingHttpHeaders) => void;
+  /** Abort a response when no byte arrives for this many milliseconds. */ stallTimeoutMs?: number;
 }
 
 /** Bounded response; redirects remain visible as 3xx responses. */
@@ -126,6 +134,7 @@ export function readErrorTokens(body: Uint8Array, pointers: readonly string[]): 
 /** Send once using pinned, policy-checked DNS results and no redirect replay. */
 export async function sendProviderRequest(request: ProviderRequest): Promise<ProviderResponse> {
   if (!Number.isSafeInteger(request.maxResponseBytes) || request.maxResponseBytes < 0) throw new RangeError('response body limit must be a non-negative integer');
+  if (request.maxErrorResponseBytes !== undefined && (!Number.isSafeInteger(request.maxErrorResponseBytes) || request.maxErrorResponseBytes < 0)) throw new RangeError('error body limit must be a non-negative integer');
   if (request.addressPolicy !== 'publicHTTPS' && request.addressPolicy !== 'privateNetworkHTTP') throw new AddressRefusal('address policy is invalid');
   let parsed: URL;
   try { parsed = new URL(request.url); } catch { throw new AddressRefusal('URL is invalid'); }
@@ -153,14 +162,41 @@ export async function sendProviderRequest(request: ProviderRequest): Promise<Pro
     let hasConnected = false;
     let hasWrittenRequest = false;
     let clientRequest: ClientRequest;
+    let responseStallTimer: ReturnType<typeof setTimeout> | undefined;
     try {
       clientRequest = (parsed.protocol === 'https:' ? https : http).request(parsed, options, (response: IncomingMessage) => {
-        void readBoundedBody(response, request.maxResponseBytes).then(body => {
-          resolve({ status: response.statusCode ?? 0, headers: response.headers, body });
-        }).catch((error: unknown) => {
-          response.destroy();
-          reject(error instanceof BodyTooLargeError ? new BodyTooLargeError(response.statusCode ?? 0, response.headers) : new ProviderTransportError(false));
-        });
+        if (responseStallTimer) clearTimeout(responseStallTimer);
+        const chunks: Uint8Array[] = [];
+        let size = 0;
+        let stallTimer: ReturnType<typeof setTimeout> | undefined;
+        const observeProgress = () => {
+          if (stallTimer) clearTimeout(stallTimer);
+          if (request.stallTimeoutMs && request.stallTimeoutMs > 0) stallTimer = setTimeout(() => response.destroy(new ProviderStalledError()), request.stallTimeoutMs);
+        };
+        observeProgress();
+        void (async () => {
+          try {
+            for await (const chunk of response) {
+              observeProgress();
+              const isSuccess = (response.statusCode ?? 0) >= 200 && (response.statusCode ?? 0) <= 299;
+              const limit = isSuccess ? request.maxResponseBytes : request.maxErrorResponseBytes ?? request.maxResponseBytes;
+              if (!isSuccess && request.maxErrorResponseBytes !== undefined && size + chunk.length > limit) {
+                chunks.push(chunk.subarray(0, Math.max(0,limit-size)));
+                response.destroy();
+                resolve({ status: response.statusCode ?? 0, headers: response.headers, body: Buffer.concat(chunks) });
+                return;
+              }
+              size += chunk.length;
+              if (size > limit) throw new BodyTooLargeError(response.statusCode ?? 0, response.headers);
+              request.onResponseChunk?.(chunk, response.statusCode ?? 0, response.headers);
+              chunks.push(chunk);
+            }
+            resolve({ status: response.statusCode ?? 0, headers: response.headers, body: Buffer.concat(chunks) });
+          } catch (error) {
+            response.destroy();
+            reject(error instanceof BodyTooLargeError || error instanceof ProviderStalledError ? error : new ProviderTransportError(false));
+          } finally { if (stallTimer) clearTimeout(stallTimer); }
+        })();
       });
     } catch { reject(new ProviderTransportError(true)); return; }
     clientRequest.on('socket', socket => {
@@ -168,7 +204,8 @@ export async function sendProviderRequest(request: ProviderRequest): Promise<Pro
       socket.once(parsed.protocol === 'https:' ? 'secureConnect' : 'connect', () => { hasConnected = true; });
     });
     clientRequest.on('finish', () => { hasWrittenRequest = true; });
-    clientRequest.on('error', () => reject(new ProviderTransportError(!hasConnected && !hasWrittenRequest)));
+    clientRequest.on('error', error => { if (responseStallTimer) clearTimeout(responseStallTimer); reject(error instanceof ProviderStalledError ? error : new ProviderTransportError(!hasConnected && !hasWrittenRequest)); });
+    if (request.stallTimeoutMs && request.stallTimeoutMs > 0) responseStallTimer = setTimeout(() => clientRequest.destroy(new ProviderStalledError()), request.stallTimeoutMs);
     try { clientRequest.end(request.body); }
     catch { reject(new ProviderTransportError(!hasConnected && !hasWrittenRequest)); }
   });

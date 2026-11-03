@@ -1,6 +1,6 @@
 # Connector TypeScript SDK
 
-`@superdurable/connectors-sdk` is the provider-neutral TypeScript SDK for Dex connectors. It provides stable value contracts, typed Query and Mutation operations, Dex Step factories, credential refresh, OAuth token exchanges, HTTP safety helpers, project configuration loading, scripted mocks, and single-dispatch marker decisions. The package is at version `0.1.1`, requires Node 22 or 24, and uses `@superdurable/dex` 1.28.0 or newer. It is ESM-only, matching Dex: use `import`; direct `require()` fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`.
+`@superdurable/connectors-sdk` is the provider-neutral TypeScript SDK for Dex connectors. It provides stable value contracts, typed Query and Mutation operations, Dex Step factories, credential refresh, OAuth token exchanges, HTTP safety helpers, project configuration loading, scripted mocks, and single-dispatch marker decisions. The package is at version `0.2.0`, requires Node 22 or 24, and uses `@superdurable/dex` 1.28.0 or newer. It is ESM-only, matching Dex: use `import`; direct `require()` fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`.
 
 Install dependencies and verify the package from this directory:
 
@@ -19,11 +19,20 @@ node examples/connectormock.mjs
 node examples/oauthtoken.mjs
 node examples/singledispatch.mjs
 node examples/fence.mjs
+node examples/textgen.mjs
 ```
 
 All durations in this package are milliseconds. Public JSON shapes use the Go SDK's field names. Credential values and project objects stay outside Flow state and cannot be serialized through their wrappers.
 
 The [Dex integration harness](test/integ/step_flows.mjs) exercises the same Step factories through a real Worker and Client. Start `dexcli dev --open=false --dex-port 18891` with a local Dex server, set `DEX_SERVER_ADDRESS` when its gRPC address differs from `127.0.0.1:18891`, and run `npm run test:integration`. It verifies a happy path, optional branch, unwired optional branch failure, retry then success, retry exhaustion, uncertain mutation, a lost-response single-dispatch fence, repeated claim heartbeats, result Attribute persistence, progress and text Stream delivery, and scripted mock replay. It uses fixture operations and no provider credentials. CI runs the same harness in `sdkts-integration` using its once-per-run resolved Dex CLI.
+
+## Portable text generation
+
+The [runnable text generation example](examples/textgen.mjs) uses `newTextGenerationQuery` with the OpenAI-compatible Chat Completions adapter from `@superdurable/connectors-sdk/textgen/openaichat`. The `@superdurable/connectors-sdk/textgen` entrypoint also exports request and response contracts, model ID validation, portable schema checks, branch definitions, temperature policies, error rules, and the provider-neutral wire-format contract. The example exercises a local fixture provider; a consuming connector supplies a real connection, credential resolver, and Dex Step.
+
+`generateText` requires sync Execute durability and a request timeout shorter than the Step Execute timeout. It writes streamed text deltas to a configured text Stream as bytes arrive; the Result text is authoritative after retries or a blocked response. Register that Stream in the Flow persistence schema. Its six branches are `generated`, `truncated`, `blocked`, `providerRejected`, `invalidResponse`, and `defect`; only `generated` is required. The query retries transport errors, stalled responses, interrupted streams, and safe HTTP failures. A credential is resolved once after local validation and is never stored in Flow state, results, failures, or receipts.
+
+The schema subset is the same as Go `sdkgo/textgen`: root object, closed objects with every property required, nullable optional values, arrays with `items`, and only the documented portable keywords. Structured output is checked locally even when the provider accepts a transformed schema. Model IDs are validated according to whether the adapter sends them in a JSON body or path segment. Optional request fields rejected by a wire format or selected model produce a `defect` branch before dispatch.
 
 ## Typed operations and credential resolution
 
