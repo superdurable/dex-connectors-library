@@ -61,8 +61,9 @@ once `maxResponseBytes` plus 64 KiB of protocol overhead is exceeded. Queries th
 Tedious's row events so each provider chunk is counted and returned as a row before `mssql`
 concatenates chunks into one value. This path relies on `mssql` 12's internal request hook.
 Transaction setup, COMMIT, and ROLLBACK replies retain a separate 4 MiB wire budget. The user
-statement alone uses `statementTimeoutMs`; transaction control has another five seconds to
-complete.
+statement alone uses `statementTimeoutMs`; the whole SQL attempt, including connection,
+session setup, statement, and COMMIT, is bounded by `connectTimeoutMs` plus
+`statementTimeoutMs` plus five seconds.
 
 Run `npm run check` for unit tests, typecheck, and lint. CI runs the integration suite against its
 SQL Server service container, then repeats it with mandatory TLS and a generated CA bundle. Real

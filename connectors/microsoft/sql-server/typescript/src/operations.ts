@@ -5,10 +5,18 @@ import sql from 'mssql';
 import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Mutation, type MutationAttempt, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
 import { ExecuteStatementDefinition, QueryRowsDefinition } from './generated/definitions.js';
 import type { Column, ExecuteStatementInput, QueryRowsInput, RowSet, StatementExecution } from './generated/models.js';
-import { classifyDriverError, type ClassifiedFailure, type ResponseBudget, type SQLServerClient } from './client.js';
+import { AttemptDeadline, classifyDriverError, type ClassifiedFailure, type ResponseBudget, type SQLServerClient } from './client.js';
 
 const emptyRows = (): RowSet => ({ columns: [], rows: [] });
 const emptyExecution = (): StatementExecution => ({ rowsAffected: 0, columns: [], rows: [] });
+const attemptTimeout = { code: 'ETIMEOUT' };
+
+function classifyAttemptError(error: unknown, phase: 'connect' | 'begin' | 'statement' | 'commit', deadline: AttemptDeadline): ClassifiedFailure {
+  if (!deadline.hasExpired) return classifyDriverError(error, phase);
+  if (phase === 'commit') return classifyDriverError(attemptTimeout, phase);
+  if (phase === 'connect') return classifyDriverError(attemptTimeout, phase);
+  return { disposition: 'retry', kind: 'TRANSPORT', message: `the connection failed during ${phase} before anything was committed` };
+}
 const chunkedResultColumns = new Set(['JSON_F52E2B61-18A1-11d1-B105-00805F49916B', 'XML_F52E2B61-18A1-11d1-B105-00805F49916B']);
 
 const deniedKeywords = new Set(`BEGIN COMMIT ROLLBACK SAVE TRAN TRANSACTION DISTRIBUTED EXEC EXECUTE USE SETUSER REVERT IF WHILE GOTO RETURN BREAK CONTINUE WAITFOR DECLARE DEALLOCATE CREATE ALTER DROP TRUNCATE GRANT DENY REVOKE TRIGGER STATISTICS BACKUP RESTORE DBCC KILL SHUTDOWN RECONFIGURE CHECKPOINT LOAD DUMP BULK OPENROWSET OPENDATASOURCE OPENQUERY ROWCOUNT TEXTSIZE IDENTITY_INSERT PRINT RAISERROR READTEXT WRITETEXT UPDATETEXT`.split(' '));
@@ -337,9 +345,10 @@ export class QueryRowsOperation implements Query<QueryRowsInput, RowSet> {
     let password: string;
     try { password = await this.client.resolvePassword(call); }
     catch { return queryFailure(this.client, call, { disposition: 'defect', kind: 'AUTHENTICATION', message: 'SQL Server connection credentials are unavailable' }); }
+    const deadline = new AttemptDeadline(this.client.config.connectTimeoutMs, this.client.config.statementTimeoutMs);
     let pool: sql.ConnectionPool;
-    try { pool = await this.client.open(call, password); }
-    catch (error) { return queryFailure(this.client, call, classifyDriverError(error, 'connect')); }
+    try { pool = await this.client.open(call, password, deadline); }
+    catch (error) { deadline.close(); return queryFailure(this.client, call, classifyAttemptError(error, 'connect', deadline)); }
     let transaction: sql.Transaction | undefined;
     let responseBudget: ResponseBudget | undefined;
     let phase: 'begin' | 'statement' = 'begin';
@@ -356,11 +365,11 @@ export class QueryRowsOperation implements Query<QueryRowsInput, RowSet> {
       if (decoded.truncated) return newQueryBranch('truncated', output, this.client.receipt(call, pool), this.client.failure('query', { disposition: 'rejected', kind: 'RESPONSE_TOO_LARGE', message: 'the statement returned more rows or bytes than maxRows or maxResponseBytes allow' }));
       if (!decoded.columns.length) return queryFailure(this.client, call, { disposition: 'defect', kind: 'VALIDATION', message: 'the statement returned no result set' }, pool);
       return newQueryBranch('completed', output, this.client.receipt(call, pool));
-    } catch (error) { return queryFailure(this.client, call, error instanceof InvalidResultError ? { disposition: 'invalidResponse', kind: 'PROTOCOL', message: error.message } : error instanceof ResultShapeError ? { disposition: 'defect', kind: 'VALIDATION', message: error.message } : classifyDriverError(this.client.recordedPoolError(pool) ?? error, phase), pool); }
+    } catch (error) { return queryFailure(this.client, call, error instanceof InvalidResultError ? { disposition: 'invalidResponse', kind: 'PROTOCOL', message: error.message } : error instanceof ResultShapeError ? { disposition: 'defect', kind: 'VALIDATION', message: error.message } : classifyAttemptError(this.client.recordedPoolError(pool) ?? error, phase, deadline), pool); }
     finally {
       if (transaction) { try { await transaction.rollback(); } catch { /* Closing the pool rolls back a failed or completed transaction. */ } }
       responseBudget?.close();
-      await pool.close();
+      try { await pool.close(); } finally { deadline.close(); }
     }
   }
 }
@@ -382,9 +391,10 @@ export class ExecuteStatementOperation implements Mutation<ExecuteStatementInput
     let password: string;
     try { password = await this.client.resolvePassword(call); }
     catch { return executeFailure(this.client, call, { disposition: 'defect', kind: 'AUTHENTICATION', message: 'SQL Server connection credentials are unavailable' }); }
+    const deadline = new AttemptDeadline(this.client.config.connectTimeoutMs, this.client.config.statementTimeoutMs);
     let pool: sql.ConnectionPool;
-    try { pool = await this.client.open(call, password); }
-    catch (error) { return executeFailure(this.client, call, classifyDriverError(error, 'connect')); }
+    try { pool = await this.client.open(call, password, deadline); }
+    catch (error) { deadline.close(); return executeFailure(this.client, call, classifyAttemptError(error, 'connect', deadline)); }
     let transaction: sql.Transaction | undefined;
     let responseBudget: ResponseBudget | undefined;
     let phase: 'begin' | 'statement' = 'begin';
@@ -403,15 +413,15 @@ export class ExecuteStatementOperation implements Mutation<ExecuteStatementInput
       if (!input.returnsOutputRows && decoded.columns.length) return executeFailure(this.client, call, { disposition: 'defect', kind: 'VALIDATION', message: 'the statement returned output rows but returnsOutputRows is not set' }, pool);
       const rowsAffected = input.returnsOutputRows ? decoded.rows.length : decoded.rowsAffected.reduce((sum, count) => sum + count, 0);
       if (input.maxRowsAffected !== undefined && rowsAffected > input.maxRowsAffected) return newMutationBranch('limitExceeded', emptyExecution(), this.client.receipt(call, pool), this.client.failure('execute', { disposition: 'rejected', kind: 'CONFLICT', message: `the statement affected ${rowsAffected} rows but maxRowsAffected is ${input.maxRowsAffected}, so the transaction was rolled back` }));
-      if (!pool.connected || call.context.cancellationSignal.aborted) return executeFailure(this.client, call, { disposition: 'retry', kind: 'TRANSPORT', message: 'COMMIT was not sent because the connection closed' }, pool);
+      if (!pool.connected || call.context.cancellationSignal.aborted || deadline.hasExpired) return executeFailure(this.client, call, { disposition: 'retry', kind: 'TRANSPORT', message: 'COMMIT was not sent because the connection closed' }, pool);
       try { await transaction.commit(); committed = true; }
-      catch (error) { return executeFailure(this.client, call, classifyDriverError(error, 'commit'), pool); }
+      catch (error) { return executeFailure(this.client, call, classifyAttemptError(error, 'commit', deadline), pool); }
       return newMutationBranch('completed', { rowsAffected, columns: decoded.columns, rows: decoded.rows }, this.client.receipt(call, pool));
-    } catch (error) { return executeFailure(this.client, call, error instanceof InvalidResultError ? { disposition: 'invalidResponse', kind: 'PROTOCOL', message: error.message } : error instanceof ResultShapeError ? { disposition: 'defect', kind: 'VALIDATION', message: error.message } : classifyDriverError(this.client.recordedPoolError(pool) ?? error, phase), pool); }
+    } catch (error) { return executeFailure(this.client, call, error instanceof InvalidResultError ? { disposition: 'invalidResponse', kind: 'PROTOCOL', message: error.message } : error instanceof ResultShapeError ? { disposition: 'defect', kind: 'VALIDATION', message: error.message } : classifyAttemptError(this.client.recordedPoolError(pool) ?? error, phase, deadline), pool); }
     finally {
       if (transaction && !committed) { try { await transaction.rollback(); } catch { /* Closing the pool rolls back when the transaction has already ended. */ } }
       responseBudget?.close();
-      await pool.close();
+      try { await pool.close(); } finally { deadline.close(); }
     }
   }
 }

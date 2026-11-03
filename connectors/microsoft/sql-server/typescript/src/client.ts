@@ -80,6 +80,25 @@ export class ResponseBudget {
   close(): void { this.socket.off('data', this.countBytes); }
 }
 
+/** Bound one SQL attempt, including connection, session setup, statement, and commit. */
+export class AttemptDeadline {
+  private connection?: { socket?: Socket };
+  private readonly timer: NodeJS.Timeout;
+  /** Whether the whole SQL attempt exhausted its time allowance. */
+  hasExpired = false;
+  /** Start the timer after credentials resolve and before connecting. */
+  constructor(connectTimeoutMs: number, statementTimeoutMs: number) {
+    this.timer = setTimeout(() => {
+      this.hasExpired = true;
+      this.connection?.socket?.destroy(Object.assign(new Error('SQL Server attempt deadline expired'), { code: 'ETIMEOUT' }));
+    }, Math.min(connectTimeoutMs + statementTimeoutMs + 5000, 2147483647));
+  }
+  /** Track the Tedious connection so expiration closes its socket. */
+  trackConnection(connection: { socket?: Socket }): void { this.connection = connection; }
+  /** Stop the timer after the connection closes. */
+  close(): void { clearTimeout(this.timer); }
+}
+
 function isLoopbackHost(host: string): boolean {
   if (host === 'localhost') return true;
   if (isIP(host) === 4) return host.split('.')[0] === '127';
@@ -162,7 +181,7 @@ export class SQLServerClient {
   /** Pin SQL settings and record safe server identity on the transaction's connection. */
   async pinSession(transaction: sql.Transaction, pool: sql.ConnectionPool): Promise<void> {
     const batch = `SET LANGUAGE us_english; SET DATEFORMAT ymd; SET XACT_ABORT ON; SET NOCOUNT OFF; SET IMPLICIT_TRANSACTIONS OFF; SET ANSI_NULLS ON; SET ANSI_PADDING ON; SET ANSI_WARNINGS ON; SET ARITHABORT ON; SET CONCAT_NULL_YIELDS_NULL ON; SET QUOTED_IDENTIFIER ON; SET NUMERIC_ROUNDABORT OFF; SET TEXTSIZE 2147483647; SET TRANSACTION ISOLATION LEVEL READ COMMITTED; SET LOCK_TIMEOUT ${this.config.statementTimeoutMs}; SELECT @@SPID AS processId, CAST(SERVERPROPERTY('ProductVersion') AS nvarchar(128)) AS serverVersion`;
-    const result = await transaction.request().query<{ processId: number; serverVersion: string }>(batch);
+    const result = await transaction.request().batch<{ processId: number; serverVersion: string }>(batch);
     const identity = result.recordset?.[0];
     if (!identity || !Number.isSafeInteger(identity.processId) || identity.processId < 0 || !/^[\x20-\x7e]{1,128}$/.test(identity.serverVersion)) throw new Error('invalid SQL Server session identity');
     sessionIdentities.set(pool, { processId: String(identity.processId), serverVersion: identity.serverVersion });
@@ -174,7 +193,7 @@ export class SQLServerClient {
     return credentials.password.reveal();
   }
   /** Open the driver using credentials already resolved by the operation. */
-  async open(call: Call, resolvedPassword?: string): Promise<sql.ConnectionPool> {
+  async open(call: Call, resolvedPassword?: string, attemptDeadline?: AttemptDeadline): Promise<sql.ConnectionPool> {
     const password = resolvedPassword ?? await this.resolvePassword(call);
     let trustedRoots: Buffer | undefined;
     const caFile = process.env.SQLSERVER_SSL_CA;
@@ -195,6 +214,7 @@ export class SQLServerClient {
       connectionTimeout: this.config.connectTimeoutMs, requestTimeout: Math.min(this.config.statementTimeoutMs + 5000, 2147483647),
       pool: { min: 0, max: 1 }, beforeConnect: connection => {
         poolConnections.set(pool, connection as unknown as { socket?: Socket });
+        attemptDeadline?.trackConnection(connection as unknown as { socket?: Socket });
         connection.on('errorMessage', token => { connectServerError = { number: token.number, class: token.class, state: token.state }; });
         if (this.config.encrypt === 'mandatory') connection.on('secure', cleartext => {
           const routedConnection = connection as typeof connection & { routingData?: { server?: string }; config?: { options?: { serverName?: string } } };
@@ -205,7 +225,13 @@ export class SQLServerClient {
     };
     const pool = new sql.ConnectionPool(configuration);
     pool.on('error', error => { poolErrors.set(pool, error); });
-    try { await pool.connect(); }
+    try {
+      await pool.connect();
+      if (attemptDeadline?.hasExpired) {
+        await pool.close();
+        throw Object.assign(new Error('SQL Server attempt deadline expired'), { code: 'ETIMEOUT' });
+      }
+    }
     catch (error) {
       if (hasRejectedCertificate) throw certificateError();
       const failure = poolErrors.get(pool) ?? error;

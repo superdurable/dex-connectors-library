@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { EventEmitter } from 'node:events';
 import { Socket } from 'node:net';
 import { X509Certificate } from 'node:crypto';
@@ -13,10 +13,37 @@ import { rootCertificates } from 'node:tls';
 import sql from 'mssql';
 import { ConnectionError as TediousConnectionError, RequestError as TediousRequestError } from 'tedious';
 import { SecretString } from '@superdurable/connectors-sdk';
-import { ResponseBudget, SQLServerClient, certificateMatchesHost, classifyDriverError } from '../src/client.js';
+import { AttemptDeadline, ResponseBudget, SQLServerClient, certificateMatchesHost, classifyDriverError } from '../src/client.js';
 
 const client = new SQLServerClient({ host: '127.0.0.1', database: 'master', user: 'sa', encrypt: 'disable' }, {
   resolve: async () => ({ password: new SecretString('inert-test-password') }),
+});
+
+it('pins session settings with a SQL batch that persists beyond setup', async () => {
+  const batch = vi.fn().mockResolvedValue({ recordset: [{ processId: 42, serverVersion: '16.0.1000' }] });
+  const query = vi.fn();
+  const transaction = { request: () => ({ batch, query }) } as unknown as sql.Transaction;
+  const pool = {} as sql.ConnectionPool;
+  await client.pinSession(transaction, pool);
+  expect(batch).toHaveBeenCalledOnce();
+  expect(batch.mock.calls[0]?.[0]).toContain('SET LOCK_TIMEOUT 5000');
+  expect(query).not.toHaveBeenCalled();
+});
+
+it('destroys the tracked socket at the whole-attempt deadline', () => {
+  vi.useFakeTimers();
+  try {
+    const socket = new Socket();
+    socket.on('error', () => {});
+    const deadline = new AttemptDeadline(10, 20);
+    deadline.trackConnection({ socket });
+    vi.advanceTimersByTime(5029);
+    expect(deadline.hasExpired).toBe(false);
+    vi.advanceTimersByTime(1);
+    expect(deadline.hasExpired).toBe(true);
+    expect(socket.destroyed).toBe(true);
+    deadline.close();
+  } finally { vi.useRealTimers(); }
 });
 
 describe('Go-compatible SQL Server error decisions', () => {
@@ -42,6 +69,7 @@ describe('Go-compatible SQL Server error decisions', () => {
   it('treats only an unconfirmed COMMIT as uncertain', () => {
     expect(classifyDriverError({ code: 'ECONNRESET' }, 'statement').disposition).toBe('retry');
     expect(classifyDriverError({ code: 'ECONNRESET' }, 'commit').disposition).toBe('uncertain');
+    expect(classifyDriverError({ code: 'ETIMEOUT' }, 'commit').disposition).toBe('uncertain');
     expect(classifyDriverError({ code: 'EINVALIDSTATE' }, 'commit')).toMatchObject({ disposition: 'retry', kind: 'TRANSPORT', message: 'COMMIT was not sent because the connection closed' });
     expect(classifyDriverError({ number: 3999, class: 17 }, 'commit').disposition).toBe('uncertain');
     expect(classifyDriverError({ number: 3902, class: 16 }, 'commit').disposition).toBe('rejected');
