@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-brevo",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Brevo contact operations for Dex Flows",
   "repository": {
     "type": "git",
@@ -43,7 +43,7 @@
     "example:sync:start": "npm run build && tsx examples/contact-sync/start.ts"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.1.0",
+    "@superdurable/connectors-sdk": "0.1.1",
     "@superdurable/dex": ">=1.28.0",
     "email-addresses": "5.0.0",
     "zod": "^4.1.0"

@@ -55,7 +55,7 @@
     "check": "npm run typecheck && npm run test-d && npm run lint && npm test"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.1.0",
+    "@superdurable/connectors-sdk": "0.1.1",
     "@superdurable/dex": ">=1.28.0",
     "zod": "^4.1.0"
   },
