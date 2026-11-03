@@ -4,7 +4,7 @@
 import { expect, it } from 'vitest';
 import { SecretString, type Call } from '@superdurable/connectors-sdk';
 import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
-import { AddressRefusal, ProviderTransportError } from '@superdurable/connectors-sdk/providerhttp';
+import { AddressRefusal, BodyTooLargeError, ProviderTransportError } from '@superdurable/connectors-sdk/providerhttp';
 import { WebhookClient } from '../src/client.js';
 
 const call = {
@@ -49,4 +49,38 @@ it('rejects an invalid signing secret before dispatch', async () => {
   if (attempt.kind === 'branch') expect(attempt.branch).toBe('defect');
   expect(attempt.failure?.kind).toBe('VALIDATION');
   expect(isSent).toBe(false);
+});
+
+it('allows HTTPS private receivers and bounds the response body', async () => {
+  const client = new WebhookClient({ deliveryUrl: 'https://10.0.0.8/hook' }, {
+    resolve: async () => ({ signingSecret: new SecretString('test-secret') }),
+  }, { send: async request => {
+    expect(request.url).toBe('https://10.0.0.8/hook');
+    expect(request.addressPolicy).toBe('privateNetworkHTTP');
+    expect(request.maxResponseBytes).toBe(64 << 10);
+    return { status: 204, headers: {}, body: new Uint8Array() };
+  } });
+  const attempt = await client.sendEvent().invoke(call, input);
+  expect(attempt.kind).toBe('branch');
+  if (attempt.kind === 'branch') expect(attempt.branch).toBe('delivered');
+});
+
+it.each([
+  { status: 204, headers: {}, branch: 'delivered', failureKind: undefined, retryAfterMs: undefined },
+  { status: 429, headers: { 'retry-after': '7' }, branch: undefined, failureKind: 'RATE_LIMIT', retryAfterMs: 7000 },
+  { status: 503, headers: {}, branch: undefined, failureKind: 'AVAILABILITY', retryAfterMs: undefined },
+  { status: 403, headers: {}, branch: 'rejected', failureKind: 'AUTHORIZATION', retryAfterMs: undefined },
+])('classifies HTTP $status even when its body exceeds the limit', async ({ status, headers, branch, failureKind, retryAfterMs }) => {
+  const client = new WebhookClient({ deliveryUrl: 'https://receiver.example/events' }, {
+    resolve: async () => ({ signingSecret: new SecretString('test-secret') }),
+  }, { send: async () => { throw new BodyTooLargeError(status, headers); } });
+  const attempt = await client.sendEvent().invoke(call, input);
+  expect(attempt.kind).toBe(branch ? 'branch' : 'retry');
+  if (attempt.kind === 'branch') {
+    expect(attempt.branch).toBe(branch);
+    expect(attempt.value).toEqual({ webhookId: call.idempotencyKey, statusCode: status });
+    expect(attempt.receipt?.providerObjectId).toBe(call.idempotencyKey);
+  }
+  expect(attempt.failure?.kind).toBe(failureKind);
+  if (retryAfterMs !== undefined && attempt.kind === 'retry') expect(attempt.retryAfterMs).toBe(retryAfterMs);
 });

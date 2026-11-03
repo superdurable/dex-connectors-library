@@ -4,7 +4,7 @@
 import { createHmac } from 'node:crypto';
 import { SecretString, newMutationBranch, newMutationRetry, type Call, type CredentialProvider, type Failure, type Mutation, type MutationAttempt, type MutationDefinition, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { CredentialBrokerUnavailableError } from '@superdurable/connectors-sdk/projectconfig';
-import { AddressRefusal, parseRetryAfter, ProviderTransportError, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { AddressRefusal, BodyTooLargeError, parseRetryAfter, ProviderTransportError, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ConnectorID, SendEventDefinition } from './generated/definitions.js';
 import type { Config, Credentials, SendEventInput, SendEventOutput } from './generated/models.js';
 
@@ -85,11 +85,15 @@ export class SendEventOperation implements Mutation<SendEventInput, SendEventOut
       response = await this.client.send({
         url: this.client.deliveryUrl, method: 'POST', body: payload,
         headers: { 'Content-Type': 'application/json', 'webhook-id': webhookId, 'webhook-timestamp': timestamp, 'webhook-signature': `v1,${signature}` },
-        maxResponseBytes: 2_147_483_647, addressPolicy: 'publicHTTPS', timeoutMs: 25_000, signal: call.context.cancellationSignal,
+        maxResponseBytes: 64 << 10, addressPolicy: 'privateNetworkHTTP', timeoutMs: 25_000, signal: call.context.cancellationSignal,
       });
     } catch (error) {
-      if (error instanceof AddressRefusal || error instanceof ProviderTransportError && error.isProvablyNotSent) return newMutationRetry(failure('AVAILABILITY', 'the delivery URL could not be reached'));
-      return newMutationRetry(failure('TRANSPORT', 'the receiver did not answer the event'));
+      if (error instanceof BodyTooLargeError && error.status !== undefined) {
+        response = { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() };
+      } else {
+        if (error instanceof AddressRefusal || error instanceof ProviderTransportError && error.isProvablyNotSent) return newMutationRetry(failure('AVAILABILITY', 'the delivery URL could not be reached'));
+        return newMutationRetry(failure('TRANSPORT', 'the receiver did not answer the event'));
+      }
     }
     const output: SendEventOutput = { webhookId, statusCode: response.status };
     if (response.status >= 200 && response.status < 300) return newMutationBranch('delivered', output, receipt(call, webhookId, this.client.now()));
