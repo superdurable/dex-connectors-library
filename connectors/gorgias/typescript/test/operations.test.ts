@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { SecretString, type Call } from '@superdurable/connectors-sdk';
-import { ProviderTransportError } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderTransportError } from '@superdurable/connectors-sdk/providerhttp';
 import { GorgiasClient, isBareEmail } from '../src/client.js';
 import { decodeTicket } from '../src/wire.js';
 
@@ -68,6 +68,31 @@ it('preserves Go timestamp precision and normalizes offsets', () => {
 });
 
 describe('Gorgias retry and routing parity', () => {
+  it('skips a malformed ticket while finding a matching external ID', async () => {
+    let requestCount = 0;
+    const client = new GorgiasClient({ domain: 'acme' }, { resolve: async () => credential }, { send: async () => {
+      requestCount++;
+      return response(200, { data: [{ id: 1 }, { id: 7001, status: 'open', created_datetime: '2026-10-20T09:00:00Z', external_id: 'dex-call-test' }] });
+    } });
+    const attempt = await client.createTicket().invoke(mutationCall(2), createInput);
+    expect(attempt.kind).toBe('branch');
+    if (attempt.kind === 'branch') {
+      expect(attempt.branch).toBe('created');
+      expect(attempt.value.ticket.id).toBe(7001);
+    }
+    expect(requestCount).toBe(1);
+  });
+
+  it.each([
+    ['oversized response', async () => { throw new BodyTooLargeError(200, {}); }],
+    ['reflected credential', async () => response(200, { apiKey: credential.apiKey.reveal() })],
+  ] as const)('routes a %s during public-reply ticket read to providerRejected', async (_description, send) => {
+    const client = new GorgiasClient({ domain: 'acme' }, { resolve: async () => credential }, { send });
+    const attempt = await client.addNote().invoke(mutationCall(1), { ...noteInput, isPublicReply: true });
+    expect(attempt.kind).toBe('branch');
+    if (attempt.kind === 'branch') expect(attempt.branch).toBe('providerRejected');
+  });
+
   it.each([
     ['createTicket', createInput],
     ['addNote', noteInput],

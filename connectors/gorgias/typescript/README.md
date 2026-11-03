@@ -15,8 +15,11 @@ Worker, and Flow starter with the static `gorgias-helpdesk` connection name.
 Gorgias has no idempotency key. `createTicket` and `addNote` write a stable
 external ID and checkpoint dispatch before a provider write; subsequent
 attempts read the resource back and select `uncertain` when it cannot be
-confirmed. `updateTicket` reads current values and applies only requested
-differences. Unwired optional branches fail the Flow.
+confirmed. Ticket read-back skips malformed entries in an otherwise valid
+page. A public reply reads its ticket before sending; an invalid response or
+ambiguous email route selects `providerRejected` without sending. `updateTicket`
+reads current values and applies only requested differences. Unwired optional
+branches fail the Flow.
 
 The [Gorgias setup instructions](../README.md#gorgias-setup) describe where an
 account admin finds the domain, user email, and API key. The TypeScript package

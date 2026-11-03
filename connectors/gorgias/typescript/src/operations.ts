@@ -13,9 +13,9 @@ function queryFailure<T>(client: GorgiasClient, call: Call, result: Exchange, ou
   const branch = result.outcome === 'invalid' ? 'invalidResponse' : result.outcome === 'defect' ? 'defect' : result.outcome === 'notFound' ? notFoundBranch : 'providerRejected';
   return newQueryBranch(branch, output, client.receipt(call, result, objectID), result.failure);
 }
-function mutationFailure<T>(client: GorgiasClient, call: Call, result: Exchange, output: T, notFoundBranch = 'providerRejected', objectID = 0): MutationAttempt<T> {
+function mutationFailure<T>(client: GorgiasClient, call: Call, result: Exchange, output: T, notFoundBranch = 'providerRejected', objectID = 0, invalidBranch = 'invalidResponse'): MutationAttempt<T> {
   if (['rateLimited', 'notSent', 'unavailable'].includes(result.outcome)) return newMutationRetry(result.failure!, result.retryAfterMs);
-  const branch = result.outcome === 'invalid' ? 'invalidResponse' : result.outcome === 'defect' ? 'defect' : result.outcome === 'notFound' ? notFoundBranch : 'providerRejected';
+  const branch = result.outcome === 'invalid' ? invalidBranch : result.outcome === 'defect' ? 'defect' : result.outcome === 'notFound' ? notFoundBranch : 'providerRejected';
   return newMutationBranch(branch, output, client.receipt(call, result, objectID), result.failure);
 }
 function unsentRequestAttempt<T>(client: GorgiasClient, call: Call, result: Exchange, output: T, notFoundBranch = 'providerRejected', objectID = 0): MutationAttempt<T> {
@@ -209,7 +209,12 @@ export class CreateTicketOperation implements Mutation<CreateTicketInput, Create
     if (result.outcome !== 'succeeded') return { result, receipt };
     try {
       const page = decodeList(result.response!.body);
-      for (const wire of page.data) { const ticket = decodeTicket(wire); if (ticket.externalId === call.idempotencyKey) return { result, receipt: this.client.receipt(call, result, ticket.id), ticket }; }
+      for (const wire of page.data) {
+        try {
+          const ticket = decodeTicket(wire);
+          if (ticket.externalId === call.idempotencyKey) return { result, receipt: this.client.receipt(call, result, ticket.id), ticket };
+        } catch { /* A malformed ticket does not invalidate the rest of the page. */ }
+      }
       return { result, receipt };
     } catch (error) { return { result: { outcome: 'invalid', response: result.response!, failure: gorgiasFailure('PROTOCOL', 'createTicket', `Gorgias returned an invalid ticket page: ${String(error)}`), retryAfterMs: 0 }, receipt }; }
   }
@@ -328,17 +333,20 @@ export class AddNoteOperation implements Mutation<AddNoteInput, AddNoteOutput> {
     const payload: Record<string, unknown> = { channel: 'internal-note', via: 'api', from_agent: true, public: false, sender: { email: resolved.credentials.email }, body_text: input.body, body_html: html(input.body), external_id: call.idempotencyKey };
     if (input.isPublicReply) {
       const read = await this.client.exchange(call, resolved.credentials, 'addNote', 'GET', `/tickets/${input.ticketId}`);
-      if (read.outcome !== 'succeeded') return mutationFailure(this.client, call, read, emptyAddNoteOutput, 'notFound', input.ticketId);
+      if (read.outcome !== 'succeeded') return mutationFailure(this.client, call, read, emptyAddNoteOutput, 'notFound', input.ticketId, 'providerRejected');
+      let ticketWire: Record<string, unknown>;
       try {
-        const ticketWire = objectBody(read.response!.body);
+        ticketWire = objectBody(read.response!.body);
         const ticket = decodeTicket(ticketWire);
         if (ticket.id !== input.ticketId) throw new TypeError('ticket response is for another ticket');
+      } catch (error) { return protocol(this.client, call, 'addNote', emptyAddNoteOutput, read, 'Gorgias returned an invalid ticket, so the reply could not be routed', error, true, 'providerRejected'); }
+      try {
         const route = replyRoute(ticketWire);
         payload.channel = 'email'; payload.public = true; payload.subject = route.subject;
         if (route.integrationID) payload.integration_id = route.integrationID;
         payload.receiver = { email: route.customerAddress };
         payload.source = { type: 'email', from: { address: route.supportAddress }, to: [{ address: route.customerAddress }] };
-      } catch (error) { return protocol(this.client, call, 'addNote', emptyAddNoteOutput, read, 'Gorgias could not route the reply', error, true, 'providerRejected'); }
+      } catch (error) { return newMutationBranch('providerRejected', emptyAddNoteOutput, this.client.receipt(call, read, input.ticketId), gorgiasFailure('VALIDATION', 'addNote', error instanceof Error ? error.message : 'Gorgias could not route the reply')); }
     }
     if (!await recordDispatch(call)) return newMutationRetry(gorgiasFailure('AVAILABILITY', 'addNote', 'Dex did not record the dispatch checkpoint; nothing was sent'), 0);
     const result = await this.client.exchange(call, resolved.credentials, 'addNote', 'POST', `/tickets/${input.ticketId}/messages`, undefined, payload);
