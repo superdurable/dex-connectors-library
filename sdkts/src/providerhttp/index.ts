@@ -65,7 +65,8 @@ export interface ProviderRequest {
   /** Request headers, including provider credentials when needed. */ headers?: Record<string, string>;
   /** Caller-encoded request body. */ body?: Uint8Array;
   /** Maximum response body size in bytes. */ maxResponseBytes: number;
-  /** Optional separate prefix limit for non-2xx error bodies. */ maxErrorResponseBytes?: number;
+  /** On a response limit, destroy the connection (default) or drain to EOF before rejecting. Drain requires a positive timeoutMs, positive stallTimeoutMs, or signal. */ onBodyLimit?: 'destroy' | 'drain';
+  /** Optional separate prefix limit for non-2xx error bodies; when set, its truncation takes precedence over drain. */ maxErrorResponseBytes?: number;
   /** Classify a non-2xx status even when its diagnostic body fails to read. */ ignoreErrorBodyReadFailure?: boolean;
   /** Network policy checked against all resolved addresses. */ addressPolicy: AddressPolicy;
   /** Request deadline in milliseconds. */ timeoutMs?: number;
@@ -146,6 +147,8 @@ export function readErrorTokens(body: Uint8Array, pointers: readonly string[]): 
 export async function sendProviderRequest(request: ProviderRequest): Promise<ProviderResponse> {
   if (!Number.isSafeInteger(request.maxResponseBytes) || request.maxResponseBytes < 0) throw new RangeError('response body limit must be a non-negative integer');
   if (request.maxErrorResponseBytes !== undefined && (!Number.isSafeInteger(request.maxErrorResponseBytes) || request.maxErrorResponseBytes < 0)) throw new RangeError('error body limit must be a non-negative integer');
+  if (request.onBodyLimit !== undefined && request.onBodyLimit !== 'destroy' && request.onBodyLimit !== 'drain') throw new TypeError('response body limit action is invalid');
+  if (request.onBodyLimit === 'drain' && !(request.timeoutMs && request.timeoutMs > 0) && !(request.stallTimeoutMs && request.stallTimeoutMs > 0) && !request.signal) throw new TypeError('draining requires a timeout or abort signal');
   if (request.addressPolicy !== 'publicHTTPS' && request.addressPolicy !== 'privateNetworkHTTP' && request.addressPolicy !== 'unrestricted') throw new AddressRefusal('address policy is invalid');
   let parsed: URL;
   try { parsed = new URL(request.url); } catch { throw new AddressRefusal('URL is invalid'); }
@@ -173,13 +176,16 @@ export async function sendProviderRequest(request: ProviderRequest): Promise<Pro
   return new Promise((resolve, reject) => {
     let hasConnected = false;
     let hasWrittenRequest = false;
+    let hasReceivedResponse = false;
     let clientRequest: ClientRequest;
     let responseStallTimer: ReturnType<typeof setTimeout> | undefined;
     try {
       clientRequest = (parsed.protocol === 'https:' ? https : http).request(parsed, options, (response: IncomingMessage) => {
+        hasReceivedResponse = true;
         if (responseStallTimer) clearTimeout(responseStallTimer);
         const chunks: Uint8Array[] = [];
         let size = 0;
+        let isBodyTooLarge = false;
         let stallTimer: ReturnType<typeof setTimeout> | undefined;
         const observeProgress = () => {
           if (stallTimer) clearTimeout(stallTimer);
@@ -190,6 +196,7 @@ export async function sendProviderRequest(request: ProviderRequest): Promise<Pro
           try {
             for await (const chunk of response) {
               observeProgress();
+              if (isBodyTooLarge) continue;
               const isSuccess = (response.statusCode ?? 0) >= 200 && (response.statusCode ?? 0) <= 299;
               const limit = isSuccess ? request.maxResponseBytes : request.maxErrorResponseBytes ?? request.maxResponseBytes;
               if (!isSuccess && request.maxErrorResponseBytes !== undefined && size + chunk.length > limit) {
@@ -197,6 +204,13 @@ export async function sendProviderRequest(request: ProviderRequest): Promise<Pro
                 response.destroy();
                 resolve({ status: response.statusCode ?? 0, headers: response.headers, body: Buffer.concat(chunks) });
                 return;
+              }
+              if (request.onBodyLimit === 'drain' && size + chunk.length > limit) {
+                const remainingBytes = limit - size;
+                isBodyTooLarge = true;
+                chunks.length = 0;
+                if (remainingBytes > 0) request.onResponseChunk?.(chunk.subarray(0, remainingBytes), response.statusCode ?? 0, response.headers);
+                continue;
               }
               const shouldContinue = request.onResponseChunk?.(chunk, response.statusCode ?? 0, response.headers);
               if (shouldContinue === false) {
@@ -208,10 +222,16 @@ export async function sendProviderRequest(request: ProviderRequest): Promise<Pro
               if (size > limit) throw new BodyTooLargeError(response.statusCode ?? 0, response.headers);
               chunks.push(chunk);
             }
+            if (isBodyTooLarge) {
+              reject(new BodyTooLargeError(response.statusCode ?? 0, response.headers));
+              return;
+            }
             resolve({ status: response.statusCode ?? 0, headers: response.headers, body: Buffer.concat(chunks) });
           } catch (error) {
             response.destroy();
-            if (request.ignoreErrorBodyReadFailure && ((response.statusCode ?? 0) < 200 || (response.statusCode ?? 0) >= 300)) {
+            if (isBodyTooLarge) {
+              reject(new BodyTooLargeError(response.statusCode ?? 0, response.headers));
+            } else if (request.ignoreErrorBodyReadFailure && ((response.statusCode ?? 0) < 200 || (response.statusCode ?? 0) >= 300)) {
               resolve({ status: response.statusCode ?? 0, headers: response.headers, body: Buffer.concat(chunks) });
             } else {
               reject(error instanceof BodyTooLargeError || error instanceof ProviderStalledError ? error : new ProviderTransportError(false));
@@ -225,7 +245,10 @@ export async function sendProviderRequest(request: ProviderRequest): Promise<Pro
       else socket.once(parsed.protocol === 'https:' ? 'secureConnect' : 'connect', () => { hasConnected = true; });
     });
     clientRequest.on('finish', () => { hasWrittenRequest = true; });
-    clientRequest.on('error', error => { if (responseStallTimer) clearTimeout(responseStallTimer); reject(error instanceof ProviderStalledError ? error : new ProviderTransportError(!hasConnected && !hasWrittenRequest)); });
+    clientRequest.on('error', error => {
+      if (responseStallTimer) clearTimeout(responseStallTimer);
+      if (!hasReceivedResponse) reject(error instanceof ProviderStalledError ? error : new ProviderTransportError(!hasConnected && !hasWrittenRequest));
+    });
     if (request.stallTimeoutMs && request.stallTimeoutMs > 0) responseStallTimer = setTimeout(() => clientRequest.destroy(new ProviderStalledError()), request.stallTimeoutMs);
     try { clientRequest.end(request.body); }
     catch { reject(new ProviderTransportError(!hasConnected && !hasWrittenRequest)); }
