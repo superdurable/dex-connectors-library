@@ -43,9 +43,27 @@ const credentials = (): Credentials => ({
 const state = () => ({ credentials: credentials(), now: new Date(), expiresAt: new Date(0) });
 
 describe('manifest credential refresh', () => {
-  it('refreshes schema-decoded Jira and Slack declarations with planned token-type fields', async () => {
-    // Regenerate the snapshots with schema.Decode(connector.yaml), then JSON-encode Spec.Auth.
-    // Add Jira refresh.acceptsMissingTokenType and Slack grant.acceptedTokenTypes until schema supports them.
+  it('uses the default method and follows Go scope and missing-expiry rules', async () => {
+    const configured = structuredClone(auth) as Record<string, unknown>;
+    const method = (configured.methods as Record<string, unknown>[])[0]!;
+    const refresh = ((method.oauth2 as Record<string, unknown>).refresh as Record<string, unknown>);
+    refresh.requiredScopes = ['files.read'];
+    let body: Record<string, unknown> = { access_token: 'next', expires_in: 3600, token_type: 'Bearer', scope: '\t  ' };
+    let requests = 0;
+    const driver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth: configured, credentialFields,
+      fetch: async () => { requests++; return Response.json(body); } });
+    const withoutMethod = { ...state(), credentials: { ...credentials(), authMethodId: '' } };
+    await expect(driver.refresh(withoutMethod, new AbortController().signal)).resolves.toBeDefined();
+    body = { ...body, scope: 'files.read\textra' };
+    await expect(driver.refresh(withoutMethod, new AbortController().signal)).resolves.toBeDefined();
+    body = { ...body, scope: 'files.read,extra' };
+    await expect(driver.refresh(withoutMethod, new AbortController().signal)).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+    body = { access_token: 'next', token_type: 'Bearer', scope: 'files.read' };
+    await expect(driver.refresh(withoutMethod, new AbortController().signal)).rejects.toThrow('omitted required fields');
+    expect(requests).toBe(4);
+  });
+
+  it('refreshes schema-decoded Jira and Slack declarations with declared token-type fields', async () => {
     const jiraAuth = JSON.parse(readFileSync(new URL('./fixtures/jira-auth.json', import.meta.url), 'utf8')) as Record<string, unknown>;
     const slackAuth = JSON.parse(readFileSync(new URL('./fixtures/slack-auth.json', import.meta.url), 'utf8')) as Record<string, unknown>;
     const jira = new ManifestCredentialRefreshDriver<{
@@ -202,16 +220,26 @@ describe('manifest credential refresh', () => {
     const result = await driverFor().refresh(state(), new AbortController().signal);
     expect(result.credentials.refreshToken.reveal()).toBe('rotated');
     expect(result.expiresAt.getTime()).toBeGreaterThan(Date.now() + 3_723_000);
+    refresh.missingExpiry = { lifetime: '.5h' };
+    expect((await driverFor().refresh(state(), new AbortController().signal)).expiresAt.getTime()).toBeGreaterThan(Date.now() + 29 * 60_000);
+    refresh.missingExpiry = { lifetime: '+1h' };
+    expect((await driverFor().refresh(state(), new AbortController().signal)).expiresAt.getTime()).toBeGreaterThan(Date.now() + 59 * 60_000);
+    refresh.missingExpiry = { lifetime: '0' };
+    await expect(driverFor().refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(TypeError);
     refresh.missingExpiry = { lifetime: '1fortnight' };
     await expect(driverFor().refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(TypeError);
-    expect(requests).toBe(1);
+    refresh.missingExpiry = { lifetime: '2562048h' };
+    await expect(driverFor().refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(TypeError);
+    refresh.missingExpiry = { lifetime: '-1h' };
+    await expect(driverFor().refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(TypeError);
+    expect(requests).toBe(3);
     refresh.missingExpiry = 'keep';
     refresh.grants = [
       { refreshTokenCredential: 'refresh_token', credentialMappings: [{ credential: 'access_token', source: 'access_token' }] },
       { refreshTokenCredential: 'refresh_token', credentialMappings: [{ credential: 'missing_field', source: 'access_token' }] },
     ];
     await expect(driverFor().refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(TypeError);
-    expect(requests).toBe(1);
+    expect(requests).toBe(3);
   });
 
   it('uses the declared error code matrix for HTTP 400 and OAuth error responses', async () => {
@@ -277,10 +305,10 @@ describe('manifest credential refresh', () => {
         clientIDCredential: 'client_id', clientSecretCredential: 'client_secret',
         scopes: ['chat.write'], userScopes: ['history.read'],
         refresh: { grants: [
-          { refreshTokenCredential: 'bot_refresh_token', acceptedTokenTypes: ['bot'], credentialMappings: [
+          { refreshTokenCredential: 'bot_refresh_token', acceptedTokenTypes: ['bot'], exactScopes: true, credentialMappings: [
             { credential: 'bot_token', source: 'access_token' }, { credential: 'bot_refresh_token', source: 'refresh_token' },
           ] },
-          { refreshTokenCredential: 'user_refresh_token', acceptedTokenTypes: ['user'], grantedScopes: 'userScopes', credentialMappings: [
+          { refreshTokenCredential: 'user_refresh_token', acceptedTokenTypes: ['user'], exactScopes: true, grantedScopes: 'userScopes', credentialMappings: [
             { credential: 'user_token', source: 'access_token' }, { credential: 'user_refresh_token', source: 'refresh_token' },
           ] },
         ] },
@@ -314,6 +342,11 @@ describe('manifest credential refresh', () => {
       fetch: async () => Response.json({ access_token: 'bot-new', expires_in: 3600, token_type: 'bot', scope: 'chat.write extra' }) });
     await expect(extraScopeDriver.refresh({ credentials: stored, now: new Date() }, new AbortController().signal))
       .rejects.toBeInstanceOf(ReauthorizationRequiredError);
+    const grants = (configured.oauth2.refresh.grants as Array<{ exactScopes: boolean }>);
+    grants[0]!.exactScopes = false;
+    const botOnly = { ...stored, userRefreshToken: new SecretString('') };
+    await expect(extraScopeDriver.refresh({ credentials: botOnly, now: new Date() }, new AbortController().signal))
+      .resolves.toMatchObject({ credentials: { botToken: new SecretString('bot-new') } });
   });
 
   it('never refreshes a method without a declared grant', async () => {
@@ -368,5 +401,8 @@ describe('manifest credential refresh', () => {
       fetch: async () => { throw new Error('should not send'); } });
     await expect(invalid.refresh({ credentials: { accessToken: new SecretString(''), serviceAccountKey: new SecretString(key), delegatedUser: 'user@example.test', primaryEmail: '' }, now: new Date() },
       new AbortController().signal)).rejects.toBeInstanceOf(TypeError);
+    invalidLifetime.serviceAccount.jwtBearer.lifetime = '500us';
+    await expect(invalid.refresh({ credentials: { accessToken: new SecretString(''), serviceAccountKey: new SecretString(key), delegatedUser: 'user@example.test', primaryEmail: '' }, now: new Date() },
+      new AbortController().signal)).rejects.toThrow('at least one millisecond');
   });
 });

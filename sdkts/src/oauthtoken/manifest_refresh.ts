@@ -4,7 +4,7 @@
 import { ReauthorizationRequiredError } from '../errors.js';
 import { SecretString, type CredentialRefreshDriver, type CredentialRefreshResult, type CredentialRefreshState } from '../credentials.js';
 import {
-  hasAllScopes, isRefreshRequired, parseRSAPrivateKeyPEM, signJWTBearerAssertion, TokenEndpoint,
+  hasExactScopes, isRefreshRequired, parseRSAPrivateKeyPEM, signJWTBearerAssertion, TokenEndpoint,
   type ClientAuthenticationMethod, type TokenResponse,
 } from './index.js';
 
@@ -27,7 +27,9 @@ interface Grant {
   requestScopes: unknown;
   terminalCodes: string[];
   acceptedTokenTypes: string[];
+  exactScopes: boolean;
   acceptsMissingTokenType: boolean;
+  acceptsMissingExpiresIn: boolean;
   missingExpiry: string;
   additionalParameters: Record<string, string>;
 }
@@ -47,7 +49,7 @@ export interface ManifestCredentialRefreshOptions {
  * Missing expiry keeps an existing access token. Refresh sends each active grant
  * and reports the earliest expiry. Declared sub-500 terminal errors require
  * reauthorization; other token endpoint failures remain retryable. A credential
- * with multiple methods must carry authMethodId.
+ * with multiple methods uses the declared default when authMethodId is empty.
  */
 export class ManifestCredentialRefreshDriver<C extends object> implements CredentialRefreshDriver<C> {
   readonly #providerName: string;
@@ -89,8 +91,8 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
       if (grant.refreshField && !this.#credentialValue(credentials, grant.refreshField)) continue;
       const token = await this.#exchange(grant, credentials, method, signal);
       const requiredScopes = this.#scopes(grant.scopes).filter(scope => grant.kind !== 'refresh' || scope !== 'offline_access');
-      if (grants.length > 1 ? !hasExactScopes(token.scope, requiredScopes)
-        : token.scope !== '' && !hasAllScopes(token.scope, requiredScopes)) throw new ReauthorizationRequiredError();
+      if (grant.exactScopes ? !hasExactScopes(token.scope, requiredScopes)
+        : token.scope.trim() !== '' && !hasAllWhitespaceScopes(token.scope, requiredScopes)) throw new ReauthorizationRequiredError();
       const updates: Record<string, unknown> = {};
       for (const mapping of grant.mappings) {
         const destination = manifestText(mapping.credential);
@@ -119,7 +121,6 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
     const methods = manifestList(this.#auth.methods);
     if (!methods.length) return this.#auth;
     const selected = manifestText((credentials as Record<string, unknown>).authMethodId);
-    if (!selected && methods.length > 1) throw new ReauthorizationRequiredError();
     const method = methods.map(manifestObject).find(item => item.id === (selected || manifestText(this.#auth.defaultMethod)));
     if (!method) throw new ReauthorizationRequiredError();
     return method;
@@ -140,10 +141,13 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
         encoding: manifestText(oauth.tokenRequestEncoding) || 'form', clientID: manifestText(oauth.clientIDCredential),
         clientSecret: manifestText(oauth.clientSecretCredential), refreshField: manifestText(declaration.refreshTokenCredential),
         keyCredential: '', assertion: {}, mappings: manifestList(declaration.credentialMappings).map(manifestObject), copies: [],
-        scopes: declaration.grantedScopes === 'userScopes' ? oauth.userScopes : oauth.scopes, requestScopes: [],
+        scopes: declaration.grantedScopes === 'userScopes' ? oauth.userScopes : (refresh?.requiredScopes ?? oauth.scopes), requestScopes: [],
         terminalCodes: strings(refresh?.terminalErrorCodes, ['invalid_grant']),
         acceptedTokenTypes: strings(declaration.acceptedTokenTypes ?? refresh?.acceptedTokenTypes, ['Bearer']),
-        acceptsMissingTokenType: refresh?.acceptsMissingTokenType === true,
+        exactScopes: declaration.exactScopes === true || (declaration.exactScopes === undefined && refresh?.exactScopes === true),
+        acceptsMissingTokenType: declaration.acceptsMissingTokenType === undefined
+          ? refresh?.acceptsMissingTokenType === true : declaration.acceptsMissingTokenType === true,
+        acceptsMissingExpiresIn: refresh?.missingExpiry !== undefined,
         missingExpiry: missingExpiryLifetime(refresh?.missingExpiry), additionalParameters: stringRecord(refresh?.additionalParameters),
       }));
     }
@@ -157,7 +161,9 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
         mappings: manifestList(client.credentialMappings).map(manifestObject), copies: [], scopes: client.scopes,
         requestScopes: client.scopes, terminalCodes: strings(client.terminalErrorCodes, ['invalid_client']),
         acceptedTokenTypes: strings(client.acceptedTokenTypes, ['Bearer']),
+        exactScopes: false,
         acceptsMissingTokenType: client.acceptsMissingTokenType === true,
+        acceptsMissingExpiresIn: client.missingExpiry !== undefined,
         missingExpiry: missingExpiryLifetime(client.missingExpiry), additionalParameters: stringRecord(client.additionalParameters),
       }];
     }
@@ -171,7 +177,9 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
       copies: manifestList(bearer.credentialCopies).map(manifestObject), scopes: bearer.scopes, requestScopes: [],
       terminalCodes: strings(bearer.terminalErrorCodes, ['invalid_grant']),
       acceptedTokenTypes: strings(bearer.acceptedTokenTypes, ['Bearer']),
+      exactScopes: false,
       acceptsMissingTokenType: bearer.acceptsMissingTokenType === true,
+      acceptsMissingExpiresIn: bearer.missingExpiry !== undefined,
       missingExpiry: missingExpiryLifetime(bearer.missingExpiry), additionalParameters: {},
     }];
   }
@@ -186,7 +194,7 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
       providerName: this.#providerName, url: this.#resolveSource(grant.endpoint, credentials, key),
       terminalErrorCodes: grant.terminalCodes, acceptedTokenTypes: grant.acceptedTokenTypes,
       acceptsMissingTokenType: grant.acceptsMissingTokenType,
-      acceptsMissingExpiresIn: true, usesJSONRequestBody: grant.encoding === 'json',
+      acceptsMissingExpiresIn: grant.acceptsMissingExpiresIn, usesJSONRequestBody: grant.encoding === 'json',
       additionalRequestParameters: grant.additionalParameters,
       credentialMappingPaths: grant.mappings.map(mapping => manifestText(mapping.source)), fetch: this.#fetch,
     });
@@ -243,8 +251,10 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
       if (!this.#credentialFields[manifestText(copy.credential)] || !this.#credentialFields[manifestText(copy.fromCredential)])
         throw new TypeError('manifest credential field is not mapped');
     }
-    parseDurationMs(grant.missingExpiry);
-    if (grant.kind === 'jwt_bearer') parseDurationMs(manifestText(grant.assertion.lifetime));
+    if (grant.missingExpiry && parseDurationMs(grant.missingExpiry) <= 0)
+      throw new TypeError('manifest grant duration must be positive');
+    if (grant.kind === 'jwt_bearer' && parseDurationMs(manifestText(grant.assertion.lifetime)) < 1)
+      throw new TypeError('manifest JWT assertion lifetime must be at least one millisecond');
   }
 
   #scopes(source: unknown): string[] {
@@ -287,29 +297,35 @@ function stringRecord(value: unknown): Record<string, string> {
   return Object.fromEntries(Object.entries(manifestObject(value)).filter((entry): entry is [string, string] => typeof entry[1] === 'string'));
 }
 function missingExpiryLifetime(value: unknown): string { return manifestText(manifestObject(value).lifetime); }
+function hasAllWhitespaceScopes(returnedScopes: string, requiredScopes: readonly string[]): boolean {
+  const granted = new Set(returnedScopes.trim().split(/\s+/));
+  return requiredScopes.every(scope => granted.has(scope));
+}
 function pathEscape(value: string): string {
   return encodeURIComponent(value).replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`)
     .replace(/%(?:2B|26|3D|3A|40|24)/g, escaped => ({ '%2B': '+', '%26': '&', '%3D': '=', '%3A': ':', '%40': '@', '%24': '$' })[escaped] ?? escaped);
 }
-function hasExactScopes(returnedScopes: string, requiredScopes: readonly string[]): boolean {
-  const granted = new Set(returnedScopes.split(/[\s,]+/).filter(Boolean));
-  const required = new Set(requiredScopes);
-  return granted.size === required.size && [...required].every(scope => granted.has(scope));
-}
 function parseDurationMs(value: string): number {
   if (!value) return 0;
-  const parts = value.matchAll(/(\d+(?:\.\d+)?)(ns|us|µs|μs|ms|s|m|h)/g);
-  const milliseconds: Record<string, number> = {
-    ns: 0.000001, us: 0.001, 'µs': 0.001, 'μs': 0.001,
-    ms: 1, s: 1000, m: 60_000, h: 3_600_000,
+  if (value === '0' || value === '+0' || value === '-0') return 0;
+  const sign = value[0] === '-' ? -1n : 1n;
+  const magnitude = value[0] === '+' || value[0] === '-' ? value.slice(1) : value;
+  const parts = magnitude.matchAll(/((?:\d+(?:\.\d*)?|\.\d+))(ns|us|µs|μs|ms|s|m|h)/g);
+  const nanoseconds: Record<string, bigint> = {
+    ns: 1n, us: 1_000n, 'µs': 1_000n, 'μs': 1_000n,
+    ms: 1_000_000n, s: 1_000_000_000n, m: 60_000_000_000n, h: 3_600_000_000_000n,
   };
-  let duration = 0; let position = 0;
+  let duration = 0n; let position = 0;
   for (const part of parts) {
     if (part.index !== position) throw new TypeError('manifest grant duration is invalid');
-    duration += Number(part[1]) * milliseconds[part[2]!]!;
+    const [whole, fraction = ''] = part[1]!.split('.');
+    const unit = nanoseconds[part[2]!]!;
+    duration += BigInt(whole || '0') * unit;
+    if (fraction) duration += BigInt(fraction) * unit / 10n ** BigInt(fraction.length);
     position += part[0].length;
   }
-  if (position !== value.length || duration <= 0 || !Number.isFinite(duration) || duration > Number.MAX_SAFE_INTEGER)
+  if (position !== magnitude.length || duration === 0n
+    || duration > (sign < 0n ? 9_223_372_036_854_775_808n : 9_223_372_036_854_775_807n))
     throw new TypeError('manifest grant duration is invalid');
-  return duration;
+  return Number(sign * duration) / 1_000_000;
 }

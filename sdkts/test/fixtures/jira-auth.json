@@ -6,14 +6,14 @@
       "name": "oauth_client_id",
       "goName": "OAuthClientID",
       "type": "string",
-      "description": "Non-secret OAuth 2.0 (3LO) client ID copied from https://developer.atlassian.com/console/myapps/ after selecting the app > Settings > Authentication details > Client ID; an alphanumeric value, and blank means authorization and refresh cannot start.",
+      "description": "Non-secret OAuth 2.0 (3LO) client ID copied from https://developer.atlassian.com/console/myapps/ after selecting the app \u003e Settings \u003e Authentication details \u003e Client ID; an alphanumeric value, and blank means authorization and refresh cannot start.",
       "required": true
     },
     {
       "name": "oauth_client_secret",
       "goName": "OAuthClientSecret",
       "type": "secretString",
-      "description": "Secret OAuth 2.0 (3LO) client secret copied from https://developer.atlassian.com/console/myapps/ > the app > Settings > Authentication details > Secret; store it only in this credential field, and blank means authorization and refresh cannot start.",
+      "description": "Secret OAuth 2.0 (3LO) client secret copied from https://developer.atlassian.com/console/myapps/ \u003e the app \u003e Settings \u003e Authentication details \u003e Secret; store it only in this credential field, and blank means authorization and refresh cannot start.",
       "required": true
     },
     {
@@ -34,11 +34,11 @@
   "guide": {
     "startURL": "https://developer.atlassian.com/console/myapps/",
     "steps": [
-      "Choose Create > OAuth 2.0 integration, name the app, and accept the developer terms; one app can serve every Dex connection.",
+      "Choose Create \u003e OAuth 2.0 integration, name the app, and accept the developer terms; one app can serve every Dex connection.",
       "Open Permissions, choose Add next to Jira API, then Configure, and add the classic scopes read:jira-work and write:jira-work; Dex also requests offline_access so Atlassian issues a rotating refresh token.",
       "Open Authorization, choose Configure next to OAuth 2.0 (3LO), paste the exact Redirect URI shown below into Callback URL, and choose Save changes.",
       "Open Settings and copy Client ID and Secret into the fields below; the secret is sensitive.",
-      "Choose Connect, pick the Jira site the Flows work in on the Atlassian consent screen, and choose Accept. The app stays private to its owner until Distribution > Enable sharing is on, and a refresh token unused for 90 days requires reconnecting."
+      "Choose Connect, pick the Jira site the Flows work in on the Atlassian consent screen, and choose Accept. The app stays private to its owner until Distribution \u003e Enable sharing is on, and a refresh token unused for 90 days requires reconnecting."
     ]
   },
   "oauth2": {
@@ -69,12 +69,12 @@
     "protocol": "oauth2",
     "tokenRequestEncoding": "json",
     "refresh": {
+      "acceptsMissingTokenType": true,
       "terminalErrorCodes": [
         "invalid_grant",
         "invalid_client",
         "unauthorized_client"
-      ],
-      "acceptsMissingTokenType": true
+      ]
     }
   },
   "refreshable": true
