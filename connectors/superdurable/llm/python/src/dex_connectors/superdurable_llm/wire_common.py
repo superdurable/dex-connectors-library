@@ -15,7 +15,10 @@ def object_value(value: object) -> dict[str, object]:
 
 def parse_object(body: bytes) -> dict[str, object]:
     """Decode a provider JSON object."""
-    return object_value(json.loads(body))
+    try:
+        return object_value(json.loads(body))
+    except RecursionError as error:
+        raise ValueError("provider response JSON is too deeply nested") from error
 
 
 def string_value(value: object) -> str:

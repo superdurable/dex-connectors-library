@@ -7,6 +7,7 @@ import re
 import socket
 from urllib.parse import urlsplit
 
+import anyio
 import httpx
 from dex_connectors.sdk import Call, CredentialProvider, SecretString
 from dex_connectors.sdk.providerhttp import AddressRefusal, validate_base_url
@@ -54,13 +55,13 @@ def _loopback_host(host: str) -> bool:
         return False
 
 
-def _check_loopback(host: str) -> None:
+async def _check_loopback(host: str) -> None:
     if not _loopback_host(host):
         raise AddressRefusal("provider address is not loopback")
     if host.lower() != "localhost":
         return
     try:
-        addresses = socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)
+        addresses = await anyio.getaddrinfo(host, None, type=socket.SOCK_STREAM)
     except OSError as error:
         raise AddressRefusal("provider address could not be resolved") from error
     if not addresses or any(
@@ -74,7 +75,7 @@ class _LoopbackTransport(httpx.AsyncBaseTransport):
         self._transport = httpx.AsyncHTTPTransport()
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
-        _check_loopback(str(request.url.host))
+        await _check_loopback(str(request.url.host))
         return await self._transport.handle_async_request(request)
 
     async def aclose(self) -> None:
@@ -109,6 +110,16 @@ class Client:
             base_url = validate_base_url(config.base_url.strip())
             if not urlsplit(base_url).path.endswith("/v1"):
                 raise ValueError("llm openai-compatible baseUrl must end in /v1")
+            host = urlsplit(base_url).hostname or ""
+            try:
+                address = ipaddress.ip_address(host)
+            except ValueError:
+                pass
+            else:
+                if isinstance(address, ipaddress.IPv6Address) and address.ipv4_mapped:
+                    address = address.ipv4_mapped
+                if not (address.is_loopback or address.is_global):
+                    raise ValueError("base URL host must be public or loopback")
         else:
             if config.base_url:
                 raise ValueError("llm baseUrl applies only to openai-compatible")
@@ -126,8 +137,11 @@ class Client:
         if http_client is not None and (not is_loopback or not base_url_for_test):
             raise ValueError("llm custom HTTP client requires a loopback test URL")
         self._owns_http_client = http_client is None and is_loopback
+        request_timeout_seconds = 1170 if provider == "deepseek" else 870
         self._http_client = http_client or (
-            httpx.AsyncClient(transport=_LoopbackTransport(), follow_redirects=False) if is_loopback else None
+            httpx.AsyncClient(
+                transport=_LoopbackTransport(), follow_redirects=False, timeout=request_timeout_seconds
+            ) if is_loopback else None
         )
         if provider == "openai":
             from .responses_wire_format import new_responses_wire_format
@@ -154,7 +168,7 @@ class Client:
                 wire_format=wire_format,
                 base_url=base_url,
                 connection_model=model or default_model,
-                request_timeout_seconds=1170 if provider == "deepseek" else 870,
+                request_timeout_seconds=request_timeout_seconds,
                 resolve_credential=resolve_credential,
                 max_response_bytes=config.max_response_bytes
                 or (64 << 20 if provider == "deepseek" else 8 << 20),

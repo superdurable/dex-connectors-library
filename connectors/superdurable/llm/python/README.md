@@ -23,7 +23,9 @@ three-attempt, one-hour billed-operation budget.
 For an OpenAI-compatible gateway, a public HTTPS base URL uses the SDK's
 `publicHTTPS` address policy. Only a loopback IP literal or `localhost`
 uses an unrestricted transport; `localhost` must resolve exclusively to
-loopback addresses before a credentialed request. The connector never
+loopback addresses before a credentialed request. Literal private, shared,
+link-local, and other non-public IP hosts fail at construction. Local gateway
+requests use the same 870-second exchange limit as other providers. The connector never
 rewrites the configured URL. Python's Dex JSON codec cannot preserve
 `Decimal` or raw JSON number precision; requests containing those values
 fail terminally before a provider call.
