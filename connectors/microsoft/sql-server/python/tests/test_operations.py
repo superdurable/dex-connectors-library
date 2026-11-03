@@ -931,6 +931,39 @@ def test_execute_completed_and_output_bound() -> None:
     assert not bounded_connection.committed
 
 
+def test_execute_non_output_reply_read_budget_prevents_commit() -> None:
+    class ReplyTransport:
+        def recv_into(self, buffer: bytearray, _length: int = 0) -> int:
+            buffer[:] = b"x" * len(buffer)
+            return len(buffer)
+
+    class LargeReplyCursor(FakeCursor):
+        def __init__(self) -> None:
+            super().__init__(description=(), rowcount=1)
+            self._session = SimpleNamespace(
+                process_end=lambda _marker: None,
+                done_flags=0,
+                rows_affected=1,
+                _reader=SimpleNamespace(_transport=ReplyTransport()),
+            )
+
+        def nextset(self) -> bool:
+            reply = bytearray(64 << 10)
+            self._session._reader._transport.recv_into(reply)
+            self._session._reader._transport.recv_into(reply)
+            return False
+
+    connection = FakeConnection(LargeReplyCursor())
+    result = asyncio.run(
+        client(connection, max_response_bytes=1024)
+        .execute()
+        .invoke(call("execute"), ExecuteStatementInput("UPDATE dbo.t SET x = @p1", (1,)))
+    )
+    assert result.branch == "limitExceeded"
+    assert result.failure.kind == FailureKind.RESPONSE_TOO_LARGE
+    assert not connection.committed
+
+
 def test_query_retry_and_execute_rejection_invalid_response_and_defect() -> None:
     retry_error = tds_base.DatabaseError("provider details")
     retry_error.number = 1205

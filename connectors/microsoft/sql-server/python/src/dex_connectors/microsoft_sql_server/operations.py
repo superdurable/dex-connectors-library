@@ -928,9 +928,30 @@ class ExecuteStatementOperation:
                 value = StatementExecution(len(rows), columns, rows)
             else:
                 fallback_counts = [int(cursor.rowcount)] if session is None and cursor.rowcount >= 0 else []
-                while cursor.nextset():
-                    if session is None and cursor.rowcount >= 0:
-                        fallback_counts.append(int(cursor.rowcount))
+                reader = getattr(session, "_reader", None)
+                budget_transport = None
+                if reader is not None:
+                    budget_transport = _ReadBudgetTransport(
+                        reader._transport, self.client.config.max_response_bytes + (64 << 10)
+                    )
+                    reader._transport = budget_transport
+                try:
+                    while cursor.nextset():
+                        if session is None and cursor.rowcount >= 0:
+                            fallback_counts.append(int(cursor.rowcount))
+                except _ReadBudgetExceeded:
+                    failure = Failure(
+                        FailureKind.RESPONSE_TOO_LARGE,
+                        CONNECTOR_ID,
+                        EXECUTE_OPERATION_ID,
+                        "SQL Server statement reply exceeded the read budget",
+                    )
+                    return MutationAttempt.branch_result(
+                        LIMIT_EXCEEDED, StatementExecution(), _receipt(call, connection=connection), failure
+                    )
+                finally:
+                    if budget_transport is not None:
+                        budget_transport.set_control_budget()
                 counts = done_counts if session is not None else fallback_counts
                 rows_affected = sum(counts)
                 has_count = bool(counts)

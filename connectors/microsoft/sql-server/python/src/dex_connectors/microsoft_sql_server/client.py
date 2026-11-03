@@ -268,6 +268,8 @@ class Client:
                     or not isinstance(identity[1], str)
                 ):
                     raise _InvalidResponse("SQL Server did not return a valid session identity")
+                while cursor.nextset():
+                    raise _InvalidResponse("SQL Server returned multiple session identity result sets")
                 connection._dex_receipt_metadata = {}
                 process_id, server_version = str(identity[0]), str(identity[1])
                 if process_id.isdecimal() and len(process_id) <= 20:
