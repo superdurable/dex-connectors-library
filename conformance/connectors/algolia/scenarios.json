@@ -1,0 +1,647 @@
+{
+  "connector": "algolia",
+  "scenarios": [
+    {
+      "callId": "6e8d5957-d322-44e4-b738-4e164d8d544c",
+      "exchanges": [
+        {
+          "body": "{\"nbHits\":1,\"hits\":[{\"objectID\":\"product-1\",\"name\":\"Meridian notebook\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/indexes/products/query",
+          "requestBody": {
+            "params": "hitsPerPage=2\u0026query=notebook"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "searched",
+        "failureKind": "",
+        "output": {
+          "hits": [
+            {
+              "name": "Meridian notebook",
+              "objectID": "product-1"
+            }
+          ],
+          "nbHits": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "hitsPerPage": 2,
+        "indexName": "products",
+        "query": "notebook"
+      },
+      "name": "search-success",
+      "operation": "search"
+    },
+    {
+      "callId": "9c32d8f3-cdab-41da-8d1b-6e860f6bb068",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/indexes/products/query",
+          "requestBody": {
+            "params": "hitsPerPage=2\u0026query=notebook"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "hits": [],
+          "nbHits": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "hitsPerPage": 2,
+        "indexName": "products",
+        "query": "notebook"
+      },
+      "name": "search-provider-rejected",
+      "operation": "search"
+    },
+    {
+      "callId": "0ecd728d-10b9-4424-aa4e-851577873fe6",
+      "exchanges": [
+        {
+          "body": "{\"unexpected\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/indexes/products/query",
+          "requestBody": {
+            "params": "hitsPerPage=2\u0026query=notebook"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "hits": [],
+          "nbHits": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "hitsPerPage": 2,
+        "indexName": "products",
+        "query": "notebook"
+      },
+      "name": "search-invalid-response",
+      "operation": "search"
+    },
+    {
+      "callId": "d68477ce-58c5-4ab2-a46c-b3f5df114f0d",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"slow down\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/indexes/products/query",
+          "requestBody": {
+            "params": "hitsPerPage=2\u0026query=notebook"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "hitsPerPage": 2,
+        "indexName": "products",
+        "query": "notebook"
+      },
+      "name": "search-rate-limited",
+      "operation": "search"
+    },
+    {
+      "callId": "aaa6d719-7825-425d-adcb-b8fb2aaec6af",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/indexes/products/query",
+          "requestBody": {
+            "params": "hitsPerPage=2\u0026query=notebook"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "hitsPerPage": 2,
+        "indexName": "products",
+        "query": "notebook"
+      },
+      "name": "search-server-failure",
+      "operation": "search"
+    },
+    {
+      "callId": "3e920a1e-80d0-47d4-9491-b36a7370ce17",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/indexes/products/query",
+          "requestBody": {
+            "params": "hitsPerPage=2\u0026query=notebook"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "hitsPerPage": 2,
+        "indexName": "products",
+        "query": "notebook"
+      },
+      "name": "search-transport-failure",
+      "operation": "search"
+    },
+    {
+      "callId": "f59c4d06-c322-435b-a6cb-2c07b8e9a47e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "hits": [],
+          "nbHits": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "indexName": "../bad",
+        "query": "notebook"
+      },
+      "name": "search-defect",
+      "operation": "search"
+    },
+    {
+      "callId": "a6fad4c8-95fe-57b0-b367-f7a73ac96b98",
+      "exchanges": [
+        {
+          "body": "{\"objectID\":\"product-1\",\"taskID\":1514562690001}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/indexes/products/product-1",
+          "requestBody": {
+            "name": "Meridian notebook",
+            "objectID": "product-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "saved",
+        "failureKind": "",
+        "output": {
+          "objectID": "product-1",
+          "taskID": 1514562690001
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a6fad4c8-95fe-57b0-b367-f7a73ac96b98",
+      "input": {
+        "attributes": {
+          "name": "Meridian notebook"
+        },
+        "indexName": "products",
+        "objectID": "product-1"
+      },
+      "name": "saveObject-success",
+      "operation": "saveObject"
+    },
+    {
+      "callId": "a6fad4c8-95fe-57b0-b367-f7a73ac96b98",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/indexes/products/product-1",
+          "requestBody": {
+            "name": "Meridian notebook",
+            "objectID": "product-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "objectID": "",
+          "taskID": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a6fad4c8-95fe-57b0-b367-f7a73ac96b98",
+      "input": {
+        "attributes": {
+          "name": "Meridian notebook"
+        },
+        "indexName": "products",
+        "objectID": "product-1"
+      },
+      "name": "saveObject-provider-rejected",
+      "operation": "saveObject"
+    },
+    {
+      "callId": "a6fad4c8-95fe-57b0-b367-f7a73ac96b98",
+      "exchanges": [
+        {
+          "body": "{\"unexpected\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/indexes/products/product-1",
+          "requestBody": {
+            "name": "Meridian notebook",
+            "objectID": "product-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "objectID": "",
+          "taskID": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a6fad4c8-95fe-57b0-b367-f7a73ac96b98",
+      "input": {
+        "attributes": {
+          "name": "Meridian notebook"
+        },
+        "indexName": "products",
+        "objectID": "product-1"
+      },
+      "name": "saveObject-invalid-response",
+      "operation": "saveObject"
+    },
+    {
+      "callId": "a6fad4c8-95fe-57b0-b367-f7a73ac96b98",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"slow down\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/indexes/products/product-1",
+          "requestBody": {
+            "name": "Meridian notebook",
+            "objectID": "product-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "a6fad4c8-95fe-57b0-b367-f7a73ac96b98",
+      "input": {
+        "attributes": {
+          "name": "Meridian notebook"
+        },
+        "indexName": "products",
+        "objectID": "product-1"
+      },
+      "name": "saveObject-rate-limited",
+      "operation": "saveObject"
+    },
+    {
+      "callId": "a6fad4c8-95fe-57b0-b367-f7a73ac96b98",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/indexes/products/product-1",
+          "requestBody": {
+            "name": "Meridian notebook",
+            "objectID": "product-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a6fad4c8-95fe-57b0-b367-f7a73ac96b98",
+      "input": {
+        "attributes": {
+          "name": "Meridian notebook"
+        },
+        "indexName": "products",
+        "objectID": "product-1"
+      },
+      "name": "saveObject-server-failure",
+      "operation": "saveObject"
+    },
+    {
+      "callId": "a6fad4c8-95fe-57b0-b367-f7a73ac96b98",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/indexes/products/product-1",
+          "requestBody": {
+            "name": "Meridian notebook",
+            "objectID": "product-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Algolia-Api-Key": [
+              "algolia-test-key"
+            ],
+            "X-Algolia-Application-Id": [
+              "TESTAPP"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a6fad4c8-95fe-57b0-b367-f7a73ac96b98",
+      "input": {
+        "attributes": {
+          "name": "Meridian notebook"
+        },
+        "indexName": "products",
+        "objectID": "product-1"
+      },
+      "name": "saveObject-transport-failure",
+      "operation": "saveObject"
+    },
+    {
+      "callId": "a6fad4c8-95fe-57b0-b367-f7a73ac96b98",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "objectID": "",
+          "taskID": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a6fad4c8-95fe-57b0-b367-f7a73ac96b98",
+      "input": {
+        "attributes": {
+          "objectID": "other"
+        },
+        "indexName": "products",
+        "objectID": "product-1"
+      },
+      "name": "saveObject-defect",
+      "operation": "saveObject"
+    }
+  ],
+  "schemaVersion": 1
+}

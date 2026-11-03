@@ -1,0 +1,95 @@
+# Copyright (c) 2026 Super Durable
+# SPDX-License-Identifier: MIT
+"""BambooHR operations for Dex Flows."""
+
+from ._generated.config import Config, Credentials
+from ._generated.definitions import (
+    ADD_EMPLOYEE_DEFINITION,
+    FIND_EMPLOYEE_BY_EMAIL_DEFINITION,
+    GET_EMPLOYEE_DEFINITION,
+    LIST_EMPLOYEE_CHANGES_DEFINITION,
+    LIST_TIME_OFF_REQUESTS_DEFINITION,
+    UPDATE_EMPLOYEE_DEFINITION,
+)
+from .client import Client
+from .connection import Connection, new_connection, new_connection_with_operations, new_project_connection
+from .models import (
+    AddEmployeeInput,
+    AddEmployeeOutput,
+    EmployeeChange,
+    EmployeeChangeCursor,
+    EmployeeRecord,
+    EmployeeSummary,
+    FindEmployeeByEmailInput,
+    FindEmployeeByEmailOutput,
+    GetEmployeeInput,
+    ListEmployeeChangesInput,
+    ListEmployeeChangesOutput,
+    ListTimeOffRequestsInput,
+    ListTimeOffRequestsOutput,
+    TimeOffDailyAmount,
+    TimeOffRequest,
+    UpdateEmployeeInput,
+    UpdateEmployeeOutput,
+)
+from .operations import (
+    AddEmployeeOperation,
+    FindEmployeeByEmailOperation,
+    GetEmployeeOperation,
+    ListEmployeeChangesOperation,
+    ListTimeOffRequestsOperation,
+    UpdateEmployeeOperation,
+)
+from .steps import (
+    new_add_employee_step,
+    new_find_employee_by_email_step,
+    new_get_employee_step,
+    new_list_employee_changes_step,
+    new_list_time_off_requests_step,
+    new_update_employee_step,
+)
+
+__all__ = [
+    "Config",
+    "Credentials",
+    "Client",
+    "Connection",
+    "new_connection",
+    "new_connection_with_operations",
+    "new_project_connection",
+    "ADD_EMPLOYEE_DEFINITION",
+    "FIND_EMPLOYEE_BY_EMAIL_DEFINITION",
+    "GET_EMPLOYEE_DEFINITION",
+    "LIST_EMPLOYEE_CHANGES_DEFINITION",
+    "LIST_TIME_OFF_REQUESTS_DEFINITION",
+    "UPDATE_EMPLOYEE_DEFINITION",
+    "AddEmployeeInput",
+    "AddEmployeeOutput",
+    "EmployeeChange",
+    "EmployeeChangeCursor",
+    "EmployeeRecord",
+    "EmployeeSummary",
+    "FindEmployeeByEmailInput",
+    "FindEmployeeByEmailOutput",
+    "GetEmployeeInput",
+    "ListEmployeeChangesInput",
+    "ListEmployeeChangesOutput",
+    "ListTimeOffRequestsInput",
+    "ListTimeOffRequestsOutput",
+    "TimeOffDailyAmount",
+    "TimeOffRequest",
+    "UpdateEmployeeInput",
+    "UpdateEmployeeOutput",
+    "AddEmployeeOperation",
+    "FindEmployeeByEmailOperation",
+    "GetEmployeeOperation",
+    "ListEmployeeChangesOperation",
+    "ListTimeOffRequestsOperation",
+    "UpdateEmployeeOperation",
+    "new_add_employee_step",
+    "new_find_employee_by_email_step",
+    "new_get_employee_step",
+    "new_list_employee_changes_step",
+    "new_list_time_off_requests_step",
+    "new_update_employee_step",
+]

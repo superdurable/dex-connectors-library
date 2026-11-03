@@ -3,7 +3,8 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
-import type { CredentialProvider, SecretString } from '@superdurable/connectors-sdk';
+import { SecretString } from '@superdurable/connectors-sdk';
+import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
@@ -33,6 +34,31 @@ export interface Credentials {
   secretKey: SecretString;
   /** Secret whsec_ signing secret from Developers > Webhooks > select the Dex endpoint > Signing secret > Reveal; this is different from an API key. */
   webhookSecret?: SecretString;
+}
+
+/** Decode private credential fields for the selected authorization method. */
+export function decodeCredentials(value: unknown): Credentials {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  const fields = value as { [key: string]: unknown };
+  const selectedMethod = fields['auth_method'] ?? '';
+  if (typeof selectedMethod !== 'string') throw new TypeError('credential auth_method is invalid');
+  const method = selectedMethod || "api-key-with-webhook";
+  const credentials = { authMethodId: method } as Credentials;
+  if (method === "api-key-with-webhook") {
+    if (fields["secret_key"] != null && typeof fields["secret_key"] !== 'string') throw new TypeError("credential secret_key has an invalid type");
+    if (!fields["secret_key"]) throw new TypeError("credential secret_key is required");
+    if (fields["secret_key"]) credentials.secretKey = new SecretString(fields["secret_key"] as string);
+    if (fields["webhook_secret"] != null && typeof fields["webhook_secret"] !== 'string') throw new TypeError("credential webhook_secret has an invalid type");
+    if (!fields["webhook_secret"]) throw new TypeError("credential webhook_secret is required");
+    if (fields["webhook_secret"]) credentials.webhookSecret = new SecretString(fields["webhook_secret"] as string);
+  } else if (method === "api-key-only") {
+    if (fields["secret_key"] != null && typeof fields["secret_key"] !== 'string') throw new TypeError("credential secret_key has an invalid type");
+    if (!fields["secret_key"]) throw new TypeError("credential secret_key is required");
+    if (fields["secret_key"]) credentials.secretKey = new SecretString(fields["secret_key"] as string);
+  } else {
+    throw new TypeError('credential auth_method is invalid');
+  }
+  return credentials;
 }
 
 /** Host-owned source of private connector credentials. */

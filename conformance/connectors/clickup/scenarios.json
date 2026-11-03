@@ -1,0 +1,4788 @@
+{
+  "connector": "clickup",
+  "scenarios": [
+    {
+      "callId": "cd3ab98b-9313-55f0-bb8f-0375d48d1a76",
+      "exchanges": [
+        {
+          "body": "{\"tasks\":[{\"id\":\"86b2x4k7q\",\"name\":\"Escalation: Fix login [86b2x4k00]\",\"url\":\"https://app.clickup.com/t/86b2x4k7q\",\"status\":{\"status\":\"open\",\"type\":\"open\"},\"priority\":{\"id\":\"1\",\"priority\":\"urgent\"},\"date_created\":\"1767225601000\",\"date_updated\":\"1767225602000\",\"team_id\":\"9014123456\",\"list\":{\"id\":\"901410000001\",\"name\":\"Tasks\"},\"assignees\":[{\"id\":183,\"username\":\"Ada Lovelace\"}],\"tags\":[{\"name\":\"escalation\"}]}],\"last_page\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/team/9014123456/task",
+          "query": {
+            "assignees[]": [
+              "183"
+            ],
+            "date_updated_gt": [
+              "1767225600000"
+            ],
+            "include_closed": [
+              "true"
+            ],
+            "list_ids[]": [
+              "901410000001"
+            ],
+            "order_by": [
+              "updated"
+            ],
+            "page": [
+              "1"
+            ],
+            "project_ids[]": [
+              "901410000002"
+            ],
+            "reverse": [
+              "true"
+            ],
+            "space_ids[]": [
+              "901410000003"
+            ],
+            "statuses[]": [
+              "open"
+            ],
+            "subtasks": [
+              "true"
+            ],
+            "tags[]": [
+              "escalation"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "searched",
+        "failureKind": "",
+        "output": {
+          "page": 1,
+          "tasks": [
+            {
+              "assignees": [
+                {
+                  "id": 183,
+                  "username": "Ada Lovelace"
+                }
+              ],
+              "createdAt": "2026-01-01T00:00:01Z",
+              "id": "86b2x4k7q",
+              "listId": "901410000001",
+              "listName": "Tasks",
+              "name": "Escalation: Fix login [86b2x4k00]",
+              "priority": 1,
+              "priorityName": "urgent",
+              "status": {
+                "name": "open",
+                "type": "open"
+              },
+              "tags": [
+                "escalation"
+              ],
+              "updatedAt": "2026-01-01T00:00:02Z",
+              "url": "https://app.clickup.com/t/86b2x4k7q",
+              "workspaceId": "9014123456"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "areSubtasksIncluded": true,
+        "assigneeIds": [
+          183
+        ],
+        "folderIds": [
+          "901410000002"
+        ],
+        "isClosedIncluded": true,
+        "isReverse": true,
+        "listIds": [
+          "901410000001"
+        ],
+        "orderBy": "updated",
+        "page": 1,
+        "spaceIds": [
+          "901410000003"
+        ],
+        "statuses": [
+          "open"
+        ],
+        "tags": [
+          "escalation"
+        ],
+        "updatedAfter": "2026-01-01T00:00:00Z",
+        "workspaceId": "9014123456"
+      },
+      "name": "searchTasks-happy",
+      "operation": "searchTasks"
+    },
+    {
+      "callId": "e15190c3-ff16-55f2-9753-e0e9fc931d2f",
+      "exchanges": [
+        {
+          "body": "{\"ECODE\":\"ITEM_013\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/team/9014123456/task",
+          "query": {
+            "assignees[]": [
+              "183"
+            ],
+            "date_updated_gt": [
+              "1767225600000"
+            ],
+            "include_closed": [
+              "true"
+            ],
+            "list_ids[]": [
+              "901410000001"
+            ],
+            "order_by": [
+              "updated"
+            ],
+            "page": [
+              "1"
+            ],
+            "project_ids[]": [
+              "901410000002"
+            ],
+            "reverse": [
+              "true"
+            ],
+            "space_ids[]": [
+              "901410000003"
+            ],
+            "statuses[]": [
+              "open"
+            ],
+            "subtasks": [
+              "true"
+            ],
+            "tags[]": [
+              "escalation"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "page": 1,
+          "tasks": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "areSubtasksIncluded": true,
+        "assigneeIds": [
+          183
+        ],
+        "folderIds": [
+          "901410000002"
+        ],
+        "isClosedIncluded": true,
+        "isReverse": true,
+        "listIds": [
+          "901410000001"
+        ],
+        "orderBy": "updated",
+        "page": 1,
+        "spaceIds": [
+          "901410000003"
+        ],
+        "statuses": [
+          "open"
+        ],
+        "tags": [
+          "escalation"
+        ],
+        "updatedAfter": "2026-01-01T00:00:00Z",
+        "workspaceId": "9014123456"
+      },
+      "name": "searchTasks-not-found",
+      "operation": "searchTasks"
+    },
+    {
+      "callId": "5623b108-bce8-586e-a3b0-5ea275e9b7e5",
+      "exchanges": [
+        {
+          "body": "{\"ECODE\":\"INPUT_005\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/team/9014123456/task",
+          "query": {
+            "assignees[]": [
+              "183"
+            ],
+            "date_updated_gt": [
+              "1767225600000"
+            ],
+            "include_closed": [
+              "true"
+            ],
+            "list_ids[]": [
+              "901410000001"
+            ],
+            "order_by": [
+              "updated"
+            ],
+            "page": [
+              "1"
+            ],
+            "project_ids[]": [
+              "901410000002"
+            ],
+            "reverse": [
+              "true"
+            ],
+            "space_ids[]": [
+              "901410000003"
+            ],
+            "statuses[]": [
+              "open"
+            ],
+            "subtasks": [
+              "true"
+            ],
+            "tags[]": [
+              "escalation"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "page": 1,
+          "tasks": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "areSubtasksIncluded": true,
+        "assigneeIds": [
+          183
+        ],
+        "folderIds": [
+          "901410000002"
+        ],
+        "isClosedIncluded": true,
+        "isReverse": true,
+        "listIds": [
+          "901410000001"
+        ],
+        "orderBy": "updated",
+        "page": 1,
+        "spaceIds": [
+          "901410000003"
+        ],
+        "statuses": [
+          "open"
+        ],
+        "tags": [
+          "escalation"
+        ],
+        "updatedAfter": "2026-01-01T00:00:00Z",
+        "workspaceId": "9014123456"
+      },
+      "name": "searchTasks-rejected",
+      "operation": "searchTasks"
+    },
+    {
+      "callId": "92def3b5-6d96-59ce-930c-acee75a612f5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/team/9014123456/task",
+          "query": {
+            "assignees[]": [
+              "183"
+            ],
+            "date_updated_gt": [
+              "1767225600000"
+            ],
+            "include_closed": [
+              "true"
+            ],
+            "list_ids[]": [
+              "901410000001"
+            ],
+            "order_by": [
+              "updated"
+            ],
+            "page": [
+              "1"
+            ],
+            "project_ids[]": [
+              "901410000002"
+            ],
+            "reverse": [
+              "true"
+            ],
+            "space_ids[]": [
+              "901410000003"
+            ],
+            "statuses[]": [
+              "open"
+            ],
+            "subtasks": [
+              "true"
+            ],
+            "tags[]": [
+              "escalation"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "page": 1,
+          "tasks": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "areSubtasksIncluded": true,
+        "assigneeIds": [
+          183
+        ],
+        "folderIds": [
+          "901410000002"
+        ],
+        "isClosedIncluded": true,
+        "isReverse": true,
+        "listIds": [
+          "901410000001"
+        ],
+        "orderBy": "updated",
+        "page": 1,
+        "spaceIds": [
+          "901410000003"
+        ],
+        "statuses": [
+          "open"
+        ],
+        "tags": [
+          "escalation"
+        ],
+        "updatedAfter": "2026-01-01T00:00:00Z",
+        "workspaceId": "9014123456"
+      },
+      "name": "searchTasks-invalid",
+      "operation": "searchTasks"
+    },
+    {
+      "callId": "5a0bf185-644f-54c4-9232-32d25d21bae5",
+      "exchanges": [
+        {
+          "body": "{\"ECODE\":\"RATE_001\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/team/9014123456/task",
+          "query": {
+            "assignees[]": [
+              "183"
+            ],
+            "date_updated_gt": [
+              "1767225600000"
+            ],
+            "include_closed": [
+              "true"
+            ],
+            "list_ids[]": [
+              "901410000001"
+            ],
+            "order_by": [
+              "updated"
+            ],
+            "page": [
+              "1"
+            ],
+            "project_ids[]": [
+              "901410000002"
+            ],
+            "reverse": [
+              "true"
+            ],
+            "space_ids[]": [
+              "901410000003"
+            ],
+            "statuses[]": [
+              "open"
+            ],
+            "subtasks": [
+              "true"
+            ],
+            "tags[]": [
+              "escalation"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "areSubtasksIncluded": true,
+        "assigneeIds": [
+          183
+        ],
+        "folderIds": [
+          "901410000002"
+        ],
+        "isClosedIncluded": true,
+        "isReverse": true,
+        "listIds": [
+          "901410000001"
+        ],
+        "orderBy": "updated",
+        "page": 1,
+        "spaceIds": [
+          "901410000003"
+        ],
+        "statuses": [
+          "open"
+        ],
+        "tags": [
+          "escalation"
+        ],
+        "updatedAfter": "2026-01-01T00:00:00Z",
+        "workspaceId": "9014123456"
+      },
+      "name": "searchTasks-rate-limit",
+      "operation": "searchTasks"
+    },
+    {
+      "callId": "f21af6b0-8cfa-5b47-92c9-3e11edcbb73f",
+      "exchanges": [
+        {
+          "body": "{\"ECODE\":\"SERVER_001\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/team/9014123456/task",
+          "query": {
+            "assignees[]": [
+              "183"
+            ],
+            "date_updated_gt": [
+              "1767225600000"
+            ],
+            "include_closed": [
+              "true"
+            ],
+            "list_ids[]": [
+              "901410000001"
+            ],
+            "order_by": [
+              "updated"
+            ],
+            "page": [
+              "1"
+            ],
+            "project_ids[]": [
+              "901410000002"
+            ],
+            "reverse": [
+              "true"
+            ],
+            "space_ids[]": [
+              "901410000003"
+            ],
+            "statuses[]": [
+              "open"
+            ],
+            "subtasks": [
+              "true"
+            ],
+            "tags[]": [
+              "escalation"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "areSubtasksIncluded": true,
+        "assigneeIds": [
+          183
+        ],
+        "folderIds": [
+          "901410000002"
+        ],
+        "isClosedIncluded": true,
+        "isReverse": true,
+        "listIds": [
+          "901410000001"
+        ],
+        "orderBy": "updated",
+        "page": 1,
+        "spaceIds": [
+          "901410000003"
+        ],
+        "statuses": [
+          "open"
+        ],
+        "tags": [
+          "escalation"
+        ],
+        "updatedAfter": "2026-01-01T00:00:00Z",
+        "workspaceId": "9014123456"
+      },
+      "name": "searchTasks-server-error",
+      "operation": "searchTasks"
+    },
+    {
+      "callId": "c45f4452-c11b-50e4-9322-02a8cd1d34c6",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/team/9014123456/task",
+          "query": {
+            "assignees[]": [
+              "183"
+            ],
+            "date_updated_gt": [
+              "1767225600000"
+            ],
+            "include_closed": [
+              "true"
+            ],
+            "list_ids[]": [
+              "901410000001"
+            ],
+            "order_by": [
+              "updated"
+            ],
+            "page": [
+              "1"
+            ],
+            "project_ids[]": [
+              "901410000002"
+            ],
+            "reverse": [
+              "true"
+            ],
+            "space_ids[]": [
+              "901410000003"
+            ],
+            "statuses[]": [
+              "open"
+            ],
+            "subtasks": [
+              "true"
+            ],
+            "tags[]": [
+              "escalation"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "areSubtasksIncluded": true,
+        "assigneeIds": [
+          183
+        ],
+        "folderIds": [
+          "901410000002"
+        ],
+        "isClosedIncluded": true,
+        "isReverse": true,
+        "listIds": [
+          "901410000001"
+        ],
+        "orderBy": "updated",
+        "page": 1,
+        "spaceIds": [
+          "901410000003"
+        ],
+        "statuses": [
+          "open"
+        ],
+        "tags": [
+          "escalation"
+        ],
+        "updatedAfter": "2026-01-01T00:00:00Z",
+        "workspaceId": "9014123456"
+      },
+      "name": "searchTasks-transport",
+      "operation": "searchTasks"
+    },
+    {
+      "callId": "dc94943b-7ce2-5d42-849a-7f32f9302836",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"86b2x4k7q\",\"name\":\"Escalation: Fix login [86b2x4k00]\",\"url\":\"https://app.clickup.com/t/86b2x4k7q\",\"status\":{\"status\":\"open\",\"type\":\"open\"},\"priority\":{\"id\":\"1\",\"priority\":\"urgent\"},\"date_created\":\"1767225601000\",\"date_updated\":\"1767225602000\",\"team_id\":\"9014123456\",\"list\":{\"id\":\"901410000001\",\"name\":\"Tasks\"},\"assignees\":[{\"id\":183,\"username\":\"Ada Lovelace\"}],\"tags\":[{\"name\":\"escalation\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/task/86b2x4k7q",
+          "query": {
+            "custom_task_ids": [
+              "true"
+            ],
+            "include_markdown_description": [
+              "true"
+            ],
+            "team_id": [
+              "9014123456"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "assignees": [
+            {
+              "id": 183,
+              "username": "Ada Lovelace"
+            }
+          ],
+          "createdAt": "2026-01-01T00:00:01Z",
+          "id": "86b2x4k7q",
+          "listId": "901410000001",
+          "listName": "Tasks",
+          "name": "Escalation: Fix login [86b2x4k00]",
+          "priority": 1,
+          "priorityName": "urgent",
+          "status": {
+            "name": "open",
+            "type": "open"
+          },
+          "tags": [
+            "escalation"
+          ],
+          "updatedAt": "2026-01-01T00:00:02Z",
+          "url": "https://app.clickup.com/t/86b2x4k7q",
+          "workspaceId": "9014123456"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "isCustomTaskId": true,
+        "taskId": "86b2x4k7q",
+        "workspaceId": "9014123456"
+      },
+      "name": "getTask-happy",
+      "operation": "getTask"
+    },
+    {
+      "callId": "350bbcd2-e30a-5af1-ae13-f3784a8665f3",
+      "exchanges": [
+        {
+          "body": "{\"ECODE\":\"ITEM_013\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/task/86b2x4k7q",
+          "query": {
+            "custom_task_ids": [
+              "true"
+            ],
+            "include_markdown_description": [
+              "true"
+            ],
+            "team_id": [
+              "9014123456"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "assignees": [],
+          "id": "",
+          "name": "",
+          "status": {
+            "name": ""
+          },
+          "tags": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "isCustomTaskId": true,
+        "taskId": "86b2x4k7q",
+        "workspaceId": "9014123456"
+      },
+      "name": "getTask-not-found",
+      "operation": "getTask"
+    },
+    {
+      "callId": "59248945-5a42-50d6-9d86-1af80cc72544",
+      "exchanges": [
+        {
+          "body": "{\"ECODE\":\"INPUT_005\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/task/86b2x4k7q",
+          "query": {
+            "custom_task_ids": [
+              "true"
+            ],
+            "include_markdown_description": [
+              "true"
+            ],
+            "team_id": [
+              "9014123456"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "assignees": [],
+          "id": "",
+          "name": "",
+          "status": {
+            "name": ""
+          },
+          "tags": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "isCustomTaskId": true,
+        "taskId": "86b2x4k7q",
+        "workspaceId": "9014123456"
+      },
+      "name": "getTask-rejected",
+      "operation": "getTask"
+    },
+    {
+      "callId": "3ae8b83d-c0b3-5fd0-8f7e-8469ac8d7848",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/task/86b2x4k7q",
+          "query": {
+            "custom_task_ids": [
+              "true"
+            ],
+            "include_markdown_description": [
+              "true"
+            ],
+            "team_id": [
+              "9014123456"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "assignees": [],
+          "id": "",
+          "name": "",
+          "status": {
+            "name": ""
+          },
+          "tags": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "isCustomTaskId": true,
+        "taskId": "86b2x4k7q",
+        "workspaceId": "9014123456"
+      },
+      "name": "getTask-invalid",
+      "operation": "getTask"
+    },
+    {
+      "callId": "205f9e4a-279a-58c7-9fe7-924407e0872a",
+      "exchanges": [
+        {
+          "body": "{\"ECODE\":\"RATE_001\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/task/86b2x4k7q",
+          "query": {
+            "custom_task_ids": [
+              "true"
+            ],
+            "include_markdown_description": [
+              "true"
+            ],
+            "team_id": [
+              "9014123456"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "isCustomTaskId": true,
+        "taskId": "86b2x4k7q",
+        "workspaceId": "9014123456"
+      },
+      "name": "getTask-rate-limit",
+      "operation": "getTask"
+    },
+    {
+      "callId": "a0c55c44-88fe-588a-97ce-558f77fbac19",
+      "exchanges": [
+        {
+          "body": "{\"ECODE\":\"SERVER_001\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/task/86b2x4k7q",
+          "query": {
+            "custom_task_ids": [
+              "true"
+            ],
+            "include_markdown_description": [
+              "true"
+            ],
+            "team_id": [
+              "9014123456"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "isCustomTaskId": true,
+        "taskId": "86b2x4k7q",
+        "workspaceId": "9014123456"
+      },
+      "name": "getTask-server-error",
+      "operation": "getTask"
+    },
+    {
+      "callId": "fcb14428-b281-5ee5-8968-6a50175186c1",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/task/86b2x4k7q",
+          "query": {
+            "custom_task_ids": [
+              "true"
+            ],
+            "include_markdown_description": [
+              "true"
+            ],
+            "team_id": [
+              "9014123456"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "isCustomTaskId": true,
+        "taskId": "86b2x4k7q",
+        "workspaceId": "9014123456"
+      },
+      "name": "getTask-transport",
+      "operation": "getTask"
+    },
+    {
+      "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"86b2x4k7q\",\"name\":\"Escalation: Fix login [86b2x4k00]\",\"url\":\"https://app.clickup.com/t/86b2x4k7q\",\"status\":{\"status\":\"open\",\"type\":\"open\"},\"priority\":{\"id\":\"1\",\"priority\":\"urgent\"},\"date_created\":\"1767225601000\",\"date_updated\":\"1767225602000\",\"team_id\":\"9014123456\",\"list\":{\"id\":\"901410000001\",\"name\":\"Tasks\"},\"assignees\":[{\"id\":183,\"username\":\"Ada Lovelace\"}],\"tags\":[{\"name\":\"escalation\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/list/901410000001/task",
+          "requestBody": {
+            "assignees": [
+              183
+            ],
+            "custom_fields": [
+              {
+                "id": "d2ab17e0-41d3-4d28-bdbb-f3f0f2c62f8b",
+                "value": "blue"
+              }
+            ],
+            "due_date": 1767484800000,
+            "due_date_time": true,
+            "markdown_content": "Blocked task: **Fix login**",
+            "name": "Escalation: Fix login [86b2x4k00]",
+            "notify_all": true,
+            "parent": "86b2x4k00",
+            "priority": 1,
+            "status": "to do",
+            "tags": [
+              "escalation"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "listId": "901410000001",
+          "name": "Escalation: Fix login [86b2x4k00]",
+          "task": {
+            "assignees": [
+              {
+                "id": 183,
+                "username": "Ada Lovelace"
+              }
+            ],
+            "createdAt": "2026-01-01T00:00:01Z",
+            "id": "86b2x4k7q",
+            "listId": "901410000001",
+            "listName": "Tasks",
+            "name": "Escalation: Fix login [86b2x4k00]",
+            "priority": 1,
+            "priorityName": "urgent",
+            "status": {
+              "name": "open",
+              "type": "open"
+            },
+            "tags": [
+              "escalation"
+            ],
+            "updatedAt": "2026-01-01T00:00:02Z",
+            "url": "https://app.clickup.com/t/86b2x4k7q",
+            "workspaceId": "9014123456"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "input": {
+        "assigneeIds": [
+          183
+        ],
+        "customFields": [
+          {
+            "id": "d2ab17e0-41d3-4d28-bdbb-f3f0f2c62f8b",
+            "value": "blue"
+          }
+        ],
+        "dueAt": "2026-01-04T00:00:00Z",
+        "isCreatorNotified": true,
+        "listId": "901410000001",
+        "markdownDescription": "Blocked task: **Fix login**",
+        "name": "Escalation: Fix login [86b2x4k00]",
+        "parentTaskId": "86b2x4k00",
+        "priority": 1,
+        "status": "to do",
+        "tags": [
+          "escalation"
+        ]
+      },
+      "name": "createTask-happy",
+      "operation": "createTask"
+    },
+    {
+      "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "exchanges": [
+        {
+          "body": "{\"ECODE\":\"ITEM_013\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/list/901410000001/task",
+          "requestBody": {
+            "assignees": [
+              183
+            ],
+            "custom_fields": [
+              {
+                "id": "d2ab17e0-41d3-4d28-bdbb-f3f0f2c62f8b",
+                "value": "blue"
+              }
+            ],
+            "due_date": 1767484800000,
+            "due_date_time": true,
+            "markdown_content": "Blocked task: **Fix login**",
+            "name": "Escalation: Fix login [86b2x4k00]",
+            "notify_all": true,
+            "parent": "86b2x4k00",
+            "priority": 1,
+            "status": "to do",
+            "tags": [
+              "escalation"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "listId": "901410000001",
+          "name": "Escalation: Fix login [86b2x4k00]",
+          "task": {
+            "assignees": [],
+            "id": "",
+            "name": "",
+            "status": {
+              "name": ""
+            },
+            "tags": []
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "input": {
+        "assigneeIds": [
+          183
+        ],
+        "customFields": [
+          {
+            "id": "d2ab17e0-41d3-4d28-bdbb-f3f0f2c62f8b",
+            "value": "blue"
+          }
+        ],
+        "dueAt": "2026-01-04T00:00:00Z",
+        "isCreatorNotified": true,
+        "listId": "901410000001",
+        "markdownDescription": "Blocked task: **Fix login**",
+        "name": "Escalation: Fix login [86b2x4k00]",
+        "parentTaskId": "86b2x4k00",
+        "priority": 1,
+        "status": "to do",
+        "tags": [
+          "escalation"
+        ]
+      },
+      "name": "createTask-not-found",
+      "operation": "createTask"
+    },
+    {
+      "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "exchanges": [
+        {
+          "body": "{\"ECODE\":\"INPUT_005\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/list/901410000001/task",
+          "requestBody": {
+            "assignees": [
+              183
+            ],
+            "custom_fields": [
+              {
+                "id": "d2ab17e0-41d3-4d28-bdbb-f3f0f2c62f8b",
+                "value": "blue"
+              }
+            ],
+            "due_date": 1767484800000,
+            "due_date_time": true,
+            "markdown_content": "Blocked task: **Fix login**",
+            "name": "Escalation: Fix login [86b2x4k00]",
+            "notify_all": true,
+            "parent": "86b2x4k00",
+            "priority": 1,
+            "status": "to do",
+            "tags": [
+              "escalation"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "listId": "901410000001",
+          "name": "Escalation: Fix login [86b2x4k00]",
+          "task": {
+            "assignees": [],
+            "id": "",
+            "name": "",
+            "status": {
+              "name": ""
+            },
+            "tags": []
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "input": {
+        "assigneeIds": [
+          183
+        ],
+        "customFields": [
+          {
+            "id": "d2ab17e0-41d3-4d28-bdbb-f3f0f2c62f8b",
+            "value": "blue"
+          }
+        ],
+        "dueAt": "2026-01-04T00:00:00Z",
+        "isCreatorNotified": true,
+        "listId": "901410000001",
+        "markdownDescription": "Blocked task: **Fix login**",
+        "name": "Escalation: Fix login [86b2x4k00]",
+        "parentTaskId": "86b2x4k00",
+        "priority": 1,
+        "status": "to do",
+        "tags": [
+          "escalation"
+        ]
+      },
+      "name": "createTask-rejected",
+      "operation": "createTask"
+    },
+    {
+      "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "exchanges": [
+        {
+          "body": "{\"ECODE\":\"RATE_001\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/list/901410000001/task",
+          "requestBody": {
+            "assignees": [
+              183
+            ],
+            "custom_fields": [
+              {
+                "id": "d2ab17e0-41d3-4d28-bdbb-f3f0f2c62f8b",
+                "value": "blue"
+              }
+            ],
+            "due_date": 1767484800000,
+            "due_date_time": true,
+            "markdown_content": "Blocked task: **Fix login**",
+            "name": "Escalation: Fix login [86b2x4k00]",
+            "notify_all": true,
+            "parent": "86b2x4k00",
+            "priority": 1,
+            "status": "to do",
+            "tags": [
+              "escalation"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "input": {
+        "assigneeIds": [
+          183
+        ],
+        "customFields": [
+          {
+            "id": "d2ab17e0-41d3-4d28-bdbb-f3f0f2c62f8b",
+            "value": "blue"
+          }
+        ],
+        "dueAt": "2026-01-04T00:00:00Z",
+        "isCreatorNotified": true,
+        "listId": "901410000001",
+        "markdownDescription": "Blocked task: **Fix login**",
+        "name": "Escalation: Fix login [86b2x4k00]",
+        "parentTaskId": "86b2x4k00",
+        "priority": 1,
+        "status": "to do",
+        "tags": [
+          "escalation"
+        ]
+      },
+      "name": "createTask-rate-limit",
+      "operation": "createTask"
+    },
+    {
+      "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "exchanges": [
+        {
+          "body": "{\"ECODE\":\"SERVER_001\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/list/901410000001/task",
+          "requestBody": {
+            "assignees": [
+              183
+            ],
+            "custom_fields": [
+              {
+                "id": "d2ab17e0-41d3-4d28-bdbb-f3f0f2c62f8b",
+                "value": "blue"
+              }
+            ],
+            "due_date": 1767484800000,
+            "due_date_time": true,
+            "markdown_content": "Blocked task: **Fix login**",
+            "name": "Escalation: Fix login [86b2x4k00]",
+            "notify_all": true,
+            "parent": "86b2x4k00",
+            "priority": 1,
+            "status": "to do",
+            "tags": [
+              "escalation"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "input": {
+        "assigneeIds": [
+          183
+        ],
+        "customFields": [
+          {
+            "id": "d2ab17e0-41d3-4d28-bdbb-f3f0f2c62f8b",
+            "value": "blue"
+          }
+        ],
+        "dueAt": "2026-01-04T00:00:00Z",
+        "isCreatorNotified": true,
+        "listId": "901410000001",
+        "markdownDescription": "Blocked task: **Fix login**",
+        "name": "Escalation: Fix login [86b2x4k00]",
+        "parentTaskId": "86b2x4k00",
+        "priority": 1,
+        "status": "to do",
+        "tags": [
+          "escalation"
+        ]
+      },
+      "name": "createTask-server-error",
+      "operation": "createTask"
+    },
+    {
+      "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/list/901410000001/task",
+          "requestBody": {
+            "assignees": [
+              183
+            ],
+            "custom_fields": [
+              {
+                "id": "d2ab17e0-41d3-4d28-bdbb-f3f0f2c62f8b",
+                "value": "blue"
+              }
+            ],
+            "due_date": 1767484800000,
+            "due_date_time": true,
+            "markdown_content": "Blocked task: **Fix login**",
+            "name": "Escalation: Fix login [86b2x4k00]",
+            "notify_all": true,
+            "parent": "86b2x4k00",
+            "priority": 1,
+            "status": "to do",
+            "tags": [
+              "escalation"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "input": {
+        "assigneeIds": [
+          183
+        ],
+        "customFields": [
+          {
+            "id": "d2ab17e0-41d3-4d28-bdbb-f3f0f2c62f8b",
+            "value": "blue"
+          }
+        ],
+        "dueAt": "2026-01-04T00:00:00Z",
+        "isCreatorNotified": true,
+        "listId": "901410000001",
+        "markdownDescription": "Blocked task: **Fix login**",
+        "name": "Escalation: Fix login [86b2x4k00]",
+        "parentTaskId": "86b2x4k00",
+        "priority": 1,
+        "status": "to do",
+        "tags": [
+          "escalation"
+        ]
+      },
+      "name": "createTask-transport",
+      "operation": "createTask"
+    },
+    {
+      "callId": "70ff3e18-db2c-54f5-86ca-cb4cf864ea24",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"86b2x4k7q\",\"name\":\"Escalation: Fix login [86b2x4k00]\",\"url\":\"https://app.clickup.com/t/86b2x4k7q\",\"status\":{\"status\":\"open\",\"type\":\"open\"},\"priority\":{\"id\":\"1\",\"priority\":\"urgent\"},\"date_created\":\"1767225601000\",\"date_updated\":\"1767225602000\",\"team_id\":\"9014123456\",\"list\":{\"id\":\"901410000001\",\"name\":\"Tasks\"},\"assignees\":[{\"id\":183,\"username\":\"Ada Lovelace\"}],\"tags\":[{\"name\":\"escalation\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/task/86b2x4k7q",
+          "requestBody": {
+            "assignees": {
+              "add": [
+                183
+              ],
+              "rem": [
+                184
+              ]
+            },
+            "due_date": 1767484800000,
+            "due_date_time": true,
+            "markdown_content": "**updated**",
+            "name": "Updated login",
+            "priority": 2,
+            "status": "in progress"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "task": {
+            "assignees": [
+              {
+                "id": 183,
+                "username": "Ada Lovelace"
+              }
+            ],
+            "createdAt": "2026-01-01T00:00:01Z",
+            "id": "86b2x4k7q",
+            "listId": "901410000001",
+            "listName": "Tasks",
+            "name": "Escalation: Fix login [86b2x4k00]",
+            "priority": 1,
+            "priorityName": "urgent",
+            "status": {
+              "name": "open",
+              "type": "open"
+            },
+            "tags": [
+              "escalation"
+            ],
+            "updatedAt": "2026-01-01T00:00:02Z",
+            "url": "https://app.clickup.com/t/86b2x4k7q",
+            "workspaceId": "9014123456"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "70ff3e18-db2c-54f5-86ca-cb4cf864ea24",
+      "input": {
+        "addAssigneeIds": [
+          183
+        ],
+        "dueAt": "2026-01-04T00:00:00Z",
+        "markdownDescription": "**updated**",
+        "name": "Updated login",
+        "priority": 2,
+        "removeAssigneeIds": [
+          184
+        ],
+        "status": "in progress",
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTask-happy",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "70ff3e18-db2c-54f5-86ca-cb4cf864ea24",
+      "exchanges": [
+        {
+          "body": "{\"ECODE\":\"ITEM_013\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/task/86b2x4k7q",
+          "requestBody": {
+            "assignees": {
+              "add": [
+                183
+              ],
+              "rem": [
+                184
+              ]
+            },
+            "due_date": 1767484800000,
+            "due_date_time": true,
+            "markdown_content": "**updated**",
+            "name": "Updated login",
+            "priority": 2,
+            "status": "in progress"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "task": {
+            "assignees": [],
+            "id": "",
+            "name": "",
+            "status": {
+              "name": ""
+            },
+            "tags": []
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "70ff3e18-db2c-54f5-86ca-cb4cf864ea24",
+      "input": {
+        "addAssigneeIds": [
+          183
+        ],
+        "dueAt": "2026-01-04T00:00:00Z",
+        "markdownDescription": "**updated**",
+        "name": "Updated login",
+        "priority": 2,
+        "removeAssigneeIds": [
+          184
+        ],
+        "status": "in progress",
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTask-not-found",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "70ff3e18-db2c-54f5-86ca-cb4cf864ea24",
+      "exchanges": [
+        {
+          "body": "{\"ECODE\":\"INPUT_005\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/task/86b2x4k7q",
+          "requestBody": {
+            "assignees": {
+              "add": [
+                183
+              ],
+              "rem": [
+                184
+              ]
+            },
+            "due_date": 1767484800000,
+            "due_date_time": true,
+            "markdown_content": "**updated**",
+            "name": "Updated login",
+            "priority": 2,
+            "status": "in progress"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "task": {
+            "assignees": [],
+            "id": "",
+            "name": "",
+            "status": {
+              "name": ""
+            },
+            "tags": []
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "70ff3e18-db2c-54f5-86ca-cb4cf864ea24",
+      "input": {
+        "addAssigneeIds": [
+          183
+        ],
+        "dueAt": "2026-01-04T00:00:00Z",
+        "markdownDescription": "**updated**",
+        "name": "Updated login",
+        "priority": 2,
+        "removeAssigneeIds": [
+          184
+        ],
+        "status": "in progress",
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTask-rejected",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "70ff3e18-db2c-54f5-86ca-cb4cf864ea24",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/task/86b2x4k7q",
+          "requestBody": {
+            "assignees": {
+              "add": [
+                183
+              ],
+              "rem": [
+                184
+              ]
+            },
+            "due_date": 1767484800000,
+            "due_date_time": true,
+            "markdown_content": "**updated**",
+            "name": "Updated login",
+            "priority": 2,
+            "status": "in progress"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "task": {
+            "assignees": [],
+            "id": "",
+            "name": "",
+            "status": {
+              "name": ""
+            },
+            "tags": []
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "70ff3e18-db2c-54f5-86ca-cb4cf864ea24",
+      "input": {
+        "addAssigneeIds": [
+          183
+        ],
+        "dueAt": "2026-01-04T00:00:00Z",
+        "markdownDescription": "**updated**",
+        "name": "Updated login",
+        "priority": 2,
+        "removeAssigneeIds": [
+          184
+        ],
+        "status": "in progress",
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTask-invalid",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "70ff3e18-db2c-54f5-86ca-cb4cf864ea24",
+      "exchanges": [
+        {
+          "body": "{\"ECODE\":\"RATE_001\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/task/86b2x4k7q",
+          "requestBody": {
+            "assignees": {
+              "add": [
+                183
+              ],
+              "rem": [
+                184
+              ]
+            },
+            "due_date": 1767484800000,
+            "due_date_time": true,
+            "markdown_content": "**updated**",
+            "name": "Updated login",
+            "priority": 2,
+            "status": "in progress"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "70ff3e18-db2c-54f5-86ca-cb4cf864ea24",
+      "input": {
+        "addAssigneeIds": [
+          183
+        ],
+        "dueAt": "2026-01-04T00:00:00Z",
+        "markdownDescription": "**updated**",
+        "name": "Updated login",
+        "priority": 2,
+        "removeAssigneeIds": [
+          184
+        ],
+        "status": "in progress",
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTask-rate-limit",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "70ff3e18-db2c-54f5-86ca-cb4cf864ea24",
+      "exchanges": [
+        {
+          "body": "{\"ECODE\":\"SERVER_001\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/task/86b2x4k7q",
+          "requestBody": {
+            "assignees": {
+              "add": [
+                183
+              ],
+              "rem": [
+                184
+              ]
+            },
+            "due_date": 1767484800000,
+            "due_date_time": true,
+            "markdown_content": "**updated**",
+            "name": "Updated login",
+            "priority": 2,
+            "status": "in progress"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "70ff3e18-db2c-54f5-86ca-cb4cf864ea24",
+      "input": {
+        "addAssigneeIds": [
+          183
+        ],
+        "dueAt": "2026-01-04T00:00:00Z",
+        "markdownDescription": "**updated**",
+        "name": "Updated login",
+        "priority": 2,
+        "removeAssigneeIds": [
+          184
+        ],
+        "status": "in progress",
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTask-server-error",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "70ff3e18-db2c-54f5-86ca-cb4cf864ea24",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/task/86b2x4k7q",
+          "requestBody": {
+            "assignees": {
+              "add": [
+                183
+              ],
+              "rem": [
+                184
+              ]
+            },
+            "due_date": 1767484800000,
+            "due_date_time": true,
+            "markdown_content": "**updated**",
+            "name": "Updated login",
+            "priority": 2,
+            "status": "in progress"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "70ff3e18-db2c-54f5-86ca-cb4cf864ea24",
+      "input": {
+        "addAssigneeIds": [
+          183
+        ],
+        "dueAt": "2026-01-04T00:00:00Z",
+        "markdownDescription": "**updated**",
+        "name": "Updated login",
+        "priority": 2,
+        "removeAssigneeIds": [
+          184
+        ],
+        "status": "in progress",
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTask-transport",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/task/86b2x4k7q/tag/escalation",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/task/86b2x4k7q/tag/customer",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":\"86b2x4k7q\",\"name\":\"Escalation: Fix login [86b2x4k00]\",\"url\":\"https://app.clickup.com/t/86b2x4k7q\",\"status\":{\"status\":\"open\",\"type\":\"open\"},\"priority\":{\"id\":\"1\",\"priority\":\"urgent\"},\"date_created\":\"1767225601000\",\"date_updated\":\"1767225602000\",\"team_id\":\"9014123456\",\"list\":{\"id\":\"901410000001\",\"name\":\"Tasks\"},\"assignees\":[{\"id\":183,\"username\":\"Ada Lovelace\"}],\"tags\":[{\"name\":\"escalation\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/task/86b2x4k7q",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "appliedChanges": 2,
+          "tags": [
+            "escalation"
+          ],
+          "taskId": "86b2x4k7q"
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "input": {
+        "addTags": [
+          "escalation"
+        ],
+        "removeTags": [
+          "customer"
+        ],
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTaskTags-happy",
+      "operation": "updateTaskTags"
+    },
+    {
+      "callId": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "exchanges": [
+        {
+          "body": "{\"ECODE\":\"ITEM_013\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/task/86b2x4k7q/tag/escalation",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "appliedChanges": 0,
+          "tags": [],
+          "taskId": "86b2x4k7q"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "input": {
+        "addTags": [
+          "escalation"
+        ],
+        "removeTags": [
+          "customer"
+        ],
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTaskTags-not-found",
+      "operation": "updateTaskTags"
+    },
+    {
+      "callId": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "exchanges": [
+        {
+          "body": "{\"ECODE\":\"INPUT_005\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/task/86b2x4k7q/tag/escalation",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "appliedChanges": 0,
+          "tags": [],
+          "taskId": "86b2x4k7q"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "input": {
+        "addTags": [
+          "escalation"
+        ],
+        "removeTags": [
+          "customer"
+        ],
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTaskTags-rejected",
+      "operation": "updateTaskTags"
+    },
+    {
+      "callId": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/task/86b2x4k7q/tag/escalation",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/task/86b2x4k7q/tag/customer",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/task/86b2x4k7q",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "appliedChanges": 2,
+          "tags": [],
+          "taskId": "86b2x4k7q"
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "input": {
+        "addTags": [
+          "escalation"
+        ],
+        "removeTags": [
+          "customer"
+        ],
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTaskTags-invalid",
+      "operation": "updateTaskTags"
+    },
+    {
+      "callId": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "exchanges": [
+        {
+          "body": "{\"ECODE\":\"RATE_001\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/task/86b2x4k7q/tag/escalation",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "input": {
+        "addTags": [
+          "escalation"
+        ],
+        "removeTags": [
+          "customer"
+        ],
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTaskTags-rate-limit",
+      "operation": "updateTaskTags"
+    },
+    {
+      "callId": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "exchanges": [
+        {
+          "body": "{\"ECODE\":\"SERVER_001\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/task/86b2x4k7q/tag/escalation",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "input": {
+        "addTags": [
+          "escalation"
+        ],
+        "removeTags": [
+          "customer"
+        ],
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTaskTags-server-error",
+      "operation": "updateTaskTags"
+    },
+    {
+      "callId": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/task/86b2x4k7q/tag/escalation",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "input": {
+        "addTags": [
+          "escalation"
+        ],
+        "removeTags": [
+          "customer"
+        ],
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTaskTags-transport",
+      "operation": "updateTaskTags"
+    },
+    {
+      "callId": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"700001\",\"date\":\"1767225603000\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/task/86b2x4k7q/comment",
+          "requestBody": {
+            "comment_text": "Escalation task created",
+            "notify_all": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "commentId": "700001",
+          "createdAt": "2026-01-01T00:00:03Z",
+          "taskId": "86b2x4k7q"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+      "input": {
+        "isCreatorNotified": true,
+        "taskId": "86b2x4k7q",
+        "text": "Escalation task created"
+      },
+      "name": "addComment-happy",
+      "operation": "addComment"
+    },
+    {
+      "callId": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+      "exchanges": [
+        {
+          "body": "{\"ECODE\":\"ITEM_013\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/task/86b2x4k7q/comment",
+          "requestBody": {
+            "comment_text": "Escalation task created",
+            "notify_all": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "taskId": "86b2x4k7q"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+      "input": {
+        "isCreatorNotified": true,
+        "taskId": "86b2x4k7q",
+        "text": "Escalation task created"
+      },
+      "name": "addComment-not-found",
+      "operation": "addComment"
+    },
+    {
+      "callId": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+      "exchanges": [
+        {
+          "body": "{\"ECODE\":\"INPUT_005\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/task/86b2x4k7q/comment",
+          "requestBody": {
+            "comment_text": "Escalation task created",
+            "notify_all": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "taskId": "86b2x4k7q"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+      "input": {
+        "isCreatorNotified": true,
+        "taskId": "86b2x4k7q",
+        "text": "Escalation task created"
+      },
+      "name": "addComment-rejected",
+      "operation": "addComment"
+    },
+    {
+      "callId": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+      "exchanges": [
+        {
+          "body": "{\"ECODE\":\"RATE_001\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/task/86b2x4k7q/comment",
+          "requestBody": {
+            "comment_text": "Escalation task created",
+            "notify_all": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+      "input": {
+        "isCreatorNotified": true,
+        "taskId": "86b2x4k7q",
+        "text": "Escalation task created"
+      },
+      "name": "addComment-rate-limit",
+      "operation": "addComment"
+    },
+    {
+      "callId": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+      "exchanges": [
+        {
+          "body": "{\"ECODE\":\"SERVER_001\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/task/86b2x4k7q/comment",
+          "requestBody": {
+            "comment_text": "Escalation task created",
+            "notify_all": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+      "input": {
+        "isCreatorNotified": true,
+        "taskId": "86b2x4k7q",
+        "text": "Escalation task created"
+      },
+      "name": "addComment-server-error",
+      "operation": "addComment"
+    },
+    {
+      "callId": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/task/86b2x4k7q/comment",
+          "requestBody": {
+            "comment_text": "Escalation task created",
+            "notify_all": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+      "input": {
+        "isCreatorNotified": true,
+        "taskId": "86b2x4k7q",
+        "text": "Escalation task created"
+      },
+      "name": "addComment-transport",
+      "operation": "addComment"
+    },
+    {
+      "callId": "966c0026-e891-5cd3-88df-1e495225b369",
+      "exchanges": [
+        {
+          "body": "{\"teams\":[{\"id\":\"9014123456\",\"members\":[{\"user\":{\"id\":183,\"username\":\"Ada Lovelace\",\"email\":\"manager@acme.example.com\",\"role\":2}}]}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/team",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "email": "manager@acme.example.com",
+          "id": 183,
+          "role": 2,
+          "username": "Ada Lovelace",
+          "workspaceId": "9014123456"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "manager@acme.example.com",
+        "workspaceId": "9014123456"
+      },
+      "name": "findMemberByEmail-happy",
+      "operation": "findMemberByEmail"
+    },
+    {
+      "callId": "455eea2e-fdb5-587f-844d-29bec3128c4c",
+      "exchanges": [
+        {
+          "body": "{\"ECODE\":\"ITEM_013\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/team",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "email": "",
+          "id": 0,
+          "workspaceId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "manager@acme.example.com",
+        "workspaceId": "9014123456"
+      },
+      "name": "findMemberByEmail-not-found",
+      "operation": "findMemberByEmail"
+    },
+    {
+      "callId": "5d1f4fda-84ba-5c68-b1c7-d3d612cf18d8",
+      "exchanges": [
+        {
+          "body": "{\"ECODE\":\"INPUT_005\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/team",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "email": "",
+          "id": 0,
+          "workspaceId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "manager@acme.example.com",
+        "workspaceId": "9014123456"
+      },
+      "name": "findMemberByEmail-rejected",
+      "operation": "findMemberByEmail"
+    },
+    {
+      "callId": "46b92bfb-2496-5ae8-895b-316b7167eb28",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/team",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "email": "",
+          "id": 0,
+          "workspaceId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "manager@acme.example.com",
+        "workspaceId": "9014123456"
+      },
+      "name": "findMemberByEmail-invalid",
+      "operation": "findMemberByEmail"
+    },
+    {
+      "callId": "1644e3d1-4989-50d9-b7b8-b4464f3d562e",
+      "exchanges": [
+        {
+          "body": "{\"ECODE\":\"RATE_001\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/team",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "manager@acme.example.com",
+        "workspaceId": "9014123456"
+      },
+      "name": "findMemberByEmail-rate-limit",
+      "operation": "findMemberByEmail"
+    },
+    {
+      "callId": "5cfae225-5100-5cec-add8-0beac32645c4",
+      "exchanges": [
+        {
+          "body": "{\"ECODE\":\"SERVER_001\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/team",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "manager@acme.example.com",
+        "workspaceId": "9014123456"
+      },
+      "name": "findMemberByEmail-server-error",
+      "operation": "findMemberByEmail"
+    },
+    {
+      "callId": "8e02b5c2-1ca1-5e18-ab67-5668bccf14f2",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/team",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "manager@acme.example.com",
+        "workspaceId": "9014123456"
+      },
+      "name": "findMemberByEmail-transport",
+      "operation": "findMemberByEmail"
+    },
+    {
+      "attempts": 2,
+      "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/list/901410000001/task",
+          "requestBody": {
+            "assignees": [
+              183
+            ],
+            "custom_fields": [
+              {
+                "id": "d2ab17e0-41d3-4d28-bdbb-f3f0f2c62f8b",
+                "value": "blue"
+              }
+            ],
+            "due_date": 1767484800000,
+            "due_date_time": true,
+            "markdown_content": "Blocked task: **Fix login**",
+            "name": "Escalation: Fix login [86b2x4k00]",
+            "notify_all": true,
+            "parent": "86b2x4k00",
+            "priority": 1,
+            "status": "to do",
+            "tags": [
+              "escalation"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "body": "{\"tasks\":[],\"last_page\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/list/901410000001/task",
+          "query": {
+            "date_created_gt": [
+              "1767225300000"
+            ],
+            "include_closed": [
+              "true"
+            ],
+            "page": [
+              "0"
+            ],
+            "subtasks": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "listId": "901410000001",
+          "name": "Escalation: Fix login [86b2x4k00]",
+          "task": {
+            "assignees": [],
+            "id": "",
+            "name": "",
+            "status": {
+              "name": ""
+            },
+            "tags": []
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "input": {
+        "assigneeIds": [
+          183
+        ],
+        "customFields": [
+          {
+            "id": "d2ab17e0-41d3-4d28-bdbb-f3f0f2c62f8b",
+            "value": "blue"
+          }
+        ],
+        "dueAt": "2026-01-04T00:00:00Z",
+        "isCreatorNotified": true,
+        "listId": "901410000001",
+        "markdownDescription": "Blocked task: **Fix login**",
+        "name": "Escalation: Fix login [86b2x4k00]",
+        "parentTaskId": "86b2x4k00",
+        "priority": 1,
+        "status": "to do",
+        "tags": [
+          "escalation"
+        ]
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createTask-uncertain",
+      "operation": "createTask"
+    },
+    {
+      "attempts": 2,
+      "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/list/901410000001/task",
+          "requestBody": {
+            "assignees": [
+              183
+            ],
+            "custom_fields": [
+              {
+                "id": "d2ab17e0-41d3-4d28-bdbb-f3f0f2c62f8b",
+                "value": "blue"
+              }
+            ],
+            "due_date": 1767484800000,
+            "due_date_time": true,
+            "markdown_content": "Blocked task: **Fix login**",
+            "name": "Escalation: Fix login [86b2x4k00]",
+            "notify_all": true,
+            "parent": "86b2x4k00",
+            "priority": 1,
+            "status": "to do",
+            "tags": [
+              "escalation"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "body": "{\"tasks\":[{\"id\":\"86b2x4k7q\",\"name\":\"Escalation: Fix login [86b2x4k00]\",\"url\":\"https://app.clickup.com/t/86b2x4k7q\",\"status\":{\"status\":\"open\",\"type\":\"open\"},\"priority\":{\"id\":\"1\",\"priority\":\"urgent\"},\"date_created\":\"1767225601000\",\"date_updated\":\"1767225602000\",\"team_id\":\"9014123456\",\"list\":{\"id\":\"901410000001\",\"name\":\"Tasks\"},\"assignees\":[{\"id\":183,\"username\":\"Ada Lovelace\"}],\"tags\":[{\"name\":\"escalation\"}]}],\"last_page\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/list/901410000001/task",
+          "query": {
+            "date_created_gt": [
+              "1767225300000"
+            ],
+            "include_closed": [
+              "true"
+            ],
+            "page": [
+              "0"
+            ],
+            "subtasks": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "listId": "901410000001",
+          "name": "Escalation: Fix login [86b2x4k00]",
+          "task": {
+            "assignees": [],
+            "id": "",
+            "name": "",
+            "status": {
+              "name": ""
+            },
+            "tags": []
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "input": {
+        "assigneeIds": [
+          183
+        ],
+        "customFields": [
+          {
+            "id": "d2ab17e0-41d3-4d28-bdbb-f3f0f2c62f8b",
+            "value": "blue"
+          }
+        ],
+        "dueAt": "2026-01-04T00:00:00Z",
+        "isCreatorNotified": true,
+        "listId": "901410000001",
+        "markdownDescription": "Blocked task: **Fix login**",
+        "name": "Escalation: Fix login [86b2x4k00]",
+        "parentTaskId": "86b2x4k00",
+        "priority": 1,
+        "status": "to do",
+        "tags": [
+          "escalation"
+        ]
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createTask-reconciled",
+      "operation": "createTask"
+    },
+    {
+      "attempts": 2,
+      "callId": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/task/86b2x4k7q/comment",
+          "requestBody": {
+            "comment_text": "Escalation task created",
+            "notify_all": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "body": "{\"comments\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/task/86b2x4k7q/comment",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "taskId": "86b2x4k7q"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+      "input": {
+        "isCreatorNotified": true,
+        "taskId": "86b2x4k7q",
+        "text": "Escalation task created"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "addComment-uncertain",
+      "operation": "addComment"
+    },
+    {
+      "attempts": 2,
+      "callId": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/task/86b2x4k7q/comment",
+          "requestBody": {
+            "comment_text": "Escalation task created",
+            "notify_all": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "body": "{\"comments\":[{\"id\":\"700001\",\"comment_text\":\"Escalation task created\",\"date\":\"1767225603000\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/task/86b2x4k7q/comment",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "commentId": "700001",
+          "createdAt": "2026-01-01T00:00:03Z",
+          "taskId": "86b2x4k7q",
+          "wasAlreadyApplied": true
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+      "input": {
+        "isCreatorNotified": true,
+        "taskId": "86b2x4k7q",
+        "text": "Escalation task created"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "addComment-reconciled",
+      "operation": "addComment"
+    },
+    {
+      "callId": "4c20bc7e-4e00-5f12-af53-c6578242db5a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "page": 1,
+          "tasks": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "areSubtasksIncluded": true,
+        "assigneeIds": [
+          183
+        ],
+        "folderIds": [
+          "901410000002"
+        ],
+        "isClosedIncluded": true,
+        "isReverse": true,
+        "listIds": [
+          "901410000001"
+        ],
+        "orderBy": "updated",
+        "page": 1,
+        "spaceIds": [
+          "901410000003"
+        ],
+        "statuses": [
+          "open"
+        ],
+        "tags": [
+          "escalation"
+        ],
+        "updatedAfter": "2026-01-01T00:00:00Z",
+        "workspaceId": "invalid"
+      },
+      "name": "searchTasks-defect",
+      "operation": "searchTasks"
+    },
+    {
+      "callId": "20a503c5-48e4-516e-b6da-c941cb836ca4",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "assignees": [],
+          "id": "",
+          "name": "",
+          "status": {
+            "name": ""
+          },
+          "tags": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "isCustomTaskId": true,
+        "taskId": "!",
+        "workspaceId": "9014123456"
+      },
+      "name": "getTask-defect",
+      "operation": "getTask"
+    },
+    {
+      "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "listId": "invalid",
+          "name": "Escalation: Fix login [86b2x4k00]",
+          "task": {
+            "assignees": [],
+            "id": "",
+            "name": "",
+            "status": {
+              "name": ""
+            },
+            "tags": []
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "input": {
+        "assigneeIds": [
+          183
+        ],
+        "customFields": [
+          {
+            "id": "d2ab17e0-41d3-4d28-bdbb-f3f0f2c62f8b",
+            "value": "blue"
+          }
+        ],
+        "dueAt": "2026-01-04T00:00:00Z",
+        "isCreatorNotified": true,
+        "listId": "invalid",
+        "markdownDescription": "Blocked task: **Fix login**",
+        "name": "Escalation: Fix login [86b2x4k00]",
+        "parentTaskId": "86b2x4k00",
+        "priority": 1,
+        "status": "to do",
+        "tags": [
+          "escalation"
+        ]
+      },
+      "name": "createTask-defect",
+      "operation": "createTask"
+    },
+    {
+      "callId": "70ff3e18-db2c-54f5-86ca-cb4cf864ea24",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "task": {
+            "assignees": [],
+            "id": "",
+            "name": "",
+            "status": {
+              "name": ""
+            },
+            "tags": []
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "70ff3e18-db2c-54f5-86ca-cb4cf864ea24",
+      "input": {
+        "addAssigneeIds": [
+          183
+        ],
+        "dueAt": "2026-01-04T00:00:00Z",
+        "markdownDescription": "**updated**",
+        "name": "Updated login",
+        "priority": 2,
+        "removeAssigneeIds": [
+          184
+        ],
+        "status": "in progress",
+        "taskId": "!"
+      },
+      "name": "updateTask-defect",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "appliedChanges": 0,
+          "tags": [],
+          "taskId": "!"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "input": {
+        "addTags": [
+          "escalation"
+        ],
+        "removeTags": [
+          "customer"
+        ],
+        "taskId": "!"
+      },
+      "name": "updateTaskTags-defect",
+      "operation": "updateTaskTags"
+    },
+    {
+      "callId": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "taskId": "!"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+      "input": {
+        "isCreatorNotified": true,
+        "taskId": "!",
+        "text": "Escalation task created"
+      },
+      "name": "addComment-defect",
+      "operation": "addComment"
+    },
+    {
+      "callId": "d3722203-3d5c-568d-9c8d-237dc77cd393",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "email": "",
+          "id": 0,
+          "workspaceId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "manager@acme.example.com",
+        "workspaceId": "invalid"
+      },
+      "name": "findMemberByEmail-defect",
+      "operation": "findMemberByEmail"
+    },
+    {
+      "callId": "d7778be3-4ccc-5375-ae4f-1a9f2faf29c8",
+      "exchanges": [
+        {
+          "body": "{\"teams\": [{\"id\": \"9014123456\", \"members\": []}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/team",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "email": "",
+          "id": 0,
+          "workspaceId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "manager@acme.example.com",
+        "workspaceId": "9014123456"
+      },
+      "name": "findMemberByEmail-no-member",
+      "operation": "findMemberByEmail"
+    },
+    {
+      "attempts": 2,
+      "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "exchanges": [
+        {
+          "body": "{\"ECODE\":\"RATE_001\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/list/901410000001/task",
+          "requestBody": {
+            "assignees": [
+              183
+            ],
+            "custom_fields": [
+              {
+                "id": "d2ab17e0-41d3-4d28-bdbb-f3f0f2c62f8b",
+                "value": "blue"
+              }
+            ],
+            "due_date": 1767484800000,
+            "due_date_time": true,
+            "markdown_content": "Blocked task: **Fix login**",
+            "name": "Escalation: Fix login [86b2x4k00]",
+            "notify_all": true,
+            "parent": "86b2x4k00",
+            "priority": 1,
+            "status": "to do",
+            "tags": [
+              "escalation"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        },
+        {
+          "body": "{\"id\":\"86b2x4k7q\",\"name\":\"Escalation: Fix login [86b2x4k00]\",\"url\":\"https://app.clickup.com/t/86b2x4k7q\",\"status\":{\"status\":\"open\",\"type\":\"open\"},\"priority\":{\"id\":\"1\",\"priority\":\"urgent\"},\"date_created\":\"1767225601000\",\"date_updated\":\"1767225602000\",\"team_id\":\"9014123456\",\"list\":{\"id\":\"901410000001\",\"name\":\"Tasks\"},\"assignees\":[{\"id\":183,\"username\":\"Ada Lovelace\"}],\"tags\":[{\"name\":\"escalation\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/list/901410000001/task",
+          "requestBody": {
+            "assignees": [
+              183
+            ],
+            "custom_fields": [
+              {
+                "id": "d2ab17e0-41d3-4d28-bdbb-f3f0f2c62f8b",
+                "value": "blue"
+              }
+            ],
+            "due_date": 1767484800000,
+            "due_date_time": true,
+            "markdown_content": "Blocked task: **Fix login**",
+            "name": "Escalation: Fix login [86b2x4k00]",
+            "notify_all": true,
+            "parent": "86b2x4k00",
+            "priority": 1,
+            "status": "to do",
+            "tags": [
+              "escalation"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "listId": "901410000001",
+          "name": "Escalation: Fix login [86b2x4k00]",
+          "task": {
+            "assignees": [
+              {
+                "id": 183,
+                "username": "Ada Lovelace"
+              }
+            ],
+            "createdAt": "2026-01-01T00:00:01Z",
+            "id": "86b2x4k7q",
+            "listId": "901410000001",
+            "listName": "Tasks",
+            "name": "Escalation: Fix login [86b2x4k00]",
+            "priority": 1,
+            "priorityName": "urgent",
+            "status": {
+              "name": "open",
+              "type": "open"
+            },
+            "tags": [
+              "escalation"
+            ],
+            "updatedAt": "2026-01-01T00:00:02Z",
+            "url": "https://app.clickup.com/t/86b2x4k7q",
+            "workspaceId": "9014123456"
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "input": {
+        "assigneeIds": [
+          183
+        ],
+        "customFields": [
+          {
+            "id": "d2ab17e0-41d3-4d28-bdbb-f3f0f2c62f8b",
+            "value": "blue"
+          }
+        ],
+        "dueAt": "2026-01-04T00:00:00Z",
+        "isCreatorNotified": true,
+        "listId": "901410000001",
+        "markdownDescription": "Blocked task: **Fix login**",
+        "name": "Escalation: Fix login [86b2x4k00]",
+        "parentTaskId": "86b2x4k00",
+        "priority": 1,
+        "status": "to do",
+        "tags": [
+          "escalation"
+        ]
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "RATE_LIMIT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createTask-rate-limit-retry",
+      "operation": "createTask"
+    },
+    {
+      "attempts": 2,
+      "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/list/901410000001/task",
+          "requestBody": {
+            "assignees": [
+              183
+            ],
+            "custom_fields": [
+              {
+                "id": "d2ab17e0-41d3-4d28-bdbb-f3f0f2c62f8b",
+                "value": "blue"
+              }
+            ],
+            "due_date": 1767484800000,
+            "due_date_time": true,
+            "markdown_content": "Blocked task: **Fix login**",
+            "name": "Escalation: Fix login [86b2x4k00]",
+            "notify_all": true,
+            "parent": "86b2x4k00",
+            "priority": 1,
+            "status": "to do",
+            "tags": [
+              "escalation"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "body": "{\"ECODE\":\"SERVER_001\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/list/901410000001/task",
+          "query": {
+            "date_created_gt": [
+              "1767225300000"
+            ],
+            "include_closed": [
+              "true"
+            ],
+            "page": [
+              "0"
+            ],
+            "subtasks": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "input": {
+        "assigneeIds": [
+          183
+        ],
+        "customFields": [
+          {
+            "id": "d2ab17e0-41d3-4d28-bdbb-f3f0f2c62f8b",
+            "value": "blue"
+          }
+        ],
+        "dueAt": "2026-01-04T00:00:00Z",
+        "isCreatorNotified": true,
+        "listId": "901410000001",
+        "markdownDescription": "Blocked task: **Fix login**",
+        "name": "Escalation: Fix login [86b2x4k00]",
+        "parentTaskId": "86b2x4k00",
+        "priority": 1,
+        "status": "to do",
+        "tags": [
+          "escalation"
+        ]
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createTask-readback-retry",
+      "operation": "createTask"
+    },
+    {
+      "attempts": 2,
+      "callId": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+      "exchanges": [
+        {
+          "body": "{\"ECODE\":\"RATE_001\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/task/86b2x4k7q/comment",
+          "requestBody": {
+            "comment_text": "Escalation task created",
+            "notify_all": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        },
+        {
+          "body": "{\"id\":\"700001\",\"date\":\"1767225603000\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/task/86b2x4k7q/comment",
+          "requestBody": {
+            "comment_text": "Escalation task created",
+            "notify_all": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "commentId": "700001",
+          "createdAt": "2026-01-01T00:00:03Z",
+          "taskId": "86b2x4k7q"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+      "input": {
+        "isCreatorNotified": true,
+        "taskId": "86b2x4k7q",
+        "text": "Escalation task created"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "RATE_LIMIT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "addComment-rate-limit-retry",
+      "operation": "addComment"
+    },
+    {
+      "attempts": 2,
+      "callId": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/task/86b2x4k7q/comment",
+          "requestBody": {
+            "comment_text": "Escalation task created",
+            "notify_all": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "body": "{\"ECODE\":\"SERVER_001\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/task/86b2x4k7q/comment",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2eedff7-0330-5593-806e-a6e18cfd1afc",
+      "input": {
+        "isCreatorNotified": true,
+        "taskId": "86b2x4k7q",
+        "text": "Escalation task created"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "addComment-readback-retry",
+      "operation": "addComment"
+    },
+    {
+      "callId": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "appliedChanges": 0,
+          "tags": [],
+          "taskId": "86b2x4k7q"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "input": {
+        "removeTags": [
+          "."
+        ],
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTaskTags-tag-dot",
+      "operation": "updateTaskTags"
+    },
+    {
+      "callId": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "appliedChanges": 0,
+          "tags": [],
+          "taskId": "86b2x4k7q"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "input": {
+        "removeTags": [
+          ".."
+        ],
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTaskTags-tag-dot-dot",
+      "operation": "updateTaskTags"
+    },
+    {
+      "callId": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "appliedChanges": 0,
+          "tags": [],
+          "taskId": "86b2x4k7q"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "input": {
+        "removeTags": [
+          "a/b"
+        ],
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTaskTags-tag-slash",
+      "operation": "updateTaskTags"
+    },
+    {
+      "callId": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "appliedChanges": 0,
+          "tags": [],
+          "taskId": "86b2x4k7q"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "input": {
+        "removeTags": [
+          " a"
+        ],
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTaskTags-tag-leading-space",
+      "operation": "updateTaskTags"
+    },
+    {
+      "callId": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "appliedChanges": 0,
+          "tags": [],
+          "taskId": "86b2x4k7q"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "input": {
+        "removeTags": [
+          "a "
+        ],
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTaskTags-tag-trailing-space",
+      "operation": "updateTaskTags"
+    },
+    {
+      "callId": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "appliedChanges": 0,
+          "tags": [],
+          "taskId": "86b2x4k7q"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "input": {
+        "removeTags": [
+          "a\u0000b"
+        ],
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTaskTags-tag-nul",
+      "operation": "updateTaskTags"
+    },
+    {
+      "callId": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "appliedChanges": 0,
+          "tags": [],
+          "taskId": "86b2x4k7q"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "input": {
+        "removeTags": [
+          "a\rb"
+        ],
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTaskTags-tag-cr",
+      "operation": "updateTaskTags"
+    },
+    {
+      "callId": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "appliedChanges": 0,
+          "tags": [],
+          "taskId": "86b2x4k7q"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "input": {
+        "removeTags": [
+          "a\nb"
+        ],
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTaskTags-tag-lf",
+      "operation": "updateTaskTags"
+    },
+    {
+      "callId": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "appliedChanges": 0,
+          "tags": [],
+          "taskId": "86b2x4k7q"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "input": {
+        "removeTags": [
+          "a\tb"
+        ],
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTaskTags-tag-tab",
+      "operation": "updateTaskTags"
+    },
+    {
+      "callId": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "appliedChanges": 0,
+          "tags": [],
+          "taskId": "86b2x4k7q"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "input": {
+        "addTags": [
+          "same",
+          "same"
+        ],
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTaskTags-duplicate-tags",
+      "operation": "updateTaskTags"
+    },
+    {
+      "callId": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "appliedChanges": 0,
+          "tags": [],
+          "taskId": "86b2x4k7q"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dc979856-e73d-5906-ab9c-3b19c40ddc42",
+      "input": {
+        "addTags": [
+          "same"
+        ],
+        "removeTags": [
+          "same"
+        ],
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTaskTags-cross-list-duplicate",
+      "operation": "updateTaskTags"
+    },
+    {
+      "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "listId": "901410000001",
+          "name": "Task",
+          "task": {
+            "assignees": [],
+            "id": "",
+            "name": "",
+            "status": {
+              "name": ""
+            },
+            "tags": []
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "input": {
+        "assigneeIds": [
+          183,
+          183
+        ],
+        "listId": "901410000001",
+        "name": "Task"
+      },
+      "name": "createTask-duplicate-assignees",
+      "operation": "createTask"
+    },
+    {
+      "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "listId": "901410000001",
+          "name": "Task",
+          "task": {
+            "assignees": [],
+            "id": "",
+            "name": "",
+            "status": {
+              "name": ""
+            },
+            "tags": []
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "input": {
+        "customFields": [
+          {
+            "id": "field1",
+            "value": 1
+          },
+          {
+            "id": "field1",
+            "value": 2
+          }
+        ],
+        "listId": "901410000001",
+        "name": "Task"
+      },
+      "name": "createTask-duplicate-custom-fields",
+      "operation": "createTask"
+    },
+    {
+      "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "listId": "901410000001",
+          "name": "Task",
+          "task": {
+            "assignees": [],
+            "id": "",
+            "name": "",
+            "status": {
+              "name": ""
+            },
+            "tags": []
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "input": {
+        "listId": "901410000001",
+        "name": "Task",
+        "status": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "name": "createTask-long-status",
+      "operation": "createTask"
+    },
+    {
+      "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "listId": "901410000001",
+          "name": "Task",
+          "task": {
+            "assignees": [],
+            "id": "",
+            "name": "",
+            "status": {
+              "name": ""
+            },
+            "tags": []
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "input": {
+        "listId": "901410000001",
+        "name": "Task",
+        "status": " "
+      },
+      "name": "createTask-blank-status",
+      "operation": "createTask"
+    },
+    {
+      "callId": "70ff3e18-db2c-54f5-86ca-cb4cf864ea24",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "task": {
+            "assignees": [],
+            "id": "",
+            "name": "",
+            "status": {
+              "name": ""
+            },
+            "tags": []
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "70ff3e18-db2c-54f5-86ca-cb4cf864ea24",
+      "input": {
+        "status": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTask-long-status",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "70ff3e18-db2c-54f5-86ca-cb4cf864ea24",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "task": {
+            "assignees": [],
+            "id": "",
+            "name": "",
+            "status": {
+              "name": ""
+            },
+            "tags": []
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "70ff3e18-db2c-54f5-86ca-cb4cf864ea24",
+      "input": {
+        "addAssigneeIds": [
+          183,
+          183
+        ],
+        "taskId": "86b2x4k7q"
+      },
+      "name": "updateTask-duplicate-assignees",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "4c20bc7e-4e00-5f12-af53-c6578242db5a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "page": 0,
+          "tasks": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "tags": [
+          ".."
+        ],
+        "workspaceId": "9014123456"
+      },
+      "name": "searchTasks-dot-tag",
+      "operation": "searchTasks"
+    },
+    {
+      "attempts": 2,
+      "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/list/901410000001/task",
+          "requestBody": {
+            "assignees": [
+              183
+            ],
+            "custom_fields": [
+              {
+                "id": "d2ab17e0-41d3-4d28-bdbb-f3f0f2c62f8b",
+                "value": "blue"
+              }
+            ],
+            "due_date": 1767484800000,
+            "due_date_time": true,
+            "markdown_content": "Blocked task: **Fix login**",
+            "name": "Escalation: Fix login [86b2x4k00]",
+            "notify_all": true,
+            "parent": "86b2x4k00",
+            "priority": 1,
+            "status": "to do",
+            "tags": [
+              "escalation"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "body": "{\"tasks\":[{\"id\":\"86b2x4k7q\",\"name\":\"Escalation:  Fix login [86b2x4k00]\",\"url\":\"https://app.clickup.com/t/86b2x4k7q\",\"status\":{\"status\":\"open\",\"type\":\"open\"},\"priority\":{\"id\":\"1\",\"priority\":\"urgent\"},\"date_created\":\"1767225601000\",\"date_updated\":\"1767225602000\",\"team_id\":\"9014123456\",\"list\":{\"id\":\"901410000001\",\"name\":\"Tasks\"},\"assignees\":[{\"id\":183,\"username\":\"Ada Lovelace\"}],\"tags\":[{\"name\":\"escalation\"}],\"parent\":\"86b2x4k00\"}],\"last_page\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/list/901410000001/task",
+          "query": {
+            "date_created_gt": [
+              "1767225300000"
+            ],
+            "include_closed": [
+              "true"
+            ],
+            "page": [
+              "0"
+            ],
+            "subtasks": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "listId": "901410000001",
+          "name": "Escalation: Fix login [86b2x4k00]",
+          "task": {
+            "assignees": [],
+            "id": "",
+            "name": "",
+            "status": {
+              "name": ""
+            },
+            "tags": []
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "input": {
+        "assigneeIds": [
+          183
+        ],
+        "customFields": [
+          {
+            "id": "d2ab17e0-41d3-4d28-bdbb-f3f0f2c62f8b",
+            "value": "blue"
+          }
+        ],
+        "dueAt": "2026-01-04T00:00:00Z",
+        "isCreatorNotified": true,
+        "listId": "901410000001",
+        "markdownDescription": "Blocked task: **Fix login**",
+        "name": "Escalation: Fix login [86b2x4k00]",
+        "parentTaskId": "86b2x4k00",
+        "priority": 1,
+        "status": "to do",
+        "tags": [
+          "escalation"
+        ]
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createTask-whitespace-uncertain",
+      "operation": "createTask"
+    }
+  ],
+  "schemaVersion": 1
+}

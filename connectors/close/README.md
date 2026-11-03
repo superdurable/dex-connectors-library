@@ -13,6 +13,9 @@ In Dex Web Connections, create a `close` connection named `close`. Open [Setting
 The Python package is [`dex-connector-close`](python/README.md), imported as
 `dex_connectors.close`.
 
+The TypeScript package is [`@superdurable/connector-close`](typescript/README.md),
+imported with operation-specific `newListLeadsStep` and `newGetLeadStep` factories.
+
 ## Operations
 
 | Operation | Official API reference |
@@ -29,6 +32,10 @@ The generated `closemock` package includes one default Meridian answer per opera
 ## Example
 
 The runnable [example](go/examples/close-lookup/README.md) registers a Worker and a Flow using the static `close` connection. CI runs its mock-backed real-Dex integration test; local unit tests verify deterministic mapping.
+
+The [TypeScript lookup example](typescript/examples/close-lookup/README.md) lists
+leads, fetches the first lead, and verifies both provider reads through a real
+Dex Worker and Client against a local Close HTTP fixture.
 
 ## Live verification
 
