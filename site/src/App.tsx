@@ -4,8 +4,11 @@
 import { useEffect, useState } from "react";
 import { Link, Route, Routes, useLocation, useParams } from "react-router-dom";
 
+import { GitHubMarkIcon, GitHubStarIcon } from "./GitHubIcons";
 import { LanguageIcons } from "./LanguageIcons";
 import { SiteHeader } from "./SiteHeader";
+import { formatStarCount, formatStarredLinkLabel } from "./repositoryStarCount.mjs";
+import { useGitHubRepositoryStarCount } from "./useGitHubRepositoryStarCount";
 import { WhatIsDexConnectors } from "./WhatIsDexConnectors";
 import {
   catalogDocumentUrl,
@@ -20,6 +23,9 @@ import {
 } from "./catalogModel.mjs";
 
 const logoOrigin = import.meta.env.DEV ? "local" : "published";
+const connectorLibraryRepositoryUrl = "https://github.com/superdurable/dex-connectors-library";
+const connectorLibraryRepositoryApiUrl = "https://api.github.com/repos/superdurable/dex-connectors-library";
+const connectorLibraryStarCountCacheKey = "superdurable-dex-connectors-library-star-count";
 
 function formatLanguageVersions(languages: CatalogConnector["languages"]): string {
   return Object.entries(languages)
@@ -67,6 +73,7 @@ export function App() {
           </h1>
           <p className="lede">
             Open sourced and trusted connectors, take your process from prototype to production.
+            <LedeRepositoryLink />
           </p>
           <nav className="site-tabs" aria-label="Connector site">
             <Link className={`site-tab${isExplainer ? "" : " active"}`} to="/">
@@ -87,6 +94,29 @@ export function App() {
         </main>
       </div>
     </>
+  );
+}
+
+// The pill renders without a count when GitHub is unreachable or rate limited.
+function LedeRepositoryLink() {
+  const starCount = useGitHubRepositoryStarCount(connectorLibraryRepositoryApiUrl, connectorLibraryStarCountCacheKey);
+  return (
+    <a
+      className="lede-repository-link"
+      href={connectorLibraryRepositoryUrl}
+      aria-label={formatStarredLinkLabel("GitHub Repo", starCount)}
+    >
+      <span className="lede-repository-link-name">
+        <GitHubMarkIcon size={14} />
+        GitHub Repo
+      </span>
+      {starCount === null ? null : (
+        <span className="lede-repository-link-stars">
+          <GitHubStarIcon size={12} />
+          {formatStarCount(starCount)}
+        </span>
+      )}
+    </a>
   );
 }
 
@@ -239,6 +269,12 @@ function ConnectorPage({ catalog }: { catalog: LoadState<CatalogConnector[]> }) 
       </div>
       <p className="description detail-description">{connector.description}</p>
       <p className="install-command"><code>go get github.com/superdurable/dex-connectors-library/{connector.directory}/go@{connector.languages.go}</code></p>
+      <p className="connector-source">
+        <a className="repository-source-link" href={`${connectorLibraryRepositoryUrl}/tree/main/${connector.directory}`}>
+          <GitHubMarkIcon />
+          View source
+        </a>
+      </p>
       <CapabilityList title="UI units" capabilities={connector.uiUnits} versions={connector.languages} showLanguages={false} />
       <CapabilityList title="Triggers" capabilities={connector.triggers} versions={connector.languages} />
       <CapabilityList title="Operations" capabilities={connector.operations} versions={connector.languages} />
