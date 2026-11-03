@@ -26,7 +26,13 @@ export interface TextGenerationRequest {
 /** Provider-neutral terminal finish classification. */
 export type FinishReason = 'stop' | 'length' | 'contentPolicy' | 'refusal';
 /** Token counts reported by the provider; absent counts are zero. */
-export interface Usage { /** Prompt tokens. */ inputTokens: number; /** Cached prompt subset. */ cachedInputTokens: number; /** Generated tokens. */ outputTokens: number; /** Reasoning subset. */ reasoningTokens: number; /** Billed total. */ totalTokens: number }
+export interface Usage {
+  /** Prompt tokens. */ inputTokens: number;
+  /** Cached prompt subset. */ cachedInputTokens: number;
+  /** Generated tokens. */ outputTokens: number;
+  /** Reasoning subset. */ reasoningTokens: number;
+  /** Billed total. */ totalTokens: number;
+}
 /** Provider-neutral generateText result; only generated and truncated carry text. */
 export interface TextGenerationResponse {
   /** Non-reasoning text. */ text: string;
@@ -51,8 +57,8 @@ export function textGenerationBranchDefinitions(): BranchDefinition[] {
     { id: GeneratedBranchID, description: 'The model finished normally and returned text.' },
     { id: TruncatedBranchID, description: 'The model stopped at the output token limit and returned any partial text.', optional: true },
     { id: BlockedBranchID, description: 'The provider stopped the response for a content policy, or the model refused.', optional: true },
-    { id: ProviderRejectedBranchID, description: 'The provider conclusively rejected the request.', optional: true },
-    { id: InvalidResponseBranchID, description: 'The provider returned a malformed, oversized, or unusable response.', optional: true },
+    { id: ProviderRejectedBranchID, description: 'The provider conclusively rejected the request, such as invalid credentials, an unknown model, or exhausted quota.', optional: true },
+    { id: InvalidResponseBranchID, description: 'The provider returned a malformed, oversized, or unusable response, including structured output that does not match its schema.', optional: true },
     { id: DefectBranchID, description: 'Local input, connection configuration, or connector definition is invalid.', optional: true },
   ];
 }
@@ -73,7 +79,7 @@ export function checkPortableRequest(request: TextGenerationRequest): { error?: 
     if (typeof message.text !== 'string' || message.text === '') return { error:'every message requires text' };
   }
   if ((request.maxOutputTokens ?? 0) < 0) return { error:'maxOutputTokens cannot be negative' };
-  if (request.structuredOutput !== undefined) {
+  if (request.structuredOutput != null) {
     if (!/^[A-Za-z0-9_-]{1,64}$/.test(request.structuredOutput.name)) return { error:'structured output name must match ^[A-Za-z0-9_-]{1,64}$' };
     if (request.structuredOutput.schema === undefined || request.structuredOutput.schema === null) return { error:'structured output schema is required' };
     try { return { schema:canonicalizePortableSchema(request.structuredOutput.schema) }; }

@@ -2,7 +2,11 @@
 // SPDX-License-Identifier: MIT
 
 import { readErrorTokens } from '../../providerhttp/index.js';
-import { type CredentialHeader, type DecodedResponse, type ErrorRule, type ModelRequestRules, type ResponsePart, type StructuredOutputRules, type TemperaturePolicy, type WireFormat, ProviderReportedError, temperatureAccepted, validateStructuredOutputRules } from '../wire_format.js';
+import {
+  type CredentialHeader, type DecodedResponse, type ErrorRule, type ModelRequestRules,
+  type ResponsePart, type StructuredOutputRules, type TemperaturePolicy, type WireFormat,
+  ProviderReportedError, temperatureAccepted, validateStructuredOutputRules,
+} from '../wire_format.js';
 import type { FinishReason, ReasoningEffort, Usage } from '../contract.js';
 
 /** Role used for instructions in Chat Completions. */ export type InstructionsRole = 'system'|'developer';
@@ -61,7 +65,10 @@ export function newWireFormat(profile: Profile): WireFormat {
   validateSettings(profile.maxTokensField,profile.streaming,profile.reasoningEfforts,profile.structuredOutput);
   const credentialHeader = profile.credentialHeader?.name ? profile.credentialHeader : { name:'Authorization',prefix:'Bearer ' };
   const reserved = new Set([credentialHeader.name,'Content-Type','Content-Length','Accept','Host'].map(name => name.toLowerCase()));
-  for (const [name,value] of Object.entries(profile.fixedHeaders ?? {})) if (!/^[!#$%&'*+.^_`|~0-9A-Za-z-]{1,128}$/.test(name) || reserved.has(name.toLowerCase()) || !/^[\x20-\x7e]*$/.test(value)) throw new TypeError('openaichat profile fixed header is invalid or reserved');
+  for (const [name,value] of Object.entries(profile.fixedHeaders ?? {})) {
+    if (!/^[!#$%&'*+.^_`|~0-9A-Za-z-]{1,128}$/.test(name) || reserved.has(name.toLowerCase()) ||
+      !/^[\x20-\x7e]*$/.test(value)) throw new TypeError('openaichat profile fixed header is invalid or reserved');
+  }
   for (const field of profile.allowedRequestFields ?? []) if (!requestField(field)) throw new TypeError('openaichat profile allowed request field is invalid');
   for (const [index,rule] of (profile.modelRules ?? []).entries()) {
     if (!!rule.modelIDPrefix === !!rule.modelIDPattern) throw new TypeError(`openaichat profile model rule ${index} must set exactly one model matcher`);
@@ -76,12 +83,28 @@ export function newWireFormat(profile: Profile): WireFormat {
     if (required.includes('stream') && profile.shouldRequestStreamUsage) required.push('stream_options');
     for (const field of required) if (!allowed.has(field)) throw new TypeError(`openaichat profile allowed request fields must include ${JSON.stringify(field)}, which the wire format sends`);
   }
-  const baseSettings: Settings = { rules: { temperature: profile.temperature ?? temperatureAccepted(), reasoningEfforts: profile.reasoningEfforts ?? {}, structuredOutput: profile.structuredOutput ?? { mode:'none' } }, maxTokensField: profile.maxTokensField ?? 'max_tokens', streaming: profile.streaming ?? 'never' };
+  const baseSettings: Settings = {
+    rules: {
+      temperature: profile.temperature ?? temperatureAccepted(),
+      reasoningEfforts: profile.reasoningEfforts ?? {},
+      structuredOutput: profile.structuredOutput ?? { mode:'none' },
+    },
+    maxTokensField: profile.maxTokensField ?? 'max_tokens',
+    streaming: profile.streaming ?? 'never',
+  };
   const settingsForModel = (model: string): Settings => {
     for (const rule of profile.modelRules ?? []) {
       const matches = rule.modelIDPrefix ? model.startsWith(rule.modelIDPrefix) : new RegExp(rule.modelIDPattern ?? '^$').test(model);
       if (!matches) continue;
-      return { rules: { temperature: rule.temperature ?? baseSettings.rules.temperature, reasoningEfforts: rule.reasoningEfforts ?? baseSettings.rules.reasoningEfforts, structuredOutput: rule.structuredOutput ?? baseSettings.rules.structuredOutput }, maxTokensField: rule.maxTokensField ?? baseSettings.maxTokensField, streaming: rule.streaming ?? baseSettings.streaming };
+      return {
+        rules: {
+          temperature: rule.temperature ?? baseSettings.rules.temperature,
+          reasoningEfforts: rule.reasoningEfforts ?? baseSettings.rules.reasoningEfforts,
+          structuredOutput: rule.structuredOutput ?? baseSettings.rules.structuredOutput,
+        },
+        maxTokensField: rule.maxTokensField ?? baseSettings.maxTokensField,
+        streaming: rule.streaming ?? baseSettings.streaming,
+      };
     }
     return baseSettings;
   };
@@ -98,7 +121,7 @@ export function newWireFormat(profile: Profile): WireFormat {
       for (const message of request.messages) messages.push({ role:message.role,content:message.text });
       const body: Record<string,unknown> = { model:request.model,messages };
       if (request.maxOutputTokens) body[settings.maxTokensField] = request.maxOutputTokens;
-      if (request.temperature !== undefined) body.temperature = request.temperature;
+      if (request.temperature != null) body.temperature = request.temperature;
       if (request.reasoningEffort) body.reasoning_effort = rules.reasoningEfforts[request.reasoningEffort];
       if (request.structuredOutput) {
         if (rules.structuredOutput.mode === 'jsonSchema') {
@@ -116,6 +139,7 @@ export function newWireFormat(profile: Profile): WireFormat {
     decodeResponse: body => {
       const completion = parseObject(body);
       if (completion.error !== undefined && completion.error !== null) throw reportedError(body);
+      validateCompletion(completion);
       const choice = firstChoice(completion.choices);
       if (!choice) throw new TypeError('chat completion has no choice');
       const response: DecodedResponse = { parts:[],servedModel:stringOrEmpty(completion.model),responseId:stringOrEmpty(completion.id),usage:readUsage(completion.usage) };
@@ -127,6 +151,7 @@ export function newWireFormat(profile: Profile): WireFormat {
       if (event.data.trim() === '[DONE]') { if (!state.hasFinished) throw new TypeError('chat completion stream ended without a finish reason'); state.isDone = true; return; }
       const chunk = parseObject(Buffer.from(event.data));
       if (chunk.error !== undefined && chunk.error !== null) throw reportedError(Buffer.from(event.data));
+      validateCompletion(chunk);
       state.response.responseId ||= stringOrEmpty(chunk.id);
       state.response.servedModel ||= stringOrEmpty(chunk.model);
       if (chunk.usage !== undefined && chunk.usage !== null) state.response.usage = readUsage(chunk.usage);
@@ -136,12 +161,41 @@ export function newWireFormat(profile: Profile): WireFormat {
       if (typeof choice.finish_reason === 'string' && choice.finish_reason) { state.response.providerFinishReason = choice.finish_reason; state.hasFinished = true; }
     },
     finishReasons: { stop:'stop',length:'length',content_filter:'contentPolicy',...profile.finishReasons },
-    errorRules:[...(profile.errorRules ?? [])],errorTokenPointers:[...pointers],requestIDHeaders:[...(profile.requestIDHeaders ?? ['x-request-id'])],rateLimitHeaders:[...(profile.rateLimitHeaders ?? [])],stallTimeoutMs:profile.stallTimeoutMs ?? 0,
+    errorRules:[...(profile.errorRules ?? [])], errorTokenPointers:[...pointers],
+    requestIDHeaders:[...(profile.requestIDHeaders ?? ['x-request-id'])],
+    rateLimitHeaders:[...(profile.rateLimitHeaders ?? [])], stallTimeoutMs:profile.stallTimeoutMs ?? 0,
   };
 }
-function parseObject(body: Uint8Array): Record<string,unknown> { const parsed: unknown = JSON.parse(Buffer.from(body).toString()); if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new TypeError('completion must be an object'); return parsed as Record<string,unknown>; }
+function parseObject(body: Uint8Array): Record<string,unknown> {
+  const parsed: unknown = JSON.parse(Buffer.from(body).toString());
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new TypeError('completion must be an object');
+  return parsed as Record<string,unknown>;
+}
 function stringOrEmpty(value: unknown): string { return typeof value === 'string' ? value : ''; }
-function firstChoice(value: unknown): Record<string,unknown> | undefined { return Array.isArray(value) ? value.find(choice => choice && typeof choice === 'object' && (choice.index === 0 || choice.index === undefined)) as Record<string,unknown> | undefined : undefined; }
+function firstChoice(value: unknown): Record<string,unknown> | undefined {
+  return Array.isArray(value)
+    ? value.find(choice => choice && typeof choice === 'object' && (choice.index == null || choice.index === 0)) as Record<string,unknown> | undefined
+    : undefined;
+}
+function validateCompletion(completion: Record<string, unknown>): void {
+  for (const field of ['id', 'model']) if (completion[field] != null && typeof completion[field] !== 'string') throw new TypeError('chat completion identifier must be text');
+  if (completion.choices != null && !Array.isArray(completion.choices)) throw new TypeError('chat completion choices must be an array');
+  for (const choice of (completion.choices as unknown[] | undefined) ?? []) {
+    if (choice === null) continue;
+    if (typeof choice !== 'object' || Array.isArray(choice)) throw new TypeError('chat completion choice must be an object');
+    const fields = choice as Record<string, unknown>;
+    if (fields.index != null && (!Number.isInteger(fields.index) || !Number.isSafeInteger(fields.index))) throw new TypeError('chat completion choice index must be an integer');
+    if (fields.finish_reason != null && typeof fields.finish_reason !== 'string') throw new TypeError('chat completion finish reason must be text');
+    for (const name of ['message', 'delta']) if (fields[name] != null && (typeof fields[name] !== 'object' || Array.isArray(fields[name]))) throw new TypeError('chat completion delta must be an object');
+  }
+  if (completion.usage != null && (typeof completion.usage !== 'object' || Array.isArray(completion.usage))) throw new TypeError('chat completion usage must be an object');
+  if (completion.usage != null) {
+    const usage = completion.usage as Record<string, unknown>;
+    for (const name of ['prompt_tokens_details', 'completion_tokens_details']) {
+      if (usage[name] != null && (typeof usage[name] !== 'object' || Array.isArray(usage[name]))) throw new TypeError('chat completion usage details must be an object');
+    }
+  }
+}
 function appendDelta(response: DecodedResponse, value: unknown, writeTextDelta: ((delta:string)=>void)|undefined): void {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return;
   const delta = value as Record<string,unknown>;
@@ -156,7 +210,7 @@ function appendDelta(response: DecodedResponse, value: unknown, writeTextDelta: 
     for (const part of content) {
       if (part === null) continue;
       if (!part || typeof part !== 'object' || Array.isArray(part)) throw new TypeError('chat content part must be an object');
-      if (part.type !== undefined && typeof part.type !== 'string' || part.text !== undefined && typeof part.text !== 'string') throw new TypeError('chat content part fields must be text');
+      if (part.type != null && typeof part.type !== 'string' || part.text != null && typeof part.text !== 'string') throw new TypeError('chat content part fields must be text');
       if (part.type === 'text' && part.text) texts.push(part.text);
     }
   } else if (content !== undefined && content !== null) throw new TypeError('chat content must be text or typed parts');
@@ -170,8 +224,16 @@ function appendPart(response: DecodedResponse, part: ResponsePart): void {
 function readUsage(value: unknown): Partial<Usage> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
   const usage = value as Record<string,unknown>;
-  const count = (item: unknown): number => item === null || item === undefined ? 0 : typeof item === 'number' && Number.isInteger(item) ? item : NaN;
+  const tokenCount = (item: unknown): number => {
+    if (item == null) return 0;
+    if (typeof item !== 'number' || !Number.isSafeInteger(item)) throw new TypeError('chat token count must be an integer');
+    return item;
+  };
   const prompt = usage.prompt_tokens_details as Record<string,unknown> | undefined;
   const completion = usage.completion_tokens_details as Record<string,unknown> | undefined;
-  return { inputTokens:count(usage.prompt_tokens),outputTokens:count(usage.completion_tokens),totalTokens:count(usage.total_tokens),cachedInputTokens:count(prompt?.cached_tokens),reasoningTokens:count(completion?.reasoning_tokens) };
+  return {
+    inputTokens: tokenCount(usage.prompt_tokens), outputTokens: tokenCount(usage.completion_tokens),
+    totalTokens: tokenCount(usage.total_tokens), cachedInputTokens: tokenCount(prompt?.cached_tokens),
+    reasoningTokens: tokenCount(completion?.reasoning_tokens),
+  };
 }

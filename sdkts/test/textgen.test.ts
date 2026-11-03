@@ -6,13 +6,14 @@ import { createServer, type Server } from 'node:http';
 import { readFileSync } from 'node:fs';
 import { createCall } from '../src/credentials.js';
 import { newTextGenerationQuery } from '../src/textgen/query.js';
-import { canonicalizePortableSchema, extractStructuredAnswer, transformSchemaForProvider } from '../src/textgen/structured_output.js';
+import { canonicalizePortableSchema, extractStructuredAnswer, jsonObjectInstruction, transformSchemaForProvider } from '../src/textgen/structured_output.js';
 import { classifyError, blockedOutcome, quotaExhaustedOutcome, temperatureRange, ProviderReportedError, type WireFormat } from '../src/textgen/wire_format.js';
 import { textGenerationBranchDefinitions, validateModelID, type TextGenerationRequest } from '../src/textgen/contract.js';
 import type { TextGenerationQueryConfig } from '../src/textgen/query.js';
 import type { AsyncContext } from '@superdurable/dex';
 
 const cases = JSON.parse(readFileSync(new URL('../../sdkgo/textgen/textgentest/testdata/model_id_cases.json', import.meta.url),'utf8')) as {cases:{name:string;rule:'body'|'pathSegment';input:string;valid:boolean;modelId?:string}[]};
+const formatCases = JSON.parse(readFileSync(new URL('../../sdkgo/textgen/textgentest/testdata/string_format_cases.json', import.meta.url),'utf8')) as {cases:{name:string;format:string;value:string;valid:boolean}[]};
 for (const testCase of cases.cases) it(`Go model ID fixture: ${testCase.rule}: ${testCase.name}`, () => {
   if (testCase.valid) expect(validateModelID(testCase.rule,testCase.input)).toBe(testCase.modelId);
   else expect(() => validateModelID(testCase.rule,testCase.input)).toThrow();
@@ -40,6 +41,21 @@ async function fixture(status = 200, body: unknown = {text:'hello',reasoning:'hi
   return {query:newTextGenerationQuery(config),received};
 }
 describe('Go pipeline scenarios', () => {
+  it('reports the first request error in Go validation order without dispatch', async () => {
+    const {query,received} = await fixture();
+    const invalid = { messages: [], maxOutputTokens: -1, structuredOutput: { name: 'bad name', schema: {} }, temperature: -1 } as unknown as TextGenerationRequest;
+    const outcome = await query.invoke(call(), invalid);
+    expect(outcome.kind).toBe('branch');
+    if (outcome.kind === 'branch') expect(outcome.failure?.message).toBe('at least one message is required');
+    expect(received).toHaveLength(0);
+  });
+  it('reports an absent model before other invalid request fields', async () => {
+    const {query,received} = await fixture(200,{},config => { config.connectionModel = ''; });
+    const outcome = await query.invoke(call(), {messages:[],maxOutputTokens:-1});
+    expect(outcome.kind).toBe('branch');
+    if (outcome.kind === 'branch') expect(outcome.failure?.message).toContain('no model is selected');
+    expect(received).toHaveLength(0);
+  });
   it('validates, resolves the model, decodes, and records safe receipt fields', async () => {
     const {query,received} = await fixture();
     const result = await query.invoke(call(),request());
@@ -102,6 +118,16 @@ describe('Go pipeline scenarios', () => {
     expect(marshals).toBe(1);
     expect(result.kind).toBe('branch'); if (result.kind === 'branch') expect(result.branch).toBe('generated');
   });
+  it('checks structured answers in the real response path', async () => {
+    const {query} = await fixture(200,{text:'{"n":1.5,"tags":["safe"]}',finish:'done'});
+    const outcome = await query.invoke(call(),{...request(),structuredOutput:{name:'count',schema}});
+    expect(outcome.kind).toBe('branch');
+    if (outcome.kind === 'branch') {
+      expect(outcome.branch).toBe('invalidResponse');
+      expect(outcome.failure?.message).toContain('at /n: expected type integer');
+      expect(outcome.failure?.message).not.toContain('safe');
+    }
+  });
   it('records nil heartbeats only while a slow provider attempt is in flight', async () => {
     const received: unknown[] = [];
     server = createServer(async (incoming,response) => {
@@ -127,6 +153,49 @@ describe('Go pipeline scenarios', () => {
   });
 });
 describe('Go structured output scenarios', () => {
+  it.each([
+    ['JSON fence','```json\n{"n":2,"tags":["x"]}\n```',true],
+    ['uppercase JSON fence','```JSON\n{"n":2,"tags":["x"]}\n```',true],
+    ['empty info fence','```\n{"n":2,"tags":["x"]}\n```',true],
+    ['non-JSON info fence','```javascript\n{"n":2,"tags":["x"]}\n```',false],
+    ['incomplete fence','```json\n{"n":2,"tags":["x"]}',false],
+  ])('strips only the Go-supported %s', (_name,answer,isValid) => {
+    const output = {...request(),structuredOutput:{name:'count',schema}};
+    if (isValid) expect(extractStructuredAnswer(output,answer)).toBe('{"n":2,"tags":["x"]}');
+    else expect(() => extractStructuredAnswer(output,answer)).toThrow('the text is not one JSON value');
+  });
+  it.each([
+    ['missing','{"n":2}', '/tags: a required property is missing'],
+    ['wrong array child','{"n":2,"tags":[3]}', '/tags/0: expected type string'],
+    ['undeclared','{"n":2,"tags":["x"],"secret":"private"}', 'the root: the object has a property the schema does not declare'],
+    ['number below minimum','{"n":0,"tags":["x"]}', '/n: the value is below minimum'],
+  ])('reports the Go JSON pointer for %s without values', (_name,answer,expected) => {
+    try { extractStructuredAnswer({...request(),structuredOutput:{name:'count',schema}}, answer); }
+    catch (error) { expect(String(error)).toContain(expected); expect(String(error)).not.toContain('private'); return; }
+    throw new Error('expected schema failure');
+  });
+  it.each(formatCases.cases)('matches Go string format case $name', testCase => {
+    const formatSchema = {type:'object',properties:{value:{type:'string',format:testCase.format}},required:['value'],additionalProperties:false};
+    const output = {...request(),structuredOutput:{name:'format',schema:formatSchema}};
+    const answer = JSON.stringify({value:testCase.value});
+    if (testCase.valid) expect(extractStructuredAnswer(output,answer)).toBe(answer);
+    else expect(() => extractStructuredAnswer(output,answer)).toThrow(`format ${testCase.format}`);
+  });
+  it('matches Go JSON marshaling inside the JSON object instruction', () => {
+    const instructionSchema = {required:['b','a'],type:'object',additionalProperties:false,properties:{b:{description:'x<y & z>w \u2028 é',type:'string'},a:{enum:[1e21,1e-7,100],maximum:1e21,minimum:1.5,type:'number'}}};
+    expect(jsonObjectInstruction('result','',instructionSchema)).toBe('Respond with only one JSON object, without Markdown code fences, that matches the JSON Schema named "result":\n{"additionalProperties":false,"properties":{"a":{"enum":[1e+21,1e-7,100],"maximum":1e+21,"minimum":1.5,"type":"number"},"b":{"description":"x\\u003cy \\u0026 z\\u003ew \\u2028 é","type":"string"}},"required":["b","a"],"type":"object"}');
+  });
+  it.each(['toString','constructor','__proto__'])('rejects undeclared inherited property %s', name => {
+    const answer = `{"n":1,"${name}":5}`;
+    const output = {...request(),structuredOutput:{name:'count',schema:{type:'object',properties:{n:{type:'integer'}},required:['n'],additionalProperties:false}}};
+    expect(() => extractStructuredAnswer(output,answer)).toThrow('the object has a property the schema does not declare');
+  });
+  it('checks the last numeric lexeme for duplicate keys and integer-like property names', () => {
+    const output = {...request(),structuredOutput:{name:'count',schema:{type:'object',properties:{b:{type:'integer'},'1':{type:'number'}},required:['b','1'],additionalProperties:false}}};
+    expect(() => extractStructuredAnswer(output,'{"b":1.5,"1":2}')).toThrow('at /b: expected type integer');
+    expect(() => extractStructuredAnswer(output,'{"b":2,"b":1.5,"1":2}')).toThrow('at /b: expected type integer');
+    expect(extractStructuredAnswer(output,'{"b":1.5,"b":2,"1":2}')).toBe('{"b":1.5,"b":2,"1":2}');
+  });
   it('transforms a provider schema without mutating local constraints', () => {
     const canonical = canonicalizePortableSchema(schema);
     const transformed = transformSchemaForProvider(canonical,{mode:'jsonSchema',keywordsMovedToDescription:['minimum'],keywordsRemoved:['minItems']});

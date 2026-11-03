@@ -15,6 +15,7 @@ import { branchCase, newMutation } from '../../dist/connectormock/index.js';
 import { newFence } from '../../dist/singledispatch/index.js';
 import { newTextGenerationQuery, textGenerationBranchDefinitions } from '../../dist/textgen/index.js';
 import { newWireFormat } from '../../dist/textgen/openaichat/index.js';
+import { runTextGenerationDexScenarios } from '../../dist/textgen/textgentest/index.js';
 
 const serverAddress = process.env.DEX_SERVER_ADDRESS ?? '127.0.0.1:18891';
 const failure = { kind: 'AVAILABILITY', provider: 'fixture', operation: 'getItem', message: 'temporary provider failure' };
@@ -202,6 +203,29 @@ try {
     await scenario.verify?.({ client, flowId, result });
     process.stdout.write(`Dex Run ${runId} (${flowId}): ${result.status}${scenario.branch ? `, branch ${scenario.branch}` : ''}\n`);
   }
+  const dexReply = (reply, finishReason) => ({ headers: { 'Content-Type': 'text/event-stream' },
+    body: `data: ${JSON.stringify({ id: reply.responseId, model: reply.servedModel,
+      choices: [{ index: 0, delta: { content: reply.text }, finish_reason: finishReason }],
+      usage: { prompt_tokens: reply.usage.inputTokens, completion_tokens: reply.usage.outputTokens,
+        total_tokens: reply.usage.totalTokens, prompt_tokens_details: { cached_tokens: reply.usage.cachedInputTokens },
+        completion_tokens_details: { reasoning_tokens: reply.usage.reasoningTokens } } })}\n\ndata: [DONE]\n\n` });
+  await runTextGenerationDexScenarios({ serverAddress, dialect: {
+    credentialHeader: { name: 'Authorization', prefix: 'Bearer ' },
+    connectionModel: 'fixture-model', alternateModel: 'fixture-alternate',
+    readRequestModel: recorded => JSON.parse(recorded.body.toString()).model,
+    generatedReply: reply => dexReply(reply, 'stop'),
+    truncatedReply: reply => dexReply(reply, 'length'),
+    blockedReply: reply => dexReply(reply, 'content_filter'),
+    errorReply: (statusCode, message) => ({ statusCode, body: JSON.stringify({ error: { code: 'provider_error', message } }) }),
+    quotaExhaustedReply: message => ({ statusCode: 402, body: JSON.stringify({ error: { code: 'quota', message } }) }),
+    malformedReply: () => ({ headers: { 'Content-Type': 'text/event-stream' }, body: 'data: malformed\n\n' }),
+    interruptedStreamReply: reply => ({ headers: { 'Content-Type': 'text/event-stream' },
+      body: `data: ${JSON.stringify({ choices: [{ index: 0, delta: { content: reply.text } }] })}\n\n` }),
+  }, newQuery: connection => newTextGenerationQuery({
+    definition: textgenDefinition, wireFormat: newWireFormat({ providerName: 'fixture', streaming: 'always' }),
+    baseURL: connection.baseURL, connectionModel: connection.model, requestTimeoutMs: connection.requestTimeoutMs ?? 15_000,
+    resolveCredential: () => connection.apiKey, maxResponseBytes: connection.maxResponseBytes, maxStreamEventBytes: 4096,
+  }) });
 } finally {
   await client.close();
   await worker.close();

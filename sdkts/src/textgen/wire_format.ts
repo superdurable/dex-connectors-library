@@ -6,7 +6,13 @@ import type { FinishReason, ModelIDRule, ReasoningEffort, TextGenerationRequest,
 import { movableSchemaKeywords, removableSchemaKeywords } from './structured_output.js';
 
 /** Optional portable fields the wire format actually sends. */
-export interface RequestFeatures { /** Instructions. */ supportsInstructions?: boolean; /** Structured output. */ supportsStructuredOutput?: boolean; /** Token cap. */ supportsMaxOutputTokens?: boolean; /** Temperature. */ supportsTemperature?: boolean; /** Reasoning. */ supportsReasoningEffort?: boolean }
+export interface RequestFeatures {
+  /** Instructions. */ supportsInstructions?: boolean;
+  /** Structured output. */ supportsStructuredOutput?: boolean;
+  /** Token cap. */ supportsMaxOutputTokens?: boolean;
+  /** Temperature. */ supportsTemperature?: boolean;
+  /** Reasoning. */ supportsReasoningEffort?: boolean;
+}
 /** Credential header and safe public prefix. */
 export interface CredentialHeader { /** HTTP header name. */ name: string; /** Public prefix before the secret. */ prefix: string }
 /** Model sampling policy; accepted is the zero behavior. */
@@ -17,22 +23,42 @@ export type TemperaturePolicy = { kind: 'accepted' } | { kind: 'range'; minimum:
 /** How the provider receives structured output. */
 export type StructuredOutputMode = 'none' | 'jsonSchema' | 'jsonObjectWithInstruction';
 /** Per-model structured-output transforms; local validation retains original constraints. */
-export interface StructuredOutputRules { /** Provider request mode. */ mode: StructuredOutputMode; /** Constraints moved into descriptions. */ keywordsMovedToDescription?: string[]; /** Constraints omitted on the wire. */ keywordsRemoved?: string[] }
+export interface StructuredOutputRules {
+  /** Provider request mode. */ mode: StructuredOutputMode;
+  /** Constraints moved into descriptions. */ keywordsMovedToDescription?: string[];
+  /** Constraints omitted on the wire. */ keywordsRemoved?: string[];
+}
 /** Validate portable schema transform declarations. */
 export function validateStructuredOutputRules(rules: StructuredOutputRules): void {
   if (!['none','jsonSchema','jsonObjectWithInstruction'].includes(rules.mode)) throw new TypeError(`structured output mode ${JSON.stringify(rules.mode)} is invalid`);
-  for (const keyword of rules.keywordsMovedToDescription ?? []) if (!movableSchemaKeywords.has(keyword)) throw new TypeError(`schema keyword ${JSON.stringify(keyword)} cannot be moved to a description`);
-  for (const keyword of rules.keywordsRemoved ?? []) if (!removableSchemaKeywords.has(keyword)) throw new TypeError(`schema keyword ${JSON.stringify(keyword)} cannot be removed`);
+  for (const keyword of rules.keywordsMovedToDescription ?? []) if (!movableSchemaKeywords.includes(keyword)) throw new TypeError(`schema keyword ${JSON.stringify(keyword)} cannot be moved to a description`);
+  for (const keyword of rules.keywordsRemoved ?? []) if (!removableSchemaKeywords.includes(keyword)) throw new TypeError(`schema keyword ${JSON.stringify(keyword)} cannot be removed`);
 }
 /** Sampling, reasoning, and structured-output rules for one model. */
-export interface ModelRequestRules { /** Temperature policy. */ temperature: TemperaturePolicy; /** Accepted effort to wire value. */ reasoningEfforts: Partial<Record<ReasoningEffort,string>>; /** Schema mode and transforms. */ structuredOutput: StructuredOutputRules }
+export interface ModelRequestRules {
+  /** Temperature policy. */ temperature: TemperaturePolicy;
+  /** Accepted effort to wire value. */ reasoningEfforts: Partial<Record<ReasoningEffort,string>>;
+  /** Schema mode and transforms. */ structuredOutput: StructuredOutputRules;
+}
 /** Validated request and selected model rules passed to an encoder. */
 export interface EncodeRequestInput { /** Canonical request with transformed provider schema. */ request: TextGenerationRequest; /** Selected model rules. */ rules: ModelRequestRules }
 /** One provider HTTP request without its credential. */
-export interface EncodedRequest { /** Path including leading slash. */ path: string; /** JSON request bytes. */ body: Uint8Array; /** Extra safe headers. */ headers?: Record<string,string>; /** Whether event-stream is requested. */ isStreaming: boolean }
+export interface EncodedRequest {
+  /** Path including leading slash. */ path: string;
+  /** JSON request bytes. */ body: Uint8Array;
+  /** Extra safe headers. */ headers?: Record<string,string>;
+  /** Whether event-stream is requested. */ isStreaming: boolean;
+}
 /** One decoded text or reasoning segment. */ export interface ResponsePart { /** Segment text. */ text: string; /** True for hidden reasoning. */ isReasoning?: boolean }
 /** Provider response decoded to the portable shape. */
-export interface DecodedResponse { /** Ordered output segments. */ parts: ResponsePart[]; /** Model echo. */ servedModel?: string; /** Response identity. */ responseId?: string; /** Provider finish token. */ providerFinishReason?: string; /** Model refusal. */ isRefusal?: boolean; /** Usage. */ usage?: Partial<Usage> }
+export interface DecodedResponse {
+  /** Ordered output segments. */ parts: ResponsePart[];
+  /** Model echo. */ servedModel?: string;
+  /** Response identity. */ responseId?: string;
+  /** Provider finish token. */ providerFinishReason?: string;
+  /** Model refusal. */ isRefusal?: boolean;
+  /** Usage. */ usage?: Partial<Usage>;
+}
 /** A complete server-sent event. */ export interface ServerSentEvent { /** Event data lines joined by newline. */ data: string; /** Optional event type. */ event?: string }
 /** Adapter for one provider's request and response dialect. Functions must be concurrency safe. */
 export interface WireFormat {
@@ -43,7 +69,8 @@ export interface WireFormat {
   /** Return per-model rules once after model validation. */ rulesForModel(model: string): ModelRequestRules;
   /** Encode only a validated request. */ encodeRequest(input: EncodeRequestInput): EncodedRequest;
   /** Decode a complete 2xx JSON body. */ decodeResponse?: (body: Uint8Array) => DecodedResponse;
-  /** Decode one event; undefined means no completed response yet. */ decodeStreamEvent?: (event: ServerSentEvent, state: StreamDecodeState, writeTextDelta: (delta: string) => void) => void;
+  /** Decode one event and update state. Set hasFinished for a finish token and isDone for a terminal event; throw ProviderReportedError for embedded errors. */
+  decodeStreamEvent?: (event: ServerSentEvent, state: StreamDecodeState, writeTextDelta: (delta: string) => void) => void;
   /** Accepted provider token to normalized finish reason. */ finishReasons: Record<string, FinishReason>;
   /** Ordered provider-specific error rules. */ errorRules?: ErrorRule[];
   /** JSON pointers for safe error tokens. */ errorTokenPointers?: string[];

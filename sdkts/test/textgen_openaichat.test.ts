@@ -46,6 +46,42 @@ it('decodes content parts, reasoning, refusal, and usage', () => {
   expect(response?.parts).toEqual([{text:'hidden',isReasoning:true},{text:'visible'}]);
   expect(response?.usage).toEqual({inputTokens:4,outputTokens:3,totalTokens:7,cachedInputTokens:1,reasoningTokens:2});
 });
+it('treats Go null choice and content fields as zero values', () => {
+  const format = newWireFormat({providerName:'chat-lab'});
+  const response = format.decodeResponse?.(Buffer.from('{"choices":[{"index":null,"message":{"content":[{"type":"text","text":null},{"type":null,"text":"ignored"},{"type":"text","text":"ok"}]},"finish_reason":"stop"}]}'));
+  expect(response?.parts).toEqual([{text:'ok'}]);
+  expect(response?.providerFinishReason).toBe('stop');
+});
+it.each([
+  ['text content',{content:'visible'},[{text:'visible'}]],
+  ['null content',{content:null},[]],
+  ['typed parts',{content:[null,{type:'image',text:'hidden'},{type:'text',text:'visible'}]},[{text:'visible'}]],
+  ['reasoning then text',{reasoning_content:'thinking',content:'visible'},[{text:'thinking',isReasoning:true},{text:'visible'}]],
+])('decodes Go Chat provider variant %s', (_name,message,parts) => {
+  const format = newWireFormat({providerName:'chat-lab'});
+  const response = format.decodeResponse?.(Buffer.from(JSON.stringify({choices:[{index:0,message,finish_reason:'stop'}]})));
+  expect(response?.parts).toEqual(parts);
+});
+it.each([
+  ['choices object',{choices:{}}],
+  ['numeric model',{model:5,choices:[]}],
+  ['numeric finish reason',{choices:[{index:0,finish_reason:5}]}],
+  ['string token count',{choices:[{index:0,finish_reason:'stop'}],usage:{prompt_tokens:'3'}}],
+  ['string usage details',{choices:[{index:0,finish_reason:'stop'}],usage:{prompt_tokens_details:'bad'}}],
+])('rejects Go-invalid non-stream response field %s', (_name,body) => {
+  const format = newWireFormat({providerName:'chat-lab'});
+  expect(() => format.decodeResponse?.(Buffer.from(JSON.stringify(body)))).toThrow();
+});
+it.each([
+  ['choices object',{choices:{}}],
+  ['numeric model',{model:5,choices:[]}],
+  ['numeric delta',{choices:[{index:0,delta:5}]}],
+  ['numeric finish reason',{choices:[{index:0,finish_reason:5}]}],
+  ['fractional index',{choices:[{index:0.5,finish_reason:'stop'}]}],
+])('rejects Go-invalid stream response field %s', (_name,body) => {
+  const format = newWireFormat({providerName:'chat-lab',streaming:'always'});
+  expect(() => format.decodeStreamEvent?.({data:JSON.stringify(body)}, {response:{parts:[]},hasFinished:false,isDone:false}, () => {})).toThrow();
+});
 let server: Server | undefined;
 afterEach(async () => { if (server) { await new Promise<void>(resolve => server?.close(() => resolve())); server = undefined; } });
 it('streams text deltas before the terminal event and returns the whole result', async () => {

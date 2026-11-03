@@ -9,10 +9,10 @@ import { newWireFormat } from '../dist/textgen/openaichat/index.js';
 
 const provider = createServer(async (request, response) => {
   for await (const _chunk of request) { /* Consume the request. */ }
-  response.setHeader('Content-Type', 'application/json');
-  response.end(JSON.stringify({ id: 'example-response', model: 'example-model', choices: [
-    { index: 0, message: { content: 'Hello from the model.' }, finish_reason: 'stop' },
-  ], usage: { prompt_tokens: 3, completion_tokens: 5, total_tokens: 8 } }));
+  response.setHeader('Content-Type', 'text/event-stream');
+  response.end(`data: ${JSON.stringify({ id: 'example-response', model: 'example-model', choices: [
+    { index: null, delta: { content: 'Hello from the model.' }, finish_reason: 'stop' },
+  ], usage: { prompt_tokens: 3, completion_tokens: 5, total_tokens: 8 } })}\n\ndata: [DONE]\n\n`);
 });
 await new Promise(resolve => provider.listen(0, '127.0.0.1', resolve));
 try {
@@ -21,7 +21,7 @@ try {
   const operation = { connectorId: 'example', operationId: 'generateText' };
   const query = newTextGenerationQuery({
     definition: { operation, branches: textGenerationBranchDefinitions(), stepDefaults: { executeDurability: 'sync', executeMethodTimeoutMs: 60_000 } },
-    wireFormat: newWireFormat({ providerName: 'example' }), baseURL: `http://127.0.0.1:${address.port}/v1`,
+    wireFormat: newWireFormat({ providerName: 'example', streaming: 'always' }), baseURL: `http://127.0.0.1:${address.port}/v1`,
     connectionModel: 'example-model', requestTimeoutMs: 10_000, maxResponseBytes: 65_536, maxStreamEventBytes: 4_096,
     resolveCredential: () => new SecretString('example-only'),
   });
