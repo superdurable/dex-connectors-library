@@ -148,17 +148,23 @@ credential providers still own admission and persistence. Its constructor takes
 names to frozen dataclass attributes, and the caller-owned HTTP client. Optional
 `settings` resolves manifest setting sources, and optional `now` supplies a UTC
 clock for expiry and JWT claims. A credential dataclass for an authorization
-declaration with several `methods` must carry a nonempty `auth_method_id`.
+declaration with several `methods` carries `auth_method_id`; an empty value
+selects the declaration's `defaultMethod`.
 
 The manifest's `missingExpiry` declaration controls the decision when stored
 expiry is absent: `keep` (the default) leaves a present access token in place,
 and a declared lifetime refreshes it. The driver accepts
 `acceptsMissingTokenType: true` in a refresh declaration for a provider that
 omits `token_type`. A provider such as Slack that returns `bot` or `user` must
-declare grant `acceptedTokenTypes`. Schema and codegen support for both fields
-is pending before connector migration. The default requires `Bearer`.
-Only an optional
-client secret field may send a public-client refresh request when blank.
+declare grant `acceptedTokenTypes`. Refresh validation uses `requiredScopes`
+when declared, and a grant can override `exactScopes` or
+`acceptsMissingTokenType`. `refresh.scopeSeparators` selects `whitespace`
+(the default) or `whitespaceAndComma` for both exact and all-scope checks.
+A response lacking `expires_in` is retryable unless
+the manifest declares `missingExpiry`. The default requires `Bearer`.
+Only `refresh.allowsPublicClient: true` permits a public-client refresh request
+with a blank client secret; other blank secrets require reauthorization before
+any provider request.
 Missing grant material and declared terminal provider errors raise
 `ReauthorizationRequiredError`; transport, invalid response, and undeclared
 provider errors preserve the stored credential for retry. A response without
