@@ -67,7 +67,7 @@ function decodePage(body: Uint8Array): Record<string, unknown> {
 function goString(value: unknown): string { if (value === undefined || value === null) return ''; if (typeof value !== 'string') throw new TypeError('invalid string'); return value; }
 function goInteger(value: unknown): number { if (value === undefined || value === null) return 0; if (typeof value !== 'number' || !Number.isSafeInteger(value)) throw new TypeError('invalid integer'); return value; }
 function goBoolean(value: unknown): boolean { if (value === undefined || value === null) return false; if (typeof value !== 'boolean') throw new TypeError('invalid boolean'); return value; }
-function goObject(value: unknown): Record<string, unknown> { if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('invalid item'); return value as Record<string, unknown>; }
+function goObject(value: unknown): Record<string, unknown> { if (value === null) return {}; if (typeof value !== 'object' || Array.isArray(value)) throw new TypeError('invalid item'); return value as Record<string, unknown>; }
 
 function decodeRepositoryPage(body: Uint8Array): RepositoryPage {
   const page = decodePage(body);

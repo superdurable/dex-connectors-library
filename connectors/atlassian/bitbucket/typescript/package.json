@@ -45,7 +45,7 @@
     "example:list:start": "npm run build && tsx examples/resource-read/start.ts"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.1.0",
+    "@superdurable/connectors-sdk": "0.2.0",
     "@superdurable/dex": ">=1.28.0",
     "zod": "^4.1.0"
   },

@@ -69,6 +69,7 @@ export class BitbucketClient {
         url: this.baseURL + path, method: 'GET',
         headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
         maxResponseBytes: this.maxResponseBytes, timeoutMs: this.timeoutMs,
+        ignoreErrorBodyReadFailure: true,
         addressPolicy: this.baseURL === defaultBaseURL ? 'publicHTTPS' : 'privateNetworkHTTP',
         signal: call.context.cancellationSignal,
       });

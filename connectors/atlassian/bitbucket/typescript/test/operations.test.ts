@@ -79,6 +79,37 @@ it('classifies an oversized error body by status', async () => {
   }
 });
 
+it('passes the SDK option that preserves status when an error body cannot be read', async () => {
+  let ignoresErrorBodyReadFailure = false;
+  const client = new BitbucketClient({}, { resolve: async () => ({ accessToken: new SecretString('test-token') }) }, {
+    send: async request => {
+      ignoresErrorBodyReadFailure = request.ignoreErrorBodyReadFailure === true;
+      return { status: 404, headers: {}, body: new Uint8Array() };
+    },
+  });
+  const result = await client.listRepositories().invoke(call, { workspace: 'meridian' });
+  expect(ignoresErrorBodyReadFailure).toBe(true);
+  expect(result.kind).toBe('branch');
+  if (result.kind === 'branch') expect(result.branch).toBe('notFound');
+});
+
+it.each([
+  ['repositories', 'listRepositories', { workspace: 'meridian' }, { uuid: '', name: '', full_name: '', is_private: false }],
+  ['pull requests', 'listPullRequests', { workspace: 'meridian', repository: 'api' }, { id: 0, title: '', state: '' }],
+] as const)('decodes null %s as zero-value items', async (_label, operation, input, zeroItem) => {
+  const client = new BitbucketClient({}, { resolve: async () => ({ accessToken: new SecretString('test-token') }) }, {
+    send: async () => ({ status: 200, headers: {}, body: Buffer.from('{"values":[null]}') }),
+  });
+  const result = operation === 'listRepositories'
+    ? await client.listRepositories().invoke(call, input as { workspace: string })
+    : await client.listPullRequests().invoke(call, input as { workspace: string; repository: string });
+  expect(result.kind).toBe('branch');
+  if (result.kind === 'branch') {
+    expect(result.branch).toBe('listed');
+    expect(result.value.values).toEqual([zeroItem]);
+  }
+});
+
 it('validates the manifest timeout in a project connection', () => {
   const project = (timeout: string): LoadedProject => ({
     configuration: { connections: [{ connectorId: 'bitbucket', connectionName: 'example', provider: 'bitbucket', configuration: { timeout } }] },
