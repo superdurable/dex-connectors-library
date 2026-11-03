@@ -1,0 +1,1092 @@
+{
+  "connector": "openai",
+  "scenarios": [
+    {
+      "callId": "1bf38ca1-46ca-5ff0-970e-24799c5d4cc7",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"resp_conformance001\",\"model\":\"gpt-6-sol\",\"status\":\"completed\",\"output\":[{\"type\":\"message\",\"content\":[{\"type\":\"output_text\",\"text\":\"Done.\"}]}],\"usage\":{\"input_tokens\":10,\"input_tokens_details\":{\"cached_tokens\":2},\"output_tokens\":3,\"output_tokens_details\":{\"reasoning_tokens\":1},\"total_tokens\":13}}",
+          "headers": {
+            "X-Request-Id": "req_create"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/responses",
+          "requestBody": {
+            "input": "Summarize this.",
+            "instructions": "Be brief.",
+            "model": "gpt-6-sol",
+            "text": {
+              "format": {
+                "description": "Summary schema",
+                "name": "summary",
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "summary": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "summary"
+                  ],
+                  "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sk-conformance"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Client-Request-Id": [
+              "1bf38ca1-46ca-5ff0-970e-24799c5d4cc7"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "completed",
+        "failureKind": "",
+        "output": {
+          "id": "resp_conformance001",
+          "model": "gpt-6-sol",
+          "outputText": "Done.",
+          "status": "completed",
+          "usage": {
+            "cachedInputTokens": 2,
+            "inputTokens": 10,
+            "outputTokens": 3,
+            "reasoningOutputTokens": 1,
+            "totalTokens": 13
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1bf38ca1-46ca-5ff0-970e-24799c5d4cc7",
+      "input": {
+        "Input": "Summarize this.",
+        "Instructions": "Be brief.",
+        "Model": "gpt-6-sol",
+        "StructuredOutput": {
+          "Description": "Summary schema",
+          "Name": "summary",
+          "Schema": {
+            "additionalProperties": false,
+            "properties": {
+              "summary": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "summary"
+            ],
+            "type": "object"
+          },
+          "Strict": true
+        }
+      },
+      "name": "create completed",
+      "operation": "createResponse"
+    },
+    {
+      "callId": "fcf31011-a168-5b49-8818-afe8cfe5309b",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"resp_conformance001\",\"model\":\"gpt-6-sol\",\"status\":\"incomplete\",\"output\":[{\"type\":\"message\",\"content\":[{\"type\":\"output_text\",\"text\":\"Done.\"}]}],\"usage\":{\"input_tokens\":10,\"input_tokens_details\":{\"cached_tokens\":2},\"output_tokens\":3,\"output_tokens_details\":{\"reasoning_tokens\":1},\"total_tokens\":13}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/responses",
+          "requestBody": {
+            "input": "Summarize this.",
+            "model": "gpt-6-sol"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sk-conformance"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Client-Request-Id": [
+              "fcf31011-a168-5b49-8818-afe8cfe5309b"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "failed",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "resp_conformance001",
+          "model": "gpt-6-sol",
+          "outputText": "Done.",
+          "status": "incomplete",
+          "usage": {
+            "cachedInputTokens": 2,
+            "inputTokens": 10,
+            "outputTokens": 3,
+            "reasoningOutputTokens": 1,
+            "totalTokens": 13
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fcf31011-a168-5b49-8818-afe8cfe5309b",
+      "input": {
+        "Input": "Summarize this."
+      },
+      "name": "create failed",
+      "operation": "createResponse"
+    },
+    {
+      "callId": "d49cf965-8021-5261-9fdd-b98aa48d9f66",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/responses",
+          "requestBody": {
+            "input": "Summarize this.",
+            "model": "gpt-6-sol"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sk-conformance"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Client-Request-Id": [
+              "d49cf965-8021-5261-9fdd-b98aa48d9f66"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": "",
+          "model": "",
+          "outputText": "",
+          "status": "",
+          "usage": {
+            "cachedInputTokens": 0,
+            "inputTokens": 0,
+            "outputTokens": 0,
+            "reasoningOutputTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d49cf965-8021-5261-9fdd-b98aa48d9f66",
+      "input": {
+        "Input": "Summarize this."
+      },
+      "name": "create provider rejected",
+      "operation": "createResponse"
+    },
+    {
+      "callId": "c0f0043d-0c44-5256-af55-634ce5d82e32",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/responses",
+          "requestBody": {
+            "input": "Summarize this.",
+            "model": "gpt-6-sol"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sk-conformance"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Client-Request-Id": [
+              "c0f0043d-0c44-5256-af55-634ce5d82e32"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "id": "",
+          "model": "",
+          "outputText": "",
+          "status": "",
+          "usage": {
+            "cachedInputTokens": 0,
+            "inputTokens": 0,
+            "outputTokens": 0,
+            "reasoningOutputTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "c0f0043d-0c44-5256-af55-634ce5d82e32",
+      "input": {
+        "Input": "Summarize this."
+      },
+      "name": "create uncertain server error",
+      "operation": "createResponse"
+    },
+    {
+      "callId": "f48216be-1b5c-53ee-b87c-ca623eb35c6b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "model": "",
+          "outputText": "",
+          "status": "",
+          "usage": {
+            "cachedInputTokens": 0,
+            "inputTokens": 0,
+            "outputTokens": 0,
+            "reasoningOutputTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f48216be-1b5c-53ee-b87c-ca623eb35c6b",
+      "input": {},
+      "name": "create defect",
+      "operation": "createResponse"
+    },
+    {
+      "callId": "b58289c5-349a-59b9-b175-3c4022f6e3a8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/responses",
+          "requestBody": {
+            "input": "Summarize this.",
+            "model": "gpt-6-sol"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sk-conformance"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Client-Request-Id": [
+              "b58289c5-349a-59b9-b175-3c4022f6e3a8"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "b58289c5-349a-59b9-b175-3c4022f6e3a8",
+      "input": {
+        "Input": "Summarize this."
+      },
+      "name": "create rate limited",
+      "operation": "createResponse"
+    },
+    {
+      "callId": "b367d467-ba3f-51d4-adf9-a62bcc1c6c1a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/responses",
+          "requestBody": {
+            "input": "Summarize this.",
+            "model": "gpt-6-sol"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sk-conformance"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Client-Request-Id": [
+              "b367d467-ba3f-51d4-adf9-a62bcc1c6c1a"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b367d467-ba3f-51d4-adf9-a62bcc1c6c1a",
+      "input": {
+        "Input": "Summarize this."
+      },
+      "name": "create unavailable",
+      "operation": "createResponse"
+    },
+    {
+      "callId": "05c76c1a-50f0-5226-bb8e-af24ada49f08",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/responses",
+          "requestBody": {
+            "input": "Summarize this.",
+            "model": "gpt-6-sol"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sk-conformance"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Client-Request-Id": [
+              "05c76c1a-50f0-5226-bb8e-af24ada49f08"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "id": "",
+          "model": "",
+          "outputText": "",
+          "status": "",
+          "usage": {
+            "cachedInputTokens": 0,
+            "inputTokens": 0,
+            "outputTokens": 0,
+            "reasoningOutputTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "05c76c1a-50f0-5226-bb8e-af24ada49f08",
+      "input": {
+        "Input": "Summarize this."
+      },
+      "name": "create transport failure",
+      "operation": "createResponse"
+    },
+    {
+      "callId": "1b187245-8ba2-5064-860f-d607804ca04f",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"resp_conformance001\",\"model\":\"gpt-6-sol\",\"status\":\"completed\",\"output\":[{\"type\":\"message\",\"content\":[{\"type\":\"output_text\",\"text\":\"Done.\"}]}],\"usage\":{\"input_tokens\":10,\"input_tokens_details\":{\"cached_tokens\":2},\"output_tokens\":3,\"output_tokens_details\":{\"reasoning_tokens\":1},\"total_tokens\":13}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/responses/resp_conformance001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sk-conformance"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "resp_conformance001",
+          "model": "gpt-6-sol",
+          "outputText": "Done.",
+          "status": "completed",
+          "usage": {
+            "cachedInputTokens": 2,
+            "inputTokens": 10,
+            "outputTokens": 3,
+            "reasoningOutputTokens": 1,
+            "totalTokens": 13
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ResponseID": "resp_conformance001"
+      },
+      "name": "retrieve found",
+      "operation": "retrieveResponse"
+    },
+    {
+      "callId": "5d12f3c6-5fec-5f9d-a6e5-86b464baf809",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/responses/resp_conformance001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sk-conformance"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "model": "",
+          "outputText": "",
+          "status": "",
+          "usage": {
+            "cachedInputTokens": 0,
+            "inputTokens": 0,
+            "outputTokens": 0,
+            "reasoningOutputTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ResponseID": "resp_conformance001"
+      },
+      "name": "retrieve not found",
+      "operation": "retrieveResponse"
+    },
+    {
+      "callId": "e34de01b-0ed6-5475-bbb8-325e19511275",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/responses/resp_conformance001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sk-conformance"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": "",
+          "model": "",
+          "outputText": "",
+          "status": "",
+          "usage": {
+            "cachedInputTokens": 0,
+            "inputTokens": 0,
+            "outputTokens": 0,
+            "reasoningOutputTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ResponseID": "resp_conformance001"
+      },
+      "name": "retrieve provider rejected",
+      "operation": "retrieveResponse"
+    },
+    {
+      "callId": "64765775-3e90-5b1f-815e-088f7b129bbd",
+      "exchanges": [
+        {
+          "body": "{\"id\":",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/responses/resp_conformance001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sk-conformance"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "model": "",
+          "outputText": "",
+          "status": "",
+          "usage": {
+            "cachedInputTokens": 0,
+            "inputTokens": 0,
+            "outputTokens": 0,
+            "reasoningOutputTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ResponseID": "resp_conformance001"
+      },
+      "name": "retrieve invalid response",
+      "operation": "retrieveResponse"
+    },
+    {
+      "callId": "f4662b26-eeed-57f8-aae7-4e6fb5cd0076",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "model": "",
+          "outputText": "",
+          "status": "",
+          "usage": {
+            "cachedInputTokens": 0,
+            "inputTokens": 0,
+            "outputTokens": 0,
+            "reasoningOutputTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "retrieve defect",
+      "operation": "retrieveResponse"
+    },
+    {
+      "callId": "ff8faa18-f1a0-506b-8ba8-e0d8e0c388a6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/responses/resp_conformance001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sk-conformance"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "ResponseID": "resp_conformance001"
+      },
+      "name": "retrieve rate limited",
+      "operation": "retrieveResponse"
+    },
+    {
+      "callId": "aca0204f-324d-5526-b9ed-33ad50482d6a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/responses/resp_conformance001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sk-conformance"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ResponseID": "resp_conformance001"
+      },
+      "name": "retrieve server error",
+      "operation": "retrieveResponse"
+    },
+    {
+      "callId": "400e1226-4268-5605-99c5-445b80caadd8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/responses/resp_conformance001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sk-conformance"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "ResponseID": "resp_conformance001"
+      },
+      "name": "retrieve transport failure",
+      "operation": "retrieveResponse"
+    },
+    {
+      "attempts": 2,
+      "callId": "2def5a40-c412-530e-b146-9a481e5d5bdb",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/responses",
+          "requestBody": {
+            "input": "Summarize this.",
+            "model": "gpt-6-sol"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sk-conformance"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Client-Request-Id": [
+              "2def5a40-c412-530e-b146-9a481e5d5bdb"
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{\"id\": \"resp_recovered001\", \"model\": \"gpt-6-sol\", \"status\": \"completed\", \"output\": [{\"content\": [{\"type\": \"output_text\", \"text\": \"Recovered.\"}]}], \"usage\": {}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/responses",
+          "requestBody": {
+            "input": "Summarize this.",
+            "model": "gpt-6-sol"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sk-conformance"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Client-Request-Id": [
+              "2def5a40-c412-530e-b146-9a481e5d5bdb"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "completed",
+        "failureKind": "",
+        "output": {
+          "id": "resp_recovered001",
+          "model": "gpt-6-sol",
+          "outputText": "Recovered.",
+          "status": "completed",
+          "usage": {
+            "cachedInputTokens": 0,
+            "inputTokens": 0,
+            "outputTokens": 0,
+            "reasoningOutputTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2def5a40-c412-530e-b146-9a481e5d5bdb",
+      "input": {
+        "Input": "Summarize this."
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "create retry then completed",
+      "operation": "createResponse"
+    },
+    {
+      "callId": "f3f8f4ed-b5ea-5b65-896a-3b8a2ac30ab7",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"resp_recovered001\", \"model\": \"gpt-6-sol\", \"status\": \"queued\", \"output\": [{\"content\": [{\"type\": \"output_text\", \"text\": \"Recovered.\"}]}], \"usage\": {}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/responses",
+          "requestBody": {
+            "input": "Summarize this.",
+            "model": "gpt-6-sol"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sk-conformance"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Client-Request-Id": [
+              "f3f8f4ed-b5ea-5b65-896a-3b8a2ac30ab7"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\": \"resp_recovered001\", \"model\": \"gpt-6-sol\", \"status\": \"completed\", \"output\": [{\"content\": [{\"type\": \"output_text\", \"text\": \"Recovered.\"}]}], \"usage\": {}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/responses/resp_recovered001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sk-conformance"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "completed",
+        "failureKind": "",
+        "output": {
+          "id": "resp_recovered001",
+          "model": "gpt-6-sol",
+          "outputText": "Recovered.",
+          "status": "completed",
+          "usage": {
+            "cachedInputTokens": 0,
+            "inputTokens": 0,
+            "outputTokens": 0,
+            "reasoningOutputTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f3f8f4ed-b5ea-5b65-896a-3b8a2ac30ab7",
+      "input": {
+        "Input": "Summarize this."
+      },
+      "name": "create queued readback completed",
+      "operation": "createResponse"
+    },
+    {
+      "callId": "c7b9218d-d67f-54d5-90ad-2d22113a473b",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"resp_recovered001\", \"model\": \"gpt-6-sol\", \"status\": \"queued\", \"output\": [{\"content\": [{\"type\": \"output_text\", \"text\": \"Recovered.\"}]}], \"usage\": {}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/responses",
+          "requestBody": {
+            "input": "Summarize this.",
+            "model": "gpt-6-sol"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sk-conformance"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Client-Request-Id": [
+              "c7b9218d-d67f-54d5-90ad-2d22113a473b"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/responses/resp_recovered001",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sk-conformance"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "resp_recovered001",
+          "model": "",
+          "outputText": "",
+          "status": "",
+          "usage": {
+            "cachedInputTokens": 0,
+            "inputTokens": 0,
+            "outputTokens": 0,
+            "reasoningOutputTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "c7b9218d-d67f-54d5-90ad-2d22113a473b",
+      "input": {
+        "Input": "Summarize this."
+      },
+      "name": "create readback missing",
+      "operation": "createResponse"
+    },
+    {
+      "callId": "0c9b22ef-1c85-58f3-81c4-5916d388eb8b",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/responses",
+          "requestBody": {
+            "input": "Summarize this.",
+            "model": "gpt-6-sol"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sk-conformance"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Client-Request-Id": [
+              "0c9b22ef-1c85-58f3-81c4-5916d388eb8b"
+            ]
+          },
+          "status": 408
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "id": "",
+          "model": "",
+          "outputText": "",
+          "status": "",
+          "usage": {
+            "cachedInputTokens": 0,
+            "inputTokens": 0,
+            "outputTokens": 0,
+            "reasoningOutputTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "0c9b22ef-1c85-58f3-81c4-5916d388eb8b",
+      "input": {
+        "Input": "Summarize this."
+      },
+      "name": "create timeout uncertain",
+      "operation": "createResponse"
+    },
+    {
+      "callId": "4a8a0d84-afa1-5a17-8257-b99fc63ccf5e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/responses",
+          "requestBody": {
+            "input": "Summarize this.",
+            "model": "gpt-6-sol"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer sk-conformance"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Client-Request-Id": [
+              "4a8a0d84-afa1-5a17-8257-b99fc63ccf5e"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "CONFLICT",
+        "output": {
+          "id": "",
+          "model": "",
+          "outputText": "",
+          "status": "",
+          "usage": {
+            "cachedInputTokens": 0,
+            "inputTokens": 0,
+            "outputTokens": 0,
+            "reasoningOutputTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "4a8a0d84-afa1-5a17-8257-b99fc63ccf5e",
+      "input": {
+        "Input": "Summarize this."
+      },
+      "name": "create conflict uncertain",
+      "operation": "createResponse"
+    }
+  ],
+  "schemaVersion": 1
+}
