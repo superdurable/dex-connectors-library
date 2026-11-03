@@ -2,6 +2,10 @@
 
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/hiver/go@v0.23.0`.
 
+The Python package is `dex-connector-hiver==0.1.0`. It implements all six operations with generated Step factories and has no Triggers. Its [runnable conversation claim Flow](python/examples/claim_conversation/flow.py), [Worker entrypoint](python/examples/claim_conversation/main.py), and [package guide](python/README.md) show the static `hiver-support` connection and local Dex verification. Python replay uses the Go-recorded [conformance scenarios](../../conformance/connectors/hiver/scenarios.json), including multipart note and shared draft requests. Live Hiver authorization and API behavior remain unverified.
+
+For `addNote`, Python preserves Hiver's `created_at` through microseconds. A returned timestamp with nonzero sub-microsecond digits selects `uncertain` with a `created_at` protocol failure because the accepted note cannot be safely resent. The [Python package guide](python/README.md) describes this limit.
+
 Moved from `github.com/superdurable/dex-connectors-library/connectors/hiver`.
 
 > **Verification status: Dex-integrated in CI, not live.** The example runs
