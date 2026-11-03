@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "outDir": "dist",
+    "types": [
+      "node",
+      "vitest/globals"
+    ],
+    "rootDir": "../../../..",
+    "baseUrl": ".",
+    "paths": {
+      "@superdurable/connector-amazon-sqs": [
+        "src/index.ts"
+      ]
+    }
+  },
+  "include": [
+    "src/**/*.ts",
+    "test/**/*.ts",
+    "examples/**/*.ts"
+  ]
+}

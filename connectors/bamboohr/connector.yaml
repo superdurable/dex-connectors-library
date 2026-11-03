@@ -8,6 +8,11 @@ metadata:
   version: v0.23.0
 spec:
   provider: bamboohr
+  languages:
+    typescript:
+      version: v0.1.1
+      operations: [getEmployee, findEmployeeByEmail, listEmployeeChanges, listTimeOffRequests, updateEmployee, addEmployee]
+      triggers: []
   codegen:
     go:
       package: bamboohr

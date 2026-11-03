@@ -8,6 +8,10 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/amazon/sqs
 > [verification status](../../../docs/verification-status.md) for what is and
 > is not verified.
 
+## TypeScript package
+
+The independent `@superdurable/connector-amazon-sqs@0.1.0` package implements all three operations and no Trigger. Its [package README](typescript/README.md) documents the TypeScript connection, signing, operation behavior, tests, and [runnable queue consumer](typescript/examples/queue-consumer/README.md). The TypeScript port passes Go-recorded provider conformance and a real Dex Worker and Client integration check with scripted SQS responses; live Amazon SQS behavior remains unverified for the TypeScript package.
+
 The Amazon SQS Connector consumes messages from Amazon SQS standard and FIFO
 queues, and from SQS-compatible servers such as ElasticMQ, through the SQS JSON
 protocol. It exposes operation-specific Dex Step factories:

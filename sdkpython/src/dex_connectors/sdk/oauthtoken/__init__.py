@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from typing import Any
-from urllib.parse import urlsplit
+from urllib.parse import urlencode, urlsplit
 
 import httpx
 from cryptography.hazmat.primitives import hashes, serialization
@@ -104,11 +104,17 @@ class TokenResponse:
     refresh_token_expires_in: timedelta
     scope: str
     token_type: str
-    retained_fields: dict[str, object] = field(default_factory=dict)
+    retained_fields: dict[str, object] = field(default_factory=dict, repr=False)
+    _response_fields: dict[str, SecretString] = field(default_factory=dict, repr=False)
 
     def next_refresh_token(self, prior: SecretString) -> SecretString:
         """Use rotated refresh material when present, otherwise retain the prior token."""
         return self.refresh_token if self.refresh_token.reveal() else prior
+
+    def mapped_response_string(self, path: str) -> str | None:
+        """Read a manifest-mapped string from redacted response material."""
+        value = self._response_fields.get(path)
+        return value.reveal() if value is not None else None
 
 
 @dataclass(frozen=True, slots=True)
@@ -197,8 +203,13 @@ class TokenEndpoint:
         request = self.http_client.build_request(
             "POST", self.url,
             json=parameters if self.uses_json_request_body else None,
-            data=None if self.uses_json_request_body else parameters,
-            headers={"Accept": "application/json"},
+            content=None if self.uses_json_request_body else urlencode(sorted(parameters.items())),
+            headers={
+                "Accept": "application/json",
+                **({} if self.uses_json_request_body else {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                }),
+            },
         )
         if basic_client is not None:
             request.headers["Authorization"] = httpx.BasicAuth(
@@ -250,7 +261,22 @@ class TokenEndpoint:
             SecretString(access_token), SecretString(refresh_token), timedelta(seconds=expires_in),
             timedelta(seconds=max(0, refresh_expiry)), scope, token_type,
             {name: decoded[name] for name in self.retained_response_fields if name in decoded},
+            _redact_response_strings(decoded),
         )
+
+
+def _redact_response_strings(response: dict[str, object]) -> dict[str, SecretString]:
+    redacted: dict[str, SecretString] = {}
+    pending: list[tuple[str, object]] = [("", response)]
+    while pending:
+        path, value = pending.pop()
+        if isinstance(value, str):
+            redacted[path] = SecretString(value)
+        elif isinstance(value, dict):
+            for member, nested in value.items():
+                if isinstance(member, str):
+                    pending.append((f"{path}.{member}" if path else member, nested))
+    return redacted
 
 
 @dataclass(frozen=True, slots=True)
@@ -296,3 +322,6 @@ def sign_jwt_bearer_assertion(assertion: JWTBearerAssertion, private_key: rsa.RS
     unsigned = f"{encode(header)}.{encode(claims)}"
     signature = private_key.sign(unsigned.encode(), padding.PKCS1v15(), hashes.SHA256())
     return SecretString(f"{unsigned}.{base64.urlsafe_b64encode(signature).rstrip(b'=').decode()}")
+
+
+from .manifest_refresh import ManifestCredentialRefreshDriver as ManifestCredentialRefreshDriver  # noqa: E402
