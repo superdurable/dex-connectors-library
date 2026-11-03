@@ -25,6 +25,17 @@ export interface Scenario {
   exchanges: Exchange[]; expected: Expected; attempts?: number;
   intermediate?: Array<{ failureKind: string; retryAfterMs: number; exchangeCount: number }>;
   priorHeartbeat?: unknown;
+  clock?: string;
+}
+
+export function scenarioClock(scenario: Scenario): () => Date {
+  if (scenario.clock === undefined) return () => new Date();
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(scenario.clock)) {
+    throw new Error(`${scenario.name}: clock must be an RFC3339 timestamp`);
+  }
+  const milliseconds = Date.parse(scenario.clock);
+  if (!Number.isFinite(milliseconds)) throw new Error(`${scenario.name}: invalid clock timestamp`);
+  return () => new Date(milliseconds);
 }
 
 export class HeartbeatContext {
@@ -59,10 +70,11 @@ export function loadScenarios(url: URL): Scenario[] {
   if (document.schemaVersion !== 1 || typeof document.connector !== 'string' || !document.connector ||
       !Array.isArray(document.scenarios) || document.scenarios.length === 0) throw new Error('invalid scenario document');
   for (const item of document.scenarios) {
-    const scenario = record(item, ['name', 'operation', 'callId', 'input', 'exchanges', 'expected'], ['idempotencyKey', 'attempts', 'intermediate', 'priorHeartbeat'], url.pathname);
+    const scenario = record(item, ['name', 'operation', 'callId', 'input', 'exchanges', 'expected'], ['idempotencyKey', 'attempts', 'intermediate', 'priorHeartbeat', 'clock'], url.pathname);
     if (typeof scenario.name !== 'string' || !scenario.name || typeof scenario.operation !== 'string' || !scenario.operation ||
         typeof scenario.callId !== 'string' || !scenario.callId || !Array.isArray(scenario.exchanges)) throw new Error('invalid scenario identity or exchanges');
     if ('idempotencyKey' in scenario && typeof scenario.idempotencyKey !== 'string') throw new Error('invalid optional scenario identity');
+    if ('clock' in scenario) scenarioClock(scenario as unknown as Scenario);
     if (typeof scenario.input !== 'object' || scenario.input === null || Array.isArray(scenario.input)) {
       throw new Error(`${scenario.name}: input must be an object`);
     }

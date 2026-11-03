@@ -62,6 +62,7 @@ type conformanceScenario struct {
 	Name           string                    `json:"name"`
 	Operation      string                    `json:"operation"`
 	CallID         string                    `json:"callId"`
+	Clock          json.RawMessage           `json:"clock"`
 	IdempotencyKey string                    `json:"idempotencyKey"`
 	Input          json.RawMessage           `json:"input"`
 	Exchanges      []conformanceExchange     `json:"exchanges"`
@@ -227,6 +228,7 @@ func TestConnectorConformance(t *testing.T) {
 	requiredInputs := map[string][]string{}
 	for _, scenario := range scenarios {
 		t.Run(scenario.Name, func(t *testing.T) {
+			_ = conformanceClock(t, scenario)
 			recorder := &conformanceRecorder{scenario: scenario}
 			client := &http.Client{Transport: recorder}
 			endpoint := "http://127.0.0.1:12345" + conformanceEndpointPath
@@ -281,6 +283,24 @@ func TestConnectorConformance(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, os.WriteFile(fixturePath, append(output, '\n'), 0644))
 	}
+}
+
+func conformanceClock(t *testing.T, scenario conformanceScenario) func() time.Time {
+	t.Helper()
+	if scenario.Clock == nil {
+		return time.Now
+	}
+	var value string
+	require.NoError(t, json.Unmarshal(scenario.Clock, &value))
+	fixed, err := time.Parse(time.RFC3339Nano, value)
+	require.NoError(t, err)
+	return func() time.Time { return fixed }
+}
+
+func TestConformanceClock(t *testing.T) {
+	now := conformanceClock(t, conformanceScenario{Clock: json.RawMessage(`"2026-10-26T12:00:00+01:00"`)})
+	require.Equal(t, time.Date(2026, 10, 26, 11, 0, 0, 0, time.UTC), now().UTC())
+	require.WithinDuration(t, time.Now(), conformanceClock(t, conformanceScenario{})(), time.Second)
 }
 
 func conformanceScenarioObject(t *testing.T, scenario conformanceScenario) map[string]any {

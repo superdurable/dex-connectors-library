@@ -98,6 +98,13 @@ class DatabaseExemptionTest(unittest.TestCase):
 
 
 class CoverageValidationTest(unittest.TestCase):
+    def test_optional_clock_requires_rfc3339_timestamp(self) -> None:
+        scenario = {"name": "fixed", "clock": "2026-10-26T12:00:00Z"}
+        connector_conformance.validate_scenario_clock(scenario)
+        for clock in ("", "2026-10-26", "2026-02-30T12:00:00Z", "2026-10-26T12:00:00", None):
+            with self.subTest(clock=clock), self.assertRaisesRegex(ValueError, "invalid clock timestamp"):
+                connector_conformance.validate_scenario_clock({**scenario, "clock": clock})
+
     def validate_fixture(self, scenarios: list[dict[str, object]], error: str) -> None:
         with tempfile.TemporaryDirectory() as directory, patch.object(connector_conformance, "ROOT", Path(directory)), patch.object(connector_conformance, "conformance_exemptions", return_value={}):
             root = Path(directory)
