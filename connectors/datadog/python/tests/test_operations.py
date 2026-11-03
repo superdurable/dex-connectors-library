@@ -6,6 +6,7 @@ from uuid import uuid4
 
 import httpx
 import pytest
+from dex import CodecRegistry
 from dex_connectors.sdk import (
     Call,
     CallID,
@@ -70,7 +71,9 @@ async def test_metrics_query_sends_interval_and_both_keys() -> None:
         client.query_metrics(), metrics_call(), QueryMetricsInput(100, 200, "avg:system.cpu.user{*}")
     )
     assert result.branch == QUERIED
-    assert result.value.series[0].pointlist == ((1761436800000.0, 0.23), (1761436860000.0, None))
+    assert result.value.series[0].pointlist == ((1761436800000, 0.23), (1761436860000, None))
+    encoded = CodecRegistry().resolve(type(result.value)).encode(result.value)
+    assert '"pointlist":[[1761436800000,0.23],[1761436860000,null]]' in encoded.data
     assert dict(requests[0].url.params) == {"from": "100", "query": "avg:system.cpu.user{*}", "to": "200"}
     assert (requests[0].headers["DD-API-KEY"], requests[0].headers["DD-APPLICATION-KEY"]) == ("api", "app")
 
@@ -102,6 +105,31 @@ async def test_unsuccessful_metric_bodies_are_invalid(body: object) -> None:
         QueryMetricsInput(1, 2, "q"),
     )
     assert result.branch == INVALID_RESPONSE
+
+
+@pytest.mark.asyncio
+async def test_inexact_metric_number_names_field_and_fails_terminally() -> None:
+    body = {"status": "ok", "series": [{"metric": "cpu", "pointlist": [[9007199254740993, 0.23]]}]}
+    result = await run_query(
+        make_client(httpx.Response(200, json=body)).query_metrics(),
+        metrics_call(),
+        QueryMetricsInput(1, 2, "q"),
+    )
+    assert result.branch == INVALID_RESPONSE
+    assert result.failure is not None
+    assert "series[0].pointlist[0][0]" in result.failure.message
+
+
+@pytest.mark.asyncio
+async def test_integral_metric_float_uses_go_json_number_form() -> None:
+    body = {"status": "ok", "series": [{"metric": "cpu", "pointlist": [[1000.0, 1.0]]}]}
+    result = await run_query(
+        make_client(httpx.Response(200, json=body)).query_metrics(),
+        metrics_call(),
+        QueryMetricsInput(1, 2, "q"),
+    )
+    encoded = CodecRegistry().resolve(type(result.value)).encode(result.value)
+    assert '"pointlist":[[1000,1]]' in encoded.data
 
 
 @pytest.mark.asyncio
