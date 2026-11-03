@@ -381,6 +381,12 @@ required fields are validated. The project connection stores the selected
 method as `auth_method` in the credential and as `AuthMethodID` in the
 connection configuration.
 
+For generated Python project connections with optional credential fields, a missing or
+blank optional credential resolves as an empty value, while required credentials
+must be nonempty. Blank optional configuration fields use their manifest default
+or type zero value. TypeScript credentials mark optional fields with `?` and
+accept blank strings without runtime credential decoding.
+
 The optional `auth.methodLabel` is the singular noun the setup UI uses for a
 method, such as `Provider`. It is 1 to 32 characters without surrounding
 whitespace, and only a manifest with `methods` declares it.
