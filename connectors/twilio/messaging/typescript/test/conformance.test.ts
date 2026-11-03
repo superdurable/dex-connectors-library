@@ -19,8 +19,11 @@ function productionMutation<Input, Output>(operation: Mutation<Input, Output>, c
 
 async function invokeTwilio(scenario: Scenario, recorder: ExchangeRecorder, context: HeartbeatContext) {
   const send = (request: ProviderRequest) => answerRecordedRequest(recorder, request, before => new ProviderTransportError(before));
+  const isAPIKey = scenario.name.startsWith('api key ');
   const client = new TwilioClient({ endpoint: 'http://127.0.0.1:12345/2010-04-01', accountSid: 'AC00000000000000000000000000000000', defaultSender: '+14155550100' }, {
-    resolve: async () => ({ authMethodId: 'auth-token', authToken: new SecretString('auth-token-sentinel-0123456789ab') }),
+    resolve: async () => isAPIKey
+      ? { authMethodId: 'api-key', apiKeySid: '  SK' + '0123456789abcdef0123456789abcdef  ', apiKeySecret: new SecretString('api-key-secret-sentinel-012345678') }
+      : { authMethodId: 'auth-token', authToken: new SecretString('auth-token-sentinel-0123456789ab') },
   }, { send });
   const call = scenarioCall(scenario, connection, 'twilio-messaging', context,
     { reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false }) as Call;

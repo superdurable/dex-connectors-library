@@ -19,6 +19,8 @@ belong to the same account and Region. `defaultSender` can be an E.164 number,
 `whatsapp:` number, or Messaging Service `MG` SID; blank requires `sender` on
 each request. Leave `endpoint` and `maxResponseBytes` blank for their manifest
 defaults. Secrets are resolved for every call and never belong in Flow input.
+Stored credentials without `auth_method` use `auth-token`; a rejected static
+credential requires updating the connection rather than an automatic refresh.
 
 The runnable [text-message-delivery example](examples/text-message-delivery/README.md)
 uses `newProjectConnection(project, ConnectionName)` and the generated
@@ -28,7 +30,8 @@ uses `newProjectConnection(project, ConnectionName)` and the generated
 ## Behavior
 
 `sendMessage` sends `To`, an optional body, ordered media URLs, and either
-`From` or `MessagingServiceSid`. Twilio has no Messages create idempotency key.
+`From` or `MessagingServiceSid`. Form values use Go-compatible query escaping,
+including `%2A` for `*` and an unescaped `~`. Twilio has no Messages create idempotency key.
 The SDK fence records a heartbeat before dispatch and permits a resend only
 after proof of no send or Twilio's 429 or 503 response. A valid 2xx Message
 selects `accepted`; a conclusive 4xx selects `providerRejected`; an ambiguous

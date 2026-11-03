@@ -94,7 +94,7 @@ export class SendMessageOperation implements Mutation<SendMessageInput, Message>
         return newMutationRetry(twilioFailure('sendMessage', 'AUTHENTICATION', 'Twilio credential changed after its rejection'));
       }
       const code = errorCode(response.body); requested = { ...requested, ...(code ? { errorCode: code } : {}) };
-      return newMutationBranch('providerRejected', requested, this.client.receipt(call, response, '', code), 'failure' in refreshed ? refreshed.failure : twilioFailure('sendMessage', 'AUTHENTICATION', 'Twilio rejected the message credentials; update the connection'));
+      return newMutationBranch('providerRejected', requested, this.client.receipt(call, response, '', code), twilioFailure('sendMessage', 'AUTHENTICATION', 'failure' in refreshed ? refreshed.failure.message : 'Twilio rejected the message credentials; update the connection'));
     }
     if (response.status >= 400 && response.status < 500 && response.status !== 408 && response.status !== 409) {
       const code = errorCode(response.body); requested = { ...requested, ...(code ? { errorCode: code } : {}) };

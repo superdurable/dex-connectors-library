@@ -1402,6 +1402,123 @@
         "providerId": "SMfedcba9876543210fedcba9876543210",
         "state": "claimed"
       }
+    },
+    {
+      "callId": "d1ffeecf-f887-5bbc-8ca8-1325f0d0700d",
+      "exchanges": [
+        {
+          "body": "{\"sid\":\"SMfedcba9876543210fedcba9876543210\",\"account_sid\":\"AC00000000000000000000000000000000\",\"messaging_service_sid\":null,\"from\":\"+14155550100\",\"to\":\"+14155550123\",\"status\":\"queued\",\"direction\":\"outbound-api\",\"error_code\":null,\"num_segments\":\"1\",\"num_media\":\"0\",\"price\":null,\"price_unit\":null,\"date_created\":\"Wed, 30 Sep 2026 17:04:05 +0000\",\"date_sent\":null,\"date_updated\":null}",
+          "form": {
+            "Body": [
+              "50%* off~"
+            ],
+            "MediaUrl": [
+              "https://cdn.example.com/menu~1.png"
+            ],
+            "MessagingServiceSid": [
+              "MG00112233445566778899aabbccddeeff"
+            ],
+            "To": [
+              "+14155550123"
+            ]
+          },
+          "headers": {
+            "Twilio-Request-Id": "RQ0123456789abcdef0123456789abcdef"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic U0swMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZjphcGkta2V5LXNlY3JldC1zZW50aW5lbC0wMTIzNDU2Nzg="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "accepted",
+        "failureKind": "",
+        "output": {
+          "accountSid": "AC00000000000000000000000000000000",
+          "createdAt": "2026-09-30T17:04:05Z",
+          "direction": "outbound-api",
+          "from": "+14155550100",
+          "segmentCount": 1,
+          "sentAt": "0001-01-01T00:00:00Z",
+          "sid": "SMfedcba9876543210fedcba9876543210",
+          "status": "queued",
+          "to": "+14155550123",
+          "updatedAt": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d1ffeecf-f887-5bbc-8ca8-1325f0d0700d",
+      "input": {
+        "body": "50%* off~",
+        "mediaUrls": [
+          "https://cdn.example.com/menu~1.png"
+        ],
+        "sender": "MG00112233445566778899aabbccddeeff",
+        "to": "+14155550123"
+      },
+      "name": "api key send accepted",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "81deaedd-5e65-563b-aedf-fae5c4183419",
+      "exchanges": [
+        {
+          "body": "{\"sid\":\"SMfedcba9876543210fedcba9876543210\",\"account_sid\":\"AC00000000000000000000000000000000\",\"messaging_service_sid\":null,\"from\":\"+14155550100\",\"to\":\"+14155550123\",\"status\":\"queued\",\"direction\":\"outbound-api\",\"error_code\":null,\"num_segments\":\"1\",\"num_media\":\"0\",\"price\":null,\"price_unit\":null,\"date_created\":\"Wed, 30 Sep 2026 17:04:05 +0000\",\"date_sent\":null,\"date_updated\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages/SMfedcba9876543210fedcba9876543210.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic U0swMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZjphcGkta2V5LXNlY3JldC1zZW50aW5lbC0wMTIzNDU2Nzg="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "accountSid": "AC00000000000000000000000000000000",
+          "createdAt": "2026-09-30T17:04:05Z",
+          "direction": "outbound-api",
+          "from": "+14155550100",
+          "segmentCount": 1,
+          "sentAt": "0001-01-01T00:00:00Z",
+          "sid": "SMfedcba9876543210fedcba9876543210",
+          "status": "queued",
+          "to": "+14155550123",
+          "updatedAt": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messageSid": "SMfedcba9876543210fedcba9876543210"
+      },
+      "name": "api key get found",
+      "operation": "getMessage"
     }
   ],
   "schemaVersion": 1

@@ -110,7 +110,7 @@ export class TwilioClient {
 
   /** Send one request; only successful responses use the configured body limit. */
   async exchange(call: Call, authorization: TwilioAuthorization, method: string, url: string, form?: URLSearchParams, signal?: AbortSignal): Promise<TwilioExchange> {
-    const body = form ? Buffer.from(form.toString(), 'utf8') : undefined;
+    const body = form ? Buffer.from(encodeGoForm(form), 'utf8') : undefined;
     const request: ProviderRequest = {
       url, method, headers: { Authorization: `Basic ${Buffer.from(`${authorization.username}:${authorization.password}`).toString('base64')}`, Accept: 'application/json', ...(body ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {}) },
       ...(body ? { body } : {}), maxResponseBytes: Math.max(this.maxResponseBytes, MaxErrorBodyBytes),
@@ -132,7 +132,18 @@ export class TwilioClient {
   /** Decode a safe Twilio Message subset. */
   decodeMessage(body: Uint8Array, authorization: TwilioAuthorization): Message {
     let resource: Record<string, unknown>;
-    try { resource = JSON.parse(Buffer.from(body).toString('utf8')) as Record<string, unknown>; }
+    const rawIntegerTokens = new WeakMap<object, Map<string, string>>();
+    const parseWithSource = JSON.parse as (text: string, reviver: (this: Record<string, unknown>, key: string, value: unknown, context: { source?: string }) => unknown) => unknown;
+    try {
+      resource = parseWithSource(Buffer.from(body).toString('utf8'), function (this: Record<string, unknown>, key: string, value: unknown, context: { source?: string }) {
+        if (key === 'error_code' || key === 'num_segments' || key === 'num_media') {
+          let tokens = rawIntegerTokens.get(this);
+          if (!tokens) { tokens = new Map(); rawIntegerTokens.set(this, tokens); }
+          tokens.set(key, context.source ?? '');
+        }
+        return value;
+      }) as Record<string, unknown>;
+    }
     catch { throw new TypeError('Twilio returned an invalid message'); }
     if (!resource || typeof resource !== 'object' || Array.isArray(resource)) throw new TypeError('Twilio returned an invalid message');
     const required = (key: string): string => { const value = resource[key]; if (typeof value !== 'string') throw new TypeError('Twilio returned an invalid message'); return value; };
@@ -152,7 +163,8 @@ export class TwilioClient {
     for (const [key, target] of [['error_code', 'errorCode'], ['num_segments', 'segmentCount'], ['num_media', 'mediaCount']] as const) {
       const value = resource[key];
       if (value !== null && value !== undefined) {
-        if ((typeof value !== 'string' && typeof value !== 'number') || (typeof value === 'number' && !Number.isInteger(value)) || !/^[0-9]{1,9}$/.test(String(value))) throw new TypeError('Twilio returned an invalid message');
+        const decimalText = typeof value === 'number' ? rawIntegerTokens.get(resource)?.get(key) : value;
+        if ((typeof value !== 'string' && typeof value !== 'number') || (value !== '' && !/^[0-9]{1,9}$/.test(String(decimalText)))) throw new TypeError('Twilio returned an invalid message');
         const count = Number(value); if (count !== 0) message[target] = count;
       }
     }
@@ -200,9 +212,14 @@ export function buildSendRequest(input: { to: string; body?: string; mediaUrls?:
   form.append('To', recipient); form.sort();
   return { recipient, sender, form };
 }
+function encodeGoForm(form: URLSearchParams): string {
+  const queryEscape = (value: string) => encodeURIComponent(value).replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`).replace(/%20/g, '+');
+  return [...form].map(([key, value]) => `${queryEscape(key)}=${queryEscape(value)}`).join('&');
+}
 /** Validate a Twilio-hosted media URL. */
 export function validateMediaURL(value: string): void {
   if (Buffer.byteLength(value) > 2048 || !/^[!-~]+$/.test(value)) throw new TypeError('media URLs must be printable ASCII without spaces and at most 2048 bytes');
+  if (!/^https:\/\/[^/?#@\\]+(?:[/?#]|$)/.test(value)) throw new TypeError('media URLs must be absolute HTTPS URLs without credentials');
   let parsed: URL; try { parsed = new URL(value); } catch { throw new TypeError('media URLs must be absolute HTTPS URLs without credentials'); }
   if (parsed.protocol !== 'https:' || !parsed.hostname || parsed.username || parsed.password) throw new TypeError('media URLs must be absolute HTTPS URLs without credentials');
 }

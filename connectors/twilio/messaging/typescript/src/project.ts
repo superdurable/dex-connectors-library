@@ -1,9 +1,9 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { newRefreshingCredentialProvider, type LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
+import { newCredentialProvider, type LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
 import { z } from 'zod';
-import { ConfigSchema, decodeCredentials, type Config, type Credentials } from './generated/models.js';
+import { ConfigSchema, decodeCredentials, type Config } from './generated/models.js';
 import { newConnection as generatedNewConnection, type Connection } from './generated/connection.js';
 import { TwilioClient, type TwilioClientOptions } from './client.js';
 
@@ -17,10 +17,6 @@ export function newProjectConnection(project: LoadedProject, connectionName: str
   if (!selected || selected.provider !== 'twilio') throw new TypeError('Twilio project connection is not configured');
   const settings = z.object({ accountSid: z.string(), defaultSender: z.string().optional(), endpoint: z.string().optional(), maxResponseBytes: z.number().int().optional() }).parse(selected.configuration);
   const config: Config = ConfigSchema.parse(settings);
-  const credentialProvider = newRefreshingCredentialProvider(project.connections, { connectorId: 'twilio-messaging', connectionName },
-    fields => decodeCredentials({ ...fields, auth_method: fields.auth_method ?? selected.authMethodId ?? 'auth-token' }),
-    (credentials: Credentials) => credentials.authMethodId === 'api-key'
-      ? { auth_method: 'api-key', api_key_sid: credentials.apiKeySid, api_key_secret: credentials.apiKeySecret?.reveal() }
-      : { auth_method: 'auth-token', auth_token: credentials.authToken?.reveal() });
+  const credentialProvider = newCredentialProvider(project.connections, { connectorId: 'twilio-messaging', connectionName }, decodeCredentials);
   return newConnection(new TwilioClient(config, credentialProvider, options), connectionName);
 }
