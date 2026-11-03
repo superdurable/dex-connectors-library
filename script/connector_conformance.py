@@ -14,6 +14,75 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+NATIVE_WIRE_CONNECTORS = frozenset({
+    "connectors/postgresql", "connectors/mysql", "connectors/microsoft/sql-server",
+    "connectors/superdurable/email",
+})
+
+
+def conformance_exemptions() -> dict[str, str]:
+    """Load reviewed native-wire exemptions; never exempt an HTTP connector."""
+    exemption_file = ROOT / "conformance/exemptions.yaml"
+    document = json.loads(exemption_file.read_text())
+    entries = document.get("exemptions")
+    if document.get("schemaVersion") != 1 or not isinstance(entries, list):
+        raise ValueError("conformance/exemptions.yaml has an invalid schema")
+    exemptions: dict[str, str] = {}
+    for entry in entries:
+        if not isinstance(entry, dict) or set(entry) != {"connector", "reason"}:
+            raise ValueError("conformance exemption needs connector and reason")
+        connector, reason = entry["connector"], entry["reason"]
+        if connector not in NATIVE_WIRE_CONNECTORS:
+            raise ValueError(f"{connector} is not an approved native-wire connector")
+        if not isinstance(reason, str) or not reason.strip():
+            raise ValueError(f"{connector} has no exemption reason")
+        if connector in exemptions:
+            raise ValueError(f"{connector} repeats a conformance exemption")
+        if not (ROOT / connector / "connector.yaml").is_file():
+            raise ValueError(f"{connector} is not a connector")
+        exemptions[connector] = reason
+    return exemptions
+
+
+def database_ci_matrix(paths: list[str]) -> list[dict[str, str]]:
+    """Select exempt connectors that have a Python or TypeScript package to test."""
+    images = {
+        "connectors/postgresql": ("postgres:17", "5432"),
+        "connectors/mysql": ("mysql:8.4", "3306"),
+        "connectors/microsoft/sql-server": ("mcr.microsoft.com/mssql/server:2022-latest", "1433"),
+    }
+    shared_change = any(path in {"conformance/exemptions.yaml", "script/connector_conformance.py",
+                                 ".github/workflows/ci.yml"} for path in paths)
+    matrix = []
+    for connector in conformance_exemptions():
+        if connector not in images:
+            continue
+        if paths and not shared_change and not any(path.startswith(connector + "/") for path in paths):
+            continue
+        if not any((ROOT / connector / language / package).is_file() for language, package in (
+            ("python", "pyproject.toml"), ("typescript", "package.json")
+        )):
+            continue
+        image, port = images[connector]
+        matrix.append({"connector": connector, "image": image, "port": port})
+    return matrix
+
+
+def email_ci_matrix(paths: list[str]) -> list[dict[str, str]]:
+    """Select the exempt email connector when it has a language package to test."""
+    connector = "connectors/superdurable/email"
+    shared_change = any(path in {"conformance/exemptions.yaml", "script/connector_conformance.py",
+                                 ".github/workflows/ci.yml"} for path in paths)
+    if paths and not shared_change and not any(path.startswith(connector + "/") for path in paths):
+        return []
+    if connector not in conformance_exemptions():
+        return []
+    if not any((ROOT / connector / language / package).is_file() for language, package in (
+        ("python", "pyproject.toml"), ("typescript", "package.json")
+    )):
+        return []
+    return [{"connector": connector}]
+
 
 def connector_for_path(path: str) -> Path | None:
     """Find the registered connector owning one source or conformance path."""
@@ -51,11 +120,16 @@ def changed_connectors(paths: list[str]) -> list[Path]:
     return sorted(connectors)
 
 
-def run_connector(connector: Path, paths: list[str]) -> None:
+def run_connector(connector: Path, paths: list[str], exemptions: dict[str, str] | None = None) -> None:
     """Require each language runner and execute Go, Python, and TypeScript replay."""
     python_package = connector / "python"
     typescript_package = connector / "typescript"
     relative = connector.relative_to(ROOT / "connectors")
+    exemption = (exemptions if exemptions is not None else conformance_exemptions()).get(
+        str(connector.relative_to(ROOT)))
+    if exemption is not None:
+        print(f"{connector.relative_to(ROOT)}: exempt ({exemption})", flush=True)
+        return
     fixture = ROOT / "conformance/connectors" / relative / "scenarios.json"
     if not fixture.is_file():
         prefix = str(connector.relative_to(ROOT)) + "/"
@@ -221,6 +295,10 @@ def mutation_self_test(connectors: list[Path]) -> None:
         mime_scenario = next((item for item in original["scenarios"]
                               if any("$rawMime" in exchange.get("requestBody", {})
                                       for exchange in item["exchanges"])), None)
+        multipart_scenario = next((item for item in original["scenarios"]
+                                   if any(isinstance(exchange.get("requestBody"), dict)
+                                          and len(exchange["requestBody"].get("$multipart", [])) >= 2
+                                          for exchange in item["exchanges"])), None)
         keyed_scenario = next((item for item in original["scenarios"]
                                if item.get("idempotencyKey")), None)
         mutation_sources.extend((name, source) for name, source in (
@@ -229,6 +307,8 @@ def mutation_self_test(connectors: list[Path]) -> None:
             ("changed-form-value", form_scenario), ("read-5xx-classification", read_server_error),
             ("mime-subject", mime_scenario), ("mime-recipient", mime_scenario),
             ("mime-body", mime_scenario), ("random-idempotency-key", keyed_scenario),
+            ("multipart-part-name", multipart_scenario), ("multipart-part-body", multipart_scenario),
+            ("multipart-missing-part", multipart_scenario), ("multipart-part-order", multipart_scenario),
             ("wrong-nonempty-list", list_output_scenario),
         ) if source is not None)
         for mutation, source in mutation_sources:
@@ -281,6 +361,20 @@ def mutation_self_test(connectors: list[Path]) -> None:
                     exchange["requestBody"]["$rawMime"] = re.sub(r"To: [^\r\n]+", "To: " + marker, mime, count=1)
                 else:
                     exchange["requestBody"]["$rawMime"] = mime.replace("Update", marker, 1)
+            elif mutation.startswith("multipart-"):
+                exchange = next(exchange for exchange in changed["exchanges"]
+                                if isinstance(exchange.get("requestBody"), dict)
+                                and len(exchange["requestBody"].get("$multipart", [])) >= 2)
+                parts = exchange["requestBody"]["$multipart"]
+                if mutation == "multipart-part-name":
+                    part = next(part for part in parts if "Content-Disposition" in part["headers"])
+                    part["headers"]["Content-Disposition"][0] += "; name=wrong"
+                elif mutation == "multipart-part-body":
+                    parts[0]["bodyBase64"] = "d3Jvbmc="
+                elif mutation == "multipart-missing-part":
+                    parts.pop()
+                else:
+                    parts[0], parts[1] = parts[1], parts[0]
             elif mutation == "random-idempotency-key":
                 changed["idempotencyKey"] = "random-00000000-0000-4000-8000-000000000000"
             elif mutation == "pending-passing-go":
@@ -312,13 +406,25 @@ def main() -> None:
     parser.add_argument("--head", default=os.environ.get("CONNECTOR_HEAD", "HEAD"))
     parser.add_argument("--connector", action="append", default=[])
     parser.add_argument("--mutation-self-test", action="store_true")
+    parser.add_argument("--database-ci-matrix", action="store_true")
+    parser.add_argument("--email-ci-matrix", action="store_true")
     arguments = parser.parse_args()
+    exemptions = conformance_exemptions()
+    if arguments.database_ci_matrix:
+        paths = changed_paths(arguments.base, arguments.head) if arguments.base else []
+        print(json.dumps({"include": database_ci_matrix(paths)}))
+        return
+    if arguments.email_ci_matrix:
+        paths = changed_paths(arguments.base, arguments.head) if arguments.base else []
+        print(json.dumps({"include": email_ci_matrix(paths)}))
+        return
     if arguments.mutation_self_test:
         connectors = changed_connectors(changed_paths(arguments.base, arguments.head)) if arguments.base else sorted(
             ROOT / "connectors" / fixture.relative_to(ROOT / "conformance/connectors").parent
             for fixture in (ROOT / "conformance/connectors").rglob("scenarios.json")
         )
-        mutation_self_test(connectors)
+        mutation_self_test([connector for connector in connectors
+                            if str(connector.relative_to(ROOT)) not in exemptions])
         return
     if arguments.connector:
         connectors = sorted({(ROOT / path).resolve() for path in arguments.connector})
@@ -332,7 +438,7 @@ def main() -> None:
         if not (connector / "connector.yaml").is_file():
             parser.error(f"{connector} is not a connector directory")
         print(f"Conformance: {connector.relative_to(ROOT)}", flush=True)
-        run_connector(connector, paths)
+        run_connector(connector, paths, exemptions)
 
 
 if __name__ == "__main__":

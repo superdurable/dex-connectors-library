@@ -1,0 +1,2980 @@
+{
+  "connector": "bamboohr",
+  "scenarios": [
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"123\",\"firstName\":\"Ava\",\"workEmail\":\"ava@example.com\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees/123",
+          "query": {
+            "fields": [
+              "firstName,workEmail,missingField"
+            ],
+            "onlyCurrent": [
+              "false"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "employeeId": "123",
+          "fields": {
+            "firstName": "Ava",
+            "workEmail": "ava@example.com"
+          },
+          "omittedFields": [
+            "missingField"
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "employeeId": "123",
+        "fields": [
+          "firstName",
+          "workEmail",
+          "missingField"
+        ],
+        "includeFutureValues": true
+      },
+      "name": "getEmployee-success",
+      "operation": "getEmployee"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees/123",
+          "query": {
+            "fields": [
+              "firstName,workEmail,missingField"
+            ],
+            "onlyCurrent": [
+              "false"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "employeeId": "",
+          "fields": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "employeeId": "123",
+        "fields": [
+          "firstName",
+          "workEmail",
+          "missingField"
+        ],
+        "includeFutureValues": true
+      },
+      "name": "getEmployee-not-found",
+      "operation": "getEmployee"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"999\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees/123",
+          "query": {
+            "fields": [
+              "firstName,workEmail,missingField"
+            ],
+            "onlyCurrent": [
+              "false"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "employeeId": "",
+          "fields": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "employeeId": "123",
+        "fields": [
+          "firstName",
+          "workEmail",
+          "missingField"
+        ],
+        "includeFutureValues": true
+      },
+      "name": "getEmployee-invalid-response",
+      "operation": "getEmployee"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"access_denied\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees/123",
+          "query": {
+            "fields": [
+              "firstName,workEmail,missingField"
+            ],
+            "onlyCurrent": [
+              "false"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "employeeId": "",
+          "fields": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "employeeId": "123",
+        "fields": [
+          "firstName",
+          "workEmail",
+          "missingField"
+        ],
+        "includeFutureValues": true
+      },
+      "name": "getEmployee-provider-rejected",
+      "operation": "getEmployee"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"rate_limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees/123",
+          "query": {
+            "fields": [
+              "firstName,workEmail,missingField"
+            ],
+            "onlyCurrent": [
+              "false"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "employeeId": "123",
+        "fields": [
+          "firstName",
+          "workEmail",
+          "missingField"
+        ],
+        "includeFutureValues": true
+      },
+      "name": "getEmployee-retry-429",
+      "operation": "getEmployee"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees/123",
+          "query": {
+            "fields": [
+              "firstName,workEmail,missingField"
+            ],
+            "onlyCurrent": [
+              "false"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "employeeId": "123",
+        "fields": [
+          "firstName",
+          "workEmail",
+          "missingField"
+        ],
+        "includeFutureValues": true
+      },
+      "name": "getEmployee-retry-503",
+      "operation": "getEmployee"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees/123",
+          "query": {
+            "fields": [
+              "firstName,workEmail,missingField"
+            ],
+            "onlyCurrent": [
+              "false"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "employeeId": "123",
+        "fields": [
+          "firstName",
+          "workEmail",
+          "missingField"
+        ],
+        "includeFutureValues": true
+      },
+      "name": "getEmployee-transport-before-send",
+      "operation": "getEmployee"
+    },
+    {
+      "callId": "7aae9fc9-f358-542d-a45d-c3d5e54a1f0d",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"employeeId\":\"123\",\"firstName\":\"Ava\",\"lastName\":\"Nguyen\",\"homeEmail\":\"ava@example.com\",\"hireDate\":\"2026-10-13\",\"_restrictedFields\":[]}],\"meta\":{\"total\":1,\"page\":{\"nextCursor\":null}},\"_links\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees",
+          "query": {
+            "fields": [
+              "workEmail,homeEmail,hireDate"
+            ],
+            "filter[homeEmail]": [
+              "ava@example.com"
+            ],
+            "filter[status]": [
+              "active"
+            ],
+            "page[limit]": [
+              "100"
+            ],
+            "sort": [
+              "employeeId"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "candidateCount": 1,
+          "employee": {
+            "employeeId": "123",
+            "fields": {
+              "hireDate": "2026-10-13"
+            },
+            "firstName": "Ava",
+            "homeEmail": "ava@example.com",
+            "lastName": "Nguyen"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "ava@example.com",
+        "emailField": "homeEmail",
+        "fields": [
+          "hireDate"
+        ],
+        "status": "active"
+      },
+      "name": "findEmployeeByEmail-success",
+      "operation": "findEmployeeByEmail"
+    },
+    {
+      "callId": "7aae9fc9-f358-542d-a45d-c3d5e54a1f0d",
+      "exchanges": [
+        {
+          "body": "{\"data\":[],\"meta\":{\"total\":0,\"page\":{}},\"_links\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees",
+          "query": {
+            "fields": [
+              "workEmail,homeEmail,hireDate"
+            ],
+            "filter[homeEmail]": [
+              "ava@example.com"
+            ],
+            "filter[status]": [
+              "active"
+            ],
+            "page[limit]": [
+              "100"
+            ],
+            "sort": [
+              "employeeId"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "candidateCount": 0,
+          "employee": {
+            "employeeId": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "ava@example.com",
+        "emailField": "homeEmail",
+        "fields": [
+          "hireDate"
+        ],
+        "status": "active"
+      },
+      "name": "findEmployeeByEmail-not-found",
+      "operation": "findEmployeeByEmail"
+    },
+    {
+      "callId": "7aae9fc9-f358-542d-a45d-c3d5e54a1f0d",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"employeeId\":\"123\",\"firstName\":\"Ava\",\"lastName\":\"Nguyen\",\"homeEmail\":\"ava@example.com\",\"hireDate\":\"2026-10-13\",\"_restrictedFields\":[]},{\"employeeId\":\"124\",\"firstName\":\"Ava\",\"lastName\":\"Nguyen\",\"homeEmail\":\"ava@example.com\",\"hireDate\":\"2026-10-13\",\"_restrictedFields\":[]}],\"meta\":{\"total\":2,\"page\":{}},\"_links\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees",
+          "query": {
+            "fields": [
+              "workEmail,homeEmail,hireDate"
+            ],
+            "filter[homeEmail]": [
+              "ava@example.com"
+            ],
+            "filter[status]": [
+              "active"
+            ],
+            "page[limit]": [
+              "100"
+            ],
+            "sort": [
+              "employeeId"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "ambiguous",
+        "failureKind": "CONFLICT",
+        "output": {
+          "candidateCount": 2,
+          "employee": {
+            "employeeId": ""
+          },
+          "matches": [
+            {
+              "employeeId": "123",
+              "fields": {
+                "hireDate": "2026-10-13"
+              },
+              "firstName": "Ava",
+              "homeEmail": "ava@example.com",
+              "lastName": "Nguyen"
+            },
+            {
+              "employeeId": "124",
+              "fields": {
+                "hireDate": "2026-10-13"
+              },
+              "firstName": "Ava",
+              "homeEmail": "ava@example.com",
+              "lastName": "Nguyen"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "ava@example.com",
+        "emailField": "homeEmail",
+        "fields": [
+          "hireDate"
+        ],
+        "status": "active"
+      },
+      "name": "findEmployeeByEmail-ambiguous",
+      "operation": "findEmployeeByEmail"
+    },
+    {
+      "callId": "7aae9fc9-f358-542d-a45d-c3d5e54a1f0d",
+      "exchanges": [
+        {
+          "body": "{\"data\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees",
+          "query": {
+            "fields": [
+              "workEmail,homeEmail,hireDate"
+            ],
+            "filter[homeEmail]": [
+              "ava@example.com"
+            ],
+            "filter[status]": [
+              "active"
+            ],
+            "page[limit]": [
+              "100"
+            ],
+            "sort": [
+              "employeeId"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "candidateCount": 0,
+          "employee": {
+            "employeeId": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "ava@example.com",
+        "emailField": "homeEmail",
+        "fields": [
+          "hireDate"
+        ],
+        "status": "active"
+      },
+      "name": "findEmployeeByEmail-invalid-response",
+      "operation": "findEmployeeByEmail"
+    },
+    {
+      "callId": "7aae9fc9-f358-542d-a45d-c3d5e54a1f0d",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"access_denied\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees",
+          "query": {
+            "fields": [
+              "workEmail,homeEmail,hireDate"
+            ],
+            "filter[homeEmail]": [
+              "ava@example.com"
+            ],
+            "filter[status]": [
+              "active"
+            ],
+            "page[limit]": [
+              "100"
+            ],
+            "sort": [
+              "employeeId"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "candidateCount": 0,
+          "employee": {
+            "employeeId": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "ava@example.com",
+        "emailField": "homeEmail",
+        "fields": [
+          "hireDate"
+        ],
+        "status": "active"
+      },
+      "name": "findEmployeeByEmail-provider-rejected",
+      "operation": "findEmployeeByEmail"
+    },
+    {
+      "callId": "7aae9fc9-f358-542d-a45d-c3d5e54a1f0d",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"rate_limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees",
+          "query": {
+            "fields": [
+              "workEmail,homeEmail,hireDate"
+            ],
+            "filter[homeEmail]": [
+              "ava@example.com"
+            ],
+            "filter[status]": [
+              "active"
+            ],
+            "page[limit]": [
+              "100"
+            ],
+            "sort": [
+              "employeeId"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "ava@example.com",
+        "emailField": "homeEmail",
+        "fields": [
+          "hireDate"
+        ],
+        "status": "active"
+      },
+      "name": "findEmployeeByEmail-retry-429",
+      "operation": "findEmployeeByEmail"
+    },
+    {
+      "callId": "7aae9fc9-f358-542d-a45d-c3d5e54a1f0d",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees",
+          "query": {
+            "fields": [
+              "workEmail,homeEmail,hireDate"
+            ],
+            "filter[homeEmail]": [
+              "ava@example.com"
+            ],
+            "filter[status]": [
+              "active"
+            ],
+            "page[limit]": [
+              "100"
+            ],
+            "sort": [
+              "employeeId"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "ava@example.com",
+        "emailField": "homeEmail",
+        "fields": [
+          "hireDate"
+        ],
+        "status": "active"
+      },
+      "name": "findEmployeeByEmail-retry-503",
+      "operation": "findEmployeeByEmail"
+    },
+    {
+      "callId": "7aae9fc9-f358-542d-a45d-c3d5e54a1f0d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees",
+          "query": {
+            "fields": [
+              "workEmail,homeEmail,hireDate"
+            ],
+            "filter[homeEmail]": [
+              "ava@example.com"
+            ],
+            "filter[status]": [
+              "active"
+            ],
+            "page[limit]": [
+              "100"
+            ],
+            "sort": [
+              "employeeId"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "ava@example.com",
+        "emailField": "homeEmail",
+        "fields": [
+          "hireDate"
+        ],
+        "status": "active"
+      },
+      "name": "findEmployeeByEmail-transport-before-send",
+      "operation": "findEmployeeByEmail"
+    },
+    {
+      "callId": "82d38340-86b9-53d4-912a-674c172bcf89",
+      "exchanges": [
+        {
+          "body": "{\"employees\":{\"123\":{\"id\":\"123\",\"action\":\"Updated\",\"lastChanged\":\"2026-09-30T18:05:01Z\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees/changed",
+          "query": {
+            "since": [
+              "2026-09-30T18:04:59Z"
+            ],
+            "type": [
+              "updated"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "changes": [
+            {
+              "action": "Updated",
+              "employeeId": "123",
+              "lastChanged": "2026-09-30T18:05:01Z"
+            }
+          ],
+          "nextCursor": {
+            "afterEmployeeId": "123",
+            "since": "2026-09-30T18:05:01Z"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "afterEmployeeId": "122",
+        "changeType": "updated",
+        "limit": 2,
+        "since": "2026-09-30T18:05:00Z"
+      },
+      "name": "listEmployeeChanges-success",
+      "operation": "listEmployeeChanges"
+    },
+    {
+      "callId": "82d38340-86b9-53d4-912a-674c172bcf89",
+      "exchanges": [
+        {
+          "body": "{\"latest\":\"2026-09-30T18:05:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees/changed",
+          "query": {
+            "since": [
+              "2026-09-30T18:04:59Z"
+            ],
+            "type": [
+              "updated"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "changes": [],
+          "nextCursor": {
+            "since": "0001-01-01T00:00:00Z"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "afterEmployeeId": "122",
+        "changeType": "updated",
+        "limit": 2,
+        "since": "2026-09-30T18:05:00Z"
+      },
+      "name": "listEmployeeChanges-invalid-response",
+      "operation": "listEmployeeChanges"
+    },
+    {
+      "callId": "82d38340-86b9-53d4-912a-674c172bcf89",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"access_denied\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees/changed",
+          "query": {
+            "since": [
+              "2026-09-30T18:04:59Z"
+            ],
+            "type": [
+              "updated"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "changes": [],
+          "nextCursor": {
+            "since": "0001-01-01T00:00:00Z"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "afterEmployeeId": "122",
+        "changeType": "updated",
+        "limit": 2,
+        "since": "2026-09-30T18:05:00Z"
+      },
+      "name": "listEmployeeChanges-provider-rejected",
+      "operation": "listEmployeeChanges"
+    },
+    {
+      "callId": "82d38340-86b9-53d4-912a-674c172bcf89",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"rate_limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees/changed",
+          "query": {
+            "since": [
+              "2026-09-30T18:04:59Z"
+            ],
+            "type": [
+              "updated"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "afterEmployeeId": "122",
+        "changeType": "updated",
+        "limit": 2,
+        "since": "2026-09-30T18:05:00Z"
+      },
+      "name": "listEmployeeChanges-retry-429",
+      "operation": "listEmployeeChanges"
+    },
+    {
+      "callId": "82d38340-86b9-53d4-912a-674c172bcf89",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees/changed",
+          "query": {
+            "since": [
+              "2026-09-30T18:04:59Z"
+            ],
+            "type": [
+              "updated"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "afterEmployeeId": "122",
+        "changeType": "updated",
+        "limit": 2,
+        "since": "2026-09-30T18:05:00Z"
+      },
+      "name": "listEmployeeChanges-retry-503",
+      "operation": "listEmployeeChanges"
+    },
+    {
+      "callId": "82d38340-86b9-53d4-912a-674c172bcf89",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees/changed",
+          "query": {
+            "since": [
+              "2026-09-30T18:04:59Z"
+            ],
+            "type": [
+              "updated"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "afterEmployeeId": "122",
+        "changeType": "updated",
+        "limit": 2,
+        "since": "2026-09-30T18:05:00Z"
+      },
+      "name": "listEmployeeChanges-transport-before-send",
+      "operation": "listEmployeeChanges"
+    },
+    {
+      "callId": "8d60b353-48f0-524c-ba7c-c000125f033f",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":5521,\"employeeId\":123,\"categoryId\":78,\"startDate\":\"2026-10-20\",\"endDate\":\"2026-10-21\",\"amount\":2,\"unit\":\"DAYS\",\"status\":\"APPROVED\",\"requestedAt\":\"2026-09-02T15:04:05Z\",\"dailyAmounts\":[{\"date\":\"2026-10-20\",\"amount\":1}]}],\"meta\":{\"page\":1,\"pageSize\":50,\"totalPages\":1,\"totalItems\":1}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/time-off/requests",
+          "query": {
+            "filter": [
+              "startDate le '2026-10-26' and endDate ge '2026-10-13' and employeeId eq 123 and status in ('requested', 'approved')"
+            ],
+            "page": [
+              "1"
+            ],
+            "pageSize": [
+              "50"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "page": 1,
+          "requests": [
+            {
+              "amount": 2,
+              "categoryId": 78,
+              "dailyAmounts": [
+                {
+                  "amount": 1,
+                  "date": "2026-10-20"
+                }
+              ],
+              "employeeId": "123",
+              "endDate": "2026-10-21",
+              "id": 5521,
+              "requestedAt": "2026-09-02T15:04:05Z",
+              "startDate": "2026-10-20",
+              "status": "APPROVED",
+              "unit": "DAYS"
+            }
+          ],
+          "totalItems": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "employeeId": "123",
+        "endDate": "2026-10-26",
+        "page": 1,
+        "pageSize": 50,
+        "startDate": "2026-10-13",
+        "statuses": [
+          "REQUESTED",
+          "APPROVED"
+        ]
+      },
+      "name": "listTimeOffRequests-success",
+      "operation": "listTimeOffRequests"
+    },
+    {
+      "callId": "8d60b353-48f0-524c-ba7c-c000125f033f",
+      "exchanges": [
+        {
+          "body": "{\"data\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/time-off/requests",
+          "query": {
+            "filter": [
+              "startDate le '2026-10-26' and endDate ge '2026-10-13' and employeeId eq 123 and status in ('requested', 'approved')"
+            ],
+            "page": [
+              "1"
+            ],
+            "pageSize": [
+              "50"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "page": 0,
+          "requests": [],
+          "totalItems": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "employeeId": "123",
+        "endDate": "2026-10-26",
+        "page": 1,
+        "pageSize": 50,
+        "startDate": "2026-10-13",
+        "statuses": [
+          "REQUESTED",
+          "APPROVED"
+        ]
+      },
+      "name": "listTimeOffRequests-invalid-response",
+      "operation": "listTimeOffRequests"
+    },
+    {
+      "callId": "8d60b353-48f0-524c-ba7c-c000125f033f",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"access_denied\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/time-off/requests",
+          "query": {
+            "filter": [
+              "startDate le '2026-10-26' and endDate ge '2026-10-13' and employeeId eq 123 and status in ('requested', 'approved')"
+            ],
+            "page": [
+              "1"
+            ],
+            "pageSize": [
+              "50"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "page": 0,
+          "requests": [],
+          "totalItems": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "employeeId": "123",
+        "endDate": "2026-10-26",
+        "page": 1,
+        "pageSize": 50,
+        "startDate": "2026-10-13",
+        "statuses": [
+          "REQUESTED",
+          "APPROVED"
+        ]
+      },
+      "name": "listTimeOffRequests-provider-rejected",
+      "operation": "listTimeOffRequests"
+    },
+    {
+      "callId": "8d60b353-48f0-524c-ba7c-c000125f033f",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"rate_limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/time-off/requests",
+          "query": {
+            "filter": [
+              "startDate le '2026-10-26' and endDate ge '2026-10-13' and employeeId eq 123 and status in ('requested', 'approved')"
+            ],
+            "page": [
+              "1"
+            ],
+            "pageSize": [
+              "50"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "employeeId": "123",
+        "endDate": "2026-10-26",
+        "page": 1,
+        "pageSize": 50,
+        "startDate": "2026-10-13",
+        "statuses": [
+          "REQUESTED",
+          "APPROVED"
+        ]
+      },
+      "name": "listTimeOffRequests-retry-429",
+      "operation": "listTimeOffRequests"
+    },
+    {
+      "callId": "8d60b353-48f0-524c-ba7c-c000125f033f",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/time-off/requests",
+          "query": {
+            "filter": [
+              "startDate le '2026-10-26' and endDate ge '2026-10-13' and employeeId eq 123 and status in ('requested', 'approved')"
+            ],
+            "page": [
+              "1"
+            ],
+            "pageSize": [
+              "50"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "employeeId": "123",
+        "endDate": "2026-10-26",
+        "page": 1,
+        "pageSize": 50,
+        "startDate": "2026-10-13",
+        "statuses": [
+          "REQUESTED",
+          "APPROVED"
+        ]
+      },
+      "name": "listTimeOffRequests-retry-503",
+      "operation": "listTimeOffRequests"
+    },
+    {
+      "callId": "8d60b353-48f0-524c-ba7c-c000125f033f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/time-off/requests",
+          "query": {
+            "filter": [
+              "startDate le '2026-10-26' and endDate ge '2026-10-13' and employeeId eq 123 and status in ('requested', 'approved')"
+            ],
+            "page": [
+              "1"
+            ],
+            "pageSize": [
+              "50"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "employeeId": "123",
+        "endDate": "2026-10-26",
+        "page": 1,
+        "pageSize": 50,
+        "startDate": "2026-10-13",
+        "statuses": [
+          "REQUESTED",
+          "APPROVED"
+        ]
+      },
+      "name": "listTimeOffRequests-transport-before-send",
+      "operation": "listTimeOffRequests"
+    },
+    {
+      "callId": "040acc95-2028-5ed8-8c49-215b4fa87426",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"123\",\"mobilePhone\":\"old\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees/123",
+          "query": {
+            "fields": [
+              "mobilePhone"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/employees/123",
+          "requestBody": {
+            "mobilePhone": "801-555-0100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":\"123\",\"mobilePhone\":\"801-555-0100\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees/123",
+          "query": {
+            "fields": [
+              "mobilePhone"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "employee": {
+            "employeeId": "123",
+            "fields": {
+              "mobilePhone": "801-555-0100"
+            }
+          },
+          "writtenFields": [
+            "mobilePhone"
+          ]
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "040acc95-2028-5ed8-8c49-215b4fa87426",
+      "input": {
+        "employeeId": "123",
+        "fields": {
+          "mobilePhone": "801-555-0100"
+        }
+      },
+      "name": "updateEmployee-updated",
+      "operation": "updateEmployee"
+    },
+    {
+      "callId": "040acc95-2028-5ed8-8c49-215b4fa87426",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"123\",\"mobilePhone\":\"801-555-0100\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees/123",
+          "query": {
+            "fields": [
+              "mobilePhone"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "employee": {
+            "employeeId": "123",
+            "fields": {
+              "mobilePhone": "801-555-0100"
+            }
+          },
+          "wasAlreadyApplied": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "040acc95-2028-5ed8-8c49-215b4fa87426",
+      "input": {
+        "employeeId": "123",
+        "fields": {
+          "mobilePhone": "801-555-0100"
+        }
+      },
+      "name": "updateEmployee-already-applied",
+      "operation": "updateEmployee"
+    },
+    {
+      "callId": "040acc95-2028-5ed8-8c49-215b4fa87426",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees/123",
+          "query": {
+            "fields": [
+              "mobilePhone"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "employee": {
+            "employeeId": "",
+            "fields": {}
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "040acc95-2028-5ed8-8c49-215b4fa87426",
+      "input": {
+        "employeeId": "123",
+        "fields": {
+          "mobilePhone": "801-555-0100"
+        }
+      },
+      "name": "updateEmployee-not-found",
+      "operation": "updateEmployee"
+    },
+    {
+      "callId": "040acc95-2028-5ed8-8c49-215b4fa87426",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"999\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees/123",
+          "query": {
+            "fields": [
+              "mobilePhone"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "employee": {
+            "employeeId": "",
+            "fields": {}
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "040acc95-2028-5ed8-8c49-215b4fa87426",
+      "input": {
+        "employeeId": "123",
+        "fields": {
+          "mobilePhone": "801-555-0100"
+        }
+      },
+      "name": "updateEmployee-invalid-response",
+      "operation": "updateEmployee"
+    },
+    {
+      "callId": "040acc95-2028-5ed8-8c49-215b4fa87426",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"123\",\"mobilePhone\":\"old\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees/123",
+          "query": {
+            "fields": [
+              "mobilePhone"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"code\":\"access_denied\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/employees/123",
+          "requestBody": {
+            "mobilePhone": "801-555-0100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "employee": {
+            "employeeId": "123",
+            "fields": {
+              "mobilePhone": "old"
+            }
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "040acc95-2028-5ed8-8c49-215b4fa87426",
+      "input": {
+        "employeeId": "123",
+        "fields": {
+          "mobilePhone": "801-555-0100"
+        }
+      },
+      "name": "updateEmployee-provider-rejected",
+      "operation": "updateEmployee"
+    },
+    {
+      "callId": "040acc95-2028-5ed8-8c49-215b4fa87426",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"rate_limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees/123",
+          "query": {
+            "fields": [
+              "mobilePhone"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "040acc95-2028-5ed8-8c49-215b4fa87426",
+      "input": {
+        "employeeId": "123",
+        "fields": {
+          "mobilePhone": "801-555-0100"
+        }
+      },
+      "name": "updateEmployee-retry-429",
+      "operation": "updateEmployee"
+    },
+    {
+      "callId": "040acc95-2028-5ed8-8c49-215b4fa87426",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees/123",
+          "query": {
+            "fields": [
+              "mobilePhone"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "040acc95-2028-5ed8-8c49-215b4fa87426",
+      "input": {
+        "employeeId": "123",
+        "fields": {
+          "mobilePhone": "801-555-0100"
+        }
+      },
+      "name": "updateEmployee-retry-503",
+      "operation": "updateEmployee"
+    },
+    {
+      "callId": "040acc95-2028-5ed8-8c49-215b4fa87426",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees/123",
+          "query": {
+            "fields": [
+              "mobilePhone"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "040acc95-2028-5ed8-8c49-215b4fa87426",
+      "input": {
+        "employeeId": "123",
+        "fields": {
+          "mobilePhone": "801-555-0100"
+        }
+      },
+      "name": "updateEmployee-transport-before-send",
+      "operation": "updateEmployee"
+    },
+    {
+      "callId": "040acc95-2028-5ed8-8c49-215b4fa87426",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"123\",\"mobilePhone\":\"old\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees/123",
+          "query": {
+            "fields": [
+              "mobilePhone"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/employees/123",
+          "requestBody": {
+            "mobilePhone": "801-555-0100"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "040acc95-2028-5ed8-8c49-215b4fa87426",
+      "input": {
+        "employeeId": "123",
+        "fields": {
+          "mobilePhone": "801-555-0100"
+        }
+      },
+      "name": "updateEmployee-write-transport-after-send",
+      "operation": "updateEmployee"
+    },
+    {
+      "callId": "6c9e932e-fe09-5f01-8889-39650948771e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"140\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/employees",
+          "requestBody": {
+            "department": "Engineering",
+            "firstName": "Ava",
+            "hireDate": "2026-10-13",
+            "homeEmail": "ava@personal.example.com",
+            "lastName": "Nguyen",
+            "preferredName": "Av",
+            "workEmail": "ava@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "employeeId": "140"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6c9e932e-fe09-5f01-8889-39650948771e",
+      "input": {
+        "fields": {
+          "department": "Engineering"
+        },
+        "firstName": "Ava",
+        "hireDate": "2026-10-13",
+        "homeEmail": "ava@personal.example.com",
+        "lastName": "Nguyen",
+        "preferredName": "Av",
+        "workEmail": "ava@example.com"
+      },
+      "name": "addEmployee-success",
+      "operation": "addEmployee"
+    },
+    {
+      "callId": "6c9e932e-fe09-5f01-8889-39650948771e",
+      "exchanges": [
+        {
+          "body": "{\"firstName\":\"Ava\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/employees",
+          "requestBody": {
+            "department": "Engineering",
+            "firstName": "Ava",
+            "hireDate": "2026-10-13",
+            "homeEmail": "ava@personal.example.com",
+            "lastName": "Nguyen",
+            "preferredName": "Av",
+            "workEmail": "ava@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "employeeId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "6c9e932e-fe09-5f01-8889-39650948771e",
+      "input": {
+        "fields": {
+          "department": "Engineering"
+        },
+        "firstName": "Ava",
+        "hireDate": "2026-10-13",
+        "homeEmail": "ava@personal.example.com",
+        "lastName": "Nguyen",
+        "preferredName": "Av",
+        "workEmail": "ava@example.com"
+      },
+      "name": "addEmployee-uncertain",
+      "operation": "addEmployee"
+    },
+    {
+      "callId": "6c9e932e-fe09-5f01-8889-39650948771e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"140\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees/140",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "employeeId": "140"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6c9e932e-fe09-5f01-8889-39650948771e",
+      "input": {
+        "fields": {
+          "department": "Engineering"
+        },
+        "firstName": "Ava",
+        "hireDate": "2026-10-13",
+        "homeEmail": "ava@personal.example.com",
+        "lastName": "Nguyen",
+        "preferredName": "Av",
+        "workEmail": "ava@example.com"
+      },
+      "name": "addEmployee-read-back",
+      "operation": "addEmployee",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "6c9e932e-fe09-5f01-8889-39650948771e",
+        "providerId": "140",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "6c9e932e-fe09-5f01-8889-39650948771e",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"access_denied\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/employees",
+          "requestBody": {
+            "department": "Engineering",
+            "firstName": "Ava",
+            "hireDate": "2026-10-13",
+            "homeEmail": "ava@personal.example.com",
+            "lastName": "Nguyen",
+            "preferredName": "Av",
+            "workEmail": "ava@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "employeeId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6c9e932e-fe09-5f01-8889-39650948771e",
+      "input": {
+        "fields": {
+          "department": "Engineering"
+        },
+        "firstName": "Ava",
+        "hireDate": "2026-10-13",
+        "homeEmail": "ava@personal.example.com",
+        "lastName": "Nguyen",
+        "preferredName": "Av",
+        "workEmail": "ava@example.com"
+      },
+      "name": "addEmployee-provider-rejected",
+      "operation": "addEmployee"
+    },
+    {
+      "callId": "6c9e932e-fe09-5f01-8889-39650948771e",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"rate_limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/employees",
+          "requestBody": {
+            "department": "Engineering",
+            "firstName": "Ava",
+            "hireDate": "2026-10-13",
+            "homeEmail": "ava@personal.example.com",
+            "lastName": "Nguyen",
+            "preferredName": "Av",
+            "workEmail": "ava@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6c9e932e-fe09-5f01-8889-39650948771e",
+      "input": {
+        "fields": {
+          "department": "Engineering"
+        },
+        "firstName": "Ava",
+        "hireDate": "2026-10-13",
+        "homeEmail": "ava@personal.example.com",
+        "lastName": "Nguyen",
+        "preferredName": "Av",
+        "workEmail": "ava@example.com"
+      },
+      "name": "addEmployee-retry-429",
+      "operation": "addEmployee"
+    },
+    {
+      "callId": "6c9e932e-fe09-5f01-8889-39650948771e",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/employees",
+          "requestBody": {
+            "department": "Engineering",
+            "firstName": "Ava",
+            "hireDate": "2026-10-13",
+            "homeEmail": "ava@personal.example.com",
+            "lastName": "Nguyen",
+            "preferredName": "Av",
+            "workEmail": "ava@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6c9e932e-fe09-5f01-8889-39650948771e",
+      "input": {
+        "fields": {
+          "department": "Engineering"
+        },
+        "firstName": "Ava",
+        "hireDate": "2026-10-13",
+        "homeEmail": "ava@personal.example.com",
+        "lastName": "Nguyen",
+        "preferredName": "Av",
+        "workEmail": "ava@example.com"
+      },
+      "name": "addEmployee-retry-503",
+      "operation": "addEmployee"
+    },
+    {
+      "callId": "6c9e932e-fe09-5f01-8889-39650948771e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/employees",
+          "requestBody": {
+            "department": "Engineering",
+            "firstName": "Ava",
+            "hireDate": "2026-10-13",
+            "homeEmail": "ava@personal.example.com",
+            "lastName": "Nguyen",
+            "preferredName": "Av",
+            "workEmail": "ava@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6c9e932e-fe09-5f01-8889-39650948771e",
+      "input": {
+        "fields": {
+          "department": "Engineering"
+        },
+        "firstName": "Ava",
+        "hireDate": "2026-10-13",
+        "homeEmail": "ava@personal.example.com",
+        "lastName": "Nguyen",
+        "preferredName": "Av",
+        "workEmail": "ava@example.com"
+      },
+      "name": "addEmployee-transport-before-send",
+      "operation": "addEmployee"
+    },
+    {
+      "callId": "6c9e932e-fe09-5f01-8889-39650948771e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/employees",
+          "requestBody": {
+            "department": "Engineering",
+            "firstName": "Ava",
+            "hireDate": "2026-10-13",
+            "homeEmail": "ava@personal.example.com",
+            "lastName": "Nguyen",
+            "preferredName": "Av",
+            "workEmail": "ava@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "employeeId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "6c9e932e-fe09-5f01-8889-39650948771e",
+      "input": {
+        "fields": {
+          "department": "Engineering"
+        },
+        "firstName": "Ava",
+        "hireDate": "2026-10-13",
+        "homeEmail": "ava@personal.example.com",
+        "lastName": "Nguyen",
+        "preferredName": "Av",
+        "workEmail": "ava@example.com"
+      },
+      "name": "addEmployee-transport-after-send",
+      "operation": "addEmployee"
+    },
+    {
+      "callId": "472485d6-a578-50af-a4d2-124cf93b188f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "employeeId": "",
+          "fields": {}
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "employeeId": "0",
+        "fields": [
+          "firstName"
+        ]
+      },
+      "name": "getEmployee-defect",
+      "operation": "getEmployee"
+    },
+    {
+      "callId": "7aae9fc9-f358-542d-a45d-c3d5e54a1f0d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "candidateCount": 0,
+          "employee": {
+            "employeeId": ""
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "invalid-address"
+      },
+      "name": "findEmployeeByEmail-defect",
+      "operation": "findEmployeeByEmail"
+    },
+    {
+      "callId": "82d38340-86b9-53d4-912a-674c172bcf89",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "changes": [],
+          "nextCursor": {
+            "since": "0001-01-01T00:00:00Z"
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "since": "0001-01-01T00:00:00Z"
+      },
+      "name": "listEmployeeChanges-defect",
+      "operation": "listEmployeeChanges"
+    },
+    {
+      "callId": "8d60b353-48f0-524c-ba7c-c000125f033f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "page": 0,
+          "requests": [],
+          "totalItems": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "endDate": "2026-10-13",
+        "startDate": "2026-10-26"
+      },
+      "name": "listTimeOffRequests-defect",
+      "operation": "listTimeOffRequests"
+    },
+    {
+      "callId": "040acc95-2028-5ed8-8c49-215b4fa87426",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "employee": {
+            "employeeId": "",
+            "fields": {}
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "040acc95-2028-5ed8-8c49-215b4fa87426",
+      "input": {
+        "employeeId": "0",
+        "fields": {
+          "mobilePhone": "x"
+        }
+      },
+      "name": "updateEmployee-defect",
+      "operation": "updateEmployee"
+    },
+    {
+      "callId": "6c9e932e-fe09-5f01-8889-39650948771e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "employeeId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6c9e932e-fe09-5f01-8889-39650948771e",
+      "input": {
+        "firstName": "",
+        "lastName": "Nguyen"
+      },
+      "name": "addEmployee-defect",
+      "operation": "addEmployee"
+    },
+    {
+      "attempts": 2,
+      "callId": "6c9e932e-fe09-5f01-8889-39650948771e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/employees",
+          "requestBody": {
+            "department": "Engineering",
+            "firstName": "Ava",
+            "hireDate": "2026-10-13",
+            "homeEmail": "ava@personal.example.com",
+            "lastName": "Nguyen",
+            "preferredName": "Av",
+            "workEmail": "ava@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        },
+        {
+          "body": "{\"id\":\"141\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/employees",
+          "requestBody": {
+            "department": "Engineering",
+            "firstName": "Ava",
+            "hireDate": "2026-10-13",
+            "homeEmail": "ava@personal.example.com",
+            "lastName": "Nguyen",
+            "preferredName": "Av",
+            "workEmail": "ava@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "employeeId": "141"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6c9e932e-fe09-5f01-8889-39650948771e",
+      "input": {
+        "fields": {
+          "department": "Engineering"
+        },
+        "firstName": "Ava",
+        "hireDate": "2026-10-13",
+        "homeEmail": "ava@personal.example.com",
+        "lastName": "Nguyen",
+        "preferredName": "Av",
+        "workEmail": "ava@example.com"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "RATE_LIMIT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "addEmployee-rate-limit-then-created",
+      "operation": "addEmployee"
+    },
+    {
+      "attempts": 2,
+      "callId": "6c9e932e-fe09-5f01-8889-39650948771e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/employees",
+          "requestBody": {
+            "department": "Engineering",
+            "firstName": "Ava",
+            "hireDate": "2026-10-13",
+            "homeEmail": "ava@personal.example.com",
+            "lastName": "Nguyen",
+            "preferredName": "Av",
+            "workEmail": "ava@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{\"id\":\"141\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/employees",
+          "requestBody": {
+            "department": "Engineering",
+            "firstName": "Ava",
+            "hireDate": "2026-10-13",
+            "homeEmail": "ava@personal.example.com",
+            "lastName": "Nguyen",
+            "preferredName": "Av",
+            "workEmail": "ava@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "employeeId": "141"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6c9e932e-fe09-5f01-8889-39650948771e",
+      "input": {
+        "fields": {
+          "department": "Engineering"
+        },
+        "firstName": "Ava",
+        "hireDate": "2026-10-13",
+        "homeEmail": "ava@personal.example.com",
+        "lastName": "Nguyen",
+        "preferredName": "Av",
+        "workEmail": "ava@example.com"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "addEmployee-unavailable-then-created",
+      "operation": "addEmployee"
+    },
+    {
+      "callId": "6c9e932e-fe09-5f01-8889-39650948771e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees/140",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "employeeId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "6c9e932e-fe09-5f01-8889-39650948771e",
+      "input": {
+        "fields": {
+          "customITProvisioning": "Pending"
+        },
+        "firstName": "Sam",
+        "hireDate": "2026-10-01",
+        "homeEmail": "sam@home.example.com",
+        "lastName": "Park",
+        "preferredName": "Samuel",
+        "workEmail": "sam@example.com"
+      },
+      "name": "addEmployee-read-back-missing",
+      "operation": "addEmployee",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "6c9e932e-fe09-5f01-8889-39650948771e",
+        "providerId": "140",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "6c9e932e-fe09-5f01-8889-39650948771e",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "employeeId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "6c9e932e-fe09-5f01-8889-39650948771e",
+      "input": {
+        "fields": {
+          "customITProvisioning": "Pending"
+        },
+        "firstName": "Sam",
+        "hireDate": "2026-10-01",
+        "homeEmail": "sam@home.example.com",
+        "lastName": "Park",
+        "preferredName": "Samuel",
+        "workEmail": "sam@example.com"
+      },
+      "name": "addEmployee-no-resend",
+      "operation": "addEmployee",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "6c9e932e-fe09-5f01-8889-39650948771e",
+        "state": "claimed"
+      }
+    },
+    {
+      "attempts": 2,
+      "callId": "040acc95-2028-5ed8-8c49-215b4fa87426",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"123\",\"workEmail\":\"old@example.com\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees/123",
+          "query": {
+            "fields": [
+              "workEmail"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/employees/123",
+          "requestBody": {
+            "workEmail": "ava@example.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{\"id\":\"123\",\"workEmail\":\"ava@example.com\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/employees/123",
+          "query": {
+            "fields": [
+              "workEmail"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzp4"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "employee": {
+            "employeeId": "123",
+            "fields": {
+              "workEmail": "ava@example.com"
+            }
+          },
+          "wasAlreadyApplied": true
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "040acc95-2028-5ed8-8c49-215b4fa87426",
+      "input": {
+        "employeeId": "123",
+        "fields": {
+          "workEmail": "ava@example.com"
+        }
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "updateEmployee-write-503-then-applied",
+      "operation": "updateEmployee"
+    }
+  ],
+  "schemaVersion": 1
+}

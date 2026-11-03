@@ -238,6 +238,16 @@ describe('Gmail send and reply classification', () => {
     expect(searches).toBe(5);
   });
 
+  it('records the provider ID when read-back confirms an ambiguous send', async () => {
+    const checkpoint: { value?: unknown } = {};
+    const operation = sender(async request => request.method === 'POST'
+      ? response(500, {})
+      : response(200, { messages: [{ id: 'read-back-send', threadId: 'thread-1' }] }));
+    expect(await operation.sendMessage(operationCall('sendMessage', 1, checkpoint), sendInput, new Date(Date.now() + 30_000)))
+      .toMatchObject({ branch: 'sent', value: { messageId: 'read-back-send' } });
+    expect(checkpoint.value).toMatchObject({ state: 'claimed', providerId: 'read-back-send', attempt: 1 });
+  });
+
   it('records conclusive rate-limit refusal so the next attempt may send', async () => {
     const checkpoint: { value?: unknown } = {};
     let posts = 0;
