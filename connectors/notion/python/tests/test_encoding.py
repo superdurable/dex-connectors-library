@@ -14,7 +14,7 @@ from dex_connectors.notion.encoding import (
     encode_sorts,
     select_data_source,
 )
-from dex_connectors.notion.provider_models import decode_page, parse_id
+from dex_connectors.notion.provider_models import decode_page, decode_property, parse_id
 
 
 @pytest.mark.parametrize(
@@ -44,6 +44,41 @@ def test_property_encoding_preserves_clear_and_explicit_false() -> None:
     assert encode_properties({"Due": PropertyValue(type="date")}) == {"Due": {"date": None}}
     with pytest.raises(ValueError, match="checkbox"):
         encode_properties({"Done": PropertyValue(type="checkbox")})
+
+
+@pytest.mark.parametrize("property_type", ["url", "email", "phone_number"])
+def test_nullable_text_clears_only_on_raw_empty_string(property_type: str) -> None:
+    """Whitespace must pass the same validation as Go's nonempty input."""
+    assert encode_properties({"Value": PropertyValue(type=property_type)}) == {
+        "Value": {property_type: None}
+    }
+    whitespace = PropertyValue(type=property_type, **{property_type: "  "})
+    if property_type == "phone_number":
+        assert encode_properties({"Value": whitespace}) == {"Value": {property_type: ""}}
+    else:
+        with pytest.raises(ValueError, match=property_type):
+            encode_properties({"Value": whitespace})
+
+
+@pytest.mark.parametrize("number,plain_text", [(0.00001, "0.00001"), (1.5e-7, "0.00000015")])
+@pytest.mark.parametrize("property_type", ["number", "formula", "rollup"])
+def test_small_number_plain_text_matches_go_fixed_format(
+    number: float, plain_text: str, property_type: str
+) -> None:
+    """Number-bearing properties use positional decimal text."""
+    value: object = number
+    if property_type != "number":
+        value = {"type": "number", "number": number}
+    assert decode_property({"type": property_type, property_type: value}).plain_text == plain_text
+
+
+@pytest.mark.parametrize("invalid_date", ["2026-01-01T10:00Z", "2026-01-01T10:00:00+0000"])
+def test_date_property_and_filter_require_rfc3339_shape(invalid_date: str) -> None:
+    """Both date encoders reject ISO forms that Go's RFC 3339 parser rejects."""
+    with pytest.raises(ValueError, match="RFC 3339"):
+        encode_properties({"Due": PropertyValue(type="date", date=DateRange(invalid_date))})
+    with pytest.raises(ValueError, match="RFC 3339"):
+        encode_filter(QueryFilter(property="Due", type="date", condition="equals", date=invalid_date))
 
 
 @pytest.mark.parametrize("invalid_address", ["a b@example.com", "a@example..com", "a@@b"])

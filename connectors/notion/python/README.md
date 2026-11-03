@@ -17,6 +17,11 @@ Notion does not accept an idempotency key. `updatePageProperties` sends
 absolute values and can retry safely. Every non-happy-path branch is optional
 and fails the Flow if an application leaves it unwired.
 
+Number, formula, and rollup values use positional decimal `plain_text`, including
+small fractions. For URL, email, and phone properties, only an empty input clears
+the value; surrounding whitespace is trimmed before validation. Date and filter
+date-times require RFC 3339 seconds and a `Z` or colon-separated offset.
+
 Run `uv sync --group dev` and `uv run pytest -q tests` in this directory to
 replay the Go-recorded provider scenarios and check input encoding. Run the
 [real Dex integration test](examples/submission_intake/README.md) with a

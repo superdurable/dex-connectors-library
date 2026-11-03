@@ -276,6 +276,94 @@
       "operation": "getPage"
     },
     {
+      "callId": "90fd70b1-97b4-5d1a-a4a5-b5c0cd361eb8",
+      "exchanges": [
+        {
+          "body": "{\"object\":\"page\",\"id\":\"1f3c9a2e-5b7d-4e8a-9c01-23456789abcd\",\"url\":\"https://www.notion.so/1f3c9a2e5b7d4e8a9c0123456789abcd\",\"parent\":{\"type\":\"data_source_id\",\"data_source_id\":\"2a4d6f80-1b3c-4d5e-8f70-112233445566\",\"database_id\":\"3b5e7091-2c4d-4e6f-9081-223344556677\"},\"properties\":{\"Name\":{\"id\":\"title\",\"type\":\"title\",\"title\":[{\"plain_text\":\"Ada Lovelace\"}]},\"Small\":{\"id\":\"small\",\"type\":\"number\",\"number\":1e-05},\"Formula\":{\"id\":\"formula\",\"type\":\"formula\",\"formula\":{\"type\":\"number\",\"number\":1.5e-07}},\"Rollup\":{\"id\":\"rollup\",\"type\":\"rollup\",\"rollup\":{\"type\":\"number\",\"number\":1e-05}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/pages/1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer ntn_test_token_value"
+            ],
+            "Notion-Version": [
+              "2026-03-11"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "content": {
+            "blockCount": 0,
+            "hasMoreBlocks": false,
+            "nestedBlockCount": 0,
+            "skippedBlockCount": 0,
+            "text": "",
+            "textTruncated": false
+          },
+          "page": {
+            "archived": false,
+            "id": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+            "inTrash": false,
+            "parent": {
+              "databaseId": "3b5e7091-2c4d-4e6f-9081-223344556677",
+              "id": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
+              "type": "data_source_id"
+            },
+            "properties": {
+              "Formula": {
+                "id": "formula",
+                "number": 1.5e-7,
+                "plainText": "0.00000015",
+                "type": "formula"
+              },
+              "Name": {
+                "id": "title",
+                "plainText": "Ada Lovelace",
+                "text": "Ada Lovelace",
+                "type": "title"
+              },
+              "Rollup": {
+                "id": "rollup",
+                "number": 0.00001,
+                "plainText": "0.00001",
+                "type": "rollup"
+              },
+              "Small": {
+                "id": "small",
+                "number": 0.00001,
+                "plainText": "0.00001",
+                "type": "number"
+              }
+            },
+            "title": "Ada Lovelace",
+            "url": "https://www.notion.so/1f3c9a2e5b7d4e8a9c0123456789abcd"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxBlocks": 2,
+        "maxTextCharacters": 10,
+        "pageId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+        "skipContent": true
+      },
+      "name": "found-small-numbers",
+      "operation": "getPage"
+    },
+    {
       "callId": "ad0e2f6d-9e39-5278-8995-6ca0b37f578f",
       "exchanges": [
         {

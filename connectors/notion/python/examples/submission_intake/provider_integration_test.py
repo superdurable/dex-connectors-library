@@ -26,7 +26,10 @@ PAGE = {
     "id": PAGE_ID,
     "url": "https://www.notion.so/2a4d6f801b3c4d5e8f70112233445577",
     "parent": {"type": "data_source_id", "data_source_id": SOURCE_ID},
-    "properties": {"Name": {"id": "title", "type": "title", "title": [{"plain_text": "Ada Lovelace"}]}},
+    "properties": {
+        "Name": {"id": "title", "type": "title", "title": [{"plain_text": "Ada Lovelace"}]},
+        "Score": {"id": "score", "type": "number", "number": 0.00001},
+    },
 }
 
 
@@ -143,6 +146,8 @@ async def test_real_dex_routes_all_provider_operations(tmp_path: Path) -> None:
                 else:
                     assert result.status == dex.FlowStatus.COMPLETED, result.error_message
                     assert result.single_output(GetPageOutput).page.id == PAGE_ID
+                    page = result.single_output(GetPageOutput).page
+                    assert page.properties["Score"].plain_text == "0.00001"
         methods = [method for method, _, _ in provider.requests]
         assert methods.count("POST") == 8
         assert methods.count("PATCH") == 2

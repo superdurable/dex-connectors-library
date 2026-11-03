@@ -13,7 +13,10 @@ from urllib.parse import urlsplit
 from .models import DateRange, PropertyValue, QueryFilter, QuerySort
 from .provider_models import parse_id
 
-_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+_DATE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
+_RFC3339 = re.compile(
+    r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$"
+)
 _ZONE = re.compile(r"^[A-Za-z][A-Za-z0-9_+-]*(/[A-Za-z0-9_+-]+){0,3}$")
 _SEPARATOR = re.compile(r"\n[ \t]*\n\s*")
 
@@ -73,6 +76,8 @@ def _date_text(value: str) -> str:
         if _DATE.fullmatch(text):
             datetime.strptime(text, "%Y-%m-%d")
         else:
+            if not _RFC3339.fullmatch(text):
+                raise ValueError
             parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
             if parsed.tzinfo is None or "T" not in text:
                 raise ValueError
@@ -187,12 +192,15 @@ def encode_property(value: PropertyValue) -> dict[str, object]:
     if value.type == "date":
         return {"date": _date(value.date) if value.date else None}
     if value.type in ("url", "email", "phone_number"):
-        text = getattr(value, "phone_number" if value.type == "phone_number" else value.type).strip()
-        if value.type == "url" and text:
+        raw_text = getattr(value, "phone_number" if value.type == "phone_number" else value.type)
+        if raw_text == "":
+            return {value.type: None}
+        text = raw_text.strip()
+        if value.type == "url":
             parsed = urlsplit(text)
             if not parsed.scheme or not parsed.netloc or len(text) > 2000:
                 raise ValueError("url must be absolute and at most 2000 characters")
-        if value.type == "email" and text:
+        if value.type == "email":
             try:
                 address = Address(addr_spec=text)
             except (ValueError, HeaderParseError) as error:
@@ -201,7 +209,7 @@ def encode_property(value: PropertyValue) -> dict[str, object]:
                 raise ValueError("email must be one plain email address")
         if value.type == "phone_number" and (len(text) > 200 or "\n" in text or "\r" in text):
             raise ValueError("phone number must be one line")
-        return {value.type: text or None}
+        return {value.type: text}
     if value.type == "people":
         return {"people": [{"object": "user", "id": item} for item in _ids(value.user_ids, "userIds")]}
     return {"relation": [{"id": item} for item in _ids(value.page_ids, "pageIds")]}

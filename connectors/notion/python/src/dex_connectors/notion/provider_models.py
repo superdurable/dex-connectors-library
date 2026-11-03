@@ -3,6 +3,7 @@
 """Convert Notion's REST objects into generated connector models."""
 
 import re
+from decimal import Decimal
 from typing import Any, cast
 from urllib.parse import urlsplit
 
@@ -84,6 +85,8 @@ def _number_text(number: object) -> str:
         return ""
     if isinstance(number, float) and number.is_integer():
         return str(int(number))
+    if isinstance(number, float):
+        return format(Decimal(repr(number)), "f")
     return str(number)
 
 
