@@ -4,6 +4,7 @@
 
 import asyncio
 import json
+import re
 from dataclasses import replace
 
 import psycopg
@@ -18,6 +19,7 @@ from dex_connectors.sdk import (
     SecretString,
     StaticCredentialProvider,
 )
+from psycopg import generators, pq
 
 from dex_connectors.postgresql import Client, Config, Credentials, ExecuteStatementInput, QueryRowsInput
 from dex_connectors.postgresql.client import (
@@ -31,6 +33,16 @@ from dex_connectors.postgresql.models import Column
 
 REFERENCE = ConnectionRef("postgresql", "test")
 CALL_ID = CallID("00000000-0000-4000-8000-000000000001")
+
+
+@pytest.fixture(autouse=True)
+def allow_fake_pgconn(monkeypatch: pytest.MonkeyPatch) -> None:
+    execute = generators.execute
+    monkeypatch.setattr(
+        generators,
+        "execute",
+        lambda pgconn: object() if isinstance(pgconn, _PgConn) else execute(pgconn),
+    )
 
 
 def _call(operation: str) -> Call:
@@ -62,6 +74,9 @@ class _Result:
         self.nfields = len(columns)
         self.ntuples = len(rows)
         self.command_tuples = affected
+        self.nparams = 0
+        self.status = pq.ExecStatus.TUPLES_OK if columns else pq.ExecStatus.COMMAND_OK
+        self.command_status = b""
 
     def fname(self, index: int) -> bytes:
         return self.columns[index][0].encode()
@@ -114,10 +129,36 @@ class _Info:
 class _PgConn:
     backend_pid = 123
 
+    def __init__(self, connection: "_Connection") -> None:
+        self.connection = connection
+        self.pending_result = _Result((), ())
+
+    def send_prepare(self, name: bytes, statement: bytes) -> None:
+        assert name == b""
+        assert statement.decode() == self.connection.statement
+        self.connection.prepared_statements.append(self.connection.statement)
+        if self.connection.statement_error is not None:
+            raise self.connection.statement_error
+        self.pending_result = _Result((), ())
+
+    def send_describe_prepared(self, name: bytes) -> None:
+        assert name == b""
+        description = _Result(self.connection.result.columns, ())
+        description.nparams = self.connection.placeholder_count
+        self.pending_result = description
+
+    def send_query_prepared(self, name: bytes, parameters: tuple[bytes | None, ...]) -> None:
+        assert name == b""
+        decoded_parameters = tuple(value.decode() if value is not None else None for value in parameters)
+        self.connection.statements.append((self.connection.statement, decoded_parameters))
+        self.pending_result = self.connection.result
+        self.pending_result.command_status = self.connection.command.encode()
+
 
 class _Connection:
     def __init__(self, statement: str, result: _Result, command: str = "SELECT 1") -> None:
         self.statement = statement
+        self.placeholder_count = max((int(number) for number in re.findall(r"\$(\d+)", statement)), default=0)
         self.result = result
         self.command = command
         self.statements: list[tuple[str, tuple[str | None, ...]]] = []
@@ -128,7 +169,13 @@ class _Connection:
         self.statement_wait: asyncio.Event | None = None
         self.closed = False
         self.info = _Info()
-        self.pgconn = _PgConn()
+        self.pgconn = _PgConn(self)
+        self.lock = asyncio.Lock()
+
+    async def wait(self, _generator: object) -> list[_Result]:
+        if self.pgconn.pending_result is self.result and self.statement_wait is not None:
+            await self.statement_wait.wait()
+        return [self.pgconn.pending_result]
 
     def cursor(self) -> _Cursor:
         return _Cursor(self)
@@ -147,6 +194,7 @@ class _Connection:
         ("53300", "statement", "retry", FailureKind.AVAILABILITY),
         ("58030", "statement", "retry", FailureKind.AVAILABILITY),
         ("08006", "statement", "retry", FailureKind.TRANSPORT),
+        ("08007", "statement", "retry", FailureKind.TRANSPORT),
         ("08P01", "statement", "defect", FailureKind.VALIDATION),
         ("28P01", "connect", "rejected", FailureKind.AUTHENTICATION),
         ("42501", "statement", "rejected", FailureKind.AUTHORIZATION),
@@ -186,6 +234,16 @@ def test_transport_and_conclusive_connect_classification() -> None:
         ("FATAL: role test does not exist", "rejected", FailureKind.AUTHENTICATION),
         ("FATAL: too many connections", "retry", FailureKind.AVAILABILITY),
         ("root certificate file /missing does not exist", "rejected", FailureKind.AUTHENTICATION),
+        (
+            'server certificate for "db.example" does not match host name "other.example"',
+            "rejected",
+            FailureKind.AUTHENTICATION,
+        ),
+        (
+            "could not get server's host name from server certificate",
+            "rejected",
+            FailureKind.AUTHENTICATION,
+        ),
     ],
 )
 def test_libpq_connect_messages_without_sqlstate(message: str, disposition: str, kind: FailureKind) -> None:
@@ -240,7 +298,13 @@ def test_json_numbers_never_change_on_serialization() -> None:
     column = Column("document", "json", 114)
     plain = _decode_column(column, b'{"text":"safe","array":[true,null,42]}')
     assert json.dumps(plain, separators=(",", ":")) == '{"text":"safe","array":[true,null,42]}'
-    for value in (b'{"a":1.10}', b'{"b":12345678901234567890.123456789}', b'{"n":1e400}'):
+    for value in (
+        b'{"a":1.10}',
+        b'{"b":12345678901234567890.123456789}',
+        b'{"n":1e400}',
+        b'{"a":1,"a":2}',
+        b'{"nested":{"a":1,"a":2}}',
+    ):
         with pytest.raises(ValueError, match='column "document"'):
             _decode_column(column, value)
 
@@ -334,6 +398,58 @@ async def test_parameterless_query_uses_prepared_protocol(monkeypatch: pytest.Mo
     assert outcome.branch == "completed"
     assert connection.prepared_statements == [statement]
     assert (statement, ()) in connection.statements
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation", ["query", "execute"])
+async def test_extra_parameters_are_defects_before_execution(
+    monkeypatch: pytest.MonkeyPatch, operation: str
+) -> None:
+    statement = "SELECT $1::text AS value" if operation == "query" else "UPDATE t SET value = $1"
+    connection = _Connection(statement, _Result((), ()))
+
+    async def connect(_: Client, password: str) -> _Connection:
+        return connection
+
+    monkeypatch.setattr(Client, "_connect", connect)
+    if operation == "query":
+        outcome = await _client().query().invoke(_call(operation), QueryRowsInput(statement, ("a", "b")))
+    else:
+        outcome = (
+            await _client().execute().invoke(_call(operation), ExecuteStatementInput(statement, ("a", "b")))
+        )
+    assert outcome.branch == "defect" and outcome.failure.kind == FailureKind.VALIDATION
+    assert not any(sql == statement or sql == "COMMIT" for sql, _ in connection.statements)
+
+
+@pytest.mark.asyncio
+async def test_unused_idempotency_placeholder_is_a_defect(monkeypatch: pytest.MonkeyPatch) -> None:
+    statement = "UPDATE t SET value = $1"
+    connection = _Connection(statement, _Result((), ()))
+
+    async def connect(_: Client, password: str) -> _Connection:
+        return connection
+
+    monkeypatch.setattr(Client, "_connect", connect)
+    outcome = await _client().execute().invoke(_call("execute"), ExecuteStatementInput(statement, ("a",), 2))
+    assert outcome.branch == "defect" and outcome.failure.kind == FailureKind.VALIDATION
+    assert not any(sql == statement or sql == "COMMIT" for sql, _ in connection.statements)
+
+
+@pytest.mark.asyncio
+async def test_duplicate_described_columns_are_defects_before_execution(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    statement = "SELECT 1 AS id, 2 AS id"
+    connection = _Connection(statement, _Result((("id", 23), ("id", 23)), ((b"1", b"2"),)))
+
+    async def connect(_: Client, password: str) -> _Connection:
+        return connection
+
+    monkeypatch.setattr(Client, "_connect", connect)
+    outcome = await _client().query().invoke(_call("query"), QueryRowsInput(statement))
+    assert outcome.branch == "defect" and outcome.failure.kind == FailureKind.VALIDATION
+    assert not any(sql == statement for sql, _ in connection.statements)
 
 
 @pytest.mark.asyncio

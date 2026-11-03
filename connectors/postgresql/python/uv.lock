@@ -318,7 +318,7 @@ dev = [
 requires-dist = [
     { name = "dex-connectors-sdk", specifier = "==0.1.0" },
     { name = "dex-python-sdk", specifier = ">=1.28.0" },
-    { name = "psycopg", extras = ["binary"], specifier = ">=3.2,<4" },
+    { name = "psycopg", extras = ["binary"], specifier = ">=3.3.6,<4" },
 ]
 
 [package.metadata.requires-dev]

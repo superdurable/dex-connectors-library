@@ -114,6 +114,22 @@ async def test_real_database_query_write_limits_and_idempotency() -> None:
         )
         assert extra_parameters.branch == "defect"
         assert extra_parameters.failure.kind == FailureKind.VALIDATION
+        extra_query_parameters = await client.query().invoke(
+            _call("query"), QueryRowsInput("SELECT $1::text AS value", ("a", "b"))
+        )
+        assert extra_query_parameters.branch == "defect"
+        assert extra_query_parameters.failure.kind == FailureKind.VALIDATION
+        unused_key_placeholder = await client.execute().invoke(
+            _call("execute"),
+            ExecuteStatementInput(f"UPDATE {table} SET order_id = $1", ("a",), 2),
+        )
+        assert unused_key_placeholder.branch == "defect"
+        assert unused_key_placeholder.failure.kind == FailureKind.VALIDATION
+        duplicate_columns = await client.query().invoke(
+            _call("query"), QueryRowsInput("SELECT 1 AS id, 2 AS id")
+        )
+        assert duplicate_columns.branch == "defect"
+        assert duplicate_columns.failure.kind == FailureKind.VALIDATION
 
         timestamps = await client.query().invoke(
             _call("query"),
@@ -142,6 +158,11 @@ async def test_real_database_query_write_limits_and_idempotency() -> None:
         )
         assert lossy_json.branch == "invalidResponse"
         assert 'column "document"' in lossy_json.failure.message
+        duplicate_json_keys = await client.query().invoke(
+            _call("query"), QueryRowsInput('SELECT \'{"a":1,"a":2}\'::json AS document')
+        )
+        assert duplicate_json_keys.branch == "invalidResponse"
+        assert 'column "document"' in duplicate_json_keys.failure.message
         lossy_jsonb = await client.query().invoke(
             _call("query"),
             QueryRowsInput("SELECT '{\"amount\":12345678901234567890.123456789}'::jsonb AS document"),
@@ -176,6 +197,12 @@ async def test_real_database_query_write_limits_and_idempotency() -> None:
         assert read_only.branch == "providerRejected"
         assert read_only.failure.kind == FailureKind.AUTHORIZATION
         assert read_only.receipt.metadata["sqlState"] == "25006"
+
+        connection_failure = await client.execute().invoke(
+            _call("execute"), ExecuteStatementInput("DO $$ BEGIN RAISE SQLSTATE '08007'; END $$")
+        )
+        assert connection_failure.kind == "retry"
+        assert connection_failure.failure.kind == FailureKind.TRANSPORT
 
         call = _call("execute")
         insert = ExecuteStatementInput(

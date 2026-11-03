@@ -26,6 +26,8 @@ from dex_connectors.sdk import (
     QueryAttempt,
     Receipt,
 )
+from psycopg import generators, pq
+from psycopg.pq.abc import PGresult
 
 from ._generated.config import Config as Config
 from ._generated.config import Credentials as Credentials
@@ -233,9 +235,8 @@ class QueryRowsOperation:
                 phase = "begin"
                 await self.client._begin(connection, True)
                 phase = "statement"
-                async with connection.cursor() as cursor:
-                    await cursor.execute(input.statement, parameters, prepare=True)
-                    columns, rows, is_truncated, _ = _read_result(cursor.pgresult, self.client.config)
+                result = await _execute_described_statement(connection, input.statement, parameters)
+                columns, rows, is_truncated, _ = _read_result(result, self.client.config)
                 receipt = _receipt(call, connection)
                 row_set = RowSet(columns=columns, rows=rows, truncated=is_truncated)
                 if is_truncated:
@@ -314,10 +315,9 @@ class ExecuteStatementOperation:
                 phase = "begin"
                 await self.client._begin(connection, False)
                 phase = "statement"
-                async with connection.cursor() as cursor:
-                    await cursor.execute(input.statement, parameters, prepare=True)
-                    columns, rows, is_truncated, affected = _read_result(cursor.pgresult, self.client.config)
-                    command = _command_name(cursor.statusmessage or "")
+                result = await _execute_described_statement(connection, input.statement, parameters)
+                columns, rows, is_truncated, affected = _read_result(result, self.client.config)
+                command = _command_name((result.command_status or b"").decode("utf-8"))
                 if is_truncated:
                     return _execute_failure(
                         LIMIT_EXCEEDED,
@@ -391,6 +391,45 @@ def _is_local_host(host: str) -> bool:
 
 def _call_deadline_seconds(config: Config) -> float:
     return config.connect_timeout_seconds + config.statement_timeout_seconds + 5
+
+
+async def _execute_described_statement(
+    connection: psycopg.AsyncConnection[Any], statement: str, parameters: tuple[str | None, ...]
+) -> PGresult:
+    pgconn = connection.pgconn
+    async with connection.lock:
+        pgconn.send_prepare(b"", statement.encode("utf-8"))
+        _single_pg_result(await connection.wait(generators.execute(pgconn)))
+        pgconn.send_describe_prepared(b"")
+        description = _single_pg_result(await connection.wait(generators.execute(pgconn)))
+        if description.nparams != len(parameters):
+            raise ValueError(
+                f"statement uses {description.nparams} placeholders but "
+                f"{len(parameters)} parameters were bound"
+            )
+        column_names = [description.fname(index) for index in range(description.nfields)]
+        if any(name is None for name in column_names):
+            raise ValueError("PostgreSQL described a column without a name")
+        names = [name.decode("utf-8") for name in column_names if name is not None]
+        if len(set(names)) != len(names):
+            raise ValueError(
+                "statement returns a column more than once; give each result column a unique alias"
+            )
+        pgconn.send_query_prepared(
+            b"", tuple(value.encode("utf-8") if value is not None else None for value in parameters)
+        )
+        return _single_pg_result(await connection.wait(generators.execute(pgconn)))
+
+
+def _single_pg_result(results: list[PGresult]) -> PGresult:
+    if len(results) != 1:
+        raise psycopg.ProgrammingError("PostgreSQL returned an unexpected number of statement results")
+    result = results[0]
+    if result.status == pq.ExecStatus.FATAL_ERROR:
+        raise psycopg.errors.error_from_result(result)
+    if result.status not in (pq.ExecStatus.COMMAND_OK, pq.ExecStatus.TUPLES_OK):
+        raise psycopg.ProgrammingError("PostgreSQL returned an unsupported statement result")
+    return result
 
 
 def _command_name(status_message: str) -> str:
@@ -550,6 +589,7 @@ def _decode_column(column: Column, raw: bytes | None) -> Any:
                 parse_float=_exact_json_float,
                 parse_int=_exact_json_int,
                 parse_constant=_reject_json_constant,
+                object_pairs_hook=_unique_json_object,
             )
         if oid == 1184:
             if value in ("infinity", "-infinity") or value.endswith(" BC") or _EXTENDED_YEAR.match(value):
@@ -584,6 +624,15 @@ def _exact_json_int(number_text: str) -> int:
 
 def _reject_json_constant(_constant: str) -> None:
     raise ValueError("JSON contains a non-standard numeric constant")
+
+
+def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    decoded: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in decoded:
+            raise ValueError("JSON object contains a duplicate key")
+        decoded[key] = value
+    return decoded
 
 
 def _trim_timestamp_fraction(timestamp_text: str) -> str:
@@ -629,7 +678,7 @@ def _classify_failure(error: Exception, phase: str) -> _ClassifiedFailure:
             disposition, kind = "retry", FailureKind.AVAILABILITY
         elif sql_state == "08P01":
             disposition, kind = "defect", FailureKind.VALIDATION
-        elif sql_state in ("08000", "08001", "08003", "08004", "08006"):
+        elif sql_state.startswith("08"):
             disposition, kind = "retry", FailureKind.TRANSPORT
         elif sql_state in ("28000", "28P01"):
             kind = FailureKind.AUTHENTICATION
@@ -653,6 +702,8 @@ def _classify_failure(error: Exception, phase: str) -> _ClassifiedFailure:
             or "certificate verification failed" in message
             or "root certificate file" in message
             or "pgsslrootcert" in message
+            or "does not match host name" in message
+            or "could not get server's host name from server certificate" in message
         ):
             return _ClassifiedFailure(
                 "rejected",
