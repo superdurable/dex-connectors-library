@@ -9,6 +9,10 @@ This connector reads stock market data through Alpha Vantage's public REST API. 
 The Python package is [`dex-connector-alphavantage`](python/README.md), imported as
 `dex_connectors.alphavantage`.
 
+The TypeScript package is [`@superdurable/connector-alphavantage`](typescript/README.md).
+Its [runnable demo](typescript/examples/demo/README.md) uses the same static
+`alphavantage` connection and the generated `newGetGlobalQuoteStep` factory.
+
 ## Operations and official references
 
 | Operation | Query | Official documentation |
@@ -42,7 +46,7 @@ The generated `alphavantagemock` package supplies these consistent defaults:
 - `getGlobalQuote`: IBM at 255.25 on 2026-10-28.
 - `getTimeSeriesDaily`: IBM's 2026-10-28 raw OHLCV point, closing at 255.25.
 
-The demo's mock-backed real-Dex integration test runs in CI. Provider unit tests use a local HTTP server for the API query and body classification.
+The Go and TypeScript demos use mock-backed real-Dex integration checks. Provider conformance fixtures replay Go-verified requests, branch outcomes, and retry classifications in TypeScript.
 
 ## Unverified live behavior
 

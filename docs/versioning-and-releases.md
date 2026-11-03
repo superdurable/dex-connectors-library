@@ -372,7 +372,8 @@ the original push commit, retaining its release matrix. The workflow:
     language build or release blocks the catalog publish, including Go entries.
     The site is
     `https://connectors.superdurable.io/` and the README
-    preview is `card.png` beside `catalog.yaml`.
+    preview is `card.png` beside `catalog.yaml`: a fixed-size image of the
+    site's catalog totals row.
 
 The workflow uploads `connector-release.complete` only after both publication
 checks pass. A rerun repairs any release without that marker before publishing
@@ -504,8 +505,8 @@ copy the check runs:
 
 The check only compiles code. It needs no Dex Server or provider credentials
 and never edits the checkout. CI runs it for affected connectors on pull
-requests and `main` and for every connector on the daily schedule. A failure
-names each module that does not build or vet with that Dex Go SDK.
+requests and pushes to `main`, and for every connector on the daily schedule.
+A failure names each module that does not build or vet with that Dex Go SDK.
 
 ## Connector dependencies
 
@@ -531,9 +532,9 @@ download would add an entry, the check restores the file and fails. Run
 `go mod tidy` in the connector and commit the result.
 
 `make test-connectors` runs this check for each affected connector on pull
-requests and `main` and for every connector on the scheduled run. The release
-job runs it again before publishing. Release the dependency first: merge its PR,
-wait for `connector-release.complete`, then require that exact tag in a later PR
+requests and pushes to `main`, and for every connector on the scheduled run.
+The release job runs it again before publishing. Release the dependency first:
+merge its PR, wait for `connector-release.complete`, then require that exact tag in a later PR
 for the dependent connector. Until then, the dependent PR fails CI. This also
 keeps one released module per PR.
 

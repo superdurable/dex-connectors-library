@@ -9,6 +9,13 @@ The `datadog` Go module exposes typed Dex Steps for Datadog. Its [runnable looku
 The Python package is [`dex-connector-datadog`](python/README.md), imported as
 `dex_connectors.datadog`.
 
+The TypeScript package is [`@superdurable/connector-datadog`](typescript/README.md).
+It implements `queryMetrics` and `listMonitors` with the same provider request,
+retry, and branch behavior as Go. Its [metrics lookup Flow](typescript/examples/metrics-lookup/README.md)
+uses the static `datadog` connection and has a real Dex Worker and Client
+integration runner backed by a local provider stand-in. Live Datadog account
+authorization and provider behavior have not been verified.
+
 ## Operations
 
 | Factory | Endpoint | Input | Output | Required branch | Optional branches |
