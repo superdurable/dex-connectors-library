@@ -106,6 +106,10 @@ export function bindParameters(request: sql.Request, values: unknown[]): void {
   });
 }
 
+function newStatementRequest(transaction: sql.Transaction, timeout: number): sql.Request {
+  return (transaction as sql.Transaction & { request(config: { requestTimeout: number }): sql.Request }).request({ requestTimeout: timeout });
+}
+
 /** An exact SQL value cannot be represented by the native driver. */
 export class InvalidResultError extends Error {
   constructor(columnName: string, typeName: string) {
@@ -242,19 +246,21 @@ class BoundedResultCollector {
   constructor(private readonly request: sql.Request, private readonly maxRows: number, private readonly maxResponseBytes: number, private readonly responseBudget: ResponseBudget) {}
 
   async run(statement: string): Promise<{ columns: Column[]; rows: Array<Record<string, unknown>>; truncated: boolean; rowsAffected: number[] }> {
-    this.request.stream = true;
-    this.request.arrayRowMode = true;
-    this.observeChunkedRows();
-    this.request.on('recordset', columns => this.onRecordset(columns));
-    this.request.on('row', row => { if (!this.isChunkedResult) this.onRow(row); });
-    this.request.on('rowsaffected', count => this.rowsAffected.push(count));
-    this.request.on('error', error => this.onError(error));
-    try { await this.request.query(statement); }
-    catch (error) { if (!this.isTruncated && !this.responseBudget.hasExceeded) throw error; }
-    finally { this.responseBudget.close(); }
-    if (this.responseBudget.hasExceeded) this.isTruncated = true;
-    if (this.failure) throw this.failure;
-    return { columns: this.metadata.map(({ name, typeName }) => ({ name, typeName })), rows: this.rows, truncated: this.isTruncated, rowsAffected: this.rowsAffected };
+    this.responseBudget.arm(this.maxResponseBytes + 65536);
+    try {
+      this.request.stream = true;
+      this.request.arrayRowMode = true;
+      this.observeChunkedRows();
+      this.request.on('recordset', columns => this.onRecordset(columns));
+      this.request.on('row', row => { if (!this.isChunkedResult) this.onRow(row); });
+      this.request.on('rowsaffected', count => this.rowsAffected.push(count));
+      this.request.on('error', error => this.onError(error));
+      try { await this.request.query(statement); }
+      catch (error) { if (!this.isTruncated && !this.responseBudget.hasExceeded) throw error; }
+      if (this.responseBudget.hasExceeded) this.isTruncated = true;
+      if (this.failure) throw this.failure;
+      return { columns: this.metadata.map(({ name, typeName }) => ({ name, typeName })), rows: this.rows, truncated: this.isTruncated, rowsAffected: this.rowsAffected };
+    } finally { this.responseBudget.arm(4 * 1048576); }
   }
 
   private observeChunkedRows(): void {
@@ -335,15 +341,17 @@ export class QueryRowsOperation implements Query<QueryRowsInput, RowSet> {
     try { pool = await this.client.open(call, password); }
     catch (error) { return queryFailure(this.client, call, classifyDriverError(error, 'connect')); }
     let transaction: sql.Transaction | undefined;
+    let responseBudget: ResponseBudget | undefined;
     let phase: 'begin' | 'statement' = 'begin';
     try {
+      responseBudget = this.client.startResponseBudget(pool);
       transaction = new sql.Transaction(pool);
       await transaction.begin(sql.ISOLATION_LEVEL.READ_COMMITTED);
       await this.client.pinSession(transaction, pool);
       phase = 'statement';
-      const request = transaction.request();
+      const request = newStatementRequest(transaction, this.client.config.statementTimeoutMs);
       bindParameters(request, input.parameters ?? []);
-      const decoded = await new BoundedResultCollector(request, this.client.config.maxRows, this.client.config.maxResponseBytes, this.client.startResponseBudget(pool)).run(input.statement);
+      const decoded = await new BoundedResultCollector(request, this.client.config.maxRows, this.client.config.maxResponseBytes, responseBudget).run(input.statement);
       const output: RowSet = { columns: decoded.columns, rows: decoded.rows, ...(decoded.truncated ? { truncated: true } : {}) };
       if (decoded.truncated) return newQueryBranch('truncated', output, this.client.receipt(call, pool), this.client.failure('query', { disposition: 'rejected', kind: 'RESPONSE_TOO_LARGE', message: 'the statement returned more rows or bytes than maxRows or maxResponseBytes allow' }));
       if (!decoded.columns.length) return queryFailure(this.client, call, { disposition: 'defect', kind: 'VALIDATION', message: 'the statement returned no result set' }, pool);
@@ -351,6 +359,7 @@ export class QueryRowsOperation implements Query<QueryRowsInput, RowSet> {
     } catch (error) { return queryFailure(this.client, call, error instanceof InvalidResultError ? { disposition: 'invalidResponse', kind: 'PROTOCOL', message: error.message } : error instanceof ResultShapeError ? { disposition: 'defect', kind: 'VALIDATION', message: error.message } : classifyDriverError(this.client.recordedPoolError(pool) ?? error, phase), pool); }
     finally {
       if (transaction) { try { await transaction.rollback(); } catch { /* Closing the pool rolls back a failed or completed transaction. */ } }
+      responseBudget?.close();
       await pool.close();
     }
   }
@@ -377,16 +386,18 @@ export class ExecuteStatementOperation implements Mutation<ExecuteStatementInput
     try { pool = await this.client.open(call, password); }
     catch (error) { return executeFailure(this.client, call, classifyDriverError(error, 'connect')); }
     let transaction: sql.Transaction | undefined;
+    let responseBudget: ResponseBudget | undefined;
     let phase: 'begin' | 'statement' = 'begin';
     let committed = false;
     try {
+      responseBudget = this.client.startResponseBudget(pool);
       transaction = new sql.Transaction(pool);
       await transaction.begin(sql.ISOLATION_LEVEL.READ_COMMITTED);
       await this.client.pinSession(transaction, pool);
       phase = 'statement';
-      const request = transaction.request();
+      const request = newStatementRequest(transaction, this.client.config.statementTimeoutMs);
       bindParameters(request, values);
-      const decoded = await new BoundedResultCollector(request, this.client.config.maxRows, this.client.config.maxResponseBytes, this.client.startResponseBudget(pool)).run(input.statement);
+      const decoded = await new BoundedResultCollector(request, this.client.config.maxRows, this.client.config.maxResponseBytes, responseBudget).run(input.statement);
       if (decoded.truncated) return newMutationBranch('limitExceeded', emptyExecution(), this.client.receipt(call, pool), this.client.failure('execute', { disposition: 'rejected', kind: 'RESPONSE_TOO_LARGE', message: 'OUTPUT rows exceeded maxRows or maxResponseBytes, so the transaction was rolled back' }));
       if (input.returnsOutputRows && !decoded.columns.length) return executeFailure(this.client, call, { disposition: 'defect', kind: 'VALIDATION', message: 'returnsOutputRows is set but the statement returned no OUTPUT result set' }, pool);
       if (!input.returnsOutputRows && decoded.columns.length) return executeFailure(this.client, call, { disposition: 'defect', kind: 'VALIDATION', message: 'the statement returned output rows but returnsOutputRows is not set' }, pool);
@@ -399,6 +410,7 @@ export class ExecuteStatementOperation implements Mutation<ExecuteStatementInput
     } catch (error) { return executeFailure(this.client, call, error instanceof InvalidResultError ? { disposition: 'invalidResponse', kind: 'PROTOCOL', message: error.message } : error instanceof ResultShapeError ? { disposition: 'defect', kind: 'VALIDATION', message: error.message } : classifyDriverError(this.client.recordedPoolError(pool) ?? error, phase), pool); }
     finally {
       if (transaction && !committed) { try { await transaction.rollback(); } catch { /* Closing the pool rolls back when the transaction has already ended. */ } }
+      responseBudget?.close();
       await pool.close();
     }
   }

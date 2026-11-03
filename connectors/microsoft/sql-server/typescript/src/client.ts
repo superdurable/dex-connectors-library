@@ -29,7 +29,15 @@ function validHostname(host: string, isPattern: boolean): boolean {
 /** Match only DNS or IP subject alternative names using Go crypto/x509 hostname rules. */
 export function certificateMatchesHost(host: string, certificate: X509Certificate): boolean {
   const names = certificate.subjectAltName?.split(/, (?=(?:DNS|IP Address):)/) ?? [];
-  if (isIP(host)) return certificate.checkIP(host) !== undefined;
+  if (isIP(host)) {
+    const canonical = isIP(host) === 6 ? new URL(`http://[${host}]/`).hostname.slice(1, -1) : host;
+    const mapped = /^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i.exec(canonical);
+    const address = mapped ? [mapped[1], mapped[2]].flatMap(part => {
+      const value = parseInt(part!, 16);
+      return [value >> 8, value & 255];
+    }).join('.') : host;
+    return certificate.checkIP(address) !== undefined;
+  }
   const candidate = host.toLowerCase();
   const parts = candidate.replace(/\.$/, '').split('.');
   return names.some(name => {
@@ -63,11 +71,12 @@ function verifyMandatoryPeer(tlsSocket: TLSSocket, host: string): boolean {
 export class ResponseBudget {
   private bytes = 0;
   hasExceeded = false;
-  constructor(private readonly socket: Socket, private readonly limit: number) { socket.on('data', this.countBytes); }
+  constructor(private readonly socket: Socket, private limit: number) { socket.on('data', this.countBytes); }
   private readonly countBytes = (chunk: Buffer): void => {
     this.bytes += chunk.length;
-    if (this.bytes > this.limit + 65536) { this.hasExceeded = true; this.socket.destroy(Object.assign(new Error('SQL Server response exceeded its wire budget'), { code: 'ERESPONSETOOLARGE' })); }
+    if (this.bytes > this.limit) { this.hasExceeded = true; this.socket.destroy(Object.assign(new Error('SQL Server response exceeded its wire budget'), { code: 'ERESPONSETOOLARGE' })); }
   };
+  arm(limit: number): void { this.limit = limit; this.bytes = 0; this.hasExceeded = false; }
   close(): void { this.socket.off('data', this.countBytes); }
 }
 
@@ -95,7 +104,7 @@ const retryNumbers = new Set([1205, 1222, 3960, 3961, 615, 701, 926, 1101, 1105,
 /** Classify a Tedious driver error without reflecting its possibly secret message. */
 export function classifyDriverError(error: unknown, phase: Phase, capturedToken?: ServerErrorToken): ClassifiedFailure {
   if (error instanceof ConnectionConfigurationError) return { disposition: 'defect', kind: 'VALIDATION', message: error.message };
-  if (error instanceof UnsupportedStrictVerificationError) return { disposition: 'rejected', kind: 'AUTHENTICATION', message: error.message };
+  if (error instanceof UnsupportedStrictVerificationError) return { disposition: 'defect', kind: 'VALIDATION', message: error.message };
   const driverError = error as { number?: number; class?: number; state?: number; code?: string; message?: string; originalError?: { info?: ServerErrorToken; code?: string; message?: string; cause?: { code?: string } }; cause?: { code?: string } };
   const info = capturedToken ?? (error && typeof error === 'object' ? connectionTokens.get(error) : undefined) ?? driverError?.originalError?.info;
   const number = info?.number ?? driverError?.number;
@@ -113,14 +122,14 @@ export function classifyDriverError(error: unknown, phase: Phase, capturedToken?
   const certificateCodes = new Set(['ERR_TLS_CERT_ALTNAME_INVALID', 'UNABLE_TO_VERIFY_LEAF_SIGNATURE', 'SELF_SIGNED_CERT_IN_CHAIN', 'DEPTH_ZERO_SELF_SIGNED_CERT', 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY', 'CERT_HAS_EXPIRED', 'CERT_NOT_YET_VALID']);
   const code = nestedCode && (nestedCode === 'ENOTFOUND' || certificateCodes.has(nestedCode)) ? nestedCode : driverError?.code ?? nestedCode;
   if (phase === 'connect') {
-    if (String(driverError?.originalError?.message ?? driverError?.message ?? '').includes('server does not support encryption')) return { disposition: 'rejected', kind: 'PROVIDER_REJECTION', message: 'the SQL Server does not accept TLS, which encrypt requires' };
+    if (code === 'EENCRYPT' && String(driverError?.originalError?.message ?? driverError?.message ?? '').includes('Server did not negotiate encryption')) return { disposition: 'rejected', kind: 'PROVIDER_REJECTION', message: 'the SQL Server does not accept TLS, which encrypt requires' };
     if (code === 'ENOTFOUND') return { disposition: 'rejected', kind: 'NOT_FOUND', message: 'the SQL Server host name does not resolve' };
     if (code === 'ELOGIN') return { disposition: 'rejected', kind: 'AUTHENTICATION', message: 'the SQL Server rejected the login' };
     if (code && certificateCodes.has(code))
       return { disposition: 'rejected', kind: 'AUTHENTICATION', message: 'the SQL Server certificate failed encrypt verification' };
     return { disposition: 'retry', kind: 'AVAILABILITY', message: 'the SQL Server is unreachable or did not finish connecting in time' };
   }
-  if (phase === 'commit' && code === 'ENOTBEGUN') return { disposition: 'retry', kind: 'TRANSPORT', message: 'COMMIT was not sent because the transaction never began' };
+  if (phase === 'commit' && ['ENOTBEGUN', 'EINVALIDSTATE'].includes(code ?? '')) return { disposition: 'retry', kind: 'TRANSPORT', message: 'COMMIT was not sent because the connection closed' };
   if (phase === 'commit') return { disposition: 'uncertain', kind: 'TRANSPORT', message: 'the connection failed after COMMIT was sent, so whether the transaction committed is unknown' };
   if (code === 'ETIMEOUT' && phase === 'statement') return { disposition: 'rejected', kind: 'AVAILABILITY', message: 'the statement exceeded statementTimeout, so the connector canceled it; nothing was committed' };
   if (code === 'ETIMEOUT' && phase === 'begin') return { disposition: 'retry', kind: 'TRANSPORT', message: 'the connection timed out while starting the transaction' };
@@ -141,6 +150,7 @@ export class SQLServerClient {
     if (!['mandatory', 'strict', 'trust-server-certificate', 'disable'].includes(this.config.encrypt)) throw new TypeError('invalid SQL Server encrypt policy');
     if (this.config.encrypt === 'disable' && !isLoopbackHost(this.config.host)) throw new TypeError('SQL Server encryption may be disabled only for loopback');
     if (!Number.isSafeInteger(this.config.statementTimeoutMs) || this.config.statementTimeoutMs < 1 || this.config.statementTimeoutMs > 2147483647 || !Number.isSafeInteger(this.config.connectTimeoutMs) || this.config.connectTimeoutMs < 1 || !Number.isSafeInteger(this.config.maxRows) || this.config.maxRows < 1 || this.config.maxRows > 100000 || !Number.isSafeInteger(this.config.maxResponseBytes) || this.config.maxResponseBytes < 1 || this.config.maxResponseBytes > 16 * 1048576) throw new TypeError('invalid SQL Server bounds');
+    if (this.config.encrypt === 'strict') throw new UnsupportedStrictVerificationError('strict TLS hostname verification is unavailable in this Tedious version');
   }
   /** Bind the read operation. */ query(): QueryRowsOperation { return new QueryRowsOperation(this); }
   /** Bind the write operation. */ execute(): ExecuteStatementOperation { return new ExecuteStatementOperation(this); }
@@ -166,7 +176,6 @@ export class SQLServerClient {
   /** Open the driver using credentials already resolved by the operation. */
   async open(call: Call, resolvedPassword?: string): Promise<sql.ConnectionPool> {
     const password = resolvedPassword ?? await this.resolvePassword(call);
-    if (this.config.encrypt === 'strict') throw new UnsupportedStrictVerificationError('strict TLS hostname verification is unavailable in this Tedious version');
     let trustedRoots: Buffer | undefined;
     const caFile = process.env.SQLSERVER_SSL_CA;
     if (caFile && ['mandatory', 'strict'].includes(this.config.encrypt)) {
@@ -183,11 +192,14 @@ export class SQLServerClient {
     let hasRejectedCertificate = false;
     const configuration: sql.config = {
       server: this.config.host, port: this.config.port, database: this.config.database, user: this.config.user, password,
-      connectionTimeout: this.config.connectTimeoutMs, requestTimeout: this.config.statementTimeoutMs,
+      connectionTimeout: this.config.connectTimeoutMs, requestTimeout: Math.min(this.config.statementTimeoutMs + 5000, 2147483647),
       pool: { min: 0, max: 1 }, beforeConnect: connection => {
         poolConnections.set(pool, connection as unknown as { socket?: Socket });
         connection.on('errorMessage', token => { connectServerError = { number: token.number, class: token.class, state: token.state }; });
-        if (this.config.encrypt === 'mandatory') connection.on('secure', cleartext => { hasRejectedCertificate = !verifyMandatoryPeer(cleartext as TLSSocket, this.config.host); });
+        if (this.config.encrypt === 'mandatory') connection.on('secure', cleartext => {
+          const routedConnection = connection as typeof connection & { routingData?: { server?: string }; config?: { options?: { serverName?: string } } };
+          hasRejectedCertificate = !verifyMandatoryPeer(cleartext as TLSSocket, routedConnection.config?.options?.serverName ?? routedConnection.routingData?.server ?? this.config.host);
+        });
       },
       options: { encrypt: this.config.encrypt !== 'disable', trustServerCertificate: ['mandatory', 'trust-server-certificate'].includes(this.config.encrypt), enableArithAbort: true, fallbackToDefaultDb: false, lowerCaseGuids: true, useUTC: true, appName: 'dex-sql-server-connector', maxRetriesOnTransientErrors: 0, ...(trustedRoots ? { cryptoCredentialsDetails: { ca: trustedRoots } } : {}) },
     };
@@ -202,11 +214,11 @@ export class SQLServerClient {
     }
     return pool;
   }
-  /** Bound one statement's raw reply bytes before the driver decodes rows. */
+  /** Bound control replies and each statement's raw bytes before the driver decodes rows. */
   startResponseBudget(pool: sql.ConnectionPool): ResponseBudget {
     const socket = poolConnections.get(pool)?.socket;
     if (!socket) throw new ConnectionConfigurationError('the SQL Server driver did not expose its response socket');
-    return new ResponseBudget(socket, this.config.maxResponseBytes);
+    return new ResponseBudget(socket, 4 * 1048576);
   }
   /** Prefer an asynchronous pool failure when the request also fails. */
   recordedPoolError(pool: sql.ConnectionPool): unknown { return poolErrors.get(pool); }

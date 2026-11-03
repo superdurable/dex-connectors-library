@@ -42,6 +42,7 @@ describe('Go-compatible SQL Server error decisions', () => {
   it('treats only an unconfirmed COMMIT as uncertain', () => {
     expect(classifyDriverError({ code: 'ECONNRESET' }, 'statement').disposition).toBe('retry');
     expect(classifyDriverError({ code: 'ECONNRESET' }, 'commit').disposition).toBe('uncertain');
+    expect(classifyDriverError({ code: 'EINVALIDSTATE' }, 'commit')).toMatchObject({ disposition: 'retry', kind: 'TRANSPORT', message: 'COMMIT was not sent because the connection closed' });
     expect(classifyDriverError({ number: 3999, class: 17 }, 'commit').disposition).toBe('uncertain');
     expect(classifyDriverError({ number: 3902, class: 16 }, 'commit').disposition).toBe('rejected');
     expect(classifyDriverError({ number: 1205, class: 13 }, 'commit').disposition).toBe('retry');
@@ -73,7 +74,7 @@ describe('Go-compatible SQL Server error decisions', () => {
     expect(classifyDriverError(serverReply(2627, 16), 'statement')).toMatchObject({ disposition: 'rejected', kind: 'CONFLICT', number: 2627 });
     expect(classifyDriverError(serverReply(40549, 21), 'statement')).toMatchObject({ disposition: 'rejected', kind: 'AVAILABILITY', number: 40549 });
     expect(classifyDriverError(new sql.RequestError('timeout', 'ETIMEOUT'), 'begin')).toMatchObject({ disposition: 'retry', kind: 'TRANSPORT' });
-    expect(classifyDriverError(new sql.ConnectionError('server does not support encryption'), 'connect')).toMatchObject({ disposition: 'rejected', kind: 'PROVIDER_REJECTION' });
+    expect(classifyDriverError(Object.assign(new Error("Server did not negotiate encryption, but the 'encrypt' config option is set to `true`"), { code: 'EENCRYPT' }), 'connect')).toMatchObject({ disposition: 'rejected', kind: 'PROVIDER_REJECTION' });
   });
   it('matches Go hostname rules against real CN-only, wildcard, and IP-SAN certificates', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'sql-server-hostname-'));
@@ -91,6 +92,7 @@ describe('Go-compatible SQL Server error decisions', () => {
       expect(certificateMatchesHost('EXAMPLE.COM', wildcard)).toBe(true);
       const ipAddress = await issue('ip', 'IP:127.0.0.1,DNS:db.example.com');
       expect(certificateMatchesHost('127.0.0.1', ipAddress)).toBe(true);
+      expect(certificateMatchesHost('::ffff:127.0.0.1', ipAddress)).toBe(true);
       expect(certificateMatchesHost('127.0.0.2', ipAddress)).toBe(false);
       expect(certificateMatchesHost('DB.EXAMPLE.COM', ipAddress)).toBe(true);
     } finally { await rm(directory, { recursive: true, force: true }); }
@@ -105,6 +107,61 @@ it('cuts off the raw response before a MAX value can fill driver memory', () => 
   expect(budget.hasExceeded).toBe(true);
   expect(socket.destroyed).toBe(true);
   budget.close();
+});
+
+it('rearms the wire budget for a bounded transaction control reply', () => {
+  const socket = new Socket();
+  socket.on('error', () => {});
+  const budget = new ResponseBudget(socket, 4 * 1048576);
+  budget.arm(65537);
+  socket.emit('data', Buffer.alloc(100));
+  budget.arm(4 * 1048576);
+  expect(budget.hasExceeded).toBe(false);
+  socket.emit('data', Buffer.alloc(4 * 1048576));
+  expect(budget.hasExceeded).toBe(false);
+  socket.emit('data', Buffer.alloc(65537));
+  expect(budget.hasExceeded).toBe(true);
+  budget.close();
+});
+
+it('verifies each Azure-routed TLS connection against its own server name', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'sql-server-routed-host-'));
+  const issue = async (name: string): Promise<X509Certificate> => {
+    const certificatePath = join(directory, `${name}.pem`);
+    execFileSync('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '1', '-keyout', join(directory, `${name}.key`), '-out', certificatePath, '-subj', `/CN=${name}.example`, '-addext', `subjectAltName=DNS:${name}.example`], { stdio: 'ignore' });
+    return new X509Certificate(await readFile(certificatePath));
+  };
+  const originalPool = sql.ConnectionPool;
+  try {
+    const gatewayCertificate = await issue('gateway');
+    const workerCertificate = await issue('worker');
+    let configuration: sql.config;
+    const destroyed: boolean[] = [];
+    class TestPool extends EventEmitter {
+      constructor(poolConfiguration: sql.config) { super(); configuration = poolConfiguration; }
+      async connect(): Promise<this> {
+        const connection = new EventEmitter() as EventEmitter & { routingData?: { server: string }; config?: { options: { serverName?: string } } };
+        configuration.beforeConnect?.(connection as Parameters<NonNullable<sql.config['beforeConnect']>>[0]);
+        for (const [host, certificate] of [['gateway.example', gatewayCertificate], ['worker.example', workerCertificate], ['wrong.example', workerCertificate]] as const) {
+          if (host === 'gateway.example') delete connection.routingData;
+          else connection.routingData = { server: host };
+          let wasDestroyed = false;
+          connection.emit('secure', { authorized: true, getPeerCertificate: () => ({ raw: certificate.raw }), destroy: () => { wasDestroyed = true; } });
+          destroyed.push(wasDestroyed);
+        }
+        return this;
+      }
+    }
+    (sql as { ConnectionPool: typeof sql.ConnectionPool }).ConnectionPool = TestPool as unknown as typeof sql.ConnectionPool;
+    const secured = new SQLServerClient({ host: 'gateway.example', database: 'master', user: 'sa', encrypt: 'mandatory', statementTimeoutMs: 1 }, { resolve: async () => ({ password: new SecretString('test-password') }) });
+    const call = { id: 'test-call', context: { cancellationSignal: new AbortController().signal } } as Parameters<SQLServerClient['open']>[0];
+    await secured.open(call);
+    expect(destroyed).toEqual([false, false, true]);
+    expect(configuration!.requestTimeout).toBe(5001);
+  } finally {
+    (sql as { ConnectionPool: typeof sql.ConnectionPool }).ConnectionPool = originalPool;
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 
 it('records pool error events without an uncaught EventEmitter exception', async () => {
@@ -129,6 +186,7 @@ it('rejects unsafe configuration before opening a socket', () => {
   expect(() => new SQLServerClient({ host: '127.0.0.2', database: 'master', user: 'sa', encrypt: 'disable' }, { resolve: async () => ({ password: new SecretString('x') }) })).not.toThrow();
   expect(() => new SQLServerClient({ host: 'db.example', database: 'master', user: 'sa', maxRows: 100001 }, { resolve: async () => ({ password: new SecretString('x') }) })).toThrow('bounds');
   expect(() => new SQLServerClient({ host: 'db.example', database: 'master', user: 'sa', maxResponseBytes: 16 * 1048576 + 1 }, { resolve: async () => ({ password: new SecretString('x') }) })).toThrow('bounds');
+  expect(() => new SQLServerClient({ host: 'db.example', database: 'master', user: 'sa', encrypt: 'strict' }, { resolve: async () => ({ password: new SecretString('x') }) })).toThrow('strict TLS');
   expect(new SQLServerClient({ host: 'db.example', database: 'master', user: 'sa', maxRows: 0 }, { resolve: async () => ({ password: new SecretString('x') }) }).config.maxRows).toBe(1000);
 });
 
@@ -202,8 +260,7 @@ it('captures a real login token and loads a private CA on every connect', async 
     expect(capturedConfiguration?.options?.cryptoCredentialsDetails?.ca).toEqual(Buffer.from(rootCertificates[0]!));
     expect(classifyDriverError(failure, 'connect').message).not.toContain('secret-card-4242');
     await writeFile(bundle, rootCertificates[1]!);
-    const strict = new SQLServerClient({ host: 'localhost', database: 'master', user: 'sa', encrypt: 'strict' }, { resolve: async () => ({ password: new SecretString('test-password') }) });
-    expect(classifyDriverError(await strict.open(call).catch(error => error), 'connect')).toMatchObject({ disposition: 'rejected', kind: 'AUTHENTICATION' });
+    expect(() => new SQLServerClient({ host: 'localhost', database: 'master', user: 'sa', encrypt: 'strict' }, { resolve: async () => ({ password: new SecretString('test-password') }) })).toThrow('strict TLS');
   } finally {
     (sql as { ConnectionPool: typeof sql.ConnectionPool }).ConnectionPool = originalPool;
     if (previousCA === undefined) delete process.env.SQLSERVER_SSL_CA;

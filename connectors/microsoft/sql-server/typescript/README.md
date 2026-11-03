@@ -27,9 +27,11 @@ when the server uses a private CA. The connector rereads the file for every conn
 an unreadable or invalid bundle as a configuration defect. Without it, Node uses its bundled CA
 roots by default; Node does not use the operating system's trust store unless configured through
 Node's own CA settings. The connector verifies the certificate chain and matches only DNS or IP
-subject alternative names with Go's exact wildcard rules; the common name is ignored. Tedious
-does not expose the strict TDS 8 TLS socket before LOGIN7, so `strict` fails terminally before
-opening a connection. Use `mandatory` for verified TLS with this TypeScript package.
+subject alternative names with Go's exact wildcard rules; the common name is ignored. The
+connector verifies a redirected Azure SQL connection against the routed server's certificate
+name. Tedious does not expose the strict TDS 8 TLS socket before LOGIN7, so `strict` fails validation when
+constructing the client, before opening a connection. Use `mandatory` for verified TLS with this
+TypeScript package.
 
 The result mapping follows the [Go connector](../README.md): `BIGINT` is decimal text, binary
 values are base64, `UNIQUEIDENTIFIER` is lowercase, and supported date and time values use Go's
@@ -58,6 +60,9 @@ once `maxResponseBytes` plus 64 KiB of protocol overhead is exceeded. Queries th
 `truncated`; executes return `limitExceeded` and roll back. `FOR JSON` and `FOR XML` results use
 Tedious's row events so each provider chunk is counted and returned as a row before `mssql`
 concatenates chunks into one value. This path relies on `mssql` 12's internal request hook.
+Transaction setup, COMMIT, and ROLLBACK replies retain a separate 4 MiB wire budget. The user
+statement alone uses `statementTimeoutMs`; transaction control has another five seconds to
+complete.
 
 Run `npm run check` for unit tests, typecheck, and lint. CI runs the integration suite against its
 SQL Server service container, then repeats it with mandatory TLS and a generated CA bundle. Real
