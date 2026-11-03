@@ -1318,6 +1318,32 @@ result = {
     "definitions.py": render_definitions(),
     "steps.py": render_steps(),
 }
+if spec["auth"].get("refreshable") and any(
+    method.get("oauth2") or method.get("clientCredentials") or method.get("serviceAccount")
+    for method in (auth_methods or [spec["auth"]])
+):
+    authorization = json.loads(json.dumps(spec["auth"]))
+    omitted = {
+        "description", "displayName", "goName", "guide", "connectionKind",
+        "recommended", "methodLabel", "configuration", "authorizationEndpoint",
+        "authorizationParameters", "credentialDerivations", "pkce", "oidc", "protocol",
+    }
+    def trim_refresh_metadata(value):
+        if isinstance(value, dict):
+            return {name: trim_refresh_metadata(item) for name, item in value.items() if name not in omitted}
+        if isinstance(value, list):
+            return [trim_refresh_metadata(item) for item in value]
+        return value
+    authorization = trim_refresh_metadata(authorization)
+    if auth_methods:
+        authorization.pop("fields", None)
+    result["refresh.py"] = (
+        "# Copyright (c) 2026 Super Durable\n# SPDX-License-Identifier: MIT\n\n"
+        "# Validated manifest token grant declaration.\n"
+        f"AUTHORIZATION = {authorization!r}\n\n"
+        "# Stored credential names mapped to runtime dataclass fields.\n"
+        f"CREDENTIAL_FIELDS = { {field_info['name']: snake(field_info['name']) for field_info in auth_fields()}!r}\n"
+    )
 connection_source = render_connection()
 if connection_source is not None:
     result["connection.py"] = connection_source

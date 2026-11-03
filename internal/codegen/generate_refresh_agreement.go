@@ -4,6 +4,7 @@
 package codegen
 
 import (
+	"encoding/json"
 	"fmt"
 	"go/format"
 	"net/url"
@@ -43,6 +44,103 @@ type RefreshAgreementSample struct {
 	Settings map[string]string `json:"settings,omitempty"`
 	// Response are string members of a successful token response, such as token_type or a mapped api_domain.
 	Response map[string]string `json:"response,omitempty"`
+}
+
+// RefreshAgreementCase is one language-neutral token exchange derived from the Go agreement generator's samples.
+type RefreshAgreementCase struct {
+	Name                 string            `json:"name"`
+	MethodID             string            `json:"methodId,omitempty"`
+	Credentials          map[string]string `json:"credentials"`
+	Settings             map[string]string `json:"settings,omitempty"`
+	Endpoint             string            `json:"endpoint"`
+	Encoding             string            `json:"encoding"`
+	ClientAuth           string            `json:"clientAuth"`
+	Parameters           map[string]string `json:"parameters"`
+	Response             map[string]any    `json:"response"`
+	Updates              map[string]string `json:"updates"`
+	TerminalErrorCodes   []string          `json:"terminalErrorCodes"`
+	KeyCredential        string            `json:"keyCredential,omitempty"`
+	PrivateKeyCredential string            `json:"privateKeyCredential,omitempty"`
+	PrivateKeyMember     string            `json:"privateKeyMember,omitempty"`
+	KeyMembers           map[string]string `json:"keyMembers,omitempty"`
+	MayRefuseWithoutCall bool              `json:"mayRefuseWithoutCall,omitempty"`
+}
+
+// GenerateRefreshAgreementCases returns the Go agreement's sample cases for Python and TypeScript replay.
+func GenerateRefreshAgreementCases(manifest schema.Manifest, samples map[string]RefreshAgreementSample) ([]byte, error) {
+	agreement := &refreshAgreementGenerator{manifest: manifest, samples: samples}
+	var cases []RefreshAgreementCase
+	for _, grant := range declaredGrants(manifest) {
+		for _, variant := range agreement.variants(grant) {
+			isPublicClients := []bool{false}
+			if grant.kind == "refresh" && !agreement.isRequiredCredential(grant.method, grant.clientSecret) {
+				isPublicClients = append(isPublicClients, true)
+			}
+			for _, isPublicClient := range isPublicClients {
+				name := grant.name
+				if variant.field != "" {
+					name += fmt.Sprintf(" with %s %q", variant.field, variant.value)
+				}
+				if isPublicClient {
+					name += " without a client secret"
+				}
+				sample := agreement.sample(grant)
+				credentials := agreement.sampleCredentials(grant, variant, sample)
+				settings := agreement.sampleSettings(grant, variant, sample)
+				if isPublicClient {
+					credentials[grant.clientSecret] = ""
+				}
+				keyMembers := agreement.sampleKeyMembers(grant, variant)
+				endpoint, err := resolveSampleSource(grant.endpoint, credentials, settings, keyMembers)
+				if err != nil {
+					return nil, fmt.Errorf("%s tokenEndpoint: %w", name, err)
+				}
+				clientAuth := "none"
+				if grant.kind != "jwtBearer" {
+					clientAuth, err = resolveSampleSource(grant.authMethod, credentials, settings, keyMembers)
+					if err != nil {
+						return nil, fmt.Errorf("%s tokenEndpointAuthMethod: %w", name, err)
+					}
+				}
+				parameters := map[string]string{}
+				for key, value := range grant.additional {
+					parameters[key] = value
+				}
+				switch grant.kind {
+				case "refresh":
+					parameters["grant_type"] = "refresh_token"
+					parameters["refresh_token"] = credentials[grant.refreshToken]
+					if isPublicClient {
+						clientAuth = "public"
+					}
+				case "clientCredentials":
+					parameters["grant_type"] = "client_credentials"
+					if len(grant.requestScopes) > 0 {
+						parameters["scope"] = strings.Join(grant.requestScopes, " ")
+					}
+				case "jwtBearer":
+					parameters["grant_type"] = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+				}
+				response, updates := agreement.sampleResponse(grant, credentials, sample)
+				result := RefreshAgreementCase{Name: name, MethodID: grant.method.ID, Credentials: credentials,
+					Settings: settings, Endpoint: endpoint, Encoding: grant.encoding, ClientAuth: clientAuth,
+					Parameters: parameters, Response: response, Updates: updates, TerminalErrorCodes: grant.terminalCodes,
+					MayRefuseWithoutCall: isPublicClient}
+				if grant.jwtBearer != nil {
+					result.KeyCredential = grant.jwtBearer.KeyCredential
+					result.PrivateKeyCredential = grant.jwtBearer.PrivateKey.FromCredential
+					result.PrivateKeyMember = grant.jwtBearer.PrivateKey.FromKey
+					result.KeyMembers = keyMembers
+				}
+				cases = append(cases, result)
+			}
+		}
+	}
+	encoded, err := json.MarshalIndent(cases, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("encode refresh agreement cases: %w", err)
+	}
+	return append(encoded, '\n'), nil
 }
 
 // declaredGrant is one token request that a method declares.

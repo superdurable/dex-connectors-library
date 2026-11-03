@@ -4,6 +4,7 @@
 package codegen_test
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,6 +14,24 @@ import (
 	"github.com/superdurable/dex-connectors-library/internal/codegen"
 	"github.com/superdurable/dex-connectors-library/schema"
 )
+
+func TestGenerateRefreshAgreementCasesReusesGoSamples(t *testing.T) {
+	manifestFile, err := os.Open(filepath.Join("..", "..", "connectors", "google", "gmail", "connector.yaml"))
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, manifestFile.Close()) })
+	manifest, err := schema.Decode(manifestFile)
+	require.NoError(t, err)
+	encoded, err := codegen.GenerateRefreshAgreementCases(manifest, nil)
+	require.NoError(t, err)
+	var cases []codegen.RefreshAgreementCase
+	require.NoError(t, json.Unmarshal(encoded, &cases))
+	require.Len(t, cases, 2)
+	require.Equal(t, "google-oauth refresh", cases[0].Name)
+	require.Equal(t, "https://oauth2.googleapis.com/token", cases[0].Endpoint)
+	require.Equal(t, "manifest-refresh-token-2", cases[0].Updates["refresh_token"])
+	require.Equal(t, "workspace-domain-delegation jwtBearer", cases[1].Name)
+	require.Equal(t, "private_key", cases[1].PrivateKeyMember)
+}
 
 const refreshAgreementGoldenPath = "testdata/tokengrants/" + codegen.RefreshAgreementTestOutputFile
 

@@ -38,6 +38,14 @@ const keepMissingExpiry = "keep"
 // method's tokenEndpoint, tokenEndpointAuthMethod, tokenRequestEncoding, client credentials and credentialMappings
 // apply to the refresh request and response too.
 type OAuthRefresh struct {
+	// AcceptsMissingTokenType permits a successful response without token_type.
+	AcceptsMissingTokenType bool `yaml:"acceptsMissingTokenType,omitempty" json:"acceptsMissingTokenType,omitempty"`
+	// AcceptedTokenTypes replaces the default Bearer token type for all grants unless a grant overrides it.
+	AcceptedTokenTypes []string `yaml:"acceptedTokenTypes,omitempty" json:"acceptedTokenTypes,omitempty"`
+	// ExactScopes requires the returned scope set to equal the declared scope set.
+	ExactScopes bool `yaml:"exactScopes,omitempty" json:"exactScopes,omitempty"`
+	// RequiredScopes overrides the authorization scopes checked on refresh responses.
+	RequiredScopes []string `yaml:"requiredScopes,omitempty" json:"requiredScopes,omitempty"`
 	// TerminalErrorCodes are the OAuth error codes, in a response below HTTP 500, after which the refresh token can
 	// never succeed again, so the connection needs reauthorization. Empty means invalid_grant.
 	TerminalErrorCodes []string `yaml:"terminalErrorCodes,omitempty" json:"terminalErrorCodes,omitempty"`
@@ -53,6 +61,12 @@ type OAuthRefresh struct {
 
 // OAuthRefreshGrant is one stored refresh token and how its refresh response maps into credentials.
 type OAuthRefreshGrant struct {
+	// AcceptsMissingTokenType overrides the refresh-level rule for this grant.
+	AcceptsMissingTokenType *bool `yaml:"acceptsMissingTokenType,omitempty" json:"acceptsMissingTokenType,omitempty"`
+	// AcceptedTokenTypes replaces the refresh-level token types for this grant.
+	AcceptedTokenTypes []string `yaml:"acceptedTokenTypes,omitempty" json:"acceptedTokenTypes,omitempty"`
+	// ExactScopes requires the returned scope set to equal this grant's declared scope set.
+	ExactScopes bool `yaml:"exactScopes,omitempty" json:"exactScopes,omitempty"`
 	// RefreshTokenCredential is the secretString credential field that holds the refresh token. A connection
 	// whose field is blank skips this grant.
 	RefreshTokenCredential string `yaml:"refreshTokenCredential" json:"refreshTokenCredential"`
@@ -74,6 +88,10 @@ type MissingExpiry struct {
 // ClientCredentialsGrant declares how a host mints an apiKey method's access token with the OAuth client
 // credentials grant (RFC 6749 section 4.4) from the stored client ID and secret.
 type ClientCredentialsGrant struct {
+	// AcceptsMissingTokenType permits a successful response without token_type.
+	AcceptsMissingTokenType bool `yaml:"acceptsMissingTokenType,omitempty" json:"acceptsMissingTokenType,omitempty"`
+	// AcceptedTokenTypes replaces the default Bearer token type.
+	AcceptedTokenTypes []string `yaml:"acceptedTokenTypes,omitempty" json:"acceptedTokenTypes,omitempty"`
 	// TokenEndpoint is the HTTPS token endpoint: a URL, or a value source such as a template that names a
 	// credential field or setting.
 	TokenEndpoint ValueSource `yaml:"tokenEndpoint" json:"tokenEndpoint"`
@@ -108,6 +126,10 @@ type ServiceAccount struct {
 // JWTBearerGrant declares how a host mints a serviceAccount method's access token: it signs an RS256 JWT bearer
 // assertion (RFC 7523) with the stored private key and exchanges it at the token endpoint.
 type JWTBearerGrant struct {
+	// AcceptsMissingTokenType permits a successful response without token_type.
+	AcceptsMissingTokenType bool `yaml:"acceptsMissingTokenType,omitempty" json:"acceptsMissingTokenType,omitempty"`
+	// AcceptedTokenTypes replaces the default Bearer token type.
+	AcceptedTokenTypes []string `yaml:"acceptedTokenTypes,omitempty" json:"acceptedTokenTypes,omitempty"`
 	// KeyCredential is the secretString credential field that holds a JSON key, such as a Google service account
 	// key, whose members fromKey sources read. Empty when no source reads a key.
 	KeyCredential string `yaml:"keyCredential,omitempty" json:"keyCredential,omitempty"`
@@ -394,6 +416,8 @@ func (grantContext tokenGrantContext) validateOAuthTokenRequests(oauth *OAuth2) 
 		return problems
 	}
 	problems = append(problems, grantContext.validateResponseRules(label, refresh.TerminalErrorCodes, refresh.MissingExpiry, refresh.AdditionalParameters)...)
+	problems = append(problems, validateAcceptedTokenTypes(label, refresh.AcceptedTokenTypes)...)
+	problems = append(problems, validateScopeList(label+" requiredScopes", refresh.RequiredScopes)...)
 	if len(refresh.Grants) == 0 {
 		if !mapsSource(oauth.CredentialMappings, "refresh_token") {
 			problems = append(problems, label+" requires a credential mapped from refresh_token or explicit grants")
@@ -407,6 +431,7 @@ func (grantContext tokenGrantContext) validateOAuthTokenRequests(oauth *OAuth2) 
 		}
 		seenRefreshTokens[grant.RefreshTokenCredential] = true
 		problems = append(problems, grantContext.validateCredentialMappings(label+" grant "+grant.RefreshTokenCredential, grant.CredentialMappings)...)
+		problems = append(problems, validateAcceptedTokenTypes(label+" grant "+grant.RefreshTokenCredential, grant.AcceptedTokenTypes)...)
 		if grant.GrantedScopes != "" && grant.GrantedScopes != MethodScopes && grant.GrantedScopes != UserScopes {
 			problems = append(problems, label+" grant grantedScopes must be scopes or userScopes")
 		}
@@ -428,12 +453,14 @@ func (grantContext tokenGrantContext) validateClientCredentials(grant *ClientCre
 	problems = append(problems, validateScopeList(label+" scopes", grant.Scopes)...)
 	problems = append(problems, grantContext.validateCredentialMappings(label, grant.CredentialMappings)...)
 	problems = append(problems, grantContext.validateResponseRules(label, grant.TerminalErrorCodes, grant.MissingExpiry, grant.AdditionalParameters)...)
+	problems = append(problems, validateAcceptedTokenTypes(label, grant.AcceptedTokenTypes)...)
 	return problems
 }
 
 func (grantContext tokenGrantContext) validateJWTBearer(grant *JWTBearerGrant) []string {
 	label := grantContext.prefix + " serviceAccount jwtBearer"
 	var problems []string
+	problems = append(problems, validateAcceptedTokenTypes(label, grant.AcceptedTokenTypes)...)
 	hasKey := grant.KeyCredential != ""
 	if hasKey && !grantContext.isCredentialOfType(grant.KeyCredential, "secretString") {
 		problems = append(problems, label+" keyCredential must be a secretString credential field")
@@ -619,6 +646,18 @@ func validateScopeList(label string, scopes []string) []string {
 			return []string{label + " must be non-empty and unique"}
 		}
 		seen[scope] = true
+	}
+	return nil
+}
+
+func validateAcceptedTokenTypes(label string, tokenTypes []string) []string {
+	seen := map[string]bool{}
+	for _, tokenType := range tokenTypes {
+		canonical := strings.ToLower(tokenType)
+		if strings.TrimSpace(tokenType) != tokenType || tokenType == "" || seen[canonical] {
+			return []string{label + " acceptedTokenTypes must be non-empty and unique"}
+		}
+		seen[canonical] = true
 	}
 	return nil
 }

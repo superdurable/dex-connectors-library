@@ -504,6 +504,11 @@ Every grant shares these rules:
   request. They cannot replace `grant_type`, `refresh_token`, `client_id`,
   `client_secret`, `assertion`, `client_assertion`, or
   `client_assertion_type`.
+- `acceptedTokenTypes` lists successful `token_type` values, compared without
+  case; it defaults to `Bearer`. `acceptsMissingTokenType: true` permits a
+  successful response without that member. Declare these at the refresh level
+  or on an individual refresh grant; client-credentials and JWT bearer grants
+  declare their own token response rules.
 
 [schema/testdata/token-grants.yaml](../schema/testdata/token-grants.yaml)
 declares each grant.
@@ -558,6 +563,13 @@ The scopes of a refresh response follow RFC 6749 section 5.1:
 - a response that reports scopes that no longer cover the declared `scopes`
   needs reauthorization, as a terminal error code does. Providers that never
   report `offline_access` need not report it.
+
+`refresh.requiredScopes` replaces the authorization scope set checked on a
+refresh response when a provider reports only API scopes, as Gmail does.
+`refresh.exactScopes: true` requires set equality, including a reported scope
+value. An individual grant may override this with `exactScopes`. Choose these
+rules from the provider's actual response and the Go refresh driver; grant
+count never selects scope policy implicitly.
 
 A method that stores several refresh tokens, such as a bot token and a user
 token, lists one grant for each, and the grants refresh independently:
@@ -769,6 +781,29 @@ case name, such as `"spec.auth refresh bot_refresh_token"`):
 A driver whose constructor takes a connection setting that a declaration reads
 gets it from `newCredentialRefreshDriverWithSettings(httpClient, settings)`,
 which the connector writes in a test file of its external test package.
+
+`connectorctl generate` also writes Python `_generated/refresh.py`, TypeScript
+`src/generated/refresh.ts`, and language-neutral agreement cases beside
+existing language tests. The declarations and credential field maps feed
+`ManifestCredentialRefreshDriver` in each SDK. Language tests replay the
+same samples as the Go agreement, including token requests, credential updates,
+and declared terminal errors. Generated private and shared credential decoders
+must both be passed to a project credential provider so a shared connection
+can omit only fields its host keeps.
+
+### Porting an OAuth connector to Python or TypeScript
+
+1. Confirm the Go driver and manifest agree on token types, missing token type,
+   scope policy, response mapping, and terminal error codes. Add declarations
+   before changing the language driver.
+2. Generate the language package, then bind its generated authorization and
+   credential field map to `ManifestCredentialRefreshDriver`. Use the generated
+   private and shared decoders at the project connection boundary.
+3. Run the generated agreement cases, provider conformance, package suite, and
+   runnable Dex example. Keep a small connector adapter for provider-specific
+   validation that the manifest cannot express. Monday's Go driver derives
+   expiry from JWT `exp`; leave it on its existing path until both language
+   drivers support that rule.
 
 ## Studio setup bundle
 

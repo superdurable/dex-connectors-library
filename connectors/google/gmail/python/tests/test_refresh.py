@@ -4,6 +4,7 @@
 
 import base64
 import json
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
 import httpx
@@ -153,7 +154,7 @@ async def test_workspace_refresh_signs_delegated_assertion() -> None:
         "",
         auth_method_id="workspace-domain-delegation",
         service_account_key=SecretString(key),
-        delegated_user="owner@example.org",
+        delegated_user="  owner@example.org  ",
     )
     async with httpx.AsyncClient(transport=httpx.MockTransport(answer)) as client:
         result = await CredentialRefreshDriver(client, lambda: NOW).refresh(
@@ -161,6 +162,45 @@ async def test_workspace_refresh_signs_delegated_assertion() -> None:
         )
     assert result.credentials.access_token.reveal() == "delegated-access"
     assert result.credentials.primary_email == "owner@example.org"
+    assert result.credentials.delegated_user == "  owner@example.org  "
+
+
+@pytest.mark.asyncio
+async def test_workspace_invalid_uri_and_mailbox_are_terminal_unknown_method_is_retryable() -> None:
+    """Reject bad delegation before a request, while unknown methods remain retryable."""
+    key = json.dumps(
+        {"client_email": "service@example.com", "private_key": "key", "token_uri": "http://example.com/token"}
+    )
+    valid_key = json.dumps(
+        {
+            "client_email": "service@example.com",
+            "private_key": "key",
+            "token_uri": "https://example.com/token",
+        }
+    )
+    base = Credentials(
+        SecretString(""),
+        "",
+        auth_method_id="workspace-domain-delegation",
+        service_account_key=SecretString(key),
+        delegated_user="user@example.com",
+    )
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(lambda _: pytest.fail("unexpected request"))
+    ) as client:
+        driver = CredentialRefreshDriver(client, lambda: NOW)
+        with pytest.raises(ReauthorizationRequiredError):
+            await driver.refresh(CredentialRefreshState(base, None, NOW))
+        with pytest.raises(ReauthorizationRequiredError):
+            await driver.refresh(
+                CredentialRefreshState(
+                    replace(base, service_account_key=SecretString(valid_key), delegated_user="invalid"),
+                    None,
+                    NOW,
+                )
+            )
+        with pytest.raises(ValueError, match="not supported"):
+            await driver.refresh(CredentialRefreshState(replace(base, auth_method_id="other"), None, NOW))
 
 
 @pytest.mark.asyncio

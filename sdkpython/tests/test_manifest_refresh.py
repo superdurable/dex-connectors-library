@@ -178,10 +178,17 @@ async def test_manifest_validates_all_grants_and_go_durations_before_exchange() 
         result = await driver.refresh(state)
         assert result.credentials.refresh_token.reveal() == "rotated"
         assert result.expires_at > now + timedelta(seconds=3723)
+        refresh["missingExpiry"] = {"lifetime": ".5h"}
+        assert (await driver.refresh(state)).expires_at > now + timedelta(minutes=29)
+        refresh["missingExpiry"] = {"lifetime": "+1h"}
+        assert (await driver.refresh(state)).expires_at > now + timedelta(minutes=59)
+        refresh["missingExpiry"] = {"lifetime": "0"}
+        with pytest.raises(ValueError, match="duration"):
+            await driver.refresh(state)
         refresh["missingExpiry"] = {"lifetime": "1fortnight"}
         with pytest.raises(ValueError, match="duration"):
             await driver.refresh(state)
-        assert len(requests) == 1
+        assert len(requests) == 3
         refresh["missingExpiry"] = "keep"
         refresh["grants"] = [
             {"refreshTokenCredential": "refresh_token", "credentialMappings": [
@@ -193,7 +200,7 @@ async def test_manifest_validates_all_grants_and_go_durations_before_exchange() 
         ]
         with pytest.raises(ValueError, match="mapped"):
             await driver.refresh(state)
-        assert len(requests) == 1
+        assert len(requests) == 3
 
 
 @pytest.mark.asyncio
@@ -581,6 +588,18 @@ async def test_manifest_multi_grant_rotation_and_missing_expiry() -> None:
         assert result.credentials.user_refresh.reveal() == "user-token-rotated"
         assert result.credentials.bot_refresh.reveal() == "bot-token-rotated"
         assert len(requests) == 2
+        auth["methods"][0]["oauth2"]["refresh"]["exactScopes"] = True
+        def extra_scope_respond(request: httpx.Request) -> httpx.Response:
+            response = respond(request)
+            payload = json.loads(response.content)
+            payload["scope"] = "chat.write extra"
+            return httpx.Response(200, json=payload)
+        async with httpx.AsyncClient(transport=httpx.MockTransport(extra_scope_respond)) as extra_client:
+            with pytest.raises(ReauthorizationRequiredError):
+                await ManifestCredentialRefreshDriver[MultiGrantCredentials](
+                    "Example", auth, fields, extra_client
+                ).refresh(CredentialRefreshState(credentials, now, now))
+        auth["methods"][0]["oauth2"]["refresh"]["exactScopes"] = False
         auth["methods"][0]["oauth2"]["refresh"]["missingExpiry"] = {"lifetime": "2h"}
         lifetime_driver = ManifestCredentialRefreshDriver[MultiGrantCredentials](
             "Example", auth, fields, client
@@ -699,6 +718,9 @@ async def test_manifest_jwt_bearer_resolves_key_sources_and_copies_identity() ->
             "Example", invalid_auth, fields, client
         )
         with pytest.raises(ValueError, match="duration"):
+            await invalid.refresh(CredentialRefreshState(credentials, None, datetime.now(UTC)))
+        invalid_auth["serviceAccount"]["jwtBearer"]["lifetime"] = "500us"
+        with pytest.raises(ValueError, match="at least one millisecond"):
             await invalid.refresh(CredentialRefreshState(credentials, None, datetime.now(UTC)))
         assert not invalid_requests
         retryable = ManifestCredentialRefreshDriver[DelegatedCredentials](

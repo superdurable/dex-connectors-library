@@ -17,6 +17,25 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+func TestPythonRefreshDeclarationUsesDecodedManifest(t *testing.T) {
+	manifestPath := filepath.Join("..", "..", "connectors", "google", "gmail", "connector.yaml")
+	manifest, err := load(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, err := generatedPythonFiles(manifestPath, manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join("..", "..", "connectors", "google", "gmail", "python", "src", "dex_connectors", "google_gmail", "_generated", "refresh.py")
+	declaration := string(files[path])
+	for _, expected := range []string{"'defaultMethod': 'google-oauth'", "'requiredScopes'", "'workspace-domain-delegation'", "'oauth_client_id': 'oauth_client_id'"} {
+		if !strings.Contains(declaration, expected) {
+			t.Errorf("generated refresh declaration omits %s", expected)
+		}
+	}
+}
+
 func TestPythonCodegenGoldenBitbucketMockUsesProviderIdentity(t *testing.T) {
 	manifestPath := filepath.Join("..", "..", "connectors", "atlassian", "bitbucket", "connector.yaml")
 	manifest, err := load(manifestPath)

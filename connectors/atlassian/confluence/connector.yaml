@@ -78,6 +78,7 @@ spec:
       pkce: false
       tokenRequestEncoding: json
       refresh:
+        acceptsMissingTokenType: true
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
   studio:
     setup:

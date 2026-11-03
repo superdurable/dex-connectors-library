@@ -494,6 +494,13 @@
       "uniqueItems": true,
       "items": { "type": "string", "pattern": "\\S" }
     },
+    "acceptedTokenTypes": {
+      "description": "Successful OAuth token_type values, compared without case; Bearer when absent.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "\\S" }
+    },
     "missingExpiry": {
       "description": "The expiry of a token whose response has no expires_in: keep stores it without an expiry; lifetime sets one.",
       "oneOf": [
@@ -502,7 +509,7 @@
           "type": "object",
           "additionalProperties": false,
           "required": ["lifetime"],
-          "properties": { "lifetime": { "type": "string", "pattern": "^([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))+$" } }
+          "properties": { "lifetime": { "type": "string", "pattern": "^\\+?(0|(([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))+)$" } }
         }
       ]
     },
@@ -549,6 +556,10 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "acceptsMissingTokenType": { "type": "boolean", "description": "Accept a successful token response without token_type." },
+        "acceptedTokenTypes": { "$ref": "#/$defs/acceptedTokenTypes" },
+        "exactScopes": { "type": "boolean", "description": "Require returned scopes to equal the declared scopes; otherwise require at least the declared scopes when a response includes scope." },
+        "requiredScopes": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 }, "description": "Override authorization scopes checked in a refresh response, when a provider reports only API scopes." },
         "terminalErrorCodes": { "$ref": "#/$defs/terminalErrorCodes", "description": "invalid_grant when absent." },
         "missingExpiry": { "$ref": "#/$defs/missingExpiry", "description": "keep when absent." },
         "additionalParameters": { "$ref": "#/$defs/additionalTokenParameters" },
@@ -561,6 +572,9 @@
             "additionalProperties": false,
             "required": ["refreshTokenCredential", "credentialMappings"],
             "properties": {
+              "acceptsMissingTokenType": { "type": "boolean" },
+              "acceptedTokenTypes": { "$ref": "#/$defs/acceptedTokenTypes" },
+              "exactScopes": { "type": "boolean" },
               "refreshTokenCredential": { "description": "A secretString credential field; blank skips the grant.", "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$" },
               "credentialMappings": { "$ref": "#/$defs/credentialMappings" },
               "grantedScopes": { "description": "The declared scope set the granted scopes must contain; scopes when absent.", "enum": ["scopes", "userScopes"] }
@@ -575,6 +589,8 @@
       "additionalProperties": false,
       "required": ["tokenEndpoint", "clientIDCredential", "clientSecretCredential", "credentialMappings"],
       "properties": {
+        "acceptsMissingTokenType": { "type": "boolean" },
+        "acceptedTokenTypes": { "$ref": "#/$defs/acceptedTokenTypes" },
         "tokenEndpoint": { "$ref": "#/$defs/valueSource" },
         "tokenEndpointAuthMethod": { "$ref": "#/$defs/tokenEndpointAuthMethod" },
         "tokenRequestEncoding": { "$ref": "#/$defs/tokenRequestEncoding" },
@@ -598,6 +614,8 @@
           "additionalProperties": false,
           "required": ["privateKey", "issuer", "audience", "tokenEndpoint", "lifetime", "credentialMappings"],
           "properties": {
+            "acceptsMissingTokenType": { "type": "boolean" },
+            "acceptedTokenTypes": { "$ref": "#/$defs/acceptedTokenTypes" },
             "keyCredential": { "description": "A secretString credential field holding the JSON key that fromKey sources read.", "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$" },
             "privateKey": { "$ref": "#/$defs/valueSource", "description": "The PEM RSA private key." },
             "issuer": { "$ref": "#/$defs/valueSource" },
@@ -605,7 +623,7 @@
             "audience": { "$ref": "#/$defs/valueSource" },
             "tokenEndpoint": { "$ref": "#/$defs/valueSource" },
             "scopes": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
-            "lifetime": { "description": "How long after iat the assertion expires.", "type": "string", "pattern": "^([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))+$" },
+            "lifetime": { "description": "How long after iat the assertion expires.", "type": "string", "pattern": "^\\+?(0|(([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))+)$" },
             "credentialMappings": { "$ref": "#/$defs/credentialMappings" },
             "credentialCopies": {
               "type": "array",

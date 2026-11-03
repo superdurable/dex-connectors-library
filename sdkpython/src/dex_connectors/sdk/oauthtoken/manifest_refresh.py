@@ -25,13 +25,14 @@ from . import (
     MissingExpiryRule,
     TokenEndpoint,
     has_all_scopes,
+    has_exact_scopes,
     is_refresh_required,
     parse_rsa_private_key_pem,
     sign_jwt_bearer_assertion,
 )
 
 Credential = TypeVar("Credential")
-_DURATION_PART = re.compile(r"(\d+(?:\.\d+)?)(ns|us|µs|μs|ms|s|m|h)")
+_DURATION_PART = re.compile(r"((?:\d+(?:\.\d*)?|\.\d+))(ns|us|µs|μs|ms|s|m|h)")
 
 
 class ManifestCredentialRefreshDriver(Generic[Credential]):
@@ -113,10 +114,9 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
             required_scopes = self._scopes(grant["scopes"])
             if grant["kind"] == "refresh":
                 required_scopes = [scope for scope in required_scopes if scope != "offline_access"]
-            returned_scopes = set(filter(None, re.split(r"[\s,]+", token.scope)))
             has_wrong_scopes = (
-                returned_scopes != set(required_scopes)
-                if len(grants) > 1
+                not has_exact_scopes(token.scope, tuple(required_scopes))
+                if grant["exact_scopes"]
                 else bool(token.scope) and not has_all_scopes(token.scope, tuple(required_scopes))
             )
             if has_wrong_scopes:
@@ -198,13 +198,16 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                     ),
                     "refresh_field": grant["refreshTokenCredential"],
                     "mappings": grant["credentialMappings"],
-                    "scopes": oauth.get("userScopes", [])
+                    "scopes": (oauth.get("userScopes", [])
                     if grant.get("grantedScopes") == "userScopes"
-                    else oauth.get("scopes", []),
+                    else refresh.get("requiredScopes") or oauth.get("scopes", [])),
                     "terminal_codes": refresh.get("terminalErrorCodes") or ["invalid_grant"],
                     "accepted_token_types": grant.get("acceptedTokenTypes")
                     or refresh.get("acceptedTokenTypes") or ["Bearer"],
-                    "accepts_missing_token_type": refresh.get("acceptsMissingTokenType", False),
+                    "exact_scopes": grant.get("exactScopes", refresh.get("exactScopes", False)),
+                    "accepts_missing_token_type": grant.get(
+                        "acceptsMissingTokenType", refresh.get("acceptsMissingTokenType", False)
+                    ),
                     "missing_expiry": (refresh.get("missingExpiry") or {}).get("lifetime", "")
                     if isinstance(refresh.get("missingExpiry"), dict)
                     else "",
@@ -227,6 +230,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                     "request_scopes": client.get("scopes", []),
                     "terminal_codes": client.get("terminalErrorCodes") or ["invalid_client"],
                     "accepted_token_types": client.get("acceptedTokenTypes") or ["Bearer"],
+                    "exact_scopes": False,
                     "accepts_missing_token_type": client.get("acceptsMissingTokenType", False),
                     "missing_expiry": (client.get("missingExpiry") or {}).get("lifetime", "")
                     if isinstance(client.get("missingExpiry"), dict)
@@ -248,6 +252,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                     "scopes": bearer.get("scopes", []),
                     "terminal_codes": bearer.get("terminalErrorCodes") or ["invalid_grant"],
                     "accepted_token_types": bearer.get("acceptedTokenTypes") or ["Bearer"],
+                    "exact_scopes": False,
                     "accepts_missing_token_type": bearer.get("acceptsMissingTokenType", False),
                     "missing_expiry": (bearer.get("missingExpiry") or {}).get("lifetime", "")
                     if isinstance(bearer.get("missingExpiry"), dict)
@@ -345,9 +350,12 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
         for copy in grant.get("copies", []):
             if copy.get("credential") not in self._fields or copy.get("fromCredential") not in self._fields:
                 raise ValueError("manifest credential field is not mapped")
-        _parse_duration(grant.get("missing_expiry", ""))
+        missing_expiry = grant.get("missing_expiry", "")
+        if missing_expiry and _parse_duration(missing_expiry) <= timedelta(0):
+            raise ValueError("manifest grant duration must be positive")
         if grant["kind"] == "jwt_bearer":
-            _parse_duration(grant["assertion"]["lifetime"])
+            if _parse_duration(grant["assertion"]["lifetime"]) < timedelta(milliseconds=1):
+                raise ValueError("manifest JWT assertion lifetime must be at least one millisecond")
 
     def _scopes(self, source: Any) -> list[str]:
         if isinstance(source, list):
@@ -394,6 +402,10 @@ def _parse_duration(value: str) -> timedelta:
     """Parse the manifest's positive Go duration units used for grant lifetime."""
     if not value:
         return timedelta(0)
+    if value in ("0", "+0"):
+        return timedelta(0)
+    if value.startswith("+"):
+        value = value[1:]
     total = 0.0
     position = 0
     for part in _DURATION_PART.finditer(value):
