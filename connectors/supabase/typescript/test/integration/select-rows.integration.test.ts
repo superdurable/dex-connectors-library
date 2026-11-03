@@ -51,7 +51,10 @@ it('selects a provider page through real Dex and fails an unwired rejection', as
     const rejected = await client.waitForFlow(rejectionId, 60_000);
     expect(rejected.status).toBe('failed');
     expect(rejected.errorMessage).toContain('providerRejected');
-    expect(requests).toHaveLength(2);
+    expect(requests).toEqual([
+      'GET /rest/v1/projects?limit=2&select=%2A',
+      'GET /rest/v1/bad?limit=100&select=%2A',
+    ]);
   } finally {
     await client.close(); await worker.close(); cache.close();
     await rm(directory, { recursive: true, force: true });

@@ -19,6 +19,8 @@ provider's JSON row array. Repeated writes use the same conflict keys, so
 transport, 408, 429, and 5xx failures retry safely. Invalid local input and
 credentials choose `defect`; malformed or oversized success responses choose
 `invalidResponse`. Failure messages never include provider error bodies.
+Serialized output JSON preserves provider numeric literals, including integers above
+JavaScript's safe integer range and decimal scale.
 
 Configure the Dex Web connection named `supabase` with the project Data API URL
 ending in `/rest/v1` and the private `api_key` field. See the [connector

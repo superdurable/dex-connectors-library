@@ -42,7 +42,8 @@ export class SupabaseClient {
     try { token = (await this.credentials.resolve(call, call.context.cancellationSignal)).apiKey.reveal(); }
     catch { return { branch: 'defect', failure: failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable') }; }
     if (!token || !isHeaderSafeCredential(token)) return { branch: 'defect', failure: failure(operation, 'AUTHENTICATION', 'connection credential is invalid') };
-    const url = `${this.baseUrl}${path}?${query.toString()}`;
+    const sortedQuery = [...query.entries()].sort(([left], [right]) => Buffer.compare(Buffer.from(left), Buffer.from(right)));
+    const url = `${this.baseUrl}${path}?${sortedQuery.map(([key, value]) => `${goQueryEscape(key)}=${goQueryEscape(value)}`).join('&')}`;
     let response: ProviderResponse;
     try {
       response = await this.send({ url, method,
@@ -63,7 +64,7 @@ export class SupabaseClient {
     const statusOutcome = classifyStatus(operation, response.status, response.headers['retry-after']);
     if (statusOutcome) return statusOutcome;
     let parsed: unknown;
-    try { parsed = JSON.parse(Buffer.from(response.body).toString('utf8')) as unknown; }
+    try { parsed = parseProviderJSON(response.body); }
     catch { return { branch: 'invalidResponse', failure: failure(operation, 'PROTOCOL', 'provider returned malformed JSON') }; }
     if (!Array.isArray(parsed)) return { branch: 'invalidResponse', failure: failure(operation, 'PROTOCOL', 'provider returned an incomplete response') };
     return { body: response.body };
@@ -81,11 +82,21 @@ function classifyStatus(operation: string, status: number, retryHeader: string |
 export function failure(operation: string, kind: Failure['kind'], message: string): Failure { return { kind, provider: 'supabase', operation, message }; }
 /** Convert one classified exchange to the query attempt. */
 export function queryExchange(exchange: Exchange): QueryAttempt<SelectRowsOutput> {
-  if ('body' in exchange) return newQueryBranch('selected', { data: JSON.parse(Buffer.from(exchange.body).toString('utf8')) as unknown }, zeroReceipt());
+  if ('body' in exchange) return newQueryBranch('selected', { data: parseProviderJSON(exchange.body) }, zeroReceipt());
   return exchange.branch ? newQueryBranch(exchange.branch, emptyOutput, zeroReceipt(), exchange.failure) : newQueryRetry(exchange.failure, exchange.retryAfterMs);
 }
 /** Convert one classified exchange to the mutation attempt. */
 export function mutationExchange(exchange: Exchange): MutationAttempt<UpsertRowsOutput> {
-  if ('body' in exchange) return newMutationBranch('upserted', { data: JSON.parse(Buffer.from(exchange.body).toString('utf8')) as unknown }, zeroReceipt());
+  if ('body' in exchange) return newMutationBranch('upserted', { data: parseProviderJSON(exchange.body) }, zeroReceipt());
   return exchange.branch ? newMutationBranch(exchange.branch, emptyOutput, zeroReceipt(), exchange.failure) : newMutationRetry(exchange.failure, exchange.retryAfterMs);
+}
+
+function parseProviderJSON(body: Uint8Array): unknown {
+  const rawJSON = (JSON as typeof JSON & { rawJSON(text: string): unknown }).rawJSON;
+  return JSON.parse(Buffer.from(body).toString('utf8'), (_key, parsedValue: unknown, context?: { source?: string }) =>
+    typeof parsedValue === 'number' && context?.source ? rawJSON(context.source) : parsedValue) as unknown;
+}
+
+function goQueryEscape(value: string): string {
+  return encodeURIComponent(value).replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`).replace(/%20/g, '+');
 }
