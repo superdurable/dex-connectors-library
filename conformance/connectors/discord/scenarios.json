@@ -2,14 +2,14 @@
   "connector": "discord",
   "scenarios": [
     {
-      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
       "exchanges": [
         {
-          "body": "{\"id\":\"100000000000000001\",\"type\":0,\"guild_id\":\"200000000000000001\",\"name\":\"announcements\",\"topic\":\"Release news\"}",
+          "body": "{\"id\":\"112233445566778899\",\"type\":0,\"guild_id\":\"223344556677889900\",\"name\":\"announcements\",\"topic\":\"Release news\",\"last_message_id\":\"998877665544332211\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/channels/100000000000000001",
+          "path": "/channels/112233445566778899",
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -28,8 +28,9 @@
         "branch": "found",
         "failureKind": "",
         "output": {
-          "guildId": "200000000000000001",
-          "id": "100000000000000001",
+          "guildId": "223344556677889900",
+          "id": "112233445566778899",
+          "lastMessageId": "998877665544332211",
           "name": "announcements",
           "topic": "Release news",
           "type": 0
@@ -40,20 +41,20 @@
         "uncertain": false
       },
       "input": {
-        "channelId": "100000000000000001"
+        "channelId": "112233445566778899"
       },
       "name": "getChannel-success",
       "operation": "getChannel"
     },
     {
-      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
       "exchanges": [
         {
-          "body": "{\"code\":10003}",
+          "body": "{\"code\":10003,\"message\":\"SENTINEL\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/channels/100000000000000001",
+          "path": "/channels/112233445566778899",
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -81,20 +82,20 @@
         "uncertain": false
       },
       "input": {
-        "channelId": "100000000000000001"
+        "channelId": "112233445566778899"
       },
-      "name": "getChannel-notFound",
+      "name": "getChannel-not-found",
       "operation": "getChannel"
     },
     {
-      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
       "exchanges": [
         {
-          "body": "{\"code\":50013}",
+          "body": "{\"code\":50013,\"message\":\"SENTINEL\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/channels/100000000000000001",
+          "path": "/channels/112233445566778899",
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -122,20 +123,20 @@
         "uncertain": false
       },
       "input": {
-        "channelId": "100000000000000001"
+        "channelId": "112233445566778899"
       },
-      "name": "getChannel-providerRejected",
+      "name": "getChannel-provider-rejected",
       "operation": "getChannel"
     },
     {
-      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
       "exchanges": [
         {
-          "body": "{\"malformed\":true}",
+          "body": "{",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/channels/100000000000000001",
+          "path": "/channels/112233445566778899",
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -163,13 +164,13 @@
         "uncertain": false
       },
       "input": {
-        "channelId": "100000000000000001"
+        "channelId": "112233445566778899"
       },
-      "name": "getChannel-invalidResponse",
+      "name": "getChannel-invalid-response",
       "operation": "getChannel"
     },
     {
-      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
       "exchanges": [],
       "expected": {
         "branch": "defect",
@@ -184,20 +185,20 @@
         "uncertain": false
       },
       "input": {
-        "channelId": "invalid"
+        "channelId": "../invalid"
       },
       "name": "getChannel-defect",
       "operation": "getChannel"
     },
     {
-      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
       "exchanges": [
         {
-          "body": "{\"retry_after\":0.25}",
+          "body": "{\"retry_after\":2.5,\"message\":\"SENTINEL\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/channels/100000000000000001",
+          "path": "/channels/112233445566778899",
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -217,24 +218,24 @@
         "failureKind": "RATE_LIMIT",
         "requestCount": 1,
         "retry": true,
-        "retryAfterMs": 250,
+        "retryAfterMs": 2500,
         "uncertain": false
       },
       "input": {
-        "channelId": "100000000000000001"
+        "channelId": "112233445566778899"
       },
-      "name": "getChannel-rateLimit",
+      "name": "getChannel-rate-limit",
       "operation": "getChannel"
     },
     {
-      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
       "exchanges": [
         {
-          "body": "{\"code\":0}",
+          "body": "{\"code\":0,\"message\":\"SENTINEL\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/channels/100000000000000001",
+          "path": "/channels/112233445566778899",
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -258,18 +259,18 @@
         "uncertain": false
       },
       "input": {
-        "channelId": "100000000000000001"
+        "channelId": "112233445566778899"
       },
       "name": "getChannel-unavailable",
       "operation": "getChannel"
     },
     {
-      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
       "exchanges": [
         {
           "keyMode": "absent",
           "method": "GET",
-          "path": "/channels/100000000000000001",
+          "path": "/channels/112233445566778899",
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -293,26 +294,26 @@
         "uncertain": false
       },
       "input": {
-        "channelId": "100000000000000001"
+        "channelId": "112233445566778899"
       },
       "name": "getChannel-transport",
       "operation": "getChannel"
     },
     {
-      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
       "exchanges": [
         {
-          "body": "[{\"id\":\"300000000000000001\",\"channel_id\":\"100000000000000001\",\"author\":{\"id\":\"400000000000000001\",\"username\":\"releasebot\",\"bot\":true},\"content\":\"Release today @everyone\",\"timestamp\":\"2026-10-26T12:00:00Z\",\"type\":0}]",
+          "body": "[{\"id\":\"998877665544332211\",\"channel_id\":\"112233445566778899\",\"author\":{\"id\":\"123456789012345678\",\"username\":\"dex-bot\",\"bot\":true},\"content\":\"Release today @everyone\",\"timestamp\":\"2026-10-13T20:00:00.123000+00:00\",\"edited_timestamp\":null,\"type\":0}]",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/channels/100000000000000001/messages",
+          "path": "/channels/112233445566778899/messages",
           "query": {
             "before": [
-              "300000000000000001"
+              "998877665544332211"
             ],
             "limit": [
-              "2"
+              "1"
             ]
           },
           "requestHeaders": {
@@ -333,22 +334,22 @@
         "branch": "listed",
         "failureKind": "",
         "output": {
-          "isFull": false,
+          "isFull": true,
           "messages": [
             {
               "author": {
-                "id": "400000000000000001",
+                "id": "123456789012345678",
                 "isBot": true,
-                "username": "releasebot"
+                "username": "dex-bot"
               },
-              "channelId": "100000000000000001",
+              "channelId": "112233445566778899",
               "content": "Release today @everyone",
-              "id": "300000000000000001",
-              "timestamp": "2026-10-26T12:00:00Z",
+              "id": "998877665544332211",
+              "timestamp": "2026-10-13T20:00:00.123Z",
               "type": 0
             }
           ],
-          "oldestMessageId": "300000000000000001"
+          "oldestMessageId": "998877665544332211"
         },
         "requestCount": 1,
         "retry": false,
@@ -356,28 +357,28 @@
         "uncertain": false
       },
       "input": {
-        "beforeMessageId": "300000000000000001",
-        "channelId": "100000000000000001",
-        "limit": 2
+        "beforeMessageId": "998877665544332211",
+        "channelId": "112233445566778899",
+        "limit": 1
       },
       "name": "listChannelMessages-success",
       "operation": "listChannelMessages"
     },
     {
-      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
       "exchanges": [
         {
-          "body": "{\"code\":10003}",
+          "body": "{\"code\":10003,\"message\":\"SENTINEL\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/channels/100000000000000001/messages",
+          "path": "/channels/112233445566778899/messages",
           "query": {
             "before": [
-              "300000000000000001"
+              "998877665544332211"
             ],
             "limit": [
-              "2"
+              "1"
             ]
           },
           "requestHeaders": {
@@ -407,28 +408,28 @@
         "uncertain": false
       },
       "input": {
-        "beforeMessageId": "300000000000000001",
-        "channelId": "100000000000000001",
-        "limit": 2
+        "beforeMessageId": "998877665544332211",
+        "channelId": "112233445566778899",
+        "limit": 1
       },
-      "name": "listChannelMessages-notFound",
+      "name": "listChannelMessages-not-found",
       "operation": "listChannelMessages"
     },
     {
-      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
       "exchanges": [
         {
-          "body": "{\"code\":50013}",
+          "body": "{\"code\":50013,\"message\":\"SENTINEL\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/channels/100000000000000001/messages",
+          "path": "/channels/112233445566778899/messages",
           "query": {
             "before": [
-              "300000000000000001"
+              "998877665544332211"
             ],
             "limit": [
-              "2"
+              "1"
             ]
           },
           "requestHeaders": {
@@ -458,28 +459,28 @@
         "uncertain": false
       },
       "input": {
-        "beforeMessageId": "300000000000000001",
-        "channelId": "100000000000000001",
-        "limit": 2
+        "beforeMessageId": "998877665544332211",
+        "channelId": "112233445566778899",
+        "limit": 1
       },
-      "name": "listChannelMessages-providerRejected",
+      "name": "listChannelMessages-provider-rejected",
       "operation": "listChannelMessages"
     },
     {
-      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
       "exchanges": [
         {
-          "body": "{\"malformed\":true}",
+          "body": "{",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/channels/100000000000000001/messages",
+          "path": "/channels/112233445566778899/messages",
           "query": {
             "before": [
-              "300000000000000001"
+              "998877665544332211"
             ],
             "limit": [
-              "2"
+              "1"
             ]
           },
           "requestHeaders": {
@@ -509,15 +510,15 @@
         "uncertain": false
       },
       "input": {
-        "beforeMessageId": "300000000000000001",
-        "channelId": "100000000000000001",
-        "limit": 2
+        "beforeMessageId": "998877665544332211",
+        "channelId": "112233445566778899",
+        "limit": 1
       },
-      "name": "listChannelMessages-invalidResponse",
+      "name": "listChannelMessages-invalid-response",
       "operation": "listChannelMessages"
     },
     {
-      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
       "exchanges": [],
       "expected": {
         "branch": "defect",
@@ -532,28 +533,28 @@
         "uncertain": false
       },
       "input": {
-        "beforeMessageId": "300000000000000001",
-        "channelId": "invalid",
-        "limit": 2
+        "beforeMessageId": "998877665544332211",
+        "channelId": "../invalid",
+        "limit": 1
       },
       "name": "listChannelMessages-defect",
       "operation": "listChannelMessages"
     },
     {
-      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
       "exchanges": [
         {
-          "body": "{\"retry_after\":0.25}",
+          "body": "{\"retry_after\":2.5,\"message\":\"SENTINEL\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/channels/100000000000000001/messages",
+          "path": "/channels/112233445566778899/messages",
           "query": {
             "before": [
-              "300000000000000001"
+              "998877665544332211"
             ],
             "limit": [
-              "2"
+              "1"
             ]
           },
           "requestHeaders": {
@@ -575,32 +576,32 @@
         "failureKind": "RATE_LIMIT",
         "requestCount": 1,
         "retry": true,
-        "retryAfterMs": 250,
+        "retryAfterMs": 2500,
         "uncertain": false
       },
       "input": {
-        "beforeMessageId": "300000000000000001",
-        "channelId": "100000000000000001",
-        "limit": 2
+        "beforeMessageId": "998877665544332211",
+        "channelId": "112233445566778899",
+        "limit": 1
       },
-      "name": "listChannelMessages-rateLimit",
+      "name": "listChannelMessages-rate-limit",
       "operation": "listChannelMessages"
     },
     {
-      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
       "exchanges": [
         {
-          "body": "{\"code\":0}",
+          "body": "{\"code\":0,\"message\":\"SENTINEL\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/channels/100000000000000001/messages",
+          "path": "/channels/112233445566778899/messages",
           "query": {
             "before": [
-              "300000000000000001"
+              "998877665544332211"
             ],
             "limit": [
-              "2"
+              "1"
             ]
           },
           "requestHeaders": {
@@ -626,26 +627,26 @@
         "uncertain": false
       },
       "input": {
-        "beforeMessageId": "300000000000000001",
-        "channelId": "100000000000000001",
-        "limit": 2
+        "beforeMessageId": "998877665544332211",
+        "channelId": "112233445566778899",
+        "limit": 1
       },
       "name": "listChannelMessages-unavailable",
       "operation": "listChannelMessages"
     },
     {
-      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
       "exchanges": [
         {
           "keyMode": "absent",
           "method": "GET",
-          "path": "/channels/100000000000000001/messages",
+          "path": "/channels/112233445566778899/messages",
           "query": {
             "before": [
-              "300000000000000001"
+              "998877665544332211"
             ],
             "limit": [
-              "2"
+              "1"
             ]
           },
           "requestHeaders": {
@@ -671,9 +672,9 @@
         "uncertain": false
       },
       "input": {
-        "beforeMessageId": "300000000000000001",
-        "channelId": "100000000000000001",
-        "limit": 2
+        "beforeMessageId": "998877665544332211",
+        "channelId": "112233445566778899",
+        "limit": 1
       },
       "name": "listChannelMessages-transport",
       "operation": "listChannelMessages"
@@ -682,11 +683,11 @@
       "callId": "9e237e1d-1296-5851-b23a-ee559a9b4208",
       "exchanges": [
         {
-          "body": "{\"id\":\"300000000000000001\",\"channel_id\":\"100000000000000001\",\"author\":{\"id\":\"400000000000000001\",\"username\":\"releasebot\",\"bot\":true},\"content\":\"Release today @everyone\",\"timestamp\":\"2026-10-26T12:00:00Z\",\"type\":0}",
+          "body": "{\"id\":\"998877665544332211\",\"channel_id\":\"112233445566778899\",\"author\":{\"id\":\"123456789012345678\",\"username\":\"dex-bot\",\"bot\":true},\"content\":\"Release today @everyone\",\"timestamp\":\"2026-10-13T20:00:00.123000+00:00\",\"edited_timestamp\":null,\"type\":0}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
-          "path": "/channels/100000000000000001/messages",
+          "path": "/channels/112233445566778899/messages",
           "requestBody": {
             "allowed_mentions": {
               "parse": []
@@ -695,7 +696,7 @@
             "enforce_nonce": true,
             "message_reference": {
               "fail_if_not_exists": true,
-              "message_id": "300000000000000001"
+              "message_id": "998877665544332211"
             },
             "nonce": "1xBAW2beLoZF-e64DhADbMNkO"
           },
@@ -721,14 +722,14 @@
         "failureKind": "",
         "output": {
           "author": {
-            "id": "400000000000000001",
+            "id": "123456789012345678",
             "isBot": true,
-            "username": "releasebot"
+            "username": "dex-bot"
           },
-          "channelId": "100000000000000001",
+          "channelId": "112233445566778899",
           "content": "Release today @everyone",
-          "id": "300000000000000001",
-          "timestamp": "2026-10-26T12:00:00Z",
+          "id": "998877665544332211",
+          "timestamp": "2026-10-13T20:00:00.123Z",
           "type": 0
         },
         "requestCount": 1,
@@ -738,9 +739,9 @@
       },
       "idempotencyKey": "9e237e1d-1296-5851-b23a-ee559a9b4208",
       "input": {
-        "channelId": "100000000000000001",
+        "channelId": "112233445566778899",
         "content": "Release today @everyone",
-        "replyToMessageId": "300000000000000001"
+        "replyToMessageId": "998877665544332211"
       },
       "name": "createMessage-success",
       "operation": "createMessage"
@@ -749,11 +750,11 @@
       "callId": "9e237e1d-1296-5851-b23a-ee559a9b4208",
       "exchanges": [
         {
-          "body": "{\"code\":10003}",
+          "body": "{\"code\":10003,\"message\":\"SENTINEL\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
-          "path": "/channels/100000000000000001/messages",
+          "path": "/channels/112233445566778899/messages",
           "requestBody": {
             "allowed_mentions": {
               "parse": []
@@ -762,7 +763,7 @@
             "enforce_nonce": true,
             "message_reference": {
               "fail_if_not_exists": true,
-              "message_id": "300000000000000001"
+              "message_id": "998877665544332211"
             },
             "nonce": "1xBAW2beLoZF-e64DhADbMNkO"
           },
@@ -805,22 +806,22 @@
       },
       "idempotencyKey": "9e237e1d-1296-5851-b23a-ee559a9b4208",
       "input": {
-        "channelId": "100000000000000001",
+        "channelId": "112233445566778899",
         "content": "Release today @everyone",
-        "replyToMessageId": "300000000000000001"
+        "replyToMessageId": "998877665544332211"
       },
-      "name": "createMessage-notFound",
+      "name": "createMessage-not-found",
       "operation": "createMessage"
     },
     {
       "callId": "9e237e1d-1296-5851-b23a-ee559a9b4208",
       "exchanges": [
         {
-          "body": "{\"code\":50013}",
+          "body": "{\"code\":50013,\"message\":\"SENTINEL\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
-          "path": "/channels/100000000000000001/messages",
+          "path": "/channels/112233445566778899/messages",
           "requestBody": {
             "allowed_mentions": {
               "parse": []
@@ -829,7 +830,7 @@
             "enforce_nonce": true,
             "message_reference": {
               "fail_if_not_exists": true,
-              "message_id": "300000000000000001"
+              "message_id": "998877665544332211"
             },
             "nonce": "1xBAW2beLoZF-e64DhADbMNkO"
           },
@@ -872,22 +873,22 @@
       },
       "idempotencyKey": "9e237e1d-1296-5851-b23a-ee559a9b4208",
       "input": {
-        "channelId": "100000000000000001",
+        "channelId": "112233445566778899",
         "content": "Release today @everyone",
-        "replyToMessageId": "300000000000000001"
+        "replyToMessageId": "998877665544332211"
       },
-      "name": "createMessage-providerRejected",
+      "name": "createMessage-provider-rejected",
       "operation": "createMessage"
     },
     {
       "callId": "9e237e1d-1296-5851-b23a-ee559a9b4208",
       "exchanges": [
         {
-          "body": "{\"malformed\":true}",
+          "body": "{",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
-          "path": "/channels/100000000000000001/messages",
+          "path": "/channels/112233445566778899/messages",
           "requestBody": {
             "allowed_mentions": {
               "parse": []
@@ -896,7 +897,7 @@
             "enforce_nonce": true,
             "message_reference": {
               "fail_if_not_exists": true,
-              "message_id": "300000000000000001"
+              "message_id": "998877665544332211"
             },
             "nonce": "1xBAW2beLoZF-e64DhADbMNkO"
           },
@@ -939,11 +940,11 @@
       },
       "idempotencyKey": "9e237e1d-1296-5851-b23a-ee559a9b4208",
       "input": {
-        "channelId": "100000000000000001",
+        "channelId": "112233445566778899",
         "content": "Release today @everyone",
-        "replyToMessageId": "300000000000000001"
+        "replyToMessageId": "998877665544332211"
       },
-      "name": "createMessage-invalidResponse",
+      "name": "createMessage-invalid-response",
       "operation": "createMessage"
     },
     {
@@ -971,9 +972,9 @@
       },
       "idempotencyKey": "9e237e1d-1296-5851-b23a-ee559a9b4208",
       "input": {
-        "channelId": "invalid",
+        "channelId": "../invalid",
         "content": "Release today @everyone",
-        "replyToMessageId": "300000000000000001"
+        "replyToMessageId": "998877665544332211"
       },
       "name": "createMessage-defect",
       "operation": "createMessage"
@@ -982,11 +983,11 @@
       "callId": "9e237e1d-1296-5851-b23a-ee559a9b4208",
       "exchanges": [
         {
-          "body": "{\"retry_after\":0.25}",
+          "body": "{\"retry_after\":2.5,\"message\":\"SENTINEL\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
-          "path": "/channels/100000000000000001/messages",
+          "path": "/channels/112233445566778899/messages",
           "requestBody": {
             "allowed_mentions": {
               "parse": []
@@ -995,7 +996,7 @@
             "enforce_nonce": true,
             "message_reference": {
               "fail_if_not_exists": true,
-              "message_id": "300000000000000001"
+              "message_id": "998877665544332211"
             },
             "nonce": "1xBAW2beLoZF-e64DhADbMNkO"
           },
@@ -1021,27 +1022,27 @@
         "failureKind": "RATE_LIMIT",
         "requestCount": 1,
         "retry": true,
-        "retryAfterMs": 250,
+        "retryAfterMs": 2500,
         "uncertain": false
       },
       "idempotencyKey": "9e237e1d-1296-5851-b23a-ee559a9b4208",
       "input": {
-        "channelId": "100000000000000001",
+        "channelId": "112233445566778899",
         "content": "Release today @everyone",
-        "replyToMessageId": "300000000000000001"
+        "replyToMessageId": "998877665544332211"
       },
-      "name": "createMessage-rateLimit",
+      "name": "createMessage-rate-limit",
       "operation": "createMessage"
     },
     {
       "callId": "9e237e1d-1296-5851-b23a-ee559a9b4208",
       "exchanges": [
         {
-          "body": "{\"code\":0}",
+          "body": "{\"code\":0,\"message\":\"SENTINEL\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
-          "path": "/channels/100000000000000001/messages",
+          "path": "/channels/112233445566778899/messages",
           "requestBody": {
             "allowed_mentions": {
               "parse": []
@@ -1050,7 +1051,7 @@
             "enforce_nonce": true,
             "message_reference": {
               "fail_if_not_exists": true,
-              "message_id": "300000000000000001"
+              "message_id": "998877665544332211"
             },
             "nonce": "1xBAW2beLoZF-e64DhADbMNkO"
           },
@@ -1081,9 +1082,9 @@
       },
       "idempotencyKey": "9e237e1d-1296-5851-b23a-ee559a9b4208",
       "input": {
-        "channelId": "100000000000000001",
+        "channelId": "112233445566778899",
         "content": "Release today @everyone",
-        "replyToMessageId": "300000000000000001"
+        "replyToMessageId": "998877665544332211"
       },
       "name": "createMessage-unavailable",
       "operation": "createMessage"
@@ -1094,7 +1095,7 @@
         {
           "keyMode": "absent",
           "method": "POST",
-          "path": "/channels/100000000000000001/messages",
+          "path": "/channels/112233445566778899/messages",
           "requestBody": {
             "allowed_mentions": {
               "parse": []
@@ -1103,7 +1104,7 @@
             "enforce_nonce": true,
             "message_reference": {
               "fail_if_not_exists": true,
-              "message_id": "300000000000000001"
+              "message_id": "998877665544332211"
             },
             "nonce": "1xBAW2beLoZF-e64DhADbMNkO"
           },
@@ -1134,9 +1135,9 @@
       },
       "idempotencyKey": "9e237e1d-1296-5851-b23a-ee559a9b4208",
       "input": {
-        "channelId": "100000000000000001",
+        "channelId": "112233445566778899",
         "content": "Release today @everyone",
-        "replyToMessageId": "300000000000000001"
+        "replyToMessageId": "998877665544332211"
       },
       "name": "createMessage-transport",
       "operation": "createMessage"
@@ -1149,7 +1150,7 @@
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
-          "path": "/channels/100000000000000001/messages/300000000000000001/reactions/party_blob:123456789012345678/@me",
+          "path": "/channels/112233445566778899/messages/998877665544332211/reactions/📣/@me",
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -1168,9 +1169,9 @@
         "branch": "added",
         "failureKind": "",
         "output": {
-          "channelId": "100000000000000001",
-          "emoji": "party_blob:123456789012345678",
-          "messageId": "300000000000000001"
+          "channelId": "112233445566778899",
+          "emoji": "📣",
+          "messageId": "998877665544332211"
         },
         "requestCount": 1,
         "retry": false,
@@ -1179,9 +1180,9 @@
       },
       "idempotencyKey": "78f6ce78-0b9a-5d24-979e-99d2e4b2ba33",
       "input": {
-        "channelId": "100000000000000001",
-        "emoji": "party_blob:123456789012345678",
-        "messageId": "300000000000000001"
+        "channelId": "112233445566778899",
+        "emoji": "📣",
+        "messageId": "998877665544332211"
       },
       "name": "addReaction-success",
       "operation": "addReaction"
@@ -1190,11 +1191,11 @@
       "callId": "78f6ce78-0b9a-5d24-979e-99d2e4b2ba33",
       "exchanges": [
         {
-          "body": "{\"code\":10003}",
+          "body": "{\"code\":10008,\"message\":\"SENTINEL\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
-          "path": "/channels/100000000000000001/messages/300000000000000001/reactions/party_blob:123456789012345678/@me",
+          "path": "/channels/112233445566778899/messages/998877665544332211/reactions/📣/@me",
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -1224,22 +1225,22 @@
       },
       "idempotencyKey": "78f6ce78-0b9a-5d24-979e-99d2e4b2ba33",
       "input": {
-        "channelId": "100000000000000001",
-        "emoji": "party_blob:123456789012345678",
-        "messageId": "300000000000000001"
+        "channelId": "112233445566778899",
+        "emoji": "📣",
+        "messageId": "998877665544332211"
       },
-      "name": "addReaction-notFound",
+      "name": "addReaction-not-found",
       "operation": "addReaction"
     },
     {
       "callId": "78f6ce78-0b9a-5d24-979e-99d2e4b2ba33",
       "exchanges": [
         {
-          "body": "{\"code\":50013}",
+          "body": "{\"code\":50013,\"message\":\"SENTINEL\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
-          "path": "/channels/100000000000000001/messages/300000000000000001/reactions/party_blob:123456789012345678/@me",
+          "path": "/channels/112233445566778899/messages/998877665544332211/reactions/📣/@me",
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -1269,11 +1270,11 @@
       },
       "idempotencyKey": "78f6ce78-0b9a-5d24-979e-99d2e4b2ba33",
       "input": {
-        "channelId": "100000000000000001",
-        "emoji": "party_blob:123456789012345678",
-        "messageId": "300000000000000001"
+        "channelId": "112233445566778899",
+        "emoji": "📣",
+        "messageId": "998877665544332211"
       },
-      "name": "addReaction-providerRejected",
+      "name": "addReaction-provider-rejected",
       "operation": "addReaction"
     },
     {
@@ -1294,9 +1295,9 @@
       },
       "idempotencyKey": "78f6ce78-0b9a-5d24-979e-99d2e4b2ba33",
       "input": {
-        "channelId": "invalid",
-        "emoji": "party_blob:123456789012345678",
-        "messageId": "300000000000000001"
+        "channelId": "../invalid",
+        "emoji": "📣",
+        "messageId": "998877665544332211"
       },
       "name": "addReaction-defect",
       "operation": "addReaction"
@@ -1305,11 +1306,11 @@
       "callId": "78f6ce78-0b9a-5d24-979e-99d2e4b2ba33",
       "exchanges": [
         {
-          "body": "{\"retry_after\":0.25}",
+          "body": "{\"retry_after\":2.5,\"message\":\"SENTINEL\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
-          "path": "/channels/100000000000000001/messages/300000000000000001/reactions/party_blob:123456789012345678/@me",
+          "path": "/channels/112233445566778899/messages/998877665544332211/reactions/📣/@me",
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -1329,27 +1330,27 @@
         "failureKind": "RATE_LIMIT",
         "requestCount": 1,
         "retry": true,
-        "retryAfterMs": 250,
+        "retryAfterMs": 2500,
         "uncertain": false
       },
       "idempotencyKey": "78f6ce78-0b9a-5d24-979e-99d2e4b2ba33",
       "input": {
-        "channelId": "100000000000000001",
-        "emoji": "party_blob:123456789012345678",
-        "messageId": "300000000000000001"
+        "channelId": "112233445566778899",
+        "emoji": "📣",
+        "messageId": "998877665544332211"
       },
-      "name": "addReaction-rateLimit",
+      "name": "addReaction-rate-limit",
       "operation": "addReaction"
     },
     {
       "callId": "78f6ce78-0b9a-5d24-979e-99d2e4b2ba33",
       "exchanges": [
         {
-          "body": "{\"code\":0}",
+          "body": "{\"code\":0,\"message\":\"SENTINEL\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
-          "path": "/channels/100000000000000001/messages/300000000000000001/reactions/party_blob:123456789012345678/@me",
+          "path": "/channels/112233445566778899/messages/998877665544332211/reactions/📣/@me",
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -1374,9 +1375,9 @@
       },
       "idempotencyKey": "78f6ce78-0b9a-5d24-979e-99d2e4b2ba33",
       "input": {
-        "channelId": "100000000000000001",
-        "emoji": "party_blob:123456789012345678",
-        "messageId": "300000000000000001"
+        "channelId": "112233445566778899",
+        "emoji": "📣",
+        "messageId": "998877665544332211"
       },
       "name": "addReaction-unavailable",
       "operation": "addReaction"
@@ -1387,7 +1388,7 @@
         {
           "keyMode": "absent",
           "method": "PUT",
-          "path": "/channels/100000000000000001/messages/300000000000000001/reactions/party_blob:123456789012345678/@me",
+          "path": "/channels/112233445566778899/messages/998877665544332211/reactions/📣/@me",
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -1412,26 +1413,88 @@
       },
       "idempotencyKey": "78f6ce78-0b9a-5d24-979e-99d2e4b2ba33",
       "input": {
-        "channelId": "100000000000000001",
-        "emoji": "party_blob:123456789012345678",
-        "messageId": "300000000000000001"
+        "channelId": "112233445566778899",
+        "emoji": "📣",
+        "messageId": "998877665544332211"
       },
       "name": "addReaction-transport",
       "operation": "addReaction"
     },
     {
-      "callId": "deb1de08-84b3-554e-91d5-e46e685d1f56",
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
       "exchanges": [
         {
-          "body": "[{\"id\":\"300000000000000001\",\"channel_id\":\"100000000000000001\",\"author\":{\"id\":\"400000000000000001\",\"username\":\"releasebot\",\"bot\":true},\"content\":\"Release today @everyone\",\"timestamp\":\"2026-10-26T12:00:00Z\",\"type\":0}]",
+          "body": "[{\"id\":\"998877665544332211\",\"channel_id\":\"112233445566778899\",\"author\":{\"id\":\"123456789012345678\",\"username\":\"dex-bot\",\"bot\":true},\"content\":\"Release today @everyone\",\"timestamp\":\"2026-10-13T20:00:00.123000+00:00\",\"edited_timestamp\":null,\"type\":0}]",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/channels/100000000000000001/messages",
+          "path": "/channels/112233445566778899/messages",
           "query": {
             "after": [
-              "300000000000000001"
+              "998877665544332211"
             ],
+            "limit": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bot MTAxTESTbot.token-part.0123456789abcdef"
+            ],
+            "User-Agent": [
+              "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "isFull": true,
+          "messages": [
+            {
+              "author": {
+                "id": "123456789012345678",
+                "isBot": true,
+                "username": "dex-bot"
+              },
+              "channelId": "112233445566778899",
+              "content": "Release today @everyone",
+              "id": "998877665544332211",
+              "timestamp": "2026-10-13T20:00:00.123Z",
+              "type": 0
+            }
+          ],
+          "oldestMessageId": "998877665544332211"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "afterMessageId": "998877665544332211",
+        "channelId": "112233445566778899",
+        "limit": 1
+      },
+      "name": "listChannelMessages-after",
+      "operation": "listChannelMessages"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "[]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/channels/112233445566778899/messages",
+          "query": {
             "limit": [
               "50"
             ]
@@ -1455,21 +1518,7 @@
         "failureKind": "",
         "output": {
           "isFull": false,
-          "messages": [
-            {
-              "author": {
-                "id": "400000000000000001",
-                "isBot": true,
-                "username": "releasebot"
-              },
-              "channelId": "100000000000000001",
-              "content": "Release today @everyone",
-              "id": "300000000000000001",
-              "timestamp": "2026-10-26T12:00:00Z",
-              "type": 0
-            }
-          ],
-          "oldestMessageId": "300000000000000001"
+          "messages": []
         },
         "requestCount": 1,
         "retry": false,
@@ -1477,10 +1526,9 @@
         "uncertain": false
       },
       "input": {
-        "afterMessageId": "300000000000000001",
-        "channelId": "100000000000000001"
+        "channelId": "112233445566778899"
       },
-      "name": "listChannelMessages-after",
+      "name": "listChannelMessages-empty",
       "operation": "listChannelMessages"
     },
     {
@@ -1488,9 +1536,11 @@
       "callId": "9e237e1d-1296-5851-b23a-ee559a9b4208",
       "exchanges": [
         {
+          "body": "{}",
+          "headers": {},
           "keyMode": "absent",
           "method": "POST",
-          "path": "/channels/100000000000000001/messages",
+          "path": "/channels/112233445566778899/messages",
           "requestBody": {
             "allowed_mentions": {
               "parse": []
@@ -1499,7 +1549,7 @@
             "enforce_nonce": true,
             "message_reference": {
               "fail_if_not_exists": true,
-              "message_id": "300000000000000001"
+              "message_id": "998877665544332211"
             },
             "nonce": "1xBAW2beLoZF-e64DhADbMNkO"
           },
@@ -1517,14 +1567,14 @@
               "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
             ]
           },
-          "transportFailure": "after-send"
+          "status": 503
         },
         {
-          "body": "{\"id\":\"300000000000000001\",\"channel_id\":\"100000000000000001\",\"author\":{\"id\":\"400000000000000001\",\"username\":\"releasebot\",\"bot\":true},\"content\":\"Release today @everyone\",\"timestamp\":\"2026-10-26T12:00:00Z\",\"type\":0}",
+          "body": "{\"id\":\"998877665544332211\",\"channel_id\":\"112233445566778899\",\"author\":{\"id\":\"123456789012345678\",\"username\":\"dex-bot\",\"bot\":true},\"content\":\"Release today @everyone\",\"timestamp\":\"2026-10-13T20:00:00.123000+00:00\",\"edited_timestamp\":null,\"type\":0}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
-          "path": "/channels/100000000000000001/messages",
+          "path": "/channels/112233445566778899/messages",
           "requestBody": {
             "allowed_mentions": {
               "parse": []
@@ -1533,7 +1583,7 @@
             "enforce_nonce": true,
             "message_reference": {
               "fail_if_not_exists": true,
-              "message_id": "300000000000000001"
+              "message_id": "998877665544332211"
             },
             "nonce": "1xBAW2beLoZF-e64DhADbMNkO"
           },
@@ -1559,14 +1609,14 @@
         "failureKind": "",
         "output": {
           "author": {
-            "id": "400000000000000001",
+            "id": "123456789012345678",
             "isBot": true,
-            "username": "releasebot"
+            "username": "dex-bot"
           },
-          "channelId": "100000000000000001",
+          "channelId": "112233445566778899",
           "content": "Release today @everyone",
-          "id": "300000000000000001",
-          "timestamp": "2026-10-26T12:00:00Z",
+          "id": "998877665544332211",
+          "timestamp": "2026-10-13T20:00:00.123Z",
           "type": 0
         },
         "requestCount": 2,
@@ -1576,18 +1626,18 @@
       },
       "idempotencyKey": "9e237e1d-1296-5851-b23a-ee559a9b4208",
       "input": {
-        "channelId": "100000000000000001",
+        "channelId": "112233445566778899",
         "content": "Release today @everyone",
-        "replyToMessageId": "300000000000000001"
+        "replyToMessageId": "998877665544332211"
       },
       "intermediate": [
         {
           "exchangeCount": 1,
-          "failureKind": "TRANSPORT",
+          "failureKind": "AVAILABILITY",
           "retryAfterMs": 0
         }
       ],
-      "name": "createMessage-after-send-retry",
+      "name": "createMessage-nonce-retry",
       "operation": "createMessage"
     },
     {
@@ -1595,9 +1645,11 @@
       "callId": "78f6ce78-0b9a-5d24-979e-99d2e4b2ba33",
       "exchanges": [
         {
+          "body": "{}",
+          "headers": {},
           "keyMode": "absent",
           "method": "PUT",
-          "path": "/channels/100000000000000001/messages/300000000000000001/reactions/party_blob:123456789012345678/@me",
+          "path": "/channels/112233445566778899/messages/998877665544332211/reactions/📣/@me",
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -1609,14 +1661,14 @@
               "DiscordBot (https://github.com/superdurable/dex-connectors-library, 0.1.0)"
             ]
           },
-          "transportFailure": "after-send"
+          "status": 503
         },
         {
           "body": "",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
-          "path": "/channels/100000000000000001/messages/300000000000000001/reactions/party_blob:123456789012345678/@me",
+          "path": "/channels/112233445566778899/messages/998877665544332211/reactions/📣/@me",
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -1635,9 +1687,9 @@
         "branch": "added",
         "failureKind": "",
         "output": {
-          "channelId": "100000000000000001",
-          "emoji": "party_blob:123456789012345678",
-          "messageId": "300000000000000001"
+          "channelId": "112233445566778899",
+          "emoji": "📣",
+          "messageId": "998877665544332211"
         },
         "requestCount": 2,
         "retry": false,
@@ -1646,18 +1698,18 @@
       },
       "idempotencyKey": "78f6ce78-0b9a-5d24-979e-99d2e4b2ba33",
       "input": {
-        "channelId": "100000000000000001",
-        "emoji": "party_blob:123456789012345678",
-        "messageId": "300000000000000001"
+        "channelId": "112233445566778899",
+        "emoji": "📣",
+        "messageId": "998877665544332211"
       },
       "intermediate": [
         {
           "exchangeCount": 1,
-          "failureKind": "TRANSPORT",
+          "failureKind": "AVAILABILITY",
           "retryAfterMs": 0
         }
       ],
-      "name": "addReaction-after-send-retry",
+      "name": "addReaction-repeat-safe-retry",
       "operation": "addReaction"
     }
   ],

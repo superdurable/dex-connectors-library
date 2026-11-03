@@ -1072,6 +1072,15 @@ constructor per branch and per manifest mock, `<Operation>Retry`, and
 
 # Cross-language connector conformance
 
+PostgreSQL, MySQL, and SQL Server use the reviewed database wire protocol
+exemptions in [`conformance/exemptions.yaml`](../conformance/exemptions.yaml).
+Their Python and TypeScript packages use native drivers, so HTTP replay does
+not apply. Require unit coverage for Go-tested branches, Retry, uncertainty,
+and driver-error classification, plus real database integration tests in CI
+service containers. Follow the Go connector live-test setup and scenarios.
+Developers do not run Docker locally. See
+[`conformance/connectors/README.md`](../conformance/connectors/README.md#database-wire-protocol-exemptions).
+
 Python and TypeScript connector packages replay the Go-verified provider
 [scenarios](../conformance/connectors/README.md). Create
 `conformance/connectors/<directory>/scenarios.json` with every Go-tested branch,

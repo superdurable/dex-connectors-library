@@ -8,6 +8,11 @@ metadata:
   version: v0.23.0
 spec:
   provider: amazon-s3
+  languages:
+    typescript:
+      version: v0.1.0
+      operations: [listObjects, headObject, getObjectText, putObject]
+      triggers: []
   codegen:
     go:
       package: s3

@@ -1,0 +1,5 @@
+{
+  "bucket": "acme-reports",
+  "key": "reports/ops-weekly.md",
+  "text": "# Ops weekly\n\nReport ID: ops-weekly\n"
+}
