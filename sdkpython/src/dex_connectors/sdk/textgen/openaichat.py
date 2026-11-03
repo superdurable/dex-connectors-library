@@ -6,7 +6,8 @@ from __future__ import annotations
 
 import json
 import re
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncGenerator, AsyncIterator, Callable
+from contextlib import aclosing
 from dataclasses import dataclass, field, replace
 from decimal import Decimal, InvalidOperation
 from enum import StrEnum
@@ -40,27 +41,33 @@ _HEADER = re.compile(r"^[!#$%&'*+.^_`|~0-9A-Za-z-]{1,128}$")
 class InstructionsRole(StrEnum):
     """Chat role carrying request instructions."""
 
-    SYSTEM = "system"
-    DEVELOPER = "developer"
+    SYSTEM = "system"  # First system message; default.
+    DEVELOPER = "developer"  # First developer message.
 
 
 class MaxTokensField(StrEnum):
     """Provider body field carrying the output limit."""
 
-    MAX_TOKENS = "max_tokens"
-    MAX_COMPLETION_TOKENS = "max_completion_tokens"
+    MAX_TOKENS = "max_tokens"  # Default output-limit field.
+    MAX_COMPLETION_TOKENS = "max_completion_tokens"  # Alternate output-limit field.
 
 
 class StreamingPolicy(StrEnum):
     """Whether the provider receives a streaming request."""
 
-    NEVER = "never"
-    ALWAYS = "always"
+    NEVER = "never"  # Request a complete JSON response; default.
+    ALWAYS = "always"  # Request SSE chunks and emit text deltas.
 
 
 @dataclass(frozen=True, slots=True)
 class ModelRule:
-    """First matching model override; prefix and anchored pattern are exclusive."""
+    """First matching model override; prefix and anchored pattern are exclusive.
+
+    Exactly one of ``model_id_prefix`` or ``model_id_pattern`` is required.
+    Optional ``temperature``, ``reasoning_efforts``, ``structured_output``,
+    ``max_tokens_field``, and ``streaming`` replace Profile values. An empty
+    effort map rejects every effort.
+    """
 
     model_id_prefix: str = ""
     model_id_pattern: str = ""
@@ -73,7 +80,24 @@ class ModelRule:
 
 @dataclass(frozen=True, slots=True)
 class Profile:
-    """One provider's Chat Completions dialect without host or secrets."""
+    """One provider's Chat Completions dialect without host or secrets.
+
+    ``provider_name`` is required. ``chat_completions_path`` defaults to
+    /chat/completions; ``credential_header`` to Authorization with Bearer
+    prefix. ``fixed_headers`` holds nonsecret constants. ``instructions_role``
+    defaults to system; ``max_tokens_field`` to max_tokens; empty
+    ``reasoning_efforts`` rejects effort. ``temperature`` accepts finite
+    nonnegative values; ``structured_output`` rejects schema requests by
+    default. ``should_send_strict_json_schema`` adds strict: true.
+    ``streaming`` defaults to never; ``should_request_stream_usage`` adds
+    usage stream options. Nonempty ``allowed_request_fields`` enforces an
+    allowlist. ``finish_reasons`` extends stop, length, and content_filter.
+    ``error_rules`` classify errors; ``error_token_pointers`` default to type
+    and code. ``request_id_headers`` default to x-request-id;
+    ``rate_limit_headers`` select safe receipt metadata.
+    ``stall_timeout_seconds`` is the between-byte limit, or zero to disable.
+    The first matching ``model_rules`` entry overrides model settings.
+    """
 
     provider_name: str
     chat_completions_path: str = "/chat/completions"
@@ -114,7 +138,7 @@ def _validate_profile(profile: Profile) -> None:
             raise ValueError("openaichat profile fixed header name is invalid or reserved")
         if any(ord(char) < 32 or ord(char) > 126 for char in value):
             raise ValueError("openaichat profile fixed header value must be printable ASCII")
-    if profile.instructions_role not in InstructionsRole:
+    if not isinstance(profile.instructions_role, InstructionsRole):
         raise ValueError("openaichat profile instructions role is invalid")
     _validate_settings(
         profile.max_tokens_field, profile.streaming, profile.reasoning_efforts, profile.structured_output
@@ -160,12 +184,12 @@ def _validate_settings(
     efforts: dict[ReasoningEffort, str] | None,
     structured: StructuredOutputRules,
 ) -> None:
-    if max_tokens_field is not None and max_tokens_field not in MaxTokensField:
+    if max_tokens_field is not None and not isinstance(max_tokens_field, MaxTokensField):
         raise ValueError("openaichat profile max tokens field is invalid")
-    if streaming is not None and streaming not in StreamingPolicy:
+    if streaming is not None and not isinstance(streaming, StreamingPolicy):
         raise ValueError("openaichat profile streaming policy is invalid")
     for effort, wire_value in (efforts or {}).items():
-        if effort not in ReasoningEffort or not _FIELD.fullmatch(wire_value):
+        if not isinstance(effort, ReasoningEffort) or not _FIELD.fullmatch(wire_value):
             raise ValueError("openaichat profile reasoning effort is invalid")
     structured.validate()
 
@@ -247,18 +271,20 @@ class _ChatWireFormat:
         return ProviderReportedError(read_error_tokens(body, self.profile.error_token_pointers))
 
     def decode_response(self, body: bytes) -> DecodedResponse:
-        completion = json.loads(body)
+        completion = json.loads(body.decode("utf-8", errors="replace"))
+        if not isinstance(completion, dict):
+            raise ValueError("chat completion must be an object")
         if completion.get("error") is not None:
             raise self._reported_error(body)
-        choice = next((item for item in completion.get("choices", ()) if item.get("index") == 0), None)
+        choice = _first_choice(completion.get("choices"))
         if choice is None:
             raise ValueError("chat completion has no first choice")
-        parts, refusal = _parts(choice.get("message", {}))
+        parts, refusal = _parts(choice.get("message"))
         return DecodedResponse(
             tuple(parts),
-            completion.get("model", ""),
-            completion.get("id", ""),
-            choice.get("finish_reason") or "",
+            _nullable_string(completion.get("model")),
+            _nullable_string(completion.get("id")),
+            _nullable_string(choice.get("finish_reason")),
             refusal,
             _usage(completion.get("usage")),
         )
@@ -273,63 +299,93 @@ class _ChatWireFormat:
         refusal = False
         usage = Usage()
         has_finished = False
-        async for event in _events(chunks, self.profile.provider_name):
-            if event.strip() == b"[DONE]":
-                if not has_finished:
-                    raise ValueError("stream ended without finish reason")
-                return DecodedResponse(tuple(parts), served_model, response_id, finish, refusal, usage)
-            chunk = json.loads(event)
-            if chunk.get("error") is not None:
-                raise self._reported_error(event)
-            response_id = response_id or chunk.get("id", "")
-            served_model = served_model or chunk.get("model", "")
-            if chunk.get("usage") is not None:
-                usage = _usage(chunk["usage"])
-            choice = next((item for item in chunk.get("choices", ()) if item.get("index") == 0), None)
-            if choice is None:
-                continue
-            new_parts, new_refusal = _parts(choice.get("delta", {}))
-            refusal |= new_refusal
-            for part in new_parts:
-                if parts and parts[-1].is_reasoning == part.is_reasoning:
-                    parts[-1] = ResponsePart(parts[-1].text + part.text, part.is_reasoning)
-                else:
-                    parts.append(part)
-                if not part.is_reasoning:
-                    write_text_delta(part.text)
-            if choice.get("finish_reason"):
-                finish = choice["finish_reason"]
-                has_finished = True
+        async with aclosing(_events(chunks)) as events:
+            async for event in events:
+                if event.strip() == b"[DONE]":
+                    if not has_finished:
+                        raise ValueError("stream ended without finish reason")
+                    return DecodedResponse(tuple(parts), served_model, response_id, finish, refusal, usage)
+                chunk = json.loads(event.decode("utf-8", errors="replace"))
+                if not isinstance(chunk, dict):
+                    raise ValueError("chat stream chunk must be an object")
+                if chunk.get("error") is not None:
+                    raise self._reported_error(event)
+                response_id = response_id or _nullable_string(chunk.get("id"))
+                served_model = served_model or _nullable_string(chunk.get("model"))
+                if chunk.get("usage") is not None:
+                    usage = _usage(chunk["usage"])
+                choice = _first_choice(chunk.get("choices"))
+                if choice is None:
+                    continue
+                new_parts, new_refusal = _parts(choice.get("delta"))
+                refusal |= new_refusal
+                for part in new_parts:
+                    if parts and parts[-1].is_reasoning == part.is_reasoning:
+                        parts[-1] = ResponsePart(parts[-1].text + part.text, part.is_reasoning)
+                    else:
+                        parts.append(part)
+                    if not part.is_reasoning:
+                        write_text_delta(part.text)
+                finish_reason = _nullable_string(choice.get("finish_reason"))
+                if finish_reason:
+                    finish = finish_reason
+                    has_finished = True
         if not has_finished:
             raise EOFError("stream ended before terminal event")
         return DecodedResponse(tuple(parts), served_model, response_id, finish, refusal, usage)
 
 
-async def _events(chunks: AsyncIterator[bytes], provider_name: str) -> AsyncIterator[bytes]:
-    del provider_name
+async def _events(chunks: AsyncIterator[bytes]) -> AsyncGenerator[bytes]:
     buffer = b""
     event_lines: list[bytes] = []
     async for chunk in chunks:
         buffer += chunk
         while b"\n" in buffer:
             line, buffer = buffer.split(b"\n", 1)
-            line = line.rstrip(b"\r")
-            if len(line) > 1 << 20:
-                raise ValueError("stream event is too large")
+            line = line.removesuffix(b"\r")
             if not line:
                 if event_lines:
                     yield b"\n".join(event_lines)
                     event_lines = []
                 continue
             if line.startswith(b"data:"):
-                event_lines.append(line[5:].lstrip(b" "))
-    if buffer or event_lines:
-        raise EOFError("incomplete stream event")
+                value = line[5:]
+                event_lines.append(value[1:] if value.startswith(b" ") else value)
+            elif line == b"data":
+                event_lines.append(b"")
 
 
-def _parts(delta: dict[str, Any]) -> tuple[list[ResponsePart], bool]:
+def _nullable_string(value: object) -> str:
+    if value is None:
+        return ""
+    if not isinstance(value, str):
+        raise ValueError("chat field must be a string")
+    return value
+
+
+def _first_choice(value: object) -> dict[str, Any] | None:
+    if value is None:
+        return None
+    if not isinstance(value, list):
+        raise ValueError("chat choices must be an array")
+    for item in value:
+        if not isinstance(item, dict):
+            raise ValueError("chat choice must be an object")
+        index = item.get("index")
+        if index is not None and (not isinstance(index, int) or isinstance(index, bool)):
+            raise ValueError("chat choice index must be an integer")
+        if index in (None, 0):
+            return item
+    return None
+
+
+def _parts(delta: object) -> tuple[list[ResponsePart], bool]:
+    if not isinstance(delta, dict):
+        raise ValueError("chat message must be an object")
     parts = []
     reasoning = delta.get("reasoning_content")
+    if reasoning is not None and not isinstance(reasoning, str):
+        raise ValueError("chat reasoning content must be a string")
     if reasoning:
         parts.append(ResponsePart(reasoning, True))
     content = delta.get("content")
@@ -337,19 +393,29 @@ def _parts(delta: dict[str, Any]) -> tuple[list[ResponsePart], bool]:
         if content:
             parts.append(ResponsePart(content))
     elif isinstance(content, list):
-        parts.extend(
-            ResponsePart(item["text"])
-            for item in content
-            if isinstance(item, dict) and item.get("type") == "text" and item.get("text")
-        )
+        for item in content:
+            if item is None:
+                continue
+            if not isinstance(item, dict):
+                raise ValueError("chat content part must be an object")
+            part_type = _nullable_string(item.get("type"))
+            if part_type == "text":
+                part_text = _nullable_string(item.get("text"))
+                if part_text:
+                    parts.append(ResponsePart(part_text))
     elif content is not None:
         raise ValueError("chat content has invalid type")
-    return parts, bool(delta.get("refusal"))
+    refusal = delta.get("refusal")
+    if refusal is not None and not isinstance(refusal, str):
+        raise ValueError("chat refusal must be a string")
+    return parts, bool(refusal)
 
 
 def _token_count(value: object) -> int:
     if value is None:
         return 0
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError("token count must be an integer")
     try:
         number = Decimal(str(value))
     except InvalidOperation as error:
@@ -359,14 +425,22 @@ def _token_count(value: object) -> int:
     return int(number)
 
 
-def _usage(value: dict[str, Any] | None) -> Usage:
+def _usage(value: object) -> Usage:
     if value is None:
         return Usage()
+    if not isinstance(value, dict):
+        raise ValueError("chat usage must be an object")
+    prompt_details = value.get("prompt_tokens_details")
+    completion_details = value.get("completion_tokens_details")
+    if prompt_details is not None and not isinstance(prompt_details, dict):
+        raise ValueError("chat prompt token details must be an object")
+    if completion_details is not None and not isinstance(completion_details, dict):
+        raise ValueError("chat completion token details must be an object")
     return Usage(
         _token_count(value.get("prompt_tokens")),
-        _token_count((value.get("prompt_tokens_details") or {}).get("cached_tokens")),
+        _token_count((prompt_details or {}).get("cached_tokens")),
         _token_count(value.get("completion_tokens")),
-        _token_count((value.get("completion_tokens_details") or {}).get("reasoning_tokens")),
+        _token_count((completion_details or {}).get("reasoning_tokens")),
         _token_count(value.get("total_tokens")),
     )
 

@@ -7,7 +7,8 @@ from __future__ import annotations
 import asyncio
 import math
 import re
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncGenerator, Awaitable, Callable
+from contextlib import aclosing
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -64,9 +65,20 @@ from .structured_output import (
 
 _TOKEN = re.compile(r"^[A-Za-z0-9_.:-]{1,64}$")
 _HEADER = re.compile(r"^[!#$%&'*+.^_`|~0-9A-Za-z-]{1,128}$")
+_SYNC_EXECUTE_DURABILITY = 1
+
+
+def _go_temperature_bound(value: float) -> str:
+    if math.isinf(value):
+        return "+Inf" if value > 0 else "-Inf"
+    return f"{value:g}"
 
 
 class _ProviderStalledError(TimeoutError):
+    pass
+
+
+class _TextStreamWriteError(Exception):
     pass
 
 
@@ -102,7 +114,16 @@ def text_generation_branch_definitions() -> tuple[BranchDefinition, ...]:
 
 @dataclass(frozen=True, slots=True)
 class TextGenerationQueryConfig:
-    """One connection's operation, dialect, HTTP limits, and credential resolver."""
+    """One connection's operation, dialect, limits, and credential resolver.
+
+    ``definition`` declares generateText and six branches with sync Execute;
+    ``wire_format`` adapts the provider; ``base_url`` is HTTPS;
+    ``connection_model`` is the optional default. ``request_timeout_seconds``
+    bounds headers and body; ``resolve_credential`` runs after local validation.
+    ``max_response_bytes`` bounds every body, while ``max_stream_event_bytes``
+    bounds each SSE event and is required for streaming. ``http_client`` is
+    optional and caller-owned, and must remain open during invocation.
+    """
 
     definition: QueryDefinition
     wire_format: WireFormat
@@ -142,7 +163,7 @@ class TextGenerationQuery:
                 "generateText must declare exactly the six text generation branches and optionality"
             )
         defaults = config.definition.step_defaults
-        if defaults.execute_durability != 1:
+        if defaults.execute_durability != _SYNC_EXECUTE_DURABILITY:
             raise ValueError("generateText must use sync Execute durability")
         if timedelta(0) < defaults.heartbeat_timeout < timedelta(seconds=10):
             raise ValueError("generateText heartbeat timeout must be zero or at least 10 seconds")
@@ -201,7 +222,7 @@ class TextGenerationQuery:
 def _validate_wire_format(wire: WireFormat) -> None:
     if not wire.provider_name:
         raise ValueError("wire format provider name is required")
-    if wire.model_id_rule not in ModelIDRule:
+    if not isinstance(wire.model_id_rule, ModelIDRule):
         raise ValueError("wire format model ID rule is invalid")
     if wire.rules_for_model is None or wire.encode_request is None:
         raise ValueError("wire format RulesForModel and EncodeRequest are required")
@@ -212,7 +233,7 @@ def _validate_wire_format(wire: WireFormat) -> None:
     if not all(32 <= ord(char) <= 126 for char in wire.credential_header.prefix):
         raise ValueError("wire format credential header prefix must be printable ASCII")
     for token, reason in wire.finish_reasons.items():
-        if not _TOKEN.fullmatch(token) or reason not in FinishReason:
+        if not _TOKEN.fullmatch(token) or not isinstance(reason, FinishReason):
             raise ValueError("wire format finish token or reason is invalid")
     for index, rule in enumerate(wire.error_rules):
         if rule.status_code != 0 and not 300 <= rule.status_code <= 599:
@@ -301,12 +322,15 @@ class _TextGenerationAttempt:
                     FailureKind.VALIDATION, "the model does not accept a temperature; leave Temperature nil"
                 )
             if (
-                policy.minimum is not None
-                and policy.maximum is not None
-                and (
-                    not math.isfinite(policy.minimum)
-                    or not math.isfinite(policy.maximum)
-                    or policy.minimum > policy.maximum
+                (policy.minimum is None) != (policy.maximum is None)
+                or (
+                    policy.minimum is not None
+                    and policy.maximum is not None
+                    and (
+                        math.isnan(policy.minimum)
+                        or math.isnan(policy.maximum)
+                        or policy.minimum > policy.maximum
+                    )
                 )
             ):
                 return self._defect(FailureKind.VALIDATION, "the wire format's temperature range is invalid")
@@ -315,7 +339,9 @@ class _TextGenerationAttempt:
             ):
                 if policy.minimum is not None and policy.maximum is not None:
                     message = (
-                        f"the model accepts a temperature from {policy.minimum:g} through {policy.maximum:g}"
+                        "the model accepts a temperature from "
+                        f"{_go_temperature_bound(policy.minimum)} through "
+                        f"{_go_temperature_bound(policy.maximum)}"
                     )
                 else:
                     message = "the model does not accept this temperature"
@@ -370,7 +396,7 @@ class _TextGenerationAttempt:
             return self._defect(FailureKind.AUTHENTICATION, "connection credentials are invalid")
         try:
             encoded = self.query._wire_format.encode_request(EncodeRequestInput(prepared, rules))
-        except ValueError as error:
+        except Exception as error:
             return self._defect(
                 FailureKind.VALIDATION, "the request cannot be encoded for the provider: " + str(error)
             )
@@ -418,7 +444,7 @@ class _TextGenerationAttempt:
             try:
                 context = self.call.context
                 if context is not None:
-                    await context.heartbeat(None)
+                    await context.heartbeat()
             except Exception:
                 pass
 
@@ -475,9 +501,10 @@ class _TextGenerationAttempt:
                     try:
                         if is_event_stream:
                             assert self.query._wire_format.decode_stream is not None
-                            decoded = await self.query._wire_format.decode_stream(
-                                self._bounded_chunks(response), self.call.write_text
-                            )
+                            async with aclosing(self._bounded_chunks(response)) as chunks:
+                                decoded = await self.query._wire_format.decode_stream(
+                                    chunks, self._write_text_delta
+                                )
                         else:
                             body = await self._read_body(response, self.query._config.max_response_bytes)
                             assert self.query._wire_format.decode_response is not None
@@ -507,31 +534,47 @@ class _TextGenerationAttempt:
                         return self._retry(
                             FailureKind.TRANSPORT, "provider response ended before it was complete"
                         )
-                    except OSError:
+                    except _TextStreamWriteError:
                         return self._retry(FailureKind.AVAILABILITY, "the text stream could not be written")
-                    except (ValueError, TypeError, UnicodeError):
+                    except (ValueError, TypeError, AttributeError, UnicodeError):
                         return self._branch(
                             INVALID_RESPONSE_BRANCH_ID,
                             FailureKind.PROTOCOL,
                             "provider response does not match its documented format",
                             receipt,
                         )
-                    return self._complete(decoded, canonical_schema, is_event_stream, receipt)
+                    try:
+                        return self._complete(decoded, canonical_schema, is_event_stream, receipt)
+                    except (ValueError, TypeError, AttributeError):
+                        return self._branch(
+                            INVALID_RESPONSE_BRANCH_ID,
+                            FailureKind.PROTOCOL,
+                            "provider response does not match its documented format",
+                            receipt,
+                        )
                 finally:
                     await response.aclose()
             finally:
                 heartbeat.cancel()
-                try:
-                    await heartbeat
-                except asyncio.CancelledError:
-                    pass
+                if not heartbeat.cancelled():
+                    await asyncio.gather(heartbeat, return_exceptions=True)
 
-        if self.query._config.http_client is not None:
-            return await dispatch(self.query._config.http_client)
-        async with new_provider_http_client(self.query._config.request_timeout_seconds) as client:
-            return await dispatch(client)
+        try:
+            async with asyncio.timeout(self.query._config.request_timeout_seconds):
+                if self.query._config.http_client is not None:
+                    return await dispatch(self.query._config.http_client)
+                async with new_provider_http_client(self.query._config.request_timeout_seconds) as client:
+                    return await dispatch(client)
+        except TimeoutError:
+            return self._retry(FailureKind.TRANSPORT, "provider request exceeded its timeout")
 
-    async def _bounded_chunks(self, response: httpx.Response) -> AsyncIterator[bytes]:
+    def _write_text_delta(self, text: str) -> None:
+        try:
+            self.call.write_text(text)
+        except BaseException as error:
+            raise _TextStreamWriteError from error
+
+    async def _bounded_chunks(self, response: httpx.Response) -> AsyncGenerator[bytes]:
         count = 0
         event_bytes = 0
         pending_line = b""
@@ -551,12 +594,16 @@ class _TextGenerationAttempt:
             pending_line += chunk
             while b"\n" in pending_line:
                 line, pending_line = pending_line.split(b"\n", 1)
-                event_bytes += len(line) + 1
-                if event_bytes > self.query._config.max_stream_event_bytes:
+                line = line.removesuffix(b"\r")
+                if len(line) > self.query._config.max_stream_event_bytes:
                     raise BodyTooLargeError(response.status_code, response.headers)
-                if not line.rstrip(b"\r"):
+                if not line:
                     event_bytes = 0
-            if event_bytes + len(pending_line) > self.query._config.max_stream_event_bytes:
+                elif not line.startswith(b":"):
+                    event_bytes += len(line)
+                    if event_bytes > self.query._config.max_stream_event_bytes:
+                        raise BodyTooLargeError(response.status_code, response.headers)
+            if len(pending_line) > self.query._config.max_stream_event_bytes:
                 raise BodyTooLargeError(response.status_code, response.headers)
             yield chunk
 
@@ -663,7 +710,9 @@ class _TextGenerationAttempt:
         receipt: Receipt,
     ) -> QueryAttempt[TextGenerationResponse]:
         if (
-            not self._identifier(decoded.served_model)
+            not isinstance(decoded.served_model, str)
+            or not isinstance(decoded.response_id, str)
+            or not self._identifier(decoded.served_model)
             or not self._identifier(decoded.response_id)
             or self.credential in decoded.served_model
             or self.credential in decoded.response_id
@@ -675,6 +724,9 @@ class _TextGenerationAttempt:
                 receipt,
             )
         receipt = replace(receipt, provider_object_id=decoded.response_id)
+        self.response = replace(
+            self.response, served_model=decoded.served_model, response_id=decoded.response_id
+        )
         usage = decoded.usage
         if any(
             value < 0

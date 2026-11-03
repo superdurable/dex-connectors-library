@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Portable text generation Query and provider wire format contracts."""
 
+from ..types import QueryResult
 from .contracts import (
     BLOCKED_BRANCH_ID,
     DEFECT_BRANCH_ID,
@@ -46,6 +47,8 @@ from .contracts import (
 from .query import TextGenerationQuery, TextGenerationQueryConfig, text_generation_branch_definitions
 from .structured_output import extract_structured_answer, validate_portable_request
 
+TextGenerationResult = QueryResult[TextGenerationResponse]
+
 __all__ = [
     "BLOCKED_BRANCH_ID",
     "DEFECT_BRANCH_ID",
@@ -77,6 +80,7 @@ __all__ = [
     "TextGenerationQueryConfig",
     "TextGenerationRequest",
     "TextGenerationResponse",
+    "TextGenerationResult",
     "Usage",
     "WireFormat",
     "blocked_outcome",
