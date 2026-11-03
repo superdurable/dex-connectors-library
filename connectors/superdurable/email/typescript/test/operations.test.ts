@@ -5,7 +5,7 @@ import { describe, expect, test, vi } from 'vitest';
 import { SecretString, type Call } from '@superdurable/connectors-sdk';
 import type { ImapFlow } from 'imapflow';
 import { EmailClient, MailFailure } from '../src/index.js';
-import { classifyMailError } from '../src/client.js';
+import { classifyMailError, hasControls, isBareAddress } from '../src/client.js';
 
 function fakeCall(operation: string, prior?: unknown): { call: Call; heartbeats: unknown[] } {
   const heartbeats: unknown[] = [];
@@ -88,6 +88,47 @@ describe('email operation decisions', () => {
     expect(reply.kind).toBe('branch');
     if (reply.kind === 'branch') expect(reply.branch).toBe('notFound');
   });
+
+  test('IMAP refusals retain command-specific outcomes', async () => {
+    const email = client();
+    const reference = { mailbox: 'INBOX', uidValidity: 42, uid: 100 };
+    vi.spyOn(email, 'openIMAP').mockResolvedValueOnce(fakeIMAP({ search: async () => false }))
+      .mockResolvedValueOnce(fakeIMAP({ mailboxOpen: async () => { throw { responseCode: 'NONEXISTENT', responseStatus: 'NO' }; } }))
+      .mockResolvedValueOnce(fakeIMAP({ fetchOne: async () => false, search: async () => false }))
+      .mockRejectedValueOnce(new MailFailure('invalidResponse', 'PROTOCOL', 'invalid FETCH'))
+      .mockRejectedValueOnce(new MailFailure('invalidResponse', 'PROTOCOL', 'invalid FETCH'));
+    const search = await email.searchMessages().invoke(fakeCall('searchMessages').call, {});
+    const missing = await email.getMessage().invoke(fakeCall('getMessage').call, { message: reference });
+    const moveSearch = await email.moveMessage().invoke(fakeCall('moveMessage').call, { message: reference, destinationMailbox: 'Archive', messageId: 'message-100@example.com' });
+    const moveInvalid = await email.moveMessage().invoke(fakeCall('moveMessage').call, { message: reference, destinationMailbox: 'Archive' });
+    const flagsInvalid = await email.setFlags().invoke(fakeCall('setFlags').call, { message: reference, isSeen: true });
+    expect(search.kind === 'branch' && search.branch).toBe('providerRejected');
+    expect(missing.kind === 'branch' && missing.branch).toBe('notFound');
+    expect(moveSearch.kind === 'branch' && moveSearch.branch).toBe('providerRejected');
+    expect(moveInvalid.kind).toBe('retry');
+    expect(flagsInvalid.kind).toBe('retry');
+  });
+
+  test('reply validation and an unreadable checkpoint preserve defect and uncertainty', async () => {
+    const email = new EmailClient({ imapHost: 'localhost', smtpHost: 'localhost' }, { resolve: async () => ({ username: 'jane', password: new SecretString('test-password') }) });
+    const reference = { mailbox: 'INBOX', uidValidity: 42, uid: 100 };
+    const defect = await email.replyToMessage().invoke(fakeCall('replyToMessage').call, { message: reference, text: 'Hello' });
+    expect(defect.kind === 'branch' && defect.branch).toBe('defect');
+    const valid = client();
+    const unreadable = fakeCall('replyToMessage').call;
+    unreadable.context.hasLastHeartbeatValue = () => { throw new Error('checkpoint unavailable'); };
+    const uncertain = await valid.replyToMessage().invoke(unreadable, { message: reference, text: 'Hello' });
+    expect(uncertain.kind).toBe('uncertain');
+  });
+
+  test('move rejects invalid message identifiers and INBOX case variants', async () => {
+    const email = client();
+    const reference = { mailbox: 'INBOX', uidValidity: 42, uid: 100 };
+    const badID = await email.moveMessage().invoke(fakeCall('moveMessage').call, { message: reference, destinationMailbox: 'Archive', messageId: 'invalid' });
+    const same = await email.moveMessage().invoke(fakeCall('moveMessage').call, { message: reference, destinationMailbox: 'inbox' });
+    expect(badID.kind === 'branch' && badID.branch).toBe('defect');
+    expect(same.kind === 'branch' && same.branch).toBe('defect');
+  });
 });
 
 test('project connection maps every configured mail endpoint and SMTP credential override', async () => {
@@ -104,10 +145,52 @@ test('project connection maps every configured mail endpoint and SMTP credential
 test('getMessage decodes a plain MIME body and preserves a safe attachment summary', async () => {
   const email = client();
   const source = Buffer.from('From: Jane <jane@example.com>\r\nSubject: Hello\r\nContent-Type: text/plain; charset=utf-8\r\n\r\nHello from Jane.\r\n');
-  vi.spyOn(email, 'openIMAP').mockResolvedValue(fakeIMAP({ fetchOne: async () => ({ uid: 100, flags: new Set<string>(), envelope: { messageId: 'message-100@example.com', subject: 'Hello', from: [{ address: 'jane@example.com' }] }, internalDate: new Date('2026-01-28T10:00:00Z'), size: source.length, headers: Buffer.from('References: <older@example.com>\r\n'), source, bodyStructure: { type: 'text/plain', size: 17 } }) }));
+  vi.spyOn(email, 'openIMAP').mockResolvedValue(fakeIMAP({ fetchOne: async (_uid: string, query: { bodyParts?: unknown }) => query.bodyParts ? { bodyParts: new Map([['1', Buffer.from('Hello from Jane.\r\n')]]) } : ({ uid: 100, flags: new Set<string>(), envelope: { messageId: 'message-100@example.com', subject: 'Hello', from: [{ address: 'jane@example.com' }] }, internalDate: new Date('2026-01-28T10:00:00Z'), size: source.length, headers: Buffer.from('References: <older@example.com>\r\n'), bodyStructure: { type: 'text/plain', size: 17 } }) }));
   const read = await email.getMessage().invoke(fakeCall('getMessage').call, { message: { mailbox: 'INBOX', uidValidity: 42, uid: 100 } });
   expect(read.kind).toBe('branch');
   if (read.kind === 'branch') { expect(read.branch).toBe('found'); expect(read.value.text).toContain('Hello from Jane.'); expect(read.value.references).toEqual(['older@example.com']); expect(read.receipt.providerObjectId).toBe('message-100@example.com'); }
+});
+
+test('getMessage fetches only the first chosen text part, excluding a large attachment', async () => {
+  const email = client();
+  const queries: unknown[] = [];
+  const structure = { type: 'multipart/mixed', childNodes: [
+    { part: '1', type: 'text/plain', size: 12, encoding: 'quoted-printable', parameters: { charset: 'utf-8' } },
+    { part: '2', type: 'application/octet-stream', size: 2 * 1024 * 1024, disposition: 'attachment', dispositionParameters: { filename: 'large.bin' } },
+  ] };
+  vi.spyOn(email, 'openIMAP').mockResolvedValue(fakeIMAP({ fetchOne: async (_uid: string, query: { bodyParts?: unknown; source?: unknown }) => {
+    queries.push(query);
+    if (query.bodyParts) return { bodyParts: new Map([['1', Buffer.from('short text\r\n')]]) };
+    return { uid: 100, flags: new Set<string>(), envelope: { from: [{ address: 'jane@example.com' }] }, internalDate: new Date('2026-01-28T10:00:00Z'), size: 2 * 1024 * 1024, bodyStructure: structure };
+  } }));
+  const read = await email.getMessage().invoke(fakeCall('getMessage').call, { message: { mailbox: 'INBOX', uidValidity: 42, uid: 100 } });
+  expect(read.kind).toBe('branch');
+  if (read.kind === 'branch') {
+    expect(read.branch).toBe('found'); expect(read.value.text).toBe('short text\n');
+    expect(read.value.isTextTruncated).toBeUndefined();
+    expect(read.value.attachments?.[0]?.part).toBe('2');
+  }
+  expect(queries[0]).not.toHaveProperty('source');
+  expect(queries[1]).toMatchObject({ bodyParts: [{ key: '1', maxLength: 1024 * 1024 }] });
+});
+
+test('HTML text uses visible text without heading capitalization or link URLs', async () => {
+  const email = client();
+  vi.spyOn(email, 'openIMAP').mockResolvedValue(fakeIMAP({ fetchOne: async (_uid: string, query: { bodyParts?: unknown }) => query.bodyParts
+    ? { bodyParts: new Map([['1', Buffer.from('<h1>Welcome</h1><p>Read <a href="https://example.com">this</a>.</p>')]]) }
+    : { uid: 100, flags: new Set<string>(), envelope: { from: [{ address: 'jane@example.com' }] }, internalDate: new Date('2026-01-28T10:00:00Z'), size: 100, bodyStructure: { type: 'text/html', size: 70 } } }));
+  const read = await email.getMessage().invoke(fakeCall('getMessage').call, { message: { mailbox: 'INBOX', uidValidity: 42, uid: 100 } });
+  expect(read.kind).toBe('branch');
+  if (read.kind === 'branch') { expect(read.branch).toBe('found'); expect(read.value.textSource).toBe('html'); expect(read.value.text).toBe('Welcome\n\nRead this.'); }
+});
+
+test('forwarded message lists only its wrapper and a single-part root has part 1', async () => {
+  const email = client();
+  const nested = { type: 'message/rfc822', size: 500, childNodes: [{ type: 'application/pdf', part: '1', disposition: 'attachment', dispositionParameters: { filename: 'nested.pdf' } }] };
+  vi.spyOn(email, 'openIMAP').mockResolvedValue(fakeIMAP({ fetchOne: async () => ({ uid: 100, flags: new Set<string>(), envelope: { from: [{ address: 'jane@example.com' }] }, internalDate: new Date('2026-01-28T10:00:00Z'), size: 500, bodyStructure: nested }) }));
+  const read = await email.getMessage().invoke(fakeCall('getMessage').call, { message: { mailbox: 'INBOX', uidValidity: 42, uid: 100 } });
+  expect(read.kind).toBe('branch');
+  if (read.kind === 'branch') expect(read.value.attachments).toEqual([{ part: '1', mediaType: 'message/rfc822', encodedSizeBytes: 500 }]);
 });
 
 test('move returns destination UID and receipt after a safe IMAP MOVE', async () => {
@@ -133,7 +216,7 @@ test.each([
   [{ responseStatus: 'NO', responseCode: 'AUTHENTICATIONFAILED', command: 'LOGIN' }, 'rejected', 'AUTHENTICATION'],
   [{ responseStatus: 'NO', responseCode: 'UNAVAILABLE' }, 'retry', 'AVAILABILITY'],
   [{ responseStatus: 'NO', responseCode: 'LIMIT' }, 'retry', 'RATE_LIMIT'],
-  [{ responseStatus: 'NO', responseCode: 'NONEXISTENT' }, 'notFound', 'NOT_FOUND'],
+  [{ responseStatus: 'NO', responseCode: 'NONEXISTENT' }, 'rejected', 'NOT_FOUND'],
   [{ responseStatus: 'BAD' }, 'rejected', 'PROTOCOL'],
   [{ code: 'ECONNREFUSED' }, 'retry', 'TRANSPORT'],
 ] as const)('classifies IMAP protocol status without provider text', (providerError, outcome, kind) => {
@@ -141,4 +224,24 @@ test.each([
   expect(classified.outcome).toBe(outcome);
   expect(classified.kind).toBe(kind);
   expect(classified.message).not.toContain('secret');
+});
+
+test.each([
+  ['EConnectionClosed', 'retry', 'TRANSPORT'], ['ETIMEOUT', 'retry', 'TRANSPORT'], ['GREETING_TIMEOUT', 'retry', 'TRANSPORT'],
+  ['UPGRADE_TIMEOUT', 'retry', 'TRANSPORT'], ['ClosedAfterConnectTLS', 'retry', 'TRANSPORT'], ['ClosedAfterConnectText', 'retry', 'TRANSPORT'],
+  ['EAI_AGAIN', 'retry', 'TRANSPORT'], ['EHOSTUNREACH', 'retry', 'TRANSPORT'], ['ENETUNREACH', 'retry', 'TRANSPORT'],
+  ['UNABLE_TO_GET_ISSUER_CERT_LOCALLY', 'rejected', 'PROTOCOL'], ['CERT_NOT_YET_VALID', 'rejected', 'PROTOCOL'],
+  ['ERR_SSL_SSLV3_ALERT_HANDSHAKE_FAILURE', 'rejected', 'PROTOCOL'], ['ENOTFOUND', 'rejected', 'VALIDATION'],
+] as const)('matches Go transport and TLS decisions for %s', (code, outcome, kind) => {
+  for (const protocol of ['IMAP', 'SMTP'] as const) {
+    const classified = classifyMailError({ code }, protocol);
+    expect(classified.outcome).toBe(outcome);
+    expect(classified.kind).toBe(kind);
+  }
+});
+
+test('validates C1 controls and Go-compatible bare addresses', () => {
+  expect(hasControls('hello\u0085')).toBe(true);
+  expect(isBareAddress('"quoted"@example.com')).toBe(false);
+  expect(isBareAddress(`${'a'.repeat(65)}@example.com`)).toBe(true);
 });

@@ -3,6 +3,7 @@
 
 import type { ImapFlow, FetchMessageObject, MessageStructureObject, SearchObject } from 'imapflow';
 import { simpleParser } from 'mailparser';
+import { Parser } from 'htmlparser2';
 import { newQueryBranch, newQueryRetry, newMutationBranch, newMutationRetry, newMutationUncertain, type Call, type Failure, type MutationAttempt, type QueryAttempt } from '@superdurable/connectors-sdk';
 import type { SearchMessagesInput, SearchMessagesOutput, GetMessageInput, Message, MessageReference, MessageSummary, EmailAddress, SendMessageInput, SentMessage, ReplyToMessageInput, MoveMessageInput, MovedMessage, SetFlagsInput, MessageFlags, Attachment, Credentials } from './generated/models.js';
 import { SearchMessagesDefinition, GetMessageDefinition, SendMessageDefinition, ReplyToMessageDefinition, MoveMessageDefinition, SetFlagsDefinition } from './generated/definitions.js';
@@ -27,7 +28,7 @@ function queryFailure<T>(operation: string, error: unknown, zero: T, supportsNot
 function mutationFailure<T>(operation: string, error: unknown, zero: T, supportsNotFound: boolean, supportsInvalidResponse = false): MutationAttempt<T> {
   if (error instanceof CredentialFailure) return newMutationBranch('defect', zero, {}, failure(operation, error));
   const classified = classifyMailError(error, 'IMAP');
-  if (classified.outcome === 'retry') return newMutationRetry(failure(operation, classified));
+  if (classified.outcome === 'retry' || classified.outcome === 'invalidResponse' && (operation === 'moveMessage' || operation === 'setFlags')) return newMutationRetry(failure(operation, classified));
   return newMutationBranch(classified.outcome === 'notFound' && supportsNotFound ? 'notFound' : classified.outcome === 'invalidResponse' && supportsInvalidResponse ? 'invalidResponse' : 'providerRejected', zero, {}, failure(operation, classified));
 }
 function validateMailbox(name: string): void {
@@ -39,7 +40,13 @@ function validateReference(reference: MessageReference): void {
   if (!Number.isInteger(reference.uidValidity) || reference.uidValidity < 1 || reference.uidValidity > 0xffffffff || !Number.isInteger(reference.uid) || reference.uid < 1 || reference.uid > 0xffffffff) throw invalid('message UID and UIDVALIDITY are required');
 }
 async function select(client: ImapFlow, mailbox: string, readOnly: boolean, expected = 0): Promise<number> {
-  const selected = await client.mailboxOpen(mailbox, { readOnly });
+  let selected;
+  try { selected = await client.mailboxOpen(mailbox, { readOnly }); }
+  catch (error) {
+    const responseCode = String((error as { serverResponseCode?: string; responseCode?: string })?.serverResponseCode || (error as { responseCode?: string })?.responseCode || '').toUpperCase();
+    if (responseCode === 'NONEXISTENT' || responseCode === 'TRYCREATE') throw new MailFailure('notFound', 'NOT_FOUND', 'the mailbox does not exist');
+    throw error;
+  }
   const uidValidity = Number(selected.uidValidity);
   if (!Number.isSafeInteger(uidValidity) || uidValidity < 1 || uidValidity > 0xffffffff) throw new MailFailure('invalidResponse', 'PROTOCOL', 'the IMAP server selected the mailbox without a valid UIDVALIDITY');
   if (expected && uidValidity !== expected) throw new MailFailure('notFound', 'NOT_FOUND', "the mailbox's UIDVALIDITY changed; search again");
@@ -47,24 +54,55 @@ async function select(client: ImapFlow, mailbox: string, readOnly: boolean, expe
 }
 async function close(client: ImapFlow): Promise<void> { try { await client.logout(); } catch { client.close(); /* The completed operation's outcome is already decided. */ } }
 function addresses(values: { name?: string; address?: string }[] | undefined): EmailAddress[] { return (values || []).filter(value => !!value.address).slice(0, 50).map(value => ({ ...(value.name ? { name: truncateBytes(value.name, 512) } : {}), address: value.address! })); }
-function selectedTextSource(node?: MessageStructureObject): 'plain' | 'html' | 'none' {
-  const types: string[] = [];
-  const visit = (part?: MessageStructureObject): void => {
-    if (!part) return;
-    if (!part.dispositionParameters?.filename && part.disposition?.toLowerCase() !== 'attachment') types.push(part.type.toLowerCase());
-    for (const child of part.childNodes || []) visit(child);
-  };
-  visit(node);
-  return types.includes('text/plain') ? 'plain' : types.includes('text/html') ? 'html' : 'none';
+function selectedTextPart(node?: MessageStructureObject): { part: MessageStructureObject; source: 'plain' | 'html' } | undefined {
+  for (const mediaType of ['text/plain', 'text/html'] as const) {
+    const visit = (part?: MessageStructureObject): MessageStructureObject | undefined => {
+      if (!part || isAttachmentPart(part)) return undefined;
+      if (part.type.toLowerCase() === mediaType) return part;
+      for (const child of part.childNodes || []) { const selected = visit(child); if (selected) return selected; }
+      return undefined;
+    };
+    const selected = visit(node);
+    if (selected) return { part: selected, source: mediaType === 'text/plain' ? 'plain' : 'html' };
+  }
+  return undefined;
+}
+
+function isAttachmentPart(node: MessageStructureObject): boolean {
+  return node.disposition?.toLowerCase() === 'attachment' || !!(node.dispositionParameters?.filename || node.parameters?.name) || node.type.toLowerCase() === 'message/rfc822';
 }
 
 function collectAttachments(node?: MessageStructureObject, path = ''): Attachment[] {
   if (!node) return [];
-  const children = (node.childNodes || []).flatMap((child, index) => collectAttachments(child, path ? `${path}.${index + 1}` : `${index + 1}`));
+  const children = node.type.toLowerCase() === 'message/rfc822' ? [] : (node.childNodes || []).flatMap((child, index) => collectAttachments(child, path ? `${path}.${index + 1}` : `${index + 1}`));
   const fileName = node.dispositionParameters?.filename || node.parameters?.name || '';
   const mediaType = node.type.toLowerCase();
-  if ((node.disposition || '').toLowerCase() !== 'attachment' && !fileName && mediaType !== 'message/rfc822') return children;
-  return [{ part: node.part || path, ...(fileName ? { fileName: truncateBytes(fileName, 255) } : {}), mediaType, encodedSizeBytes: node.size || 0, ...((node.disposition || '').toLowerCase() === 'inline' ? { isInline: true } : {}) }, ...children];
+  if (!isAttachmentPart(node)) return children;
+  return [{ part: node.part || path || '1', ...(fileName ? { fileName: truncateBytes(fileName, 255) } : {}), mediaType, encodedSizeBytes: node.size || 0, ...((node.disposition || '').toLowerCase() === 'inline' ? { isInline: true } : {}) }, ...children];
+}
+
+function extractTextFromHTML(document: string): string {
+  let content = '';
+  let skippedDepth = 0;
+  const blockTags = new Set(['br', 'p', 'div', 'li', 'tr', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'table']);
+  const skipTags = new Set(['script', 'style', 'head', 'title']);
+  const parser = new Parser({
+    onopentag(name) { if (skipTags.has(name)) skippedDepth++; else if (blockTags.has(name)) content += '\n'; },
+    onclosetag(name) { if (skipTags.has(name)) skippedDepth = Math.max(0, skippedDepth - 1); else if (name !== 'br' && blockTags.has(name)) content += '\n'; },
+    ontext(run) {
+      if (skippedDepth) return;
+      const words = run.trim().split(/\s+/u).filter(Boolean);
+      if (!words.length) { if (run && content && !/\s$/u.test(content)) content += ' '; return; }
+      if (/^\s/u.test(run) && content && !/\s$/u.test(content)) content += ' ';
+      content += words.join(' ');
+      if (/\s$/u.test(run)) content += ' ';
+    },
+  }, { decodeEntities: true });
+  parser.end(document);
+  const lines = content.split('\n').map(line => line.trim());
+  const collapsed: string[] = [];
+  for (const line of lines) { if (line || collapsed.length && collapsed.at(-1)) collapsed.push(line); }
+  return collapsed.join('\n').trim();
 }
 function summary(mailbox: string, uidValidity: number, fetched: FetchMessageObject): MessageSummary {
   if (!Number.isInteger(fetched.uid) || fetched.uid < 1 || fetched.uid > 0xffffffff || !fetched.envelope || !fetched.internalDate || fetched.size === undefined || !Number.isSafeInteger(fetched.size) || fetched.size < 0 || !fetched.flags) throw new MailFailure('invalidResponse', 'PROTOCOL', "the IMAP server's FETCH response omitted required fields");
@@ -99,7 +137,8 @@ function validateAddressList(addresses: string[] | null | undefined, required = 
 function isMessageIdentifier(value: string): boolean { return !!value && Buffer.byteLength(value) <= 250 && value.includes('@') && [...value].every(character => { const code = character.charCodeAt(0); return code > 32 && code < 127 && character !== '<' && character !== '>'; }); }
 function messageID(call: Call, sender: string): string { const key = call.idempotencyKey || call.id; if (!/^[A-Za-z0-9-]{1,128}$/.test(key)) throw invalid('the idempotency key cannot form a Message-ID'); return `dex-${key.toLowerCase()}@${sender.split('@').at(-1)!.toLowerCase()}`; }
 function sender(client: EmailClient, credentials: Credentials): string { const address = client.config.fromAddress || credentials.username; if (!isBareAddress(address)) throw invalid('fromAddress is blank and username is not a complete address'); return address; }
-function sentValue(message: OutgoingMail): SentMessage { return { messageId: message.messageId, from: message.from, recipients: [...new Map([...message.to, ...message.cc, ...message.bcc].map(value => [value.toLowerCase(), value])).values()], subject: message.subject, ...(message.inReplyTo ? { inReplyTo: message.inReplyTo } : {}), ...(message.references?.length ? { references: message.references } : {}), sentAt: goTime(message.date) }; }
+function uniqueAddresses(values: string[]): string[] { const seen = new Set<string>(); return values.filter(value => { const key = value.toLowerCase(); if (seen.has(key)) return false; seen.add(key); return true; }); }
+function sentValue(message: OutgoingMail): SentMessage { return { messageId: message.messageId, from: message.from, recipients: uniqueAddresses([...message.to, ...message.cc, ...message.bcc]), subject: message.subject, ...(message.inReplyTo ? { inReplyTo: message.inReplyTo } : {}), ...(message.references?.length ? { references: message.references } : {}), sentAt: goTime(message.date) }; }
 async function claimSubmission(call: Call, value: SentMessage, operation: string): Promise<MutationAttempt<SentMessage> | undefined> {
   try { if (call.context.hasLastHeartbeatValue()) { const earlier = { ...value }; delete earlier.sentAt; return newMutationUncertain(earlier, failure(operation, new MailFailure('rejected', 'TRANSPORT', 'an earlier attempt may have submitted the message, so it is not submitted again')), { providerObjectId: value.messageId }); } }
   catch { return newMutationUncertain(value, failure(operation, new MailFailure('rejected', 'TRANSPORT', 'the submission checkpoint is unreadable')), { providerObjectId: value.messageId }); }
@@ -114,7 +153,7 @@ async function finishSubmission(client: EmailClient, credentials: Credentials, c
   const result = await submitMail(client, credentials, message);
   if (result.outcome === 'accepted') return newMutationBranch('sent', value, { providerObjectId: value.messageId });
   if (result.outcome === 'uncertain') return newMutationUncertain(value, failure(operation, result.failure), { providerObjectId: value.messageId });
-  try { await call.context.recordHeartbeat(null); } catch { /* A retained marker prevents a duplicate submission. */ }
+  try { await call.context.recordHeartbeat(undefined); } catch { /* A retained marker prevents a duplicate submission. */ }
   if (result.failure.outcome === 'retry') return newMutationRetry(failure(operation, result.failure));
   return newMutationBranch('providerRejected', zeroSent, {}, failure(operation, result.failure));
 }
@@ -142,7 +181,7 @@ export class SearchMessagesOperation {
       if (input.isUnseen) query.seen = false;
       if (input.olderThanUid) query.uid = `1:${input.olderThanUid - 1}`;
       const found = await session.search(query, { uid: true });
-      if (!Array.isArray(found)) throw new MailFailure('invalidResponse', 'PROTOCOL', 'the IMAP server returned an invalid SEARCH answer');
+      if (!Array.isArray(found)) throw new MailFailure('rejected', 'PROVIDER_REJECTION', 'the IMAP server refused SEARCH');
       const uids = [...new Set(found)].sort((a, b) => b - a);
       const page = uids.slice(0, input.limit || 10);
       const messages: MessageSummary[] = [];
@@ -155,7 +194,7 @@ export class SearchMessagesOperation {
 
 async function readMessage(session: ImapFlow, reference: MessageReference, readText: boolean): Promise<Message> {
   await select(session, reference.mailbox, true, reference.uidValidity);
-  const fetched = await session.fetchOne(String(reference.uid), { envelope: true, flags: true, size: true, internalDate: true, bodyStructure: true, headers: ['references'], ...(readText ? { source: { maxLength: 1024 * 1024 } } : {}) }, { uid: true });
+  const fetched = await session.fetchOne(String(reference.uid), { envelope: true, flags: true, size: true, internalDate: true, bodyStructure: true, headers: ['references'] }, { uid: true });
   if (!fetched) throw new MailFailure('notFound', 'NOT_FOUND', 'no message in the mailbox has the UID');
   const result: Message = { ...summary(reference.mailbox, reference.uidValidity, fetched), text: '', textSource: 'none' };
   const references = (fetched.headers?.toString('utf8').match(/<[^>]+>/g) || []).map(value => value.slice(1, -1)).filter(isMessageIdentifier).slice(-20);
@@ -163,14 +202,24 @@ async function readMessage(session: ImapFlow, reference: MessageReference, readT
   const attachments = collectAttachments(fetched.bodyStructure);
   if (attachments.length) result.attachments = attachments.slice(0, 50);
   if (attachments.length > 50) result.hasMoreAttachments = true;
-  if (readText && fetched.source) {
+  const chosenTextPart = readText ? selectedTextPart(fetched.bodyStructure) : undefined;
+  if (chosenTextPart) {
     try {
-      const parsed = await simpleParser(fetched.source);
-      const text = parsed.text || '';
-      result.text = truncateBytes(text.replace(/\r\n?/g, '\n'), 64 * 1024);
-      result.textSource = selectedTextSource(fetched.bodyStructure);
-      if (Buffer.byteLength(result.text) < Buffer.byteLength(text) || fetched.size && fetched.source.length < fetched.size) result.isTextTruncated = true;
-    } catch { throw new MailFailure('invalidResponse', 'PROTOCOL', 'the IMAP message body could not be parsed'); }
+      const partNumber = chosenTextPart.part.part || '1';
+      const body = await session.fetchOne(String(reference.uid), { bodyParts: [{ key: partNumber, start: 0, maxLength: 1024 * 1024 }] }, { uid: true });
+      if (!body) throw new MailFailure('notFound', 'NOT_FOUND', 'the message was removed while it was read');
+      const encoded = body.bodyParts?.get(partNumber);
+      if (!encoded) throw new MailFailure('invalidResponse', 'PROTOCOL', 'the IMAP server omitted the selected text part');
+      const charset = chosenTextPart.part.parameters?.charset;
+      const encoding = chosenTextPart.part.encoding;
+      const mimeHeaders = [`Content-Type: ${chosenTextPart.part.type.toLowerCase()}${charset && /^[\w.-]+$/.test(charset) ? `; charset=${charset}` : ''}`,
+        `Content-Transfer-Encoding: ${encoding && /^[\w-]+$/.test(encoding) ? encoding : '8bit'}`];
+      const parsed = await simpleParser(Buffer.concat([Buffer.from(`${mimeHeaders.join('\r\n')}\r\n\r\n`), encoded]));
+      const text = chosenTextPart.source === 'plain' ? parsed.text || '' : extractTextFromHTML(typeof parsed.html === 'string' ? parsed.html : '');
+      result.text = truncateBytes(text.replace(/\r\n/g, '\n'), 64 * 1024);
+      result.textSource = chosenTextPart.source;
+      if ((chosenTextPart.part.size || 0) > 1024 * 1024 || Buffer.byteLength(result.text) < Buffer.byteLength(text)) result.isTextTruncated = true;
+    } catch (error) { if (error instanceof MailFailure) throw error; throw new MailFailure('invalidResponse', 'PROTOCOL', 'the IMAP message body could not be parsed'); }
   }
   return result;
 }
@@ -228,18 +277,21 @@ export class ReplyToMessageOperation {
     let session: ImapFlow | undefined;
     try {
       const credentials = await this.client.resolveCredentials(call);
-      const from = sender(this.client, credentials), id = messageID(call, from);
-      if (call.context.hasLastHeartbeatValue()) return newMutationUncertain({ messageId: id, from, recipients: [], subject: '' }, failure('replyToMessage', new MailFailure('rejected', 'TRANSPORT', 'an earlier attempt may have submitted the reply')), { providerObjectId: id });
+      let from: string, id: string;
+      try { from = sender(this.client, credentials); id = messageID(call, from); }
+      catch (error) { return newMutationBranch('defect', zeroSent, {}, failure('replyToMessage', error as MailFailure)); }
+      try { if (call.context.hasLastHeartbeatValue()) return newMutationUncertain({ messageId: id, from, recipients: [], subject: '' }, failure('replyToMessage', new MailFailure('rejected', 'TRANSPORT', 'an earlier attempt may have submitted the reply')), { providerObjectId: id }); }
+      catch { return newMutationUncertain({ messageId: id, from, recipients: [], subject: '' }, failure('replyToMessage', new MailFailure('rejected', 'TRANSPORT', 'the submission checkpoint is unreadable')), { providerObjectId: id }); }
       session = await this.client.openIMAP(credentials);
       const source = await readMessage(session, input.message, false);
       const primary = source.replyTo?.length ? source.replyTo : [source.from];
-      const to = primary.map(value => value.address).filter(value => isBareAddress(value) && value.toLowerCase() !== from.toLowerCase());
+      const to = uniqueAddresses(primary.map(value => value.address).filter(value => isBareAddress(value) && value.toLowerCase() !== from.toLowerCase()));
       if (!to.length) return newMutationBranch('invalidResponse', zeroSent, {}, failure('replyToMessage', new MailFailure('rejected', 'PROTOCOL', 'the source message has no usable reply address')));
-      const cc = [...(input.isReplyAll ? [...(source.to || []), ...(source.cc || [])].map(value => value.address) : []), ...(input.cc || [])].filter(value => isBareAddress(value) && value.toLowerCase() !== from.toLowerCase() && !to.some(primaryAddress => primaryAddress.toLowerCase() === value.toLowerCase()));
+      const cc = uniqueAddresses([...(input.isReplyAll ? [...(source.to || []), ...(source.cc || [])].map(value => value.address) : []), ...(input.cc || [])].filter(value => isBareAddress(value) && value.toLowerCase() !== from.toLowerCase() && !to.some(primaryAddress => primaryAddress.toLowerCase() === value.toLowerCase())));
       if (to.length + cc.length > 50) return newMutationBranch('invalidResponse', zeroSent, {}, failure('replyToMessage', new MailFailure('rejected', 'PROTOCOL', 'the reply would have too many recipients')));
       const subject = source.subject.trim();
       const sourceID = isMessageIdentifier(source.messageId || '') ? source.messageId : undefined;
-      const message: OutgoingMail = { from, fromName: this.client.config.fromName, to, cc, bcc: [], subject: truncateBytes(/^re:/i.test(subject) ? subject : `Re: ${subject}`, 998), text: input.text, messageId: id, inReplyTo: sourceID, references: sourceID ? [...(source.references || []), sourceID].slice(-20) : [], date: new Date(Math.floor(this.client.now().getTime() / 1000) * 1000) };
+      const message: OutgoingMail = { from, fromName: this.client.config.fromName, to, cc, bcc: [], subject: truncateBytes(/^re:/i.test(subject) ? subject : `Re: ${subject}`.trim(), 998), text: input.text, messageId: id, inReplyTo: sourceID, references: sourceID ? [...(source.references || []), sourceID].slice(-20) : [], date: new Date(Math.floor(this.client.now().getTime() / 1000) * 1000) };
       await close(session); session = undefined;
       return finishSubmission(this.client, credentials, call, 'replyToMessage', message);
     } catch (error) { return mutationFailure('replyToMessage', error, zeroSent, true, true); }
@@ -257,7 +309,7 @@ export class MoveMessageOperation {
   idempotencyKey(callId: string): string { return callId; }
   /** Invoke moveMessage with current credentials and classified protocol outcomes. */
   async invoke(call: Call, input: MoveMessageInput): Promise<MutationAttempt<MovedMessage>> {
-    try { validateReference(input.message); validateMailbox(input.destinationMailbox); if (input.destinationMailbox === input.message.mailbox) throw invalid('destinationMailbox must differ from source'); } catch (error) { return newMutationBranch('defect', zeroMove, {}, failure('moveMessage', error as MailFailure)); }
+    try { validateReference(input.message); validateMailbox(input.destinationMailbox); if (input.messageId && !isMessageIdentifier(input.messageId)) throw invalid('messageId must be a valid Message-ID'); if (input.destinationMailbox === input.message.mailbox || input.destinationMailbox.toUpperCase() === 'INBOX' && input.message.mailbox.toUpperCase() === 'INBOX') throw invalid('destinationMailbox must differ from source'); } catch (error) { return newMutationBranch('defect', zeroMove, {}, failure('moveMessage', error as MailFailure)); }
     let session: ImapFlow | undefined;
     try {
       session = await this.client.openIMAP(await this.client.resolveCredentials(call));
@@ -268,7 +320,8 @@ export class MoveMessageOperation {
         if (!input.messageId) return newMutationBranch('notFound', zeroMove, {}, failure('moveMessage', new MailFailure('notFound', 'NOT_FOUND', 'no message in source mailbox has the UID')));
         const uidValidity = await select(session, input.destinationMailbox, true);
         const found = await session.search({ header: { 'Message-ID': `<${input.messageId}>` } }, { uid: true });
-        for (const uid of (Array.isArray(found) ? found : []).sort((a, b) => b - a)) {
+        if (!Array.isArray(found)) throw new MailFailure('rejected', 'PROVIDER_REJECTION', 'the IMAP server refused SEARCH');
+        for (const uid of found.sort((a, b) => b - a)) {
           const message = await session.fetchOne(String(uid), { envelope: true }, { uid: true });
           if (message && message.envelope?.messageId?.replace(/^<|>$/g, '') === input.messageId) return newMutationBranch('moved', { destination: { mailbox: input.destinationMailbox, uidValidity, uid }, wasAlreadyMoved: true }, { providerObjectId: input.messageId });
         }

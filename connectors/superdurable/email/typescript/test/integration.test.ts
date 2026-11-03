@@ -22,7 +22,7 @@ if (available) client = new EmailClient({ imapHost: environment.EMAIL_CONNECTOR_
 describe.skipIf(!available)('GreenMail IMAPS and SMTPS', () => {
   test('send, search, read, flag, reply, and move through verified TLS', async () => {
     const subject = `Dex email integration ${randomUUID()}`;
-    const sent = await client.sendMessage().invoke(call('sendMessage'), { to: [environment.EMAIL_CONNECTOR_TEST_ADDRESS || ''], subject, text: 'Hello from Dex email integration.' });
+    const sent = await client.sendMessage().invoke(call('sendMessage'), { to: [environment.EMAIL_CONNECTOR_TEST_ADDRESS || ''], replyTo: 'customer@example.com', subject, text: 'Hello from Dex email integration.' });
     expect(sent.kind).toBe('branch');
     if (sent.kind !== 'branch') return;
     expect(sent.branch).toBe('sent');
@@ -49,6 +49,7 @@ describe.skipIf(!available)('GreenMail IMAPS and SMTPS', () => {
     expect(replied.kind).toBe('branch');
     if (replied.kind !== 'branch') return;
     expect(replied.branch).toBe('sent');
+    expect(replied.value.recipients).toEqual(['customer@example.com']);
     expect(replied.value.inReplyTo).toBe(message.messageId);
     const archive = `DexArchive${randomUUID().replaceAll('-', '')}`;
     const setup = await client.openIMAP({ username: environment.EMAIL_CONNECTOR_TEST_USERNAME || '', password: new SecretString(environment.EMAIL_CONNECTOR_TEST_PASSWORD || '') });

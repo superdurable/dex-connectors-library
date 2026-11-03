@@ -92,19 +92,18 @@ export function classifyMailError(error: unknown, protocol: 'IMAP' | 'SMTP'): Ma
   const responseCode = String(candidate?.serverResponseCode || candidate?.responseCode || '').toUpperCase();
   const status = String(candidate?.responseStatus || candidate?.status || '').toUpperCase();
   if (['ENOTFOUND', 'EAI_NONAME'].includes(code)) return new MailFailure('rejected', 'VALIDATION', `the ${protocol} host name does not resolve`);
-  if (['CERT_HAS_EXPIRED', 'UNABLE_TO_VERIFY_LEAF_SIGNATURE', 'DEPTH_ZERO_SELF_SIGNED_CERT', 'ERR_TLS_CERT_ALTNAME_INVALID', 'SELF_SIGNED_CERT_IN_CHAIN'].includes(code)) return new MailFailure('rejected', 'PROTOCOL', `the ${protocol} server certificate failed verification for the configured host`);
-  if (code === 'ERR_SSL_WRONG_VERSION_NUMBER' || code === 'EPROTO' && /wrong version number|packet length too long/i.test(String((error as Error).message))) return new MailFailure('rejected', 'PROTOCOL', `the ${protocol} server did not answer with TLS`);
+  if (/^(?:CERT_|UNABLE_|DEPTH_|SELF_SIGNED|ERR_TLS_CERT|ERR_SSL_)/.test(code)) return new MailFailure('rejected', 'PROTOCOL', `the ${protocol} server certificate failed verification for the configured host`);
+  if (code === 'EPROTO' && /wrong version number|packet length too long|ssl.*alert|tls.*handshake|handshake failure/i.test(String((error as Error).message))) return new MailFailure('rejected', 'PROTOCOL', `the ${protocol} server did not answer with TLS`);
   if (candidate?.tlsFailed) return new MailFailure('rejected', 'PROTOCOL', `the ${protocol} server did not complete required STARTTLS`);
-  if (['ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT', 'EPIPE', 'CONNECT_TIMEOUT', 'SocketTimeout'].includes(code)) return new MailFailure('retry', 'TRANSPORT', `the ${protocol} server could not be reached`);
+  if (['ECONNREFUSED', 'ECONNRESET', 'ECONNABORTED', 'ETIMEDOUT', 'ETIMEOUT', 'EPIPE', 'EAI_AGAIN', 'EHOSTUNREACH', 'ENETUNREACH', 'CONNECT_TIMEOUT', 'GREETING_TIMEOUT', 'UPGRADE_TIMEOUT', 'SocketTimeout', 'NoConnection', 'ConnectionClosed', 'EConnectionClosed', 'ClosedAfterConnectTLS', 'ClosedAfterConnectText'].includes(code)) return new MailFailure('retry', 'TRANSPORT', `the ${protocol} server could not be reached`);
   if (protocol === 'IMAP') {
     if (status === 'BYE' || ['UNAVAILABLE', 'INUSE', 'SERVERBUG'].includes(responseCode)) return new MailFailure('retry', 'AVAILABILITY', 'the IMAP server is temporarily unavailable');
     if (responseCode === 'LIMIT') return new MailFailure('retry', 'RATE_LIMIT', 'the IMAP server limited the request');
     if (['AUTHENTICATIONFAILED', 'EXPIRED', 'PRIVACYREQUIRED', 'CONTACTADMIN'].includes(responseCode) || candidate?.command === 'LOGIN' || candidate?.command === 'AUTHENTICATE') return new MailFailure('rejected', 'AUTHENTICATION', 'the IMAP login was refused');
     if (['AUTHORIZATIONFAILED', 'NOPERM'].includes(responseCode)) return new MailFailure('rejected', 'AUTHORIZATION', 'the IMAP operation was not permitted');
-    if (['NONEXISTENT', 'TRYCREATE'].includes(responseCode)) return new MailFailure('notFound', 'NOT_FOUND', 'the mailbox does not exist');
+    if (['NONEXISTENT', 'TRYCREATE'].includes(responseCode)) return new MailFailure('rejected', 'NOT_FOUND', 'the mailbox does not exist');
     if (status === 'BAD') return new MailFailure('rejected', 'PROTOCOL', 'the IMAP server rejected the command');
     if (status === 'NO') return new MailFailure('rejected', 'PROVIDER_REJECTION', 'the IMAP server refused the command');
-    if (['NoConnection', 'ConnectionClosed'].includes(code)) return new MailFailure('retry', 'TRANSPORT', 'the IMAP connection was lost');
     return new MailFailure('invalidResponse', 'PROTOCOL', 'the IMAP server returned an unusable response');
   }
   return new MailFailure('rejected', 'PROTOCOL', 'the SMTP server returned an unusable response');
@@ -118,7 +117,7 @@ export function isHost(host: string): boolean {
 }
 
 /** Check header or credential control characters. */
-export function hasControls(value: string): boolean { return [...value].some(character => { const codePoint = character.codePointAt(0)!; return codePoint < 32 || codePoint === 127 || codePoint === 0x2028 || codePoint === 0x2029; }); }
+export function hasControls(value: string): boolean { return [...value].some(character => { const codePoint = character.codePointAt(0)!; return codePoint < 32 || codePoint >= 127 && codePoint <= 159 || codePoint === 0x2028 || codePoint === 0x2029; }); }
 
 /** Accept a single ASCII mailbox without display name or comments. */
 export function isBareAddress(address: string): boolean {
@@ -126,5 +125,5 @@ export function isBareAddress(address: string): boolean {
   const at = address.lastIndexOf('@');
   if (at < 1 || !isHost(address.slice(at + 1)) || !address.slice(at + 1).includes('.')) return false;
   const local = address.slice(0, at);
-  return local.length <= 64 && (/(?:^[A-Za-z0-9!#$%&'*+\-/=?^_`{|}~]+(?:\.[A-Za-z0-9!#$%&'*+\-/=?^_`{|}~]+)*$)|(?:^"(?:[^"\\\r\n]|\\[\x20-\x7e])*"$)/.test(local));
+  return /^[A-Za-z0-9!#$%&'*+\-/=?^_`{|}~]+(?:\.[A-Za-z0-9!#$%&'*+\-/=?^_`{|}~]+)*$/.test(local);
 }

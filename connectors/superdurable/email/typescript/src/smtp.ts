@@ -73,7 +73,7 @@ class SMTPWire {
     if (this.closedError) throw this.closedError;
     await new Promise<void>((resolve, reject) => { this.socket.write(content, error => error ? reject(error) : resolve()); });
   }
-  detach(): void { this.socket.removeAllListeners('data'); this.socket.removeAllListeners('error'); this.socket.removeAllListeners('close'); }
+  detach(): void { this.socket.setTimeout(0); this.socket.removeAllListeners('timeout'); this.socket.removeAllListeners('data'); this.socket.removeAllListeners('error'); this.socket.removeAllListeners('close'); }
 }
 
 function classifySMTP(error: unknown, command: string): MailFailure {
@@ -103,13 +103,21 @@ async function upgradeTLS(wire: SMTPWire, host: string, ca?: string | Buffer): P
   const raw = wire.socket;
   wire.detach();
   const socket = connectTLS({ socket: raw, servername: host, rejectUnauthorized: true, ...(ca ? { ca } : {}) });
-  await new Promise<void>((resolve, reject) => { socket.once('secureConnect', resolve); socket.once('error', reject); });
+  await new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => socket.destroy(new Error('SMTP TLS handshake timed out')), 15_000);
+    socket.once('secureConnect', () => { clearTimeout(timer); socket.removeListener('error', reject); resolve(); });
+    socket.once('error', error => { clearTimeout(timer); reject(error); });
+  });
   return new SMTPWire(socket);
 }
 
-function addressHeader(address: string, name = ''): string { return !name ? `<${address}>` : name.startsWith('=?UTF-8?B?') ? `${name} <${address}>` : `"${name.replace(/["\\]/g, '\\$&')}" <${address}>`; }
+function addressHeader(address: string, name = ''): string {
+  if (!name) return `<${address}>`;
+  if (!/^[\x20-\x7e]*$/.test(name) || Buffer.byteLength(name) > 68) return `${encodedHeader(name)} <${address}>`;
+  return `"${name.replace(/["\\]/g, '\\$&')}" <${address}>`;
+}
 function encodedHeader(text: string): string {
-  if (/^[\x20-\x7e]*$/.test(text)) return text;
+  if (/^[\x20-\x7e]*$/.test(text) && Buffer.byteLength(text) <= 68) return text;
   const words: string[] = [];
   let part = '';
   for (const character of text) {
@@ -140,7 +148,7 @@ function quotedPrintable(text: string): string {
 
 /** Render one UTF-8 plain-text message without a Bcc header. */
 export function renderMail(message: OutgoingMail): string {
-  const headers = [`Date: ${message.date.toUTCString()}`, `From: ${addressHeader(message.from, encodedHeader(message.fromName))}`,
+  const headers = [`Date: ${message.date.toUTCString()}`, `From: ${addressHeader(message.from, message.fromName)}`,
     `To: ${message.to.map(address => addressHeader(address)).join(', ')}`];
   if (message.cc.length) headers.push(`Cc: ${message.cc.map(address => addressHeader(address)).join(', ')}`);
   if (message.replyTo) headers.push(`Reply-To: ${addressHeader(message.replyTo)}`);
@@ -187,10 +195,12 @@ export async function submitMail(client: EmailClient, credentials: Credentials, 
     } else throw new MailFailure('rejected', 'AUTHENTICATION', 'the SMTP server offers neither AUTH PLAIN nor AUTH LOGIN over TLS');
     const content = renderMail(message);
     const size = /\bSIZE\s+(\d+)/i.exec(capabilities)?.[1];
-    if (size && Buffer.byteLength(content) > Number(size)) throw new MailFailure('rejected', 'PROVIDER_REJECTION', 'the message exceeds the SMTP server size limit');
+    const sizeLimit = size ? Number(size) : 0;
+    if (sizeLimit > 0 && Buffer.byteLength(content) > sizeLimit) throw new MailFailure('rejected', 'PROVIDER_REJECTION', 'the message exceeds the SMTP server size limit');
     phase = 'MAIL FROM';
-    await wire.command(`MAIL FROM:<${message.from}>${size ? ` SIZE=${Buffer.byteLength(content)}` : ''}`, phase, [250]);
-    const recipients = [...new Map([...message.to, ...message.cc, ...message.bcc].map(value => [value.toLowerCase(), value])).values()];
+    await wire.command(`MAIL FROM:<${message.from}>${sizeLimit > 0 ? ` SIZE=${Buffer.byteLength(content)}` : ''}`, phase, [250]);
+    const seenRecipients = new Set<string>();
+    const recipients = [...message.to, ...message.cc, ...message.bcc].filter(value => { const key = value.toLowerCase(); if (seenRecipients.has(key)) return false; seenRecipients.add(key); return true; });
     for (const recipient of recipients) { phase = 'RCPT TO'; await wire.command(`RCPT TO:<${recipient}>`, phase, [250, 251]); }
     phase = 'DATA';
     await wire.command('DATA', phase, [354]);
