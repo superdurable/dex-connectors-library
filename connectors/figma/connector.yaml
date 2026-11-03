@@ -13,6 +13,11 @@ spec:
       version: v0.1.0
       operations: [getFile, getFileComments]
       triggers: []
+    typescript:
+      version: v0.1.1
+      package: '@superdurable/connector-figma'
+      operations: [getFile, getFileComments]
+      triggers: []
   codegen:
     go:
       package: figma

@@ -1,0 +1,277 @@
+{
+  "connectorId": "clickup",
+  "releaseTag": "connectors/clickup/go/v0.23.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-clickup",
+    "version": "0.1.1"
+  },
+  "factories": [
+    {
+      "name": "newSearchTasksStep",
+      "kind": "query",
+      "operationId": "searchTasks",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "searched",
+          "field": "searched",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "name": "newGetTaskStep",
+      "kind": "query",
+      "operationId": "getTask",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "name": "newCreateTaskStep",
+      "kind": "mutation",
+      "operationId": "createTask",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "created",
+          "field": "created",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "uncertain",
+          "field": "uncertain",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "name": "newUpdateTaskStep",
+      "kind": "mutation",
+      "operationId": "updateTask",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "updated",
+          "field": "updated",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "name": "newUpdateTaskTagsStep",
+      "kind": "mutation",
+      "operationId": "updateTaskTags",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "updated",
+          "field": "updated",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "name": "newAddCommentStep",
+      "kind": "mutation",
+      "operationId": "addComment",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "added",
+          "field": "added",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "uncertain",
+          "field": "uncertain",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "name": "newFindMemberByEmailStep",
+      "kind": "query",
+      "operationId": "findMemberByEmail",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    }
+  ]
+}

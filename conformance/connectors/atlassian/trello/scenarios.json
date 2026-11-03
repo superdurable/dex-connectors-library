@@ -1,0 +1,3847 @@
+{
+  "connector": "trello",
+  "scenarios": [
+    {
+      "callId": "ac20c0ac-a53d-5399-a6d8-37b3f0920ccc",
+      "exchanges": [
+        {
+          "body": "[{\"id\": \"6512f0a1c2d3e4f5a6b7c8d9\", \"shortLink\": \"LrrmgFyd\", \"name\": \"Approved request\", \"desc\": \"Badge reader at door 4 is offline.\", \"idBoard\": \"6512f0a1c2d3e4f5a6b70001\", \"idList\": \"6512f0a1c2d3e4f5a6b70102\", \"closed\": false, \"due\": \"2026-11-15T17:00:00.000Z\", \"dueComplete\": true, \"start\": \"2026-11-01T17:00:00.000Z\", \"idLabels\": [\"6512f0a1c2d3e4f5a6b70201\"], \"labels\": [{\"id\": \"6512f0a1c2d3e4f5a6b70201\", \"idBoard\": \"6512f0a1c2d3e4f5a6b70001\", \"name\": \"Compliance\", \"color\": \"green\"}], \"idMembers\": [\"6512f0a1c2d3e4f5a6b70301\"], \"members\": [{\"id\": \"6512f0a1c2d3e4f5a6b70301\", \"fullName\": \"Ada Lovelace\", \"username\": \"ada\"}], \"list\": {\"id\": \"6512f0a1c2d3e4f5a6b70102\", \"name\": \"Approved\"}, \"pos\": 16384, \"url\": \"https://trello.com/c/LrrmgFyd/approved-request\", \"shortUrl\": \"https://trello.com/c/LrrmgFyd\", \"dateLastActivity\": \"2026-11-01T16:15:00.000Z\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards/6512f0a1c2d3e4f5a6b70001/cards",
+          "query": {
+            "before": [
+              "6512f0a1c2d3e4f5a6b7e001"
+            ],
+            "fields": [
+              "id,shortLink,name,idBoard,idList,closed,due,dueComplete,start,idLabels,labels,idMembers,pos,url,shortUrl,dateLastActivity"
+            ],
+            "filter": [
+              "all"
+            ],
+            "limit": [
+              "1"
+            ],
+            "sort": [
+              "-id"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "cards": [
+            {
+              "boardId": "6512f0a1c2d3e4f5a6b70001",
+              "due": "2026-11-15T17:00:00Z",
+              "id": "6512f0a1c2d3e4f5a6b7c8d9",
+              "isClosed": false,
+              "isDueComplete": true,
+              "labelIds": [
+                "6512f0a1c2d3e4f5a6b70201"
+              ],
+              "labels": [
+                {
+                  "color": "green",
+                  "id": "6512f0a1c2d3e4f5a6b70201",
+                  "name": "Compliance"
+                }
+              ],
+              "lastActivityAt": "2026-11-01T16:15:00Z",
+              "listId": "6512f0a1c2d3e4f5a6b70102",
+              "memberIds": [
+                "6512f0a1c2d3e4f5a6b70301"
+              ],
+              "name": "Approved request",
+              "position": 16384,
+              "shortLink": "LrrmgFyd",
+              "shortUrl": "https://trello.com/c/LrrmgFyd",
+              "start": "2026-11-01T17:00:00Z",
+              "url": "https://trello.com/c/LrrmgFyd/approved-request"
+            }
+          ],
+          "nextBefore": "6512f0a1c2d3e4f5a6b7c8d9",
+          "scannedCardCount": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "before": "6512f0a1c2d3e4f5a6b7e001",
+        "boardId": "6512f0a1c2d3e4f5a6b70001",
+        "dueAfter": "2026-11-01T00:00:00Z",
+        "dueBefore": "2026-12-01T00:00:00Z",
+        "hasDueDate": true,
+        "isDueComplete": true,
+        "pageSize": 1,
+        "status": "all"
+      },
+      "name": "listCards-success",
+      "operation": "listCards"
+    },
+    {
+      "callId": "d3e8d8d4-808a-5390-889f-080e6c7767e5",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"API_TOKEN_LIMIT_EXCEEDED\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards/6512f0a1c2d3e4f5a6b70001/cards",
+          "query": {
+            "before": [
+              "6512f0a1c2d3e4f5a6b7e001"
+            ],
+            "fields": [
+              "id,shortLink,name,idBoard,idList,closed,due,dueComplete,start,idLabels,labels,idMembers,pos,url,shortUrl,dateLastActivity"
+            ],
+            "filter": [
+              "all"
+            ],
+            "limit": [
+              "1"
+            ],
+            "sort": [
+              "-id"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "before": "6512f0a1c2d3e4f5a6b7e001",
+        "boardId": "6512f0a1c2d3e4f5a6b70001",
+        "dueAfter": "2026-11-01T00:00:00Z",
+        "dueBefore": "2026-12-01T00:00:00Z",
+        "hasDueDate": true,
+        "isDueComplete": true,
+        "pageSize": 1,
+        "status": "all"
+      },
+      "name": "listCards-rate-limit",
+      "operation": "listCards"
+    },
+    {
+      "callId": "835d41da-7641-57c4-af89-107fedca9d8e",
+      "exchanges": [
+        {
+          "body": "service unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards/6512f0a1c2d3e4f5a6b70001/cards",
+          "query": {
+            "before": [
+              "6512f0a1c2d3e4f5a6b7e001"
+            ],
+            "fields": [
+              "id,shortLink,name,idBoard,idList,closed,due,dueComplete,start,idLabels,labels,idMembers,pos,url,shortUrl,dateLastActivity"
+            ],
+            "filter": [
+              "all"
+            ],
+            "limit": [
+              "1"
+            ],
+            "sort": [
+              "-id"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "before": "6512f0a1c2d3e4f5a6b7e001",
+        "boardId": "6512f0a1c2d3e4f5a6b70001",
+        "dueAfter": "2026-11-01T00:00:00Z",
+        "dueBefore": "2026-12-01T00:00:00Z",
+        "hasDueDate": true,
+        "isDueComplete": true,
+        "pageSize": 1,
+        "status": "all"
+      },
+      "name": "listCards-server-retry",
+      "operation": "listCards"
+    },
+    {
+      "callId": "28224580-e5a2-58b7-a3ee-368f574b302c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards/6512f0a1c2d3e4f5a6b70001/cards",
+          "query": {
+            "before": [
+              "6512f0a1c2d3e4f5a6b7e001"
+            ],
+            "fields": [
+              "id,shortLink,name,idBoard,idList,closed,due,dueComplete,start,idLabels,labels,idMembers,pos,url,shortUrl,dateLastActivity"
+            ],
+            "filter": [
+              "all"
+            ],
+            "limit": [
+              "1"
+            ],
+            "sort": [
+              "-id"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "before": "6512f0a1c2d3e4f5a6b7e001",
+        "boardId": "6512f0a1c2d3e4f5a6b70001",
+        "dueAfter": "2026-11-01T00:00:00Z",
+        "dueBefore": "2026-12-01T00:00:00Z",
+        "hasDueDate": true,
+        "isDueComplete": true,
+        "pageSize": 1,
+        "status": "all"
+      },
+      "name": "listCards-transport-before-send",
+      "operation": "listCards"
+    },
+    {
+      "callId": "2e5f66a2-2efb-5b57-bc20-19f46c2826ac",
+      "exchanges": [
+        {
+          "body": "permission denied",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards/6512f0a1c2d3e4f5a6b70001/cards",
+          "query": {
+            "before": [
+              "6512f0a1c2d3e4f5a6b7e001"
+            ],
+            "fields": [
+              "id,shortLink,name,idBoard,idList,closed,due,dueComplete,start,idLabels,labels,idMembers,pos,url,shortUrl,dateLastActivity"
+            ],
+            "filter": [
+              "all"
+            ],
+            "limit": [
+              "1"
+            ],
+            "sort": [
+              "-id"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "cards": [],
+          "scannedCardCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "before": "6512f0a1c2d3e4f5a6b7e001",
+        "boardId": "6512f0a1c2d3e4f5a6b70001",
+        "dueAfter": "2026-11-01T00:00:00Z",
+        "dueBefore": "2026-12-01T00:00:00Z",
+        "hasDueDate": true,
+        "isDueComplete": true,
+        "pageSize": 1,
+        "status": "all"
+      },
+      "name": "listCards-provider-rejected",
+      "operation": "listCards"
+    },
+    {
+      "callId": "d63b2f1d-5f45-5fef-bf48-86a5e3b01a33",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"6512f0a1c2d3e4f5a6b7c8d9\", \"shortLink\": \"LrrmgFyd\", \"name\": \"Approved request\", \"desc\": \"Badge reader at door 4 is offline.\", \"idBoard\": \"6512f0a1c2d3e4f5a6b70001\", \"idList\": \"6512f0a1c2d3e4f5a6b70102\", \"closed\": false, \"due\": \"2026-11-15T17:00:00.000Z\", \"dueComplete\": true, \"start\": \"2026-11-01T17:00:00.000Z\", \"idLabels\": [\"6512f0a1c2d3e4f5a6b70201\"], \"labels\": [{\"id\": \"6512f0a1c2d3e4f5a6b70201\", \"idBoard\": \"6512f0a1c2d3e4f5a6b70001\", \"name\": \"Compliance\", \"color\": \"green\"}], \"idMembers\": [\"6512f0a1c2d3e4f5a6b70301\"], \"members\": [{\"id\": \"6512f0a1c2d3e4f5a6b70301\", \"fullName\": \"Ada Lovelace\", \"username\": \"ada\"}], \"list\": {\"id\": \"6512f0a1c2d3e4f5a6b70102\", \"name\": \"Approved\"}, \"pos\": 16384, \"url\": \"https://trello.com/c/LrrmgFyd/approved-request\", \"shortUrl\": \"https://trello.com/c/LrrmgFyd\", \"dateLastActivity\": \"2026-11-01T16:15:00.000Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "query": {
+            "fields": [
+              "id,shortLink,name,idBoard,idList,closed,due,dueComplete,start,idLabels,labels,idMembers,pos,url,shortUrl,dateLastActivity,desc"
+            ],
+            "list": [
+              "true"
+            ],
+            "member_fields": [
+              "fullName,username"
+            ],
+            "members": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "boardId": "6512f0a1c2d3e4f5a6b70001",
+          "description": "Badge reader at door 4 is offline.",
+          "due": "2026-11-15T17:00:00Z",
+          "id": "6512f0a1c2d3e4f5a6b7c8d9",
+          "isClosed": false,
+          "isDueComplete": true,
+          "labelIds": [
+            "6512f0a1c2d3e4f5a6b70201"
+          ],
+          "labels": [
+            {
+              "color": "green",
+              "id": "6512f0a1c2d3e4f5a6b70201",
+              "name": "Compliance"
+            }
+          ],
+          "lastActivityAt": "2026-11-01T16:15:00Z",
+          "listId": "6512f0a1c2d3e4f5a6b70102",
+          "listName": "Approved",
+          "memberIds": [
+            "6512f0a1c2d3e4f5a6b70301"
+          ],
+          "members": [
+            {
+              "fullName": "Ada Lovelace",
+              "id": "6512f0a1c2d3e4f5a6b70301",
+              "username": "ada"
+            }
+          ],
+          "name": "Approved request",
+          "position": 16384,
+          "shortLink": "LrrmgFyd",
+          "shortUrl": "https://trello.com/c/LrrmgFyd",
+          "start": "2026-11-01T17:00:00Z",
+          "url": "https://trello.com/c/LrrmgFyd/approved-request"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cardId": "6512f0a1c2d3e4f5a6b7c8d9"
+      },
+      "name": "getCard-success",
+      "operation": "getCard"
+    },
+    {
+      "callId": "5e17004f-3ee4-5892-9e87-92a21af91b2d",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"API_TOKEN_LIMIT_EXCEEDED\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "query": {
+            "fields": [
+              "id,shortLink,name,idBoard,idList,closed,due,dueComplete,start,idLabels,labels,idMembers,pos,url,shortUrl,dateLastActivity,desc"
+            ],
+            "list": [
+              "true"
+            ],
+            "member_fields": [
+              "fullName,username"
+            ],
+            "members": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "cardId": "6512f0a1c2d3e4f5a6b7c8d9"
+      },
+      "name": "getCard-rate-limit",
+      "operation": "getCard"
+    },
+    {
+      "callId": "70cac8e2-ad60-52af-971f-d49745762775",
+      "exchanges": [
+        {
+          "body": "service unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "query": {
+            "fields": [
+              "id,shortLink,name,idBoard,idList,closed,due,dueComplete,start,idLabels,labels,idMembers,pos,url,shortUrl,dateLastActivity,desc"
+            ],
+            "list": [
+              "true"
+            ],
+            "member_fields": [
+              "fullName,username"
+            ],
+            "members": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cardId": "6512f0a1c2d3e4f5a6b7c8d9"
+      },
+      "name": "getCard-server-retry",
+      "operation": "getCard"
+    },
+    {
+      "callId": "8783aaeb-cc83-5a8a-b518-7eff545c41a9",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "query": {
+            "fields": [
+              "id,shortLink,name,idBoard,idList,closed,due,dueComplete,start,idLabels,labels,idMembers,pos,url,shortUrl,dateLastActivity,desc"
+            ],
+            "list": [
+              "true"
+            ],
+            "member_fields": [
+              "fullName,username"
+            ],
+            "members": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cardId": "6512f0a1c2d3e4f5a6b7c8d9"
+      },
+      "name": "getCard-transport-before-send",
+      "operation": "getCard"
+    },
+    {
+      "callId": "3bd989f8-64fd-519c-90de-88ed53e402ec",
+      "exchanges": [
+        {
+          "body": "permission denied",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "query": {
+            "fields": [
+              "id,shortLink,name,idBoard,idList,closed,due,dueComplete,start,idLabels,labels,idMembers,pos,url,shortUrl,dateLastActivity,desc"
+            ],
+            "list": [
+              "true"
+            ],
+            "member_fields": [
+              "fullName,username"
+            ],
+            "members": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "boardId": "",
+          "id": "",
+          "isClosed": false,
+          "isDueComplete": false,
+          "listId": "",
+          "name": "",
+          "position": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cardId": "6512f0a1c2d3e4f5a6b7c8d9"
+      },
+      "name": "getCard-provider-rejected",
+      "operation": "getCard"
+    },
+    {
+      "callId": "fed5a116-c5f6-53ac-81b1-a823fb443a88",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"6512f0a1c2d3e4f5a6b7c8d9\", \"shortLink\": \"LrrmgFyd\", \"name\": \"Approved request\", \"desc\": \"Badge reader at door 4 is offline.\", \"idBoard\": \"6512f0a1c2d3e4f5a6b70001\", \"idList\": \"6512f0a1c2d3e4f5a6b70102\", \"closed\": false, \"due\": \"2026-11-15T17:00:00.000Z\", \"dueComplete\": true, \"start\": \"2026-11-01T17:00:00.000Z\", \"idLabels\": [\"6512f0a1c2d3e4f5a6b70201\"], \"labels\": [{\"id\": \"6512f0a1c2d3e4f5a6b70201\", \"idBoard\": \"6512f0a1c2d3e4f5a6b70001\", \"name\": \"Compliance\", \"color\": \"green\"}], \"idMembers\": [\"6512f0a1c2d3e4f5a6b70301\"], \"members\": [{\"id\": \"6512f0a1c2d3e4f5a6b70301\", \"fullName\": \"Ada Lovelace\", \"username\": \"ada\"}], \"list\": {\"id\": \"6512f0a1c2d3e4f5a6b70102\", \"name\": \"Approved\"}, \"pos\": 16384, \"url\": \"https://trello.com/c/LrrmgFyd/approved-request\", \"shortUrl\": \"https://trello.com/c/LrrmgFyd\", \"dateLastActivity\": \"2026-11-01T16:15:00.000Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cards",
+          "requestBody": {
+            "desc": "Badge reader at door 4 is offline.",
+            "due": "2026-11-15T17:00:00.000Z",
+            "idLabels": "6512f0a1c2d3e4f5a6b70201",
+            "idList": "6512f0a1c2d3e4f5a6b70101",
+            "idMembers": "6512f0a1c2d3e4f5a6b70301",
+            "name": "Approved request",
+            "pos": 16384
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "boardId": "6512f0a1c2d3e4f5a6b70001",
+          "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
+          "listId": "6512f0a1c2d3e4f5a6b70101",
+          "name": "Approved request",
+          "shortLink": "LrrmgFyd",
+          "shortUrl": "https://trello.com/c/LrrmgFyd",
+          "url": "https://trello.com/c/LrrmgFyd/approved-request"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fed5a116-c5f6-53ac-81b1-a823fb443a88",
+      "input": {
+        "description": "Badge reader at door 4 is offline.",
+        "due": "2026-11-15T17:00:00Z",
+        "labelIds": [
+          "6512f0a1c2d3e4f5a6b70201"
+        ],
+        "listId": "6512f0a1c2d3e4f5a6b70101",
+        "memberIds": [
+          "6512f0a1c2d3e4f5a6b70301"
+        ],
+        "name": "Approved request",
+        "position": "16384"
+      },
+      "name": "createCard-success",
+      "operation": "createCard"
+    },
+    {
+      "callId": "fed5a116-c5f6-53ac-81b1-a823fb443a88",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"API_TOKEN_LIMIT_EXCEEDED\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cards",
+          "requestBody": {
+            "desc": "Badge reader at door 4 is offline.",
+            "due": "2026-11-15T17:00:00.000Z",
+            "idLabels": "6512f0a1c2d3e4f5a6b70201",
+            "idList": "6512f0a1c2d3e4f5a6b70101",
+            "idMembers": "6512f0a1c2d3e4f5a6b70301",
+            "name": "Approved request",
+            "pos": 16384
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "fed5a116-c5f6-53ac-81b1-a823fb443a88",
+      "input": {
+        "description": "Badge reader at door 4 is offline.",
+        "due": "2026-11-15T17:00:00Z",
+        "labelIds": [
+          "6512f0a1c2d3e4f5a6b70201"
+        ],
+        "listId": "6512f0a1c2d3e4f5a6b70101",
+        "memberIds": [
+          "6512f0a1c2d3e4f5a6b70301"
+        ],
+        "name": "Approved request",
+        "position": "16384"
+      },
+      "name": "createCard-rate-limit",
+      "operation": "createCard"
+    },
+    {
+      "callId": "fed5a116-c5f6-53ac-81b1-a823fb443a88",
+      "exchanges": [
+        {
+          "body": "service unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cards",
+          "requestBody": {
+            "desc": "Badge reader at door 4 is offline.",
+            "due": "2026-11-15T17:00:00.000Z",
+            "idLabels": "6512f0a1c2d3e4f5a6b70201",
+            "idList": "6512f0a1c2d3e4f5a6b70101",
+            "idMembers": "6512f0a1c2d3e4f5a6b70301",
+            "name": "Approved request",
+            "pos": 16384
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fed5a116-c5f6-53ac-81b1-a823fb443a88",
+      "input": {
+        "description": "Badge reader at door 4 is offline.",
+        "due": "2026-11-15T17:00:00Z",
+        "labelIds": [
+          "6512f0a1c2d3e4f5a6b70201"
+        ],
+        "listId": "6512f0a1c2d3e4f5a6b70101",
+        "memberIds": [
+          "6512f0a1c2d3e4f5a6b70301"
+        ],
+        "name": "Approved request",
+        "position": "16384"
+      },
+      "name": "createCard-server-retry",
+      "operation": "createCard"
+    },
+    {
+      "callId": "fed5a116-c5f6-53ac-81b1-a823fb443a88",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cards",
+          "requestBody": {
+            "desc": "Badge reader at door 4 is offline.",
+            "due": "2026-11-15T17:00:00.000Z",
+            "idLabels": "6512f0a1c2d3e4f5a6b70201",
+            "idList": "6512f0a1c2d3e4f5a6b70101",
+            "idMembers": "6512f0a1c2d3e4f5a6b70301",
+            "name": "Approved request",
+            "pos": 16384
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fed5a116-c5f6-53ac-81b1-a823fb443a88",
+      "input": {
+        "description": "Badge reader at door 4 is offline.",
+        "due": "2026-11-15T17:00:00Z",
+        "labelIds": [
+          "6512f0a1c2d3e4f5a6b70201"
+        ],
+        "listId": "6512f0a1c2d3e4f5a6b70101",
+        "memberIds": [
+          "6512f0a1c2d3e4f5a6b70301"
+        ],
+        "name": "Approved request",
+        "position": "16384"
+      },
+      "name": "createCard-transport-before-send",
+      "operation": "createCard"
+    },
+    {
+      "callId": "fed5a116-c5f6-53ac-81b1-a823fb443a88",
+      "exchanges": [
+        {
+          "body": "permission denied",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cards",
+          "requestBody": {
+            "desc": "Badge reader at door 4 is offline.",
+            "due": "2026-11-15T17:00:00.000Z",
+            "idLabels": "6512f0a1c2d3e4f5a6b70201",
+            "idList": "6512f0a1c2d3e4f5a6b70101",
+            "idMembers": "6512f0a1c2d3e4f5a6b70301",
+            "name": "Approved request",
+            "pos": 16384
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "listId": "6512f0a1c2d3e4f5a6b70101",
+          "name": "Approved request"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fed5a116-c5f6-53ac-81b1-a823fb443a88",
+      "input": {
+        "description": "Badge reader at door 4 is offline.",
+        "due": "2026-11-15T17:00:00Z",
+        "labelIds": [
+          "6512f0a1c2d3e4f5a6b70201"
+        ],
+        "listId": "6512f0a1c2d3e4f5a6b70101",
+        "memberIds": [
+          "6512f0a1c2d3e4f5a6b70301"
+        ],
+        "name": "Approved request",
+        "position": "16384"
+      },
+      "name": "createCard-provider-rejected",
+      "operation": "createCard"
+    },
+    {
+      "callId": "1d5b3705-f348-5972-b2cb-b03a968343cb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "requestBody": {
+            "closed": true,
+            "due": "2026-11-15T17:00:00.000Z",
+            "dueComplete": true,
+            "idBoard": "6512f0a1c2d3e4f5a6b70001",
+            "idLabels": "6512f0a1c2d3e4f5a6b70201",
+            "idList": "6512f0a1c2d3e4f5a6b70102",
+            "idMembers": "6512f0a1c2d3e4f5a6b70301",
+            "pos": 16384
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\": \"6512f0a1c2d3e4f5a6b7c8d9\", \"shortLink\": \"LrrmgFyd\", \"name\": \"Approved request\", \"desc\": \"Badge reader at door 4 is offline.\", \"idBoard\": \"6512f0a1c2d3e4f5a6b70001\", \"idList\": \"6512f0a1c2d3e4f5a6b70102\", \"closed\": true, \"due\": \"2026-11-15T17:00:00.000Z\", \"dueComplete\": true, \"start\": \"2026-11-01T17:00:00.000Z\", \"idLabels\": [\"6512f0a1c2d3e4f5a6b70201\"], \"labels\": [{\"id\": \"6512f0a1c2d3e4f5a6b70201\", \"idBoard\": \"6512f0a1c2d3e4f5a6b70001\", \"name\": \"Compliance\", \"color\": \"green\"}], \"idMembers\": [\"6512f0a1c2d3e4f5a6b70301\"], \"members\": [{\"id\": \"6512f0a1c2d3e4f5a6b70301\", \"fullName\": \"Ada Lovelace\", \"username\": \"ada\"}], \"list\": {\"id\": \"6512f0a1c2d3e4f5a6b70102\", \"name\": \"Approved\"}, \"pos\": 16384, \"url\": \"https://trello.com/c/LrrmgFyd/approved-request\", \"shortUrl\": \"https://trello.com/c/LrrmgFyd\", \"dateLastActivity\": \"2026-11-01T16:15:00.000Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "query": {
+            "fields": [
+              "id,shortLink,name,idBoard,idList,closed,due,dueComplete,start,idLabels,labels,idMembers,pos,url,shortUrl,dateLastActivity,desc"
+            ],
+            "list": [
+              "true"
+            ],
+            "member_fields": [
+              "fullName,username"
+            ],
+            "members": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "card": {
+            "boardId": "6512f0a1c2d3e4f5a6b70001",
+            "description": "Badge reader at door 4 is offline.",
+            "due": "2026-11-15T17:00:00Z",
+            "id": "6512f0a1c2d3e4f5a6b7c8d9",
+            "isClosed": true,
+            "isDueComplete": true,
+            "labelIds": [
+              "6512f0a1c2d3e4f5a6b70201"
+            ],
+            "labels": [
+              {
+                "color": "green",
+                "id": "6512f0a1c2d3e4f5a6b70201",
+                "name": "Compliance"
+              }
+            ],
+            "lastActivityAt": "2026-11-01T16:15:00Z",
+            "listId": "6512f0a1c2d3e4f5a6b70102",
+            "listName": "Approved",
+            "memberIds": [
+              "6512f0a1c2d3e4f5a6b70301"
+            ],
+            "members": [
+              {
+                "fullName": "Ada Lovelace",
+                "id": "6512f0a1c2d3e4f5a6b70301",
+                "username": "ada"
+              }
+            ],
+            "name": "Approved request",
+            "position": 16384,
+            "shortLink": "LrrmgFyd",
+            "shortUrl": "https://trello.com/c/LrrmgFyd",
+            "start": "2026-11-01T17:00:00Z",
+            "url": "https://trello.com/c/LrrmgFyd/approved-request"
+          },
+          "cardId": "6512f0a1c2d3e4f5a6b7c8d9"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d5b3705-f348-5972-b2cb-b03a968343cb",
+      "input": {
+        "boardId": "6512f0a1c2d3e4f5a6b70001",
+        "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
+        "due": "2026-11-15T17:00:00Z",
+        "isClosed": true,
+        "isDueComplete": true,
+        "labelIds": [
+          "6512f0a1c2d3e4f5a6b70201"
+        ],
+        "listId": "6512f0a1c2d3e4f5a6b70102",
+        "memberIds": [
+          "6512f0a1c2d3e4f5a6b70301"
+        ],
+        "position": "16384"
+      },
+      "name": "updateCard-success",
+      "operation": "updateCard"
+    },
+    {
+      "callId": "1d5b3705-f348-5972-b2cb-b03a968343cb",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"API_TOKEN_LIMIT_EXCEEDED\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "requestBody": {
+            "closed": false,
+            "due": "2026-11-15T17:00:00.000Z",
+            "dueComplete": true,
+            "idBoard": "6512f0a1c2d3e4f5a6b70001",
+            "idLabels": "6512f0a1c2d3e4f5a6b70201",
+            "idList": "6512f0a1c2d3e4f5a6b70102",
+            "idMembers": "6512f0a1c2d3e4f5a6b70301",
+            "pos": 16384
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d5b3705-f348-5972-b2cb-b03a968343cb",
+      "input": {
+        "boardId": "6512f0a1c2d3e4f5a6b70001",
+        "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
+        "due": "2026-11-15T17:00:00Z",
+        "isClosed": false,
+        "isDueComplete": true,
+        "labelIds": [
+          "6512f0a1c2d3e4f5a6b70201"
+        ],
+        "listId": "6512f0a1c2d3e4f5a6b70102",
+        "memberIds": [
+          "6512f0a1c2d3e4f5a6b70301"
+        ],
+        "position": "16384"
+      },
+      "name": "updateCard-rate-limit",
+      "operation": "updateCard"
+    },
+    {
+      "callId": "1d5b3705-f348-5972-b2cb-b03a968343cb",
+      "exchanges": [
+        {
+          "body": "service unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "requestBody": {
+            "closed": false,
+            "due": "2026-11-15T17:00:00.000Z",
+            "dueComplete": true,
+            "idBoard": "6512f0a1c2d3e4f5a6b70001",
+            "idLabels": "6512f0a1c2d3e4f5a6b70201",
+            "idList": "6512f0a1c2d3e4f5a6b70102",
+            "idMembers": "6512f0a1c2d3e4f5a6b70301",
+            "pos": 16384
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d5b3705-f348-5972-b2cb-b03a968343cb",
+      "input": {
+        "boardId": "6512f0a1c2d3e4f5a6b70001",
+        "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
+        "due": "2026-11-15T17:00:00Z",
+        "isClosed": false,
+        "isDueComplete": true,
+        "labelIds": [
+          "6512f0a1c2d3e4f5a6b70201"
+        ],
+        "listId": "6512f0a1c2d3e4f5a6b70102",
+        "memberIds": [
+          "6512f0a1c2d3e4f5a6b70301"
+        ],
+        "position": "16384"
+      },
+      "name": "updateCard-server-retry",
+      "operation": "updateCard"
+    },
+    {
+      "callId": "1d5b3705-f348-5972-b2cb-b03a968343cb",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "requestBody": {
+            "closed": false,
+            "due": "2026-11-15T17:00:00.000Z",
+            "dueComplete": true,
+            "idBoard": "6512f0a1c2d3e4f5a6b70001",
+            "idLabels": "6512f0a1c2d3e4f5a6b70201",
+            "idList": "6512f0a1c2d3e4f5a6b70102",
+            "idMembers": "6512f0a1c2d3e4f5a6b70301",
+            "pos": 16384
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d5b3705-f348-5972-b2cb-b03a968343cb",
+      "input": {
+        "boardId": "6512f0a1c2d3e4f5a6b70001",
+        "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
+        "due": "2026-11-15T17:00:00Z",
+        "isClosed": false,
+        "isDueComplete": true,
+        "labelIds": [
+          "6512f0a1c2d3e4f5a6b70201"
+        ],
+        "listId": "6512f0a1c2d3e4f5a6b70102",
+        "memberIds": [
+          "6512f0a1c2d3e4f5a6b70301"
+        ],
+        "position": "16384"
+      },
+      "name": "updateCard-transport-before-send",
+      "operation": "updateCard"
+    },
+    {
+      "callId": "1d5b3705-f348-5972-b2cb-b03a968343cb",
+      "exchanges": [
+        {
+          "body": "permission denied",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "requestBody": {
+            "closed": false,
+            "due": "2026-11-15T17:00:00.000Z",
+            "dueComplete": true,
+            "idBoard": "6512f0a1c2d3e4f5a6b70001",
+            "idLabels": "6512f0a1c2d3e4f5a6b70201",
+            "idList": "6512f0a1c2d3e4f5a6b70102",
+            "idMembers": "6512f0a1c2d3e4f5a6b70301",
+            "pos": 16384
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "cardId": "6512f0a1c2d3e4f5a6b7c8d9"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d5b3705-f348-5972-b2cb-b03a968343cb",
+      "input": {
+        "boardId": "6512f0a1c2d3e4f5a6b70001",
+        "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
+        "due": "2026-11-15T17:00:00Z",
+        "isClosed": false,
+        "isDueComplete": true,
+        "labelIds": [
+          "6512f0a1c2d3e4f5a6b70201"
+        ],
+        "listId": "6512f0a1c2d3e4f5a6b70102",
+        "memberIds": [
+          "6512f0a1c2d3e4f5a6b70301"
+        ],
+        "position": "16384"
+      },
+      "name": "updateCard-provider-rejected",
+      "operation": "updateCard"
+    },
+    {
+      "callId": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"6512f0a1c2d3e4f5a6b70401\", \"idMemberCreator\": \"6512f0a1c2d3e4f5a6b70301\", \"date\": \"2026-11-01T16:20:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9/actions/comments",
+          "requestBody": {
+            "text": "Approved for facilities work."
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "authorMemberId": "6512f0a1c2d3e4f5a6b70301",
+          "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
+          "commentId": "6512f0a1c2d3e4f5a6b70401",
+          "createdAt": "2026-11-01T16:20:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
+      "input": {
+        "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
+        "text": "Approved for facilities work."
+      },
+      "name": "addComment-success",
+      "operation": "addComment"
+    },
+    {
+      "callId": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"API_TOKEN_LIMIT_EXCEEDED\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9/actions/comments",
+          "requestBody": {
+            "text": "Approved for facilities work."
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
+      "input": {
+        "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
+        "text": "Approved for facilities work."
+      },
+      "name": "addComment-rate-limit",
+      "operation": "addComment"
+    },
+    {
+      "callId": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
+      "exchanges": [
+        {
+          "body": "service unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9/actions/comments",
+          "requestBody": {
+            "text": "Approved for facilities work."
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
+      "input": {
+        "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
+        "text": "Approved for facilities work."
+      },
+      "name": "addComment-server-retry",
+      "operation": "addComment"
+    },
+    {
+      "callId": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9/actions/comments",
+          "requestBody": {
+            "text": "Approved for facilities work."
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
+      "input": {
+        "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
+        "text": "Approved for facilities work."
+      },
+      "name": "addComment-transport-before-send",
+      "operation": "addComment"
+    },
+    {
+      "callId": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
+      "exchanges": [
+        {
+          "body": "permission denied",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9/actions/comments",
+          "requestBody": {
+            "text": "Approved for facilities work."
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "cardId": "6512f0a1c2d3e4f5a6b7c8d9"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
+      "input": {
+        "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
+        "text": "Approved for facilities work."
+      },
+      "name": "addComment-provider-rejected",
+      "operation": "addComment"
+    },
+    {
+      "callId": "c9217b5b-7a94-5e7b-ae5f-d5b5e026ca51",
+      "exchanges": [
+        {
+          "body": "not found",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards/6512f0a1c2d3e4f5a6b70001/cards",
+          "query": {
+            "before": [
+              "6512f0a1c2d3e4f5a6b7e001"
+            ],
+            "fields": [
+              "id,shortLink,name,idBoard,idList,closed,due,dueComplete,start,idLabels,labels,idMembers,pos,url,shortUrl,dateLastActivity"
+            ],
+            "filter": [
+              "all"
+            ],
+            "limit": [
+              "1"
+            ],
+            "sort": [
+              "-id"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "cards": [],
+          "scannedCardCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "before": "6512f0a1c2d3e4f5a6b7e001",
+        "boardId": "6512f0a1c2d3e4f5a6b70001",
+        "dueAfter": "2026-11-01T00:00:00Z",
+        "dueBefore": "2026-12-01T00:00:00Z",
+        "hasDueDate": true,
+        "isDueComplete": true,
+        "pageSize": 1,
+        "status": "all"
+      },
+      "name": "listCards-not-found",
+      "operation": "listCards"
+    },
+    {
+      "callId": "9e197719-7bfb-50a3-84fb-d790f5665214",
+      "exchanges": [
+        {
+          "body": "not found",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "query": {
+            "fields": [
+              "id,shortLink,name,idBoard,idList,closed,due,dueComplete,start,idLabels,labels,idMembers,pos,url,shortUrl,dateLastActivity,desc"
+            ],
+            "list": [
+              "true"
+            ],
+            "member_fields": [
+              "fullName,username"
+            ],
+            "members": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "boardId": "",
+          "id": "",
+          "isClosed": false,
+          "isDueComplete": false,
+          "listId": "",
+          "name": "",
+          "position": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cardId": "6512f0a1c2d3e4f5a6b7c8d9"
+      },
+      "name": "getCard-not-found",
+      "operation": "getCard"
+    },
+    {
+      "callId": "1d5b3705-f348-5972-b2cb-b03a968343cb",
+      "exchanges": [
+        {
+          "body": "not found",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "requestBody": {
+            "closed": false,
+            "due": "2026-11-15T17:00:00.000Z",
+            "dueComplete": true,
+            "idBoard": "6512f0a1c2d3e4f5a6b70001",
+            "idLabels": "6512f0a1c2d3e4f5a6b70201",
+            "idList": "6512f0a1c2d3e4f5a6b70102",
+            "idMembers": "6512f0a1c2d3e4f5a6b70301",
+            "pos": 16384
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "cardId": "6512f0a1c2d3e4f5a6b7c8d9"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d5b3705-f348-5972-b2cb-b03a968343cb",
+      "input": {
+        "boardId": "6512f0a1c2d3e4f5a6b70001",
+        "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
+        "due": "2026-11-15T17:00:00Z",
+        "isClosed": false,
+        "isDueComplete": true,
+        "labelIds": [
+          "6512f0a1c2d3e4f5a6b70201"
+        ],
+        "listId": "6512f0a1c2d3e4f5a6b70102",
+        "memberIds": [
+          "6512f0a1c2d3e4f5a6b70301"
+        ],
+        "position": "16384"
+      },
+      "name": "updateCard-not-found",
+      "operation": "updateCard"
+    },
+    {
+      "callId": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
+      "exchanges": [
+        {
+          "body": "not found",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9/actions/comments",
+          "requestBody": {
+            "text": "Approved for facilities work."
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "cardId": "6512f0a1c2d3e4f5a6b7c8d9"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
+      "input": {
+        "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
+        "text": "Approved for facilities work."
+      },
+      "name": "addComment-not-found",
+      "operation": "addComment"
+    },
+    {
+      "callId": "6e34596e-2768-5ab1-b9ca-ec78d33582ee",
+      "exchanges": [
+        {
+          "body": "{invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards/6512f0a1c2d3e4f5a6b70001/cards",
+          "query": {
+            "before": [
+              "6512f0a1c2d3e4f5a6b7e001"
+            ],
+            "fields": [
+              "id,shortLink,name,idBoard,idList,closed,due,dueComplete,start,idLabels,labels,idMembers,pos,url,shortUrl,dateLastActivity"
+            ],
+            "filter": [
+              "all"
+            ],
+            "limit": [
+              "1"
+            ],
+            "sort": [
+              "-id"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "cards": [],
+          "scannedCardCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "before": "6512f0a1c2d3e4f5a6b7e001",
+        "boardId": "6512f0a1c2d3e4f5a6b70001",
+        "dueAfter": "2026-11-01T00:00:00Z",
+        "dueBefore": "2026-12-01T00:00:00Z",
+        "hasDueDate": true,
+        "isDueComplete": true,
+        "pageSize": 1,
+        "status": "all"
+      },
+      "name": "listCards-invalid-response",
+      "operation": "listCards"
+    },
+    {
+      "callId": "4b3f5044-cd81-5508-988c-9802453b609f",
+      "exchanges": [
+        {
+          "body": "{invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "query": {
+            "fields": [
+              "id,shortLink,name,idBoard,idList,closed,due,dueComplete,start,idLabels,labels,idMembers,pos,url,shortUrl,dateLastActivity,desc"
+            ],
+            "list": [
+              "true"
+            ],
+            "member_fields": [
+              "fullName,username"
+            ],
+            "members": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "boardId": "",
+          "id": "",
+          "isClosed": false,
+          "isDueComplete": false,
+          "listId": "",
+          "name": "",
+          "position": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cardId": "6512f0a1c2d3e4f5a6b7c8d9"
+      },
+      "name": "getCard-invalid-response",
+      "operation": "getCard"
+    },
+    {
+      "callId": "1d5b3705-f348-5972-b2cb-b03a968343cb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "requestBody": {
+            "closed": false,
+            "due": "2026-11-15T17:00:00.000Z",
+            "dueComplete": true,
+            "idBoard": "6512f0a1c2d3e4f5a6b70001",
+            "idLabels": "6512f0a1c2d3e4f5a6b70201",
+            "idList": "6512f0a1c2d3e4f5a6b70102",
+            "idMembers": "6512f0a1c2d3e4f5a6b70301",
+            "pos": 16384
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{invalid",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "query": {
+            "fields": [
+              "id,shortLink,name,idBoard,idList,closed,due,dueComplete,start,idLabels,labels,idMembers,pos,url,shortUrl,dateLastActivity,desc"
+            ],
+            "list": [
+              "true"
+            ],
+            "member_fields": [
+              "fullName,username"
+            ],
+            "members": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "cardId": "6512f0a1c2d3e4f5a6b7c8d9"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d5b3705-f348-5972-b2cb-b03a968343cb",
+      "input": {
+        "boardId": "6512f0a1c2d3e4f5a6b70001",
+        "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
+        "due": "2026-11-15T17:00:00Z",
+        "isClosed": false,
+        "isDueComplete": true,
+        "labelIds": [
+          "6512f0a1c2d3e4f5a6b70201"
+        ],
+        "listId": "6512f0a1c2d3e4f5a6b70102",
+        "memberIds": [
+          "6512f0a1c2d3e4f5a6b70301"
+        ],
+        "position": "16384"
+      },
+      "name": "updateCard-invalid-response",
+      "operation": "updateCard"
+    },
+    {
+      "callId": "87fc112b-3645-5ea4-af9c-a0be2e5ad4df",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "cards": [],
+          "scannedCardCount": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "before": "6512f0a1c2d3e4f5a6b7e001",
+        "boardId": "invalid",
+        "dueAfter": "2026-11-01T00:00:00Z",
+        "dueBefore": "2026-12-01T00:00:00Z",
+        "hasDueDate": true,
+        "isDueComplete": true,
+        "pageSize": 1,
+        "status": "all"
+      },
+      "name": "listCards-defect",
+      "operation": "listCards"
+    },
+    {
+      "callId": "d089a422-e378-5657-882a-cc339c3a2db2",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "boardId": "",
+          "id": "",
+          "isClosed": false,
+          "isDueComplete": false,
+          "listId": "",
+          "name": "",
+          "position": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cardId": "invalid"
+      },
+      "name": "getCard-defect",
+      "operation": "getCard"
+    },
+    {
+      "callId": "fed5a116-c5f6-53ac-81b1-a823fb443a88",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "listId": "invalid",
+          "name": "Approved request"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fed5a116-c5f6-53ac-81b1-a823fb443a88",
+      "input": {
+        "description": "Badge reader at door 4 is offline.",
+        "due": "2026-11-15T17:00:00Z",
+        "labelIds": [
+          "6512f0a1c2d3e4f5a6b70201"
+        ],
+        "listId": "invalid",
+        "memberIds": [
+          "6512f0a1c2d3e4f5a6b70301"
+        ],
+        "name": "Approved request",
+        "position": "16384"
+      },
+      "name": "createCard-defect",
+      "operation": "createCard"
+    },
+    {
+      "callId": "1d5b3705-f348-5972-b2cb-b03a968343cb",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "cardId": "invalid"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d5b3705-f348-5972-b2cb-b03a968343cb",
+      "input": {
+        "boardId": "6512f0a1c2d3e4f5a6b70001",
+        "cardId": "invalid",
+        "due": "2026-11-15T17:00:00Z",
+        "isClosed": false,
+        "isDueComplete": true,
+        "labelIds": [
+          "6512f0a1c2d3e4f5a6b70201"
+        ],
+        "listId": "6512f0a1c2d3e4f5a6b70102",
+        "memberIds": [
+          "6512f0a1c2d3e4f5a6b70301"
+        ],
+        "position": "16384"
+      },
+      "name": "updateCard-defect",
+      "operation": "updateCard"
+    },
+    {
+      "callId": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "cardId": "invalid"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
+      "input": {
+        "cardId": "invalid",
+        "text": "Approved for facilities work."
+      },
+      "name": "addComment-defect",
+      "operation": "addComment"
+    },
+    {
+      "callId": "fed5a116-c5f6-53ac-81b1-a823fb443a88",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cards",
+          "requestBody": {
+            "desc": "Badge reader at door 4 is offline.",
+            "due": "2026-11-15T17:00:00.000Z",
+            "idLabels": "6512f0a1c2d3e4f5a6b70201",
+            "idList": "6512f0a1c2d3e4f5a6b70101",
+            "idMembers": "6512f0a1c2d3e4f5a6b70301",
+            "name": "Approved request",
+            "pos": 16384
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "listId": "6512f0a1c2d3e4f5a6b70101",
+          "name": "Approved request"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "fed5a116-c5f6-53ac-81b1-a823fb443a88",
+      "input": {
+        "description": "Badge reader at door 4 is offline.",
+        "due": "2026-11-15T17:00:00Z",
+        "labelIds": [
+          "6512f0a1c2d3e4f5a6b70201"
+        ],
+        "listId": "6512f0a1c2d3e4f5a6b70101",
+        "memberIds": [
+          "6512f0a1c2d3e4f5a6b70301"
+        ],
+        "name": "Approved request",
+        "position": "16384"
+      },
+      "name": "createCard-uncertain",
+      "operation": "createCard"
+    },
+    {
+      "callId": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9/actions/comments",
+          "requestBody": {
+            "text": "Approved for facilities work."
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "cardId": "6512f0a1c2d3e4f5a6b7c8d9"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
+      "input": {
+        "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
+        "text": "Approved for facilities work."
+      },
+      "name": "addComment-uncertain",
+      "operation": "addComment"
+    },
+    {
+      "callId": "1d5b3705-f348-5972-b2cb-b03a968343cb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "requestBody": {
+            "due": null
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\": \"6512f0a1c2d3e4f5a6b7c8d9\", \"shortLink\": \"LrrmgFyd\", \"name\": \"Approved request\", \"desc\": \"Badge reader at door 4 is offline.\", \"idBoard\": \"6512f0a1c2d3e4f5a6b70001\", \"idList\": \"6512f0a1c2d3e4f5a6b70102\", \"closed\": false, \"due\": null, \"dueComplete\": true, \"start\": \"2026-11-01T17:00:00.000Z\", \"idLabels\": [\"6512f0a1c2d3e4f5a6b70201\"], \"labels\": [{\"id\": \"6512f0a1c2d3e4f5a6b70201\", \"idBoard\": \"6512f0a1c2d3e4f5a6b70001\", \"name\": \"Compliance\", \"color\": \"green\"}], \"idMembers\": [\"6512f0a1c2d3e4f5a6b70301\"], \"members\": [{\"id\": \"6512f0a1c2d3e4f5a6b70301\", \"fullName\": \"Ada Lovelace\", \"username\": \"ada\"}], \"list\": {\"id\": \"6512f0a1c2d3e4f5a6b70102\", \"name\": \"Approved\"}, \"pos\": 16384, \"url\": \"https://trello.com/c/LrrmgFyd/approved-request\", \"shortUrl\": \"https://trello.com/c/LrrmgFyd\", \"dateLastActivity\": \"2026-11-01T16:15:00.000Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "query": {
+            "fields": [
+              "id,shortLink,name,idBoard,idList,closed,due,dueComplete,start,idLabels,labels,idMembers,pos,url,shortUrl,dateLastActivity,desc"
+            ],
+            "list": [
+              "true"
+            ],
+            "member_fields": [
+              "fullName,username"
+            ],
+            "members": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "card": {
+            "boardId": "6512f0a1c2d3e4f5a6b70001",
+            "description": "Badge reader at door 4 is offline.",
+            "id": "6512f0a1c2d3e4f5a6b7c8d9",
+            "isClosed": false,
+            "isDueComplete": true,
+            "labelIds": [
+              "6512f0a1c2d3e4f5a6b70201"
+            ],
+            "labels": [
+              {
+                "color": "green",
+                "id": "6512f0a1c2d3e4f5a6b70201",
+                "name": "Compliance"
+              }
+            ],
+            "lastActivityAt": "2026-11-01T16:15:00Z",
+            "listId": "6512f0a1c2d3e4f5a6b70102",
+            "listName": "Approved",
+            "memberIds": [
+              "6512f0a1c2d3e4f5a6b70301"
+            ],
+            "members": [
+              {
+                "fullName": "Ada Lovelace",
+                "id": "6512f0a1c2d3e4f5a6b70301",
+                "username": "ada"
+              }
+            ],
+            "name": "Approved request",
+            "position": 16384,
+            "shortLink": "LrrmgFyd",
+            "shortUrl": "https://trello.com/c/LrrmgFyd",
+            "start": "2026-11-01T17:00:00Z",
+            "url": "https://trello.com/c/LrrmgFyd/approved-request"
+          },
+          "cardId": "6512f0a1c2d3e4f5a6b7c8d9"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d5b3705-f348-5972-b2cb-b03a968343cb",
+      "input": {
+        "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
+        "shouldClearDue": true
+      },
+      "name": "updateCard-clear-due",
+      "operation": "updateCard"
+    },
+    {
+      "callId": "1d5b3705-f348-5972-b2cb-b03a968343cb",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"6512f0a1c2d3e4f5a6b7c8d9\", \"shortLink\": \"LrrmgFyd\", \"name\": \"Approved request\", \"desc\": \"Badge reader at door 4 is offline.\", \"idBoard\": \"6512f0a1c2d3e4f5a6b70001\", \"idList\": \"6512f0a1c2d3e4f5a6b70102\", \"closed\": false, \"due\": \"2026-11-15T17:00:00.000Z\", \"dueComplete\": true, \"start\": \"2026-11-01T17:00:00.000Z\", \"idLabels\": [\"6512f0a1c2d3e4f5a6b70201\"], \"labels\": [{\"id\": \"6512f0a1c2d3e4f5a6b70201\", \"idBoard\": \"6512f0a1c2d3e4f5a6b70001\", \"name\": \"Compliance\", \"color\": \"green\"}], \"idMembers\": [\"6512f0a1c2d3e4f5a6b70301\"], \"members\": [{\"id\": \"6512f0a1c2d3e4f5a6b70301\", \"fullName\": \"Ada Lovelace\", \"username\": \"ada\"}], \"list\": {\"id\": \"6512f0a1c2d3e4f5a6b70102\", \"name\": \"Approved\"}, \"pos\": 16384, \"url\": \"https://trello.com/c/LrrmgFyd/approved-request\", \"shortUrl\": \"https://trello.com/c/LrrmgFyd\", \"dateLastActivity\": \"2026-11-01T16:15:00.000Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "query": {
+            "fields": [
+              "id,shortLink,name,idBoard,idList,closed,due,dueComplete,start,idLabels,labels,idMembers,pos,url,shortUrl,dateLastActivity,desc"
+            ],
+            "list": [
+              "true"
+            ],
+            "member_fields": [
+              "fullName,username"
+            ],
+            "members": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "requestBody": {
+            "idLabels": "6512f0a1c2d3e4f5a6b70202"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\": \"6512f0a1c2d3e4f5a6b7c8d9\", \"shortLink\": \"LrrmgFyd\", \"name\": \"Approved request\", \"desc\": \"Badge reader at door 4 is offline.\", \"idBoard\": \"6512f0a1c2d3e4f5a6b70001\", \"idList\": \"6512f0a1c2d3e4f5a6b70102\", \"closed\": false, \"due\": \"2026-11-15T17:00:00.000Z\", \"dueComplete\": true, \"start\": \"2026-11-01T17:00:00.000Z\", \"idLabels\": [\"6512f0a1c2d3e4f5a6b70202\"], \"labels\": [{\"id\": \"6512f0a1c2d3e4f5a6b70202\", \"name\": \"Urgent\", \"color\": \"red\"}], \"idMembers\": [\"6512f0a1c2d3e4f5a6b70301\"], \"members\": [{\"id\": \"6512f0a1c2d3e4f5a6b70301\", \"fullName\": \"Ada Lovelace\", \"username\": \"ada\"}], \"list\": {\"id\": \"6512f0a1c2d3e4f5a6b70102\", \"name\": \"Approved\"}, \"pos\": 16384, \"url\": \"https://trello.com/c/LrrmgFyd/approved-request\", \"shortUrl\": \"https://trello.com/c/LrrmgFyd\", \"dateLastActivity\": \"2026-11-01T16:15:00.000Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "query": {
+            "fields": [
+              "id,shortLink,name,idBoard,idList,closed,due,dueComplete,start,idLabels,labels,idMembers,pos,url,shortUrl,dateLastActivity,desc"
+            ],
+            "list": [
+              "true"
+            ],
+            "member_fields": [
+              "fullName,username"
+            ],
+            "members": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "card": {
+            "boardId": "6512f0a1c2d3e4f5a6b70001",
+            "description": "Badge reader at door 4 is offline.",
+            "due": "2026-11-15T17:00:00Z",
+            "id": "6512f0a1c2d3e4f5a6b7c8d9",
+            "isClosed": false,
+            "isDueComplete": true,
+            "labelIds": [
+              "6512f0a1c2d3e4f5a6b70202"
+            ],
+            "labels": [
+              {
+                "color": "red",
+                "id": "6512f0a1c2d3e4f5a6b70202",
+                "name": "Urgent"
+              }
+            ],
+            "lastActivityAt": "2026-11-01T16:15:00Z",
+            "listId": "6512f0a1c2d3e4f5a6b70102",
+            "listName": "Approved",
+            "memberIds": [
+              "6512f0a1c2d3e4f5a6b70301"
+            ],
+            "members": [
+              {
+                "fullName": "Ada Lovelace",
+                "id": "6512f0a1c2d3e4f5a6b70301",
+                "username": "ada"
+              }
+            ],
+            "name": "Approved request",
+            "position": 16384,
+            "shortLink": "LrrmgFyd",
+            "shortUrl": "https://trello.com/c/LrrmgFyd",
+            "start": "2026-11-01T17:00:00Z",
+            "url": "https://trello.com/c/LrrmgFyd/approved-request"
+          },
+          "cardId": "6512f0a1c2d3e4f5a6b7c8d9"
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d5b3705-f348-5972-b2cb-b03a968343cb",
+      "input": {
+        "addLabelIds": [
+          "6512f0a1c2d3e4f5a6b70202"
+        ],
+        "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
+        "removeLabelIds": [
+          "6512f0a1c2d3e4f5a6b70201"
+        ]
+      },
+      "name": "updateCard-add-remove-labels",
+      "operation": "updateCard"
+    },
+    {
+      "callId": "2dce8051-09e2-5035-9a7b-f41d5c233d3c",
+      "exchanges": [
+        {
+          "body": "[]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/lists/6512f0a1c2d3e4f5a6b70101/cards",
+          "query": {
+            "fields": [
+              "id,shortLink,name,idBoard,idList,closed,due,dueComplete,start,idLabels,labels,idMembers,pos,url,shortUrl,dateLastActivity"
+            ],
+            "filter": [
+              "open"
+            ],
+            "limit": [
+              "50"
+            ],
+            "sort": [
+              "-id"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "cards": [],
+          "scannedCardCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "listId": "6512f0a1c2d3e4f5a6b70101"
+      },
+      "name": "listCards-list-source",
+      "operation": "listCards"
+    },
+    {
+      "attempts": 2,
+      "callId": "ac20c0ac-a53d-5399-a6d8-37b3f0920ccc",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"API_TOKEN_LIMIT_EXCEEDED\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards/6512f0a1c2d3e4f5a6b70001/cards",
+          "query": {
+            "before": [
+              "6512f0a1c2d3e4f5a6b7e001"
+            ],
+            "fields": [
+              "id,shortLink,name,idBoard,idList,closed,due,dueComplete,start,idLabels,labels,idMembers,pos,url,shortUrl,dateLastActivity"
+            ],
+            "filter": [
+              "all"
+            ],
+            "limit": [
+              "1"
+            ],
+            "sort": [
+              "-id"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ]
+          },
+          "status": 429
+        },
+        {
+          "body": "[{\"id\": \"6512f0a1c2d3e4f5a6b7c8d9\", \"shortLink\": \"LrrmgFyd\", \"name\": \"Approved request\", \"desc\": \"Badge reader at door 4 is offline.\", \"idBoard\": \"6512f0a1c2d3e4f5a6b70001\", \"idList\": \"6512f0a1c2d3e4f5a6b70102\", \"closed\": false, \"due\": \"2026-11-15T17:00:00.000Z\", \"dueComplete\": true, \"start\": \"2026-11-01T17:00:00.000Z\", \"idLabels\": [\"6512f0a1c2d3e4f5a6b70201\"], \"labels\": [{\"id\": \"6512f0a1c2d3e4f5a6b70201\", \"idBoard\": \"6512f0a1c2d3e4f5a6b70001\", \"name\": \"Compliance\", \"color\": \"green\"}], \"idMembers\": [\"6512f0a1c2d3e4f5a6b70301\"], \"members\": [{\"id\": \"6512f0a1c2d3e4f5a6b70301\", \"fullName\": \"Ada Lovelace\", \"username\": \"ada\"}], \"list\": {\"id\": \"6512f0a1c2d3e4f5a6b70102\", \"name\": \"Approved\"}, \"pos\": 16384, \"url\": \"https://trello.com/c/LrrmgFyd/approved-request\", \"shortUrl\": \"https://trello.com/c/LrrmgFyd\", \"dateLastActivity\": \"2026-11-01T16:15:00.000Z\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards/6512f0a1c2d3e4f5a6b70001/cards",
+          "query": {
+            "before": [
+              "6512f0a1c2d3e4f5a6b7e001"
+            ],
+            "fields": [
+              "id,shortLink,name,idBoard,idList,closed,due,dueComplete,start,idLabels,labels,idMembers,pos,url,shortUrl,dateLastActivity"
+            ],
+            "filter": [
+              "all"
+            ],
+            "limit": [
+              "1"
+            ],
+            "sort": [
+              "-id"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "cards": [
+            {
+              "boardId": "6512f0a1c2d3e4f5a6b70001",
+              "due": "2026-11-15T17:00:00Z",
+              "id": "6512f0a1c2d3e4f5a6b7c8d9",
+              "isClosed": false,
+              "isDueComplete": true,
+              "labelIds": [
+                "6512f0a1c2d3e4f5a6b70201"
+              ],
+              "labels": [
+                {
+                  "color": "green",
+                  "id": "6512f0a1c2d3e4f5a6b70201",
+                  "name": "Compliance"
+                }
+              ],
+              "lastActivityAt": "2026-11-01T16:15:00Z",
+              "listId": "6512f0a1c2d3e4f5a6b70102",
+              "memberIds": [
+                "6512f0a1c2d3e4f5a6b70301"
+              ],
+              "name": "Approved request",
+              "position": 16384,
+              "shortLink": "LrrmgFyd",
+              "shortUrl": "https://trello.com/c/LrrmgFyd",
+              "start": "2026-11-01T17:00:00Z",
+              "url": "https://trello.com/c/LrrmgFyd/approved-request"
+            }
+          ],
+          "nextBefore": "6512f0a1c2d3e4f5a6b7c8d9",
+          "scannedCardCount": 1
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "before": "6512f0a1c2d3e4f5a6b7e001",
+        "boardId": "6512f0a1c2d3e4f5a6b70001",
+        "dueAfter": "2026-11-01T00:00:00Z",
+        "dueBefore": "2026-12-01T00:00:00Z",
+        "hasDueDate": true,
+        "isDueComplete": true,
+        "pageSize": 1,
+        "status": "all"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "RATE_LIMIT",
+          "retryAfterMs": 2000
+        }
+      ],
+      "name": "listCards-rate-limit-then-success",
+      "operation": "listCards"
+    },
+    {
+      "attempts": 2,
+      "callId": "d63b2f1d-5f45-5fef-bf48-86a5e3b01a33",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"API_TOKEN_LIMIT_EXCEEDED\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "query": {
+            "fields": [
+              "id,shortLink,name,idBoard,idList,closed,due,dueComplete,start,idLabels,labels,idMembers,pos,url,shortUrl,dateLastActivity,desc"
+            ],
+            "list": [
+              "true"
+            ],
+            "member_fields": [
+              "fullName,username"
+            ],
+            "members": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ]
+          },
+          "status": 429
+        },
+        {
+          "body": "{\"id\": \"6512f0a1c2d3e4f5a6b7c8d9\", \"shortLink\": \"LrrmgFyd\", \"name\": \"Approved request\", \"desc\": \"Badge reader at door 4 is offline.\", \"idBoard\": \"6512f0a1c2d3e4f5a6b70001\", \"idList\": \"6512f0a1c2d3e4f5a6b70102\", \"closed\": false, \"due\": \"2026-11-15T17:00:00.000Z\", \"dueComplete\": true, \"start\": \"2026-11-01T17:00:00.000Z\", \"idLabels\": [\"6512f0a1c2d3e4f5a6b70201\"], \"labels\": [{\"id\": \"6512f0a1c2d3e4f5a6b70201\", \"idBoard\": \"6512f0a1c2d3e4f5a6b70001\", \"name\": \"Compliance\", \"color\": \"green\"}], \"idMembers\": [\"6512f0a1c2d3e4f5a6b70301\"], \"members\": [{\"id\": \"6512f0a1c2d3e4f5a6b70301\", \"fullName\": \"Ada Lovelace\", \"username\": \"ada\"}], \"list\": {\"id\": \"6512f0a1c2d3e4f5a6b70102\", \"name\": \"Approved\"}, \"pos\": 16384, \"url\": \"https://trello.com/c/LrrmgFyd/approved-request\", \"shortUrl\": \"https://trello.com/c/LrrmgFyd\", \"dateLastActivity\": \"2026-11-01T16:15:00.000Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "query": {
+            "fields": [
+              "id,shortLink,name,idBoard,idList,closed,due,dueComplete,start,idLabels,labels,idMembers,pos,url,shortUrl,dateLastActivity,desc"
+            ],
+            "list": [
+              "true"
+            ],
+            "member_fields": [
+              "fullName,username"
+            ],
+            "members": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "boardId": "6512f0a1c2d3e4f5a6b70001",
+          "description": "Badge reader at door 4 is offline.",
+          "due": "2026-11-15T17:00:00Z",
+          "id": "6512f0a1c2d3e4f5a6b7c8d9",
+          "isClosed": false,
+          "isDueComplete": true,
+          "labelIds": [
+            "6512f0a1c2d3e4f5a6b70201"
+          ],
+          "labels": [
+            {
+              "color": "green",
+              "id": "6512f0a1c2d3e4f5a6b70201",
+              "name": "Compliance"
+            }
+          ],
+          "lastActivityAt": "2026-11-01T16:15:00Z",
+          "listId": "6512f0a1c2d3e4f5a6b70102",
+          "listName": "Approved",
+          "memberIds": [
+            "6512f0a1c2d3e4f5a6b70301"
+          ],
+          "members": [
+            {
+              "fullName": "Ada Lovelace",
+              "id": "6512f0a1c2d3e4f5a6b70301",
+              "username": "ada"
+            }
+          ],
+          "name": "Approved request",
+          "position": 16384,
+          "shortLink": "LrrmgFyd",
+          "shortUrl": "https://trello.com/c/LrrmgFyd",
+          "start": "2026-11-01T17:00:00Z",
+          "url": "https://trello.com/c/LrrmgFyd/approved-request"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cardId": "6512f0a1c2d3e4f5a6b7c8d9"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "RATE_LIMIT",
+          "retryAfterMs": 2000
+        }
+      ],
+      "name": "getCard-rate-limit-then-success",
+      "operation": "getCard"
+    },
+    {
+      "attempts": 2,
+      "callId": "fed5a116-c5f6-53ac-81b1-a823fb443a88",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"API_TOKEN_LIMIT_EXCEEDED\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cards",
+          "requestBody": {
+            "desc": "Badge reader at door 4 is offline.",
+            "due": "2026-11-15T17:00:00.000Z",
+            "idLabels": "6512f0a1c2d3e4f5a6b70201",
+            "idList": "6512f0a1c2d3e4f5a6b70101",
+            "idMembers": "6512f0a1c2d3e4f5a6b70301",
+            "name": "Approved request",
+            "pos": 16384
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        },
+        {
+          "body": "{\"id\": \"6512f0a1c2d3e4f5a6b7c8d9\", \"shortLink\": \"LrrmgFyd\", \"name\": \"Approved request\", \"desc\": \"Badge reader at door 4 is offline.\", \"idBoard\": \"6512f0a1c2d3e4f5a6b70001\", \"idList\": \"6512f0a1c2d3e4f5a6b70102\", \"closed\": false, \"due\": \"2026-11-15T17:00:00.000Z\", \"dueComplete\": true, \"start\": \"2026-11-01T17:00:00.000Z\", \"idLabels\": [\"6512f0a1c2d3e4f5a6b70201\"], \"labels\": [{\"id\": \"6512f0a1c2d3e4f5a6b70201\", \"idBoard\": \"6512f0a1c2d3e4f5a6b70001\", \"name\": \"Compliance\", \"color\": \"green\"}], \"idMembers\": [\"6512f0a1c2d3e4f5a6b70301\"], \"members\": [{\"id\": \"6512f0a1c2d3e4f5a6b70301\", \"fullName\": \"Ada Lovelace\", \"username\": \"ada\"}], \"list\": {\"id\": \"6512f0a1c2d3e4f5a6b70102\", \"name\": \"Approved\"}, \"pos\": 16384, \"url\": \"https://trello.com/c/LrrmgFyd/approved-request\", \"shortUrl\": \"https://trello.com/c/LrrmgFyd\", \"dateLastActivity\": \"2026-11-01T16:15:00.000Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cards",
+          "requestBody": {
+            "desc": "Badge reader at door 4 is offline.",
+            "due": "2026-11-15T17:00:00.000Z",
+            "idLabels": "6512f0a1c2d3e4f5a6b70201",
+            "idList": "6512f0a1c2d3e4f5a6b70101",
+            "idMembers": "6512f0a1c2d3e4f5a6b70301",
+            "name": "Approved request",
+            "pos": 16384
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "boardId": "6512f0a1c2d3e4f5a6b70001",
+          "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
+          "listId": "6512f0a1c2d3e4f5a6b70101",
+          "name": "Approved request",
+          "shortLink": "LrrmgFyd",
+          "shortUrl": "https://trello.com/c/LrrmgFyd",
+          "url": "https://trello.com/c/LrrmgFyd/approved-request"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fed5a116-c5f6-53ac-81b1-a823fb443a88",
+      "input": {
+        "description": "Badge reader at door 4 is offline.",
+        "due": "2026-11-15T17:00:00Z",
+        "labelIds": [
+          "6512f0a1c2d3e4f5a6b70201"
+        ],
+        "listId": "6512f0a1c2d3e4f5a6b70101",
+        "memberIds": [
+          "6512f0a1c2d3e4f5a6b70301"
+        ],
+        "name": "Approved request",
+        "position": "16384"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "RATE_LIMIT",
+          "retryAfterMs": 2000
+        }
+      ],
+      "name": "createCard-rate-limit-then-success",
+      "operation": "createCard"
+    },
+    {
+      "attempts": 2,
+      "callId": "1d5b3705-f348-5972-b2cb-b03a968343cb",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"API_TOKEN_LIMIT_EXCEEDED\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "requestBody": {
+            "closed": true,
+            "due": "2026-11-15T17:00:00.000Z",
+            "dueComplete": true,
+            "idBoard": "6512f0a1c2d3e4f5a6b70001",
+            "idLabels": "6512f0a1c2d3e4f5a6b70201",
+            "idList": "6512f0a1c2d3e4f5a6b70102",
+            "idMembers": "6512f0a1c2d3e4f5a6b70301",
+            "pos": 16384
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "requestBody": {
+            "closed": true,
+            "due": "2026-11-15T17:00:00.000Z",
+            "dueComplete": true,
+            "idBoard": "6512f0a1c2d3e4f5a6b70001",
+            "idLabels": "6512f0a1c2d3e4f5a6b70201",
+            "idList": "6512f0a1c2d3e4f5a6b70102",
+            "idMembers": "6512f0a1c2d3e4f5a6b70301",
+            "pos": 16384
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\": \"6512f0a1c2d3e4f5a6b7c8d9\", \"shortLink\": \"LrrmgFyd\", \"name\": \"Approved request\", \"desc\": \"Badge reader at door 4 is offline.\", \"idBoard\": \"6512f0a1c2d3e4f5a6b70001\", \"idList\": \"6512f0a1c2d3e4f5a6b70102\", \"closed\": true, \"due\": \"2026-11-15T17:00:00.000Z\", \"dueComplete\": true, \"start\": \"2026-11-01T17:00:00.000Z\", \"idLabels\": [\"6512f0a1c2d3e4f5a6b70201\"], \"labels\": [{\"id\": \"6512f0a1c2d3e4f5a6b70201\", \"idBoard\": \"6512f0a1c2d3e4f5a6b70001\", \"name\": \"Compliance\", \"color\": \"green\"}], \"idMembers\": [\"6512f0a1c2d3e4f5a6b70301\"], \"members\": [{\"id\": \"6512f0a1c2d3e4f5a6b70301\", \"fullName\": \"Ada Lovelace\", \"username\": \"ada\"}], \"list\": {\"id\": \"6512f0a1c2d3e4f5a6b70102\", \"name\": \"Approved\"}, \"pos\": 16384, \"url\": \"https://trello.com/c/LrrmgFyd/approved-request\", \"shortUrl\": \"https://trello.com/c/LrrmgFyd\", \"dateLastActivity\": \"2026-11-01T16:15:00.000Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "query": {
+            "fields": [
+              "id,shortLink,name,idBoard,idList,closed,due,dueComplete,start,idLabels,labels,idMembers,pos,url,shortUrl,dateLastActivity,desc"
+            ],
+            "list": [
+              "true"
+            ],
+            "member_fields": [
+              "fullName,username"
+            ],
+            "members": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "card": {
+            "boardId": "6512f0a1c2d3e4f5a6b70001",
+            "description": "Badge reader at door 4 is offline.",
+            "due": "2026-11-15T17:00:00Z",
+            "id": "6512f0a1c2d3e4f5a6b7c8d9",
+            "isClosed": true,
+            "isDueComplete": true,
+            "labelIds": [
+              "6512f0a1c2d3e4f5a6b70201"
+            ],
+            "labels": [
+              {
+                "color": "green",
+                "id": "6512f0a1c2d3e4f5a6b70201",
+                "name": "Compliance"
+              }
+            ],
+            "lastActivityAt": "2026-11-01T16:15:00Z",
+            "listId": "6512f0a1c2d3e4f5a6b70102",
+            "listName": "Approved",
+            "memberIds": [
+              "6512f0a1c2d3e4f5a6b70301"
+            ],
+            "members": [
+              {
+                "fullName": "Ada Lovelace",
+                "id": "6512f0a1c2d3e4f5a6b70301",
+                "username": "ada"
+              }
+            ],
+            "name": "Approved request",
+            "position": 16384,
+            "shortLink": "LrrmgFyd",
+            "shortUrl": "https://trello.com/c/LrrmgFyd",
+            "start": "2026-11-01T17:00:00Z",
+            "url": "https://trello.com/c/LrrmgFyd/approved-request"
+          },
+          "cardId": "6512f0a1c2d3e4f5a6b7c8d9"
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d5b3705-f348-5972-b2cb-b03a968343cb",
+      "input": {
+        "boardId": "6512f0a1c2d3e4f5a6b70001",
+        "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
+        "due": "2026-11-15T17:00:00Z",
+        "isClosed": true,
+        "isDueComplete": true,
+        "labelIds": [
+          "6512f0a1c2d3e4f5a6b70201"
+        ],
+        "listId": "6512f0a1c2d3e4f5a6b70102",
+        "memberIds": [
+          "6512f0a1c2d3e4f5a6b70301"
+        ],
+        "position": "16384"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "RATE_LIMIT",
+          "retryAfterMs": 2000
+        }
+      ],
+      "name": "updateCard-rate-limit-then-success",
+      "operation": "updateCard"
+    },
+    {
+      "attempts": 2,
+      "callId": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"API_TOKEN_LIMIT_EXCEEDED\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9/actions/comments",
+          "requestBody": {
+            "text": "Approved for facilities work."
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        },
+        {
+          "body": "{\"id\": \"6512f0a1c2d3e4f5a6b70401\", \"idMemberCreator\": \"6512f0a1c2d3e4f5a6b70301\", \"date\": \"2026-11-01T16:20:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9/actions/comments",
+          "requestBody": {
+            "text": "Approved for facilities work."
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "authorMemberId": "6512f0a1c2d3e4f5a6b70301",
+          "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
+          "commentId": "6512f0a1c2d3e4f5a6b70401",
+          "createdAt": "2026-11-01T16:20:00Z"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
+      "input": {
+        "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
+        "text": "Approved for facilities work."
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "RATE_LIMIT",
+          "retryAfterMs": 2000
+        }
+      ],
+      "name": "addComment-rate-limit-then-success",
+      "operation": "addComment"
+    },
+    {
+      "callId": "fed5a116-c5f6-53ac-81b1-a823fb443a88",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "listId": "6512f0a1c2d3e4f5a6b70101",
+          "name": "Approved request"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "fed5a116-c5f6-53ac-81b1-a823fb443a88",
+      "input": {
+        "description": "Badge reader at door 4 is offline.",
+        "due": "2026-11-15T17:00:00Z",
+        "labelIds": [
+          "6512f0a1c2d3e4f5a6b70201"
+        ],
+        "listId": "6512f0a1c2d3e4f5a6b70101",
+        "memberIds": [
+          "6512f0a1c2d3e4f5a6b70301"
+        ],
+        "name": "Approved request",
+        "position": "16384"
+      },
+      "name": "createCard-prior-claimed",
+      "operation": "createCard",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "fed5a116-c5f6-53ac-81b1-a823fb443a88",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "fed5a116-c5f6-53ac-81b1-a823fb443a88",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"6512f0a1c2d3e4f5a6b7c8d9\", \"shortLink\": \"LrrmgFyd\", \"name\": \"Approved request\", \"desc\": \"Badge reader at door 4 is offline.\", \"idBoard\": \"6512f0a1c2d3e4f5a6b70001\", \"idList\": \"6512f0a1c2d3e4f5a6b70102\", \"closed\": false, \"due\": \"2026-11-15T17:00:00.000Z\", \"dueComplete\": true, \"start\": \"2026-11-01T17:00:00.000Z\", \"idLabels\": [\"6512f0a1c2d3e4f5a6b70201\"], \"labels\": [{\"id\": \"6512f0a1c2d3e4f5a6b70201\", \"idBoard\": \"6512f0a1c2d3e4f5a6b70001\", \"name\": \"Compliance\", \"color\": \"green\"}], \"idMembers\": [\"6512f0a1c2d3e4f5a6b70301\"], \"members\": [{\"id\": \"6512f0a1c2d3e4f5a6b70301\", \"fullName\": \"Ada Lovelace\", \"username\": \"ada\"}], \"list\": {\"id\": \"6512f0a1c2d3e4f5a6b70102\", \"name\": \"Approved\"}, \"pos\": 16384, \"url\": \"https://trello.com/c/LrrmgFyd/approved-request\", \"shortUrl\": \"https://trello.com/c/LrrmgFyd\", \"dateLastActivity\": \"2026-11-01T16:15:00.000Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cards",
+          "requestBody": {
+            "desc": "Badge reader at door 4 is offline.",
+            "due": "2026-11-15T17:00:00.000Z",
+            "idLabels": "6512f0a1c2d3e4f5a6b70201",
+            "idList": "6512f0a1c2d3e4f5a6b70101",
+            "idMembers": "6512f0a1c2d3e4f5a6b70301",
+            "name": "Approved request",
+            "pos": 16384
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "boardId": "6512f0a1c2d3e4f5a6b70001",
+          "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
+          "listId": "6512f0a1c2d3e4f5a6b70101",
+          "name": "Approved request",
+          "shortLink": "LrrmgFyd",
+          "shortUrl": "https://trello.com/c/LrrmgFyd",
+          "url": "https://trello.com/c/LrrmgFyd/approved-request"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fed5a116-c5f6-53ac-81b1-a823fb443a88",
+      "input": {
+        "description": "Badge reader at door 4 is offline.",
+        "due": "2026-11-15T17:00:00Z",
+        "labelIds": [
+          "6512f0a1c2d3e4f5a6b70201"
+        ],
+        "listId": "6512f0a1c2d3e4f5a6b70101",
+        "memberIds": [
+          "6512f0a1c2d3e4f5a6b70301"
+        ],
+        "name": "Approved request",
+        "position": "16384"
+      },
+      "name": "createCard-prior-canResend",
+      "operation": "createCard",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "fed5a116-c5f6-53ac-81b1-a823fb443a88",
+        "state": "canResend"
+      }
+    },
+    {
+      "callId": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "cardId": "6512f0a1c2d3e4f5a6b7c8d9"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
+      "input": {
+        "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
+        "text": "Approved for facilities work."
+      },
+      "name": "addComment-prior-claimed",
+      "operation": "addComment",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"6512f0a1c2d3e4f5a6b70401\", \"idMemberCreator\": \"6512f0a1c2d3e4f5a6b70301\", \"date\": \"2026-11-01T16:20:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9/actions/comments",
+          "requestBody": {
+            "text": "Approved for facilities work."
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "authorMemberId": "6512f0a1c2d3e4f5a6b70301",
+          "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
+          "commentId": "6512f0a1c2d3e4f5a6b70401",
+          "createdAt": "2026-11-01T16:20:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
+      "input": {
+        "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
+        "text": "Approved for facilities work."
+      },
+      "name": "addComment-prior-canResend",
+      "operation": "addComment",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
+        "state": "canResend"
+      }
+    },
+    {
+      "attempts": 2,
+      "callId": "fed5a116-c5f6-53ac-81b1-a823fb443a88",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cards",
+          "requestBody": {
+            "desc": "Details",
+            "due": "2026-10-26T16:20:00.000Z",
+            "idLabels": "6512f0a1c2d3e4f5a6b70201",
+            "idList": "6512f0a1c2d3e4f5a6b70101",
+            "idMembers": "6512f0a1c2d3e4f5a6b70301",
+            "name": "Approved request",
+            "pos": "top"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        },
+        {
+          "body": "{\"id\": \"6512f0a1c2d3e4f5a6b7c8d9\", \"idBoard\": \"6512f0a1c2d3e4f5a6b70001\", \"shortLink\": \"AbCd1234\", \"url\": \"https://trello.com/c/AbCd1234/approved\", \"shortUrl\": \"https://trello.com/c/AbCd1234\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cards",
+          "requestBody": {
+            "desc": "Details",
+            "due": "2026-10-26T16:20:00.000Z",
+            "idLabels": "6512f0a1c2d3e4f5a6b70201",
+            "idList": "6512f0a1c2d3e4f5a6b70101",
+            "idMembers": "6512f0a1c2d3e4f5a6b70301",
+            "name": "Approved request",
+            "pos": "top"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "boardId": "6512f0a1c2d3e4f5a6b70001",
+          "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
+          "listId": "6512f0a1c2d3e4f5a6b70101",
+          "name": "Approved request",
+          "shortLink": "AbCd1234",
+          "shortUrl": "https://trello.com/c/AbCd1234",
+          "url": "https://trello.com/c/AbCd1234/approved"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fed5a116-c5f6-53ac-81b1-a823fb443a88",
+      "input": {
+        "description": "Details",
+        "due": "2026-10-26T16:20:00Z",
+        "labelIds": [
+          "6512f0a1c2d3e4f5a6b70201"
+        ],
+        "listId": "6512f0a1c2d3e4f5a6b70101",
+        "memberIds": [
+          "6512f0a1c2d3e4f5a6b70301"
+        ],
+        "name": "Approved request",
+        "position": "top"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createCard-before-send-then-success",
+      "operation": "createCard"
+    },
+    {
+      "attempts": 2,
+      "callId": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9/actions/comments",
+          "requestBody": {
+            "text": "Approved."
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        },
+        {
+          "body": "{\"id\": \"6512f0a1c2d3e4f5a6b70401\", \"idMemberCreator\": \"6512f0a1c2d3e4f5a6b70301\", \"date\": \"2026-10-26T16:20:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9/actions/comments",
+          "requestBody": {
+            "text": "Approved."
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "authorMemberId": "6512f0a1c2d3e4f5a6b70301",
+          "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
+          "commentId": "6512f0a1c2d3e4f5a6b70401",
+          "createdAt": "2026-10-26T16:20:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
+      "input": {
+        "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
+        "text": "Approved."
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "addComment-before-send-then-success",
+      "operation": "addComment"
+    },
+    {
+      "callId": "1d5b3705-f348-5972-b2cb-b03a968343cb",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"6512f0a1c2d3e4f5a6b7c8d9\", \"idBoard\": \"6512f0a1c2d3e4f5a6b70001\", \"idList\": \"6512f0a1c2d3e4f5a6b70101\", \"name\": \"Approved request\", \"closed\": false, \"dueComplete\": false, \"pos\": 1024, \"idLabels\": [\"6512f0a1c2d3e4f5a6b70201\"]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "query": {
+            "fields": [
+              "id,shortLink,name,idBoard,idList,closed,due,dueComplete,start,idLabels,labels,idMembers,pos,url,shortUrl,dateLastActivity,desc"
+            ],
+            "list": [
+              "true"
+            ],
+            "member_fields": [
+              "fullName,username"
+            ],
+            "members": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "requestBody": {
+            "idLabels": "6512f0a1c2d3e4f5a6b70201,6512f0a1c2d3e4f5a6b70202"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\": \"6512f0a1c2d3e4f5a6b7c8d9\", \"idBoard\": \"6512f0a1c2d3e4f5a6b70001\", \"idList\": \"6512f0a1c2d3e4f5a6b70101\", \"name\": \"Approved request\", \"closed\": false, \"dueComplete\": false, \"pos\": 1024, \"idLabels\": [\"6512f0a1c2d3e4f5a6b70201\", \"6512f0a1c2d3e4f5a6b70202\"]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "query": {
+            "fields": [
+              "id,shortLink,name,idBoard,idList,closed,due,dueComplete,start,idLabels,labels,idMembers,pos,url,shortUrl,dateLastActivity,desc"
+            ],
+            "list": [
+              "true"
+            ],
+            "member_fields": [
+              "fullName,username"
+            ],
+            "members": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "card": {
+            "boardId": "6512f0a1c2d3e4f5a6b70001",
+            "id": "6512f0a1c2d3e4f5a6b7c8d9",
+            "isClosed": false,
+            "isDueComplete": false,
+            "labelIds": [
+              "6512f0a1c2d3e4f5a6b70201",
+              "6512f0a1c2d3e4f5a6b70202"
+            ],
+            "listId": "6512f0a1c2d3e4f5a6b70101",
+            "name": "Approved request",
+            "position": 1024
+          },
+          "cardId": "6512f0a1c2d3e4f5a6b7c8d9"
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d5b3705-f348-5972-b2cb-b03a968343cb",
+      "input": {
+        "addLabelIds": [
+          "6512f0a1c2d3e4f5a6b70202"
+        ],
+        "cardId": "6512f0a1c2d3e4f5a6b7c8d9"
+      },
+      "name": "updateCard-add-label-readback",
+      "operation": "updateCard"
+    },
+    {
+      "callId": "1d5b3705-f348-5972-b2cb-b03a968343cb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "requestBody": {
+            "closed": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9",
+          "query": {
+            "fields": [
+              "id,shortLink,name,idBoard,idList,closed,due,dueComplete,start,idLabels,labels,idMembers,pos,url,shortUrl,dateLastActivity,desc"
+            ],
+            "list": [
+              "true"
+            ],
+            "member_fields": [
+              "fullName,username"
+            ],
+            "members": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1d5b3705-f348-5972-b2cb-b03a968343cb",
+      "input": {
+        "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
+        "isClosed": true
+      },
+      "name": "updateCard-readback-503",
+      "operation": "updateCard"
+    },
+    {
+      "callId": "c5d798e6-9264-531c-98e8-c3fec46aa761",
+      "exchanges": [
+        {
+          "body": "[{\"id\": \"6512f0a1c2d3e4f5a6b7c8d9\", \"idBoard\": \"6512f0a1c2d3e4f5a6b70001\", \"idList\": \"6512f0a1c2d3e4f5a6b70101\", \"name\": \"Due request\", \"closed\": false, \"due\": \"2026-10-26T16:20:00Z\", \"dueComplete\": false, \"pos\": 1024}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/boards/6512f0a1c2d3e4f5a6b70001/cards",
+          "query": {
+            "fields": [
+              "id,shortLink,name,idBoard,idList,closed,due,dueComplete,start,idLabels,labels,idMembers,pos,url,shortUrl,dateLastActivity"
+            ],
+            "filter": [
+              "all"
+            ],
+            "limit": [
+              "1"
+            ],
+            "sort": [
+              "-id"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "cards": [
+            {
+              "boardId": "6512f0a1c2d3e4f5a6b70001",
+              "due": "2026-10-26T16:20:00Z",
+              "id": "6512f0a1c2d3e4f5a6b7c8d9",
+              "isClosed": false,
+              "isDueComplete": false,
+              "listId": "6512f0a1c2d3e4f5a6b70101",
+              "name": "Due request",
+              "position": 1024
+            }
+          ],
+          "nextBefore": "6512f0a1c2d3e4f5a6b7c8d9",
+          "scannedCardCount": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "6512f0a1c2d3e4f5a6b70001",
+        "dueAfter": "2026-10-01T00:00:00Z",
+        "dueBefore": "2026-11-01T00:00:00Z",
+        "hasDueDate": true,
+        "isDueComplete": false,
+        "pageSize": 1,
+        "status": "all"
+      },
+      "name": "listCards-due-filter",
+      "operation": "listCards"
+    },
+    {
+      "callId": "fed5a116-c5f6-53ac-81b1-a823fb443a88",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cards",
+          "requestBody": {
+            "desc": "Details",
+            "due": "2026-10-26T16:20:00.000Z",
+            "idLabels": "6512f0a1c2d3e4f5a6b70201",
+            "idList": "6512f0a1c2d3e4f5a6b70101",
+            "idMembers": "6512f0a1c2d3e4f5a6b70301",
+            "name": "Approved request",
+            "pos": "top"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "listId": "6512f0a1c2d3e4f5a6b70101",
+          "name": "Approved request"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "fed5a116-c5f6-53ac-81b1-a823fb443a88",
+      "input": {
+        "description": "Details",
+        "due": "2026-10-26T16:20:00Z",
+        "labelIds": [
+          "6512f0a1c2d3e4f5a6b70201"
+        ],
+        "listId": "6512f0a1c2d3e4f5a6b70101",
+        "memberIds": [
+          "6512f0a1c2d3e4f5a6b70301"
+        ],
+        "name": "Approved request",
+        "position": "top"
+      },
+      "name": "createCard-accepted-invalid-reference",
+      "operation": "createCard"
+    },
+    {
+      "callId": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/cards/6512f0a1c2d3e4f5a6b7c8d9/actions/comments",
+          "requestBody": {
+            "text": "Approved."
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "OAuth oauth_consumer_key=\"0123456789abcdef0123456789abcdef\", oauth_token=\"ATTAtrelloTestToken0123456789abcdef\""
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "cardId": "6512f0a1c2d3e4f5a6b7c8d9"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "51be6994-d0a6-57b8-95b1-e9f58f355a43",
+      "input": {
+        "cardId": "6512f0a1c2d3e4f5a6b7c8d9",
+        "text": "Approved."
+      },
+      "name": "addComment-accepted-invalid-reference",
+      "operation": "addComment"
+    }
+  ],
+  "schemaVersion": 1
+}

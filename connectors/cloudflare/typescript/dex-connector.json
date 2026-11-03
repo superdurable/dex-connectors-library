@@ -1,0 +1,82 @@
+{
+  "connectorId": "cloudflare",
+  "releaseTag": "connectors/cloudflare/go/v0.2.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-cloudflare",
+    "version": "0.1.1"
+  },
+  "factories": [
+    {
+      "name": "newListZonesStep",
+      "kind": "query",
+      "operationId": "listZones",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "name": "newPurgeCacheByURLsStep",
+      "kind": "mutation",
+      "operationId": "purgeCacheByURLs",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "purged",
+          "field": "purged",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    }
+  ]
+}

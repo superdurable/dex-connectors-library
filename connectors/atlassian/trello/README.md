@@ -2,6 +2,8 @@
 
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/atlassian/trello/go@v0.23.0`.
 
+The Python package `dex-connector-atlassian-trello` implements all five operations at `v0.1.0`; see its [package README](python/README.md) and [runnable card-read Flow](python/examples/approved_request_card/README.md). Go-recorded provider scenarios cover Python requests, retries, branches, and output encoding. The Python example ran through a local Dex Worker and Client with a fake Trello HTTP service; live Trello authorization and provider behavior remain unverified for Python.
+
 Moved from `github.com/superdurable/dex-connectors-library/connectors/atlassian/trello`.
 
 > **Verification status: partial live.** Only a dummy-credential request reached Trello, which rejected it; everything else ran on a real Dex stack against a local stand-in. No live Trello account was used. See
@@ -34,6 +36,10 @@ Members carry an ID, full name, and username, never an email address.
 
 No Trigger and no Studio picker ships in this release; see
 [Not in this release](#not-in-this-release).
+
+## TypeScript package
+
+Install `@superdurable/connector-atlassian-trello@0.1.0` for TypeScript Flows. It implements all five operations listed above with the same branches and non-idempotent create and comment checkpoint behavior. The [runnable approved board Flow](typescript/examples/approved-board-cards/README.md) uses the static `trello-approved-board` connection. The package replays Go-recorded provider scenarios; live Trello behavior for TypeScript remains unverified.
 
 ## Authentication
 
