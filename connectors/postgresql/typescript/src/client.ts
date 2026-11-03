@@ -61,8 +61,8 @@ export class PostgreSQLClient {
   /** Bind the transactional write operation. */
   execute(): ExecuteStatementOperation { return new ExecuteStatementOperation(this); }
 
-  /** Resolve the current password outside Flow state and open one native connection. */
-  async connect(call: Call): Promise<PgClient | null> {
+  /** Resolve the current password outside Flow state and open one native connection, bounded by the call signal. */
+  async connect(call: Call, signal?: AbortSignal): Promise<PgClient | null> {
     let password: string;
     try { password = (await this.credentials.resolve(call)).password.reveal(); }
     catch { return null; }
@@ -75,6 +75,10 @@ export class PostgreSQLClient {
       ...(rootCertificate ? { ca: readFileSync(rootCertificate, 'utf8') } : {}),
     };
     const connection = this.createDriver({ host: settings.host, port: settings.port, database: settings.database, user: settings.user, password, ssl, connectionTimeoutMillis: settings.connectTimeoutMs, application_name: 'dex-postgresql-connector', options: '-c client_encoding=UTF8' });
+    const protocol = connection as PgClient & { connection?: { stream?: { destroy(error: Error): void } } };
+    const abortConnection = () => protocol.connection?.stream?.destroy(new Error('PostgreSQL call deadline passed'));
+    if (signal?.aborted) abortConnection();
+    else signal?.addEventListener('abort', abortConnection, { once: true });
     await connection.connect();
     return connection;
   }

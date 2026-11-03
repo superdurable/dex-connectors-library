@@ -76,10 +76,12 @@ function placeholderCount(statement: string): number {
       continue;
     }
     if (statement[index] === '\'' || statement[index] === '"') {
-      const quote = statement[index]; index++;
+      const quote = statement[index];
+      const isEscapeString = quote === '\'' && /[eE]/.test(statement[index - 1] ?? '') && (index < 2 || !/[A-Za-z0-9_]/.test(statement[index - 2] ?? ''));
+      index++;
       while (index < statement.length) {
         if (statement[index] === quote) { if (statement[index + 1] === quote) index += 2; else { index++; break; } }
-        else if (statement[index] === '\\' && quote === '\'' && /[eE]/.test(statement[index - 2] ?? '')) index += 2;
+        else if (statement[index] === '\\' && isEscapeString) index += 2;
         else index++;
       }
       continue;
@@ -106,6 +108,56 @@ function describeColumns(fields: readonly FieldDef[]): Column[] {
   });
 }
 
+function parseExactJSON(value: string, column: Column): unknown {
+  let isInsideString = false;
+  let isEscaped = false;
+  for (let index = 0; index < value.length; index++) {
+    const character = value[index];
+    if (isInsideString) {
+      if (isEscaped) isEscaped = false;
+      else if (character === '\\') isEscaped = true;
+      else if (character === '"') isInsideString = false;
+      continue;
+    }
+    if (character === '"') { isInsideString = true; continue; }
+    if (character === '-' || /[0-9]/.test(character ?? '')) {
+      const number = /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/.exec(value.slice(index))?.[0];
+      if (!number || !Number.isFinite(Number(number)) || JSON.stringify(Number(number)) !== number) throw new UndecodableValueError(column);
+      index += number.length - 1;
+    }
+  }
+  try { return JSON.parse(value) as unknown; }
+  catch { throw new UndecodableValueError(column); }
+}
+
+function decodeTimestampWithZone(value: string, column: Column): string {
+  const match = /^(\d{4})-(\d\d)-(\d\d) (\d\d):(\d\d):(\d\d)(\.\d+)?([+-]\d\d)(?::?(\d\d))?$/.exec(value);
+  if (!match) throw new UndecodableValueError(column);
+  const [, year, month, day, hour, minute, second, fraction = '', offsetHours = '+00', offsetMinutes = '00'] = match;
+  let yearNumber = Number(year);
+  let monthNumber = Number(month);
+  let dayNumber = Number(day);
+  const daysInMonth = (selectedYear: number, selectedMonth: number): number => {
+    if (selectedMonth === 2) return selectedYear % 4 === 0 && (selectedYear % 100 !== 0 || selectedYear % 400 === 0) ? 29 : 28;
+    return [4, 6, 9, 11].includes(selectedMonth) ? 30 : 31;
+  };
+  if (yearNumber < 1 || monthNumber < 1 || monthNumber > 12 || dayNumber < 1 || dayNumber > daysInMonth(yearNumber, monthNumber) || Number(hour) > 23 || Number(minute) > 59 || Number(second) > 59 || Number(offsetHours.slice(1)) > 15 || Number(offsetMinutes) > 59) throw new UndecodableValueError(column);
+  const offset = (Number(offsetHours) * 60 + (offsetHours.startsWith('-') ? -1 : 1) * Number(offsetMinutes));
+  let utcMinutes = Number(hour) * 60 + Number(minute) - offset;
+  if (utcMinutes < 0) {
+    utcMinutes += 1440;
+    dayNumber--;
+    if (dayNumber === 0) { monthNumber--; if (monthNumber === 0) { monthNumber = 12; yearNumber--; } dayNumber = daysInMonth(yearNumber, monthNumber); }
+  } else if (utcMinutes >= 1440) {
+    utcMinutes -= 1440;
+    dayNumber++;
+    if (dayNumber > daysInMonth(yearNumber, monthNumber)) { dayNumber = 1; monthNumber++; if (monthNumber === 13) { monthNumber = 1; yearNumber++; } }
+  }
+  if (yearNumber < 1 || yearNumber > 9999) throw new UndecodableValueError(column);
+  const trimmedFraction = fraction.replace(/0+$/, '').replace(/^\.$/, '');
+  return `${String(yearNumber).padStart(4, '0')}-${String(monthNumber).padStart(2, '0')}-${String(dayNumber).padStart(2, '0')}T${String(Math.floor(utcMinutes / 60)).padStart(2, '0')}:${String(utcMinutes % 60).padStart(2, '0')}:${second}${trimmedFraction}Z`;
+}
+
 function decodeValue(column: Column, value: unknown): unknown | null {
   if (value === null) return null;
   if (typeof value !== 'string') throw new UndecodableValueError(column);
@@ -116,12 +168,10 @@ function decodeValue(column: Column, value: unknown): unknown | null {
     case 700: case 701: if (['NaN', 'Infinity', '-Infinity'].includes(value)) return value; if (value.trim() && Number.isFinite(Number(value))) return Number(value); break;
     case 1700: if (/^(?:-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|NaN|-?Infinity)$/.test(value)) return value; break;
     case 17: if (/^\\x(?:[0-9a-fA-F]{2})*$/.test(value)) return Buffer.from(value.slice(2), 'hex').toString('base64'); break;
-    case 114: case 3802: try { return JSON.parse(value) as unknown; } catch { break; }
+    case 114: case 3802: return parseExactJSON(value, column);
     case 1184: {
       if (value === 'infinity' || value === '-infinity' || value.endsWith(' BC') || /^\d{5,}-/.test(value)) return value;
-      const parsed = new Date(value.replace(' ', 'T'));
-      if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().replace(/\.000Z$/, 'Z');
-      break;
+      return decodeTimestampWithZone(value, column);
     }
     case 1114: if (value === 'infinity' || value === '-infinity' || value.endsWith(' BC') || /^\d{5,}-/.test(value)) return value; if (/^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d(?:\.\d+)?$/.test(value)) return value.replace(' ', 'T'); break;
     default: return value;
@@ -136,21 +186,29 @@ async function begin(connection: PgClient, readOnly: boolean, statementTimeoutMs
 
 async function readRows(connection: PgClient, statement: string, values: Array<string | null>, maxRows: number, maxResponseBytes: number): Promise<{ columns: Column[]; rows: Array<Record<string, unknown | null>>; truncated: boolean; command: string; rowCount: number }> {
   const cursor = connection.query(new Cursor<unknown[]>(statement, values, { rowMode: 'array', types: { getTypeParser: () => (text: string) => text } }));
-  const readBatch = (count: number): Promise<{ result: QueryResult; rows: unknown[][] }> => new Promise((resolve, reject) => {
+  const commandCompleteCursor = cursor as Cursor<unknown[]> & { handleCommandComplete: (message: { text?: string; command?: string }) => void };
+  const handleCommandComplete = commandCompleteCursor.handleCommandComplete.bind(cursor);
+  let commandTag = '';
+  commandCompleteCursor.handleCommandComplete = message => { commandTag = message.text ?? message.command ?? ''; handleCommandComplete(message); };
+  const readBatch = (count: number): Promise<{ result?: QueryResult; rows: unknown[][] }> => new Promise((resolve, reject) => {
     cursor.read(count, (error, rows, result) => { if (error) reject(error); else resolve({ result, rows }); });
   });
   let columns: Column[] | undefined;
+  let latestResult: QueryResult | undefined;
   const rows: Array<Record<string, unknown | null>> = [];
   let bytes = 2;
   for (;;) {
-    const batch = await readBatch(Math.min(100, maxRows - rows.length + 1));
-    columns ??= describeColumns(batch.result.fields);
-    if (batch.rows.length === 0) return { columns, rows, truncated: false, command: batch.result.command, rowCount: batch.result.rowCount ?? 0 };
+    const requested = Math.min(100, maxRows - rows.length + 1);
+    const batch = await readBatch(requested);
+    latestResult = batch.result ?? latestResult;
+    if (!latestResult) throw new StatementDescriptionError();
+    columns ??= describeColumns(latestResult.fields);
+    if (batch.rows.length === 0) return { columns, rows, truncated: false, command: commandName(commandTag, latestResult.command), rowCount: latestResult.rowCount ?? 0 };
     for (const rawRow of batch.rows) {
       if (rows.length === maxRows) {
         // Closing is best effort: the enclosing connection is discarded after this bounded read.
         await cursor.close().catch(() => undefined);
-        return { columns, rows, truncated: true, command: batch.result.command, rowCount: batch.result.rowCount ?? 0 };
+        return { columns, rows, truncated: true, command: commandName(commandTag, latestResult.command), rowCount: latestResult.rowCount ?? 0 };
       }
       if (!Array.isArray(rawRow) || rawRow.length !== columns.length) throw new UndecodableValueError({ name: '*', typeOid: 0 });
       const row: Record<string, unknown | null> = {};
@@ -159,11 +217,16 @@ async function readRows(connection: PgClient, statement: string, values: Array<s
       if (bytes > maxResponseBytes) {
         // Closing is best effort: the enclosing connection is discarded after this bounded read.
         await cursor.close().catch(() => undefined);
-        return { columns, rows, truncated: true, command: batch.result.command, rowCount: batch.result.rowCount ?? 0 };
+        return { columns, rows, truncated: true, command: commandName(commandTag, latestResult.command), rowCount: latestResult.rowCount ?? 0 };
       }
       rows.push(row);
     }
+    if (batch.rows.length < requested && commandTag) return { columns, rows, truncated: false, command: commandName(commandTag, latestResult.command), rowCount: latestResult.rowCount ?? 0 };
   }
+}
+
+function commandName(commandTag: string, fallback: string): string {
+  return (commandTag || fallback).replace(/(?: \d+)+$/, '');
 }
 
 /** One read-only PostgreSQL statement using bound positional parameters. */
@@ -176,9 +239,11 @@ export class QueryRowsOperation implements Query<QueryRowsInput, RowSet> {
     try { values = validateStatement(input.statement, input.parameters); }
     catch { return newQueryBranch('defect', emptyRows(), zeroReceipt(), failure('query', { disposition: 'defect', kind: 'VALIDATION', message: 'PostgreSQL statement or parameters are invalid' })); }
     let connection: PgClient | null = null;
+    const deadlineController = new AbortController();
+    const deadline = setTimeout(() => deadlineController.abort(), this.client.configuration.connectTimeoutMs + this.client.configuration.statementTimeoutMs + 5000);
     let phase: Phase = 'connect';
     try {
-      connection = await this.client.connect(call);
+      connection = await this.client.connect(call, deadlineController.signal);
       if (!connection) return newQueryBranch('defect', emptyRows(), zeroReceipt(), failure('query', { disposition: 'defect', kind: 'AUTHENTICATION', message: 'PostgreSQL connection credentials are unavailable' }));
       phase = 'BEGIN';
       await begin(connection, true, this.client.configuration.statementTimeoutMs);
@@ -194,6 +259,7 @@ export class QueryRowsOperation implements Query<QueryRowsInput, RowSet> {
     } finally {
       // Closing is best effort: PostgreSQL discards any uncommitted read-only transaction.
       if (connection) await connection.end().catch(() => undefined);
+      clearTimeout(deadline);
     }
   }
 }
@@ -215,9 +281,11 @@ export class ExecuteStatementOperation implements Mutation<ExecuteStatementInput
       if (input.maxRowsAffected !== undefined && (!Number.isSafeInteger(input.maxRowsAffected) || input.maxRowsAffected < 0)) throw new TypeError('maxRowsAffected cannot be negative');
     } catch { return newMutationBranch('defect', emptyExecution(), zeroReceipt(), failure('execute', { disposition: 'defect', kind: 'VALIDATION', message: 'PostgreSQL statement or parameters are invalid' })); }
     let connection: PgClient | null = null;
+    const deadlineController = new AbortController();
+    const deadline = setTimeout(() => deadlineController.abort(), this.client.configuration.connectTimeoutMs + this.client.configuration.statementTimeoutMs + 5000);
     let phase: Phase = 'connect';
     try {
-      connection = await this.client.connect(call);
+      connection = await this.client.connect(call, deadlineController.signal);
       if (!connection) return newMutationBranch('defect', emptyExecution(), zeroReceipt(), failure('execute', { disposition: 'defect', kind: 'AUTHENTICATION', message: 'PostgreSQL connection credentials are unavailable' }));
       phase = 'BEGIN';
       await begin(connection, false, this.client.configuration.statementTimeoutMs);
@@ -240,6 +308,7 @@ export class ExecuteStatementOperation implements Mutation<ExecuteStatementInput
     } finally {
       // Closing is best effort: PostgreSQL rolls back any transaction that was not committed.
       if (connection) await connection.end().catch(() => undefined);
+      clearTimeout(deadline);
     }
   }
 }

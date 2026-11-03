@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import type { Client as PgClient } from 'pg';
+import pg, { type Client as PgClient } from 'pg';
 import Cursor from 'pg-cursor';
 import { describe, expect, it, vi } from 'vitest';
 import { SecretString, type Call } from '@superdurable/connectors-sdk';
@@ -11,7 +11,7 @@ const call = { id: '00000000-0000-4000-8000-000000000001', idempotencyKey: '0000
 const configuration = { host: '127.0.0.1', database: 'app', user: 'dex_app', sslMode: 'disable' };
 const columns = [{ name: 'id', dataTypeID: 20 }, { name: 'amount', dataTypeID: 1700 }];
 
-function fakeClient(statementResult: { rows?: unknown[][]; fields?: typeof columns; rowCount?: number; command?: string } = {}, errors: Record<string, unknown> = {}) {
+function fakeClient(statementResult: { rows?: unknown[][]; fields?: typeof columns; rowCount?: number; command?: string; commandTag?: string } = {}, errors: Record<string, unknown> = {}) {
   const queries: Array<{ text: string; values?: unknown[] }> = [];
   const driver = {
     processID: 1001,
@@ -22,12 +22,19 @@ function fakeClient(statementResult: { rows?: unknown[][]; fields?: typeof colum
       queries.push({ text, ...(typeof request === 'string' ? {} : { values: request.values }) });
       if (request instanceof Cursor) {
         let offset = 0;
+        let isDone = false;
         const sourceRows = statementResult.rows ?? [['9007199254740993', '1200.00']];
         Object.assign(request, {
+          handleCommandComplete: () => undefined,
           read: (count: number, callback: (error: Error | undefined, rows: unknown[][], result: unknown) => void) => {
             if (errors[text]) { callback(errors[text] as Error, [], undefined); return; }
+            if (isDone) { callback(undefined, [], undefined); return; }
             const rows = sourceRows.slice(offset, offset + count);
             offset += rows.length;
+            if (offset === sourceRows.length) {
+              isDone = true;
+              (request as Cursor<unknown[]> & { handleCommandComplete?: (message: { text: string }) => void }).handleCommandComplete?.({ text: statementResult.commandTag ?? `${statementResult.command ?? 'SELECT'} ${statementResult.rowCount ?? sourceRows.length}` });
+            }
             callback(undefined, rows, { command: statementResult.command ?? 'SELECT', fields: statementResult.fields ?? columns, rowCount: statementResult.rowCount ?? 1 });
           },
           close: async () => undefined,
@@ -54,6 +61,43 @@ describe('PostgreSQL operations', () => {
     expect(driver.end).toHaveBeenCalledOnce();
   });
 
+  it('keeps cursor metadata after completion and decodes a nonempty RETURNING result', async () => {
+    const { client } = fakeClient({ command: 'INSERT', commandTag: 'INSERT 0 1', rowCount: 1 });
+    expect(await client.execute().invoke(call, { statement: 'INSERT INTO ledger VALUES (1) RETURNING id, amount' })).toMatchObject({ kind: 'branch', branch: 'completed', value: { command: 'INSERT', rowsAffected: 1, rows: [{ id: '9007199254740993', amount: '1200.00' }] } });
+  });
+
+  it('keeps the last result when a completed cursor returns an empty batch without metadata', async () => {
+    const rows = Array.from({ length: 100 }, (_, index) => [String(index)]);
+    const { client } = fakeClient({ fields: [{ name: 'id', dataTypeID: 20 }], rows, rowCount: 100 });
+    const result = await client.query().invoke(call, { statement: 'SELECT id FROM ledger' });
+    expect(result).toMatchObject({ kind: 'branch', branch: 'completed', value: { rows: expect.arrayContaining([{ id: '99' }]) } });
+    if (result.kind === 'branch') expect(result.value.rows).toHaveLength(100);
+  });
+
+  it('preserves a multiword command tag', async () => {
+    const { client } = fakeClient({ rows: [], fields: [], command: 'CREATE', commandTag: 'CREATE TABLE', rowCount: 0 });
+    expect(await client.execute().invoke(call, { statement: 'CREATE TABLE sample (id integer)' })).toMatchObject({ kind: 'branch', branch: 'completed', value: { command: 'CREATE TABLE' } });
+  });
+
+  it('keeps microsecond timestamptz text and rejects lossy JSON by column', async () => {
+    const timestamp = fakeClient({ fields: [{ name: 'moment', dataTypeID: 1184 }], rows: [['2024-01-01 00:00:00.123457+00']] });
+    expect(await timestamp.client.query().invoke(call, { statement: 'SELECT now() AS moment' })).toMatchObject({ kind: 'branch', branch: 'completed', value: { rows: [{ moment: '2024-01-01T00:00:00.123457Z' }] } });
+    const offset = fakeClient({ fields: [{ name: 'moment', dataTypeID: 1184 }], rows: [['2024-01-01 02:30:00.500000+02:30']] });
+    expect(await offset.client.query().invoke(call, { statement: 'SELECT now() AS moment' })).toMatchObject({ kind: 'branch', branch: 'completed', value: { rows: [{ moment: '2024-01-01T00:00:00.5Z' }] } });
+    const priorDay = fakeClient({ fields: [{ name: 'moment', dataTypeID: 1184 }], rows: [['2024-03-01 00:30:00+02']] });
+    expect(await priorDay.client.query().invoke(call, { statement: 'SELECT now() AS moment' })).toMatchObject({ kind: 'branch', branch: 'completed', value: { rows: [{ moment: '2024-02-29T22:30:00Z' }] } });
+    for (const document of ['{"a":1.10}', '{"b":12345678901234567890.123456789}', '{"c":1e400}']) {
+      const invalid = fakeClient({ fields: [{ name: 'document', dataTypeID: 3802 }], rows: [[document]] });
+      expect(await invalid.client.query().invoke(call, { statement: 'SELECT document' })).toMatchObject({ kind: 'branch', branch: 'invalidResponse', failure: { kind: 'PROTOCOL', message: expect.stringContaining('document') } });
+    }
+  });
+
+  it('counts placeholders after escaped quotes in E strings', async () => {
+    const { client, queries } = fakeClient();
+    expect(await client.query().invoke(call, { statement: "SELECT E'a\\'b', $1", parameters: [1] })).toMatchObject({ kind: 'branch', branch: 'completed' });
+    expect(queries.at(-1)?.values).toEqual(['1']);
+  });
+
   it('routes row and byte bounds to truncated without committing', async () => {
     const { driver } = fakeClient({ rows: [['1', '1.00'], ['2', '2.00']], rowCount: 2 });
     const bounded = new PostgreSQLClient({ ...configuration, maxRows: 1 }, { resolve: async () => ({ password: new SecretString('p') }) }, { createDriver: () => driver as unknown as PgClient });
@@ -67,7 +111,9 @@ describe('PostgreSQL operations', () => {
     ['40001', 'retry', 'CONFLICT'], ['08006', 'retry', 'TRANSPORT'],
     ['57014', 'providerRejected', 'AVAILABILITY'],
   ])('classifies SQLSTATE %s as %s', async (code, branch, kind) => {
-    const { client } = fakeClient({}, { 'SELECT 1': { code, message: 'secret provider text' } });
+    const serverError = new pg.DatabaseError('secret provider text', 0, 'error');
+    serverError.code = code;
+    const { client } = fakeClient({}, { 'SELECT 1': serverError });
     const result = await client.query().invoke(call, { statement: 'SELECT 1' });
     expect(result.kind === 'retry' ? 'retry' : result.branch).toBe(branch);
     expect(result.failure?.kind).toBe(kind);
@@ -103,7 +149,10 @@ describe('PostgreSQL operations', () => {
     expect(limited.queries.some(query => query.text === 'COMMIT')).toBe(false);
     const uncertain = fakeClient({ command: 'INSERT' }, { COMMIT: new Error('socket closed') });
     expect(await uncertain.client.execute().invoke(call, { statement: 'INSERT INTO ledger VALUES (1)' })).toMatchObject({ kind: 'uncertain', failure: { kind: 'TRANSPORT' } });
-    const rejected = fakeClient({ command: 'INSERT' }, { COMMIT: { code: '23505', constraint: 'ledger_pkey', message: 'secret' } });
+    const commitError = new pg.DatabaseError('secret', 0, 'error');
+    commitError.code = '23505';
+    commitError.constraint = 'ledger_pkey';
+    const rejected = fakeClient({ command: 'INSERT' }, { COMMIT: commitError });
     expect(await rejected.client.execute().invoke(call, { statement: 'INSERT INTO ledger VALUES (1)' })).toMatchObject({ kind: 'branch', branch: 'providerRejected', failure: { kind: 'CONFLICT' } });
   });
 
@@ -118,6 +167,24 @@ describe('PostgreSQL operations', () => {
     const client = new PostgreSQLClient(configuration, { resolve: async () => ({ password: new SecretString('p') }) }, { createDriver: () => driver as unknown as PgClient });
     expect(await client.execute().invoke(call, { statement: 'INSERT INTO ledger VALUES (1)' })).toMatchObject({ kind: 'retry', failure: { kind: 'TRANSPORT' } });
     expect(queries.some(query => query.text === 'COMMIT')).toBe(false);
+  });
+
+  it('bounds a blackholed COMMIT and reports its outcome as uncertain', async () => {
+    const { driver } = fakeClient({ command: 'INSERT', rows: [] });
+    const original = driver.query;
+    let rejectCommit: ((error: Error) => void) | undefined;
+    driver.query = vi.fn((request: Parameters<typeof original>[0]) => {
+      if (request === 'COMMIT') return new Promise((_, reject: (error: Error) => void) => { rejectCommit = reject; });
+      return original(request);
+    });
+    Object.assign(driver, { connection: { stream: { destroy: (error: Error) => rejectCommit?.(error) } } });
+    const client = new PostgreSQLClient({ ...configuration, statementTimeoutMs: 1 }, { resolve: async () => ({ password: new SecretString('p') }) }, { createDriver: () => driver as unknown as PgClient });
+    vi.useFakeTimers();
+    try {
+      const attempt = client.execute().invoke(call, { statement: 'INSERT INTO ledger VALUES (1)' });
+      await vi.runAllTimersAsync();
+      expect(await attempt).toMatchObject({ kind: 'uncertain', failure: { kind: 'TRANSPORT' } });
+    } finally { vi.useRealTimers(); }
   });
 
   it('rejects transaction control and invalid idempotency placeholders before connecting', async () => {

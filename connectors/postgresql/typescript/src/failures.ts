@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import type { Failure } from '@superdurable/connectors-sdk';
+import pg from 'pg';
 
 export type Phase = 'connect' | 'BEGIN' | 'the statement' | 'COMMIT';
 export type Disposition = 'retry' | 'rejected' | 'uncertain' | 'invalidResponse' | 'defect';
@@ -30,7 +31,7 @@ function errorFields(error: unknown): Record<string, unknown> {
 export function classifyFailure(error: unknown, phase: Phase): ClassifiedFailure {
   const fields = errorFields(error);
   const code = typeof fields.code === 'string' ? fields.code : '';
-  if (/^[A-Z0-9]{5}$/.test(code)) {
+  if (error instanceof pg.DatabaseError && /^[A-Z0-9]{5}$/.test(code)) {
     const name = conditionNames[code];
     const description = name ? `${code} (${name})` : code;
     let disposition: Disposition = 'rejected';
@@ -58,7 +59,7 @@ export function classifyFailure(error: unknown, phase: Phase): ClassifiedFailure
   if (fields.name === 'CommitNotSentError') return { disposition: 'retry', kind: 'TRANSPORT', message: 'the connection ended or the call deadline passed before COMMIT was sent, so nothing was committed' };
   if (fields.name === 'CommitRolledBackError') return { disposition: 'rejected', kind: 'PROVIDER_REJECTION', message: 'PostgreSQL rolled back the transaction at COMMIT' };
   if (phase === 'connect') {
-    if (['UNABLE_TO_VERIFY_LEAF_SIGNATURE', 'SELF_SIGNED_CERT_IN_CHAIN', 'DEPTH_ZERO_SELF_SIGNED_CERT', 'CERT_HAS_EXPIRED', 'ERR_TLS_CERT_ALTNAME_INVALID'].includes(code)) return { disposition: 'rejected', kind: 'AUTHENTICATION', message: 'the PostgreSQL server certificate failed sslMode verification' };
+    if (['UNABLE_TO_VERIFY_LEAF_SIGNATURE', 'SELF_SIGNED_CERT_IN_CHAIN', 'DEPTH_ZERO_SELF_SIGNED_CERT', 'CERT_HAS_EXPIRED', 'ERR_TLS_CERT_ALTNAME_INVALID', 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY', 'UNABLE_TO_GET_ISSUER_CERT', 'CERT_NOT_YET_VALID', 'CERT_UNTRUSTED', 'CERT_REVOKED', 'HOSTNAME_MISMATCH'].includes(code)) return { disposition: 'rejected', kind: 'AUTHENTICATION', message: 'the PostgreSQL server certificate failed sslMode verification' };
     if (code === 'ENOTFOUND' || code === 'EAI_NONAME') return { disposition: 'rejected', kind: 'NOT_FOUND', message: 'the PostgreSQL host name does not resolve' };
     if (fields.message === 'The server does not support SSL connections') return { disposition: 'rejected', kind: 'PROVIDER_REJECTION', message: 'the PostgreSQL server does not accept TLS, which sslMode requires' };
     return { disposition: 'retry', kind: 'AVAILABILITY', message: 'PostgreSQL is unreachable or did not finish connecting in time' };

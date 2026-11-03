@@ -15,10 +15,15 @@ The TypeScript configuration uses milliseconds for `connectTimeoutMs` and
 `statementTimeoutMs`. Its other fields follow the connector manifest. Keep SQL
 in application source and bind only values as positional parameters. Decimal
 and `int8` result values are strings, preserving precision beyond JavaScript's
-safe integer range. A `RETURNING` result exceeding `maxRows` or
+safe integer range. `timestamptz` values retain PostgreSQL's fractional-second
+precision in UTC. JSON containing a number that JavaScript would rewrite or
+round selects `invalidResponse` and names the column instead of returning a
+lossy value. A `RETURNING` result exceeding `maxRows` or
 `maxResponseBytes` selects `limitExceeded` and rolls back. A connection loss
 after `COMMIT` is sent selects `uncertain`; inspect the database using the
-idempotency key before retrying a non-idempotent statement.
+idempotency key before retrying a non-idempotent statement. Each call is
+bounded by `connectTimeoutMs` plus `statementTimeoutMs` plus five seconds;
+a stalled COMMIT selects `uncertain`.
 
 Run local checks with `npm ci && npm run check`. The CI service-container job
 runs `npm run test:integration` against a real PostgreSQL database using the
