@@ -9,3 +9,19 @@ Every scenario must match the Go recording; `pending` is rejected. The union of 
 The Python and TypeScript runners compare requests and production Dex SDK codec outputs by exact equality. SDK field defaults determine omission; the runners do not re-encode values by hand. They invoke mutations through the production SDK path, which derives the idempotency key from the operation and Call ID; they never inject the fixture key. Gmail `requestBody.$rawMime` contains the full decoded MIME message, including subject, recipients, and body. The runners ignore transport-added `Host`, `Connection`, `Content-Length`, and `Accept-Encoding` headers, plus unmodified HTTP client defaults for `Accept` and `User-Agent`. `requestCount` includes requests that reached the provider, including read-backs and after-send failures; before-send failures consume an attempt but do not count as provider requests.
 
 Run `make test-connector-conformance CONNECTOR_DIRECTORY=connectors/<directory>` locally. `connectorctl generate --check` checks the generated Go test. CI runs all fixture-backed changed connectors and `python3 script/connector_conformance.py --mutation-self-test`, which corrupts representative branch, output (including a wrong nonempty list), request, MIME, idempotency, read 5xx, and pending fields to prove the runners reject them. New or edited Python and TypeScript packages require fixtures. Existing packages without fixtures warn `missing conformance (legacy)` on Go-only changes. Provider replay supplements the connector's runnable Dex example; it is not live-provider verification.
+
+## Database wire protocol exemptions
+
+The reviewed list in [`conformance/exemptions.yaml`](../exemptions.yaml) exempts
+PostgreSQL, MySQL, and SQL Server. Their native database drivers use wire
+protocols that the HTTP replay runner cannot record. The conformance gate
+reports `exempt (reason)` and rejects exemptions for HTTP connectors. Changing
+the list requires a tooling PR.
+
+Each exempt Python or TypeScript package needs unit tests for every Go-tested
+branch, Retry, uncertain decision, and driver-error classification. It also
+needs real database integration tests in CI service containers, using the Go
+connector's `live_test.go` scenarios and connection variables as the reference.
+Place Python integration tests in `python/tests/integration/` and TypeScript
+integration tests in `typescript/test/integration.test.ts`. Developers do not
+run Docker locally. CI selects only exempt connectors with a language package.

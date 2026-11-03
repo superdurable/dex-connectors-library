@@ -15,6 +15,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"golang.org/x/mod/modfile"
 )
 
 type connectorTestMatrix struct {
@@ -24,6 +26,15 @@ type connectorTestMatrix struct {
 type connectorTestShard struct {
 	Index int `json:"shard_index"`
 	Count int `json:"shard_count"`
+}
+
+type ciJobSelection struct {
+	Common           bool
+	SDKPython        bool
+	SDKTypeScript    bool
+	SDKGoIntegration bool
+	React            bool
+	Site             bool
 }
 
 func testMatrixCommand(args []string) error {
@@ -65,6 +76,13 @@ func testMatrixCommand(args []string) error {
 	if err != nil {
 		return err
 	}
+	var changedPaths []string
+	if *scope == "changed" {
+		changedPaths, err = changedRepositoryPaths(*catalogPath, *baseRevision, *headRevision)
+		if err != nil {
+			return err
+		}
+	}
 	if *shardIndex >= 0 {
 		for _, directory := range directoriesInConnectorTestShard(directories, *shardIndex, *shardCount) {
 			if _, err := fmt.Fprintln(os.Stdout, directory); err != nil {
@@ -82,7 +100,8 @@ func testMatrixCommand(args []string) error {
 		_, err = fmt.Fprintln(os.Stdout, string(encoded))
 		return err
 	}
-	contents := fmt.Sprintf("matrix=%s\ncount=%d\njobs=%d\n", encoded, len(directories), len(matrix.Include))
+	ciJobs := selectCIJobsForPaths(*scope, changedPaths)
+	contents := fmt.Sprintf("matrix=%s\ncount=%d\njobs=%d\ncommon=%t\nsdkpython=%t\nsdkts=%t\nsdkgo_integration=%t\nreact=%t\nsite=%t\n", encoded, len(directories), len(matrix.Include), ciJobs.Common, ciJobs.SDKPython, ciJobs.SDKTypeScript, ciJobs.SDKGoIntegration, ciJobs.React, ciJobs.Site)
 	if err := os.WriteFile(*githubOutputPath, []byte(contents), 0o644); err != nil {
 		return fmt.Errorf("write GitHub output: %w", err)
 	}
@@ -104,15 +123,14 @@ func selectConnectorTestDirectories(
 		return nil, fmt.Errorf("resolve connector catalog path: %w", err)
 	}
 	repositoryRoot := filepath.Dir(absoluteCatalogPath)
+	changedPaths, err := changedRepositoryPaths(catalogPath, baseRevision, headRevision)
+	if err != nil {
+		return nil, err
+	}
 	mergeBase, err := gitOutput(repositoryRoot, "merge-base", baseRevision, headRevision)
 	if err != nil {
 		return nil, err
 	}
-	changedOutput, err := gitOutput(repositoryRoot, "diff", "--name-only", "--no-renames", "-z", strings.TrimSpace(mergeBase), headRevision)
-	if err != nil {
-		return nil, err
-	}
-	changedPaths := splitNullTerminated(changedOutput)
 	relativeCatalogPath, err := filepath.Rel(repositoryRoot, absoluteCatalogPath)
 	if err != nil {
 		return nil, fmt.Errorf("resolve connector catalog path: %w", err)
@@ -122,7 +140,105 @@ func selectConnectorTestDirectories(
 	if err != nil {
 		return nil, err
 	}
-	return selectConnectorDirectoriesForPaths(catalogDirectories, previousDirectories, changedPaths, relativeCatalogPath), nil
+	selected := selectConnectorDirectoriesForPaths(catalogDirectories, previousDirectories, changedPaths, relativeCatalogPath)
+	return includeConnectorDependents(repositoryRoot, catalogDirectories, selected)
+}
+
+func changedRepositoryPaths(catalogPath string, baseRevision string, headRevision string) ([]string, error) {
+	absoluteCatalogPath, err := filepath.Abs(catalogPath)
+	if err != nil {
+		return nil, fmt.Errorf("resolve connector catalog path: %w", err)
+	}
+	repositoryRoot := filepath.Dir(absoluteCatalogPath)
+	mergeBase, err := gitOutput(repositoryRoot, "merge-base", baseRevision, headRevision)
+	if err != nil {
+		return nil, err
+	}
+	changedOutput, err := gitOutput(repositoryRoot, "diff", "--name-only", "--no-renames", "-z", strings.TrimSpace(mergeBase), headRevision)
+	if err != nil {
+		return nil, err
+	}
+	return splitNullTerminated(changedOutput), nil
+}
+
+func includeConnectorDependents(repositoryRoot string, catalogDirectories []string, selected []string) ([]string, error) {
+	if len(selected) == 0 || len(selected) == len(catalogDirectories) {
+		return selected, nil
+	}
+	selectedSet := make(map[string]bool, len(selected))
+	for _, directory := range selected {
+		selectedSet[directory] = true
+	}
+	for {
+		added := false
+		for _, directory := range catalogDirectories {
+			if selectedSet[directory] {
+				continue
+			}
+			contents, err := os.ReadFile(filepath.Join(repositoryRoot, directory, "go", "go.mod"))
+			if err != nil {
+				return nil, fmt.Errorf("read connector module %s: %w", directory, err)
+			}
+			module, err := modfile.Parse(directory+"/go/go.mod", contents, nil)
+			if err != nil {
+				return nil, fmt.Errorf("parse connector module %s: %w", directory, err)
+			}
+			for _, requirement := range module.Require {
+				for dependency := range selectedSet {
+					if requirement.Mod.Path == "github.com/superdurable/dex-connectors-library/"+dependency+"/go" {
+						selectedSet[directory] = true
+						added = true
+						break
+					}
+				}
+				if selectedSet[directory] {
+					break
+				}
+			}
+		}
+		if !added {
+			break
+		}
+	}
+	result := make([]string, 0, len(selectedSet))
+	for _, directory := range catalogDirectories {
+		if selectedSet[directory] {
+			result = append(result, directory)
+		}
+	}
+	return result, nil
+}
+
+func selectCIJobsForPaths(scope string, changedPaths []string) ciJobSelection {
+	if scope == "all" {
+		return ciJobSelection{true, true, true, true, true, true}
+	}
+	jobs := ciJobSelection{}
+	for _, path := range changedPaths {
+		switch {
+		case strings.HasPrefix(path, "sdkgo/"):
+			jobs.Common, jobs.SDKPython, jobs.SDKTypeScript, jobs.SDKGoIntegration = true, true, true, true
+		case strings.HasPrefix(path, "sdkpython/"):
+			jobs.SDKPython = true
+		case strings.HasPrefix(path, "sdkts/"):
+			jobs.SDKTypeScript = true
+		case strings.HasPrefix(path, "sdk/react/"):
+			jobs.React = true
+		case strings.HasPrefix(path, "site/") || path == "catalog.yaml":
+			jobs.Site = true
+		case strings.HasPrefix(path, "connectors/stripe/typescript/"):
+			jobs.Common = true
+		case strings.HasPrefix(path, "docs/") || strings.HasPrefix(path, ".cursor/") || strings.HasPrefix(path, ".codex/") || path == "README.md" || path == "AGENTS.md" || path == "CLAUDE.md":
+			jobs.Common = true
+		case strings.HasPrefix(path, "connectors/") || strings.HasPrefix(path, "conformance/connectors/") || strings.HasPrefix(path, "examples/"):
+			continue
+		case path == ".gitignore" || path == "CODE_OF_CONDUCT.md" || path == "CONTRIBUTING.md":
+			continue
+		default:
+			return ciJobSelection{true, true, true, true, true, true}
+		}
+	}
+	return jobs
 }
 
 func selectConnectorDirectoriesForPaths(

@@ -100,7 +100,7 @@ if (result.kind !== 'branch' || retryPolicy.totalDurationMs !== 3600000 || crede
 
 ## Provider HTTP
 
-The [complete runnable HTTP example](examples/providerhttp.mjs) sends one bounded request to a local server. `sendProviderRequest` resolves every address before connecting, pins the chosen address, and returns redirects without following them. `ProviderTransportError.isProvablyNotSent` is true only when no socket was assigned. A failure after socket assignment has an unknown dispatch outcome.
+The [complete runnable HTTP example](examples/providerhttp.mjs) sends one bounded request to a local server. `sendProviderRequest` resolves every address before connecting, pins the chosen address for IP literals and hostnames, and returns redirects without following them. `ProviderTransportError.isProvablyNotSent` is true for DNS, TCP connect, or TLS handshake failures before a usable connection could send HTTP bytes. Failures after connection or request writing have an unknown dispatch outcome, matching the Go connectors' DNS, connect, TLS, and obtained-connection trace.
 `BodyTooLargeError` preserves the response `status` and `headers`, so a caller can classify a 429 or 503 and its `Retry-After` even when the response body exceeds its limit.
 
 ```js
