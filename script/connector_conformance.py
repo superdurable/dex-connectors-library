@@ -295,6 +295,10 @@ def mutation_self_test(connectors: list[Path]) -> None:
         mime_scenario = next((item for item in original["scenarios"]
                               if any("$rawMime" in exchange.get("requestBody", {})
                                       for exchange in item["exchanges"])), None)
+        multipart_scenario = next((item for item in original["scenarios"]
+                                   if any(isinstance(exchange.get("requestBody"), dict)
+                                          and len(exchange["requestBody"].get("$multipart", [])) >= 2
+                                          for exchange in item["exchanges"])), None)
         keyed_scenario = next((item for item in original["scenarios"]
                                if item.get("idempotencyKey")), None)
         mutation_sources.extend((name, source) for name, source in (
@@ -303,6 +307,8 @@ def mutation_self_test(connectors: list[Path]) -> None:
             ("changed-form-value", form_scenario), ("read-5xx-classification", read_server_error),
             ("mime-subject", mime_scenario), ("mime-recipient", mime_scenario),
             ("mime-body", mime_scenario), ("random-idempotency-key", keyed_scenario),
+            ("multipart-part-name", multipart_scenario), ("multipart-part-body", multipart_scenario),
+            ("multipart-missing-part", multipart_scenario), ("multipart-part-order", multipart_scenario),
             ("wrong-nonempty-list", list_output_scenario),
         ) if source is not None)
         for mutation, source in mutation_sources:
@@ -355,6 +361,20 @@ def mutation_self_test(connectors: list[Path]) -> None:
                     exchange["requestBody"]["$rawMime"] = re.sub(r"To: [^\r\n]+", "To: " + marker, mime, count=1)
                 else:
                     exchange["requestBody"]["$rawMime"] = mime.replace("Update", marker, 1)
+            elif mutation.startswith("multipart-"):
+                exchange = next(exchange for exchange in changed["exchanges"]
+                                if isinstance(exchange.get("requestBody"), dict)
+                                and len(exchange["requestBody"].get("$multipart", [])) >= 2)
+                parts = exchange["requestBody"]["$multipart"]
+                if mutation == "multipart-part-name":
+                    part = next(part for part in parts if "Content-Disposition" in part["headers"])
+                    part["headers"]["Content-Disposition"][0] += "; name=wrong"
+                elif mutation == "multipart-part-body":
+                    parts[0]["bodyBase64"] = "d3Jvbmc="
+                elif mutation == "multipart-missing-part":
+                    parts.pop()
+                else:
+                    parts[0], parts[1] = parts[1], parts[0]
             elif mutation == "random-idempotency-key":
                 changed["idempotencyKey"] = "random-00000000-0000-4000-8000-000000000000"
             elif mutation == "pending-passing-go":
