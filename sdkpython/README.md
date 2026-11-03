@@ -157,10 +157,13 @@ and a declared lifetime refreshes it. The driver accepts
 omits `token_type`. A provider such as Slack that returns `bot` or `user` must
 declare grant `acceptedTokenTypes`. Refresh validation uses `requiredScopes`
 when declared, and a grant can override `exactScopes` or
-`acceptsMissingTokenType`. A response lacking `expires_in` is retryable unless
+`acceptsMissingTokenType`. `refresh.scopeSeparators` selects `whitespace`
+(the default) or `whitespaceAndComma` for both exact and all-scope checks.
+A response lacking `expires_in` is retryable unless
 the manifest declares `missingExpiry`. The default requires `Bearer`.
-Only an optional
-client secret field may send a public-client refresh request when blank.
+Only `refresh.allowsPublicClient: true` permits a public-client refresh request
+with a blank client secret; other blank secrets require reauthorization before
+any provider request.
 Missing grant material and declared terminal provider errors raise
 `ReauthorizationRequiredError`; transport, invalid response, and undeclared
 provider errors preserve the stored credential for retry. A response without

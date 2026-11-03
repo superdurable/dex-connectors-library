@@ -24,7 +24,6 @@ from . import (
     JWTBearerAssertion,
     MissingExpiryRule,
     TokenEndpoint,
-    has_exact_scopes,
     is_refresh_required,
     parse_rsa_private_key_pem,
     sign_jwt_bearer_assertion,
@@ -114,11 +113,13 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
             required_scopes = self._scopes(grant["scopes"])
             if grant["kind"] == "refresh":
                 required_scopes = [scope for scope in required_scopes if scope != "offline_access"]
+            separators = r"[ ,]+" if grant["scope_separators"] == "whitespaceAndComma" else r"\s+"
+            granted_scopes = set(re.split(separators, token.scope)) - {""}
+            required_scope_set = set(required_scopes)
             has_wrong_scopes = (
-                not has_exact_scopes(token.scope, tuple(required_scopes))
-                if grant["exact_scopes"]
-                else bool(token.scope.strip())
-                and not set(required_scopes) <= set(token.scope.split())
+                (bool(token.scope.strip()) or grant["exact_scopes"])
+                and (not required_scope_set <= granted_scopes
+                     or (grant["exact_scopes"] and granted_scopes != required_scope_set))
             )
             if has_wrong_scopes:
                 raise ReauthorizationRequiredError()
@@ -192,9 +193,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                     "encoding": oauth.get("tokenRequestEncoding", "form"),
                     "client_id": oauth["clientIDCredential"],
                     "client_secret": oauth["clientSecretCredential"],
-                    "client_secret_optional": not self._is_required_field(
-                        method, oauth["clientSecretCredential"]
-                    ),
+                    "allows_public_client": refresh.get("allowsPublicClient", False),
                     "refresh_field": grant["refreshTokenCredential"],
                     "mappings": grant["credentialMappings"],
                     "scopes": (oauth.get("userScopes", [])
@@ -204,6 +203,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                     "accepted_token_types": grant.get("acceptedTokenTypes")
                     or refresh.get("acceptedTokenTypes") or ["Bearer"],
                     "exact_scopes": grant.get("exactScopes", refresh.get("exactScopes", False)),
+                    "scope_separators": refresh.get("scopeSeparators", "whitespace"),
                     "accepts_missing_token_type": grant.get(
                         "acceptsMissingTokenType", refresh.get("acceptsMissingTokenType", False)
                     ),
@@ -231,6 +231,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                     "terminal_codes": client.get("terminalErrorCodes") or ["invalid_client"],
                     "accepted_token_types": client.get("acceptedTokenTypes") or ["Bearer"],
                     "exact_scopes": False,
+                    "scope_separators": "whitespace",
                     "accepts_missing_token_type": client.get("acceptsMissingTokenType", False),
                     "accepts_missing_expires_in": "missingExpiry" in client,
                     "missing_expiry": (client.get("missingExpiry") or {}).get("lifetime", "")
@@ -254,6 +255,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                     "terminal_codes": bearer.get("terminalErrorCodes") or ["invalid_grant"],
                     "accepted_token_types": bearer.get("acceptedTokenTypes") or ["Bearer"],
                     "exact_scopes": False,
+                    "scope_separators": "whitespace",
                     "accepts_missing_token_type": bearer.get("acceptsMissingTokenType", False),
                     "accepts_missing_expires_in": "missingExpiry" in bearer,
                     "missing_expiry": (bearer.get("missingExpiry") or {}).get("lifetime", "")
@@ -320,8 +322,10 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                 raise ReauthorizationRequiredError(error) from error
             return await endpoint.exchange_jwt_bearer_assertion(signed), list(grant.get("copies", []))
         secret = self._credential_value(credentials, grant["client_secret"])
+        if not secret and grant["kind"] == "refresh" and not grant["allows_public_client"]:
+            raise ReauthorizationRequiredError()
         method = self._resolve_source(grant["authentication"], credentials, key)
-        if not secret and grant["kind"] == "refresh" and grant["client_secret_optional"]:
+        if not secret and grant["kind"] == "refresh" and grant["allows_public_client"]:
             method = "none"
         client = ClientCredentials(
             self._credential_value(credentials, grant["client_id"]),
@@ -345,12 +349,6 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
             if field.get("name") == name:
                 return str(field.get("type")) == "secretString"
         return False
-
-    def _is_required_field(self, method: Mapping[str, Any], name: str) -> bool:
-        for field in method.get("fields") or []:
-            if field.get("name") == name:
-                return bool(field.get("required", False))
-        return True
 
     def _validate_grant(self, grant: Mapping[str, Any]) -> None:
         for mapping in grant["mappings"]:
@@ -435,10 +433,7 @@ def _parse_duration(value: str) -> timedelta:
     maximum = 2**63 if sign < 0 else 2**63 - 1
     if position != len(value) or total_nanoseconds > maximum:
         raise ValueError("manifest grant duration is invalid")
-    microseconds = total_nanoseconds // 1000
-    if total_nanoseconds and not microseconds:
-        microseconds = 1
-    return sign * timedelta(microseconds=microseconds)
+    return sign * timedelta(microseconds=total_nanoseconds // 1000)
 
 
 __all__ = ["ManifestCredentialRefreshDriver"]

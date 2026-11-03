@@ -100,6 +100,7 @@
     "protocol": "oauth2",
     "tokenEndpointAuthMethod": "client_secret_basic",
     "refresh": {
+      "scopeSeparators": "whitespaceAndComma",
       "terminalErrorCodes": [
         "invalid_refresh_token",
         "bad_client_secret",
