@@ -496,9 +496,7 @@ def render_config():
         if auth_methods:
             lines.append(f"    auth_method_id: str = {quoted(spec['auth']['defaultMethod'])}")
         for field_info in credential_fields:
-            field_type = (
-                "SecretString" if field_info["type"] == "secretString" else "str"
-            )
+            field_type = {"secretString": "SecretString", "integer": "int", "duration": "int", "boolean": "bool", "stringList": "list[str]", "stringMap": "dict[str, str]"}.get(field_info["type"], "str")
             if auth_methods:
                 lines.append(f"    {snake(field_info['name'])}: {field_type} | None = None")
             else:
@@ -663,6 +661,7 @@ def render_connection():
         "# SPDX-License-Identifier: MIT",
         "",
         "from typing import Any",
+        *(["from urllib.parse import urlsplit"] if any(field_info["type"] == "url" for field_info in auth_fields()) else []),
         "",
         "import httpx",
         "from dex_connectors.sdk import "
@@ -783,7 +782,37 @@ def render_connection():
             "",
             "    async def resolve(self, call: Call) -> Credentials:",
             "        material = await self.project.resolve_credential(self.key, str(call.id))",
+            "        if not isinstance(material, dict):",
+            f"            raise ValueError({quoted(connection_label + ' stored credential does not match the connector credential fields')})",
         ]
+        allowed = [field_info["name"] for field_info in credential_fields]
+        if auth_methods:
+            allowed.append("auth_method")
+        needs_shared_validation = any(
+            (field_info["name"] in payload["sharedRequiredFields"][method["id"]]) != field_info["required"]
+            for method in (auth_methods or [{"id": "", "fields": credential_fields}])
+            for field_info in method["fields"]
+        )
+        lines += [
+            f"        if set(material) - set({tuple(allowed)!r}):",
+            f"            raise ValueError({quoted(connection_label + ' stored credential does not match the connector credential fields')})",
+        ]
+        if needs_shared_validation:
+            lines.append("        is_shared = bool(self.project.shared_connections and self.key in self.project.shared_connections)")
+        for field_info in credential_fields:
+            name = snake(field_info["name"])
+            field_type = field_info["type"]
+            check = f"isinstance({name}, str)" if field_type in ("string", "secretString", "enum", "url") else (
+                f"type({name}) is int" if field_type in ("integer", "duration") else
+                f"type({name}) is bool" if field_type == "boolean" else
+                f"isinstance({name}, list) and all(isinstance(item, str) for item in {name})" if field_type == "stringList" else
+                f"isinstance({name}, dict) and all(isinstance(key, str) and isinstance(item, str) for key, item in {name}.items())"
+            )
+            lines += [
+                f"        {name} = material.get({quoted(field_info['name'])})",
+                f"        if {name} is not None and not ({check}):",
+                f"            raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' has an invalid type')})",
+            ]
         if auth_methods:
             lines += [
                 "        selected_method = material.get('auth_method')",
@@ -799,16 +828,19 @@ def render_connection():
                 lines.append(("        if" if index == 0 else "        elif") + f" method == {quoted(method['id'])}:")
                 for field_info in method["fields"]:
                     name = snake(field_info["name"])
-                    lines += [
-                        f"            {name} = material.get({quoted(field_info['name'])})",
-                        f"            if {name} is not None and not isinstance({name}, str):",
-                        f"                raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' has an invalid type')})",
-                    ]
-                    if field_info["required"]:
+                    is_shared_required = field_info["name"] in payload["sharedRequiredFields"][method["id"]]
+                    if field_info["required"] or is_shared_required:
+                        requirement = f"not {name}"
+                        if field_info["required"] != is_shared_required:
+                            requirement += " and " + ("is_shared" if is_shared_required else "not is_shared")
                         lines += [
-                            f"            if not {name}:",
+                            f"            if {requirement}:",
                             f"                raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' is required')})",
                         ]
+                    if field_info["type"] == "enum":
+                        lines += [f"            if {name} and {name} not in {tuple(field_info['enum'])!r}:", f"                raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' is invalid')})"]
+                    if field_info["type"] == "url":
+                        lines += [f"            if {name} and (not urlsplit({name}).scheme or not urlsplit({name}).hostname):", f"                raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' must be an absolute URL')})"]
                     expression = f"SecretString({name})" if field_info["type"] == "secretString" else name
                     lines.append(f"            if {name}:")
                     lines.append(f"                values[{quoted(name)}] = {expression}")
@@ -820,11 +852,16 @@ def render_connection():
         else:
             for field_info in credential_fields:
                 name = snake(field_info["name"])
-                lines += [
-                    f"        {name} = material.get({quoted(field_info['name'])})",
-                    f"        if not isinstance({name}, str) or not {name}:",
-                    f"            raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' is required')})",
-                ]
+                is_shared_required = field_info["name"] in payload["sharedRequiredFields"][""]
+                if field_info["required"] or is_shared_required:
+                    requirement = f"not {name}"
+                    if field_info["required"] != is_shared_required:
+                        requirement += " and " + ("is_shared" if is_shared_required else "not is_shared")
+                    lines += [f"        if {requirement}:", f"            raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' is required')})"]
+                if field_info["type"] == "enum":
+                    lines += [f"        if {name} and {name} not in {tuple(field_info['enum'])!r}:", f"            raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' is invalid')})"]
+                if field_info["type"] == "url":
+                    lines += [f"        if {name} and (not urlsplit({name}).scheme or not urlsplit({name}).hostname):", f"            raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' must be an absolute URL')})"]
             values = [
                 f"SecretString({snake(field_info['name'])})" if field_info["type"] == "secretString" else snake(field_info["name"])
                 for field_info in credential_fields

@@ -31,6 +31,17 @@ func TestTypeScriptMultiAuthModelsGolden(t *testing.T) {
 	}
 	manifest.Spec.Auth.Methods[0].Configuration = &schema.Configuration{Fields: []schema.Field{{Name: "workspaceId", GoName: "WorkspaceID", Type: "string", Description: "Workspace for the selected method.", Required: true}}}
 	manifest.Spec.Auth.Methods[1].Fields = append(manifest.Spec.Auth.Methods[1].Fields, schema.Field{Name: "session_note", GoName: "SessionNote", Type: "string", Description: "Optional session note.", Required: false})
+	manifest.Spec.Auth.Methods[1].Fields = append(manifest.Spec.Auth.Methods[1].Fields, schema.Field{Name: "environment", GoName: "Environment", Type: "enum", Enum: []string{"production", "sandbox"}, Description: "Login environment.", Required: false}, schema.Field{Name: "login_url", GoName: "LoginURL", Type: "url", Description: "Login URL.", Required: false})
+	grantFile, err := os.Open(filepath.Join("..", "..", "schema", "testdata", "token-grants.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer grantFile.Close()
+	grantManifest, err := schema.Decode(grantFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest.Spec.Auth.Methods = append(manifest.Spec.Auth.Methods, grantManifest.Spec.Auth.Methods[2])
 	got := append(bytes.TrimRight(generateTypeScriptModels(manifest, nil), "\n"), '\n')
 	goldenPath := filepath.Join("testdata", "multi-auth-models.ts")
 	if os.Getenv("UPDATE_MULTI_AUTH_GOLDEN") == "1" {
@@ -74,14 +85,16 @@ func TestTypeScriptMultiAuthModelsGolden(t *testing.T) {
 
 const multiAuthTypeScriptRuntimeTest = `
 import assert from 'node:assert/strict';
-import { ConfigSchema, decodeCredentials } from './models.js';
+import { ConfigSchema, decodeCredentials, decodeSharedCredentials } from './models.js';
 assert.deepEqual(ConfigSchema.parse({ accountId: 'account' }), { accountId: 'account' });
 assert.equal(ConfigSchema.parse({ accountId: 'account', region: 'west', workspaceId: 'workspace' }).region, 'west');
 assert.throws(() => ConfigSchema.parse({}));
-const oauth = decodeCredentials({ auth_method: null, oauth_client_id: 'id', oauth_client_secret: 'secret', access_token: 'access', refresh_token: 'refresh', service_account_key: 17 });
+const oauth = decodeCredentials({ auth_method: null, oauth_client_id: 'id', oauth_client_secret: 'secret', access_token: 'access', refresh_token: 'refresh' });
 assert.equal(oauth.authMethodId, 'google-oauth');
 assert.equal(oauth.serviceAccountKey, undefined);
-const service = decodeCredentials({ auth_method: 'workspace-service-account', service_account_key: 'key', delegated_user: 'user', session_note: 'note', oauth_client_id: 17 });
+assert.equal(decodeSharedCredentials({ oauth_client_id: 'id', access_token: 'access' }).accessToken?.reveal(), 'access');
+assert.equal(decodeSharedCredentials({ auth_method: 'app-only', tenant_id: 'tenant', client_id: 'id', access_token: 'access' }).accessToken?.reveal(), 'access');
+const service = decodeCredentials({ auth_method: 'workspace-service-account', service_account_key: 'key', delegated_user: 'user', session_note: 'note', environment: 'sandbox', login_url: 'https://example.com/login', oauth_client_id: 'other' });
 assert.equal(service.authMethodId, 'workspace-service-account');
 assert.equal(service.serviceAccountKey?.reveal(), 'key');
 assert.equal(service.sessionNote, 'note');
@@ -91,6 +104,13 @@ assert.throws(() => decodeCredentials({ auth_method: 'workspace-service-account'
 assert.throws(() => decodeCredentials({ auth_method: 'workspace-service-account', delegated_user: 'user' }));
 assert.throws(() => decodeCredentials({ auth_method: 'unknown' }));
 assert.throws(() => decodeCredentials({ auth_method: 0 }));
+assert.throws(() => decodeCredentials({ auth_method: 'google-oauth', oauth_client_id: 'id', oauth_client_secret: 'secret', access_token: 'access', refresh_token: 'refresh', service_account_key: 17 }), /credential service_account_key has an invalid type/);
+assert.throws(() => decodeCredentials({ auth_method: 'google-oauth', oauth_client_id: 'id', oauth_client_secret: 'secret', access_token: 'access', refresh_token: 'refresh', unknown: 'value' }), /stored credential does not match/);
+assert.throws(() => decodeCredentials({ auth_method: 'workspace-service-account', service_account_key: 'key', delegated_user: 'user', environment: 'staging' }), /credential environment is invalid/);
+assert.throws(() => decodeCredentials({ auth_method: 'workspace-service-account', service_account_key: 'key', delegated_user: 'user', login_url: 'relative' }), /credential login_url must be an absolute URL/);
+assert.throws(() => decodeSharedCredentials({ oauth_client_id: 'id' }), /credential access_token is required/);
+assert.throws(() => decodeSharedCredentials({ access_token: 'access' }), /credential oauth_client_id is required/);
+assert.throws(() => decodeSharedCredentials({ auth_method: 'app-only', tenant_id: 'tenant', client_id: 'id' }), /credential access_token is required/);
 `
 
 func TestTypeScriptModelsKeepRequiredFieldsAndLimitLazyToCycles(t *testing.T) {

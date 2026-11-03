@@ -28,5 +28,10 @@ class Credentials:
     service_account_key: SecretString | None = None
     delegated_user: str | None = None
     session_note: str | None = None
+    environment: str | None = None
+    login_url: str | None = None
+    tenant_id: str | None = None
+    client_id: str | None = None
+    client_secret: SecretString | None = None
 
 setattr(Credentials, '__module__', 'dex_connectors.multi_auth_fixture.client')

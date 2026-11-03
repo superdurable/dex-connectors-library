@@ -60,6 +60,12 @@ func TestPythonCodegenMultiAuthGolden(t *testing.T) {
 	}
 	manifest.Spec.Auth.Methods[0].Configuration = &schema.Configuration{Fields: []schema.Field{{Name: "workspaceId", GoName: "WorkspaceID", Type: "string", Description: "Workspace for the selected method.", Required: true}}}
 	manifest.Spec.Auth.Methods[1].Fields = append(manifest.Spec.Auth.Methods[1].Fields, schema.Field{Name: "session_note", GoName: "SessionNote", Type: "string", Description: "Optional session note.", Required: false})
+	manifest.Spec.Auth.Methods[1].Fields = append(manifest.Spec.Auth.Methods[1].Fields, schema.Field{Name: "environment", GoName: "Environment", Type: "enum", Enum: []string{"production", "sandbox"}, Description: "Login environment.", Required: false}, schema.Field{Name: "login_url", GoName: "LoginURL", Type: "url", Description: "Login URL.", Required: false})
+	grantManifest, err := load(filepath.Join("..", "..", "schema", "testdata", "token-grants.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest.Spec.Auth.Methods = append(manifest.Spec.Auth.Methods, grantManifest.Spec.Auth.Methods[2])
 	generated, err := renderPythonCodegen(pythonCodegenInput{Manifest: manifest, PackageName: "multi_auth_fixture", MockPackageName: "multiauthfixturemock"})
 	if err != nil {
 		t.Fatal(err)
@@ -97,6 +103,7 @@ const multiAuthPythonRuntimeTest = `
 import ast, asyncio, json, sys
 from dataclasses import dataclass
 from typing import Any
+from urllib.parse import urlsplit
 sources = json.load(sys.stdin)
 config_tree = ast.parse(sources['config.py'])
 config_class = next(node for node in config_tree.body if isinstance(node, ast.ClassDef) and node.name == 'Config')
@@ -114,20 +121,25 @@ class Credentials:
 class Config:
     def __init__(self, **values): self.__dict__.update(values)
 class Project:
-    def __init__(self, values): self.values = values
+    def __init__(self, values, shared=False): self.values = values; self.shared_connections = {key: True} if shared else {}
     async def resolve_credential(self, key, call_id): return self.values
-namespace = {'Any': Any, 'Call': object, 'LoadedProject': object, 'ConnectionKey': object, 'Credentials': Credentials, 'Config': Config, 'SecretString': SecretString}
+namespace = {'Any': Any, 'Call': object, 'LoadedProject': object, 'ConnectionKey': object, 'Credentials': Credentials, 'Config': Config, 'SecretString': SecretString, 'urlsplit': urlsplit}
 exec(compile(ast.Module(body=[credential_source, config_decoder], type_ignores=[]), '<generated>', 'exec'), namespace)
 Source = namespace['_ProjectCredentialSource']
 assert namespace['_decode_config']({'accountId':'account'}).workspace_id == ''
 assert namespace['_decode_config']({'accountId':'account', 'workspaceId':'workspace'}).workspace_id == 'workspace'
 class Call:
     id = 'call'
-def resolve(values):
-    return asyncio.run(Source(Project(values), object()).resolve(Call()))
-default = resolve({'auth_method':None, 'oauth_client_id':'id', 'oauth_client_secret':'secret', 'access_token':'access', 'refresh_token':'refresh', 'service_account_key':17})
+key = object()
+def resolve(values, shared=False):
+    return asyncio.run(Source(Project(values, shared), key).resolve(Call()))
+default = resolve({'auth_method':None, 'oauth_client_id':'id', 'oauth_client_secret':'secret', 'access_token':'access', 'refresh_token':'refresh'})
 assert default.auth_method_id == 'google-oauth' and not hasattr(default, 'service_account_key')
-alternate = resolve({'auth_method':'workspace-service-account', 'service_account_key':'key', 'delegated_user':'user', 'session_note':'note', 'oauth_client_id':17})
+shared = resolve({'oauth_client_id':'id', 'access_token':'access'}, shared=True)
+assert shared.access_token.value == 'access' and not hasattr(shared, 'oauth_client_secret')
+app_only = resolve({'auth_method':'app-only', 'tenant_id':'tenant', 'client_id':'id', 'access_token':'access'}, shared=True)
+assert app_only.access_token.value == 'access' and not hasattr(app_only, 'client_secret')
+alternate = resolve({'auth_method':'workspace-service-account', 'service_account_key':'key', 'delegated_user':'user', 'session_note':'note', 'environment':'sandbox', 'login_url':'https://example.com/login', 'oauth_client_id':'other'})
 assert alternate.auth_method_id == 'workspace-service-account' and alternate.service_account_key.value == 'key'
 assert alternate.session_note == 'note'
 assert not hasattr(alternate, 'oauth_client_id')
@@ -137,10 +149,21 @@ for values, message in (
     ({'auth_method':'workspace-service-account', 'service_account_key':None, 'delegated_user':'user'}, 'credential service_account_key is required'),
     ({'auth_method':'unknown'}, 'credential auth_method is invalid'),
     ({'auth_method':0}, 'credential auth_method is invalid'),
+    ({'auth_method':'google-oauth', 'oauth_client_id':'id', 'access_token':'access', 'oauth_client_secret':'secret', 'refresh_token':'refresh', 'service_account_key':17}, 'credential service_account_key has an invalid type'),
+    ({'auth_method':'google-oauth', 'oauth_client_id':'id', 'access_token':'access', 'oauth_client_secret':'secret', 'refresh_token':'refresh', 'unknown':'value'}, 'stored credential does not match'),
+    ({'auth_method':'workspace-service-account', 'service_account_key':'key', 'delegated_user':'user', 'environment':'staging'}, 'credential environment is invalid'),
+    ({'auth_method':'workspace-service-account', 'service_account_key':'key', 'delegated_user':'user', 'login_url':'relative'}, 'credential login_url must be an absolute URL'),
 ):
     try: resolve(values)
     except ValueError as error: assert message in str(error), str(error)
     else: raise AssertionError('invalid selected method was accepted')
+for values in ({'oauth_client_id':'id'}, {'access_token':'access'}):
+    try: resolve(values, shared=True)
+    except ValueError: pass
+    else: raise AssertionError('incomplete shared credential was accepted')
+try: resolve({'auth_method':'app-only', 'tenant_id':'tenant', 'client_id':'id'}, shared=True)
+except ValueError as error: assert 'credential access_token is required' in str(error)
+else: raise AssertionError('shared minted token was optional')
 `
 
 func TestPythonCodegenKeepsMockScenariosDistinctFromBranchHelpers(t *testing.T) {

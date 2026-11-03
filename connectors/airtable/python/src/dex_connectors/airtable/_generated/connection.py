@@ -95,8 +95,14 @@ class _ProjectCredentialSource:
 
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
+        if not isinstance(material, dict):
+            raise ValueError("Airtable stored credential does not match the connector credential fields")
+        if set(material) - set(('personal_access_token',)):
+            raise ValueError("Airtable stored credential does not match the connector credential fields")
         personal_access_token = material.get("personal_access_token")
-        if not isinstance(personal_access_token, str) or not personal_access_token:
+        if personal_access_token is not None and not (isinstance(personal_access_token, str)):
+            raise ValueError("Airtable credential personal_access_token has an invalid type")
+        if not personal_access_token:
             raise ValueError("Airtable credential personal_access_token is required")
         return Credentials(SecretString(personal_access_token))
 

@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"regexp"
 
+	"github.com/superdurable/dex-connectors-library/internal/codegen"
 	"github.com/superdurable/dex-connectors-library/internal/codegen/gomodel"
 	"github.com/superdurable/dex-connectors-library/schema"
 )
@@ -21,11 +22,12 @@ import (
 var pythonCodegenSource string
 
 type pythonCodegenInput struct {
-	Manifest        schema.Manifest   `json:"manifest"`
-	Models          []gomodel.Model   `json:"models"`
-	PackageName     string            `json:"packageName"`
-	MockPackageName string            `json:"mockPackageName"`
-	ModelAliases    map[string]string `json:"modelAliases"`
+	Manifest             schema.Manifest     `json:"manifest"`
+	Models               []gomodel.Model     `json:"models"`
+	PackageName          string              `json:"packageName"`
+	MockPackageName      string              `json:"mockPackageName"`
+	ModelAliases         map[string]string   `json:"modelAliases"`
+	SharedRequiredFields map[string][]string `json:"sharedRequiredFields"`
 }
 
 var pythonModelAliasPattern = regexp.MustCompile(`(?m)^# connectorctl: model-alias ([A-Za-z_][A-Za-z_0-9]*)=([A-Za-z_][A-Za-z_0-9]*)$`)
@@ -134,6 +136,10 @@ func publishedPythonModelNames(path string) ([]string, error) {
 }
 
 func renderPythonCodegen(input pythonCodegenInput) (map[string]string, error) {
+	input.SharedRequiredFields = make(map[string][]string)
+	for _, method := range input.Manifest.Spec.Auth.AuthMethods() {
+		input.SharedRequiredFields[method.ID] = codegen.SharedRequiredCredentialFields(method)
+	}
 	payload, err := json.Marshal(input)
 	if err != nil {
 		return nil, fmt.Errorf("encode Python generation input: %w", err)

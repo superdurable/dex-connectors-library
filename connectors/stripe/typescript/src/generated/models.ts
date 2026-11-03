@@ -40,19 +40,20 @@ export interface Credentials {
 export function decodeCredentials(value: unknown): Credentials {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
+  const allowed = new Set(["auth_method", "secret_key", "webhook_secret"]);
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
+  if (fields["secret_key"] != null && !(typeof fields["secret_key"] === 'string')) throw new TypeError("credential secret_key has an invalid type");
+  if (fields["webhook_secret"] != null && !(typeof fields["webhook_secret"] === 'string')) throw new TypeError("credential webhook_secret has an invalid type");
   const selectedMethod = fields['auth_method'] ?? '';
   if (typeof selectedMethod !== 'string') throw new TypeError('credential auth_method is invalid');
   const method = selectedMethod || "api-key-with-webhook";
   const credentials = { authMethodId: method } as Credentials;
   if (method === "api-key-with-webhook") {
-    if (fields["secret_key"] != null && typeof fields["secret_key"] !== 'string') throw new TypeError("credential secret_key has an invalid type");
     if (!fields["secret_key"]) throw new TypeError("credential secret_key is required");
     if (fields["secret_key"]) credentials.secretKey = new SecretString(fields["secret_key"] as string);
-    if (fields["webhook_secret"] != null && typeof fields["webhook_secret"] !== 'string') throw new TypeError("credential webhook_secret has an invalid type");
     if (!fields["webhook_secret"]) throw new TypeError("credential webhook_secret is required");
     if (fields["webhook_secret"]) credentials.webhookSecret = new SecretString(fields["webhook_secret"] as string);
   } else if (method === "api-key-only") {
-    if (fields["secret_key"] != null && typeof fields["secret_key"] !== 'string') throw new TypeError("credential secret_key has an invalid type");
     if (!fields["secret_key"]) throw new TypeError("credential secret_key is required");
     if (fields["secret_key"]) credentials.secretKey = new SecretString(fields["secret_key"] as string);
   } else {
