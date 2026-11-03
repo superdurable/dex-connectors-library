@@ -20,6 +20,22 @@ it('escapes a photo ID like Go url.PathEscape', async () => {
   expect(requestedURL).toContain('/photos/a%20b%21$%27%28%29%2A+%2C%3B=:@~');
 });
 
+it('escapes search parameters like Go url.Values.Encode', async () => {
+  let requestedURL = '';
+  const client = new Client({}, credentials, { send: async request => { requestedURL = request.url; return { status: 200, headers: {}, body: Buffer.from('{"total":0,"total_pages":0,"results":[]}') }; } });
+  const result = await client.searchPhotos().invoke(call('searchPhotos'), { query: "a*b~c !'()", page: 2, perPage: 10 });
+  expect(branch(result)).toBe('searched');
+  expect(requestedURL).toBe('https://api.unsplash.com/search/photos?page=2&per_page=10&query=a%2Ab~c+%21%27%28%29');
+});
+
+it.each(['https:///x', 'https:example.com/a'])('rejects a photo URL without a Go URL host: %s', async htmlURL => {
+  const photo = { id: 'office-1', links: { html: htmlURL }, urls: { regular: 'https://images.unsplash.com/office-1' }, user: { name: 'Photographer', links: { html: 'https://unsplash.com/@photographer' } } };
+  const client = new Client({}, credentials, { send: async () => ({ status: 200, headers: {}, body: Buffer.from(JSON.stringify(photo)) }) });
+  const result = await client.getPhoto().invoke(call('getPhoto'), { id: 'office-1' });
+  expect(branch(result)).toBe('invalidResponse');
+  expect(result.failure?.kind).toBe('PROTOCOL');
+});
+
 it('rejects wrong-typed provider fields as an invalid response', async () => {
   const client = new Client({}, credentials, { send: async () => ({ status: 200, headers: {}, body: Buffer.from('{"total":1,"total_pages":1,"results":[{"id":42}]}') }) });
   const result = await client.searchPhotos().invoke(call('searchPhotos'), { query: 'office' });

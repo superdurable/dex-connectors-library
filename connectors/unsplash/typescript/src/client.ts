@@ -79,11 +79,12 @@ export class SearchPhotosOperation implements Query<SearchPhotosInput, PhotoPage
   /** Validate, request, and classify one search attempt. */
   async invoke(call: Call, input: SearchPhotosInput): Promise<QueryAttempt<PhotoPage>> {
     if (!input.query?.trim() || !validCount(input.page, 0, Infinity) || !validCount(input.perPage, 0, 30)) return failed('searchPhotos', 'defect', emptyPage, 'VALIDATION', 'query and page size must be valid');
-    const query = new URLSearchParams();
-    if (input.page) query.set('page', String(input.page));
-    if (input.perPage) query.set('per_page', String(input.perPage));
-    query.set('query', input.query);
-    const exchange = await this.client.get(call, 'searchPhotos', `/search/photos?${query.toString()}`);
+    const query = [
+      ...(input.page ? [`page=${input.page}`] : []),
+      ...(input.perPage ? [`per_page=${input.perPage}`] : []),
+      `query=${encodeGoQueryValue(input.query)}`,
+    ].join('&');
+    const exchange = await this.client.get(call, 'searchPhotos', `/search/photos?${query}`);
     if ('retry' in exchange) return newQueryRetry(exchange.failure, exchange.retryAfterMs);
     if ('branch' in exchange) return newQueryBranch(exchange.branch, emptyPage, {}, exchange.failure);
     const { status, body } = exchange.response;
@@ -124,7 +125,7 @@ function goInteger(value: unknown): number { if (value === undefined || value ==
 function isObject(value: unknown): value is Record<string, unknown> { return value !== null && typeof value === 'object' && !Array.isArray(value); }
 function goString(value: unknown): string { if (value === undefined || value === null) return ''; if (typeof value !== 'string') throw new Error('string expected'); return value; }
 function nested(value: unknown): Record<string, unknown> { if (value === undefined || value === null) return {}; if (!isObject(value)) throw new Error('object expected'); return value; }
-function httpsURL(value: string): boolean { try { const parsed = new URL(value); return parsed.protocol === 'https:' && !!parsed.host; } catch { return false; } }
+function httpsURL(value: string): boolean { if (!/^https:\/\/[^/?#]+/.test(value)) return false; try { const parsed = new URL(value); return parsed.protocol === 'https:' && !!parsed.host; } catch { return false; } }
 function decodePhoto(value: unknown): Photo {
   const wire = nested(value), urls = nested(wire.urls), links = nested(wire.links), user = nested(wire.user), userLinks = nested(user.links);
   const description = wire.description === null || wire.description === undefined ? undefined : goString(wire.description);
@@ -134,4 +135,5 @@ function decodePhoto(value: unknown): Photo {
   return photo;
 }
 function rejectionKind(status: number): Failure['kind'] { return status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : 'PROVIDER_REJECTION'; }
+function encodeGoQueryValue(value: string): string { return encodeURIComponent(value).replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`).replace(/%20/g, '+'); }
 function encodeGoPath(value: string): string { return encodeURIComponent(value).replace(/[!'()*,;?]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`).replace(/%24|%26|%2B|%3D|%3A|%40/g, code => String.fromCharCode(parseInt(code.slice(1), 16))); }
