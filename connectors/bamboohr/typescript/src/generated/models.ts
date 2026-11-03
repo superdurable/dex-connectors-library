@@ -3,7 +3,8 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
-import type { CredentialProvider, SecretString } from '@superdurable/connectors-sdk';
+import { SecretString } from '@superdurable/connectors-sdk';
+import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
@@ -23,6 +24,19 @@ export const ConfigSchema = z.object({
 export interface Credentials {
   /** Secret BambooHR API key of the user the connector acts as. Sign in at https://{companyDomain}.bamboohr.com, select your name in the lower left-hand corner of any page, and choose API Keys, as https://documentation.bamboohr.com/docs/getting-started describes; the option appears only when your access level allows API keys. BambooHR documents a key as a 160-bit number in hexadecimal form, 40 hexadecimal characters. The connector sends it over HTTP Basic as the user name with x as the password. Stored only in this credential field; BambooHR shows a new key only once, so paste a replacement key here. */
   apiKey: SecretString;
+}
+
+/** Decode private credential fields for the connector. */
+export function decodeCredentials(value: unknown): Credentials {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  const fields = value as { [key: string]: unknown };
+  const allowed = new Set<string>(["api_key"]);
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
+  if (fields["api_key"] != null && !(typeof fields["api_key"] === 'string')) throw new TypeError("credential api_key has an invalid type");
+  const credentials = {} as Credentials;
+  if (!fields["api_key"]) throw new TypeError("credential api_key is required");
+  credentials.apiKey = new SecretString((fields["api_key"] ?? '') as string);
+  return credentials;
 }
 
 /** Host-owned source of private connector credentials. */

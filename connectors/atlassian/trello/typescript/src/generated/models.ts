@@ -3,7 +3,8 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
-import type { CredentialProvider, SecretString } from '@superdurable/connectors-sdk';
+import { SecretString } from '@superdurable/connectors-sdk';
+import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
@@ -25,6 +26,22 @@ export interface Credentials {
   apiKey: SecretString;
   /** Secret Trello user token that lets the app act as your Trello member: open https://trello.com/1/authorize?expiration=never&scope=read,write&response_type=token&key= followed by the API key above, choose Allow, and copy the token from the page that opens. It grants access to everything the member can reach, so Dex Web stores it as a secret; blank means no Trello call can authenticate. Revoke it under Applications at https://trello.com/u/your-username/account. */
   token: SecretString;
+}
+
+/** Decode private credential fields for the connector. */
+export function decodeCredentials(value: unknown): Credentials {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  const fields = value as { [key: string]: unknown };
+  const allowed = new Set<string>(["api_key", "token"]);
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
+  if (fields["api_key"] != null && !(typeof fields["api_key"] === 'string')) throw new TypeError("credential api_key has an invalid type");
+  if (fields["token"] != null && !(typeof fields["token"] === 'string')) throw new TypeError("credential token has an invalid type");
+  const credentials = {} as Credentials;
+  if (!fields["api_key"]) throw new TypeError("credential api_key is required");
+  credentials.apiKey = new SecretString((fields["api_key"] ?? '') as string);
+  if (!fields["token"]) throw new TypeError("credential token is required");
+  credentials.token = new SecretString((fields["token"] ?? '') as string);
+  return credentials;
 }
 
 /** Host-owned source of private connector credentials. */

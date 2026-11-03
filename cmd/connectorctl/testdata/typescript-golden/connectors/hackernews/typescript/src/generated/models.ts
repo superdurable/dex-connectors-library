@@ -26,6 +26,16 @@ export const ConfigSchema = z.object({
 export interface Credentials {
 }
 
+/** Decode private credential fields for the connector. */
+export function decodeCredentials(value: unknown): Credentials {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  const fields = value as { [key: string]: unknown };
+  const allowed = new Set<string>([]);
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
+  const credentials = {} as Credentials;
+  return credentials;
+}
+
 /** Host-owned source of private connector credentials. */
 export type CredentialSource = CredentialProvider<Credentials>;
 

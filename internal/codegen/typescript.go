@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -83,7 +84,7 @@ func generateTypeScriptModels(manifest schema.Manifest, models []gomodel.Model) 
 	if usesSecretString {
 		credentialImports += ", SecretString"
 	}
-	if len(manifest.Spec.Auth.Methods) > 0 && usesSecretString {
+	if usesSecretString {
 		output.WriteString("import { SecretString } from '@superdurable/connectors-sdk';\n")
 		credentialImports = providerType
 	}
@@ -170,6 +171,14 @@ func generateTypeScriptModels(manifest schema.Manifest, models []gomodel.Model) 
 		fieldType := "string"
 		if field.Type == "secretString" {
 			fieldType = "SecretString"
+		} else if field.Type == "integer" || field.Type == "duration" {
+			fieldType = "number"
+		} else if field.Type == "boolean" {
+			fieldType = "boolean"
+		} else if field.Type == "stringList" {
+			fieldType = "string[]"
+		} else if field.Type == "stringMap" {
+			fieldType = "Record<string, string>"
 		}
 		optional := "?"
 		if credentialCounts[fieldName] == methodCount && field.Required {
@@ -178,29 +187,25 @@ func generateTypeScriptModels(manifest schema.Manifest, models []gomodel.Model) 
 		fmt.Fprintf(&output, "  /** %s */\n  %s%s: %s;\n", typeScriptJSDoc(field.Description), typeScriptFieldName(field.Name), optional, fieldType)
 	}
 	output.WriteString("}\n\n")
-	if len(manifest.Spec.Auth.Methods) > 0 {
-		output.WriteString("/** Decode private credential fields for the selected authorization method. */\nexport function decodeCredentials(value: unknown): Credentials {\n")
-		output.WriteString("  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');\n")
-		output.WriteString("  const fields = value as { [key: string]: unknown };\n")
-		output.WriteString("  const selectedMethod = fields['auth_method'] ?? '';\n")
-		output.WriteString("  if (typeof selectedMethod !== 'string') throw new TypeError('credential auth_method is invalid');\n")
-		fmt.Fprintf(&output, "  const method = selectedMethod || %s;\n", strconv.Quote(manifest.Spec.Auth.DefaultMethod))
-		output.WriteString("  const credentials = { authMethodId: method } as Credentials;\n")
-		for index, method := range manifest.Spec.Auth.Methods {
-			if index == 0 {
-				fmt.Fprintf(&output, "  if (method === %s) {\n", strconv.Quote(method.ID))
-			} else {
-				fmt.Fprintf(&output, "  } else if (method === %s) {\n", strconv.Quote(method.ID))
-			}
-			for _, field := range method.Fields {
-				fmt.Fprintf(&output, "    if (fields[%s] != null && typeof fields[%s] !== 'string') throw new TypeError(%s);\n", strconv.Quote(field.Name), strconv.Quote(field.Name), strconv.Quote("credential "+field.Name+" has an invalid type"))
-				if field.Required {
-					fmt.Fprintf(&output, "    if (!fields[%s]) throw new TypeError(%s);\n", strconv.Quote(field.Name), strconv.Quote("credential "+field.Name+" is required"))
-				}
-				fmt.Fprintf(&output, "    if (fields[%s]) credentials.%s = %s;\n", strconv.Quote(field.Name), typeScriptFieldName(field.Name), typeScriptCredentialValue(field))
-			}
+	for _, fieldName := range fieldNames {
+		if allCredentialFields[fieldName].Type == "url" {
+			output.WriteString(`function isAbsoluteCredentialURL(value: string): boolean {
+  if (value !== value.trim() || /[\u0000-\u001f\u007f]/.test(value) || /%(?![0-9a-fA-F]{2})/.test(value)) return false;
+  const authority = value.match(/^[A-Za-z][A-Za-z0-9+.-]*:\/\/([^/?#]*)/)?.[1];
+  if (!authority || /\s/.test(authority)) return false;
+  const numericPort = authority.match(/:(\d+)$/);
+  const parsedAuthority = numericPort && Number(numericPort[1]) > 65535 ? authority.replace(/:\d+$/, ':65535') : authority;
+  const parsedValue = value.replace(authority, parsedAuthority);
+  try { return !!new URL(parsedValue).hostname; } catch { return false; }
+}
+
+`)
+			break
 		}
-		output.WriteString("  } else {\n    throw new TypeError('credential auth_method is invalid');\n  }\n  return credentials;\n}\n\n")
+	}
+	writeTypeScriptCredentialDecoder(&output, manifest, allCredentialFields, fieldNames, false)
+	if HasHostKeptCredentials(manifest) {
+		writeTypeScriptCredentialDecoder(&output, manifest, allCredentialFields, fieldNames, true)
 	}
 	fmt.Fprintf(&output, "/** Host-owned source of private connector credentials. */\nexport type CredentialSource = %s<Credentials>;\n\n", providerType)
 	for _, model := range models {
@@ -348,12 +353,148 @@ func typeScriptFieldName(wireName string) string {
 	return name
 }
 
-func typeScriptCredentialValue(field schema.Field) string {
-	value := "fields[" + strconv.Quote(field.Name) + "] as string"
+func typeScriptCredentialValue(field schema.Field, isSingleMethod bool) string {
+	fieldType := "string"
+	switch field.Type {
+	case "integer", "duration":
+		fieldType = "number"
+	case "boolean":
+		fieldType = "boolean"
+	case "stringList":
+		fieldType = "string[]"
+	case "stringMap":
+		fieldType = "Record<string, string>"
+	}
+	value := "fields[" + strconv.Quote(field.Name) + "] as " + fieldType
+	if isSingleMethod {
+		zeroValue := "''"
+		switch field.Type {
+		case "integer", "duration":
+			zeroValue = "0"
+		case "boolean":
+			zeroValue = "false"
+		case "stringList":
+			zeroValue = "[]"
+		case "stringMap":
+			zeroValue = "{}"
+		}
+		value = "(fields[" + strconv.Quote(field.Name) + "] ?? " + zeroValue + ") as " + fieldType
+	}
 	if field.Type == "secretString" {
 		return "new SecretString(" + value + ")"
 	}
+	if field.Type == "stringList" {
+		return "(" + value + ").map(item => item ?? '')"
+	}
+	if field.Type == "stringMap" {
+		return "Object.fromEntries(Object.entries(" + value + ").map(([key, item]) => [key, item ?? '']))"
+	}
 	return value
+}
+
+func writeTypeScriptCredentialDecoder(output *bytes.Buffer, manifest schema.Manifest, allFields map[string]schema.Field, fieldNames []string, isShared bool) {
+	name := "decodeCredentials"
+	if isShared {
+		name = "decodeSharedCredentials"
+	}
+	methodDescription := "the selected authorization method"
+	if len(manifest.Spec.Auth.Methods) == 0 {
+		methodDescription = "the connector"
+	}
+	fmt.Fprintf(output, "/** Decode %s credential fields for %s. */\nexport function %s(value: unknown): Credentials {\n", map[bool]string{false: "private", true: "shared"}[isShared], methodDescription, name)
+	output.WriteString("  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');\n")
+	output.WriteString("  const fields = value as { [key: string]: unknown };\n")
+	output.WriteString("  const allowed = new Set<string>([")
+	if len(manifest.Spec.Auth.Methods) > 0 {
+		output.WriteString("\"auth_method\"")
+	}
+	for index, fieldName := range fieldNames {
+		if index > 0 || len(manifest.Spec.Auth.Methods) > 0 {
+			output.WriteString(", ")
+		}
+		output.WriteString(strconv.Quote(allFields[fieldName].Name))
+	}
+	output.WriteString("]);\n  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');\n")
+	for _, fieldName := range fieldNames {
+		field := allFields[fieldName]
+		value := "fields[" + strconv.Quote(field.Name) + "]"
+		valid := "typeof " + value + " === 'string'"
+		switch field.Type {
+		case "integer", "duration":
+			valid = "typeof " + value + " === 'number' && Number.isSafeInteger(" + value + ")"
+		case "boolean":
+			valid = "typeof " + value + " === 'boolean'"
+		case "stringList":
+			valid = "Array.isArray(" + value + ") && " + value + ".every(item => item === null || typeof item === 'string')"
+		case "stringMap":
+			valid = "!!" + value + " && typeof " + value + " === 'object' && !Array.isArray(" + value + ") && Object.values(" + value + ").every(item => item === null || typeof item === 'string')"
+		}
+		fmt.Fprintf(output, "  if (%s != null && !(%s)) throw new TypeError(%s);\n", value, valid, strconv.Quote("credential "+field.Name+" has an invalid type"))
+	}
+	isSingleMethod := len(manifest.Spec.Auth.Methods) == 0
+	if isSingleMethod {
+		output.WriteString("  const credentials = {} as Credentials;\n")
+	} else {
+		output.WriteString("  const selectedMethod = fields['auth_method'] ?? '';\n")
+		output.WriteString("  if (typeof selectedMethod !== 'string') throw new TypeError('credential auth_method is invalid');\n")
+		fmt.Fprintf(output, "  const method = selectedMethod || %s;\n", strconv.Quote(manifest.Spec.Auth.DefaultMethod))
+		output.WriteString("  const credentials = { authMethodId: method } as Credentials;\n")
+	}
+	for index, method := range manifest.Spec.Auth.AuthMethods() {
+		if !isSingleMethod {
+			if index == 0 {
+				fmt.Fprintf(output, "  if (method === %s) {\n", strconv.Quote(method.ID))
+			} else {
+				fmt.Fprintf(output, "  } else if (method === %s) {\n", strconv.Quote(method.ID))
+			}
+		}
+		indent := "    "
+		if isSingleMethod {
+			indent = "  "
+		}
+		sharedRequired := SharedRequiredCredentialFields(method)
+		for _, field := range method.Fields {
+			value := "fields[" + strconv.Quote(field.Name) + "]"
+			isRequired := field.Required
+			if isShared {
+				isRequired = slices.Contains(sharedRequired, field.Name)
+			}
+			if isRequired {
+				check := "!" + value
+				message := "credential " + field.Name + " is required"
+				if field.Type == "integer" || field.Type == "duration" {
+					check = value + " == null || (" + value + " as number) <= 0"
+					message = "credential " + field.Name + " must be positive"
+				} else if field.Type == "stringList" || field.Type == "stringMap" {
+					check = "!" + value + " || Object.keys(" + value + ").length === 0"
+				}
+				fmt.Fprintf(output, "%sif (%s) throw new TypeError(%s);\n", indent, check, strconv.Quote(message))
+			}
+			if field.Type == "integer" || field.Type == "duration" {
+				fmt.Fprintf(output, "%sif (%s != null && (%s as number) < 0) throw new TypeError(%s);\n", indent, value, value, strconv.Quote("credential "+field.Name+" cannot be negative"))
+			}
+			if field.Type == "enum" {
+				fmt.Fprintf(output, "%sif (%s && !%s.includes(%s as string)) throw new TypeError(%s);\n", indent, value, typeScriptStringArray(field.Enum), value, strconv.Quote("credential "+field.Name+" is invalid"))
+			}
+			if field.Type == "url" {
+				fmt.Fprintf(output, "%sif (%s && !isAbsoluteCredentialURL(%s as string)) throw new TypeError(%s);\n", indent, value, value, strconv.Quote("credential "+field.Name+" must be an absolute URL"))
+			}
+			if isSingleMethod {
+				fmt.Fprintf(output, "  credentials.%s = %s;\n", typeScriptFieldName(field.Name), typeScriptCredentialValue(field, true))
+			} else {
+				fmt.Fprintf(output, "    if (%s) credentials.%s = %s;\n", value, typeScriptFieldName(field.Name), typeScriptCredentialValue(field, false))
+			}
+		}
+	}
+	if !isSingleMethod {
+		output.WriteString("  } else {\n    throw new TypeError('credential auth_method is invalid');\n  }\n")
+	}
+	output.WriteString("  return credentials;\n}\n\n")
+}
+
+func typeScriptStringArray(values []string) string {
+	encoded, _ := json.Marshal(values)
+	return string(encoded)
 }
 
 func generateTypeScriptDefinitions(manifest schema.Manifest, operations []schema.Operation) ([]byte, error) {

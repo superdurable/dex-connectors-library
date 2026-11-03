@@ -3,7 +3,8 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
-import type { CredentialProvider, SecretString } from '@superdurable/connectors-sdk';
+import { SecretString } from '@superdurable/connectors-sdk';
+import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
@@ -39,6 +40,24 @@ export interface Credentials {
   secretAccessKey: SecretString;
   /** Secret session token, only for temporary AWS credentials whose access key ID starts with ASIA, such as the output of aws sts get-session-token or aws sts assume-role (https://docs.aws.amazon.com/STS/latest/APIReference/API_GetSessionToken.html). Temporary credentials expire, usually within hours, and this connector cannot renew them: replace all three values before they expire, or an expired token selects providerRejected. Blank means long-term credentials, which IAM user keys use. */
   sessionToken?: SecretString;
+}
+
+/** Decode private credential fields for the connector. */
+export function decodeCredentials(value: unknown): Credentials {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  const fields = value as { [key: string]: unknown };
+  const allowed = new Set<string>(["access_key_id", "secret_access_key", "session_token"]);
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
+  if (fields["access_key_id"] != null && !(typeof fields["access_key_id"] === 'string')) throw new TypeError("credential access_key_id has an invalid type");
+  if (fields["secret_access_key"] != null && !(typeof fields["secret_access_key"] === 'string')) throw new TypeError("credential secret_access_key has an invalid type");
+  if (fields["session_token"] != null && !(typeof fields["session_token"] === 'string')) throw new TypeError("credential session_token has an invalid type");
+  const credentials = {} as Credentials;
+  if (!fields["access_key_id"]) throw new TypeError("credential access_key_id is required");
+  credentials.accessKeyId = new SecretString((fields["access_key_id"] ?? '') as string);
+  if (!fields["secret_access_key"]) throw new TypeError("credential secret_access_key is required");
+  credentials.secretAccessKey = new SecretString((fields["secret_access_key"] ?? '') as string);
+  credentials.sessionToken = new SecretString((fields["session_token"] ?? '') as string);
+  return credentials;
 }
 
 /** Host-owned source of private connector credentials. */
