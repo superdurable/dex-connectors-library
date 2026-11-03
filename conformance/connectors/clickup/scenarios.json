@@ -1140,6 +1140,10 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "clickupDispatchedAt": 1767225600000,
+          "clickupDispatchedCallId": "bef06aa7-8066-5d69-a408-c3d4547c0405"
+        },
         "output": {
           "listId": "901410000001",
           "name": "Escalation: Fix login [86b2x4k00]",
@@ -1248,6 +1252,10 @@
       "expected": {
         "branch": "notFound",
         "failureKind": "NOT_FOUND",
+        "heartbeat": {
+          "clickupDispatchedAt": 1767225600000,
+          "clickupDispatchedCallId": "bef06aa7-8066-5d69-a408-c3d4547c0405"
+        },
         "output": {
           "listId": "901410000001",
           "name": "Escalation: Fix login [86b2x4k00]",
@@ -1340,6 +1348,10 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "VALIDATION",
+        "heartbeat": {
+          "clickupDispatchedAt": 1767225600000,
+          "clickupDispatchedCallId": "bef06aa7-8066-5d69-a408-c3d4547c0405"
+        },
         "output": {
           "listId": "901410000001",
           "name": "Escalation: Fix login [86b2x4k00]",
@@ -1432,6 +1444,7 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": null,
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -1511,6 +1524,10 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "clickupDispatchedAt": 1767225600000,
+          "clickupDispatchedCallId": "bef06aa7-8066-5d69-a408-c3d4547c0405"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -1588,6 +1605,10 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "clickupDispatchedAt": 1767225600000,
+          "clickupDispatchedCallId": "bef06aa7-8066-5d69-a408-c3d4547c0405"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -2533,6 +2554,10 @@
       "expected": {
         "branch": "added",
         "failureKind": "",
+        "heartbeat": {
+          "clickupDispatchedAt": 1767225600000,
+          "clickupDispatchedCallId": "f2eedff7-0330-5593-806e-a6e18cfd1afc"
+        },
         "output": {
           "commentId": "700001",
           "createdAt": "2026-01-01T00:00:03Z",
@@ -2582,6 +2607,10 @@
       "expected": {
         "branch": "notFound",
         "failureKind": "NOT_FOUND",
+        "heartbeat": {
+          "clickupDispatchedAt": 1767225600000,
+          "clickupDispatchedCallId": "f2eedff7-0330-5593-806e-a6e18cfd1afc"
+        },
         "output": {
           "taskId": "86b2x4k7q"
         },
@@ -2629,6 +2658,10 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "VALIDATION",
+        "heartbeat": {
+          "clickupDispatchedAt": 1767225600000,
+          "clickupDispatchedCallId": "f2eedff7-0330-5593-806e-a6e18cfd1afc"
+        },
         "output": {
           "taskId": "86b2x4k7q"
         },
@@ -2676,6 +2709,7 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": null,
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -2720,6 +2754,10 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "clickupDispatchedAt": 1767225600000,
+          "clickupDispatchedCallId": "f2eedff7-0330-5593-806e-a6e18cfd1afc"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -2762,6 +2800,10 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "clickupDispatchedAt": 1767225600000,
+          "clickupDispatchedCallId": "f2eedff7-0330-5593-806e-a6e18cfd1afc"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -3163,6 +3205,10 @@
         {
           "exchangeCount": 1,
           "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "clickupDispatchedAt": 1767225600000,
+            "clickupDispatchedCallId": "bef06aa7-8066-5d69-a408-c3d4547c0405"
+          },
           "retryAfterMs": 0
         }
       ],
@@ -3291,6 +3337,10 @@
         {
           "exchangeCount": 1,
           "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "clickupDispatchedAt": 1767225600000,
+            "clickupDispatchedCallId": "bef06aa7-8066-5d69-a408-c3d4547c0405"
+          },
           "retryAfterMs": 0
         }
       ],
@@ -3360,6 +3410,10 @@
         {
           "exchangeCount": 1,
           "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "clickupDispatchedAt": 1767225600000,
+            "clickupDispatchedCallId": "f2eedff7-0330-5593-806e-a6e18cfd1afc"
+          },
           "retryAfterMs": 0
         }
       ],
@@ -3432,6 +3486,10 @@
         {
           "exchangeCount": 1,
           "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "clickupDispatchedAt": 1767225600000,
+            "clickupDispatchedCallId": "f2eedff7-0330-5593-806e-a6e18cfd1afc"
+          },
           "retryAfterMs": 0
         }
       ],
@@ -3806,6 +3864,10 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "clickupDispatchedAt": 1767225600000,
+          "clickupDispatchedCallId": "bef06aa7-8066-5d69-a408-c3d4547c0405"
+        },
         "output": {
           "listId": "901410000001",
           "name": "Escalation: Fix login [86b2x4k00]",
@@ -3867,6 +3929,7 @@
         {
           "exchangeCount": 1,
           "failureKind": "RATE_LIMIT",
+          "heartbeat": null,
           "retryAfterMs": 0
         }
       ],
@@ -3982,6 +4045,10 @@
         {
           "exchangeCount": 1,
           "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "clickupDispatchedAt": 1767225600000,
+            "clickupDispatchedCallId": "bef06aa7-8066-5d69-a408-c3d4547c0405"
+          },
           "retryAfterMs": 0
         }
       ],
@@ -4042,6 +4109,10 @@
       "expected": {
         "branch": "added",
         "failureKind": "",
+        "heartbeat": {
+          "clickupDispatchedAt": 1767225600000,
+          "clickupDispatchedCallId": "f2eedff7-0330-5593-806e-a6e18cfd1afc"
+        },
         "output": {
           "commentId": "700001",
           "createdAt": "2026-01-01T00:00:03Z",
@@ -4062,6 +4133,7 @@
         {
           "exchangeCount": 1,
           "failureKind": "RATE_LIMIT",
+          "heartbeat": null,
           "retryAfterMs": 0
         }
       ],
@@ -4128,6 +4200,10 @@
         {
           "exchangeCount": 1,
           "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "clickupDispatchedAt": 1767225600000,
+            "clickupDispatchedCallId": "f2eedff7-0330-5593-806e-a6e18cfd1afc"
+          },
           "retryAfterMs": 0
         }
       ],
@@ -4777,6 +4853,10 @@
         {
           "exchangeCount": 1,
           "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "clickupDispatchedAt": 1767225600000,
+            "clickupDispatchedCallId": "bef06aa7-8066-5d69-a408-c3d4547c0405"
+          },
           "retryAfterMs": 0
         }
       ],
