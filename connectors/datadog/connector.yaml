@@ -10,7 +10,7 @@ spec:
   provider: datadog
   languages:
     python:
-      version: v0.1.1
+      version: v0.1.0
       operations: [queryMetrics, listMonitors]
       triggers: []
     typescript:
