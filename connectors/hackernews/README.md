@@ -41,8 +41,6 @@ Use the generated factories in [the runnable Flow](go/examples/daily-digest/flow
 `projectconfig.LoadFromEnvironment` loads. `New` and `NewConnection` build a
 connection for tests. `WithHTTPClient` supplies a transport for tests or
 application networking.
-`WithClock` supplies the time used for feed `ObservedAt` and HTTP-date
-`Retry-After` calculations; omit it to use the system clock.
 
 ## Mocks
 

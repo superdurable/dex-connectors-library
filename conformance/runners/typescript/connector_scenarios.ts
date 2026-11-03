@@ -30,11 +30,15 @@ export interface Scenario {
 
 export function scenarioClock(scenario: Scenario): () => Date {
   if (scenario.clock === undefined) return () => new Date();
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(scenario.clock)) {
+  if (typeof scenario.clock !== 'string' || !/^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,3})?Z$/.test(scenario.clock) || scenario.clock.startsWith('0000')) {
     throw new Error(`${scenario.name}: clock must be an RFC3339 timestamp`);
   }
   const milliseconds = Date.parse(scenario.clock);
   if (!Number.isFinite(milliseconds)) throw new Error(`${scenario.name}: invalid clock timestamp`);
+  const precision = scenario.clock.includes('.') ? scenario.clock.length - scenario.clock.indexOf('.') - 2 : 0;
+  const canonical = new Date(milliseconds).toISOString();
+  const formatted = canonical.slice(0, 19) + (precision ? canonical.slice(19, 20 + precision) : '') + 'Z';
+  if (formatted !== scenario.clock) throw new Error(`${scenario.name}: invalid clock timestamp`);
   return () => new Date(milliseconds);
 }
 

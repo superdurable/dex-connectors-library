@@ -16,6 +16,7 @@ import (
 	"net/url"
 	"os"
 	"reflect"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -292,15 +293,16 @@ func conformanceClock(t *testing.T, scenario conformanceScenario) func() time.Ti
 	}
 	var value string
 	require.NoError(t, json.Unmarshal(scenario.Clock, &value))
+	require.Regexp(t, `^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,3})?Z$`, value)
+	require.NotEqual(t, "0000", value[:4])
 	fixed, err := time.Parse(time.RFC3339Nano, value)
 	require.NoError(t, err)
+	layout := "2006-01-02T15:04:05"
+	if dot := strings.IndexByte(value, '.'); dot >= 0 {
+		layout += "." + strings.Repeat("0", len(value)-dot-2)
+	}
+	require.Equal(t, value, fixed.UTC().Format(layout+"Z"))
 	return func() time.Time { return fixed }
-}
-
-func TestConformanceClock(t *testing.T) {
-	now := conformanceClock(t, conformanceScenario{Clock: json.RawMessage(`"2026-10-26T12:00:00+01:00"`)})
-	require.Equal(t, time.Date(2026, 10, 26, 11, 0, 0, 0, time.UTC), now().UTC())
-	require.WithinDuration(t, time.Now(), conformanceClock(t, conformanceScenario{})(), time.Second)
 }
 
 func conformanceScenarioObject(t *testing.T, scenario conformanceScenario) map[string]any {
@@ -880,7 +882,7 @@ func decodeConformanceScenarios(data []byte) ([]conformanceScenario, error) {
 	}
 	scenarios := make([]conformanceScenario, 0, len(rawScenarios))
 	for _, rawScenario := range rawScenarios {
-		fields, err := conformanceObject(rawScenario, []string{"name", "operation", "callId", "input", "exchanges"}, []string{"idempotencyKey", "attempts", "intermediate", "priorHeartbeat", "expected"})
+		fields, err := conformanceObject(rawScenario, []string{"name", "operation", "callId", "input", "exchanges"}, []string{"idempotencyKey", "attempts", "intermediate", "priorHeartbeat", "clock", "expected"})
 		if err != nil {
 			return nil, err
 		}
@@ -889,6 +891,23 @@ func decodeConformanceScenarios(data []byte) ([]conformanceScenario, error) {
 			return nil, err
 		}
 		scenario.Raw = rawScenario
+		if _, ok := fields["clock"]; ok {
+			var value string
+			if err := json.Unmarshal(scenario.Clock, &value); err != nil || !regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,3})?Z$`).MatchString(value) || strings.HasPrefix(value, "0000") {
+				return nil, errors.New("invalid clock timestamp")
+			}
+			fixed, err := time.Parse(time.RFC3339Nano, value)
+			if err != nil {
+				return nil, fmt.Errorf("invalid clock timestamp: %w", err)
+			}
+			layout := "2006-01-02T15:04:05"
+			if dot := strings.IndexByte(value, '.'); dot >= 0 {
+				layout += "." + strings.Repeat("0", len(value)-dot-2)
+			}
+			if fixed.UTC().Format(layout+"Z") != value {
+				return nil, errors.New("invalid clock timestamp")
+			}
+		}
 		if scenario.Name == "" || scenario.Operation == "" || scenario.CallID == "" {
 			return nil, errors.New("scenario identity is missing")
 		}

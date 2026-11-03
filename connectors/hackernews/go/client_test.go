@@ -52,12 +52,12 @@ func TestFeedSnapshotUsesInjectedClock(t *testing.T) {
 	}))
 	defer server.Close()
 	fixed := time.Date(2026, time.October, 26, 12, 0, 0, 0, time.FixedZone("offset", 3600))
-	client, err := New(Config{BaseURL: server.URL}, nil, WithClock(func() time.Time { return fixed }))
+	client, err := New(Config{BaseURL: server.URL}, nil, withClock(func() time.Time { return fixed }))
 	require.NoError(t, err)
 	result, err := sdkgo.RunQuery(queryContext{}, client.ListStoryIDs(), testConnection, ListStoryIDsInput{Limit: 2})
 	require.NoError(t, err)
 	require.Equal(t, fixed.UTC(), result.Value.ObservedAt)
-	_, err = New(Config{BaseURL: server.URL}, nil, WithClock(nil))
+	_, err = New(Config{BaseURL: server.URL}, nil, withClock(nil))
 	require.ErrorContains(t, err, "clock is required")
 }
 

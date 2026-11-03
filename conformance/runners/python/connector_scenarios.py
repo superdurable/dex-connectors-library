@@ -46,7 +46,7 @@ class HeartbeatContext:
         self.marker = value
 
 
-_CLOCK_FORMAT = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$")
+_CLOCK_FORMAT = re.compile(r"^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,3})?Z$")
 
 
 def scenario_clock(scenario: dict[str, Any]) -> Callable[[], datetime]:
@@ -60,8 +60,12 @@ def scenario_clock(scenario: dict[str, Any]) -> Callable[[], datetime]:
         fixed = datetime.fromisoformat(clock)
     except ValueError as error:
         raise ValueError(f"{scenario['name']}: invalid clock timestamp") from error
-    if fixed.utcoffset() is None:
-        raise ValueError(f"{scenario['name']}: clock needs a timezone")
+    precision = len(clock.split(".", 1)[1]) - 1 if "." in clock else 0
+    formatted = fixed.strftime("%Y-%m-%dT%H:%M:%S")
+    if precision:
+        formatted += "." + f"{fixed.microsecond:06d}"[:precision]
+    if formatted + "Z" != clock:
+        raise ValueError(f"{scenario['name']}: invalid clock timestamp")
     return lambda: fixed
 
 

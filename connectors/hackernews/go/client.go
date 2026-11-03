@@ -30,8 +30,7 @@ func (option clockOption) applyClientOption(client *Client) { client.now = optio
 // WithHTTPClient supplies a transport. New copies the client, preserves a nonzero timeout, and disables redirects.
 func WithHTTPClient(client *http.Client) Option { return httpClientOption{client} }
 
-// WithClock replaces the clock used for feed observation and Retry-After dates.
-func WithClock(now func() time.Time) Option { return clockOption{now} }
+func withClock(now func() time.Time) Option { return clockOption{now} }
 
 // Client holds immutable HTTP configuration and is safe for concurrent calls.
 type Client struct {
