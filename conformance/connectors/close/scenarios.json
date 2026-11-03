@@ -1,0 +1,577 @@
+{
+  "connector": "close",
+  "scenarios": [
+    {
+      "callId": "ce6820f9-d99c-5111-9087-4d93211349cd",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"lead_meridian1\",\"name\":\"Meridian Labs\"}],\"has_more\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/lead/",
+          "query": {
+            "_limit": [
+              "2"
+            ],
+            "_skip": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "hasMore": true,
+          "leads": [
+            {
+              "id": "lead_meridian1",
+              "name": "Meridian Labs"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "skip": 20
+      },
+      "name": "listLeads-success",
+      "operation": "listLeads"
+    },
+    {
+      "callId": "ffc7be93-989b-5e8b-80a1-120d8c732507",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/lead/",
+          "query": {
+            "_limit": [
+              "2"
+            ],
+            "_skip": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "hasMore": false,
+          "leads": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "skip": 20
+      },
+      "name": "listLeads-provider-rejected",
+      "operation": "listLeads"
+    },
+    {
+      "callId": "e13b88d3-bdaa-5efc-a25d-c4ef288c1901",
+      "exchanges": [
+        {
+          "body": "{\"broken\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/lead/",
+          "query": {
+            "_limit": [
+              "2"
+            ],
+            "_skip": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "hasMore": false,
+          "leads": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "skip": 20
+      },
+      "name": "listLeads-invalid-response",
+      "operation": "listLeads"
+    },
+    {
+      "callId": "876f6da9-8530-56d5-8f9e-a5c7a304e7b2",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "hasMore": false,
+          "leads": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "skip": -1
+      },
+      "name": "listLeads-defect",
+      "operation": "listLeads"
+    },
+    {
+      "callId": "da1ee29a-f8ca-57be-95ad-10783f4d275d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/lead/",
+          "query": {
+            "_limit": [
+              "2"
+            ],
+            "_skip": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3000,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "skip": 20
+      },
+      "name": "listLeads-retry-429",
+      "operation": "listLeads"
+    },
+    {
+      "callId": "22d50a20-faab-5e5f-ab42-14a88bcfa91f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/lead/",
+          "query": {
+            "_limit": [
+              "2"
+            ],
+            "_skip": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "skip": 20
+      },
+      "name": "listLeads-retry-503",
+      "operation": "listLeads"
+    },
+    {
+      "callId": "5efc217f-8840-57bb-a3db-3035c5a5331b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/lead/",
+          "query": {
+            "_limit": [
+              "2"
+            ],
+            "_skip": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "skip": 20
+      },
+      "name": "listLeads-transport-before-send",
+      "operation": "listLeads"
+    },
+    {
+      "callId": "eecf7415-0953-5878-a537-4693e7d7bc0b",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"lead_meridian1\",\"name\":\"Meridian Labs\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/lead/lead_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "lead_meridian1",
+          "name": "Meridian Labs"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1"
+      },
+      "name": "getLead-success",
+      "operation": "getLead"
+    },
+    {
+      "callId": "103b6d7f-039b-5c9a-ab75-7f80e3cba041",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"SENTINEL\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/lead/lead_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1"
+      },
+      "name": "getLead-provider-rejected",
+      "operation": "getLead"
+    },
+    {
+      "callId": "2ebab711-7843-54ed-87cd-b2fc702532e7",
+      "exchanges": [
+        {
+          "body": "{\"broken\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/lead/lead_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1"
+      },
+      "name": "getLead-invalid-response",
+      "operation": "getLead"
+    },
+    {
+      "callId": "82361b53-eb8d-5912-88e8-91693a8bfd50",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "invalid"
+      },
+      "name": "getLead-defect",
+      "operation": "getLead"
+    },
+    {
+      "callId": "3772affb-3b52-5c0e-9056-b8a0b5368bc8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/lead/lead_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3000,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1"
+      },
+      "name": "getLead-retry-429",
+      "operation": "getLead"
+    },
+    {
+      "callId": "dd83dce5-5da1-5114-a119-edbc97d3149e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/lead/lead_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1"
+      },
+      "name": "getLead-retry-503",
+      "operation": "getLead"
+    },
+    {
+      "callId": "ded8ba8f-480a-5f8c-bca5-d9050706045d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/lead/lead_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1"
+      },
+      "name": "getLead-transport-before-send",
+      "operation": "getLead"
+    },
+    {
+      "callId": "23800eb9-7d83-5e5e-82f3-ecef40d958bc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/lead/lead_meridian1/",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC1zZWNyZXQta2V5Og=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": "lead_meridian1"
+      },
+      "name": "getLead-not-found",
+      "operation": "getLead"
+    }
+  ],
+  "schemaVersion": 1
+}

@@ -1,0 +1,668 @@
+{
+  "connector": "datadog",
+  "scenarios": [
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"ok\",\"series\":[{\"metric\":\"system.cpu.user\",\"pointlist\":[[1761436800000,0.23],[1761436860000,null]]}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/query",
+          "query": {
+            "from": [
+              "1761436800"
+            ],
+            "query": [
+              "system.cpu.user{*}"
+            ],
+            "to": [
+              "1761440400"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "queried",
+        "failureKind": "",
+        "output": {
+          "series": [
+            {
+              "metric": "system.cpu.user",
+              "pointlist": [
+                [
+                  1761436800000,
+                  0.23
+                ],
+                [
+                  1761436860000,
+                  null
+                ]
+              ]
+            }
+          ],
+          "status": "ok"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "from": 1761436800,
+        "query": "system.cpu.user{*}",
+        "to": 1761440400
+      },
+      "name": "queryMetrics-success",
+      "operation": "queryMetrics"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[\"invalid credentials\"]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/query",
+          "query": {
+            "from": [
+              "1761436800"
+            ],
+            "query": [
+              "system.cpu.user{*}"
+            ],
+            "to": [
+              "1761440400"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "series": [],
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "from": 1761436800,
+        "query": "system.cpu.user{*}",
+        "to": 1761440400
+      },
+      "name": "queryMetrics-rejected",
+      "operation": "queryMetrics"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"bad\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/query",
+          "query": {
+            "from": [
+              "1761436800"
+            ],
+            "query": [
+              "system.cpu.user{*}"
+            ],
+            "to": [
+              "1761440400"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "series": [],
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "from": 1761436800,
+        "query": "system.cpu.user{*}",
+        "to": 1761440400
+      },
+      "name": "queryMetrics-invalid-response",
+      "operation": "queryMetrics"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/query",
+          "query": {
+            "from": [
+              "1761436800"
+            ],
+            "query": [
+              "system.cpu.user{*}"
+            ],
+            "to": [
+              "1761440400"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3000,
+        "uncertain": false
+      },
+      "input": {
+        "from": 1761436800,
+        "query": "system.cpu.user{*}",
+        "to": 1761440400
+      },
+      "name": "queryMetrics-rate-limit-retry",
+      "operation": "queryMetrics"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/query",
+          "query": {
+            "from": [
+              "1761436800"
+            ],
+            "query": [
+              "system.cpu.user{*}"
+            ],
+            "to": [
+              "1761440400"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "from": 1761436800,
+        "query": "system.cpu.user{*}",
+        "to": 1761440400
+      },
+      "name": "queryMetrics-server-retry",
+      "operation": "queryMetrics"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/query",
+          "query": {
+            "from": [
+              "1761436800"
+            ],
+            "query": [
+              "system.cpu.user{*}"
+            ],
+            "to": [
+              "1761440400"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "from": 1761436800,
+        "query": "system.cpu.user{*}",
+        "to": 1761440400
+      },
+      "name": "queryMetrics-transport-retry",
+      "operation": "queryMetrics"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "series": [],
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "from": 0,
+        "query": "system.cpu.user{*}",
+        "to": 1761440400
+      },
+      "name": "queryMetrics-validation-defect",
+      "operation": "queryMetrics"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "[{\"id\":12345,\"name\":\"Meridian API latency\",\"type\":\"metric alert\",\"overall_state\":\"OK\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/monitor",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "monitors": [
+            {
+              "id": 12345,
+              "name": "Meridian API latency",
+              "overall_state": "OK",
+              "type": "metric alert"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 25
+      },
+      "name": "listMonitors-success",
+      "operation": "listMonitors"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[\"invalid credentials\"]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/monitor",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "monitors": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 25
+      },
+      "name": "listMonitors-rejected",
+      "operation": "listMonitors"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"bad\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/monitor",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "monitors": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 25
+      },
+      "name": "listMonitors-invalid-response",
+      "operation": "listMonitors"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/monitor",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3000,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 25
+      },
+      "name": "listMonitors-rate-limit-retry",
+      "operation": "listMonitors"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/monitor",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 25
+      },
+      "name": "listMonitors-server-retry",
+      "operation": "listMonitors"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v1/monitor",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "25"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Dd-Api-Key": [
+              "test-apikey"
+            ],
+            "Dd-Application-Key": [
+              "test-applicationkey"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "pageSize": 25
+      },
+      "name": "listMonitors-transport-retry",
+      "operation": "listMonitors"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "monitors": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": -1,
+        "pageSize": 25
+      },
+      "name": "listMonitors-validation-defect",
+      "operation": "listMonitors"
+    }
+  ],
+  "schemaVersion": 1
+}
