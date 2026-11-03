@@ -14,10 +14,10 @@ it('escapes a site path as Go url.PathEscape does', async () => {
     requested = request.url;
     return { status: 200, headers: {}, body: Buffer.from('[]') };
   } });
-  const result = await client.listDeploys().invoke(call, { siteId: "a/b c!'()*" });
+  const result = await client.listDeploys().invoke(call, { siteId: "a/b c!'()*$&+=:@" });
   expect(result.kind).toBe('branch');
   if (result.kind === 'branch') expect(result.branch).toBe('listed');
-  expect(requested).toContain('/sites/a%2Fb%20c%21%27%28%29%2A/deploys');
+  expect(requested).toContain('/sites/a%2Fb%20c%21%27%28%29%2A$&+=:@/deploys');
 });
 it('treats missing credentials as terminal and refused transport as retry', async () => {
   const unavailable = new NetlifyClient({}, { resolve: async () => { throw new Error('unavailable'); } });

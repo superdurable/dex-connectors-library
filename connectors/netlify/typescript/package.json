@@ -1,6 +1,7 @@
 {
   "name": "@superdurable/connector-netlify",
   "version": "0.1.0",
+  "license": "MIT",
   "description": "Netlify site and deploy queries for Dex Flows",
   "repository": {
     "type": "git",

@@ -30,7 +30,7 @@ function newQueryValidation(): QueryAttempt<DeploysPage> {
   const failure = { kind: 'VALIDATION' as const, provider: 'netlify', operation: 'listDeploys', message: 'siteId is required' };
   return newQueryBranch('defect', emptyDeploys, {}, failure);
 }
-function goPathEscape(value: string): string { return encodeURIComponent(value).replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`); }
+function goPathEscape(value: string): string { return encodeURIComponent(value).replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`).replace(/%(?:24|26|2B|3A|3D|40)/g, escape => String.fromCharCode(Number.parseInt(escape.slice(1), 16))); }
 function decodeArray<Item>(body: Uint8Array, decode: (value: unknown) => Item): Item[] {
   const document: unknown = JSON.parse(Buffer.from(body).toString('utf8'));
   if (!Array.isArray(document)) throw new Error('expected array');
