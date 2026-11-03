@@ -1,6 +1,6 @@
 # Figma connector for Python
 
-Install with `pip install dex-connector-figma==0.1.0`. The package requires
+Install with `pip install dex-connector-figma==0.1.1`. The package requires
 `dex-connectors-sdk==0.1.0` and `dex-python-sdk>=1.28.0`, and implements the
 manifest Queries `getFile` and `getFileComments` with the same branches,
 defaults, and failure classification as the Go module.
@@ -14,7 +14,9 @@ defaults, and failure classification as the Go module.
 
 Both take a file key of 1 to 128 letters, digits, `_`, or `-`. `getFile`
 returns the file name, last-modified text, and the document node tree as
-untouched JSON; a response without a name or document is `invalidResponse`.
+JSON. Integral number values retain their exact integer value; a number that
+Dex JSON encoding would round selects `invalidResponse` and names its document
+field. A response without a name or document also selects `invalidResponse`.
 404 selects `notFound`; 408, 409, 429, 5xx, and transport failures retry; 401,
 403, and other non-200 responses select `providerRejected`.
 
