@@ -37,15 +37,17 @@ export interface Credentials {
 export function decodeCredentials(value: unknown): Credentials {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
+  const allowed = new Set(["auth_method", "access_token", "webhook_secret"]);
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
+  if (fields["access_token"] != null && !(typeof fields["access_token"] === 'string')) throw new TypeError("credential access_token has an invalid type");
+  if (fields["webhook_secret"] != null && !(typeof fields["webhook_secret"] === 'string')) throw new TypeError("credential webhook_secret has an invalid type");
   const selectedMethod = fields['auth_method'] ?? '';
   if (typeof selectedMethod !== 'string') throw new TypeError('credential auth_method is invalid');
   const method = selectedMethod || "personal-access-token";
   const credentials = { authMethodId: method } as Credentials;
   if (method === "personal-access-token") {
-    if (fields["access_token"] != null && typeof fields["access_token"] !== 'string') throw new TypeError("credential access_token has an invalid type");
     if (!fields["access_token"]) throw new TypeError("credential access_token is required");
     if (fields["access_token"]) credentials.accessToken = new SecretString(fields["access_token"] as string);
-    if (fields["webhook_secret"] != null && typeof fields["webhook_secret"] !== 'string') throw new TypeError("credential webhook_secret has an invalid type");
     if (fields["webhook_secret"]) credentials.webhookSecret = new SecretString(fields["webhook_secret"] as string);
   } else {
     throw new TypeError('credential auth_method is invalid');

@@ -79,6 +79,19 @@ class _ProjectCredentialSource:
 
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
+        if not isinstance(material, dict):
+            raise ValueError("Twilio Messaging stored credential does not match the connector credential fields")
+        if set(material) - set(('auth_token', 'api_key_sid', 'api_key_secret', 'auth_method')):
+            raise ValueError("Twilio Messaging stored credential does not match the connector credential fields")
+        auth_token = material.get("auth_token")
+        if auth_token is not None and not (isinstance(auth_token, str)):
+            raise ValueError("Twilio Messaging credential auth_token has an invalid type")
+        api_key_sid = material.get("api_key_sid")
+        if api_key_sid is not None and not (isinstance(api_key_sid, str)):
+            raise ValueError("Twilio Messaging credential api_key_sid has an invalid type")
+        api_key_secret = material.get("api_key_secret")
+        if api_key_secret is not None and not (isinstance(api_key_secret, str)):
+            raise ValueError("Twilio Messaging credential api_key_secret has an invalid type")
         selected_method = material.get('auth_method')
         if selected_method is None:
             selected_method = ''
@@ -87,24 +100,15 @@ class _ProjectCredentialSource:
         method = selected_method or "auth-token"
         values: dict[str, Any] = {'auth_method_id': method}
         if method == "auth-token":
-            auth_token = material.get("auth_token")
-            if auth_token is not None and not isinstance(auth_token, str):
-                raise ValueError("Twilio Messaging credential auth_token has an invalid type")
             if not auth_token:
                 raise ValueError("Twilio Messaging credential auth_token is required")
             if auth_token:
                 values["auth_token"] = SecretString(auth_token)
         elif method == "api-key":
-            api_key_sid = material.get("api_key_sid")
-            if api_key_sid is not None and not isinstance(api_key_sid, str):
-                raise ValueError("Twilio Messaging credential api_key_sid has an invalid type")
             if not api_key_sid:
                 raise ValueError("Twilio Messaging credential api_key_sid is required")
             if api_key_sid:
                 values["api_key_sid"] = api_key_sid
-            api_key_secret = material.get("api_key_secret")
-            if api_key_secret is not None and not isinstance(api_key_secret, str):
-                raise ValueError("Twilio Messaging credential api_key_secret has an invalid type")
             if not api_key_secret:
                 raise ValueError("Twilio Messaging credential api_key_secret is required")
             if api_key_secret:
