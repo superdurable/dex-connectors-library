@@ -77,7 +77,7 @@
         ],
         "statement": "SELECT ? AS EVENT_COUNT"
       },
-      "name": "submit accepted",
+      "name": "submit-accepted",
       "operation": "submitStatement"
     },
     {
@@ -155,7 +155,7 @@
         ],
         "statement": "SELECT ? AS EVENT_COUNT"
       },
-      "name": "submit rejected",
+      "name": "submit-rejected",
       "operation": "submitStatement"
     },
     {
@@ -176,7 +176,7 @@
       "input": {
         "statement": ""
       },
-      "name": "submit defect",
+      "name": "submit-defect",
       "operation": "submitStatement"
     },
     {
@@ -251,7 +251,7 @@
         ],
         "statement": "SELECT ? AS EVENT_COUNT"
       },
-      "name": "submit rate limit",
+      "name": "submit-rate-limit",
       "operation": "submitStatement"
     },
     {
@@ -326,7 +326,7 @@
         ],
         "statement": "SELECT ? AS EVENT_COUNT"
       },
-      "name": "submit server failure",
+      "name": "submit-server-failure",
       "operation": "submitStatement"
     },
     {
@@ -399,7 +399,7 @@
         ],
         "statement": "SELECT ? AS EVENT_COUNT"
       },
-      "name": "submit transport",
+      "name": "submit-transport",
       "operation": "submitStatement"
     },
     {
@@ -458,7 +458,7 @@
       "input": {
         "statementHandle": "00000000-0000-4000-8000-000000000003"
       },
-      "name": "result completed",
+      "name": "result-completed",
       "operation": "getStatementResult"
     },
     {
@@ -522,7 +522,7 @@
       "input": {
         "statementHandle": "00000000-0000-4000-8000-000000000003"
       },
-      "name": "result timestamp zones",
+      "name": "result-timestamp-zones",
       "operation": "getStatementResult"
     },
     {
@@ -568,7 +568,7 @@
       "input": {
         "statementHandle": "00000000-0000-4000-8000-000000000003"
       },
-      "name": "result running",
+      "name": "result-running",
       "operation": "getStatementResult"
     },
     {
@@ -628,7 +628,7 @@
       "input": {
         "statementHandle": "00000000-0000-4000-8000-000000000003"
       },
-      "name": "result truncated",
+      "name": "result-truncated",
       "operation": "getStatementResult"
     },
     {
@@ -699,7 +699,7 @@
         "partition": 1,
         "statementHandle": "00000000-0000-4000-8000-000000000003"
       },
-      "name": "result later partition",
+      "name": "result-later-partition",
       "operation": "getStatementResult"
     },
     {
@@ -745,7 +745,7 @@
       "input": {
         "statementHandle": "00000000-0000-4000-8000-000000000003"
       },
-      "name": "result rejected",
+      "name": "result-rejected",
       "operation": "getStatementResult"
     },
     {
@@ -791,7 +791,7 @@
       "input": {
         "statementHandle": "00000000-0000-4000-8000-000000000003"
       },
-      "name": "result invalid response",
+      "name": "result-invalid-response",
       "operation": "getStatementResult"
     },
     {
@@ -814,7 +814,7 @@
       "input": {
         "statementHandle": "bad"
       },
-      "name": "result defect",
+      "name": "result-defect",
       "operation": "getStatementResult"
     },
     {
@@ -854,7 +854,7 @@
       "input": {
         "statementHandle": "00000000-0000-4000-8000-000000000003"
       },
-      "name": "result rate limit",
+      "name": "result-rate-limit",
       "operation": "getStatementResult"
     },
     {
@@ -894,7 +894,7 @@
       "input": {
         "statementHandle": "00000000-0000-4000-8000-000000000003"
       },
-      "name": "result server failure",
+      "name": "result-server-failure",
       "operation": "getStatementResult"
     },
     {
@@ -932,7 +932,7 @@
       "input": {
         "statementHandle": "00000000-0000-4000-8000-000000000003"
       },
-      "name": "result transport",
+      "name": "result-transport",
       "operation": "getStatementResult"
     },
     {
@@ -985,7 +985,7 @@
       "input": {
         "statementHandle": "00000000-0000-4000-8000-000000000003"
       },
-      "name": "cancel accepted",
+      "name": "cancel-accepted",
       "operation": "cancelStatement"
     },
     {
@@ -1038,7 +1038,7 @@
       "input": {
         "statementHandle": "00000000-0000-4000-8000-000000000003"
       },
-      "name": "cancel rejected",
+      "name": "cancel-rejected",
       "operation": "cancelStatement"
     },
     {
@@ -1059,7 +1059,7 @@
       "input": {
         "statementHandle": "bad"
       },
-      "name": "cancel defect",
+      "name": "cancel-defect",
       "operation": "cancelStatement"
     },
     {
@@ -1109,7 +1109,7 @@
       "input": {
         "statementHandle": "00000000-0000-4000-8000-000000000003"
       },
-      "name": "cancel rate limit",
+      "name": "cancel-rate-limit",
       "operation": "cancelStatement"
     },
     {
@@ -1159,7 +1159,7 @@
       "input": {
         "statementHandle": "00000000-0000-4000-8000-000000000003"
       },
-      "name": "cancel server failure",
+      "name": "cancel-server-failure",
       "operation": "cancelStatement"
     },
     {
@@ -1207,7 +1207,7 @@
       "input": {
         "statementHandle": "00000000-0000-4000-8000-000000000003"
       },
-      "name": "cancel transport",
+      "name": "cancel-transport",
       "operation": "cancelStatement"
     },
     {
@@ -1285,7 +1285,7 @@
         ],
         "statement": "SELECT ? AS EVENT_COUNT"
       },
-      "name": "submit unauthorized",
+      "name": "submit-unauthorized",
       "operation": "submitStatement"
     },
     {
@@ -1424,7 +1424,7 @@
           "retryAfterMs": 0
         }
       ],
-      "name": "submit retry then accepted",
+      "name": "submit-retry-then-accepted",
       "operation": "submitStatement"
     },
     {
@@ -1561,7 +1561,7 @@
           "retryAfterMs": 0
         }
       ],
-      "name": "submit lost response then accepted",
+      "name": "submit-lost-response-then-accepted",
       "operation": "submitStatement"
     },
     {
@@ -1607,7 +1607,7 @@
       "input": {
         "statementHandle": "00000000-0000-4000-8000-000000000003"
       },
-      "name": "result invalid value",
+      "name": "result-invalid-value",
       "operation": "getStatementResult"
     },
     {
@@ -1653,7 +1653,7 @@
       "input": {
         "statementHandle": "00000000-0000-4000-8000-000000000003"
       },
-      "name": "result duplicate column",
+      "name": "result-duplicate-column",
       "operation": "getStatementResult"
     }
   ],
