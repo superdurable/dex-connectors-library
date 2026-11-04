@@ -333,6 +333,17 @@ upserts and tags the rest, counts the subscribed audience, and waits for a
 person to approve the campaign send through a permissioned Action before it
 sends the campaign at most once.
 
+## Python package
+
+[`python/`](python/) contains the `dex-connector-intuit-mailchimp` v0.1.0 package.
+It implements all five operations with manifest-generated models, Step factories,
+connection bindings, and mocks, plus a handwritten provider client. The
+[`get_member` example](python/examples/get_member/README.md) is a runnable Dex
+Flow with static `mailchimp-audience` connection, a real Worker and Client
+integration test, and Go-recorded provider conformance scenarios. Python has no
+Trigger in this version. See the package README for installation, testing, and
+live-provider limits.
+
 ## Verification
 
 ```bash
