@@ -17,7 +17,7 @@ const conformanceFixturePathPrefix = ""
 
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint string, transport *http.Client) conformanceInvoker {
 	t.Helper()
-	client, err := New(Config{BaseURL: endpoint}, conformanceCredentials{unavailable: scenario.Name == "sites missing credentials"}, WithHTTPClient(transport))
+	client, err := New(Config{BaseURL: endpoint}, conformanceCredentials{unavailable: scenario.Name == "sites-missing-credentials"}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
 		"listSites":   newConformanceQueryInvocation(t, scenario.Input, testContext{}, client.ListSites(), testConnection),

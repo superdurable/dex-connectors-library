@@ -20,7 +20,7 @@ ADAPTER = conformance.PythonOperationAdapter(
     "netlify", CONNECTION, netlify,
     lambda client, recorder: netlify.Client(
         netlify.Config(base_url="http://127.0.0.1:12345"),
-        ConformanceCredentials(recorder.scenario["name"] == "sites missing credentials"),
+        ConformanceCredentials(recorder.scenario["name"] == "sites-missing-credentials"),
         client,
     ),
 )

@@ -40,7 +40,7 @@
         "uncertain": false
       },
       "input": {},
-      "name": "sites listed",
+      "name": "sites-listed",
       "operation": "listSites"
     },
     {
@@ -75,7 +75,7 @@
         "uncertain": false
       },
       "input": {},
-      "name": "sites empty",
+      "name": "sites-empty",
       "operation": "listSites"
     },
     {
@@ -110,7 +110,7 @@
         "uncertain": false
       },
       "input": {},
-      "name": "sites rejected",
+      "name": "sites-rejected",
       "operation": "listSites"
     },
     {
@@ -145,7 +145,7 @@
         "uncertain": false
       },
       "input": {},
-      "name": "sites malformed",
+      "name": "sites-malformed",
       "operation": "listSites"
     },
     {
@@ -177,7 +177,7 @@
         "uncertain": false
       },
       "input": {},
-      "name": "sites rate limited",
+      "name": "sites-rate-limited",
       "operation": "listSites"
     },
     {
@@ -209,7 +209,7 @@
         "uncertain": false
       },
       "input": {},
-      "name": "sites unavailable",
+      "name": "sites-unavailable",
       "operation": "listSites"
     },
     {
@@ -239,7 +239,7 @@
         "uncertain": false
       },
       "input": {},
-      "name": "sites transport failure",
+      "name": "sites-transport-failure",
       "operation": "listSites"
     },
     {
@@ -283,7 +283,7 @@
       "input": {
         "siteId": "site-meridian"
       },
-      "name": "deploys listed",
+      "name": "deploys-listed",
       "operation": "listDeploys"
     },
     {
@@ -320,7 +320,7 @@
       "input": {
         "siteId": "missing"
       },
-      "name": "deploys not found",
+      "name": "deploys-not-found",
       "operation": "listDeploys"
     },
     {
@@ -357,7 +357,7 @@
       "input": {
         "siteId": "site-meridian"
       },
-      "name": "deploys rejected",
+      "name": "deploys-rejected",
       "operation": "listDeploys"
     },
     {
@@ -394,7 +394,7 @@
       "input": {
         "siteId": "site-meridian"
       },
-      "name": "deploys malformed",
+      "name": "deploys-malformed",
       "operation": "listDeploys"
     },
     {
@@ -428,7 +428,7 @@
       "input": {
         "siteId": "site-meridian"
       },
-      "name": "deploys rate limited",
+      "name": "deploys-rate-limited",
       "operation": "listDeploys"
     },
     {
@@ -462,7 +462,7 @@
       "input": {
         "siteId": "site-meridian"
       },
-      "name": "deploys unavailable",
+      "name": "deploys-unavailable",
       "operation": "listDeploys"
     },
     {
@@ -494,7 +494,7 @@
       "input": {
         "siteId": "site-meridian"
       },
-      "name": "deploys transport failure",
+      "name": "deploys-transport-failure",
       "operation": "listDeploys"
     },
     {
@@ -512,7 +512,7 @@
         "uncertain": false
       },
       "input": {},
-      "name": "sites missing credentials",
+      "name": "sites-missing-credentials",
       "operation": "listSites"
     },
     {
@@ -532,7 +532,7 @@
       "input": {
         "siteId": ""
       },
-      "name": "deploys missing site",
+      "name": "deploys-missing-site",
       "operation": "listDeploys"
     }
   ],
