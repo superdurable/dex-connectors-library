@@ -5,13 +5,17 @@ Install the Go module with `go get github.com/superdurable/dex-connectors-librar
 Moved from `github.com/superdurable/dex-connectors-library/connectors/tmdb`.
 
 This Dex connector calls the public TMDB JSON API. Its
-manifest version is `v0.1.0`; the Go module requires connector SDK `v0.33.0`
+manifest version is `v0.2.0`; the Go module requires connector SDK `v0.33.0`
     and Dex Go SDK `v1.5.0` or newer. The runnable
 [`movie-search` example](go/examples/movie-search/README.md) shows a
 complete Worker and the generated operation-specific Step factory.
 
 The Python package is [`dex-connector-tmdb`](python/README.md), imported as
 `dex_connectors.tmdb`.
+
+The TypeScript package is [`@superdurable/connector-tmdb`](typescript/README.md)
+at `v0.1.0`. Its [movie search example](typescript/examples/movie-search/README.md)
+uses the same static `tmdb` connection name and generated operation Step factory.
 
 ## Operations
 

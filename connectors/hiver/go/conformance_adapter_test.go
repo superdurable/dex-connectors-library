@@ -4,6 +4,7 @@
 package hiver_test
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -16,20 +17,23 @@ const conformanceFixturePathPrefix = "/v1"
 
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint string, transport *http.Client) conformanceInvoker {
 	t.Helper()
-	client, err := hiver.New(
-		hiver.Config{RequestIntervalMilliseconds: 1}, testCredentialProvider(),
-		hiver.WithAPIBaseURL(endpoint), hiver.WithHTTPClient(transport),
-	)
+	client, err := hiver.New(hiver.Config{RequestIntervalMilliseconds: 1}, testCredentialProvider(), hiver.WithAPIBaseURL(endpoint), hiver.WithHTTPClient(transport))
 	require.NoError(t, err)
 	context := newHiverDexContext("conformance")
-	initialAttempt := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(raw []byte) {
-		context.previousHeartbeat = raw
-	})
+	if len(scenario.PriorHeartbeat) != 0 {
+		context.previousHeartbeat = append(json.RawMessage(nil), scenario.PriorHeartbeat...)
+		var marker struct {
+			Attempt int32 `json:"attempt"`
+		}
+		require.NoError(t, json.Unmarshal(scenario.PriorHeartbeat, &marker))
+		context.attempt = marker.Attempt + 1
+	}
 	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
 		if attempt > 1 {
-			context.previousHeartbeat = context.recordedHeartbeat
+			context.previousHeartbeat = append(json.RawMessage(nil), context.recordedHeartbeat...)
+			context.recordedHeartbeat = nil
+			context.attempt = int32(attempt)
 		}
-		context.attempt = int32(attempt) + initialAttempt
 	}, actions: map[string]conformanceOperationInvocation{
 		"listInboxes":        newConformanceQueryInvocation(t, scenario.Input, context, client.ListInboxes(), hiverConnection),
 		"listConversations":  newConformanceQueryInvocation(t, scenario.Input, context, client.ListConversations(), hiverConnection),
