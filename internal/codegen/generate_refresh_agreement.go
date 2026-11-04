@@ -243,7 +243,7 @@ func (agreement *refreshAgreementGenerator) responseVariations(base RefreshAgree
 	}
 	variations = append(variations, missingType)
 	if grant.checksResponseScopes && len(grant.responseScopes) > 0 {
-		if grant.scopeSeparators == schema.ScopeSeparatorsWhitespaceAndComma {
+		if len(grant.acceptedScopeSets) > 0 && grant.scopeSeparators == schema.ScopeSeparatorsWhitespaceAndComma {
 			comma := clone(" with comma-separated scopes", "")
 			comma.Response["scope"] = strings.Join(grant.responseScopes, ",") + ",manifest-extra-scope"
 			variations = append(variations, comma)
