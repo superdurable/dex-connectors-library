@@ -63,7 +63,7 @@ describe('manifest credential refresh', () => {
     expect(requests).toBe(4);
   });
 
-  it('refreshes schema-decoded Jira and Slack declarations with declared token-type fields', async () => {
+  it('refreshes schema-decoded provider declarations with declared token-type fields', async () => {
     const jiraAuth = JSON.parse(readFileSync(new URL('./fixtures/jira-auth.json', import.meta.url), 'utf8')) as Record<string, unknown>;
     const slackAuth = JSON.parse(readFileSync(new URL('./fixtures/slack-auth.json', import.meta.url), 'utf8')) as Record<string, unknown>;
     const jira = new ManifestCredentialRefreshDriver<{
@@ -156,6 +156,51 @@ describe('manifest credential refresh', () => {
     const keeping = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth: configured, credentialFields, fetch: fetcher });
     expect((await keeping.refresh(state(), new AbortController().signal)).expiresAt.getTime()).toBe(0);
   });
+
+  it('refreshes stored credentials without expiry but rejects a response without expires_in', async () => {
+    const configured = structuredClone(auth) as Record<string, unknown>;
+    const method = (configured.methods as Record<string, unknown>[])[0]!;
+    const refresh = ((method.oauth2 as Record<string, unknown>).refresh as Record<string, unknown>);
+    refresh.storedMissingExpiry = 'refresh';
+    refresh.acceptsMissingTokenType = true;
+    let response: Record<string, unknown> = { access_token: 'next', expires_in: 3600, scope: 'files.read' };
+    let requests = 0;
+    const driver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth: configured,
+      credentialFields, fetch: async () => { requests++; return Response.json(response); } });
+    const noExpiry = { credentials: credentials(), now: new Date() };
+    expect(driver.refreshRequired(noExpiry)).toBe(true);
+    await expect(driver.refresh(noExpiry, new AbortController().signal)).resolves.toBeDefined();
+    response = { access_token: 'next', scope: 'files.read' };
+    await expect(driver.refresh(noExpiry, new AbortController().signal)).rejects.toThrow('omitted required fields');
+    expect(requests).toBe(2);
+  });
+
+  it.each(['refresh', 'client_credentials', 'jwt_bearer'] as const)(
+    'validates stored missing expiry separately from response lifetime for %s', grantKind => {
+      const configured = grantKind === 'refresh' ? structuredClone(auth) as Record<string, unknown>
+        : grantKind === 'client_credentials' ? { clientCredentials: {
+          credentialMappings: [{ credential: 'access_token', source: 'access_token' }],
+        } } as Record<string, unknown>
+          : { serviceAccount: { jwtBearer: {
+            credentialMappings: [{ credential: 'access_token', source: 'access_token' }],
+          } } } as Record<string, unknown>;
+      const grant = grantKind === 'refresh'
+        ? (((configured.methods as Record<string, unknown>[])[0]!.oauth2 as Record<string, unknown>).refresh as Record<string, unknown>)
+        : grantKind === 'client_credentials' ? configured.clientCredentials as Record<string, unknown>
+          : (configured.serviceAccount as Record<string, unknown>).jwtBearer as Record<string, unknown>;
+      const driver = () => new ManifestCredentialRefreshDriver<Credentials>({
+        providerName: 'Example', auth: configured, credentialFields,
+      });
+      const undated = { credentials: credentials(), now: new Date() };
+      grant.missingExpiry = { lifetime: '1h' };
+      expect(driver().refreshRequired(undated)).toBe(false);
+      grant.storedMissingExpiry = 'refresh';
+      expect(driver().refreshRequired(undated)).toBe(true);
+      grant.storedMissingExpiry = 'keep';
+      expect(driver().refreshRequired(undated)).toBe(false);
+      grant.storedMissingExpiry = 'invalid';
+      expect(driver).toThrow('manifest storedMissingExpiry must be refresh or keep');
+    });
 
   it('uses public authentication only when client secret is optional', async () => {
     const configured = structuredClone(auth) as Record<string, unknown>;
