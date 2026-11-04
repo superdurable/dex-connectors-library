@@ -1,0 +1,135 @@
+[
+  {
+    "name": "calendly-oauth refresh",
+    "methodId": "calendly-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token",
+      "webhook_signing_key": "manifest-webhook_signing_key"
+    },
+    "endpoint": "https://auth.calendly.com/oauth/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "users:read event_types:read scheduled_events:write scheduling_links:write webhooks:write",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [
+      "invalid_grant",
+      "invalid_client",
+      "unauthorized_client"
+    ]
+  },
+  {
+    "name": "calendly-oauth refresh with unaccepted token type",
+    "expectedError": "retryable",
+    "methodId": "calendly-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token",
+      "webhook_signing_key": "manifest-webhook_signing_key"
+    },
+    "endpoint": "https://auth.calendly.com/oauth/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "users:read event_types:read scheduled_events:write scheduling_links:write webhooks:write",
+      "token_type": "manifest-unaccepted-token-type"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": null
+  },
+  {
+    "name": "calendly-oauth refresh without token type",
+    "expectedError": "retryable",
+    "methodId": "calendly-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token",
+      "webhook_signing_key": "manifest-webhook_signing_key"
+    },
+    "endpoint": "https://auth.calendly.com/oauth/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "users:read event_types:read scheduled_events:write scheduling_links:write webhooks:write"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": null
+  },
+  {
+    "name": "calendly-oauth refresh without expires_in",
+    "expectedError": "retryable",
+    "methodId": "calendly-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token",
+      "webhook_signing_key": "manifest-webhook_signing_key"
+    },
+    "endpoint": "https://auth.calendly.com/oauth/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "users:read event_types:read scheduled_events:write scheduling_links:write webhooks:write",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": null
+  }
+]
