@@ -17,10 +17,14 @@ import connector_scenarios as conformance  # noqa: E402
 SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/unsplash/scenarios.json")
 CONNECTION = sdk.ConnectionRef("unsplash", "unsplash")
 ADAPTER = conformance.PythonOperationAdapter(
-    "unsplash", CONNECTION, unsplash,
+    "unsplash",
+    CONNECTION,
+    unsplash,
     lambda client, _: unsplash.Client(
         unsplash.Config(base_url="http://localhost"),
-        conformance.static_credentials(CONNECTION, unsplash.Credentials(sdk.SecretString("unsplash-test-key"))),
+        conformance.static_credentials(
+            CONNECTION, unsplash.Credentials(sdk.SecretString("unsplash-test-key"))
+        ),
         client,
     ),
 )
