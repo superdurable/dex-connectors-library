@@ -4305,7 +4305,7 @@
       "callId": "00000000-0000-4000-8000-000000000099",
       "exchanges": [
         {
-          "body": "{\"resultSetMetaData\": {\"format\": \"jsonv2\", \"numRows\": 1, \"rowType\": [{\"name\": \"SMALL\", \"type\": \"fixed\", \"precision\": 9}, {\"name\": \"WIDE\", \"type\": \"fixed\", \"precision\": 38}, {\"name\": \"DECIMAL\", \"type\": \"fixed\", \"precision\": 12, \"scale\": 2}, {\"name\": \"REAL\", \"type\": \"real\"}, {\"name\": \"BOOLEAN\", \"type\": \"boolean\"}, {\"name\": \"BINARY\", \"type\": \"binary\"}, {\"name\": \"DATE\", \"type\": \"date\"}, {\"name\": \"TIME\", \"type\": \"time\"}, {\"name\": \"NTZ\", \"type\": \"timestamp_ntz\"}, {\"name\": \"LTZ\", \"type\": \"timestamp_ltz\"}, {\"name\": \"TZ\", \"type\": \"timestamp_tz\"}, {\"name\": \"VARIANT\", \"type\": \"variant\"}], \"partitionInfo\": [{}]}, \"data\": [[\"-42\", \"9007199254740993\", \"1200.00\", \"1.5e+10\", \"true\", \"0001ff\", \"18262\", \"82919.500000000\", \"-1.500000000\", \"1616173619.000000000\", \"1616173619.000000000 1500\", \"{\\\"amount\\\":123}\"]]}",
+          "body": "{\"resultSetMetaData\":{\"format\":\"jsonv2\",\"numRows\":1,\"rowType\":[{\"name\":\"SMALL\",\"type\":\"fixed\",\"precision\":9},{\"name\":\"WIDE\",\"type\":\"fixed\",\"precision\":38},{\"name\":\"DECIMAL\",\"type\":\"fixed\",\"precision\":12,\"scale\":2},{\"name\":\"REAL\",\"type\":\"real\"},{\"name\":\"BOOLEAN\",\"type\":\"boolean\"},{\"name\":\"BINARY\",\"type\":\"binary\"},{\"name\":\"DATE\",\"type\":\"date\"},{\"name\":\"TIME\",\"type\":\"time\"},{\"name\":\"NTZ\",\"type\":\"timestamp_ntz\"},{\"name\":\"LTZ\",\"type\":\"timestamp_ltz\"},{\"name\":\"TZ\",\"type\":\"timestamp_tz\"},{\"name\":\"VARIANT\",\"type\":\"variant\"},{\"name\":\"UTC_TZ\",\"type\":\"timestamp_tz\"}],\"partitionInfo\":[{}]},\"data\":[[\"-42\",\"9007199254740993\",\"1200.00\",\"1.5e+10\",\"true\",\"0001ff\",\"18262\",\"82919.500000000\",\"-1.500000000\",\"1616173619.000000000\",\"1616173619.000000000 1500\",\"{\\\"amount\\\":12345678901234567890,\\\"decimal\\\":1.50,\\\"nested\\\":[1.25,-0]}\",\"1700000000.123456789 1440\"]],\"createdOn\":1700000000120}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -4395,6 +4395,11 @@
               "name": "VARIANT",
               "nullable": false,
               "type": "variant"
+            },
+            {
+              "name": "UTC_TZ",
+              "nullable": false,
+              "type": "timestamp_tz"
             }
           ],
           "partition": 0,
@@ -4411,13 +4416,20 @@
               "SMALL": -42,
               "TIME": "23:01:59.5",
               "TZ": "2021-03-19T18:06:59+01:00",
+              "UTC_TZ": "2023-11-14T22:13:20.123456789Z",
               "VARIANT": {
-                "amount": 123
+                "amount": 12345678901234567000,
+                "decimal": 1.5,
+                "nested": [
+                  1.25,
+                  -0
+                ]
               },
               "WIDE": "9007199254740993"
             }
           ],
           "statementHandle": "00000000-0000-4000-8000-000000000003",
+          "submittedAt": "2023-11-14T22:13:20.12Z",
           "totalRowCount": 1
         },
         "requestCount": 1,
@@ -4642,6 +4654,85 @@
       ],
       "name": "cancel-lost-response-retry",
       "operation": "cancelStatement"
+    },
+    {
+      "callId": "c57550bf-395d-5486-9f44-1a08d1b0c3ba",
+      "exchanges": [
+        {
+          "body": "{\"statementHandle\": \"00000000-0000-4000-8000-000000000003\", \"createdOn\": 1767225600000}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/statements",
+          "query": {
+            "async": [
+              "true"
+            ],
+            "requestId": [
+              "c57550bf-395d-5486-9f44-1a08d1b0c3ba"
+            ],
+            "retry": [
+              "true"
+            ]
+          },
+          "requestBody": {
+            "bindings": {
+              "1": {
+                "type": "TEXT",
+                "value": "acct_003"
+              }
+            },
+            "database": "ANALYTICS",
+            "parameters": {
+              "MULTI_STATEMENT_COUNT": "1"
+            },
+            "role": "DEX_REPORTING",
+            "schema": "BILLING",
+            "statement": "SELECT ? AS EVENT_COUNT",
+            "timeout": 3600,
+            "warehouse": "REPORTING_WH"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer conformance-key-pair-jwt"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "KEYPAIR_JWT"
+            ]
+          },
+          "status": 202
+        }
+      ],
+      "expected": {
+        "branch": "submitted",
+        "failureKind": "",
+        "output": {
+          "statementHandle": "00000000-0000-4000-8000-000000000003",
+          "submittedAt": "2026-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c57550bf-395d-5486-9f44-1a08d1b0c3ba",
+      "input": {
+        "parameters": [
+          "acct_003"
+        ],
+        "statement": "SELECT ? AS EVENT_COUNT"
+      },
+      "name": "submit-key-pair-jwt",
+      "operation": "submitStatement"
     }
   ],
   "schemaVersion": 1

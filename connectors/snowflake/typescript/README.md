@@ -29,7 +29,9 @@ safe receipt metadata; credentials and provider messages do not enter Flow
 state.
 
 TypeScript numbers are limited to JavaScript's exact integer range. Use strings
-for wide decimal values in application logic. The SQL API result mapping is in
+for wide decimal values in application logic. Semi-structured result values
+retain their original JSON number text when serialized, including wide integers
+and decimal scale. The SQL API result mapping is in
 the [connector README](../README.md#result-type-mapping).
 
 From this package directory, run `npm ci && npm run check`. With `dexcli dev`

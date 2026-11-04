@@ -1,7 +1,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { it } from 'vitest';
+import { createHash, createPublicKey, generateKeyPairSync, verify } from 'node:crypto';
+import { expect, it } from 'vitest';
 import { RetryError, runMutation, SecretString, type Call, type Mutation } from '@superdurable/connectors-sdk';
 import { ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { answerRecordedRequest, ExchangeRecorder, invokeProductionMutation, loadScenarios, replay, scenarioCall, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
@@ -18,10 +19,29 @@ function productionMutation<Input, Output>(operation: Mutation<Input, Output>, c
 }
 
 async function invokeSnowflake(scenario: Scenario, recorder: ExchangeRecorder) {
-  const sender = (request: ProviderRequest) => answerRecordedRequest(recorder, request, before => new ProviderTransportError(before));
+  const isKeyPairScenario = scenario.name === 'submit-key-pair-jwt';
+  const privateKey = isKeyPairScenario ? generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey : undefined;
+  const sender = (request: ProviderRequest) => {
+    if (privateKey) {
+      const token = request.headers?.Authorization?.replace(/^Bearer /, '') ?? '';
+      const [header, payload, signature] = token.split('.');
+      expect(JSON.parse(Buffer.from(header ?? '', 'base64url').toString())).toEqual({ alg: 'RS256', typ: 'JWT' });
+      const claims = JSON.parse(Buffer.from(payload ?? '', 'base64url').toString()) as Record<string, unknown>;
+      expect(claims.sub).toBe('MYORG-ANALYTICS.DEX_SERVICE');
+      expect(claims.iat).toBe(1790769600);
+      expect(claims.exp).toBe(1790773140);
+      const publicDER = createPublicKey(privateKey).export({ type: 'spki', format: 'der' });
+      expect(claims.iss).toBe(`MYORG-ANALYTICS.DEX_SERVICE.SHA256:${createHash('sha256').update(publicDER).digest('base64')}`);
+      expect(verify('RSA-SHA256', Buffer.from(`${header}.${payload}`), privateKey, Buffer.from(signature ?? '', 'base64url'))).toBe(true);
+      request = { ...request, headers: { ...request.headers, Authorization: 'Bearer conformance-key-pair-jwt' } };
+    }
+    return answerRecordedRequest(recorder, request, before => new ProviderTransportError(before));
+  };
   const client = new SnowflakeClient({ accountIdentifier: 'myorg-analytics', warehouse: 'REPORTING_WH', role: 'DEX_REPORTING', database: 'ANALYTICS', schema: 'BILLING' }, {
-    resolve: async () => ({ authMethodId: 'programmatic-access-token', programmaticAccessToken: new SecretString('pat-secret-value-0123456789') }),
-  }, { localProviderUrl: 'http://127.0.0.1', send: sender });
+    resolve: async () => privateKey
+      ? { authMethodId: 'key-pair', user: 'dex_service', privateKey: new SecretString(privateKey.export({ type: 'pkcs8', format: 'pem' }).toString()) }
+      : { authMethodId: 'programmatic-access-token', programmaticAccessToken: new SecretString('pat-secret-value-0123456789') },
+  }, { localProviderUrl: 'http://127.0.0.1', send: sender, now: () => new Date('2026-09-30T12:00:00Z') });
   const call = scenarioCall(scenario, connection, 'snowflake', {
     flowId: 'snowflake-conformance', cancellationSignal: new AbortController().signal,
   }, { reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false }) as Call;

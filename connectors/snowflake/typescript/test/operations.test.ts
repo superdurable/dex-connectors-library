@@ -50,4 +50,45 @@ describe('Snowflake SQL API adapter', () => {
     expect(result.kind).toBe('branch');
     if (result.kind === 'branch') expect(result.branch).toBe('invalidResponse');
   });
+
+  it('rejects a credential without an authentication method before sending', async () => {
+    let requests = 0;
+    const client = new SnowflakeClient({ accountIdentifier: 'myorg-analytics' }, {
+      resolve: async () => ({ user: 'dex_service', privateKey: new SecretString('unused') }),
+    }, { send: async () => { requests++; throw new Error('unexpected request'); } });
+    const result = await client.getStatementResult().invoke(call, { statementHandle: handle });
+    expect(result.kind).toBe('branch');
+    if (result.kind === 'branch') {
+      expect(result.branch).toBe('defect');
+      expect(result.failure?.message).toBe('the Snowflake connection selects no supported authentication method');
+    }
+    expect(requests).toBe(0);
+  });
+
+  it('explains how to export an encrypted private key', async () => {
+    const client = new SnowflakeClient({ accountIdentifier: 'myorg-analytics' }, {
+      resolve: async () => ({ authMethodId: 'key-pair', user: 'dex_service', privateKey: new SecretString('-----BEGIN ENCRYPTED PRIVATE KEY-----\nMIIB\n-----END ENCRYPTED PRIVATE KEY-----') }),
+    }, { send: async () => { throw new Error('unexpected request'); } });
+    const result = await client.getStatementResult().invoke(call, { statementHandle: handle });
+    expect(result.kind).toBe('branch');
+    if (result.kind === 'branch') expect(result.failure?.message).toBe('the Snowflake private key is encrypted; export an unencrypted PKCS #8 key with openssl pkcs8 -topk8 -nocrypt');
+  });
+
+  it('preserves Go JSON digits in semi-structured columns and reports the UTC zone', async () => {
+    const client = new SnowflakeClient({ accountIdentifier: 'myorg-analytics' }, {
+      resolve: async () => ({ authMethodId: 'programmatic-access-token', programmaticAccessToken: new SecretString('token') }),
+    }, { send: async () => ({ status: 200, headers: {}, body: Buffer.from(JSON.stringify({
+      resultSetMetaData: { format: 'jsonv2', rowType: [
+        { name: 'VARIANT', type: 'variant' }, { name: 'OBJECT', type: 'object' },
+        { name: 'ARRAY', type: 'array' }, { name: 'MAP', type: 'map' }, { name: 'SCALAR', type: 'variant' },
+        { name: 'EXPONENT', type: 'variant' }, { name: 'TZ', type: 'timestamp_tz' },
+      ] }, data: [['{"large":12345678901234567890,"decimal":1.50,"negativeZero":-0}', '{"value":1.50}', '[12345678901234567890]', '{"value":-0}', '1.50', '1e400', '1700000000.123456789 1440']],
+    })) }) });
+    const result = await client.getStatementResult().invoke(call, { statementHandle: handle });
+    expect(result.kind).toBe('branch');
+    if (result.kind === 'branch') {
+      expect(result.branch).toBe('completed');
+      expect(JSON.stringify(result.value.rows?.[0])).toBe('{"VARIANT":{"large":12345678901234567890,"decimal":1.50,"negativeZero":-0},"OBJECT":{"value":1.50},"ARRAY":[12345678901234567890],"MAP":{"value":-0},"SCALAR":1.50,"EXPONENT":1e400,"TZ":"2023-11-14T22:13:20.123456789Z"}');
+    }
+  });
 });

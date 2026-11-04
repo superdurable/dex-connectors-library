@@ -100,10 +100,10 @@ export class SnowflakeClient {
     let tokenType: string;
     try {
       const credentials = await this.credentials.resolve(call, call.context.cancellationSignal);
-      if ((credentials.authMethodId ?? 'key-pair') === 'programmatic-access-token') {
+      if (credentials.authMethodId === 'programmatic-access-token') {
         if (!(credentials.programmaticAccessToken instanceof SecretString) || !isHeaderSafeCredential(credentials.programmaticAccessToken.reveal())) throw new Error('the Snowflake programmatic access token is blank or contains spaces or non-ASCII characters');
         token = credentials.programmaticAccessToken.reveal(); tokenType = 'PROGRAMMATIC_ACCESS_TOKEN';
-      } else if ((credentials.authMethodId ?? 'key-pair') === 'key-pair') {
+      } else if (credentials.authMethodId === 'key-pair') {
         token = this.signJwt(credentials); tokenType = 'KEYPAIR_JWT';
       } else throw new Error('the Snowflake connection selects no supported authentication method');
     } catch (error) {
@@ -141,10 +141,13 @@ export class SnowflakeClient {
     let key;
     try {
       const pem = credentials.privateKey.reveal();
-      if (pem.includes('BEGIN ENCRYPTED PRIVATE KEY')) throw new Error('encrypted');
+      if (pem.includes('BEGIN ENCRYPTED PRIVATE KEY')) throw new Error('the Snowflake private key is encrypted; export an unencrypted PKCS #8 key with openssl pkcs8 -topk8 -nocrypt');
       key = createPrivateKey(pem);
       if (key.asymmetricKeyType !== 'rsa') throw new Error('non-RSA');
-    } catch { throw new Error('the Snowflake private key is not an unencrypted PEM RSA private key'); }
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith('the Snowflake private key is encrypted')) throw error;
+      throw new Error('the Snowflake private key is not an unencrypted PEM RSA private key');
+    }
     const publicDer = createPublicKey(key).export({ type: 'spki', format: 'der' });
     const fingerprint = `SHA256:${createHash('sha256').update(publicDer).digest('base64')}`;
     const subject = `${this.jwtAccount}.${user.toUpperCase()}`;

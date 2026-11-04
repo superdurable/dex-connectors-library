@@ -8,6 +8,10 @@ import { SubmitStatementDefinition, GetStatementResultDefinition, CancelStatemen
 import type { SubmitStatementInput, StatementSubmission, GetStatementResultInput, StatementResult, CancelStatementInput, StatementCancellation, Column, StatementStats } from './generated/models.js';
 
 const path = '/api/v2/statements';
+const jsonWithRaw = JSON as unknown as {
+  parse(text: string, reviver: (key: string, value: unknown, context: { source?: string }) => unknown): unknown;
+  rawJSON(text: string): unknown;
+};
 const emptySubmission: StatementSubmission = { statementHandle: '' };
 const emptyCancellation: StatementCancellation = { statementHandle: '' };
 const emptyResult = (input: GetStatementResultInput): StatementResult => ({ statementHandle: input.statementHandle, columns: [], rows: [], partition: input.partition ?? 0 });
@@ -209,7 +213,11 @@ function decodeColumnValue(column: Column, cell: string | null): unknown {
       return Number.isNaN(date.getTime()) || date.getUTCFullYear() < 1 || date.getUTCFullYear() > 9999 ? cell : date.toISOString().slice(0, 10);
     }
     case 'time': case 'timestamp_ntz': case 'timestamp_ltz': case 'timestamp_tz': return decodeTemporal(column.type, cell, invalid);
-    case 'variant': case 'object': case 'array': case 'map': try { return JSON.parse(cell) as unknown; } catch { return invalid(); }
+    case 'variant': case 'object': case 'array': case 'map':
+      try {
+        return jsonWithRaw.parse(cell, (_key, value, context) =>
+          typeof value === 'number' ? jsonWithRaw.rawJSON(context.source!) : value);
+      } catch { return invalid(); }
     default: return cell;
   }
 }
@@ -232,6 +240,7 @@ function decodeTemporal(type: string, cell: string, invalid: () => never): strin
   const timestamp = `${date.toISOString().slice(0, 19)}${fraction ? `.${fraction}` : ''}`;
   if (type === 'timestamp_ntz') return timestamp;
   if (type === 'timestamp_tz') {
+    if (offset === 0) return `${timestamp}Z`;
     const sign = offset < 0 ? '-' : '+';
     return `${timestamp}${sign}${String(Math.floor(Math.abs(offset) / 60)).padStart(2, '0')}:${String(Math.abs(offset) % 60).padStart(2, '0')}`;
   }
@@ -239,7 +248,10 @@ function decodeTemporal(type: string, cell: string, invalid: () => never): strin
 }
 
 function parseJSON(body: Uint8Array): unknown { try { return JSON.parse(Buffer.from(body).toString('utf8')) as unknown; } catch { throw new Error('Snowflake returned a response the connector cannot decode'); } }
-function formatGoTime(milliseconds: number): string { return new Date(milliseconds).toISOString().replace(/\.000Z$/, 'Z'); }
+function formatGoTime(milliseconds: number): string { return new Date(milliseconds).toISOString().replace(/\.(\d{3})Z$/, (_match, fraction: string) => {
+  const trimmed = fraction.replace(/0+$/, '');
+  return trimmed ? `.${trimmed}Z` : 'Z';
+}); }
 function hasDuplicateColumns(columns: Column[]): boolean { return new Set(columns.map(column => column.name)).size !== columns.length; }
 
 function bindStatement(statement: string, parameters: unknown[]): Record<string, { type: string; value: string | null }> | undefined {
