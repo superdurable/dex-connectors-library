@@ -13,6 +13,11 @@ spec:
       version: v0.1.0
       operations: [listIssues, getIssue, updateIssueStatus]
       triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-sentry'
+      operations: [listIssues, getIssue, updateIssueStatus]
+      triggers: []
   codegen:
     go:
       package: sentry
