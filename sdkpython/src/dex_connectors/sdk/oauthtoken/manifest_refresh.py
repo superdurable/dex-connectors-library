@@ -488,6 +488,8 @@ def _is_go_mail_address(value: str) -> bool:
     if not is_atom(local):
         return False
     if domain.startswith("[") and domain.endswith("]"):
+        if "%" in domain:
+            return False
         try:
             ip_address(domain[1:-1])
         except ValueError:
