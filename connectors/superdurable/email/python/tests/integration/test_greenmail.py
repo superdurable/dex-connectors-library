@@ -66,6 +66,7 @@ async def test_greenmail_verified_tls_send_search_read_reply_move_and_flags() ->
     if any(name not in os.environ for name in required):
         pytest.skip("GreenMail service variables are supplied by CI")
     context = ssl.create_default_context(cafile=os.environ["EMAIL_CONNECTOR_TEST_CA_CERT"])
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
     host = os.environ.get("EMAIL_CONNECTOR_TEST_IMAP_HOST", "127.0.0.1")
     smtp_host = os.environ.get("EMAIL_CONNECTOR_TEST_SMTP_HOST", "127.0.0.1")
     config = Config(

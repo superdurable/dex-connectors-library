@@ -1,0 +1,1161 @@
+{
+  "connector": "twilio-messaging",
+  "scenarios": [
+    {
+      "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "exchanges": [
+        {
+          "body": "{\"sid\":\"SMfedcba9876543210fedcba9876543210\",\"account_sid\":\"AC00000000000000000000000000000000\",\"messaging_service_sid\":\"MG00112233445566770011223344556677\",\"from\":null,\"to\":\"+14155550123\",\"status\":\"accepted\",\"direction\":\"outbound-api\",\"error_code\":null,\"num_segments\":\"0\",\"num_media\":\"2\",\"price\":null,\"price_unit\":null,\"date_created\":\"Wed, 30 Sep 2026 17:04:05 +0000\",\"date_sent\":null,\"date_updated\":null}",
+          "form": {
+            "Body": [
+              "Your table is ready."
+            ],
+            "MediaUrl": [
+              "https://cdn.example.com/b.png",
+              "https://cdn.example.com/a.png"
+            ],
+            "MessagingServiceSid": [
+              "MG00112233445566770011223344556677"
+            ],
+            "To": [
+              "+14155550123"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic QUMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDphdXRoLXRva2VuLXNlbnRpbmVsLTAxMjM0NTY3ODlhYg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "accepted",
+        "failureKind": "",
+        "output": {
+          "accountSid": "AC00000000000000000000000000000000",
+          "createdAt": "2026-09-30T17:04:05Z",
+          "direction": "outbound-api",
+          "mediaCount": 2,
+          "messagingServiceSid": "MG00112233445566770011223344556677",
+          "sentAt": "0001-01-01T00:00:00Z",
+          "sid": "SMfedcba9876543210fedcba9876543210",
+          "status": "accepted",
+          "to": "+14155550123",
+          "updatedAt": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "input": {
+        "body": "Your table is ready.",
+        "mediaUrls": [
+          "https://cdn.example.com/b.png",
+          "https://cdn.example.com/a.png"
+        ],
+        "sender": "MG00112233445566770011223344556677",
+        "to": "+14155550123"
+      },
+      "name": "send_accepted_service_media",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "exchanges": [
+        {
+          "body": "{\"code\":21608,\"message\":\"redacted\"}",
+          "form": {
+            "Body": [
+              "Hello"
+            ],
+            "From": [
+              "+14155550100"
+            ],
+            "To": [
+              "+14155550123"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic QUMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDphdXRoLXRva2VuLXNlbnRpbmVsLTAxMjM0NTY3ODlhYg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "accountSid": "AC00000000000000000000000000000000",
+          "createdAt": "0001-01-01T00:00:00Z",
+          "errorCode": 21608,
+          "from": "+14155550100",
+          "sentAt": "0001-01-01T00:00:00Z",
+          "to": "+14155550123",
+          "updatedAt": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "input": {
+        "body": "Hello",
+        "to": "+14155550123"
+      },
+      "name": "send_provider_rejected",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "Body": [
+              "Hello"
+            ],
+            "From": [
+              "+14155550100"
+            ],
+            "To": [
+              "+14155550123"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic QUMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDphdXRoLXRva2VuLXNlbnRpbmVsLTAxMjM0NTY3ODlhYg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "accountSid": "AC00000000000000000000000000000000",
+          "createdAt": "0001-01-01T00:00:00Z",
+          "from": "+14155550100",
+          "sentAt": "0001-01-01T00:00:00Z",
+          "to": "+14155550123",
+          "updatedAt": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "input": {
+        "body": "Hello",
+        "to": "+14155550123"
+      },
+      "name": "send_uncertain_server",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accountSid": "",
+          "createdAt": "0001-01-01T00:00:00Z",
+          "sentAt": "0001-01-01T00:00:00Z",
+          "to": "",
+          "updatedAt": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "input": {
+        "body": "Hello",
+        "to": "invalid"
+      },
+      "name": "send_defect",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "Body": [
+              "Hello"
+            ],
+            "From": [
+              "+14155550100"
+            ],
+            "To": [
+              "+14155550123"
+            ]
+          },
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic QUMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDphdXRoLXRva2VuLXNlbnRpbmVsLTAxMjM0NTY3ODlhYg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "input": {
+        "body": "Hello",
+        "to": "+14155550123"
+      },
+      "name": "send_rate_limit",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "Body": [
+              "Hello"
+            ],
+            "From": [
+              "+14155550100"
+            ],
+            "To": [
+              "+14155550123"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic QUMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDphdXRoLXRva2VuLXNlbnRpbmVsLTAxMjM0NTY3ODlhYg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "input": {
+        "body": "Hello",
+        "to": "+14155550123"
+      },
+      "name": "send_unavailable",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "exchanges": [
+        {
+          "form": {
+            "Body": [
+              "Hello"
+            ],
+            "From": [
+              "+14155550100"
+            ],
+            "To": [
+              "+14155550123"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic QUMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDphdXRoLXRva2VuLXNlbnRpbmVsLTAxMjM0NTY3ODlhYg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "input": {
+        "body": "Hello",
+        "to": "+14155550123"
+      },
+      "name": "send_transport_before",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "exchanges": [
+        {
+          "form": {
+            "Body": [
+              "Hello"
+            ],
+            "From": [
+              "+14155550100"
+            ],
+            "To": [
+              "+14155550123"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic QUMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDphdXRoLXRva2VuLXNlbnRpbmVsLTAxMjM0NTY3ODlhYg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "accountSid": "AC00000000000000000000000000000000",
+          "createdAt": "0001-01-01T00:00:00Z",
+          "from": "+14155550100",
+          "sentAt": "0001-01-01T00:00:00Z",
+          "to": "+14155550123",
+          "updatedAt": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "input": {
+        "body": "Hello",
+        "to": "+14155550123"
+      },
+      "name": "send_transport_after",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "exchanges": [
+        {
+          "body": "{\"sid\":\"SMfedcba9876543210fedcba9876543210\",\"account_sid\":\"AC00000000000000000000000000000000\",\"messaging_service_sid\":null,\"from\":\"+14155550100\",\"to\":\"+14155550123\",\"status\":\"queued\",\"direction\":\"outbound-api\",\"error_code\":null,\"num_segments\":\"1\",\"num_media\":\"0\",\"price\":null,\"price_unit\":null,\"date_created\":\"Wed, 30 Sep 2026 17:04:05 +0000\",\"date_sent\":null,\"date_updated\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages/SMfedcba9876543210fedcba9876543210.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic QUMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDphdXRoLXRva2VuLXNlbnRpbmVsLTAxMjM0NTY3ODlhYg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "accountSid": "AC00000000000000000000000000000000",
+          "createdAt": "2026-09-30T17:04:05Z",
+          "direction": "outbound-api",
+          "from": "+14155550100",
+          "segmentCount": 1,
+          "sentAt": "0001-01-01T00:00:00Z",
+          "sid": "SMfedcba9876543210fedcba9876543210",
+          "status": "queued",
+          "to": "+14155550123",
+          "updatedAt": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messageSid": "SMfedcba9876543210fedcba9876543210"
+      },
+      "name": "get_found",
+      "operation": "getMessage"
+    },
+    {
+      "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "exchanges": [
+        {
+          "body": "{\"code\":20404}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages/SMfedcba9876543210fedcba9876543210.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic QUMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDphdXRoLXRva2VuLXNlbnRpbmVsLTAxMjM0NTY3ODlhYg=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "accountSid": "",
+          "createdAt": "0001-01-01T00:00:00Z",
+          "sentAt": "0001-01-01T00:00:00Z",
+          "to": "",
+          "updatedAt": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messageSid": "SMfedcba9876543210fedcba9876543210"
+      },
+      "name": "get_not_found",
+      "operation": "getMessage"
+    },
+    {
+      "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "exchanges": [
+        {
+          "body": "{\"code\":20003}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages/SMfedcba9876543210fedcba9876543210.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic QUMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDphdXRoLXRva2VuLXNlbnRpbmVsLTAxMjM0NTY3ODlhYg=="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "accountSid": "",
+          "createdAt": "0001-01-01T00:00:00Z",
+          "sentAt": "0001-01-01T00:00:00Z",
+          "to": "",
+          "updatedAt": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messageSid": "SMfedcba9876543210fedcba9876543210"
+      },
+      "name": "get_provider_rejected",
+      "operation": "getMessage"
+    },
+    {
+      "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "exchanges": [
+        {
+          "body": "{\"sid\":\"invalid\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages/SMfedcba9876543210fedcba9876543210.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic QUMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDphdXRoLXRva2VuLXNlbnRpbmVsLTAxMjM0NTY3ODlhYg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "accountSid": "",
+          "createdAt": "0001-01-01T00:00:00Z",
+          "sentAt": "0001-01-01T00:00:00Z",
+          "to": "",
+          "updatedAt": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messageSid": "SMfedcba9876543210fedcba9876543210"
+      },
+      "name": "get_invalid_response",
+      "operation": "getMessage"
+    },
+    {
+      "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accountSid": "",
+          "createdAt": "0001-01-01T00:00:00Z",
+          "sentAt": "0001-01-01T00:00:00Z",
+          "to": "",
+          "updatedAt": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messageSid": "invalid"
+      },
+      "name": "get_defect",
+      "operation": "getMessage"
+    },
+    {
+      "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages/SMfedcba9876543210fedcba9876543210.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic QUMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDphdXRoLXRva2VuLXNlbnRpbmVsLTAxMjM0NTY3ODlhYg=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messageSid": "SMfedcba9876543210fedcba9876543210"
+      },
+      "name": "get_rate_limit",
+      "operation": "getMessage"
+    },
+    {
+      "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages/SMfedcba9876543210fedcba9876543210.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic QUMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDphdXRoLXRva2VuLXNlbnRpbmVsLTAxMjM0NTY3ODlhYg=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messageSid": "SMfedcba9876543210fedcba9876543210"
+      },
+      "name": "get_unavailable",
+      "operation": "getMessage"
+    },
+    {
+      "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages/SMfedcba9876543210fedcba9876543210.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic QUMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDphdXRoLXRva2VuLXNlbnRpbmVsLTAxMjM0NTY3ODlhYg=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messageSid": "SMfedcba9876543210fedcba9876543210"
+      },
+      "name": "get_transport",
+      "operation": "getMessage"
+    },
+    {
+      "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "exchanges": [
+        {
+          "body": "{\"sid\":\"SMfedcba9876543210fedcba9876543210\",\"account_sid\":\"AC00000000000000000000000000000000\",\"from\":\"+14155550100\",\"to\":\"+14155550123\",\"status\":\"queued\",\"direction\":\"outbound-api\",\"num_segments\":\"1\",\"num_media\":\"0\",\"date_created\":\"Wed, 30 Sep 2026 17:04:05 +0000\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages/SMfedcba9876543210fedcba9876543210.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic QUMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDphdXRoLXRva2VuLXNlbnRpbmVsLTAxMjM0NTY3ODlhYg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "accepted",
+        "failureKind": "",
+        "output": {
+          "accountSid": "AC00000000000000000000000000000000",
+          "createdAt": "2026-09-30T17:04:05Z",
+          "direction": "outbound-api",
+          "from": "+14155550100",
+          "segmentCount": 1,
+          "sentAt": "0001-01-01T00:00:00Z",
+          "sid": "SMfedcba9876543210fedcba9876543210",
+          "status": "queued",
+          "to": "+14155550123",
+          "updatedAt": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "input": {
+        "body": "Hello",
+        "to": "+14155550123"
+      },
+      "name": "send_readback_accepted",
+      "operation": "sendMessage",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+        "providerId": "SMfedcba9876543210fedcba9876543210",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages/SMfedcba9876543210fedcba9876543210.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic QUMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDphdXRoLXRva2VuLXNlbnRpbmVsLTAxMjM0NTY3ODlhYg=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "input": {
+        "body": "Hello",
+        "to": "+14155550123"
+      },
+      "name": "send_readback_unavailable",
+      "operation": "sendMessage",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+        "providerId": "SMfedcba9876543210fedcba9876543210",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages/SMfedcba9876543210fedcba9876543210.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic QUMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDphdXRoLXRva2VuLXNlbnRpbmVsLTAxMjM0NTY3ODlhYg=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "accountSid": "AC00000000000000000000000000000000",
+          "createdAt": "0001-01-01T00:00:00Z",
+          "sentAt": "0001-01-01T00:00:00Z",
+          "to": "+14155550123",
+          "updatedAt": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "input": {
+        "body": "Hello",
+        "to": "+14155550123"
+      },
+      "name": "send_readback_unconfirmed",
+      "operation": "sendMessage",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+        "providerId": "SMfedcba9876543210fedcba9876543210",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "accountSid": "AC00000000000000000000000000000000",
+          "createdAt": "0001-01-01T00:00:00Z",
+          "sentAt": "0001-01-01T00:00:00Z",
+          "to": "+14155550123",
+          "updatedAt": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "input": {
+        "body": "Hello",
+        "to": "+14155550123"
+      },
+      "name": "send_claim_without_id",
+      "operation": "sendMessage",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "exchanges": [
+        {
+          "body": "{\"sid\":\"SMfedcba9876543210fedcba9876543210\",\"account_sid\":\"AC00000000000000000000000000000000\",\"from\":\"+14155550100\",\"to\":\"+14155550123\",\"status\":\"queued\",\"direction\":\"outbound-api\",\"num_segments\":\"1\",\"num_media\":\"0\",\"date_created\":\"Wed, 30 Sep 2026 17:04:05 +0000\"}",
+          "form": {
+            "Body": [
+              "Hello"
+            ],
+            "From": [
+              "+14155550100"
+            ],
+            "To": [
+              "+14155550123"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic QUMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDphdXRoLXRva2VuLXNlbnRpbmVsLTAxMjM0NTY3ODlhYg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "accepted",
+        "failureKind": "",
+        "output": {
+          "accountSid": "AC00000000000000000000000000000000",
+          "createdAt": "2026-09-30T17:04:05Z",
+          "direction": "outbound-api",
+          "from": "+14155550100",
+          "segmentCount": 1,
+          "sentAt": "0001-01-01T00:00:00Z",
+          "sid": "SMfedcba9876543210fedcba9876543210",
+          "status": "queued",
+          "to": "+14155550123",
+          "updatedAt": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "input": {
+        "body": "Hello",
+        "to": "+14155550123"
+      },
+      "name": "send_resend_after_429",
+      "operation": "sendMessage",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+        "state": "canResend"
+      }
+    },
+    {
+      "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "exchanges": [
+        {
+          "body": "{\"code\":20003}",
+          "form": {
+            "Body": [
+              "Hello"
+            ],
+            "From": [
+              "+14155550100"
+            ],
+            "To": [
+              "+14155550123"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic QUMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDphdXRoLXRva2VuLXNlbnRpbmVsLTAxMjM0NTY3ODlhYg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "accountSid": "AC00000000000000000000000000000000",
+          "createdAt": "0001-01-01T00:00:00Z",
+          "errorCode": 20003,
+          "from": "+14155550100",
+          "sentAt": "0001-01-01T00:00:00Z",
+          "to": "+14155550123",
+          "updatedAt": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "input": {
+        "body": "Hello",
+        "to": "+14155550123"
+      },
+      "name": "send_authentication_rejected",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "exchanges": [
+        {
+          "body": "{\"code\":20003}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages/SMfedcba9876543210fedcba9876543210.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic QUMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDphdXRoLXRva2VuLXNlbnRpbmVsLTAxMjM0NTY3ODlhYg=="
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "accountSid": "",
+          "createdAt": "0001-01-01T00:00:00Z",
+          "sentAt": "0001-01-01T00:00:00Z",
+          "to": "",
+          "updatedAt": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messageSid": "SMfedcba9876543210fedcba9876543210"
+      },
+      "name": "get_authentication_rejected",
+      "operation": "getMessage"
+    },
+    {
+      "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "Body": [
+              "Hello"
+            ],
+            "From": [
+              "+14155550100"
+            ],
+            "To": [
+              "+14155550123"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic QUMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDphdXRoLXRva2VuLXNlbnRpbmVsLTAxMjM0NTY3ODlhYg=="
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "accountSid": "AC00000000000000000000000000000000",
+          "createdAt": "0001-01-01T00:00:00Z",
+          "from": "+14155550100",
+          "sentAt": "0001-01-01T00:00:00Z",
+          "to": "+14155550123",
+          "updatedAt": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "input": {
+        "body": "Hello",
+        "to": "+14155550123"
+      },
+      "name": "send_conflict_uncertain",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+      "exchanges": [
+        {
+          "body": "{\"sid\":\"SMfedcba9876543210fedcba9876543210\",\"account_sid\":\"AC00000000000000000000000000000000\",\"to\":\"+14155550123\",\"status\":\"queued\",\"direction\":42}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Accounts/AC00000000000000000000000000000000/Messages/SMfedcba9876543210fedcba9876543210.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic QUMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDphdXRoLXRva2VuLXNlbnRpbmVsLTAxMjM0NTY3ODlhYg=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "accountSid": "",
+          "createdAt": "0001-01-01T00:00:00Z",
+          "sentAt": "0001-01-01T00:00:00Z",
+          "to": "",
+          "updatedAt": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messageSid": "SMfedcba9876543210fedcba9876543210"
+      },
+      "name": "get_invalid_typed_field",
+      "operation": "getMessage"
+    }
+  ],
+  "schemaVersion": 1
+}
