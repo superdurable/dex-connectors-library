@@ -8,6 +8,12 @@ metadata:
   version: v0.23.0
 spec:
   provider: intercom
+  languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-intercom"
+      operations: [searchConversations, getConversation, replyToConversation, updateConversationState, findContactByEmail]
+      triggers: []
   codegen:
     go:
       package: intercom
