@@ -4,7 +4,10 @@
     "strict": true, "noUncheckedIndexedAccess": true, "exactOptionalPropertyTypes": true,
     "noFallthroughCasesInSwitch": true, "noUnusedLocals": true, "noUnusedParameters": true,
     "skipLibCheck": true, "esModuleInterop": true, "declaration": true, "outDir": "dist", "rootDir": ".",
-    "paths": { "@superdurable/connector-postgresql": ["./src/index.ts"] }
+    "paths": {
+      "@superdurable/connector-postgresql": ["./src/index.ts"],
+      "@superdurable/connector-postgresql/mock": ["./src/mock.ts"]
+    }
   },
   "include": ["src", "test", "examples", "eslint.config.js"]
 }
