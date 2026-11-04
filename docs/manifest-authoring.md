@@ -807,9 +807,13 @@ can omit only fields its host keeps.
 1. Confirm the Go driver and manifest agree on token types, missing token type,
    scope policy, response mapping, and terminal error codes. Add declarations
    before changing the language driver.
-2. Generate the language package, then bind its generated authorization and
-   credential field map to `ManifestCredentialRefreshDriver`. Use the generated
-   private and shared decoders at the project connection boundary.
+2. Generate the language package with Python Connector SDK 0.3.0 or later.
+   Python `_generated/connection.py` binds
+   private and shared decoders, credential encoding, durable project refresh,
+   and `ManifestCredentialRefreshDriver` to `new_project_connection`. A Python
+   client calls the source's `resolve` before provider dispatch and
+   `resolve_after_rejection` once after an HTTP 401. TypeScript ports bind the
+   generated decoders and authorization declaration at their project adapter.
 3. Run the generated agreement cases, provider conformance, package suite, and
    runnable Dex example. Keep a small connector adapter for provider-specific
    validation that the manifest cannot express. Monday's Go driver derives

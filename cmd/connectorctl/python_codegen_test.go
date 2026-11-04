@@ -145,31 +145,28 @@ exec(compile(ast.Module(body=[config_class], type_ignores=[]), '<generated-confi
 assert config_namespace['Config'](account_id='account').region == ''
 source = sources['connection.py']
 tree = ast.parse(source)
-credential_source = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == '_ProjectCredentialSource')
+credential_decoder = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'decode_credentials')
+shared_decoder = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'decode_shared_credentials')
+credential_encoder = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'encode_credentials')
 url_validator = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == '_is_absolute_credential_url')
 config_decoder = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == '_decode_config')
 class SecretString:
     def __init__(self, value): self.value = value
+    def reveal(self): return self.value
 class Credentials:
     def __init__(self, **values): self.__dict__.update(values)
 class Config:
     def __init__(self, **values): self.__dict__.update(values)
-class Project:
-    def __init__(self, values, shared=False): self.values = values; self.shared_connections = {key: True} if shared else {}
-    async def resolve_credential(self, key, call_id): return self.values
 from re import search
 namespace = {'Any': Any, 'Call': object, 'LoadedProject': object, 'ConnectionKey': object, 'Credentials': Credentials, 'Config': Config, 'SecretString': SecretString, 'urlsplit': urlsplit, 'search': search}
-exec(compile(ast.Module(body=[url_validator, credential_source, config_decoder], type_ignores=[]), '<generated>', 'exec'), namespace)
-Source = namespace['_ProjectCredentialSource']
+exec(compile(ast.Module(body=[url_validator, credential_decoder, shared_decoder, credential_encoder, config_decoder], type_ignores=[]), '<generated>', 'exec'), namespace)
 assert namespace['_decode_config']({'accountId':'account'}).workspace_id == ''
 assert namespace['_decode_config']({'accountId':'account', 'workspaceId':'workspace'}).workspace_id == 'workspace'
-class Call:
-    id = 'call'
-key = object()
 def resolve(values, shared=False):
-    return asyncio.run(Source(Project(values, shared), key).resolve(Call()))
+    return namespace['decode_shared_credentials'](values) if shared else namespace['decode_credentials'](values)
 default = resolve({'auth_method':None, 'oauth_client_id':'id', 'oauth_client_secret':'secret', 'access_token':'access', 'refresh_token':'refresh'})
 assert default.auth_method_id == 'google-oauth' and not hasattr(default, 'service_account_key')
+assert namespace['encode_credentials'](default)['auth_method'] == 'google-oauth'
 shared = resolve({'oauth_client_id':'id', 'access_token':'access'}, shared=True)
 assert shared.access_token.value == 'access' and not hasattr(shared, 'oauth_client_secret')
 app_only = resolve({'auth_method':'app-only', 'tenant_id':'tenant', 'client_id':'id', 'access_token':'access'}, shared=True)
@@ -260,6 +257,42 @@ func TestPythonCodegenSingleAuthGolden(t *testing.T) {
 	}
 }
 
+func TestPythonCodegenJWTBearerGolden(t *testing.T) {
+	manifest, err := load(filepath.Join("..", "..", "schema", "testdata", "token-grants.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest.Spec.Auth.Methods = []schema.AuthMethod{manifest.Spec.Auth.Methods[len(manifest.Spec.Auth.Methods)-1]}
+	manifest.Spec.Auth.DefaultMethod = "jwt-bearer"
+	manifest.Spec.Languages = &schema.Languages{Python: &schema.LanguagePackage{Operations: []string{"getThing"}}}
+	generated, err := renderPythonCodegen(pythonCodegenInput{Manifest: manifest, PackageName: "jwt_bearer_fixture", MockPackageName: "jwtbearermock"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"connection.py", "refresh.py"} {
+		goldenPath := filepath.Join("testdata", "jwt-bearer-golden", name)
+		if os.Getenv("UPDATE_JWT_BEARER_GOLDEN") == "1" {
+			if err := os.MkdirAll(filepath.Dir(goldenPath), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(goldenPath, []byte(generated[name]), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		want, err := os.ReadFile(goldenPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if generated[name] != string(want) {
+			t.Errorf("%s differs from JWT bearer golden output", name)
+		}
+	}
+	if !strings.Contains(generated["connection.py"], "decode_shared_credentials") ||
+		!strings.Contains(generated["connection.py"], "RefreshingCredentialProvider") {
+		t.Error("JWT bearer connection omits renewable shared credentials")
+	}
+}
+
 const singleAuthPythonRuntimeTest = `
 import ast, asyncio, json, sys
 from dataclasses import dataclass
@@ -272,18 +305,16 @@ credentials_class = next(node for node in config_tree.body if isinstance(node, a
 namespace = {'__name__':'__main__', 'dataclass':dataclass, 'SecretString':SecretString, 'Call':object, 'LoadedProject':object, 'ConnectionKey':object}
 exec(compile(ast.Module(body=[credentials_class], type_ignores=[]), '<generated-config>', 'exec'), namespace)
 tree = ast.parse(sources['connection.py'])
+credential_decoder = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'decode_credentials')
+shared_decoder = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'decode_shared_credentials')
+credential_encoder = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'encode_credentials')
 credential_source = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == '_ProjectCredentialSource')
-exec(compile(ast.Module(body=[credential_source], type_ignores=[]), '<generated-connection>', 'exec'), namespace)
-class Project:
-    def __init__(self, values, shared=False): self.values = values; self.shared_connections = {key:True} if shared else {}
-    async def resolve_credential(self, key, call_id): return self.values
-class Call:
-    id = 'call'
-key = object()
+exec(compile(ast.Module(body=[credential_decoder, shared_decoder, credential_encoder], type_ignores=[]), '<generated-connection>', 'exec'), namespace)
 def resolve(values, shared=False):
-    return asyncio.run(namespace['_ProjectCredentialSource'](Project(values, shared), key).resolve(Call()))
+    return namespace['decode_shared_credentials'](values) if shared else namespace['decode_credentials'](values)
 complete = resolve({'oauth_client_id':'id', 'oauth_client_secret':'secret', 'access_token':'access', 'refresh_token':'refresh'})
 assert complete.oauth_client_id == 'id' and complete.oauth_client_secret.reveal() == 'secret' and complete.refresh_token.reveal() == 'refresh'
+assert namespace['encode_credentials'](complete) == {'oauth_client_id':'id', 'oauth_client_secret':'secret', 'access_token':'access', 'refresh_token':'refresh'}
 shared = resolve({'access_token':'access'}, shared=True)
 assert shared.oauth_client_id == '' and shared.oauth_client_secret.reveal() == '' and shared.refresh_token.reveal() == '' and shared.access_token.reveal() == 'access'
 absent_optional = resolve({'oauth_client_secret':'secret', 'access_token':'access'})
@@ -295,6 +326,29 @@ for shared_flag in (False, True):
     try: resolve({'access_token':'access', 'unknown':'value'}, shared=shared_flag)
     except ValueError as error: assert str(error) == 'Spotify stored credential does not match the connector credential fields'
     else: raise AssertionError('unknown key accepted')
+class RefreshDriver:
+    def __class_getitem__(cls, item): return cls
+    def __init__(self, *args, **kwargs): self.args = args; self.kwargs = kwargs
+class RefreshProvider:
+    def __init__(self, *args): self.args = args; self.calls = []
+    async def resolve_with_refresh(self, call, driver):
+        self.calls.append(('resolve', driver)); return complete
+    async def resolve_after_rejection(self, call, driver):
+        self.calls.append(('rejection', driver)); return complete
+class Project:
+    connections = object()
+from types import SimpleNamespace
+namespace.update({'RefreshingCredentialProvider':RefreshProvider, 'ManifestCredentialRefreshDriver':RefreshDriver,
+                  'AUTHORIZATION':{'type':'oauth2'}, 'CREDENTIAL_FIELDS':{'access_token':'access_token'},
+                  'httpx':SimpleNamespace(AsyncClient=object), 'CredentialRefreshDriver':RefreshDriver})
+exec(compile(ast.Module(body=[credential_source], type_ignores=[]), '<generated-source>', 'exec'), namespace)
+source = namespace['_ProjectCredentialSource'](Project(), object(), object(), {'tenant':'example'})
+assert source.provider.args[2:] == (namespace['decode_credentials'], namespace['encode_credentials'], namespace['decode_shared_credentials'])
+assert source.driver.args[1:3] == (namespace['AUTHORIZATION'], namespace['CREDENTIAL_FIELDS'])
+assert source.driver.kwargs['settings'] == {'tenant':'example'}
+assert asyncio.run(source.resolve(object())) is complete
+assert asyncio.run(source.resolve_after_rejection(object())) is complete
+assert [kind for kind, _ in source.provider.calls] == ['resolve', 'rejection']
 `
 
 func TestPythonCodegenKeepsMockScenariosDistinctFromBranchHelpers(t *testing.T) {

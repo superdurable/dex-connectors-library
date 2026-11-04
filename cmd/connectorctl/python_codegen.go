@@ -137,6 +137,7 @@ func publishedPythonModelNames(path string) ([]string, error) {
 }
 
 func renderPythonCodegen(input pythonCodegenInput) (map[string]string, error) {
+	input.HasDeclaredTokenGrants = codegen.HasDeclaredTokenGrants(input.Manifest)
 	input.SharedRequiredFields = make(map[string][]string)
 	for _, method := range input.Manifest.Spec.Auth.AuthMethods() {
 		input.SharedRequiredFields[method.ID] = codegen.SharedRequiredCredentialFields(method)

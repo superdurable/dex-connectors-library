@@ -656,6 +656,7 @@ def render_connection():
         {constant(operation["name"]) + "_DEFINITION" for operation in operations}
     )
     connection_label = metadata["displayName"]
+    has_refresh = payload["hasDeclaredTokenGrants"]
     lines = [
         "# Copyright (c) 2026 Super Durable",
         "# SPDX-License-Identifier: MIT",
@@ -665,17 +666,21 @@ def render_connection():
         "",
         "import httpx",
         "from dex_connectors.sdk import "
-        + ", ".join(imports + (["Call", "SecretString"] if auth_fields() else [])),
+        + ", ".join(imports + (["Call", "SecretString"] if auth_fields() else [])
+                    + (["CredentialRefreshDriver"] if has_refresh else [])),
         "from dex_connectors.sdk.projectconfig import "
         + (
             "ConnectionKey, LoadedProject"
             if auth_fields()
             else "LoadedProject"
         ),
+        *(["from dex_connectors.sdk.projectconfig.provider import RefreshingCredentialProvider",
+            "from dex_connectors.sdk.oauthtoken import ManifestCredentialRefreshDriver"] if has_refresh else []),
         "",
         "from ..client import Client, Config"
         + (", Credentials" if auth_fields() else ""),
         "from .definitions import CONNECTOR_ID, " + ", ".join(definition_names),
+        *(["from .refresh import AUTHORIZATION, CREDENTIAL_FIELDS"] if has_refresh else []),
         "from ..models import " + ", ".join(model_names),
         "",
         *([
@@ -781,6 +786,7 @@ def render_connection():
     ]
     credential_fields = auth_fields()
     if credential_fields:
+        decoder_start = len(lines)
         lines += [
             "",
             "class _ProjectCredentialSource:",
@@ -789,6 +795,7 @@ def render_connection():
             "        self.project = project",
             "        self.key = key",
         ]
+        decoder_body_start = len(lines) + 3
         lines += [
             "",
             "    async def resolve(self, call: Call) -> Credentials:",
@@ -897,6 +904,67 @@ def render_connection():
                 else:
                     values.append(f"{{key: item or '' for key, item in ({name} or {{}}).items()}}")
             lines += ["        return Credentials(" + ", ".join(values) + ")", ""]
+        if has_refresh:
+            decoder = lines[decoder_body_start:]
+            decoder = [line[4:] if line.startswith("    ") else line for line in decoder]
+            decoder = [
+                "    is_shared = shared" if "is_shared = bool(self.project.shared_connections" in line else line
+                for line in decoder
+            ]
+            lines[decoder_start:] = [
+                "",
+                "def decode_credentials(material: dict[str, Any], *, shared: bool = False) -> Credentials:",
+                *decoder,
+                "",
+                "def decode_shared_credentials(material: dict[str, Any]) -> Credentials:",
+                "    return decode_credentials(material, shared=True)",
+                "",
+                "",
+                "def encode_credentials(credentials: Credentials) -> dict[str, Any]:",
+                "    material: dict[str, Any] = {}",
+            ]
+            if auth_methods:
+                lines += [
+                    "    method = credentials.auth_method_id or " + quoted(spec["auth"]["defaultMethod"]),
+                    "    material['auth_method'] = method",
+                ]
+                for index, method in enumerate(auth_methods):
+                    lines.append(("    if" if index == 0 else "    elif") + f" method == {quoted(method['id'])}:")
+                    for field_info in method["fields"]:
+                        name = snake(field_info["name"])
+                        expression = f"credentials.{name}.reveal()" if field_info["type"] == "secretString" else f"credentials.{name}"
+                        lines += [f"        if {expression}:", f"            material[{quoted(field_info['name'])}] = {expression}"]
+                lines += [
+                    "    else:",
+                    f"        raise ValueError({quoted(connection_label + ' credential auth_method is invalid')})",
+                ]
+            else:
+                for field_info in credential_fields:
+                    name = snake(field_info["name"])
+                    expression = f"credentials.{name}.reveal()" if field_info["type"] == "secretString" else f"credentials.{name}"
+                    lines += [f"    if {expression}:", f"        material[{quoted(field_info['name'])}] = {expression}"]
+            lines += [
+                "    decode_credentials(material)",
+                "    return material",
+                "",
+                "",
+                "class _ProjectCredentialSource:",
+                "    def __init__(self, project: LoadedProject, key: ConnectionKey, http_client: httpx.AsyncClient, settings: dict[str, Any]) -> None:",
+                "        self.provider = RefreshingCredentialProvider(",
+                "            project.connections, key, decode_credentials, encode_credentials, decode_shared_credentials",
+                "        )",
+                f"        self.driver = ManifestCredentialRefreshDriver[Credentials]({quoted(connection_label)}, AUTHORIZATION, CREDENTIAL_FIELDS, http_client, settings=settings)",
+                "",
+                "    async def resolve(self, call: Call) -> Credentials:",
+                "        return await self.provider.resolve_with_refresh(call, self.driver)",
+                "",
+                "    async def resolve_with_refresh(self, call: Call, driver: CredentialRefreshDriver[Credentials] | None = None) -> Credentials:",
+                "        return await self.provider.resolve_with_refresh(call, driver or self.driver)",
+                "",
+                "    async def resolve_after_rejection(self, call: Call, driver: CredentialRefreshDriver[Credentials] | None = None) -> Credentials:",
+                "        return await self.provider.resolve_after_rejection(call, driver or self.driver)",
+                "",
+            ]
     lines += [
         "",
         "def new_project_connection(",
@@ -922,10 +990,13 @@ def render_connection():
         "    config = _decode_config(matching[0].configuration)",
     ]
     client_args = (
-        "config, _ProjectCredentialSource(project, key), http_client"
+        ("config, _ProjectCredentialSource(project, key, http_client, matching[0].configuration), http_client"
+         if has_refresh else "config, _ProjectCredentialSource(project, key), http_client")
         if credential_fields
         else "config, http_client"
     )
+    if has_refresh:
+        lines.append("    http_client = http_client or httpx.AsyncClient()")
     lines += [
         f"    client = Client({client_args})",
         "    return new_connection(client, reference)",
