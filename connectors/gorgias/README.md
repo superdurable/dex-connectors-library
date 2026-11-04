@@ -1,5 +1,11 @@
 # Gorgias Connector
 
+The TypeScript package `@superdurable/connector-gorgias@0.1.0` implements all
+six operations. See its [package guide](typescript/README.md) and
+[runnable ticket read](typescript/examples/read-ticket/README.md). Its provider
+replay and Dex integration use a local stand-in; live Gorgias behavior is
+unverified.
+
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/gorgias/go@v0.23.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/gorgias`.
