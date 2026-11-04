@@ -22,7 +22,15 @@ ADAPTER = PythonOperationAdapter(
     vercel,
     lambda http_client, recorder: vercel.Client(
         vercel.Config(base_url="http://127.0.0.1:12345"),
-        sdk.StaticCredentialProvider({CONNECTION: vercel.Credentials(sdk.SecretString("" if recorder.scenario["name"] == "listDeployments-defect" else "test-accesstoken"))}),
+        sdk.StaticCredentialProvider(
+            {
+                CONNECTION: vercel.Credentials(
+                    sdk.SecretString(
+                        "" if recorder.scenario["name"] == "listDeployments-defect" else "test-accesstoken"
+                    )
+                )
+            }
+        ),
         http_client,
     ),
 )
