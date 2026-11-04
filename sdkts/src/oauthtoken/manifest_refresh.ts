@@ -352,7 +352,10 @@ function isGoMailAddress(value: string): boolean {
     return true;
   };
   if (!isAtom(local)) return false;
-  if (domain.startsWith('[') && domain.endsWith(']')) return isIP(domain.slice(1, -1)) !== 0;
+  if (domain.startsWith('[') && domain.endsWith(']')) {
+    const address = domain.slice(1, -1);
+    return !address.includes('%') && isIP(address) !== 0;
+  }
   return isAtom(domain);
 }
 function pathEscape(value: string): string {

@@ -14,6 +14,9 @@
 {"accepted":true,"input":"a@[127.0.0.1]"}
 {"accepted":true,"input":"a@[::1]"}
 {"accepted":false,"input":"a@[bad]"}
+{"accepted":false,"input":"a@[fe80::1%eth0]"}
+{"accepted":false,"input":"a@[127.000.0.1]"}
+{"accepted":true,"input":"a@[::ffff:127.0.0.1]"}
 {"accepted":false,"input":"\"a b\"@example.com"}
 {"accepted":false,"input":"\"user\"@example.com"}
 {"accepted":false,"input":"a b@example.com"}
