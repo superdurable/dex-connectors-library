@@ -6,6 +6,7 @@ from pathlib import Path
 
 import dex_connectors.sdk as sdk
 import pytest
+
 import dex_connectors.webflow as webflow
 
 ROOT = Path(__file__).parents[4]
