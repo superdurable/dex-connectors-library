@@ -8,6 +8,12 @@ metadata:
   version: v0.24.0
 spec:
   provider: github
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-github
+      operations: [getAuthenticatedProfile, listPublicRepositories, listMergedPullRequests, listPullRequestFiles, listReleases, listCommits]
+      triggers: []
   codegen:
     go:
       package: github
