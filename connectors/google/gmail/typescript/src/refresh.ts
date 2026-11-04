@@ -51,11 +51,12 @@ export class GmailCredentialRefreshDriver implements CredentialRefreshDriver<Cre
     let key: z.infer<typeof ServiceAccountKeySchema>;
     try { key = ServiceAccountKeySchema.parse(JSON.parse(credentials.serviceAccountKey?.reveal() ?? '') as unknown); }
     catch { throw new ReauthorizationRequiredError(); }
-    if (new URL(key.token_uri).protocol !== 'https:' || !parseMailbox(credentials.delegatedUser ?? '')) throw new ReauthorizationRequiredError();
+    const delegatedUser = credentials.delegatedUser;
+    if (new URL(key.token_uri).protocol !== 'https:' || !delegatedUser || !parseMailbox(delegatedUser)) throw new ReauthorizationRequiredError();
     let assertion;
     try {
       assertion = signJWTBearerAssertion({
-        issuer: key.client_email, subject: credentials.delegatedUser, audience: key.token_uri,
+        issuer: key.client_email, subject: delegatedUser, audience: key.token_uri,
         scope: RequiredGmailScopes.join(' '), issuedAt: this.#now(), lifetimeMs: 3_600_000,
       }, parseRSAPrivateKeyPEM(key.private_key));
     } catch { throw new ReauthorizationRequiredError(); }

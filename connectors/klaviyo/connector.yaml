@@ -11,7 +11,12 @@ spec:
   languages:
     python:
       version: v0.1.0
-      operations: [getProfile, createEvent]
+      operations: [createEvent, getProfile]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-klaviyo"
+      operations: [createEvent, getProfile]
       triggers: []
   codegen:
     go:

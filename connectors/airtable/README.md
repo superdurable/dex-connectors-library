@@ -2,6 +2,15 @@
 
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/airtable/go@v0.23.0`.
 
+The [TypeScript package](typescript/) is `@superdurable/connector-airtable`
+v0.1.0. It implements the four record operations and provides generated
+operation-specific Step factories and mocks. Its
+[runnable list example](typescript/examples/list-records/) uses a static
+`airtable-policies` Dex connection; the TypeScript package does not implement
+any Triggers. Shared Go-recorded provider scenarios and a real Dex integration
+test cover the package. Live Airtable authorization, picker behavior, and
+provider requests remain unverified.
+
 Moved from `github.com/superdurable/dex-connectors-library/connectors/airtable`.
 
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Airtable; no live Airtable base was used. See
@@ -29,6 +38,9 @@ read them with `Text`, `Number`, `Checkbox`, and `StringList`. Airtable omits
 empty fields from every record it returns, so a missing key means an empty
 field. A write rejects the zero `CellValue`, so a forgotten value never clears
 a field.
+
+The Python package is [`dex-connector-airtable`](python/README.md), imported as
+`dex_connectors.airtable`.
 
 ## Mocks
 

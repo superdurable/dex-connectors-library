@@ -2,12 +2,12 @@
 
 `dex-connector-google-gmail` provides typed Gmail reads, sends, and replies for
 Dex Python Flows. The package imports as `dex_connectors.google_gmail`.
-Version 0.1.0 includes `getMessage`, `sendMessage`, and `replyToMessage` only;
+Version 0.1.1 includes `getMessage`, `sendMessage`, and `replyToMessage` only;
 the Go `messageReceived` and `replyReceived` Triggers are not available in Python.
 
 ## Install
 
-After release, install `dex-connector-google-gmail==0.1.0`. The package requires
+After release, install `dex-connector-google-gmail==0.1.1`. The package requires
 `dex-connectors-sdk==0.1.0` and `dex-python-sdk>=1.28.0`; the latter provides
 Go-compatible JSON field metadata and the Flow start and attempt deadline
 needed for Gmail's duplicate-send fence.
@@ -60,11 +60,14 @@ The [integration test](examples/thread_reply/tests/test_integration.py) runs
 the same Flow on a real Dex Worker and Client with a local fake Gmail HTTP
 boundary and manifest mocks.
 
+Decoded `Message.to` and `SendMessageOutput.recipients` use Go-compatible RFC
+mailbox strings, including angle brackets around each address.
+
 ## Send confirmation
 
 Gmail does not deduplicate messages by `Message-ID`. The connector derives a
 stable run-specific RFC Message-ID from the Dex Call key, run ID, and Flow start
-second. Its Python Mutation Steps use the manifest's asynchronous Execute
+second. Its Python Mutation Steps use the manifest's synchronous Execute
 durability and persist the single-dispatch heartbeat before a POST. On a
 numbered retry it searches Sent Mail first. A prior claimed send can only be
 read back; a second POST requires a persisted `notSent` or `canResend` marker.

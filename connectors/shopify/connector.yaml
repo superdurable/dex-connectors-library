@@ -9,9 +9,14 @@ metadata:
 spec:
   provider: shopify
   languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-shopify"
+      operations: [listOrders, getOrder]
+      triggers: []
     python:
       version: v0.1.0
-      operations: [getOrder, listOrders]
+      operations: [listOrders, getOrder]
       triggers: []
   codegen:
     go:

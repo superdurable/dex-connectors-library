@@ -6,26 +6,27 @@ import base64
 import json
 import re
 from collections.abc import Callable
-from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from dataclasses import dataclass as dataclass
+from datetime import UTC, datetime
+from datetime import timedelta as timedelta
 from typing import Any, TypeVar
 from urllib.parse import urlencode
 
 import httpx
+from dex_connectors.sdk import BranchDefinition as BranchDefinition
 from dex_connectors.sdk import (
-    BranchDefinition,
     Call,
     CredentialProvider,
     Failure,
     FailureKind,
-    OperationRef,
     QueryAttempt,
     QueryDefinition,
     ReauthorizationRequiredError,
     Receipt,
-    SecretString,
-    StepDefaults,
 )
+from dex_connectors.sdk import OperationRef as OperationRef
+from dex_connectors.sdk import SecretString as SecretString
+from dex_connectors.sdk import StepDefaults as StepDefaults
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -36,18 +37,49 @@ from dex_connectors.sdk.providerhttp import (
     send_traced,
     validate_base_url,
 )
-from dex_connectors.sdk.retry_policy import RetryPolicy, default_connector_step_execute_retry_policy
+from dex_connectors.sdk.retry_policy import RetryPolicy as RetryPolicy
+from dex_connectors.sdk.retry_policy import (
+    default_connector_step_execute_retry_policy as default_connector_step_execute_retry_policy,
+)
 
+from ._generated.config import (
+    Config as Config,
+)
+from ._generated.config import (
+    Credentials as Credentials,
+)
+from ._generated.definitions import (
+    CONNECTOR_ID as CONNECTOR_ID,
+)
+from ._generated.definitions import (
+    CREATE_SPEECH_DEFINITION as CREATE_SPEECH_DEFINITION,
+)
+from ._generated.definitions import (
+    CREATE_SPEECH_OPERATION_ID as CREATE_SPEECH_OPERATION_ID,
+)
+from ._generated.definitions import (
+    CREATED as CREATED,
+)
+from ._generated.definitions import (
+    DEFECT as DEFECT,
+)
+from ._generated.definitions import (
+    INVALID_RESPONSE as INVALID_RESPONSE,
+)
+from ._generated.definitions import (
+    LIST_VOICES_DEFINITION as LIST_VOICES_DEFINITION,
+)
+from ._generated.definitions import (
+    LIST_VOICES_OPERATION_ID as LIST_VOICES_OPERATION_ID,
+)
+from ._generated.definitions import (
+    LISTED as LISTED,
+)
+from ._generated.definitions import (
+    PROVIDER_REJECTED as PROVIDER_REJECTED,
+)
 from .models import CreateSpeechInput, CreateSpeechOutput, ListVoicesInput, ListVoicesOutput, Voice
 
-CONNECTOR_ID = "elevenlabs"
-LIST_VOICES_OPERATION_ID = "listVoices"
-CREATE_SPEECH_OPERATION_ID = "createSpeech"
-LISTED = "listed"
-CREATED = "created"
-PROVIDER_REJECTED = "providerRejected"
-INVALID_RESPONSE = "invalidResponse"
-DEFECT = "defect"
 DEFAULT_MODEL_ID = "eleven_multilingual_v2"
 SPEECH_OUTPUT_FORMAT = "mp3_44100_128"
 _DEFAULT_BASE_URL = "https://api.elevenlabs.io"
@@ -56,43 +88,8 @@ _DEFAULT_MAX_RESPONSE_BYTES = 2_097_152
 _MAX_PAGE_SIZE = 100
 _VOICE_ID = re.compile(r"[A-Za-z0-9_-]{1,128}")
 _CREDENTIAL_MESSAGE = "connection credentials are unavailable or invalid"
-_SHARED_BRANCHES = (
-    BranchDefinition(PROVIDER_REJECTED, "The provider conclusively rejected the request.", True),
-    BranchDefinition(INVALID_RESPONSE, "The provider returned malformed or oversized data.", True),
-    BranchDefinition(DEFECT, "Local input or credentials are invalid.", True),
-)
-LIST_VOICES_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, LIST_VOICES_OPERATION_ID),
-    (BranchDefinition(LISTED, "ElevenLabs returned the requested result."), *_SHARED_BRANCHES),
-    StepDefaults(timedelta(seconds=30), 2, execute_retry=default_connector_step_execute_retry_policy()),
-)
-CREATE_SPEECH_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, CREATE_SPEECH_OPERATION_ID),
-    (BranchDefinition(CREATED, "ElevenLabs returned the requested result."), *_SHARED_BRANCHES),
-    StepDefaults(
-        timedelta(seconds=150),
-        1,
-        execute_retry=RetryPolicy(timedelta(seconds=2), 2, timedelta(seconds=30), 3, timedelta(minutes=5)),
-    ),
-)
 
 Output = TypeVar("Output")
-
-
-@dataclass(frozen=True, slots=True)
-class Config:
-    """ElevenLabs HTTP settings; zero or blank values use manifest defaults."""
-
-    base_url: str = _DEFAULT_BASE_URL
-    timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS
-    max_response_bytes: int = _DEFAULT_MAX_RESPONSE_BYTES
-
-
-@dataclass(frozen=True, slots=True)
-class Credentials:
-    """ElevenLabs API key, resolved anew for every provider attempt."""
-
-    api_key: SecretString
 
 
 class Client:
@@ -335,3 +332,7 @@ def _failed(
 
 def _retry(operation: str, kind: FailureKind, message: str, after_seconds: float) -> QueryAttempt[Any]:
     return QueryAttempt.retry(Failure(kind, CONNECTOR_ID, operation, message), after_seconds)
+
+
+Config.__doc__ = "ElevenLabs HTTP settings; zero or blank values use manifest defaults."
+Credentials.__doc__ = "ElevenLabs API key, resolved anew for every provider attempt."

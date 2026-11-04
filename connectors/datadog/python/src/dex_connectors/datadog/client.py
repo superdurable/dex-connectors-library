@@ -3,27 +3,29 @@
 """Datadog provider reads and Go-compatible branch classification."""
 
 import json
+import math
 from collections.abc import Callable
-from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from dataclasses import dataclass as dataclass
+from datetime import UTC, datetime
+from datetime import timedelta as timedelta
 from typing import Any, TypeVar
 from urllib.parse import urlencode
 
 import httpx
+from dex_connectors.sdk import BranchDefinition as BranchDefinition
 from dex_connectors.sdk import (
-    BranchDefinition,
     Call,
     CredentialProvider,
     Failure,
     FailureKind,
-    OperationRef,
     QueryAttempt,
     QueryDefinition,
     ReauthorizationRequiredError,
     Receipt,
-    SecretString,
-    StepDefaults,
 )
+from dex_connectors.sdk import OperationRef as OperationRef
+from dex_connectors.sdk import SecretString as SecretString
+from dex_connectors.sdk import StepDefaults as StepDefaults
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -34,43 +36,52 @@ from dex_connectors.sdk.providerhttp import (
     send_traced,
     validate_base_url,
 )
-from dex_connectors.sdk.retry_policy import default_connector_step_execute_retry_policy
+from dex_connectors.sdk.retry_policy import (
+    default_connector_step_execute_retry_policy as default_connector_step_execute_retry_policy,
+)
 
+from ._generated.config import (
+    Config as Config,
+)
+from ._generated.config import (
+    Credentials as Credentials,
+)
+from ._generated.definitions import (
+    CONNECTOR_ID as CONNECTOR_ID,
+)
+from ._generated.definitions import (
+    DEFECT as DEFECT,
+)
+from ._generated.definitions import (
+    INVALID_RESPONSE as INVALID_RESPONSE,
+)
+from ._generated.definitions import (
+    LIST_MONITORS_DEFINITION as LIST_MONITORS_DEFINITION,
+)
+from ._generated.definitions import (
+    LIST_MONITORS_OPERATION_ID as LIST_MONITORS_OPERATION_ID,
+)
+from ._generated.definitions import (
+    LISTED as LISTED,
+)
+from ._generated.definitions import (
+    PROVIDER_REJECTED as PROVIDER_REJECTED,
+)
+from ._generated.definitions import (
+    QUERIED as QUERIED,
+)
+from ._generated.definitions import (
+    QUERY_METRICS_DEFINITION as QUERY_METRICS_DEFINITION,
+)
+from ._generated.definitions import (
+    QUERY_METRICS_OPERATION_ID as QUERY_METRICS_OPERATION_ID,
+)
 from .models import ListMonitorsInput, MetricSeries, MetricsQuery, Monitor, MonitorsPage, QueryMetricsInput
 
-CONNECTOR_ID = "datadog"
 PROVIDER_NAME = "Datadog"
-QUERY_METRICS_OPERATION_ID = "queryMetrics"
-LIST_MONITORS_OPERATION_ID = "listMonitors"
-QUERIED = "queried"
-LISTED = "listed"
-PROVIDER_REJECTED = "providerRejected"
-INVALID_RESPONSE = "invalidResponse"
-DEFECT = "defect"
 _DEFAULT_BASE_URL = "https://api.datadoghq.com"
 _DEFAULT_TIMEOUT_SECONDS = 15
 _DEFAULT_MAX_RESPONSE_BYTES = 2_097_152
-_STEP_DEFAULTS = StepDefaults(
-    timedelta(seconds=30), 2, execute_retry=default_connector_step_execute_retry_policy()
-)
-_SHARED_BRANCHES = (
-    BranchDefinition(PROVIDER_REJECTED, "The provider rejected the request.", True),
-    BranchDefinition(INVALID_RESPONSE, "The provider returned malformed or oversized JSON.", True),
-    BranchDefinition(DEFECT, "Local input or connection credentials are invalid.", True),
-)
-QUERY_METRICS_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, QUERY_METRICS_OPERATION_ID),
-    (
-        BranchDefinition(QUERIED, "Query Datadog timeseries points over an explicit Unix-second interval."),
-        *_SHARED_BRANCHES,
-    ),
-    _STEP_DEFAULTS,
-)
-LIST_MONITORS_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, LIST_MONITORS_OPERATION_ID),
-    (BranchDefinition(LISTED, "List one page of Datadog monitors."), *_SHARED_BRANCHES),
-    _STEP_DEFAULTS,
-)
 _STATUS_KINDS = {
     401: FailureKind.AUTHENTICATION,
     403: FailureKind.AUTHORIZATION,
@@ -82,21 +93,8 @@ _STATUS_KINDS = {
 Output = TypeVar("Output")
 
 
-@dataclass(frozen=True, slots=True)
-class Config:
-    """Datadog HTTP settings; base_url selects the Datadog site; zero or blank values use defaults."""
-
-    base_url: str = _DEFAULT_BASE_URL
-    timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS
-    max_response_bytes: int = _DEFAULT_MAX_RESPONSE_BYTES
-
-
-@dataclass(frozen=True, slots=True)
-class Credentials:
-    """Datadog API and application keys, resolved anew for every provider attempt."""
-
-    api_key: SecretString
-    application_key: SecretString
+class _InexactPointNumberError(ValueError):
+    """A provider point number cannot be preserved in the Dex output."""
 
 
 class Client:
@@ -201,6 +199,8 @@ class Client:
                 return _retry(operation, FailureKind.AVAILABILITY, "response was interrupted", 0)
             try:
                 value = decode(json.loads(body))
+            except _InexactPointNumberError as error:
+                return _failed(operation, INVALID_RESPONSE, empty, FailureKind.PROTOCOL, str(error))
             except (ValueError, TypeError, UnicodeDecodeError):
                 return _failed(
                     operation, INVALID_RESPONSE, empty, FailureKind.PROTOCOL, "response was malformed"
@@ -303,27 +303,47 @@ def _decode_metrics(document: Any) -> MetricsQuery:
     series = document.get("series")
     if _string(document, "status") != "ok" or not isinstance(series, list):
         raise ValueError
-    return MetricsQuery("ok", tuple(_decode_series(item) for item in series))
+    return MetricsQuery("ok", tuple(_decode_series(item, index) for index, item in enumerate(series)))
 
 
-def _decode_series(document: Any) -> MetricSeries:
+def _decode_series(document: Any, series_index: int) -> MetricSeries:
     document = _object(document)
     points = document.get("pointlist")
     if points is None:
         points = []
     if not isinstance(points, list):
         raise ValueError
-    return MetricSeries(_string(document, "metric"), tuple(_decode_point(point) for point in points))
+    return MetricSeries(
+        _string(document, "metric"),
+        tuple(_decode_point(point, series_index, index) for index, point in enumerate(points)),
+    )
 
 
-def _decode_point(point: Any) -> tuple[float | None, ...]:
+def _decode_point(point: Any, series_index: int, point_index: int) -> tuple[int | float | None, ...]:
     if point is None:
         return ()
     if not isinstance(point, list) or any(
         value is not None and type(value) not in (int, float) for value in point
     ):
         raise ValueError
-    return tuple(None if value is None else float(value) for value in point)
+    values: list[int | float | None] = []
+    for value_index, value in enumerate(point):
+        field = f"series[{series_index}].pointlist[{point_index}][{value_index}]"
+        if type(value) is int:
+            inexact_message = f"{field} cannot be represented exactly as a Go number"
+            try:
+                go_number = float(value)
+            except OverflowError as error:
+                raise _InexactPointNumberError(inexact_message) from error
+            if not math.isfinite(go_number) or int(go_number) != value:
+                raise _InexactPointNumberError(inexact_message)
+        elif type(value) is float:
+            if not math.isfinite(value):
+                raise _InexactPointNumberError(f"{field} is not a finite JSON number")
+            if value.is_integer() and abs(value) < 1e21 and math.copysign(1, value) > 0:
+                value = int(value)
+        values.append(value)
+    return tuple(values)
 
 
 def _decode_monitors(document: Any) -> MonitorsPage:
@@ -355,3 +375,9 @@ def _string(document: dict[str, Any], name: str) -> str:
     if not isinstance(value, str):
         raise ValueError
     return value
+
+
+Config.__doc__ = (
+    "Datadog HTTP settings; base_url selects the Datadog site; zero or blank values use defaults."
+)
+Credentials.__doc__ = "Datadog API and application keys, resolved anew for every provider attempt."

@@ -1,50 +1,42 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Manifest-backed Mailgun scripts for consuming Flow tests."""
+"""Public manifest-backed mock helpers."""
 
-from dex_connectors.sdk import ConnectionRef, Failure
-from dex_connectors.sdk.connectormock import Case, Query
+from dex_connectors.sdk import ConnectionRef as ConnectionRef
+from dex_connectors.sdk import Failure as Failure
+from dex_connectors.sdk.connectormock import Case as Case
+from dex_connectors.sdk.connectormock import Case as _Case
+from dex_connectors.sdk.connectormock import Query as Query
 
-from ..client import CONNECTOR_ID, GET_EVENTS_DEFINITION, LIST_DOMAINS_DEFINITION, LISTED
-from ..connection import Connection, new_connection_with_operations
-from ..models import Domain, DomainsOutput, Event, EventsOutput, GetEventsInput, ListDomainsInput
+from .._generated.mock import Mock as Mock
+from .._generated.mock import get_events_listed as get_events_listed
+from .._generated.mock import get_events_listed_default as _get_events_listed_default
+from .._generated.mock import list_domains_listed as list_domains_listed
+from .._generated.mock import list_domains_listed_default as _list_domains_listed_default
+from ..client import CONNECTOR_ID as CONNECTOR_ID
+from ..client import GET_EVENTS_DEFINITION as GET_EVENTS_DEFINITION
+from ..client import LIST_DOMAINS_DEFINITION as LIST_DOMAINS_DEFINITION
+from ..client import LISTED as LISTED
+from ..connection import Connection as Connection
+from ..connection import new_connection_with_operations as new_connection_with_operations
+from ..models import Domain as Domain
+from ..models import DomainsOutput as DomainsOutput
+from ..models import DomainsOutput as _DomainsOutput
+from ..models import Event as Event
+from ..models import EventsOutput as EventsOutput
+from ..models import EventsOutput as _EventsOutput
+from ..models import GetEventsInput as GetEventsInput
+from ..models import ListDomainsInput as ListDomainsInput
 
 
-def get_events_listed(value: EventsOutput, failure: Failure | None = None) -> Case[EventsOutput]:
-    """Script the successful listed route."""
-    return Case.branch_result(LISTED, value, failure)
-
-
-def get_events_default_answer() -> Case[EventsOutput]:
+def get_events_default_answer() -> _Case[_EventsOutput]:
     """Return the manifest's getEvents default answer."""
-    return get_events_listed(EventsOutput((Event("event_meridian", "delivered", 1793100000),)))
+    return _get_events_listed_default()
 
 
-def list_domains_listed(value: DomainsOutput, failure: Failure | None = None) -> Case[DomainsOutput]:
-    """Script the successful listed route."""
-    return Case.branch_result(LISTED, value, failure)
-
-
-def list_domains_default_answer() -> Case[DomainsOutput]:
+def list_domains_default_answer() -> _Case[_DomainsOutput]:
     """Return the manifest's listDomains default answer."""
-    return list_domains_listed(DomainsOutput((Domain("example.test", "active"),), 1))
-
-
-class Mock:
-    """Script Mailgun Queries, defaulting to their manifest answers."""
-
-    def __init__(self, connection_name: str = "mailgun") -> None:
-        self.get_events_script: Query[GetEventsInput, EventsOutput] = Query(GET_EVENTS_DEFINITION)
-        self.get_events_script.default(get_events_default_answer())
-        self.list_domains_script: Query[ListDomainsInput, DomainsOutput] = Query(LIST_DOMAINS_DEFINITION)
-        self.list_domains_script.default(list_domains_default_answer())
-        self._connection = new_connection_with_operations(
-            self.get_events_script, self.list_domains_script, ConnectionRef(CONNECTOR_ID, connection_name)
-        )
-
-    def connection(self) -> Connection:
-        """Return this mock's named connection for Step registration."""
-        return self._connection
+    return _list_domains_listed_default()
 
 
 __all__ = [
@@ -54,3 +46,8 @@ __all__ = [
     "list_domains_listed",
     "list_domains_default_answer",
 ]
+
+Mock.__doc__ = "Script Mailgun Queries, defaulting to their manifest answers."
+
+get_events_listed.__doc__ = "Script the successful listed route."
+list_domains_listed.__doc__ = "Script the successful listed route."

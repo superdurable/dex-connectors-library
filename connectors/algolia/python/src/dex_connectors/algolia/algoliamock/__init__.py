@@ -1,50 +1,43 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Manifest-backed Algolia scripts for consuming Flow tests."""
+"""Public manifest-backed mock helpers."""
 
-from dex_connectors.sdk import ConnectionRef, Failure
-from dex_connectors.sdk.connectormock import Case, Mutation, Query
+from dex_connectors.sdk import ConnectionRef as ConnectionRef
+from dex_connectors.sdk import Failure as Failure
+from dex_connectors.sdk.connectormock import Case as Case
+from dex_connectors.sdk.connectormock import Case as _Case
+from dex_connectors.sdk.connectormock import Mutation as Mutation
+from dex_connectors.sdk.connectormock import Query as Query
 
-from ..client import CONNECTOR_ID, SAVE_OBJECT_DEFINITION, SAVED, SEARCH_DEFINITION, SEARCHED
-from ..connection import Connection, new_connection_with_operations
-from ..models import SavedObject, SaveObjectInput, SearchHit, SearchInput, SearchPage
+from .._generated.mock import Mock as Mock
+from .._generated.mock import save_object_saved as save_object_saved
+from .._generated.mock import save_object_saved_default_object as _save_object_saved_default_object
+from .._generated.mock import search_searched as search_searched
+from .._generated.mock import search_searched_default_index as _search_searched_default_index
+from ..client import CONNECTOR_ID as CONNECTOR_ID
+from ..client import SAVE_OBJECT_DEFINITION as SAVE_OBJECT_DEFINITION
+from ..client import SAVED as SAVED
+from ..client import SEARCH_DEFINITION as SEARCH_DEFINITION
+from ..client import SEARCHED as SEARCHED
+from ..connection import Connection as Connection
+from ..connection import new_connection_with_operations as new_connection_with_operations
+from ..models import SavedObject as SavedObject
+from ..models import SavedObject as _SavedObject
+from ..models import SaveObjectInput as SaveObjectInput
+from ..models import SearchHit as SearchHit
+from ..models import SearchInput as SearchInput
+from ..models import SearchPage as SearchPage
+from ..models import SearchPage as _SearchPage
 
 
-def search_searched(value: SearchPage, failure: Failure | None = None) -> Case[SearchPage]:
-    """Script the searched route."""
-    return Case.branch_result(SEARCHED, value, failure)
-
-
-def search_default_answer() -> Case[SearchPage]:
-    """Return the manifest's search default answer."""
-    return search_searched(SearchPage(1, (SearchHit("product-1", "Meridian notebook"),)))
-
-
-def save_object_saved(value: SavedObject, failure: Failure | None = None) -> Case[SavedObject]:
-    """Script the saved route."""
-    return Case.branch_result(SAVED, value, failure)
-
-
-def save_object_default_answer() -> Case[SavedObject]:
+def save_object_default_answer() -> _Case[_SavedObject]:
     """Return the manifest's saveObject default answer."""
-    return save_object_saved(SavedObject("product-1", 1514562690001))
+    return _save_object_saved_default_object()
 
 
-class Mock:
-    """Script Algolia operations, defaulting to their manifest answers."""
-
-    def __init__(self, connection_name: str = "algolia") -> None:
-        self.search_script: Query[SearchInput, SearchPage] = Query(SEARCH_DEFINITION)
-        self.search_script.default(search_default_answer())
-        self.save_object_script: Mutation[SaveObjectInput, SavedObject] = Mutation(SAVE_OBJECT_DEFINITION)
-        self.save_object_script.default(save_object_default_answer())
-        self._connection = new_connection_with_operations(
-            self.save_object_script, self.search_script, ConnectionRef(CONNECTOR_ID, connection_name)
-        )
-
-    def connection(self) -> Connection:
-        """Return this mock's named connection for Step registration."""
-        return self._connection
+def search_default_answer() -> _Case[_SearchPage]:
+    """Return the manifest's search default answer."""
+    return _search_searched_default_index()
 
 
 __all__ = [
@@ -54,3 +47,8 @@ __all__ = [
     "save_object_saved",
     "save_object_default_answer",
 ]
+
+Mock.__doc__ = "Script Algolia operations, defaulting to their manifest answers."
+
+search_searched.__doc__ = "Script the searched route."
+save_object_saved.__doc__ = "Script the saved route."

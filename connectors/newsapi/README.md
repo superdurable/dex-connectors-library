@@ -51,6 +51,8 @@ sends null, so an application can tell a missing value from an empty one.
 `PublishedAt` is UTC. NewsAPI keeps removed articles in results with the title
 `[Removed]`; the connector returns them unchanged. `Title`, `Description`, and
 `Content` are untrusted provider text: escape them before rendering HTML.
+`Articles` marshals as an empty JSON array on every terminal branch when no
+articles are returned, including provider rejection and invalid input.
 
 Use the generated factory in [the runnable Flow](go/examples/company-news/flow/workflow.go).
 `NewProjectConnection` opens the connection from the project configuration that
@@ -133,4 +135,4 @@ mock := newsapimock.New(t, ConnectionName)
 flow, harness := newCompanyNewsIntegrationHarnessWithConnection(t, mock.Connection())
 ```
 
-Install this release with `go get github.com/superdurable/dex-connectors-library/connectors/newsapi/go@v0.23.0`.
+Install this release with `go get github.com/superdurable/dex-connectors-library/connectors/newsapi/go@v0.23.1`.

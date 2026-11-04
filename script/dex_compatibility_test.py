@@ -3,6 +3,7 @@
 
 import hashlib
 import io
+import json
 import os
 import re
 import shutil
@@ -43,6 +44,7 @@ from script.dex_compatibility import (
     stable_cli_tags,
     write_dex_version_plan,
     parse_connector_directories,
+    published_release,
     require_dex_web_security_tests_passed,
     require_dex_web_tests_passed,
 )
@@ -460,6 +462,28 @@ class ConnectorSelectionTest(unittest.TestCase):
 
 
 class ReleasedArtifactLayoutTest(unittest.TestCase):
+    def test_release_inventory_supplies_assets_without_per_shard_api_request(self) -> None:
+        tag = "connectors/acme/mail/go/v0.1.0"
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "releases.json"
+            path.write_text(json.dumps({tag: ["connector-release.complete"]}))
+            with patch.dict(os.environ, {"GH_RELEASE_INVENTORY_PATH": str(path)}), \
+                    patch("script.dex_compatibility.github_json") as fetch:
+                release = published_release("superdurable/dex-connectors-library", tag)
+            fetch.assert_not_called()
+        self.assertEqual("connector-release.complete", release["assets"][0]["name"])
+
+    def test_newly_uploaded_connector_uses_known_asset_urls(self) -> None:
+        tag = "connectors/acme/mail/go/v0.2.0"
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "releases.json"
+            path.write_text(json.dumps({tag: ["connector-release.json"]}))
+            with patch.dict(os.environ, {"GH_RELEASE_INVENTORY_PATH": str(path), "CONNECTOR_RELEASE_TAG": tag}), \
+                    patch("script.dex_compatibility.github_json") as fetch:
+                release = published_release("superdurable/dex-connectors-library", tag)
+            fetch.assert_not_called()
+        self.assertIn("connector-release.complete", {asset["name"] for asset in release["assets"]})
+
     def test_both_tag_prefixes_place_metadata_in_the_connector_directory(self) -> None:
         for directory in ("connectors/acme/mail", "connectors/airtable"):
             for tag in (f"{directory}/v0.1.0", f"{directory}/go/v0.2.0"):

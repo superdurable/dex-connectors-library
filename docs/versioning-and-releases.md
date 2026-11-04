@@ -39,7 +39,23 @@ separate release sources. Each must match its `pyproject.toml` or `package.json`
 version without the leading `v`. A change to one language version releases only
 that language. The same patch, minor, major, and `(breaking)` rules apply to
 each language independently. Use `sdkpython:` and `sdkts:` commit and PR subjects
-for their SDKs; connector changes in any language use `connector(<slug>):`.
+for their SDKs; single-connector changes use `connector(<slug>):`.
+
+A connector batch port PR may include five to eight connectors of one language
+when each package is a first `v0.1.0` release and passes the shared
+[provider conformance scenarios](../conformance/connectors/README.md). Other
+release PRs keep one released module per PR. Each language package under review
+must cover its declared operation branches against the Go-verified scenarios.
+The porter supplies inputs and provider responses, records complete expectations
+from Go, and commits the recording. CI verifies exact Go output, every Input
+field, and separate 5xx and 429 Retry coverage for each operation.
+New or edited Python and TypeScript packages must add these fixtures. Existing
+packages without fixtures receive a `missing conformance (legacy)` warning on
+Go-only edits; fixture-backed connectors always replay their scenarios.
+The coordinator merges one batch at a time and confirms its Release run,
+including first publish of new PyPI or npm projects, succeeded before merging
+the next batch because PyPI limits new-project creation rates. Use
+`connectors(python):` or `connectors(typescript):` for a batch commit and PR.
 
 GitHub Release titles are human-readable labels. SDK releases use
 `Go SDK vMAJOR.MINOR.PATCH`, `Python SDK vMAJOR.MINOR.PATCH`, or
@@ -213,12 +229,65 @@ also confirms the package name and version reported by its publish dry run.
 After a PyPI upload, release jobs wait up to 120 seconds for the JSON API to
 show every archive with its expected SHA-256 digest.
 
+New PyPI projects have a separate first-publish queue. The release workflow
+tries at most three new PyPI projects per run by default, one at a time, while
+updates to existing projects keep their parallel publish path. Set the
+`PYPI_FIRST_PUBLISH_LIMIT` repository variable or the manual workflow's
+`first_publish_limit` input to change that cap. npm first publishes share the
+serialized queue, but npm documents no comparable project-creation cap; they
+do not consume the PyPI cap. Packages beyond the cap are deferred. If PyPI
+responds `429 Too many new projects created`, the job retries after 20, 60,
+and 120 seconds, then reports a deferral without failing the release run.
+Later first publishes in that run defer immediately after the limit is hit.
+Other publish errors still fail the run. A deferred upload creates no GitHub
+tag or release until the registry artifact is verified.
+
+The same workflow runs hourly at minute 17 to drain pending language releases
+and pending Go releases. A scheduled run repairs an incomplete language release
+when its tag records the original source commit. If the upload succeeded but
+tag creation failed, a later run may rebuild from newer source only when the
+PyPI archive SHA-256 digests or npm tarball integrity match the published
+artifacts. A mismatch fails without creating a tag. Concurrent push and
+scheduled runs can cancel a queued run, so check
+the release summary for remaining work; the next scheduled run selects pending
+Go releases again.
+The `summarize-language` job writes published, deferred, and failed tags plus
+the pending count to its job summary and `result` JSON output. Deferred tags
+carry a reason such as `first_publish_cap`, `registry_lookup_failure`, or
+`project_creation_limit`. To recover
+manually, run `Release Connectors and Catalog` on `main` with the affected
+`connector_directory`; leave `dry_run` disabled. For a broad backlog, set
+`drain_first_publishes` on a manual run or wait for the next hourly run. A
+manual drain also releases pending Go versions. If a registry upload succeeded
+but GitHub release creation failed, the scheduled run can repair an identical
+rebuild. If the archive differs, rerun the original workflow at its source
+commit as described below.
+
+Catalog deployment still requires successful release jobs. Its event gate is:
+
+| Event | Pending Go selected | Language published | Deploy catalog |
+| --- | --- | --- | --- |
+| Push or manual dispatch | Any | Any | Yes |
+| Schedule | No | No or summary skipped | No |
+| Schedule | Yes | Any | Yes |
+| Schedule | No | Yes | Yes |
+
+The deployed catalog lists Python and TypeScript versions and capabilities
+only after their GitHub release contains `language-release.complete`. While a
+newer manifest language version is pending, it keeps the latest completed
+version and reads that version's capability declarations from its release tag. The
+catalog generator accepts a completed-tag inventory with
+`--completed-language-tags`; without one, it omits language entries rather than
+advertising a pending version. An idle scheduled run skips the Pages deploy.
+
 If registry publication succeeds but GitHub tag or release creation fails,
-rerun the failed workflow at its original commit. If that run is unavailable,
-create the missing tag at the original source commit, then dispatch the SDK
-workflow with `repair_version` or `Release Connectors and Catalog` with its
-`connector_directory`. Rebuilding that version from a newer commit can
-produce a different archive, which the registry integrity check rejects.
+the scheduled connector workflow retries the release and accepts only identical
+registry artifacts. If the rebuild differs, rerun the failed workflow at its
+original commit. If that run is unavailable, create the missing tag at the
+original source commit, then dispatch the SDK workflow with `repair_version`
+or `Release Connectors and Catalog` with its `connector_directory`. Rebuilding
+from a newer commit can produce a different archive, which the registry
+integrity check rejects.
 
 Connector language packages require a released SDK, with
 no local path, Git, file, workspace, or uv source override. CI and release
@@ -297,13 +366,14 @@ the original push commit, retaining its release matrix. The workflow:
 9. verifies the published Go module is downloadable;
 10. runs Released compatibility against the new component tag;
 11. publishes the directory site, `catalog.yaml`, and `card.png` to GitHub
-    Pages when connector releases succeed or none are pending. A failed Go
-    or language build or release blocks the whole catalog publish, including Go entries.
-    When no language release is pending, skipped language jobs allow Go-only
-    catalog deployment.
+    Pages after a push or manual run, and after a scheduled run that selected
+    Go work or published a language package. An idle scheduled run skips
+    deployment. A failed Go or
+    language build or release blocks the catalog publish, including Go entries.
     The site is
-    `https://superdurable.github.io/dex-connectors-library/` and the README
-    preview is `card.png` beside `catalog.yaml`.
+    `https://connectors.superdurable.io/` and the README
+    preview is `card.png` beside `catalog.yaml`: a fixed-size image of the
+    site's catalog totals row.
 
 The workflow uploads `connector-release.complete` only after both publication
 checks pass. A rerun repairs any release without that marker before publishing
@@ -340,6 +410,10 @@ Breaking changes use the exact lowercase `(breaking)` marker in a PR title,
 PR body, or direct commit message. A v0 breaking release cannot use a patch
 bump. At v1 or later, a breaking release requires a major bump and the Go
 module path must be migrated before publishing v2 or later.
+For a Python or TypeScript connector release, a marked commit is breaking for
+that language only when it changes the language package beyond its generated
+`dex-connector.json`. Descriptor-only changes appear under Changes. Package
+source, other generated code, and shared-manifest-only changes still count.
 
 ## Release candidates
 
@@ -431,8 +505,8 @@ copy the check runs:
 
 The check only compiles code. It needs no Dex Server or provider credentials
 and never edits the checkout. CI runs it for affected connectors on pull
-requests and `main` and for every connector on the daily schedule. A failure
-names each module that does not build or vet with that Dex Go SDK.
+requests and pushes to `main`, and for every connector on the daily schedule.
+A failure names each module that does not build or vet with that Dex Go SDK.
 
 ## Connector dependencies
 
@@ -458,9 +532,9 @@ download would add an entry, the check restores the file and fails. Run
 `go mod tidy` in the connector and commit the result.
 
 `make test-connectors` runs this check for each affected connector on pull
-requests and `main` and for every connector on the scheduled run. The release
-job runs it again before publishing. Release the dependency first: merge its PR,
-wait for `connector-release.complete`, then require that exact tag in a later PR
+requests and pushes to `main`, and for every connector on the scheduled run.
+The release job runs it again before publishing. Release the dependency first:
+merge its PR, wait for `connector-release.complete`, then require that exact tag in a later PR
 for the dependent connector. Until then, the dependent PR fails CI. This also
 keeps one released module per PR.
 

@@ -7,11 +7,13 @@ import tomllib
 from datetime import timedelta
 from pathlib import Path
 
+import dex
 import yaml
 from dex_connectors.sdk import default_connector_step_execute_retry_policy
 
 from dex_connectors.resend import GET_EMAIL_DEFINITION, SEND_EMAIL_DEFINITION
-from dex_connectors.resend.resendmock import get_email_default, send_email_default
+from dex_connectors.resend.resendmock import Mock, get_email_default, send_email_default
+from examples.welcome_email.flow import FLOW_TYPE, WelcomeEmailFlow
 
 CONNECTOR_DIRECTORY = Path(__file__).resolve().parents[2]
 PACKAGE_DIRECTORY = CONNECTOR_DIRECTORY / "python" / "src" / "dex_connectors" / "resend"
@@ -65,3 +67,9 @@ def test_dex_connector_package_identity_and_factories() -> None:
         assert [(branch["id"], branch["optional"]) for branch in factory["branches"]] == [
             (branch.id, branch.optional) for branch in definition.branches or ()
         ]
+
+
+def test_example_registers_with_mock_connection() -> None:
+    flow = WelcomeEmailFlow(Mock().connection())
+    assert flow.get_flow_type() == FLOW_TYPE
+    dex.Registry([flow], allow_async_handlers=True)

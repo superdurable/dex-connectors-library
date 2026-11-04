@@ -161,7 +161,7 @@ func walkFiles(t *testing.T, root string, visit func(string)) {
 		}
 		if entry.IsDir() {
 			switch entry.Name() {
-			case ".git", "node_modules", "dist", "build", "coverage", "vendor":
+			case ".git", ".venv", "node_modules", "dist", "build", "coverage", "vendor":
 				if path != root {
 					return filepath.SkipDir
 				}

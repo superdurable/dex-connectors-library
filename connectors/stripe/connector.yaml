@@ -5,7 +5,7 @@ metadata:
   displayName: Stripe
   description: Create and reconcile hosted card or ACH Checkout Sessions, read PaymentIntents, refund payments, and receive signed Checkout Session events.
   company: Stripe
-  version: v0.25.0
+  version: v0.25.1
 spec:
   provider: stripe
   languages:
@@ -14,7 +14,7 @@ spec:
       operations: [createCardCheckoutSession, createACHCheckoutSession, getCheckoutSession, getPaymentIntent, createRefund]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       operations: [createCardCheckoutSession, createACHCheckoutSession, getCheckoutSession, getPaymentIntent, createRefund]
       triggers: []
   codegen:

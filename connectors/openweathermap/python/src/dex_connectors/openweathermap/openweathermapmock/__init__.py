@@ -1,63 +1,42 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Manifest-backed OpenWeatherMap scripts for consuming Flow tests."""
+"""Public manifest-backed mock helpers."""
 
-from dex_connectors.sdk import ConnectionRef, Failure
-from dex_connectors.sdk.connectormock import Case, Query
+from dex_connectors.sdk import ConnectionRef as ConnectionRef
+from dex_connectors.sdk import Failure as Failure
+from dex_connectors.sdk.connectormock import Case as Case
+from dex_connectors.sdk.connectormock import Case as _Case
+from dex_connectors.sdk.connectormock import Query as Query
 
-from ..client import CONNECTOR_ID, FOUND, GET_CURRENT_WEATHER_DEFINITION, GET_FORECAST_DEFINITION, NOT_FOUND
-from ..connection import Connection, new_connection_with_operations
-from ..models import CurrentWeatherOutput, ForecastEntry, ForecastOutput, WeatherInput
+from .._generated.mock import Mock as Mock
+from .._generated.mock import get_current_weather_found as get_current_weather_found
+from .._generated.mock import get_current_weather_found_default as _get_current_weather_found_default
+from .._generated.mock import get_current_weather_not_found as get_current_weather_not_found
+from .._generated.mock import get_forecast_found as get_forecast_found
+from .._generated.mock import get_forecast_found_default as _get_forecast_found_default
+from ..client import CONNECTOR_ID as CONNECTOR_ID
+from ..client import FOUND as FOUND
+from ..client import GET_CURRENT_WEATHER_DEFINITION as GET_CURRENT_WEATHER_DEFINITION
+from ..client import GET_FORECAST_DEFINITION as GET_FORECAST_DEFINITION
+from ..client import NOT_FOUND as NOT_FOUND
+from ..connection import Connection as Connection
+from ..connection import new_connection_with_operations as new_connection_with_operations
+from ..models import CurrentWeatherOutput as CurrentWeatherOutput
+from ..models import CurrentWeatherOutput as _CurrentWeatherOutput
+from ..models import ForecastEntry as ForecastEntry
+from ..models import ForecastOutput as ForecastOutput
+from ..models import ForecastOutput as _ForecastOutput
+from ..models import WeatherInput as WeatherInput
 
 
-def get_current_weather_found(
-    value: CurrentWeatherOutput, failure: Failure | None = None
-) -> Case[CurrentWeatherOutput]:
-    """Script the successful found route."""
-    return Case.branch_result(FOUND, value, failure)
-
-
-def get_current_weather_not_found(
-    value: CurrentWeatherOutput, failure: Failure | None = None
-) -> Case[CurrentWeatherOutput]:
-    """Script coordinates without weather data."""
-    return Case.branch_result(NOT_FOUND, value, failure)
-
-
-def get_current_weather_default_answer() -> Case[CurrentWeatherOutput]:
+def get_current_weather_default_answer() -> _Case[_CurrentWeatherOutput]:
     """Return the manifest's getCurrentWeather default answer."""
-    return get_current_weather_found(CurrentWeatherOutput("Meridian", 21.5, "clear sky"))
+    return _get_current_weather_found_default()
 
 
-def get_forecast_found(value: ForecastOutput, failure: Failure | None = None) -> Case[ForecastOutput]:
-    """Script the successful found route."""
-    return Case.branch_result(FOUND, value, failure)
-
-
-def get_forecast_default_answer() -> Case[ForecastOutput]:
+def get_forecast_default_answer() -> _Case[_ForecastOutput]:
     """Return the manifest's getForecast default answer."""
-    return get_forecast_found(ForecastOutput("Meridian", (ForecastEntry(1793210400, 20.1),)))
-
-
-class Mock:
-    """Script OpenWeatherMap Queries, defaulting to their manifest answers."""
-
-    def __init__(self, connection_name: str = "openweathermap") -> None:
-        self.get_current_weather_script: Query[WeatherInput, CurrentWeatherOutput] = Query(
-            GET_CURRENT_WEATHER_DEFINITION
-        )
-        self.get_current_weather_script.default(get_current_weather_default_answer())
-        self.get_forecast_script: Query[WeatherInput, ForecastOutput] = Query(GET_FORECAST_DEFINITION)
-        self.get_forecast_script.default(get_forecast_default_answer())
-        self._connection = new_connection_with_operations(
-            self.get_current_weather_script,
-            self.get_forecast_script,
-            ConnectionRef(CONNECTOR_ID, connection_name),
-        )
-
-    def connection(self) -> Connection:
-        """Return this mock's named connection for Step registration."""
-        return self._connection
+    return _get_forecast_found_default()
 
 
 __all__ = [
@@ -68,3 +47,9 @@ __all__ = [
     "get_forecast_found",
     "get_forecast_default_answer",
 ]
+
+Mock.__doc__ = "Script OpenWeatherMap Queries, defaulting to their manifest answers."
+
+get_current_weather_found.__doc__ = "Script the successful found route."
+get_current_weather_not_found.__doc__ = "Script coordinates without weather data."
+get_forecast_found.__doc__ = "Script the successful found route."

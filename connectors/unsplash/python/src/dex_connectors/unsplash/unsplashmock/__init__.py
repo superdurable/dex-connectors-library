@@ -1,65 +1,43 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Manifest-backed Unsplash scripts for consuming Flow tests."""
+"""Public manifest-backed mock helpers."""
 
-from dex_connectors.sdk import ConnectionRef, Failure
-from dex_connectors.sdk.connectormock import Case, Query
+from dex_connectors.sdk import ConnectionRef as ConnectionRef
+from dex_connectors.sdk import Failure as Failure
+from dex_connectors.sdk.connectormock import Case as Case
+from dex_connectors.sdk.connectormock import Case as _Case
+from dex_connectors.sdk.connectormock import Query as Query
 
-from ..client import CONNECTOR_ID, FOUND, GET_PHOTO_DEFINITION, NOT_FOUND, SEARCH_PHOTOS_DEFINITION, SEARCHED
-from ..connection import Connection, new_connection_with_operations
-from ..models import GetPhotoInput, Photo, PhotoPage, SearchPhotosInput
-
-_OFFICE = Photo(
-    id="office-1",
-    html_url="https://unsplash.com/photos/office-1",
-    regular_url="https://images.unsplash.com/photo-office-1",
-    photographer_name="A. Photographer",
-    photographer_url="https://unsplash.com/@photographer",
-    description="A sunlit office",
-    alt_description="sunlit office interior",
-)
-
-
-def search_photos_searched(value: PhotoPage, failure: Failure | None = None) -> Case[PhotoPage]:
-    """Script the searched route."""
-    return Case.branch_result(SEARCHED, value, failure)
-
-
-def search_photos_default_answer() -> Case[PhotoPage]:
-    """Return the manifest's searchPhotos default answer."""
-    return search_photos_searched(PhotoPage(1, 1, (_OFFICE,)))
-
-
-def get_photo_found(value: Photo, failure: Failure | None = None) -> Case[Photo]:
-    """Script the successful found route."""
-    return Case.branch_result(FOUND, value, failure)
+from .._generated.mock import Mock as Mock
+from .._generated.mock import get_photo_found as get_photo_found
+from .._generated.mock import get_photo_found_default_photo as _get_photo_found_default_photo
+from .._generated.mock import get_photo_not_found as get_photo_not_found
+from .._generated.mock import search_photos_searched as search_photos_searched
+from .._generated.mock import search_photos_searched_default_photos as _search_photos_searched_default_photos
+from ..client import CONNECTOR_ID as CONNECTOR_ID
+from ..client import FOUND as FOUND
+from ..client import GET_PHOTO_DEFINITION as GET_PHOTO_DEFINITION
+from ..client import NOT_FOUND as NOT_FOUND
+from ..client import SEARCH_PHOTOS_DEFINITION as SEARCH_PHOTOS_DEFINITION
+from ..client import SEARCHED as SEARCHED
+from ..connection import Connection as Connection
+from ..connection import new_connection_with_operations as new_connection_with_operations
+from ..models import GetPhotoInput as GetPhotoInput
+from ..models import Photo as Photo
+from ..models import Photo as _Photo
+from ..models import PhotoPage as PhotoPage
+from ..models import PhotoPage as _PhotoPage
+from ..models import SearchPhotosInput as SearchPhotosInput
 
 
-def get_photo_not_found(value: Photo, failure: Failure | None = None) -> Case[Photo]:
-    """Script a missing photo."""
-    return Case.branch_result(NOT_FOUND, value, failure)
-
-
-def get_photo_default_answer() -> Case[Photo]:
+def get_photo_default_answer() -> _Case[_Photo]:
     """Return the manifest's getPhoto default answer."""
-    return get_photo_found(_OFFICE)
+    return _get_photo_found_default_photo()
 
 
-class Mock:
-    """Script Unsplash Queries, defaulting to their manifest answers."""
-
-    def __init__(self, connection_name: str = "unsplash") -> None:
-        self.search_photos_script: Query[SearchPhotosInput, PhotoPage] = Query(SEARCH_PHOTOS_DEFINITION)
-        self.search_photos_script.default(search_photos_default_answer())
-        self.get_photo_script: Query[GetPhotoInput, Photo] = Query(GET_PHOTO_DEFINITION)
-        self.get_photo_script.default(get_photo_default_answer())
-        self._connection = new_connection_with_operations(
-            self.search_photos_script, self.get_photo_script, ConnectionRef(CONNECTOR_ID, connection_name)
-        )
-
-    def connection(self) -> Connection:
-        """Return this mock's named connection for Step registration."""
-        return self._connection
+def search_photos_default_answer() -> _Case[_PhotoPage]:
+    """Return the manifest's searchPhotos default answer."""
+    return _search_photos_searched_default_photos()
 
 
 __all__ = [
@@ -70,3 +48,9 @@ __all__ = [
     "get_photo_not_found",
     "get_photo_default_answer",
 ]
+
+Mock.__doc__ = "Script Unsplash Queries, defaulting to their manifest answers."
+
+search_photos_searched.__doc__ = "Script the searched route."
+get_photo_found.__doc__ = "Script the successful found route."
+get_photo_not_found.__doc__ = "Script a missing photo."

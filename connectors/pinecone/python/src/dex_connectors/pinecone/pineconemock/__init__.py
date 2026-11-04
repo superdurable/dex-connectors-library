@@ -1,62 +1,42 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Manifest-backed Pinecone scripts for consuming Flow tests."""
+"""Public manifest-backed mock helpers."""
 
-from dex_connectors.sdk import ConnectionRef, Failure
-from dex_connectors.sdk.connectormock import Case, Mutation, Query
+from dex_connectors.sdk import ConnectionRef as ConnectionRef
+from dex_connectors.sdk import Failure as Failure
+from dex_connectors.sdk.connectormock import Case as Case
+from dex_connectors.sdk.connectormock import Case as _Case
+from dex_connectors.sdk.connectormock import Mutation as Mutation
+from dex_connectors.sdk.connectormock import Query as Query
 
-from ..client import CONNECTOR_ID, QUERIED, QUERY_VECTORS_DEFINITION, UPSERT_VECTORS_DEFINITION, UPSERTED
-from ..connection import Connection, new_connection_with_operations
-from ..models import QueryVectorsInput, QueryVectorsOutput, UpsertVectorsInput, UpsertVectorsOutput
+from .._generated.mock import Mock as Mock
+from .._generated.mock import query_vectors_default_query_vectors as _query_vectors_default_query_vectors
+from .._generated.mock import query_vectors_queried as query_vectors_queried
+from .._generated.mock import upsert_vectors_default_upsert_vectors as _upsert_vectors_default_upsert_vectors
+from .._generated.mock import upsert_vectors_upserted as upsert_vectors_upserted
+from ..client import CONNECTOR_ID as CONNECTOR_ID
+from ..client import QUERIED as QUERIED
+from ..client import QUERY_VECTORS_DEFINITION as QUERY_VECTORS_DEFINITION
+from ..client import UPSERT_VECTORS_DEFINITION as UPSERT_VECTORS_DEFINITION
+from ..client import UPSERTED as UPSERTED
+from ..connection import Connection as Connection
+from ..connection import new_connection_with_operations as new_connection_with_operations
+from ..models import QueryVectorsInput as QueryVectorsInput
+from ..models import QueryVectorsOutput as QueryVectorsOutput
+from ..models import QueryVectorsOutput as _QueryVectorsOutput
+from ..models import UpsertVectorsInput as UpsertVectorsInput
+from ..models import UpsertVectorsOutput as UpsertVectorsOutput
+from ..models import UpsertVectorsOutput as _UpsertVectorsOutput
 
 
-def upsert_vectors_upserted(
-    value: UpsertVectorsOutput, failure: Failure | None = None
-) -> Case[UpsertVectorsOutput]:
-    """Script the upserted route."""
-    return Case.branch_result(UPSERTED, value, failure)
-
-
-def upsert_vectors_default_answer() -> Case[UpsertVectorsOutput]:
-    """Return the manifest's upsertVectors default answer."""
-    return upsert_vectors_upserted(UpsertVectorsOutput(1))
-
-
-def query_vectors_queried(
-    value: QueryVectorsOutput, failure: Failure | None = None
-) -> Case[QueryVectorsOutput]:
-    """Script the queried route."""
-    return Case.branch_result(QUERIED, value, failure)
-
-
-def query_vectors_default_answer() -> Case[QueryVectorsOutput]:
+def query_vectors_default_answer() -> _Case[_QueryVectorsOutput]:
     """Return the manifest's queryVectors default answer."""
-    return query_vectors_queried(
-        QueryVectorsOutput({"matches": [{"id": "vec-meridian", "score": 0.98}], "namespace": "example"})
-    )
+    return _query_vectors_default_query_vectors()
 
 
-class Mock:
-    """Script Pinecone operations, defaulting to their manifest answers."""
-
-    def __init__(self, connection_name: str = "pinecone") -> None:
-        self.upsert_vectors_script: Mutation[UpsertVectorsInput, UpsertVectorsOutput] = Mutation(
-            UPSERT_VECTORS_DEFINITION
-        )
-        self.upsert_vectors_script.default(upsert_vectors_default_answer())
-        self.query_vectors_script: Query[QueryVectorsInput, QueryVectorsOutput] = Query(
-            QUERY_VECTORS_DEFINITION
-        )
-        self.query_vectors_script.default(query_vectors_default_answer())
-        self._connection = new_connection_with_operations(
-            self.upsert_vectors_script,
-            self.query_vectors_script,
-            ConnectionRef(CONNECTOR_ID, connection_name),
-        )
-
-    def connection(self) -> Connection:
-        """Return this mock's named connection for Step registration."""
-        return self._connection
+def upsert_vectors_default_answer() -> _Case[_UpsertVectorsOutput]:
+    """Return the manifest's upsertVectors default answer."""
+    return _upsert_vectors_default_upsert_vectors()
 
 
 __all__ = [
@@ -66,3 +46,8 @@ __all__ = [
     "query_vectors_queried",
     "query_vectors_default_answer",
 ]
+
+Mock.__doc__ = "Script Pinecone operations, defaulting to their manifest answers."
+
+upsert_vectors_upserted.__doc__ = "Script the upserted route."
+query_vectors_queried.__doc__ = "Script the queried route."

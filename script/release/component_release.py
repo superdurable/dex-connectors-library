@@ -22,6 +22,12 @@ import zipfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+if __package__:
+    from .github_release_inventory import github_json, release_assets
+else:
+    sys.path.insert(0, str(Path(__file__).parent))
+    from github_release_inventory import github_json, release_assets
+
 VERSION_PATTERN = re.compile(r"^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
 RELEASE_ARTIFACT_VERSION_PATTERN = re.compile(r"^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-rc\.[1-9][0-9]*)?$")
 LIBRARY_MODULE_PATH = "github.com/superdurable/dex-connectors-library"
@@ -66,19 +72,15 @@ class DependencyReleaseLookup:
         return git("merge-base", "--is-ancestor", tag, self.main_ref, check=False).returncode == 0
 
     def release_asset_names(self, tag: str, allow_missing: bool = False) -> frozenset[str]:
-        gh_binary = os.environ.get("GH_BIN", "gh")
-        result = subprocess.run(
-            (gh_binary, "release", "view", tag, "--json", "assets", "--jq", ".assets[].name"),
-            check=False,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-        if result.returncode != 0:
-            if allow_missing and result.stderr.strip() == "release not found":
+        try:
+            assets = release_assets(tag, os.environ.get("GH_RELEASE_INVENTORY_PATH"))
+        except RuntimeError as error:
+            raise ValueError(f"cannot read the GitHub release for {tag}: {error}") from error
+        if assets is None:
+            if allow_missing:
                 return frozenset()
-            raise ValueError(f"cannot read the GitHub release for {tag}: {result.stderr.strip()}")
-        return frozenset(line for line in result.stdout.splitlines() if line)
+            raise ValueError(f"cannot read the GitHub release for {tag}: release not found (HTTP 404)")
+        return assets
 
     def is_language_sdk_published(self, language: str, version: str) -> bool:
         if language == "python":
@@ -351,24 +353,34 @@ def commit_message(commit: str) -> str:
     return git("show", "-s", "--format=%B", commit).stdout.strip()
 
 
+def commit_changes_beyond_language_descriptor(commit: str, component_path: str) -> bool:
+    if not component_path.startswith("connectors/") or not component_path.endswith(("/python", "/typescript")):
+        return True
+    parents = git("rev-list", "--parents", "-n", "1", commit).stdout.split()
+    if len(parents) > 1:
+        changed_paths = git("diff", "--name-only", parents[1], commit, "--", component_path).stdout.splitlines()
+    else:
+        changed_paths = git(
+            "diff-tree", "--root", "-r", "--no-commit-id", "--name-only", commit, "--", component_path,
+        ).stdout.splitlines()
+    if not changed_paths:
+        return True
+    for changed_path in changed_paths:
+        parts = Path(changed_path).relative_to(component_path).parts
+        is_python_descriptor = (component_path.endswith("/python") and len(parts) == 4
+                                and parts[:2] == ("src", "dex_connectors")
+                                and parts[3] == "dex-connector.json")
+        is_typescript_descriptor = (component_path.endswith("/typescript")
+                                    and parts == ("dex-connector.json",))
+        if not (is_python_descriptor or is_typescript_descriptor):
+            return True
+    return False
+
+
 def associated_pull_request(repository: str, commit: str) -> dict[str, object] | None:
-    gh_binary = os.environ.get("GH_BIN", "gh")
-    result = subprocess.run(
-        (
-            gh_binary,
-            "api",
-            f"repos/{repository}/commits/{commit}/pulls",
-            "--method",
-            "GET",
-        ),
-        check=False,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-    if result.returncode != 0:
-        return None
-    pulls = json.loads(result.stdout)
+    pulls, _ = github_json(f"https://api.github.com/repos/{repository}/commits/{commit}/pulls")
+    if not isinstance(pulls, list):
+        raise ValueError(f"GitHub pull request lookup returned invalid data for {commit}")
     return pulls[0] if pulls else None
 
 
@@ -390,7 +402,8 @@ def release_notes(plan: ReleasePlan, repository: str) -> tuple[str, bool]:
             url = str(pull.get("html_url", ""))
             user = pull.get("user") or {}
             author = f" by @{user.get('login')}" if isinstance(user, dict) and user.get("login") else ""
-        is_breaking = "(breaking)" in title or "(breaking)" in body or "(breaking)" in message
+        is_breaking = (("(breaking)" in title or "(breaking)" in body or "(breaking)" in message)
+                       and commit_changes_beyond_language_descriptor(commit, plan.component_path))
         clean_title = title.replace("(breaking)", "").strip()
         entry = f"- [{clean_title}]({url}){author}"
         key = url if pull is not None and url else commit
@@ -1039,7 +1052,7 @@ def main() -> int:
                 DependencyReleaseLookup(arguments.main_ref),
             )
             print(f"{arguments.component_path}: {', '.join(tags)}")
-    except (OSError, ValueError, subprocess.CalledProcessError, json.JSONDecodeError, tarfile.TarError, zipfile.BadZipFile, KeyError) as error:
+    except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError, json.JSONDecodeError, tarfile.TarError, zipfile.BadZipFile, KeyError) as error:
         print(error, file=sys.stderr)
         return 1
     return 0

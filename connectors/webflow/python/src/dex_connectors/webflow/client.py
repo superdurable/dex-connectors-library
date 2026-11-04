@@ -5,25 +5,26 @@
 import json
 import re
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
+from datetime import timedelta as timedelta
 from typing import Any, TypeVar
 from urllib.parse import urlencode
 
 import httpx
+from dex_connectors.sdk import BranchDefinition as BranchDefinition
 from dex_connectors.sdk import (
-    BranchDefinition,
     Call,
     CredentialProvider,
     Failure,
     FailureKind,
-    OperationRef,
     QueryAttempt,
     QueryDefinition,
     ReauthorizationRequiredError,
     Receipt,
-    SecretString,
-    StepDefaults,
 )
+from dex_connectors.sdk import OperationRef as OperationRef
+from dex_connectors.sdk import SecretString as SecretString
+from dex_connectors.sdk import StepDefaults as StepDefaults
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -34,8 +35,49 @@ from dex_connectors.sdk.providerhttp import (
     send_traced,
     validate_base_url,
 )
-from dex_connectors.sdk.retry_policy import default_connector_step_execute_retry_policy
+from dex_connectors.sdk.retry_policy import (
+    default_connector_step_execute_retry_policy as default_connector_step_execute_retry_policy,
+)
 
+from ._generated.config import (
+    Config as Config,
+)
+from ._generated.config import (
+    Credentials as Credentials,
+)
+from ._generated.definitions import (
+    CONNECTOR_ID as CONNECTOR_ID,
+)
+from ._generated.definitions import (
+    DEFECT as DEFECT,
+)
+from ._generated.definitions import (
+    FOUND as FOUND,
+)
+from ._generated.definitions import (
+    GET_COLLECTION_ITEM_DEFINITION as GET_COLLECTION_ITEM_DEFINITION,
+)
+from ._generated.definitions import (
+    GET_COLLECTION_ITEM_OPERATION_ID as GET_COLLECTION_ITEM_OPERATION_ID,
+)
+from ._generated.definitions import (
+    INVALID_RESPONSE as INVALID_RESPONSE,
+)
+from ._generated.definitions import (
+    LIST_COLLECTION_ITEMS_DEFINITION as LIST_COLLECTION_ITEMS_DEFINITION,
+)
+from ._generated.definitions import (
+    LIST_COLLECTION_ITEMS_OPERATION_ID as LIST_COLLECTION_ITEMS_OPERATION_ID,
+)
+from ._generated.definitions import (
+    LISTED as LISTED,
+)
+from ._generated.definitions import (
+    NOT_FOUND as NOT_FOUND,
+)
+from ._generated.definitions import (
+    PROVIDER_REJECTED as PROVIDER_REJECTED,
+)
 from .models import (
     GetCollectionItemInput,
     GetCollectionItemOutput,
@@ -43,73 +85,18 @@ from .models import (
     ListCollectionItemsOutput,
 )
 
-CONNECTOR_ID = "webflow"
-LIST_COLLECTION_ITEMS_OPERATION_ID = "listCollectionItems"
-GET_COLLECTION_ITEM_OPERATION_ID = "getCollectionItem"
-FOUND = "found"
-LISTED = "listed"
-NOT_FOUND = "notFound"
-PROVIDER_REJECTED = "providerRejected"
-INVALID_RESPONSE = "invalidResponse"
-DEFECT = "defect"
 _OBJECT_ID = re.compile(r"[0-9a-fA-F]{24}")
 _DEFAULT_BASE_URL = "https://api.webflow.com/v2"
 _DEFAULT_TIMEOUT_SECONDS = 15
 _DEFAULT_MAX_RESPONSE_BYTES = 2097152
-_STEP_DEFAULTS = StepDefaults(
-    timedelta(seconds=30), 2, execute_retry=default_connector_step_execute_retry_policy()
-)
 _STATUS_KINDS = {
     401: FailureKind.AUTHENTICATION,
     403: FailureKind.AUTHORIZATION,
     400: FailureKind.VALIDATION,
     422: FailureKind.VALIDATION,
 }
-LIST_COLLECTION_ITEMS_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, "listCollectionItems"),
-    (
-        BranchDefinition("listed", "List a page of staged CMS collection items."),
-        BranchDefinition(
-            "providerRejected", "The provider conclusively rejected the request or credentials.", True
-        ),
-        BranchDefinition("invalidResponse", "The provider returned malformed or oversized JSON.", True),
-        BranchDefinition("defect", "Local input, configuration, or credentials are invalid.", True),
-    ),
-    _STEP_DEFAULTS,
-)
-GET_COLLECTION_ITEM_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, "getCollectionItem"),
-    (
-        BranchDefinition("found", "Get one staged CMS collection item."),
-        BranchDefinition(
-            "notFound", "The requested provider resource does not exist or is not visible.", True
-        ),
-        BranchDefinition(
-            "providerRejected", "The provider conclusively rejected the request or credentials.", True
-        ),
-        BranchDefinition("invalidResponse", "The provider returned malformed or oversized JSON.", True),
-        BranchDefinition("defect", "Local input, configuration, or credentials are invalid.", True),
-    ),
-    _STEP_DEFAULTS,
-)
 
 Output = TypeVar("Output")
-
-
-@dataclass(frozen=True, slots=True)
-class Config:
-    """Webflow HTTP settings; zero or blank values use manifest defaults."""
-
-    base_url: str = _DEFAULT_BASE_URL
-    timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS
-    max_response_bytes: int = _DEFAULT_MAX_RESPONSE_BYTES
-
-
-@dataclass(frozen=True, slots=True)
-class Credentials:
-    """Webflow site API token, resolved anew for every provider attempt."""
-
-    site_token: SecretString
 
 
 @dataclass(frozen=True, slots=True)
@@ -369,3 +356,7 @@ def _failed(
 
 def _is_object_id(value: object) -> bool:
     return isinstance(value, str) and _OBJECT_ID.fullmatch(value) is not None
+
+
+Config.__doc__ = "Webflow HTTP settings; zero or blank values use manifest defaults."
+Credentials.__doc__ = "Webflow site API token, resolved anew for every provider attempt."

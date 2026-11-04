@@ -5,13 +5,14 @@
 import json
 import re
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
+from datetime import timedelta as timedelta
 from typing import Any
 from urllib.parse import quote, urlencode
 
 import httpx
+from dex_connectors.sdk import BranchDefinition as BranchDefinition
 from dex_connectors.sdk import (
-    BranchDefinition,
     Call,
     CallID,
     CredentialProvider,
@@ -20,14 +21,14 @@ from dex_connectors.sdk import (
     IdempotencyKey,
     MutationAttempt,
     MutationDefinition,
-    OperationRef,
     QueryAttempt,
     QueryDefinition,
     ReauthorizationRequiredError,
     Receipt,
-    SecretString,
-    StepDefaults,
 )
+from dex_connectors.sdk import OperationRef as OperationRef
+from dex_connectors.sdk import SecretString as SecretString
+from dex_connectors.sdk import StepDefaults as StepDefaults
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -38,18 +39,48 @@ from dex_connectors.sdk.providerhttp import (
     send_traced,
     validate_base_url,
 )
-from dex_connectors.sdk.retry_policy import default_connector_step_execute_retry_policy
+from dex_connectors.sdk.retry_policy import (
+    default_connector_step_execute_retry_policy as default_connector_step_execute_retry_policy,
+)
 
+from ._generated.config import (
+    Config as Config,
+)
+from ._generated.config import (
+    Credentials as Credentials,
+)
+from ._generated.definitions import (
+    CONNECTOR_ID as CONNECTOR_ID,
+)
+from ._generated.definitions import (
+    DEFECT as DEFECT,
+)
+from ._generated.definitions import (
+    INVALID_RESPONSE as INVALID_RESPONSE,
+)
+from ._generated.definitions import (
+    PROVIDER_REJECTED as PROVIDER_REJECTED,
+)
+from ._generated.definitions import (
+    SAVE_OBJECT_DEFINITION as SAVE_OBJECT_DEFINITION,
+)
+from ._generated.definitions import (
+    SAVE_OBJECT_OPERATION_ID as SAVE_OBJECT_OPERATION_ID,
+)
+from ._generated.definitions import (
+    SAVED as SAVED,
+)
+from ._generated.definitions import (
+    SEARCH_DEFINITION as SEARCH_DEFINITION,
+)
+from ._generated.definitions import (
+    SEARCH_OPERATION_ID as SEARCH_OPERATION_ID,
+)
+from ._generated.definitions import (
+    SEARCHED as SEARCHED,
+)
 from .models import SavedObject, SaveObjectInput, SearchHit, SearchInput, SearchPage
 
-CONNECTOR_ID = "algolia"
-SEARCH_OPERATION_ID = "search"
-SAVE_OBJECT_OPERATION_ID = "saveObject"
-SEARCHED = "searched"
-SAVED = "saved"
-PROVIDER_REJECTED = "providerRejected"
-INVALID_RESPONSE = "invalidResponse"
-DEFECT = "defect"
 PUBLIC_HOST_TEMPLATE = "https://algolia.net/1"
 _DEFAULT_TIMEOUT_SECONDS = 15
 _DEFAULT_MAX_RESPONSE_BYTES = 2_097_152
@@ -57,50 +88,6 @@ _MAX_RECORD_PAYLOAD_BYTES = 1 << 20
 _MAX_HITS_PER_PAGE = 1000
 _APPLICATION_ID = re.compile(r"[A-Z0-9]+")
 _PATH_SEGMENT_SAFE = "$&+:=@"
-_STEP_DEFAULTS = StepDefaults(
-    timedelta(seconds=30), 2, execute_retry=default_connector_step_execute_retry_policy()
-)
-_DEFECT_BRANCH = BranchDefinition(DEFECT, "Local input or credentials are invalid.", True)
-SEARCH_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, SEARCH_OPERATION_ID),
-    (
-        BranchDefinition(SEARCHED, "Algolia returned a hit page, possibly empty."),
-        BranchDefinition(PROVIDER_REJECTED, "Algolia rejected the search or key.", True),
-        BranchDefinition(INVALID_RESPONSE, "Algolia returned malformed or oversized data.", True),
-        _DEFECT_BRANCH,
-    ),
-    _STEP_DEFAULTS,
-)
-SAVE_OBJECT_DEFINITION = MutationDefinition(
-    OperationRef(CONNECTOR_ID, SAVE_OBJECT_OPERATION_ID),
-    (
-        BranchDefinition(SAVED, "Algolia accepted the replacement task."),
-        BranchDefinition(PROVIDER_REJECTED, "Algolia rejected the record or key.", True),
-        BranchDefinition(INVALID_RESPONSE, "Algolia returned malformed or oversized data.", True),
-        _DEFECT_BRANCH,
-    ),
-    _STEP_DEFAULTS,
-)
-
-
-@dataclass(frozen=True, slots=True)
-class Config:
-    """Algolia HTTP settings; zero or blank values use manifest defaults.
-
-    The default base URL is a host template: each call prefixes the application ID.
-    """
-
-    base_url: str = PUBLIC_HOST_TEMPLATE
-    timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS
-    max_response_bytes: int = _DEFAULT_MAX_RESPONSE_BYTES
-
-
-@dataclass(frozen=True, slots=True)
-class Credentials:
-    """Public Algolia application ID and secret API key, resolved anew for every provider attempt."""
-
-    application_id: str
-    api_key: SecretString
 
 
 @dataclass(frozen=True, slots=True)
@@ -389,3 +376,12 @@ def _mutation_branch(branch: str, kind: FailureKind, message: str) -> MutationAt
     return MutationAttempt.branch_result(
         branch, SavedObject(), Receipt(), _failure(SAVE_OBJECT_OPERATION_ID, kind, message)
     )
+
+
+Config.__doc__ = (
+    "Algolia HTTP settings; zero or blank values use manifest defaults.\n\nThe"
+    " default base URL is a host template: each call prefixes the application ID.\n"
+)
+Credentials.__doc__ = (
+    "Public Algolia application ID and secret API key, resolved anew for every provider attempt."
+)

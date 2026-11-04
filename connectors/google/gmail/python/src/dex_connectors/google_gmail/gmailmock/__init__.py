@@ -1,5 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
+# connectorctl: handwritten facade
 """Manifest-equivalent scripted Gmail outcomes for application tests."""
 
 from datetime import UTC, datetime

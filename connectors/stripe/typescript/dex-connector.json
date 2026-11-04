@@ -1,10 +1,10 @@
 {
   "connectorId": "stripe",
-  "releaseTag": "connectors/stripe/go/v0.25.0",
+  "releaseTag": "connectors/stripe/go/v0.25.1",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-stripe",
-    "version": "0.1.0"
+    "version": "0.1.1"
   },
   "factories": [
     {

@@ -2,21 +2,23 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
+import { SecretString, type Call, type ConnectionRef, type CredentialProvider, type Failure, type Query, type QueryAttempt, type QueryDefinition, type QueryResult, type QueryStep, type QueryStepConfig, newQueryBranch, newQueryRetry, defaultConnectorStepExecuteRetryPolicy } from '@superdurable/connectors-sdk';
 import type { StepTarget } from '@superdurable/dex';
-import { SecretString, newQueryStep, type Call, type ConnectionRef, type CredentialProvider, type Failure, type Query, type QueryAttempt, type QueryDefinition, type QueryResult, type QueryStep, type QueryStepConfig, newQueryBranch, newQueryRetry, defaultConnectorStepExecuteRetryPolicy } from '@superdurable/connectors-sdk';
 import { AddressRefusal, BodyTooLargeError, MaxErrorBodyBytes, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, readErrorTokens, sendProviderRequest, validateBaseURL } from '@superdurable/connectors-sdk/providerhttp';
 import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
-
-/** Stable connector identity. */
-export const ConnectorID = 'newsapi';
-/** Successful article search branch. */
-export const SearchArticlesBranchSearched = 'searched';
-/** Conclusive provider rejection branch. */
-export const SearchArticlesBranchProviderRejected = 'providerRejected';
-/** Malformed or oversized provider response branch. */
-export const SearchArticlesBranchInvalidResponse = 'invalidResponse';
-/** Local validation or credential defect branch. */
-export const SearchArticlesBranchDefect = 'defect';
+import type { Config, Credentials } from './generated/models.js';
+import { Connection as GeneratedConnection } from './generated/connection.js';
+import { newSearchArticlesStep as newGeneratedSearchArticlesStep } from './generated/steps.js';
+import {
+  ConnectorID, SearchArticlesBranchSearched, SearchArticlesBranchProviderRejected,
+  SearchArticlesBranchInvalidResponse, SearchArticlesBranchDefect,
+  SearchArticlesDefinition as GeneratedSearchArticlesDefinition,
+} from './generated/definitions.js';
+export {
+  ConnectorID, SearchArticlesBranchSearched, SearchArticlesBranchProviderRejected,
+  SearchArticlesBranchInvalidResponse, SearchArticlesBranchDefect, SearchArticlesMetadata,
+} from './generated/definitions.js';
+export type { Config, Credentials } from './generated/models.js';
 
 /** Supported NewsAPI article fields. */
 export const SearchInFields = ['title', 'description', 'content'] as const;
@@ -24,16 +26,6 @@ export const SearchInFields = ['title', 'description', 'content'] as const;
 export const Languages = ['ar', 'de', 'en', 'es', 'fr', 'he', 'it', 'nl', 'no', 'pt', 'ru', 'sv', 'ud', 'zh'] as const;
 /** Supported result ordering. */
 export const SortOrders = ['publishedAt', 'relevancy', 'popularity'] as const;
-
-/** NewsAPI settings; omitted or zero fields use manifest defaults. */
-export interface Config {
-  /** HTTPS API base URL or loopback test endpoint. */ baseUrl?: string;
-  /** One HTTP request timeout in milliseconds. */ timeoutMs?: number;
-  /** Maximum successful response size in bytes. */ maxResponseBytes?: number;
-}
-
-/** Private NewsAPI credential, resolved for every call. */
-export interface Credentials { /** API key sent only in X-Api-Key. */ apiKey: SecretString }
 
 /** One page request to NewsAPI's everything endpoint. */
 export interface SearchArticlesInput {
@@ -91,18 +83,9 @@ export const ArticlePageSchema: z.ZodType<ArticlePage> = z.object({
 
 /** Manifest-defined operation routes and Dex Execute defaults. */
 export const SearchArticlesDefinition: QueryDefinition = {
-  operation: { connectorId: ConnectorID, operationId: 'searchArticles' },
-  branches: [
-    { id: SearchArticlesBranchSearched, description: 'NewsAPI returned one page of matching articles, possibly empty.' },
-    { id: SearchArticlesBranchProviderRejected, description: 'NewsAPI conclusively rejected the search, such as an invalid or exhausted API key, a request the plan does not permit, or an unknown source.', optional: true },
-    { id: SearchArticlesBranchInvalidResponse, description: 'NewsAPI returned malformed or oversized data.', optional: true },
-    { id: SearchArticlesBranchDefect, description: 'Local input, connection configuration, or credentials are invalid.', optional: true },
-  ],
-  stepDefaults: { executeMethodTimeoutMs: 30_000, executeDurability: 'async', executeRetry: defaultConnectorStepExecuteRetryPolicy() },
+  ...GeneratedSearchArticlesDefinition,
+  stepDefaults: { ...GeneratedSearchArticlesDefinition.stepDefaults, executeRetry: defaultConnectorStepExecuteRetryPolicy() },
 };
-
-/** Manifest fields outside the SDK QueryDefinition type. */
-export const SearchArticlesMetadata = { kind: 'query', idempotency: 'none', authorization: 'required' } as const;
 
 const emptyPage: ArticlePage = { totalResults: 0, articles: [], page: 0, hasMore: false };
 const documentedCodes = new Set(['apiKeyExhausted', 'rateLimited', 'unexpectedError', 'maximumResultsReached', 'apiKeyDisabled', 'apiKeyInvalid', 'apiKeyMissing', 'parameterInvalid', 'parametersMissing', 'sourcesTooMany', 'sourceDoesNotExist']);
@@ -205,6 +188,26 @@ export function newConnectionWithOperations(operations: Operations, reference: C
   return new Connection(reference, operations);
 }
 
+/** Step configuration preserving the published NewsAPI input and result types. */
+export interface SearchArticlesStepConfig<StepInput> extends Omit<QueryStepConfig<StepInput, SearchArticlesInput, ArticlePage>, 'operation' | 'connection' | 'branches'> {
+  /** Named NewsAPI connection. */ connection: Connection;
+  /** Name matching the connection. */ connectionName: string;
+  /** Successful search destination. */ searched: StepTarget<QueryResult<ArticlePage>>;
+  /** Conclusive provider rejection destination. */ providerRejected?: StepTarget<QueryResult<ArticlePage>>;
+  /** Malformed response destination. */ invalidResponse?: StepTarget<QueryResult<ArticlePage>>;
+  /** Local defect destination. */ defect?: StepTarget<QueryResult<ArticlePage>>;
+}
+
+/** Build a NewsAPI Step with the existing connection and result contracts. */
+export function newSearchArticlesStep<StepInput>(configuration: SearchArticlesStepConfig<StepInput>): QueryStep<StepInput, SearchArticlesInput, ArticlePage> {
+  const { connection, connectionName } = configuration;
+  if (connection.reference.name !== connectionName) throw new TypeError('NewsAPI Step connection name differs from the bound connection');
+  const generatedConnection = new GeneratedConnection<{ searchArticles(): Query<SearchArticlesInput, ArticlePage> }>(connection.reference, {
+    searchArticles: () => connection.operations.searchArticles,
+  });
+  return newGeneratedSearchArticlesStep<StepInput, SearchArticlesInput, ArticlePage>({ ...configuration, connection: generatedConnection });
+}
+
 /** Open a declared Dex Web connection; private credentials are resolved at each call. */
 export function newProjectConnection(project: LoadedProject, connectionName: string): Connection {
   if (!project || !connectionName.trim()) throw new TypeError('NewsAPI project connection is required');
@@ -212,7 +215,11 @@ export function newProjectConnection(project: LoadedProject, connectionName: str
   if (!configured) throw new TypeError('NewsAPI project connection is not configured');
   const fields = z.strictObject({ baseUrl: z.string().optional(), timeout: z.union([z.string(), z.number().int()]).optional(), maxResponseBytes: z.number().int().optional() }).parse(configured.configuration);
   const timeoutMs = typeof fields.timeout === 'number' ? Math.ceil(fields.timeout / 1_000_000) : fields.timeout ? parseDurationMilliseconds(fields.timeout) : undefined;
-  const config: Config = { baseUrl: fields.baseUrl, timeoutMs, maxResponseBytes: fields.maxResponseBytes };
+  const config: Config = {
+    ...(fields.baseUrl !== undefined ? { baseUrl: fields.baseUrl } : {}),
+    ...(timeoutMs !== undefined ? { timeoutMs } : {}),
+    ...(fields.maxResponseBytes !== undefined ? { maxResponseBytes: fields.maxResponseBytes } : {}),
+  };
   const credentials: CredentialProvider<Credentials> = {
     async resolve(_call, signal) {
       const privateFields = await project.resolveCredential(ConnectorID, connectionName, signal);
@@ -221,31 +228,6 @@ export function newProjectConnection(project: LoadedProject, connectionName: str
     },
   };
   return newConnection(new Client(config, credentials), { provider: ConnectorID, name: connectionName });
-}
-
-/** Operation-specific factory settings with a static Dex Web connection name. */
-export interface SearchArticlesStepConfig<StepInput> extends Omit<QueryStepConfig<StepInput, SearchArticlesInput, ArticlePage>, 'operation' | 'connection' | 'branches'> {
-  /** Typed real or mock NewsAPI connection. */ connection: Connection;
-  /** Static name also declared by the consuming Flow. */ connectionName: string;
-  /** Required successful route. */ searched: StepTarget<QueryResult<ArticlePage>>;
-  /** Optional conclusive provider rejection route; omission fails the Flow. */ providerRejected?: StepTarget<QueryResult<ArticlePage>>;
-  /** Optional invalid provider response route; omission fails the Flow. */ invalidResponse?: StepTarget<QueryResult<ArticlePage>>;
-  /** Optional local input or credential defect route; omission fails the Flow. */ defect?: StepTarget<QueryResult<ArticlePage>>;
-}
-
-/** Create the manifest-backed searchArticles Query Step for one Flow. */
-export function newSearchArticlesStep<StepInput>(configuration: SearchArticlesStepConfig<StepInput>): QueryStep<StepInput, SearchArticlesInput, ArticlePage> {
-  const { connection, connectionName, searched, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
-  if (connection.reference.name !== connectionName) throw new TypeError('NewsAPI Step connection name differs from the bound connection');
-  return newQueryStep({
-    ...stepConfiguration, operation: connection.searchArticles, connection: connection.reference,
-    branches: [
-      { branch: SearchArticlesBranchSearched, target: searched },
-      ...(providerRejected ? [{ branch: SearchArticlesBranchProviderRejected, target: providerRejected }] : []),
-      ...(invalidResponse ? [{ branch: SearchArticlesBranchInvalidResponse, target: invalidResponse }] : []),
-      ...(defect ? [{ branch: SearchArticlesBranchDefect, target: defect }] : []),
-    ],
-  });
 }
 
 function parseDurationMilliseconds(value: string): number {

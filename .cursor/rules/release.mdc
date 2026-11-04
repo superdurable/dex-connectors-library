@@ -20,6 +20,8 @@ alwaysApply: true
 - The one-time Go module move uses exactly one minor bump from the latest old-path Go tag, including v1 connectors. The new import path forces opt-in; old tags stay as history.
 - Python and TypeScript connector packages use independent `spec.languages.python.version` and `spec.languages.typescript.version` values, with matching package metadata.
 - A Python or TypeScript package lists exactly the operations and Triggers it implements in `spec.languages.<language>`; the catalog and site show per-capability language support.
+- Every Python and TypeScript connector package must replay Go-verified provider scenarios from `conformance/connectors/<directory>/scenarios.json`. Cover each Go-tested operation branch, Retry, uncertainty, request count, and provider idempotency-key behavior. CI requires fixtures for new or changed Python and TypeScript packages and any connector with existing fixtures. Existing packages without fixtures report `missing conformance (legacy)` on Go-only changes. Porters write scenario inputs, prior state, and provider responses; Go record mode writes complete requests, exact outputs, production idempotency keys, and retry decisions. CI verifies a nonzero value for every input field, each declared branch, separate final-attempt 429 and 5xx Retry scenarios and a transport failure per operation, uncertainty when declared, SDK-encoded exact outputs, and exact Go recordings. Pending scenarios are rejected; other recovery paths remain a review requirement.
+- The reviewed `conformance/exemptions.yaml` exempts only `connectors/postgresql`, `connectors/mysql`, `connectors/microsoft/sql-server`, and `connectors/superdurable/email`: their native wire protocols cannot be recorded by the HTTP replay runner. Adding an exemption requires a tooling PR. For each exempt Python and TypeScript package, replace replay with unit tests for every Go-tested branch, retry, uncertain decision, and protocol-error classification, plus real protocol integration tests in CI service containers. Database ports use Go connector live-test scenarios and connection variables when available. Email ports mirror the Go connector's in-process `internal/mailtest` tests, including `send_message_test.go` and `search_messages_test.go`; their CI integration tests use the `EMAIL_CONNECTOR_TEST_*` GreenMail variables. GreenMail lacks STARTTLS, so protocol unit fakes cover that path. Developers do not run Docker locally. Python integration tests live in `python/tests/integration/` and TypeScript integration tests in `typescript/test/integration.test.ts`.
 - SDK tags also use sdkpython/vX.Y.Z and sdkts/vX.Y.Z; connector language tags append /python/vX.Y.Z or /typescript/vX.Y.Z.
 - Release each language SDK before connectors that require it. New npm packages use the CI token for first publish; existing packages use trusted publishing when configured.
 - Connector modules depend on an exact published SDK version without replace,
@@ -57,7 +59,12 @@ alwaysApply: true
 - v0 breaking releases cannot be patch releases. v1+ breaking releases require
   a major module-path migration.
 - Use one released module per PR unless a repository-wide mechanical change
-  requires several.
-- Use sdkgo:, sdkpython:, sdkts:, connector(<slug>):, tooling:, or docs: subjects.
+  requires several. A connector batch port PR may contain 5-8 connectors of one
+  language when every package is a first `v0.1.0` release and passes conformance.
+  The coordinator merges one batch at a time and confirms its Release run,
+  including first publish of new PyPI or npm projects, succeeded before merging
+  the next batch because PyPI limits new-project creation rates.
+- Use sdkgo:, sdkpython:, sdkts:, connector(<slug>):, connectors(python):,
+  connectors(typescript):, tooling:, or docs: subjects.
 - Put exact lowercase (breaking) in the PR and final commit message for public
   breaking changes.

@@ -13,6 +13,12 @@ In Dex Web Connections, create a `cohere` connection named `cohere`. Open [Coher
 The Python package is [`dex-connector-cohere`](python/README.md), imported as
 `dex_connectors.cohere`.
 
+The TypeScript package is [`@superdurable/connector-cohere`](typescript/README.md).
+Its runnable search Flow uses the static `cohere` connection, calls both
+operations, and verifies retry and rejection behavior against a local provider
+stand-in through a real Dex Worker and Client. Live Cohere authorization and
+responses remain unverified.
+
 ## Operations
 
 - [`embed`](https://docs.cohere.com/reference/embed) sends up to 96 nonempty text inputs to `POST /v2/embed`, with a required model and input type. It fixes `embedding_types` to `float` and returns one float vector per input.

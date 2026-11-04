@@ -9,6 +9,7 @@ import { GmailClient } from '../src/client.js';
 import { GmailProvider } from '../src/provider.js';
 import { GmailSendAttemptBudget, GmailSender } from '../src/send.js';
 import type { CredentialSource, Credentials } from '../src/models.js';
+import { GetMessageInputSchema, ReplyToMessageInputSchema, MessageSchema } from '../src/models.js';
 
 const connection = { provider: 'google', name: 'gmail-inbox' };
 const credentials: Credentials = { accessToken: new SecretString('access-token'), primaryEmail: 'owner@example.com' };
@@ -38,6 +39,30 @@ function sender(transport: (request: ProviderRequest) => Promise<ProviderRespons
 
 const sendInput = { to: ['ada@example.com'], subject: 'Progress', textBody: 'Update' };
 const replyInput = { messageId: 'source-1', textBody: 'Answer' };
+
+it('keeps required Gmail fields and ZodObject schema methods', () => {
+  expect(GetMessageInputSchema.safeParse({}).success).toBe(false);
+  expect(ReplyToMessageInputSchema.safeParse({}).success).toBe(false);
+  expect(MessageSchema.safeParse({}).success).toBe(false);
+  expect(GetMessageInputSchema.shape.messageId).toBeDefined();
+  expect(ReplyToMessageInputSchema.shape.messageId).toBeDefined();
+  expect(MessageSchema.shape.messageId).toBeDefined();
+  expect(typeof MessageSchema.extend).toBe('function');
+});
+
+it('classifies missing required input for all Gmail operations as a validation defect', async () => {
+  let requests = 0;
+  const client = new GmailClient({ endpoint: 'http://127.0.0.1:8080' }, new StaticCredentialProvider([[connection, credentials]]), {
+    refreshDriver: driver, transport: async () => { requests++; return response(200, {}); },
+  });
+  const attempts = await Promise.all([
+    client.getMessage().invoke(operationCall('getMessage'), {} as never),
+    client.sendMessage().invoke(operationCall('sendMessage'), {} as never),
+    client.replyToMessage().invoke(operationCall('replyToMessage'), {} as never),
+  ]);
+  for (const attempt of attempts) expect(attempt).toMatchObject({ kind: 'branch', branch: 'defect', failure: { kind: 'VALIDATION' } });
+  expect(requests).toBe(0);
+});
 
 describe('Gmail send and reply classification', () => {
   it('exposes both Mutations with the stable Call ID and Dex attempt deadline', async () => {
@@ -211,6 +236,16 @@ describe('Gmail send and reply classification', () => {
     expect((await operation.sendMessage(operationCall('sendMessage', 2, checkpoint), sendInput, new Date(Date.now() + 30_000))).kind).toBe('retry');
     expect(posts).toBe(1);
     expect(searches).toBe(5);
+  });
+
+  it('records the provider ID when read-back confirms an ambiguous send', async () => {
+    const checkpoint: { value?: unknown } = {};
+    const operation = sender(async request => request.method === 'POST'
+      ? response(500, {})
+      : response(200, { messages: [{ id: 'read-back-send', threadId: 'thread-1' }] }));
+    expect(await operation.sendMessage(operationCall('sendMessage', 1, checkpoint), sendInput, new Date(Date.now() + 30_000)))
+      .toMatchObject({ branch: 'sent', value: { messageId: 'read-back-send' } });
+    expect(checkpoint.value).toMatchObject({ state: 'claimed', providerId: 'read-back-send', attempt: 1 });
   });
 
   it('records conclusive rate-limit refusal so the next attempt may send', async () => {

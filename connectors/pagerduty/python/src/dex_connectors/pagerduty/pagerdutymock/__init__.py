@@ -1,73 +1,32 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Manifest-backed PagerDuty scripts for consuming Flow tests."""
+"""Public manifest-backed mock helpers."""
 
-from dex_connectors.sdk import ConnectionRef, Failure
-from dex_connectors.sdk.connectormock import Case, Query
+from dex_connectors.sdk import ConnectionRef as ConnectionRef
+from dex_connectors.sdk import Failure as Failure
+from dex_connectors.sdk.connectormock import Case as Case
+from dex_connectors.sdk.connectormock import Query as Query
 
-from ..client import (
-    CONNECTOR_ID,
-    FOUND,
-    GET_INCIDENT_DEFINITION,
-    LIST_INCIDENTS_DEFINITION,
-    LISTED,
-    NOT_FOUND,
-    PROVIDER_REJECTED,
-)
-from ..connection import Connection, new_connection_with_operations
-from ..models import GetIncidentInput, Incident, IncidentPage, ListIncidentsInput
-
-_DEFAULT_INCIDENT = Incident("P123456", "API latency", "triggered")
-
-
-def list_incidents_listed(value: IncidentPage, failure: Failure | None = None) -> Case[IncidentPage]:
-    """Script the successful listed route."""
-    return Case.branch_result(LISTED, value, failure)
-
-
-def list_incidents_provider_rejected(
-    value: IncidentPage, failure: Failure | None = None
-) -> Case[IncidentPage]:
-    """Script a definite provider rejection of the list."""
-    return Case.branch_result(PROVIDER_REJECTED, value, failure)
-
-
-def list_incidents_default() -> Case[IncidentPage]:
-    """Return the manifest's listIncidentsDefault answer."""
-    return list_incidents_listed(IncidentPage((_DEFAULT_INCIDENT,), 25, 0, False))
-
-
-def get_incident_found(value: Incident, failure: Failure | None = None) -> Case[Incident]:
-    """Script the successful found route."""
-    return Case.branch_result(FOUND, value, failure)
-
-
-def get_incident_not_found(value: Incident, failure: Failure | None = None) -> Case[Incident]:
-    """Script a missing incident."""
-    return Case.branch_result(NOT_FOUND, value, failure)
-
-
-def get_incident_default() -> Case[Incident]:
-    """Return the manifest's getIncidentDefault answer."""
-    return get_incident_found(_DEFAULT_INCIDENT)
-
-
-class Mock:
-    """Script PagerDuty operations, defaulting to their manifest answers."""
-
-    def __init__(self, connection_name: str = "pagerduty") -> None:
-        self.list_incidents_script: Query[ListIncidentsInput, IncidentPage] = Query(LIST_INCIDENTS_DEFINITION)
-        self.list_incidents_script.default(list_incidents_default())
-        self.get_incident_script: Query[GetIncidentInput, Incident] = Query(GET_INCIDENT_DEFINITION)
-        self.get_incident_script.default(get_incident_default())
-        self._connection = new_connection_with_operations(
-            self.list_incidents_script, self.get_incident_script, ConnectionRef(CONNECTOR_ID, connection_name)
-        )
-
-    def connection(self) -> Connection:
-        """Return this mock's named connection for Step registration."""
-        return self._connection
-
+from .._generated.mock import Mock as Mock
+from .._generated.mock import get_incident_default as get_incident_default
+from .._generated.mock import get_incident_found as get_incident_found
+from .._generated.mock import get_incident_not_found as get_incident_not_found
+from .._generated.mock import list_incidents_default as list_incidents_default
+from .._generated.mock import list_incidents_listed as list_incidents_listed
+from .._generated.mock import list_incidents_provider_rejected as list_incidents_provider_rejected
+from ..client import CONNECTOR_ID as CONNECTOR_ID
+from ..client import FOUND as FOUND
+from ..client import GET_INCIDENT_DEFINITION as GET_INCIDENT_DEFINITION
+from ..client import LIST_INCIDENTS_DEFINITION as LIST_INCIDENTS_DEFINITION
+from ..client import LISTED as LISTED
+from ..client import NOT_FOUND as NOT_FOUND
+from ..client import PROVIDER_REJECTED as PROVIDER_REJECTED
+from ..connection import Connection as Connection
+from ..connection import new_connection_with_operations as new_connection_with_operations
+from ..models import GetIncidentInput as GetIncidentInput
+from ..models import Incident as Incident
+from ..models import IncidentPage as IncidentPage
+from ..models import ListIncidentsInput as ListIncidentsInput
 
 __all__ = [
     "Mock",
@@ -78,3 +37,12 @@ __all__ = [
     "get_incident_not_found",
     "get_incident_default",
 ]
+
+Mock.__doc__ = "Script PagerDuty operations, defaulting to their manifest answers."
+
+list_incidents_listed.__doc__ = "Script the successful listed route."
+list_incidents_provider_rejected.__doc__ = "Script a definite provider rejection of the list."
+list_incidents_default.__doc__ = "Return the manifest's listIncidentsDefault answer."
+get_incident_found.__doc__ = "Script the successful found route."
+get_incident_not_found.__doc__ = "Script a missing incident."
+get_incident_default.__doc__ = "Return the manifest's getIncidentDefault answer."

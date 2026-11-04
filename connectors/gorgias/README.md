@@ -1,5 +1,11 @@
 # Gorgias Connector
 
+The TypeScript package `@superdurable/connector-gorgias@0.1.0` implements all
+six operations. See its [package guide](typescript/README.md) and
+[runnable ticket read](typescript/examples/read-ticket/README.md). Its provider
+replay and Dex integration use a local stand-in; live Gorgias behavior is
+unverified.
+
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/gorgias/go@v0.23.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/gorgias`.
@@ -365,6 +371,13 @@ other tickets, customers, and notes for different requests.
 follows up on their open ticket about an issue or creates one, sets its
 priority, adds one internal triage note, and optionally emails the customer
 an acknowledgement.
+
+The [Python package](python/README.md) implements all six operations at
+`v0.1.0`. Its [ticket triage example](python/examples/triage_issue/README.md)
+binds the static `gorgias` connection, reads a ticket and its latest messages,
+and has a real Dex Worker and Client integration test. The Python conformance
+suite replays Go-recorded provider requests, branches, retries, and uncertainty.
+Live Gorgias behavior for the Python package has not been verified.
 
 ## Verification
 

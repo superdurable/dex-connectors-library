@@ -8,6 +8,15 @@ metadata:
   version: v0.2.0
 spec:
   provider: cloudflare
+  languages:
+    typescript:
+      version: v0.1.1
+      operations: [purgeCacheByURLs, listZones]
+      triggers: []
+    python:
+      version: v0.1.0
+      operations: [purgeCacheByURLs, listZones]
+      triggers: []
   codegen:
     go:
       package: cloudflare

@@ -7,13 +7,14 @@ import hashlib
 import json
 import re
 from dataclasses import dataclass
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime
+from datetime import timedelta as timedelta
 from typing import Any
 from urllib.parse import urlencode
 
 import httpx
+from dex_connectors.sdk import BranchDefinition as BranchDefinition
 from dex_connectors.sdk import (
-    BranchDefinition,
     Call,
     CallID,
     CredentialProvider,
@@ -22,14 +23,14 @@ from dex_connectors.sdk import (
     IdempotencyKey,
     MutationAttempt,
     MutationDefinition,
-    OperationRef,
     QueryAttempt,
     QueryDefinition,
     ReauthorizationRequiredError,
     Receipt,
-    SecretString,
-    StepDefaults,
 )
+from dex_connectors.sdk import OperationRef as OperationRef
+from dex_connectors.sdk import SecretString as SecretString
+from dex_connectors.sdk import StepDefaults as StepDefaults
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -40,18 +41,24 @@ from dex_connectors.sdk.providerhttp import (
     send_traced,
     validate_base_url,
 )
-from dex_connectors.sdk.retry_policy import default_connector_step_execute_retry_policy
+from dex_connectors.sdk.retry_policy import (
+    default_connector_step_execute_retry_policy as default_connector_step_execute_retry_policy,
+)
 
+from ._generated.config import Config as _GeneratedConfig
+from ._generated.config import Credentials as _GeneratedCredentials
+from ._generated.definitions import CONNECTOR_ID as CONNECTOR_ID
+from ._generated.definitions import DEFECT as DEFECT
+from ._generated.definitions import EXPORT_EVENTS_DEFINITION as EXPORT_EVENTS_DEFINITION
+from ._generated.definitions import EXPORT_EVENTS_OPERATION_ID as EXPORT_EVENTS_OPERATION_ID
+from ._generated.definitions import EXPORTED as EXPORTED
+from ._generated.definitions import IMPORTED as IMPORTED
+from ._generated.definitions import INVALID_RESPONSE as INVALID_RESPONSE
+from ._generated.definitions import PROVIDER_REJECTED as PROVIDER_REJECTED
+from ._generated.definitions import TRACK_EVENT_DEFINITION as TRACK_EVENT_DEFINITION
+from ._generated.definitions import TRACK_EVENT_OPERATION_ID as TRACK_EVENT_OPERATION_ID
 from .models import EventImportResult, ExportedEvent, ExportedEvents, ExportEventsInput, TrackEventInput
 
-CONNECTOR_ID = "mixpanel"
-TRACK_EVENT_OPERATION_ID = "trackEvent"
-EXPORT_EVENTS_OPERATION_ID = "exportEvents"
-IMPORTED = "imported"
-EXPORTED = "exported"
-PROVIDER_REJECTED = "providerRejected"
-INVALID_RESPONSE = "invalidResponse"
-DEFECT = "defect"
 _DEFAULT_BASE_URL = "https://api.mixpanel.com"
 _DEFAULT_EXPORT_BASE_URL = "https://data.mixpanel.com/api/2.0"
 _DEFAULT_TIMEOUT_SECONDS = 15
@@ -60,49 +67,18 @@ _MAX_IMPORT_PAYLOAD_BYTES = 1 << 20
 _MAX_EXPORT_DAYS = 30
 _ISO_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
 _RESERVED_PROPERTY_NAMES = frozenset({"time", "distinct_id", "$insert_id", "ip"})
-_STEP_DEFAULTS = StepDefaults(
-    timedelta(seconds=30), 2, execute_retry=default_connector_step_execute_retry_policy()
-)
-_DEFECT_BRANCH = BranchDefinition(DEFECT, "Local input or credentials are invalid.", True)
-TRACK_EVENT_DEFINITION = MutationDefinition(
-    OperationRef(CONNECTOR_ID, TRACK_EVENT_OPERATION_ID),
-    (
-        BranchDefinition(IMPORTED, "Mixpanel accepted the event for ingestion."),
-        BranchDefinition(PROVIDER_REJECTED, "Mixpanel rejected the event or credentials.", True),
-        BranchDefinition(INVALID_RESPONSE, "Mixpanel returned malformed or oversized data.", True),
-        _DEFECT_BRANCH,
-    ),
-    _STEP_DEFAULTS,
-)
-EXPORT_EVENTS_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, EXPORT_EVENTS_OPERATION_ID),
-    (
-        BranchDefinition(EXPORTED, "Mixpanel returned raw events, possibly empty."),
-        BranchDefinition(PROVIDER_REJECTED, "Mixpanel rejected the export or credentials.", True),
-        BranchDefinition(INVALID_RESPONSE, "Mixpanel returned malformed or oversized JSONL.", True),
-        _DEFECT_BRANCH,
-    ),
-    _STEP_DEFAULTS,
-)
 
 
-@dataclass(frozen=True, slots=True)
-class Config:
+class Config(_GeneratedConfig):
     """Mixpanel project and HTTP settings; zero or blank values use manifest defaults."""
 
-    project_id: int
-    base_url: str = _DEFAULT_BASE_URL
-    export_base_url: str = _DEFAULT_EXPORT_BASE_URL
-    timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS
-    max_response_bytes: int = _DEFAULT_MAX_RESPONSE_BYTES
+    __slots__ = ()
 
 
-@dataclass(frozen=True, slots=True)
-class Credentials:
+class Credentials(_GeneratedCredentials):
     """Mixpanel service-account username and secret, resolved anew for every provider attempt."""
 
-    service_account_username: SecretString
-    service_account_secret: SecretString
+    __slots__ = ()
 
 
 @dataclass(frozen=True, slots=True)

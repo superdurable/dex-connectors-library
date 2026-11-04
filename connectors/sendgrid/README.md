@@ -15,6 +15,11 @@ Read SendGrid global statistics and transactional templates. The manifest is the
 
 The examples use `sendgrid.NewGetStatsStep` and `sendgrid.NewListTemplatesStep` with the static `sendgrid` connection. Each operation is an operation-specific Query Step with the default one-hour retry policy. `listTemplates` always sends `page_size`: zero in `PageSize` selects 100, and explicit values must be 1–200. Pass `NextPageToken` from one result as the next call's `PageToken`; blank starts at page one. SendGrid's exact `_metadata.count` meaning remains unverified.
 
+The Python package is [`dex-connector-sendgrid`](python/README.md), imported as
+`dex_connectors.sendgrid`.
+
+The TypeScript package is [`@superdurable/connector-sendgrid`](typescript/README.md). Its [statistics Flow](typescript/examples/stats/README.md) runs with a real Dex Worker and Client.
+
 ## Authorization and configuration
 
 At [SendGrid > Settings > API Keys > Create API Key](https://app.sendgrid.com/settings/api_keys), create or select an API key for these operations, copy its provider-issued value, and store it in the secret `api_key` field in Dex Web Connections. A blank key is invalid. The manifest supplies the public base URL, HTTP timeout, and response-size limit; leave their fields blank unless a compatible gateway, slow request, or known larger response requires an override. For an EU regional subuser, set `baseUrl` to `https://api.eu.sendgrid.com`.

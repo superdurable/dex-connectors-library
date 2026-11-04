@@ -1,6 +1,6 @@
 {
   "connectorId": "stripe",
-  "releaseTag": "connectors/stripe/go/v0.25.0",
+  "releaseTag": "connectors/stripe/go/v0.25.1",
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-stripe",

@@ -8,7 +8,11 @@ npm install @superdurable/connector-google-gmail @superdurable/dex
 
 This package provides typed `getMessage`, `sendMessage`, and `replyToMessage` operations. Its operation identities, branches, retry policy, authorization fields, and mock cases mirror [the manifest](https://github.com/superdurable/dex-connectors-library/blob/main/connectors/google/gmail/connector.yaml). Gmail Triggers and the thread-reply Trigger runner currently belong to the Go connector.
 
+The checked-in `src/generated/` contracts come from `connector.yaml` and the
+Go operation structs. Run `go run ./cmd/connectorctl generate --lang typescript connectors/google/gmail/connector.yaml` from the repository root after either source changes. `src/models.ts` keeps credential requirements specific to Google OAuth and Workspace delegation, plus the public non-null send recipient arrays. `src/steps.ts` delegates to generated factories while requiring `GmailConnection` at compile time; `src/mock/index.ts` re-exports matching generated scenarios and validates send scenarios against the public result type. `src/project.ts` keeps the refresh codec and public connection constructor.
+
 Send and reply recipients are validated as mailboxes and returned in canonical header form, such as `<ada@example.com>` or `"Ada" <ada@example.com>`.
+Decoded messages omit absent optional metadata and body fields, matching the Go connector's JSON output.
 
 ## Configure a connection
 
@@ -18,7 +22,7 @@ For personal Gmail or ordinary Workspace accounts, select **Google OAuth**. In [
 
 For administrator-managed Workspace delegation, use [Google Cloud service accounts](https://console.cloud.google.com/iam-admin/serviceaccounts) to create a service account and download its JSON key. In [Workspace domain-wide delegation](https://admin.google.com/ac/owl/domainwidedelegation), authorize that account's OAuth client ID for the Gmail readonly and send scopes. Put the JSON key and one managed mailbox in the connection form. The connector mints short-lived delegated tokens and uses that mailbox as the sender.
 
-`sendMessage` and `replyToMessage` claim a Dex heartbeat checkpoint before POST and search Sent Mail under a run-specific RFC `Message-ID` after an ambiguous send. A confirmed match returns `sent`; a miss retries read-back within the manifest budget without another POST. A conclusive 429 or 503 can permit another attempt after its own read-back; delayed Sent Mail indexing after a 503 can still cause duplicate delivery. An accepted 2xx never resends merely because its response body is unusable.
+`sendMessage` and `replyToMessage` use synchronous Execute and claim a Dex heartbeat checkpoint before POST. They search Sent Mail under a run-specific RFC `Message-ID` after an ambiguous send. A confirmed match returns `sent`; a miss retries read-back within the manifest budget without another POST. A conclusive 429 or 503 can permit another attempt after its own read-back; delayed Sent Mail indexing after a 503 can still cause duplicate delivery. An accepted 2xx never resends merely because its response body is unusable.
 
 ## Run the example
 

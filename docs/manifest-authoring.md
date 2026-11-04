@@ -24,13 +24,49 @@ the languages for each operation and Trigger; Go-only entries omit that field.
 
 `connectorctl generate` also writes `dex-connector.json` for each declared
 language. Python places it in `python/src/dex_connectors/<slug_with_underscores>/`;
-npm places it beside `typescript/package.json`. Check in the generated file and
-run `connectorctl generate --check <connector.yaml>` to detect drift. The file
+npm places it beside `typescript/package.json`. Check in the generated files and
+run `connectorctl generate --check <connector.yaml>` to detect drift. The JSON file
 maps the manifest's operation factories, branch IDs and optional status, package
 identity, and fields used by Dex CLI's Python and TypeScript source analyzers.
 Only listed operation factories are generated. Trigger factory mappings await
 language package and `dex-connector.json` contract support; validation rejects
 nonempty language Trigger lists until then.
+
+For a declared Python package, generation also writes its `_generated/` module:
+Go-derived operation dataclasses, Config and Credentials, operation definitions
+and branch constants, Step factories, connection bindings, and manifest mock
+outcomes. Run `connectorctl generate --lang python <connector.yaml>` to update
+only these Python files; `--lang python --check` verifies them without writing.
+Python generation requires `python3` on `PATH`.
+The default `generate` and `generate --check` include them. The manifest selects
+the Python operations in the order used by generated connection constructors,
+and defines their identities, branches, settings, and
+mock scenarios. The named Go input and output structs define model fields and
+JSON names. Existing generated Python model names remain reserved when Go types
+are added; a collision fails generation instead of renaming a published class.
+`omitempty` and `omitzero` make a key optional; a nilable Go value
+without either option remains a required key that may be null. Embedded structs
+follow `encoding/json` field selection, and named constants use open string or
+integer types so unknown provider values remain decodable. An optional Go
+pointer becomes `T | None`: `None` omits the key, while `False`, zero, and empty
+collections remain present. A nonpointer Go slice uses an empty tuple; JSON
+null decodes to that tuple, which emits an empty array unless the field omits
+empty values. Other nilable fields can retain and emit JSON null. Keep provider
+HTTP behavior and each operation's invocation in hand-written modules. Preserve
+historical Python constructors and mock names
+through hand-written facade modules when they differ from the canonical
+Go shape. A facade containing `# connectorctl: handwritten facade` owns its
+Step, connection, or mock component and suppresses that generated file. Do not
+edit `_generated/` files directly.
+
+Generated Python configuration uses manifest defaults, validates enum choices,
+and decodes `stringList` values as tuples. A missing optional field without a
+default uses its Go zero value; a missing required field without a default
+fails. Generated mock packages use the Go package name with a `mock` suffix. If
+a historical public model name differs from a Go inline model, add
+`# connectorctl: model-alias GoName=PublicName`
+to the hand-written `models.py` facade so generated mocks use the public name.
+
 Runtime arguments such as `connection`, `map_to_operation_input`/
 `mapToOperationInput`, and `step_options_override`/`stepOptionsOverride`
 remain factory inputs; the Dex 1.28.0 schema has no mapping keys for them.
@@ -43,12 +79,62 @@ accept one config object with `stepType`, `annotations`, `connection`,
 `resultAttribute`, and `stepOptionsOverride`. TypeScript factory names use
 `goName` exactly, including acronyms. `step_input_type`, `connection`, input
 mappers, and Step options are runtime inputs, so the static analyzer does not
-map them. Current language factories do not accept `configurationUI`, progress
-or text Streams, or text options; add those mappings only with matching runtime
-factory support. Trigger factories are not emitted until the language package
-implements them. The vendored
+map them. The OpenAI Python factory also accepts its existing configuration UI
+and progress and text Stream options; static analyzer mappings for those options
+await matching schema support. Trigger factories are not emitted until the
+language package implements them. The vendored
 [`dex-connector.schema.json`](../schema/dex-connector.schema.json) is from Dex
 `cli-v1.28.0` at `cli/internal/flowviz/dex-connector.schema.json`.
+
+For every declared TypeScript package, `connectorctl generate` also writes
+`typescript/src/generated/{models,definitions,steps,connection,mock}.ts`.
+Operation models come from the manifest's named types in the connector Go
+module. `internal/codegen/gomodel` loads their `encoding/json` shape into a
+language-neutral graph. `omitempty` and `omitzero` make a key optional;
+the IR keeps `HasPresence` for pointer fields so a present zero value remains
+distinct from an absent key. A non-nil pointer to a nil slice or map can still
+emit `null`, as can a pointer field promoted through an embedded struct.
+Required keys stay required in generated validators; mock fixtures alone fill
+missing Go zero values before validation.
+Untagged embedded structs flatten according to Go's field conflict rules, and
+tagged embedded structs remain nested. Named string enums accept every string,
+including the listed constants and future provider values; the TypeScript type
+retains the known literals for completion. Only recursion cycles use `z.lazy`,
+so ordinary model validators retain `ZodObject` methods. External model names
+use the package and type name, with an import-path hash only for collisions.
+If a new operation creates a collision with a short name in the checked-in
+generated models, generation fails before writing files and names both Go types.
+Rename the new Go package or type to preserve the published model name.
+Future emitters using `gomodel.Load` must pass their checked-in public model
+names to apply the same guard.
+`time.Time` is an ISO datetime string, and byte slices without element marshalers
+(including named byte elements) are base64 strings. `json.RawMessage` or `any` is unknown. A named
+type with both `MarshalJSON` and `UnmarshalJSON` is an opaque JSON value;
+unsupported tag options and other custom marshalers stop generation.
+Go `int64` values use TypeScript `number`; applications must keep them within
+JavaScript's exact integer range (±(2^53−1)). Generated definitions, branch IDs, operation-specific object
+factories, connection helpers, and mock cases come from `connector.yaml`.
+Run `go run ./cmd/connectorctl generate --lang typescript <connector.yaml>`
+to update only the TypeScript files. Add `--check` before or after `--lang` to
+reject drift. The ordinary generate command updates all generated
+files. Generated TypeScript files depend only on other files in `src/generated/`
+and the connector SDK; hand-written adapters import them. Generated Step
+factories and connections accept typed operation adapters when the public
+TypeScript input or result differs from the Go JSON model.
+`make test-common` installs the Stripe compiler dependencies and runs the
+golden and catalog compile tests in CI. For a focused local run, after
+`npm ci --prefix connectors/stripe/typescript`, run
+`TS_CODEGEN_COMPILE=1 GOWORK=off go test ./internal/codegen ./cmd/connectorctl -run 'TestCatalogGeneratedTypeScriptCompiles|TestNonLegacyTypeScriptGoldenDefaultGeneration'`
+to compile every catalog connector's generated TypeScript and parse its mock
+scenarios without checking generated catalog output into the repository.
+
+Keep a small hand-written adapter when a public TypeScript contract cannot be
+derived exactly from the Go JSON shape, such as a narrower application input
+enum, normalized provider response, or provider-specific
+credential decoding. Re-export generated contracts where they match and keep
+the adapter's exported names stable. The checked-in runnable examples remain
+the consuming application for each package; changing generated Step or mock
+behavior requires running that package's TypeScript checks and example tests.
 
 The Python build backend must include the JSON as package data: in the source
 and sdist under `src/dex_connectors/<slug_with_underscores>/`, and in the wheel
@@ -294,6 +380,12 @@ A connection selects exactly one method. Generated credentials include
 required fields are validated. The project connection stores the selected
 method as `auth_method` in the credential and as `AuthMethodID` in the
 connection configuration.
+
+For generated Python project connections with optional credential fields, a missing or
+blank optional credential resolves as an empty value, while required credentials
+must be nonempty. Blank optional configuration fields use their manifest default
+or type zero value. TypeScript credentials mark optional fields with `?` and
+accept blank strings without runtime credential decoding.
 
 The optional `auth.methodLabel` is the singular noun the setup UI uses for a
 method, such as `Provider`. It is 1 to 32 characters without surrounding
@@ -983,3 +1075,60 @@ constructor per branch and per manifest mock, `<Operation>Retry`, and
 `<Operation>Default`. A connector with mocks shows its use in its
 `examples/` tree. Scripting and case semantics belong to
 [`sdkgo/connectormock`](../sdkgo/README.md#connector-mocks).
+
+# Cross-language connector conformance
+
+PostgreSQL, MySQL, SQL Server, and Email use the reviewed native wire protocol
+exemptions in [`conformance/exemptions.yaml`](../conformance/exemptions.yaml).
+Their Python and TypeScript packages use native protocols, so HTTP replay does
+not apply. Require unit coverage for Go-tested branches, Retry, uncertainty,
+and protocol-error classification, plus real protocol integration tests in CI
+service containers. Database ports follow Go connector live-test setup and
+scenarios when available. Email ports mirror the Go connector's in-process
+`internal/mailtest` tests, including `send_message_test.go` and
+`search_messages_test.go`, and use the GreenMail `EMAIL_CONNECTOR_TEST_*`
+variables in CI. GreenMail lacks STARTTLS, so protocol unit fakes cover that
+path.
+Developers do not run Docker locally. See
+[`conformance/connectors/README.md`](../conformance/connectors/README.md#native-wire-protocol-exemptions).
+
+Python and TypeScript connector packages replay the Go-verified provider
+[scenarios](../conformance/connectors/README.md). Create
+`conformance/connectors/<directory>/scenarios.json` with every Go-tested branch,
+retry, duplicate-safety path, read-back outcome, and uncertainty path. Author
+only scenario inputs, optional prior state and attempt count, and ordered provider
+responses or transport failures. From the connector's `go/` directory, run
+`CONNECTOR_CONFORMANCE_MODE=record GOWORK=off go test . -run '^TestConnectorConformance$' -count=1`.
+The Go test writes the complete expected method, path, query, form, full JSON or
+decoded Gmail MIME body, connector-sent headers, production idempotency key,
+intermediate and final decisions, request count, and canonical Go-marshaled output.
+For output fields present in JSON, nil Go slices and maps record as `[]` and `{}`
+at every nesting depth, matching generated Python and TypeScript empty collection
+defaults. Byte slices, including `json.RawMessage`, and types implementing
+`json.Marshaler` keep their exact JSON representation. `omitempty` and
+`omitzero` fields remain omitted; all other output values still compare exactly.
+Commit its recording; do not hand-edit expectations. Keep credentials inert.
+
+CI runs Go in verify mode and requires the committed recording to match exactly.
+It rejects `pending`, requires the union of inputs to set every Go operation
+`Input` field to a nonzero value, and requires an exact output for every
+non-retry branch and every declared branch. Each operation needs separate 429
+and 5xx Retry scenarios whose classified status is the first exchange of the
+final attempt, plus a transport-failure scenario. Operations declaring
+uncertainty need an uncertainty scenario. Python and TypeScript compare the
+complete recorded requests and exact outputs through their production Dex SDK
+codecs, and derive mutation idempotency keys through their production SDK paths.
+Other recovery paths remain a review requirement.
+
+Keep the language runners in `conformance/runners/`, outside published packages.
+Connector Python and TypeScript tests import them by repository path and only
+map operations to typed inputs and construct a client. The connector's Go test
+is generated from `conformance_adapter_test.go` by `connectorctl generate`;
+`generate --check` catches drift. Run `make test-connector-conformance
+CONNECTOR_DIRECTORY=connectors/<directory>` after editing the fixture. CI also
+mutates classification, output including a wrong nonempty list, exchange, optional query, form, MIME, production
+idempotency key, read 5xx, and rejected pending cases to prove
+every applicable runner fails. Legacy packages without fixtures warn on Go-only
+edits; new or edited language packages require fixtures. A shared matcher fixture checks missing, empty, repeated,
+JSON array, and decoded MIME request fields in all three languages.
+Existing runnable examples remain the end-to-end verification path.

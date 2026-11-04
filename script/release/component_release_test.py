@@ -293,23 +293,16 @@ class ComponentReleaseTest(unittest.TestCase):
         runner_temp = self.repository / "runner"
         (runner_temp / "language-work").mkdir(parents=True)
         (runner_temp / "language-work/skip").touch()
-        fake_bin = self.repository / "bin"
-        fake_bin.mkdir()
-        fake_gh = fake_bin / "gh"
-        fake_gh.write_text("#!/bin/sh\nprintf '%s\\n' \"${RELEASE_ASSETS}\"\n", encoding="utf-8")
-        fake_gh.chmod(0o755)
         github_output = self.repository / "github-output"
         environment = dict(os.environ, RUNNER_TEMP=str(runner_temp), GITHUB_OUTPUT=str(github_output),
                            TAG_PREFIX="connectors/newsapi/python/", RELEASE_VERSION="v0.1.0",
                            GITHUB_SHA=self.git("rev-parse", "HEAD"))
-        environment["PATH"] = f"{fake_bin}{os.pathsep}{environment['PATH']}"
-        environment["RELEASE_ASSETS"] = "language-release.json"
         failed = subprocess.run(("bash", "-e", "-o", "pipefail", "-c", state_script), cwd=self.repository,
                                 env=environment, capture_output=True, text=True, check=False)
         self.assertNotEqual(failed.returncode, 0)
         self.assertIn("without a completed release", failed.stderr)
         self.assertFalse(github_output.exists())
-        environment["RELEASE_ASSETS"] = "language-release.complete"
+        (runner_temp / "language-work/completed-release").touch()
         complete = subprocess.run(("bash", "-e", "-o", "pipefail", "-c", state_script), cwd=self.repository,
                                   env=environment, capture_output=True, text=True, check=False)
         self.assertEqual(complete.returncode, 0, complete.stderr)
@@ -613,14 +606,12 @@ class ComponentReleaseTest(unittest.TestCase):
 
     def test_missing_release_lookup_is_allowed_only_in_pending_mode(self) -> None:
         lookup = release.DependencyReleaseLookup("origin/main")
-        missing = subprocess.CompletedProcess([], 1, stdout="", stderr="release not found\n")
-        with mock.patch.object(release.subprocess, "run", return_value=missing):
+        with mock.patch.object(release, "release_assets", return_value=None):
             self.assertEqual(lookup.release_asset_names("connectors/newsapi/go/v0.23.0", allow_missing=True), frozenset())
             with self.assertRaisesRegex(ValueError, "cannot read the GitHub release"):
                 lookup.release_asset_names("connectors/newsapi/go/v0.23.0")
-        denied = subprocess.CompletedProcess([], 1, stdout="", stderr="HTTP 403\n")
-        with mock.patch.object(release.subprocess, "run", return_value=denied):
-            with self.assertRaisesRegex(ValueError, "HTTP 403"):
+        with mock.patch.object(release, "release_assets", side_effect=RuntimeError("GitHub API rate limit (HTTP 403)")):
+            with self.assertRaisesRegex(ValueError, "rate limit"):
                 lookup.release_asset_names("connectors/newsapi/go/v0.23.0", allow_missing=True)
 
     def test_language_capability_coverage_rejects_missing_factories_and_triggers(self) -> None:
@@ -751,6 +742,14 @@ class ComponentReleaseTest(unittest.TestCase):
         self.enter_repository()
         commits = release.component_commits("connectors/newsapi/python", "connectors/newsapi/python/v0.1.0")
         self.assertEqual(commits, (self.git("rev-parse", "HEAD"),))
+        plan = release.ReleasePlan(
+            component_path="connectors/newsapi/python", module_path="dex-connector-newsapi",
+            baseline_tag="connectors/newsapi/python/v0.1.0", baseline_version="v0.1.0",
+            bump="patch", version="v0.1.1", tag="connectors/newsapi/python/v0.1.1",
+            source_sha=commits[0], commits=commits,
+        )
+        _, is_breaking = release.release_notes(plan, "")
+        self.assertTrue(is_breaking)
 
     def test_minor_and_patch_follow_latest_component_tag(self) -> None:
         self.git("tag", "sdkgo/v0.1.0")
@@ -834,6 +833,76 @@ class ComponentReleaseTest(unittest.TestCase):
         self.assertIn("## Breaking Changes", notes)
         with self.assertRaisesRegex(ValueError, "cannot use a patch"):
             release.validate_breaking_bump(plan, breaking)
+
+    def test_language_descriptor_only_migration_does_not_break_patch_release(self) -> None:
+        for language in ("python", "typescript"):
+            with self.subTest(language=language):
+                package = self.repository / f"connectors/google/gmail/{language}"
+                package.mkdir(parents=True, exist_ok=True)
+                if language == "python":
+                    (package / "pyproject.toml").write_text(
+                        '[project]\nname = "dex-connector-google-gmail"\nversion = "0.1.0"\n', encoding="utf-8"
+                    )
+                    descriptor = package / "src/dex_connectors/google_gmail/dex-connector.json"
+                else:
+                    (package / "package.json").write_text(json.dumps({
+                        "name": "@superdurable/connector-google-gmail", "version": "0.1.0",
+                        "repository": {"type": "git", "url": NPM_REPOSITORY_URL,
+                                       "directory": "connectors/google/gmail/typescript"},
+                    }), encoding="utf-8")
+                    descriptor = package / "dex-connector.json"
+                descriptor.parent.mkdir(parents=True, exist_ok=True)
+                descriptor.write_text('{"goModule": "old"}\n', encoding="utf-8")
+                self.commit(f"connector(gmail): add {language} package")
+                self.git("tag", f"connectors/google/gmail/{language}/v0.1.0")
+                migration_branch = f"migration-{language}"
+                self.git("switch", "-c", migration_branch)
+                descriptor.write_text('{"goModule": "new"}\n', encoding="utf-8")
+                self.commit("tooling: rewrite Go connector module paths (breaking)")
+                self.git("switch", "main")
+                self.git("merge", "--no-ff", migration_branch, "-m", "tooling: move Go connectors (breaking)")
+                if language == "python":
+                    package_manifest = package / "pyproject.toml"
+                    package_manifest.write_text(package_manifest.read_text().replace("0.1.0", "0.1.1"), encoding="utf-8")
+                else:
+                    package_manifest = package / "package.json"
+                    package_manifest.write_text(package_manifest.read_text().replace("0.1.0", "0.1.1"), encoding="utf-8")
+                self.commit(f"connector(gmail): fix {language} package")
+                self.enter_repository()
+                plan = release.create_plan(str(package.relative_to(self.repository)),
+                                           f"connectors/google/gmail/{language}/", target_version="v0.1.1")
+                notes, is_breaking = release.release_notes(plan, "")
+                self.assertFalse(is_breaking)
+                self.assertIn("tooling: move Go connectors", notes.split("## Changes\n\n", 1)[1])
+                release.validate_breaking_bump(plan, is_breaking)
+
+    def test_language_source_change_keeps_breaking_marker(self) -> None:
+        package = self.repository / "connectors/google/gmail/python"
+        source = package / "src/dex_connectors/google_gmail"
+        source.mkdir(parents=True)
+        (package / "pyproject.toml").write_text(
+            '[project]\nname = "dex-connector-google-gmail"\nversion = "0.1.0"\n', encoding="utf-8"
+        )
+        descriptor = source / "dex-connector.json"
+        descriptor.write_text('{"goModule": "old"}\n', encoding="utf-8")
+        (source / "client.py").write_text("def call(): pass\n", encoding="utf-8")
+        self.commit("connector(gmail): add Python package")
+        self.git("tag", "connectors/google/gmail/python/v0.1.0")
+        descriptor.write_text('{"goModule": "new"}\n', encoding="utf-8")
+        (source / "client.py").write_text("def call(): return None\n", encoding="utf-8")
+        self.commit("connector(gmail): change Python API (breaking)")
+        (package / "pyproject.toml").write_text(
+            '[project]\nname = "dex-connector-google-gmail"\nversion = "0.1.1"\n', encoding="utf-8"
+        )
+        self.commit("connector(gmail): bump Python patch")
+        self.enter_repository()
+        plan = release.create_plan("connectors/google/gmail/python", "connectors/google/gmail/python/",
+                                   target_version="v0.1.1")
+        notes, is_breaking = release.release_notes(plan, "")
+        self.assertTrue(is_breaking)
+        self.assertIn("connector(gmail): change Python API", notes.split("## Changes", 1)[0])
+        with self.assertRaisesRegex(ValueError, "cannot use a patch"):
+            release.validate_breaking_bump(plan, is_breaking)
 
     def test_release_notes_include_each_pull_request_once(self) -> None:
         plan = release.ReleasePlan(
@@ -1153,21 +1222,11 @@ class ComponentReleaseTest(unittest.TestCase):
         self.assertTrue(release.DependencyReleaseLookup("main").is_tag_reachable_from_main("sdkgo/v0.1.0"))
 
     def test_dependency_lookup_reads_github_release_assets(self) -> None:
-        fake_gh = self.repository / "fake-gh"
-        fake_gh.write_text(
-            "#!/bin/sh\n"
-            'if [ "$1 $2 $4 $5 $6 $7" != "release view --json assets --jq .assets[].name" ]; then exit 2; fi\n'
-            'if [ "$3" = connectors/openai/v0.7.0 ]; then\n'
-            "  printf 'connector-release.json\\nconnector-release.complete\\n'\n"
-            "  exit 0\n"
-            "fi\n"
-            "echo 'release not found' >&2\n"
-            "exit 1\n",
-            encoding="utf-8",
-        )
-        fake_gh.chmod(0o755)
+        inventory = self.repository / "release-inventory.json"
+        inventory.write_text(json.dumps({"connectors/openai/v0.7.0": [
+            "connector-release.json", "connector-release.complete"]}), encoding="utf-8")
         lookup = release.DependencyReleaseLookup("main")
-        with mock.patch.dict(os.environ, {"GH_BIN": str(fake_gh)}):
+        with mock.patch.dict(os.environ, {"GH_RELEASE_INVENTORY_PATH": str(inventory)}):
             self.assertEqual(
                 lookup.release_asset_names("connectors/openai/v0.7.0"),
                 frozenset({"connector-release.json", "connector-release.complete"}),

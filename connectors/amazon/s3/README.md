@@ -12,6 +12,12 @@ The Amazon S3 Connector lists, inspects, reads, and stores objects in Amazon S3
 and in S3-compatible stores, such as Cloudflare R2 and MinIO, through the S3 REST
 API. It exposes operation-specific Dex Step factories:
 
+The [Python package](python/README.md) provides the same four operations with
+generated typed factories and a [runnable report archive Flow](python/examples/report_archive/).
+Its Go-recorded conformance fixture and local Dex integration test verify the
+Python provider behavior. Live Amazon S3, R2, and MinIO verification remains
+specific to the Go package described above.
+
 | Operation | Kind | S3 request | Durability | Happy branch | Other branches |
 | --- | --- | --- | --- | --- | --- |
 | `listObjects` | Query | `GET /?list-type=2` (ListObjectsV2) | async | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
@@ -140,6 +146,8 @@ reproduce the three worked signatures (GET Object, PUT Object of
 `test$file.text`, and list objects) from the Amazon S3 API Reference page
 "Examples: Signature Calculations", as the Internet Archive captured it on
 2025-01-02, because the page now redirects to the API Reference index.
+`WithClock` supplies a concurrency-safe clock for deterministic signing and
+receipts in tests; production clients use the system clock by default.
 
 The full client, `github.com/aws/aws-sdk-go-v2/service/s3` v1.106.0, also
 builds with Go 1.24, but it adds 9 modules (`service/s3`, its four
@@ -288,6 +296,15 @@ Limits of this design:
 **Start Flow** example that generates a Markdown report, archives it once
 under `reports/<reportId>.md`, reads its metadata and text back, and lists the
 archive folder.
+
+The [TypeScript package](typescript/) implements all four operations at its
+independent `v0.1.0` package version. Its [report archive
+example](typescript/examples/report-archive/) writes a create-only text object,
+then inspects, reads, and lists it through a real Dex Flow. The TypeScript
+conformance fixture replays Go-verified provider responses for every branch,
+429, 5xx, transport failure, and create-only read-back. The example integration
+test runs against a real `dexcli dev` stack and a local S3 fixture; live Amazon
+S3, Cloudflare R2, and MinIO behavior remains unverified for TypeScript.
 
 ## Verification
 

@@ -6,13 +6,14 @@ import json
 import math
 import struct
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
+from datetime import timedelta as timedelta
 from decimal import Decimal
 from typing import Any, TypeVar
 
 import httpx
+from dex_connectors.sdk import BranchDefinition as BranchDefinition
 from dex_connectors.sdk import (
-    BranchDefinition,
     Call,
     CallID,
     CredentialProvider,
@@ -21,14 +22,14 @@ from dex_connectors.sdk import (
     IdempotencyKey,
     MutationAttempt,
     MutationDefinition,
-    OperationRef,
     QueryAttempt,
     QueryDefinition,
     ReauthorizationRequiredError,
     Receipt,
-    SecretString,
-    StepDefaults,
 )
+from dex_connectors.sdk import OperationRef as OperationRef
+from dex_connectors.sdk import SecretString as SecretString
+from dex_connectors.sdk import StepDefaults as StepDefaults
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -39,18 +40,48 @@ from dex_connectors.sdk.providerhttp import (
     send_traced,
     validate_base_url,
 )
-from dex_connectors.sdk.retry_policy import default_connector_step_execute_retry_policy
+from dex_connectors.sdk.retry_policy import (
+    default_connector_step_execute_retry_policy as default_connector_step_execute_retry_policy,
+)
 
+from ._generated.config import (
+    Config as Config,
+)
+from ._generated.config import (
+    Credentials as Credentials,
+)
+from ._generated.definitions import (
+    CONNECTOR_ID as CONNECTOR_ID,
+)
+from ._generated.definitions import (
+    DEFECT as DEFECT,
+)
+from ._generated.definitions import (
+    INVALID_RESPONSE as INVALID_RESPONSE,
+)
+from ._generated.definitions import (
+    PROVIDER_REJECTED as PROVIDER_REJECTED,
+)
+from ._generated.definitions import (
+    QUERIED as QUERIED,
+)
+from ._generated.definitions import (
+    QUERY_VECTORS_DEFINITION as QUERY_VECTORS_DEFINITION,
+)
+from ._generated.definitions import (
+    QUERY_VECTORS_OPERATION_ID as QUERY_VECTORS_OPERATION_ID,
+)
+from ._generated.definitions import (
+    UPSERT_VECTORS_DEFINITION as UPSERT_VECTORS_DEFINITION,
+)
+from ._generated.definitions import (
+    UPSERT_VECTORS_OPERATION_ID as UPSERT_VECTORS_OPERATION_ID,
+)
+from ._generated.definitions import (
+    UPSERTED as UPSERTED,
+)
 from .models import QueryVectorsInput, QueryVectorsOutput, UpsertVectorsInput, UpsertVectorsOutput, Vector
 
-CONNECTOR_ID = "pinecone"
-UPSERT_VECTORS_OPERATION_ID = "upsertVectors"
-QUERY_VECTORS_OPERATION_ID = "queryVectors"
-UPSERTED = "upserted"
-QUERIED = "queried"
-PROVIDER_REJECTED = "providerRejected"
-INVALID_RESPONSE = "invalidResponse"
-DEFECT = "defect"
 API_VERSION = "2025-04"
 _DEFAULT_TIMEOUT_SECONDS = 15
 _DEFAULT_MAX_RESPONSE_BYTES = 2_097_152
@@ -58,53 +89,14 @@ _MAX_UPSERT_VECTORS = 1000
 _MAX_TOP_K = 10000
 _FLOAT32_FIXED_MINIMUM = struct.unpack("<f", struct.pack("<f", 1e-6))[0]
 _FLOAT32_FIXED_LIMIT = struct.unpack("<f", struct.pack("<f", 1e21))[0]
-_STEP_DEFAULTS = StepDefaults(
-    timedelta(seconds=30), 2, execute_retry=default_connector_step_execute_retry_policy()
-)
 _STATUS_KINDS = {
     401: FailureKind.AUTHENTICATION,
     403: FailureKind.AUTHORIZATION,
     400: FailureKind.VALIDATION,
     422: FailureKind.VALIDATION,
 }
-_SHARED_BRANCHES = (
-    BranchDefinition(
-        PROVIDER_REJECTED, "The provider conclusively rejected the request or credentials.", True
-    ),
-    BranchDefinition(INVALID_RESPONSE, "The provider returned malformed or oversized JSON.", True),
-    BranchDefinition(DEFECT, "Local input, configuration, or credentials are invalid.", True),
-)
-UPSERT_VECTORS_DEFINITION = MutationDefinition(
-    OperationRef(CONNECTOR_ID, UPSERT_VECTORS_OPERATION_ID),
-    (
-        BranchDefinition(UPSERTED, "Upsert vector IDs by absolute replacement in one namespace."),
-        *_SHARED_BRANCHES,
-    ),
-    _STEP_DEFAULTS,
-)
-QUERY_VECTORS_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, QUERY_VECTORS_OPERATION_ID),
-    (BranchDefinition(QUERIED, "Find nearest vectors in one namespace."), *_SHARED_BRANCHES),
-    _STEP_DEFAULTS,
-)
 
 Output = TypeVar("Output")
-
-
-@dataclass(frozen=True, slots=True)
-class Config:
-    """Pinecone index host and HTTP settings; zero timeout or size limit uses manifest defaults."""
-
-    base_url: str
-    timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS
-    max_response_bytes: int = _DEFAULT_MAX_RESPONSE_BYTES
-
-
-@dataclass(frozen=True, slots=True)
-class Credentials:
-    """Pinecone API key, resolved anew for every provider attempt."""
-
-    api_key: SecretString
 
 
 @dataclass(frozen=True, slots=True)
@@ -413,3 +405,7 @@ def _mutation_failed(branch: str, kind: FailureKind, message: str) -> MutationAt
         Receipt(),
         Failure(kind, CONNECTOR_ID, UPSERT_VECTORS_OPERATION_ID, message),
     )
+
+
+Config.__doc__ = "Pinecone index host and HTTP settings; zero timeout or size limit uses manifest defaults."
+Credentials.__doc__ = "Pinecone API key, resolved anew for every provider attempt."

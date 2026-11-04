@@ -1,5 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
+# connectorctl: handwritten facade
 """Manifest-backed Stripe scenarios for deterministic connector tests."""
 
 from dex_connectors.sdk import ConnectionRef, Failure, FailureKind

@@ -46,3 +46,6 @@ has loaded a project containing the `gemini-api` connection.
 `launchSummary` answer; `validate_generate_content_mock_request` and
 `validate_generate_content_mock_answer` apply the Go mock checks. Run
 `uv run pytest tests` for provider parity and manifest contract checks.
+The conformance test replays the Go-recorded provider exchanges in
+[`conformance/connectors/google/gemini/scenarios.json`](../../../../conformance/connectors/google/gemini/scenarios.json),
+including request headers, every branch, Retry, and transport failure.

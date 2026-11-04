@@ -1,10 +1,10 @@
 {
   "connectorId": "newsapi",
-  "releaseTag": "connectors/newsapi/go/v0.23.0",
+  "releaseTag": "connectors/newsapi/go/v0.23.1",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-newsapi",
-    "version": "0.1.0"
+    "version": "0.1.1"
   },
   "factories": [
     {

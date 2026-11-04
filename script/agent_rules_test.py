@@ -79,6 +79,35 @@ class AgentRulesTest(unittest.TestCase):
     def test_claude_uses_the_canonical_rules(self) -> None:
         self.assertEqual((ROOT / "CLAUDE.md").read_text(encoding="utf-8").strip(), "@AGENTS.md")
 
+    def test_cross_language_conformance_and_batch_rules_are_mirrored(self) -> None:
+        paths = (
+            ROOT / "AGENTS.md",
+            ROOT / ".cursor/rules/release.mdc",
+            ROOT / ".codex/rules/language-releases.md",
+        )
+        for path in paths:
+            with self.subTest(path=path):
+                contents = " ".join(path.read_text(encoding="utf-8").split())
+                self.assertIn("conformance/connectors/<directory>/scenarios.json", contents)
+                self.assertIn("Porters write scenario inputs, prior state, and provider responses", contents)
+                self.assertIn("a nonzero value for every input field, each declared branch, separate final-attempt 429 and 5xx Retry", contents)
+                self.assertIn("transport failure per operation", contents)
+                self.assertIn("Pending scenarios are rejected", contents)
+                self.assertIn("conformance/exemptions.yaml", contents)
+                self.assertIn("connectors/superdurable/email", contents)
+                self.assertIn("native wire protocols cannot be recorded", contents)
+                self.assertIn("unit tests for every Go-tested branch, retry, uncertain decision, and protocol-error classification", contents)
+                self.assertIn("protocol integration tests in CI service containers", contents)
+                self.assertIn("in-process `internal/mailtest` tests", contents)
+                self.assertIn("GreenMail lacks STARTTLS, so protocol unit fakes cover that path", contents)
+                self.assertIn("EMAIL_CONNECTOR_TEST_*", contents)
+                self.assertIn("5-8 connectors of one language", contents)
+                self.assertIn("v0.1.0", contents)
+                self.assertIn("connectors(python):", contents)
+                self.assertIn("connectors(typescript):", contents)
+                self.assertIn("PyPI limits new-project creation rates", contents)
+                self.assertIn("confirms its Release run", contents)
+
     def test_repository_owns_connector_contribution_rules(self) -> None:
         paths = (
             ROOT / "AGENTS.md",

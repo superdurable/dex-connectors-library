@@ -9,9 +9,13 @@ metadata:
 spec:
   provider: algolia
   languages:
+    typescript:
+      version: v0.1.1
+      operations: [saveObject, search]
+      triggers: []
     python:
       version: v0.1.0
-      operations: [search, saveObject]
+      operations: [saveObject, search]
       triggers: []
   codegen:
     go:

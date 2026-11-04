@@ -30,8 +30,35 @@ It uses sync durability for its dispatch fence; see
 Install this connector release with `go get github.com/superdurable/dex-connectors-library/connectors/bamboohr/go@v0.23.0`.
 The module requires Connector Go SDK v0.33.0 for the shared single-dispatch fence.
 
+## Python package
+
+The independent `dex-connector-bamboohr` Python package starts at `v0.1.0` and
+implements all six operations above with the same branch IDs and provider
+request behavior as the Go connector. It includes generated typed inputs,
+outputs, operation-specific Step factories, named project connections, and
+mock outcomes. `addEmployee` uses the Python Connector SDK's single-dispatch
+fence and sync Execute durability. The Python package has no Triggers.
+
+The [Python employee lookup example](python/examples/get_employee/README.md)
+uses the static `bamboohr` connection name, a Worker entrypoint, and a start
+command. Its real Dex integration test uses an inert BambooHR stand-in and
+checks retry and unwired optional-branch failure. Go-recorded provider
+scenarios are replayed by the Python package. A live BambooHR account has not
+been used for this Python port, so live authorization and provider behavior
+remain unverified.
+
 This release has no Triggers, no Studio pickers, and no OAuth; see
 [Not in this release](#not-in-this-release).
+
+## TypeScript package
+
+The [TypeScript package](typescript/README.md) v0.1.0 implements all six
+operations with generated Step factories and a hand-written provider client.
+Its [runnable getEmployee Flow](typescript/examples/get-employee/) uses the
+static `bamboohr-employees` connection name. Go-recorded conformance scenarios
+cover provider requests, branches, retries, uncertainty, and duplicate safety;
+the example also ran through a real Dex Worker and Client with a local provider
+fixture. Live BambooHR behavior remains unverified.
 
 ## BambooHR setup
 
@@ -261,9 +288,9 @@ rejects the second start.
 
 A non-2xx response never exposes BambooHR's `X-BambooHR-Error-Message`
 header or any message field. A Failure repeats only a machine-readable code
-from `error.code` or `code`, such as
+from `error.code` first, then `code` if the first value is unusable, such as
 `BambooHR rejected the request (HTTP 422) [BadRequest]`. A code that contains
-the API key is dropped.
+the API key is dropped. An oversized error body contributes no code.
 
 | Response | Reads and updateEmployee | addEmployee |
 | --- | --- | --- |

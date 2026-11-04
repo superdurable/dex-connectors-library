@@ -1,59 +1,31 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Manifest-backed Cohere scripts for consuming Flow tests."""
+"""Public manifest-backed mock helpers."""
 
-from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
-from dex_connectors.sdk.connectormock import Case, Query
+from dex_connectors.sdk import ConnectionRef as ConnectionRef
+from dex_connectors.sdk import Failure as Failure
+from dex_connectors.sdk import FailureKind as FailureKind
+from dex_connectors.sdk.connectormock import Case as Case
+from dex_connectors.sdk.connectormock import Query as Query
 
-from ..client import CONNECTOR_ID, EMBED_DEFINITION, EMBEDDED, PROVIDER_REJECTED, RANKED, RERANK_DEFINITION
-from ..connection import Connection, new_connection_with_operations
-from ..models import EmbedInput, EmbedOutput, RankedDocument, RerankInput, RerankOutput
-
-
-def embed_default_embedding() -> Case[EmbedOutput]:
-    """Return the manifest's embed defaultEmbedding answer."""
-    return Case.branch_result(EMBEDDED, EmbedOutput("embed-mock-1", ((0.1, 0.2, 0.3),)))
-
-
-def embed_invalid_key() -> Case[EmbedOutput]:
-    """Return the manifest's embed invalidKey answer."""
-    return Case.branch_result(
-        PROVIDER_REJECTED,
-        EmbedOutput(),
-        Failure(FailureKind.AUTHENTICATION, CONNECTOR_ID, "embed", "Cohere rejected the API key."),
-    )
-
-
-def rerank_default_ranking() -> Case[RerankOutput]:
-    """Return the manifest's rerank defaultRanking answer."""
-    return Case.branch_result(RANKED, RerankOutput((RankedDocument(0, 0.92), RankedDocument(1, 0.08))))
-
-
-def rerank_invalid_key() -> Case[RerankOutput]:
-    """Return the manifest's rerank invalidKey answer."""
-    return Case.branch_result(
-        PROVIDER_REJECTED,
-        RerankOutput(),
-        Failure(FailureKind.AUTHENTICATION, CONNECTOR_ID, "rerank", "Cohere rejected the API key."),
-    )
-
-
-class Mock:
-    """Script Cohere Queries, defaulting to their manifest answers."""
-
-    def __init__(self, connection_name: str = "cohere") -> None:
-        self.embed_script: Query[EmbedInput, EmbedOutput] = Query(EMBED_DEFINITION)
-        self.embed_script.default(embed_default_embedding())
-        self.rerank_script: Query[RerankInput, RerankOutput] = Query(RERANK_DEFINITION)
-        self.rerank_script.default(rerank_default_ranking())
-        self._connection = new_connection_with_operations(
-            self.embed_script, self.rerank_script, ConnectionRef(CONNECTOR_ID, connection_name)
-        )
-
-    def connection(self) -> Connection:
-        """Return this mock's named connection for Step registration."""
-        return self._connection
-
+from .._generated.mock import Mock as Mock
+from .._generated.mock import embed_default_embedding as embed_default_embedding
+from .._generated.mock import embed_invalid_key as embed_invalid_key
+from .._generated.mock import rerank_default_ranking as rerank_default_ranking
+from .._generated.mock import rerank_invalid_key as rerank_invalid_key
+from ..client import CONNECTOR_ID as CONNECTOR_ID
+from ..client import EMBED_DEFINITION as EMBED_DEFINITION
+from ..client import EMBEDDED as EMBEDDED
+from ..client import PROVIDER_REJECTED as PROVIDER_REJECTED
+from ..client import RANKED as RANKED
+from ..client import RERANK_DEFINITION as RERANK_DEFINITION
+from ..connection import Connection as Connection
+from ..connection import new_connection_with_operations as new_connection_with_operations
+from ..models import EmbedInput as EmbedInput
+from ..models import EmbedOutput as EmbedOutput
+from ..models import RankedDocument as RankedDocument
+from ..models import RerankInput as RerankInput
+from ..models import RerankOutput as RerankOutput
 
 __all__ = [
     "Mock",
@@ -62,3 +34,10 @@ __all__ = [
     "rerank_default_ranking",
     "rerank_invalid_key",
 ]
+
+Mock.__doc__ = "Script Cohere Queries, defaulting to their manifest answers."
+
+embed_default_embedding.__doc__ = "Return the manifest's embed defaultEmbedding answer."
+embed_invalid_key.__doc__ = "Return the manifest's embed invalidKey answer."
+rerank_default_ranking.__doc__ = "Return the manifest's rerank defaultRanking answer."
+rerank_invalid_key.__doc__ = "Return the manifest's rerank invalidKey answer."

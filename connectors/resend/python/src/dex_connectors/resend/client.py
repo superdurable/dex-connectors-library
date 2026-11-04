@@ -3,14 +3,15 @@
 """Resend provider calls and Go-compatible branch classification."""
 
 import json
-from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from dataclasses import dataclass as dataclass
+from datetime import UTC, datetime
+from datetime import timedelta as timedelta
 from typing import Any, TypeVar
 from urllib.parse import quote
 
 import httpx
+from dex_connectors.sdk import BranchDefinition as BranchDefinition
 from dex_connectors.sdk import (
-    BranchDefinition,
     Call,
     CallID,
     CredentialProvider,
@@ -19,14 +20,14 @@ from dex_connectors.sdk import (
     IdempotencyKey,
     MutationAttempt,
     MutationDefinition,
-    OperationRef,
     QueryAttempt,
     QueryDefinition,
     ReauthorizationRequiredError,
     Receipt,
-    SecretString,
-    StepDefaults,
 )
+from dex_connectors.sdk import OperationRef as OperationRef
+from dex_connectors.sdk import SecretString as SecretString
+from dex_connectors.sdk import StepDefaults as StepDefaults
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -39,71 +40,56 @@ from dex_connectors.sdk.providerhttp import (
     send_traced,
     validate_base_url,
 )
-from dex_connectors.sdk.retry_policy import default_connector_step_execute_retry_policy
+from dex_connectors.sdk.retry_policy import (
+    default_connector_step_execute_retry_policy as default_connector_step_execute_retry_policy,
+)
 
+from ._generated.config import (
+    Config as Config,
+)
+from ._generated.config import (
+    Credentials as Credentials,
+)
+from ._generated.definitions import (
+    CONNECTOR_ID as CONNECTOR_ID,
+)
+from ._generated.definitions import (
+    DEFECT as DEFECT,
+)
+from ._generated.definitions import (
+    FOUND as FOUND,
+)
+from ._generated.definitions import (
+    GET_EMAIL_DEFINITION as GET_EMAIL_DEFINITION,
+)
+from ._generated.definitions import (
+    GET_EMAIL_OPERATION_ID as GET_EMAIL_OPERATION_ID,
+)
+from ._generated.definitions import (
+    INVALID_RESPONSE as INVALID_RESPONSE,
+)
+from ._generated.definitions import (
+    NOT_FOUND as NOT_FOUND,
+)
+from ._generated.definitions import (
+    PROVIDER_REJECTED as PROVIDER_REJECTED,
+)
+from ._generated.definitions import (
+    SEND_EMAIL_DEFINITION as SEND_EMAIL_DEFINITION,
+)
+from ._generated.definitions import (
+    SEND_EMAIL_OPERATION_ID as SEND_EMAIL_OPERATION_ID,
+)
+from ._generated.definitions import (
+    SENT as SENT,
+)
 from .models import Email, GetEmailInput, SendEmailInput, SentEmail
 
-CONNECTOR_ID = "resend"
-SEND_EMAIL_OPERATION_ID = "sendEmail"
-GET_EMAIL_OPERATION_ID = "getEmail"
-SENT = "sent"
-FOUND = "found"
-NOT_FOUND = "notFound"
-PROVIDER_REJECTED = "providerRejected"
-INVALID_RESPONSE = "invalidResponse"
-DEFECT = "defect"
 _DEFAULT_BASE_URL = "https://api.resend.com"
 _DEFAULT_TIMEOUT_SECONDS = 15
 _DEFAULT_MAX_RESPONSE_BYTES = 2_097_152
-_STEP_DEFAULTS = StepDefaults(
-    timedelta(seconds=30), 2, execute_retry=default_connector_step_execute_retry_policy()
-)
-_PROVIDER_REJECTED_BRANCH = BranchDefinition(
-    PROVIDER_REJECTED, "The provider definitively rejected the request.", True
-)
-_INVALID_RESPONSE_BRANCH = BranchDefinition(
-    INVALID_RESPONSE, "The provider returned malformed or oversized JSON.", True
-)
-_DEFECT_BRANCH = BranchDefinition(DEFECT, "Local input or connection credentials are invalid.", True)
-SEND_EMAIL_DEFINITION = MutationDefinition(
-    OperationRef(CONNECTOR_ID, SEND_EMAIL_OPERATION_ID),
-    (
-        BranchDefinition(SENT, "Resend returned the requested result."),
-        _PROVIDER_REJECTED_BRANCH,
-        _INVALID_RESPONSE_BRANCH,
-        _DEFECT_BRANCH,
-    ),
-    _STEP_DEFAULTS,
-)
-GET_EMAIL_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, GET_EMAIL_OPERATION_ID),
-    (
-        BranchDefinition(FOUND, "Resend returned the requested result."),
-        BranchDefinition(NOT_FOUND, "The requested resource does not exist.", True),
-        _PROVIDER_REJECTED_BRANCH,
-        _INVALID_RESPONSE_BRANCH,
-        _DEFECT_BRANCH,
-    ),
-    _STEP_DEFAULTS,
-)
 
 Output = TypeVar("Output")
-
-
-@dataclass(frozen=True, slots=True)
-class Config:
-    """Resend HTTP settings; zero or blank values use manifest defaults."""
-
-    base_url: str = _DEFAULT_BASE_URL
-    timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS
-    max_response_bytes: int = _DEFAULT_MAX_RESPONSE_BYTES
-
-
-@dataclass(frozen=True, slots=True)
-class Credentials:
-    """Resend API key, resolved anew for every provider attempt."""
-
-    api_key: SecretString
 
 
 class Client:
@@ -421,3 +407,7 @@ def _optional_string(document: dict[str, Any], name: str) -> str:
     if not isinstance(value, str):
         raise ValueError
     return value
+
+
+Config.__doc__ = "Resend HTTP settings; zero or blank values use manifest defaults."
+Credentials.__doc__ = "Resend API key, resolved anew for every provider attempt."

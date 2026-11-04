@@ -1,0 +1,77 @@
+{
+  "connectorId": "supabase",
+  "releaseTag": "connectors/supabase/go/v0.2.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-supabase",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_select_rows_step",
+      "kind": "query",
+      "operationId": "selectRows",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "selected",
+          "field": "selected",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "name": "new_upsert_rows_step",
+      "kind": "mutation",
+      "operationId": "upsertRows",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "upserted",
+          "field": "upserted",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    }
+  ]
+}

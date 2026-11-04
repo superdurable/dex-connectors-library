@@ -1,0 +1,3019 @@
+{
+  "connector": "asana",
+  "scenarios": [
+    {
+      "callId": "4faed739-92ee-58da-b3cf-fc1372dcd3f5",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"gid\":\"1204567890123456\",\"resource_type\":\"task\",\"name\":\"[REQ-1042] Replace badge reader\",\"resource_subtype\":\"default_task\",\"completed\":false,\"completed_at\":null,\"assignee\":{\"gid\":\"1200000000000042\",\"name\":\"Ada Lovelace\"},\"due_on\":\"2026-10-15\",\"due_at\":null,\"start_on\":null,\"memberships\":[{\"project\":{\"gid\":\"1201000000000001\",\"name\":\"Facilities\"},\"section\":{\"gid\":\"1201000000000101\",\"name\":\"Approved\"}}],\"parent\":null,\"workspace\":{\"gid\":\"1100000000000001\",\"name\":\"Operations\"},\"notes\":\"Badge reader at door 4 is offline.\",\"custom_fields\":[{\"gid\":\"1300000000000001\",\"name\":\"Request ID\",\"resource_subtype\":\"text\",\"display_value\":\"REQ-1042\",\"text_value\":\"REQ-1042\"},{\"gid\":\"1300000000000002\",\"name\":\"Priority\",\"resource_subtype\":\"enum\",\"display_value\":\"High\",\"enum_value\":{\"gid\":\"1300000000000021\",\"name\":\"High\"}}],\"permalink_url\":\"https://app.asana.com/0/1201000000000001/1204567890123456\",\"created_at\":\"2026-09-30T16:15:00.000Z\",\"modified_at\":\"2026-09-30T17:20:00.000Z\"}],\"next_page\":{\"offset\":\"page-2-token\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks",
+          "query": {
+            "completed_since": [
+              "now"
+            ],
+            "limit": [
+              "100"
+            ],
+            "modified_since": [
+              "2026-09-29T15:30:00Z"
+            ],
+            "opt_fields": [
+              "name,resource_subtype,completed,completed_at,assignee.name,due_on,due_at,start_on,memberships.project.name,memberships.section.name,parent.name,permalink_url,created_at,modified_at"
+            ],
+            "project": [
+              "1201000000000001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextOffset": "page-2-token",
+          "tasks": [
+            {
+              "assignee": {
+                "id": "1200000000000042",
+                "name": "Ada Lovelace"
+              },
+              "createdAt": "2026-09-30T16:15:00Z",
+              "dueOn": "2026-10-15",
+              "id": "1204567890123456",
+              "isCompleted": false,
+              "memberships": [
+                {
+                  "project": {
+                    "id": "1201000000000001",
+                    "name": "Facilities"
+                  },
+                  "section": {
+                    "id": "1201000000000101",
+                    "name": "Approved"
+                  }
+                }
+              ],
+              "modifiedAt": "2026-09-30T17:20:00Z",
+              "name": "[REQ-1042] Replace badge reader",
+              "permalinkUrl": "https://app.asana.com/0/1201000000000001/1204567890123456",
+              "resourceSubtype": "default_task"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "isIncompleteOnly": true,
+        "modifiedSince": "2026-09-29T15:30:00Z",
+        "pageSize": 100,
+        "projectId": "1201000000000001"
+      },
+      "name": "listTasks_listed_page",
+      "operation": "listTasks"
+    },
+    {
+      "callId": "73013074-184c-5acc-af2a-3e13fea20fa4",
+      "exchanges": [
+        {
+          "body": "{\"data\":[],\"next_page\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks",
+          "query": {
+            "completed_since": [
+              "2026-09-01T00:00:00Z"
+            ],
+            "limit": [
+              "50"
+            ],
+            "offset": [
+              "page-2-token"
+            ],
+            "opt_fields": [
+              "name,resource_subtype,completed,completed_at,assignee.name,due_on,due_at,start_on,memberships.project.name,memberships.section.name,parent.name,permalink_url,created_at,modified_at"
+            ],
+            "section": [
+              "1201000000000101"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "tasks": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "completedSince": "2026-09-01T00:00:00Z",
+        "offset": "page-2-token",
+        "sectionId": "1201000000000101"
+      },
+      "name": "listTasks_section_offset",
+      "operation": "listTasks"
+    },
+    {
+      "callId": "d57b950e-5057-5f23-9546-030bbfe1aaf4",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks",
+          "query": {
+            "completed_since": [
+              "now"
+            ],
+            "limit": [
+              "100"
+            ],
+            "modified_since": [
+              "2026-09-29T15:30:00Z"
+            ],
+            "opt_fields": [
+              "name,resource_subtype,completed,completed_at,assignee.name,due_on,due_at,start_on,memberships.project.name,memberships.section.name,parent.name,permalink_url,created_at,modified_at"
+            ],
+            "project": [
+              "1201000000000001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "tasks": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "isIncompleteOnly": true,
+        "modifiedSince": "2026-09-29T15:30:00Z",
+        "pageSize": 100,
+        "projectId": "1201000000000001"
+      },
+      "name": "listTasks_not_found",
+      "operation": "listTasks"
+    },
+    {
+      "callId": "ac32115f-45f4-5385-b800-c36fc9843ccf",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks",
+          "query": {
+            "completed_since": [
+              "now"
+            ],
+            "limit": [
+              "100"
+            ],
+            "modified_since": [
+              "2026-09-29T15:30:00Z"
+            ],
+            "opt_fields": [
+              "name,resource_subtype,completed,completed_at,assignee.name,due_on,due_at,start_on,memberships.project.name,memberships.section.name,parent.name,permalink_url,created_at,modified_at"
+            ],
+            "project": [
+              "1201000000000001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "tasks": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "isIncompleteOnly": true,
+        "modifiedSince": "2026-09-29T15:30:00Z",
+        "pageSize": 100,
+        "projectId": "1201000000000001"
+      },
+      "name": "listTasks_provider_rejected",
+      "operation": "listTasks"
+    },
+    {
+      "callId": "7711df62-46a7-5ce8-81fc-f7dee6c902bb",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks",
+          "query": {
+            "completed_since": [
+              "now"
+            ],
+            "limit": [
+              "100"
+            ],
+            "modified_since": [
+              "2026-09-29T15:30:00Z"
+            ],
+            "opt_fields": [
+              "name,resource_subtype,completed,completed_at,assignee.name,due_on,due_at,start_on,memberships.project.name,memberships.section.name,parent.name,permalink_url,created_at,modified_at"
+            ],
+            "project": [
+              "1201000000000001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "tasks": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "isIncompleteOnly": true,
+        "modifiedSince": "2026-09-29T15:30:00Z",
+        "pageSize": 100,
+        "projectId": "1201000000000001"
+      },
+      "name": "listTasks_invalid_response",
+      "operation": "listTasks"
+    },
+    {
+      "callId": "9ded1ccb-45b2-565d-8b9b-da3a2094bbaf",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"gid\":\"1204567890123456\",\"resource_type\":\"task\",\"name\":\"[REQ-1042] Replace badge reader\",\"resource_subtype\":\"default_task\",\"completed\":false,\"completed_at\":null,\"assignee\":{\"gid\":\"1200000000000042\",\"name\":\"Ada Lovelace\"},\"due_on\":\"2026-10-15\",\"due_at\":null,\"start_on\":null,\"memberships\":[{\"project\":{\"gid\":\"1201000000000001\",\"name\":\"Facilities\"},\"section\":{\"gid\":\"1201000000000101\",\"name\":\"Approved\"}}],\"parent\":null,\"workspace\":{\"gid\":\"1100000000000001\",\"name\":\"Operations\"},\"notes\":\"Badge reader at door 4 is offline.\",\"custom_fields\":[{\"gid\":\"1300000000000001\",\"name\":\"Request ID\",\"resource_subtype\":\"text\",\"display_value\":\"REQ-1042\",\"text_value\":\"REQ-1042\"},{\"gid\":\"1300000000000002\",\"name\":\"Priority\",\"resource_subtype\":\"enum\",\"display_value\":\"High\",\"enum_value\":{\"gid\":\"1300000000000021\",\"name\":\"High\"}}],\"permalink_url\":\"https://app.asana.com/0/1201000000000001/1204567890123456\",\"created_at\":\"2026-09-30T16:15:00.000Z\",\"modified_at\":\"2026-09-30T17:20:00.000Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks/1204567890123456",
+          "query": {
+            "opt_fields": [
+              "name,resource_subtype,completed,completed_at,assignee.name,due_on,due_at,start_on,memberships.project.name,memberships.section.name,parent.name,permalink_url,created_at,modified_at,workspace.name,notes,custom_fields.name,custom_fields.resource_subtype,custom_fields.display_value,custom_fields.text_value,custom_fields.number_value,custom_fields.enum_value.name,custom_fields.multi_enum_values.name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "assignee": {
+            "id": "1200000000000042",
+            "name": "Ada Lovelace"
+          },
+          "createdAt": "2026-09-30T16:15:00Z",
+          "customFields": [
+            {
+              "displayValue": "REQ-1042",
+              "id": "1300000000000001",
+              "name": "Request ID",
+              "textValue": "REQ-1042",
+              "type": "text"
+            },
+            {
+              "displayValue": "High",
+              "enumOption": {
+                "id": "1300000000000021",
+                "name": "High"
+              },
+              "id": "1300000000000002",
+              "name": "Priority",
+              "type": "enum"
+            }
+          ],
+          "dueOn": "2026-10-15",
+          "id": "1204567890123456",
+          "isCompleted": false,
+          "memberships": [
+            {
+              "project": {
+                "id": "1201000000000001",
+                "name": "Facilities"
+              },
+              "section": {
+                "id": "1201000000000101",
+                "name": "Approved"
+              }
+            }
+          ],
+          "modifiedAt": "2026-09-30T17:20:00Z",
+          "name": "[REQ-1042] Replace badge reader",
+          "notes": "Badge reader at door 4 is offline.",
+          "permalinkUrl": "https://app.asana.com/0/1201000000000001/1204567890123456",
+          "resourceSubtype": "default_task",
+          "workspace": {
+            "id": "1100000000000001",
+            "name": "Operations"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taskId": "1204567890123456"
+      },
+      "name": "getTask_found",
+      "operation": "getTask"
+    },
+    {
+      "callId": "1b42afba-db0f-5a1b-8c84-14bd333c64fb",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks/1204567890123456",
+          "query": {
+            "opt_fields": [
+              "name,resource_subtype,completed,completed_at,assignee.name,due_on,due_at,start_on,memberships.project.name,memberships.section.name,parent.name,permalink_url,created_at,modified_at,workspace.name,notes,custom_fields.name,custom_fields.resource_subtype,custom_fields.display_value,custom_fields.text_value,custom_fields.number_value,custom_fields.enum_value.name,custom_fields.multi_enum_values.name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "createdAt": "0001-01-01T00:00:00Z",
+          "id": "",
+          "isCompleted": false,
+          "modifiedAt": "0001-01-01T00:00:00Z",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taskId": "1204567890123456"
+      },
+      "name": "getTask_not_found",
+      "operation": "getTask"
+    },
+    {
+      "callId": "d90f07ce-b91b-5401-a290-39c3520976c7",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks/1204567890123456",
+          "query": {
+            "opt_fields": [
+              "name,resource_subtype,completed,completed_at,assignee.name,due_on,due_at,start_on,memberships.project.name,memberships.section.name,parent.name,permalink_url,created_at,modified_at,workspace.name,notes,custom_fields.name,custom_fields.resource_subtype,custom_fields.display_value,custom_fields.text_value,custom_fields.number_value,custom_fields.enum_value.name,custom_fields.multi_enum_values.name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "createdAt": "0001-01-01T00:00:00Z",
+          "id": "",
+          "isCompleted": false,
+          "modifiedAt": "0001-01-01T00:00:00Z",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taskId": "1204567890123456"
+      },
+      "name": "getTask_provider_rejected",
+      "operation": "getTask"
+    },
+    {
+      "callId": "2188bb1d-4585-5218-80d2-648cec623b84",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"gid\":\"bad\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks/1204567890123456",
+          "query": {
+            "opt_fields": [
+              "name,resource_subtype,completed,completed_at,assignee.name,due_on,due_at,start_on,memberships.project.name,memberships.section.name,parent.name,permalink_url,created_at,modified_at,workspace.name,notes,custom_fields.name,custom_fields.resource_subtype,custom_fields.display_value,custom_fields.text_value,custom_fields.number_value,custom_fields.enum_value.name,custom_fields.multi_enum_values.name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "createdAt": "0001-01-01T00:00:00Z",
+          "id": "",
+          "isCompleted": false,
+          "modifiedAt": "0001-01-01T00:00:00Z",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taskId": "1204567890123456"
+      },
+      "name": "getTask_invalid_response",
+      "operation": "getTask"
+    },
+    {
+      "callId": "6072a0ce-9ddb-5937-8998-675e48cfa406",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"gid\":\"1204567890123456\",\"name\":\"[REQ-1042] Replace badge reader\",\"permalink_url\":\"https://app.asana.com/0/1201000000000001/1204567890123456\",\"created_at\":\"2026-09-30T16:15:00.000Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks",
+          "query": {
+            "opt_fields": [
+              "gid,name,permalink_url,created_at"
+            ]
+          },
+          "requestBody": {
+            "data": {
+              "assignee": "ada@example.com",
+              "custom_fields": {
+                "1300000000000001": "REQ-1042",
+                "1300000000000002": "1300000000000021",
+                "1300000000000003": 1250.5,
+                "1300000000000004": [
+                  "1300000000000041",
+                  "1300000000000042"
+                ]
+              },
+              "due_on": "2026-10-15",
+              "memberships": [
+                {
+                  "project": "1201000000000001",
+                  "section": "1201000000000101"
+                }
+              ],
+              "name": "[REQ-1042] Replace badge reader",
+              "notes": "Badge reader at door 4 is offline.\nApproved by Grace."
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "createdAt": "2026-09-30T16:15:00Z",
+          "name": "[REQ-1042] Replace badge reader",
+          "permalinkUrl": "https://app.asana.com/0/1201000000000001/1204567890123456",
+          "projectId": "1201000000000001",
+          "sectionId": "1201000000000101",
+          "taskId": "1204567890123456"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6072a0ce-9ddb-5937-8998-675e48cfa406",
+      "input": {
+        "assigneeId": "ada@example.com",
+        "customFields": [
+          {
+            "customFieldId": "1300000000000001",
+            "text": "REQ-1042"
+          },
+          {
+            "customFieldId": "1300000000000002",
+            "enumOptionId": "1300000000000021"
+          },
+          {
+            "customFieldId": "1300000000000003",
+            "number": 1250.5
+          },
+          {
+            "customFieldId": "1300000000000004",
+            "multiEnumOptionIds": [
+              "1300000000000041",
+              "1300000000000042"
+            ]
+          }
+        ],
+        "dueOn": "2026-10-15",
+        "name": "[REQ-1042] Replace badge reader",
+        "notes": "Badge reader at door 4 is offline.\nApproved by Grace.",
+        "projectId": "1201000000000001",
+        "sectionId": "1201000000000101"
+      },
+      "name": "createTask_created",
+      "operation": "createTask"
+    },
+    {
+      "callId": "6072a0ce-9ddb-5937-8998-675e48cfa406",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"gid\":\"1204567890123456\",\"name\":\"[REQ-1042] Replace badge reader\",\"permalink_url\":\"https://app.asana.com/0/1201000000000001/1204567890123456\",\"created_at\":\"2026-09-30T16:15:00.000Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks",
+          "query": {
+            "opt_fields": [
+              "gid,name,permalink_url,created_at"
+            ]
+          },
+          "requestBody": {
+            "data": {
+              "name": "Call locksmith",
+              "workspace": "1100000000000001"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "createdAt": "2026-09-30T16:15:00Z",
+          "name": "Call locksmith",
+          "permalinkUrl": "https://app.asana.com/0/1201000000000001/1204567890123456",
+          "taskId": "1204567890123456",
+          "workspaceId": "1100000000000001"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6072a0ce-9ddb-5937-8998-675e48cfa406",
+      "input": {
+        "name": "Call locksmith",
+        "workspaceId": "1100000000000001"
+      },
+      "name": "createTask_workspace",
+      "operation": "createTask"
+    },
+    {
+      "callId": "6072a0ce-9ddb-5937-8998-675e48cfa406",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks",
+          "query": {
+            "opt_fields": [
+              "gid,name,permalink_url,created_at"
+            ]
+          },
+          "requestBody": {
+            "data": {
+              "assignee": "ada@example.com",
+              "custom_fields": {
+                "1300000000000001": "REQ-1042",
+                "1300000000000002": "1300000000000021",
+                "1300000000000003": 1250.5,
+                "1300000000000004": [
+                  "1300000000000041",
+                  "1300000000000042"
+                ]
+              },
+              "due_on": "2026-10-15",
+              "memberships": [
+                {
+                  "project": "1201000000000001",
+                  "section": "1201000000000101"
+                }
+              ],
+              "name": "[REQ-1042] Replace badge reader",
+              "notes": "Badge reader at door 4 is offline.\nApproved by Grace."
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "name": "[REQ-1042] Replace badge reader",
+          "projectId": "1201000000000001",
+          "sectionId": "1201000000000101"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6072a0ce-9ddb-5937-8998-675e48cfa406",
+      "input": {
+        "assigneeId": "ada@example.com",
+        "customFields": [
+          {
+            "customFieldId": "1300000000000001",
+            "text": "REQ-1042"
+          },
+          {
+            "customFieldId": "1300000000000002",
+            "enumOptionId": "1300000000000021"
+          },
+          {
+            "customFieldId": "1300000000000003",
+            "number": 1250.5
+          },
+          {
+            "customFieldId": "1300000000000004",
+            "multiEnumOptionIds": [
+              "1300000000000041",
+              "1300000000000042"
+            ]
+          }
+        ],
+        "dueOn": "2026-10-15",
+        "name": "[REQ-1042] Replace badge reader",
+        "notes": "Badge reader at door 4 is offline.\nApproved by Grace.",
+        "projectId": "1201000000000001",
+        "sectionId": "1201000000000101"
+      },
+      "name": "createTask_provider_rejected",
+      "operation": "createTask"
+    },
+    {
+      "callId": "6072a0ce-9ddb-5937-8998-675e48cfa406",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks",
+          "query": {
+            "opt_fields": [
+              "gid,name,permalink_url,created_at"
+            ]
+          },
+          "requestBody": {
+            "data": {
+              "assignee": "ada@example.com",
+              "custom_fields": {
+                "1300000000000001": "REQ-1042",
+                "1300000000000002": "1300000000000021",
+                "1300000000000003": 1250.5,
+                "1300000000000004": [
+                  "1300000000000041",
+                  "1300000000000042"
+                ]
+              },
+              "due_on": "2026-10-15",
+              "memberships": [
+                {
+                  "project": "1201000000000001",
+                  "section": "1201000000000101"
+                }
+              ],
+              "name": "[REQ-1042] Replace badge reader",
+              "notes": "Badge reader at door 4 is offline.\nApproved by Grace."
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "name": "[REQ-1042] Replace badge reader",
+          "projectId": "1201000000000001",
+          "sectionId": "1201000000000101"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "6072a0ce-9ddb-5937-8998-675e48cfa406",
+      "input": {
+        "assigneeId": "ada@example.com",
+        "customFields": [
+          {
+            "customFieldId": "1300000000000001",
+            "text": "REQ-1042"
+          },
+          {
+            "customFieldId": "1300000000000002",
+            "enumOptionId": "1300000000000021"
+          },
+          {
+            "customFieldId": "1300000000000003",
+            "number": 1250.5
+          },
+          {
+            "customFieldId": "1300000000000004",
+            "multiEnumOptionIds": [
+              "1300000000000041",
+              "1300000000000042"
+            ]
+          }
+        ],
+        "dueOn": "2026-10-15",
+        "name": "[REQ-1042] Replace badge reader",
+        "notes": "Badge reader at door 4 is offline.\nApproved by Grace.",
+        "projectId": "1201000000000001",
+        "sectionId": "1201000000000101"
+      },
+      "name": "createTask_uncertain_500",
+      "operation": "createTask"
+    },
+    {
+      "callId": "6072a0ce-9ddb-5937-8998-675e48cfa406",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"gid\":\"invalid\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks",
+          "query": {
+            "opt_fields": [
+              "gid,name,permalink_url,created_at"
+            ]
+          },
+          "requestBody": {
+            "data": {
+              "assignee": "ada@example.com",
+              "custom_fields": {
+                "1300000000000001": "REQ-1042",
+                "1300000000000002": "1300000000000021",
+                "1300000000000003": 1250.5,
+                "1300000000000004": [
+                  "1300000000000041",
+                  "1300000000000042"
+                ]
+              },
+              "due_on": "2026-10-15",
+              "memberships": [
+                {
+                  "project": "1201000000000001",
+                  "section": "1201000000000101"
+                }
+              ],
+              "name": "[REQ-1042] Replace badge reader",
+              "notes": "Badge reader at door 4 is offline.\nApproved by Grace."
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "name": "[REQ-1042] Replace badge reader",
+          "projectId": "1201000000000001",
+          "sectionId": "1201000000000101"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "6072a0ce-9ddb-5937-8998-675e48cfa406",
+      "input": {
+        "assigneeId": "ada@example.com",
+        "customFields": [
+          {
+            "customFieldId": "1300000000000001",
+            "text": "REQ-1042"
+          },
+          {
+            "customFieldId": "1300000000000002",
+            "enumOptionId": "1300000000000021"
+          },
+          {
+            "customFieldId": "1300000000000003",
+            "number": 1250.5
+          },
+          {
+            "customFieldId": "1300000000000004",
+            "multiEnumOptionIds": [
+              "1300000000000041",
+              "1300000000000042"
+            ]
+          }
+        ],
+        "dueOn": "2026-10-15",
+        "name": "[REQ-1042] Replace badge reader",
+        "notes": "Badge reader at door 4 is offline.\nApproved by Grace.",
+        "projectId": "1201000000000001",
+        "sectionId": "1201000000000101"
+      },
+      "name": "createTask_uncertain_invalid_body",
+      "operation": "createTask"
+    },
+    {
+      "callId": "a3c0cf82-b349-588d-90bd-d23a614eee64",
+      "exchanges": [
+        {
+          "body": "{\"data\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sections/1201000000000101/addTask",
+          "requestBody": {
+            "data": {
+              "task": "1204567890123456"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"data\":{\"gid\":\"1204567890123456\",\"resource_type\":\"task\",\"name\":\"[REQ-1042] Replace badge reader\",\"resource_subtype\":\"default_task\",\"completed\":false,\"completed_at\":null,\"assignee\":{\"gid\":\"1200000000000042\",\"name\":\"Ada Lovelace\"},\"due_on\":\"2026-10-15\",\"due_at\":null,\"start_on\":null,\"memberships\":[{\"project\":{\"gid\":\"1201000000000001\",\"name\":\"Facilities\"},\"section\":{\"gid\":\"1201000000000101\",\"name\":\"Approved\"}}],\"parent\":null,\"workspace\":{\"gid\":\"1100000000000001\",\"name\":\"Operations\"},\"notes\":\"Badge reader at door 4 is offline.\",\"custom_fields\":[{\"gid\":\"1300000000000001\",\"name\":\"Request ID\",\"resource_subtype\":\"text\",\"display_value\":\"REQ-1042\",\"text_value\":\"REQ-1042\"},{\"gid\":\"1300000000000002\",\"name\":\"Priority\",\"resource_subtype\":\"enum\",\"display_value\":\"High\",\"enum_value\":{\"gid\":\"1300000000000021\",\"name\":\"High\"}}],\"permalink_url\":\"https://app.asana.com/0/1201000000000001/1204567890123456\",\"created_at\":\"2026-09-30T16:15:00.000Z\",\"modified_at\":\"2026-09-30T17:20:00.000Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/tasks/1204567890123456",
+          "query": {
+            "opt_fields": [
+              "name,resource_subtype,completed,completed_at,assignee.name,due_on,due_at,start_on,memberships.project.name,memberships.section.name,parent.name,permalink_url,created_at,modified_at,workspace.name,notes,custom_fields.name,custom_fields.resource_subtype,custom_fields.display_value,custom_fields.text_value,custom_fields.number_value,custom_fields.enum_value.name,custom_fields.multi_enum_values.name"
+            ]
+          },
+          "requestBody": {
+            "data": {
+              "assignee": "1200000000000042",
+              "completed": true,
+              "custom_fields": {
+                "1300000000000001": "REQ-1042"
+              },
+              "due_on": "2026-10-15"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "isMovedToSection": true,
+          "task": {
+            "assignee": {
+              "id": "1200000000000042",
+              "name": "Ada Lovelace"
+            },
+            "createdAt": "2026-09-30T16:15:00Z",
+            "customFields": [
+              {
+                "displayValue": "REQ-1042",
+                "id": "1300000000000001",
+                "name": "Request ID",
+                "textValue": "REQ-1042",
+                "type": "text"
+              },
+              {
+                "displayValue": "High",
+                "enumOption": {
+                  "id": "1300000000000021",
+                  "name": "High"
+                },
+                "id": "1300000000000002",
+                "name": "Priority",
+                "type": "enum"
+              }
+            ],
+            "dueOn": "2026-10-15",
+            "id": "1204567890123456",
+            "isCompleted": false,
+            "memberships": [
+              {
+                "project": {
+                  "id": "1201000000000001",
+                  "name": "Facilities"
+                },
+                "section": {
+                  "id": "1201000000000101",
+                  "name": "Approved"
+                }
+              }
+            ],
+            "modifiedAt": "2026-09-30T17:20:00Z",
+            "name": "[REQ-1042] Replace badge reader",
+            "notes": "Badge reader at door 4 is offline.",
+            "permalinkUrl": "https://app.asana.com/0/1201000000000001/1204567890123456",
+            "resourceSubtype": "default_task",
+            "workspace": {
+              "id": "1100000000000001",
+              "name": "Operations"
+            }
+          },
+          "taskId": "1204567890123456"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a3c0cf82-b349-588d-90bd-d23a614eee64",
+      "input": {
+        "assigneeId": "1200000000000042",
+        "customFields": [
+          {
+            "customFieldId": "1300000000000001",
+            "text": "REQ-1042"
+          }
+        ],
+        "dueOn": "2026-10-15",
+        "isCompleted": true,
+        "sectionId": "1201000000000101",
+        "taskId": "1204567890123456"
+      },
+      "name": "updateTask_updated",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "a3c0cf82-b349-588d-90bd-d23a614eee64",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/tasks/1204567890123456",
+          "query": {
+            "opt_fields": [
+              "name,resource_subtype,completed,completed_at,assignee.name,due_on,due_at,start_on,memberships.project.name,memberships.section.name,parent.name,permalink_url,created_at,modified_at,workspace.name,notes,custom_fields.name,custom_fields.resource_subtype,custom_fields.display_value,custom_fields.text_value,custom_fields.number_value,custom_fields.enum_value.name,custom_fields.multi_enum_values.name"
+            ]
+          },
+          "requestBody": {
+            "data": {
+              "completed": false
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "taskId": "1204567890123456"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a3c0cf82-b349-588d-90bd-d23a614eee64",
+      "input": {
+        "isCompleted": false,
+        "taskId": "1204567890123456"
+      },
+      "name": "updateTask_not_found",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "a3c0cf82-b349-588d-90bd-d23a614eee64",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/tasks/1204567890123456",
+          "query": {
+            "opt_fields": [
+              "name,resource_subtype,completed,completed_at,assignee.name,due_on,due_at,start_on,memberships.project.name,memberships.section.name,parent.name,permalink_url,created_at,modified_at,workspace.name,notes,custom_fields.name,custom_fields.resource_subtype,custom_fields.display_value,custom_fields.text_value,custom_fields.number_value,custom_fields.enum_value.name,custom_fields.multi_enum_values.name"
+            ]
+          },
+          "requestBody": {
+            "data": {
+              "completed": false
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "taskId": "1204567890123456"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a3c0cf82-b349-588d-90bd-d23a614eee64",
+      "input": {
+        "isCompleted": false,
+        "taskId": "1204567890123456"
+      },
+      "name": "updateTask_provider_rejected",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "a3c0cf82-b349-588d-90bd-d23a614eee64",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"gid\":\"invalid\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/tasks/1204567890123456",
+          "query": {
+            "opt_fields": [
+              "name,resource_subtype,completed,completed_at,assignee.name,due_on,due_at,start_on,memberships.project.name,memberships.section.name,parent.name,permalink_url,created_at,modified_at,workspace.name,notes,custom_fields.name,custom_fields.resource_subtype,custom_fields.display_value,custom_fields.text_value,custom_fields.number_value,custom_fields.enum_value.name,custom_fields.multi_enum_values.name"
+            ]
+          },
+          "requestBody": {
+            "data": {
+              "completed": false
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "taskId": "1204567890123456"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a3c0cf82-b349-588d-90bd-d23a614eee64",
+      "input": {
+        "isCompleted": false,
+        "taskId": "1204567890123456"
+      },
+      "name": "updateTask_invalid_response",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "a3c0cf82-b349-588d-90bd-d23a614eee64",
+      "exchanges": [
+        {
+          "body": "{\"data\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sections/1201000000000101/addTask",
+          "requestBody": {
+            "data": {
+              "task": "1204567890123456"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"data\":{\"gid\":\"1204567890123456\",\"resource_type\":\"task\",\"name\":\"[REQ-1042] Replace badge reader\",\"resource_subtype\":\"default_task\",\"completed\":false,\"completed_at\":null,\"assignee\":{\"gid\":\"1200000000000042\",\"name\":\"Ada Lovelace\"},\"due_on\":\"2026-10-15\",\"due_at\":null,\"start_on\":null,\"memberships\":[{\"project\":{\"gid\":\"1201000000000001\",\"name\":\"Facilities\"},\"section\":{\"gid\":\"1201000000000101\",\"name\":\"Approved\"}}],\"parent\":null,\"workspace\":{\"gid\":\"1100000000000001\",\"name\":\"Operations\"},\"notes\":\"Badge reader at door 4 is offline.\",\"custom_fields\":[{\"gid\":\"1300000000000001\",\"name\":\"Request ID\",\"resource_subtype\":\"text\",\"display_value\":\"REQ-1042\",\"text_value\":\"REQ-1042\"},{\"gid\":\"1300000000000002\",\"name\":\"Priority\",\"resource_subtype\":\"enum\",\"display_value\":\"High\",\"enum_value\":{\"gid\":\"1300000000000021\",\"name\":\"High\"}}],\"permalink_url\":\"https://app.asana.com/0/1201000000000001/1204567890123456\",\"created_at\":\"2026-09-30T16:15:00.000Z\",\"modified_at\":\"2026-09-30T17:20:00.000Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks/1204567890123456",
+          "query": {
+            "opt_fields": [
+              "name,resource_subtype,completed,completed_at,assignee.name,due_on,due_at,start_on,memberships.project.name,memberships.section.name,parent.name,permalink_url,created_at,modified_at,workspace.name,notes,custom_fields.name,custom_fields.resource_subtype,custom_fields.display_value,custom_fields.text_value,custom_fields.number_value,custom_fields.enum_value.name,custom_fields.multi_enum_values.name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "isMovedToSection": true,
+          "task": {
+            "assignee": {
+              "id": "1200000000000042",
+              "name": "Ada Lovelace"
+            },
+            "createdAt": "2026-09-30T16:15:00Z",
+            "customFields": [
+              {
+                "displayValue": "REQ-1042",
+                "id": "1300000000000001",
+                "name": "Request ID",
+                "textValue": "REQ-1042",
+                "type": "text"
+              },
+              {
+                "displayValue": "High",
+                "enumOption": {
+                  "id": "1300000000000021",
+                  "name": "High"
+                },
+                "id": "1300000000000002",
+                "name": "Priority",
+                "type": "enum"
+              }
+            ],
+            "dueOn": "2026-10-15",
+            "id": "1204567890123456",
+            "isCompleted": false,
+            "memberships": [
+              {
+                "project": {
+                  "id": "1201000000000001",
+                  "name": "Facilities"
+                },
+                "section": {
+                  "id": "1201000000000101",
+                  "name": "Approved"
+                }
+              }
+            ],
+            "modifiedAt": "2026-09-30T17:20:00Z",
+            "name": "[REQ-1042] Replace badge reader",
+            "notes": "Badge reader at door 4 is offline.",
+            "permalinkUrl": "https://app.asana.com/0/1201000000000001/1204567890123456",
+            "resourceSubtype": "default_task",
+            "workspace": {
+              "id": "1100000000000001",
+              "name": "Operations"
+            }
+          },
+          "taskId": "1204567890123456"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a3c0cf82-b349-588d-90bd-d23a614eee64",
+      "input": {
+        "sectionId": "1201000000000101",
+        "taskId": "1204567890123456"
+      },
+      "name": "updateTask_move_only",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "148c4499-4299-5d5c-ba50-80c52f8508b9",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"gid\":\"1205000000000001\",\"resource_subtype\":\"comment_added\",\"created_at\":\"2026-09-30T16:20:00.000Z\",\"created_by\":{\"gid\":\"1200000000000042\",\"name\":\"Ada Lovelace\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/1204567890123456/stories",
+          "query": {
+            "opt_fields": [
+              "gid,created_at,created_by.gid,created_by.name,resource_subtype"
+            ]
+          },
+          "requestBody": {
+            "data": {
+              "text": "Approved by Grace.\n\u003cb\u003enot markup\u003c/b\u003e"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "author": {
+            "id": "1200000000000042",
+            "name": "Ada Lovelace"
+          },
+          "commentId": "1205000000000001",
+          "createdAt": "2026-09-30T16:20:00Z",
+          "taskId": "1204567890123456"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "148c4499-4299-5d5c-ba50-80c52f8508b9",
+      "input": {
+        "taskId": "1204567890123456",
+        "text": "Approved by Grace.\n\u003cb\u003enot markup\u003c/b\u003e"
+      },
+      "name": "addComment_added",
+      "operation": "addComment"
+    },
+    {
+      "callId": "148c4499-4299-5d5c-ba50-80c52f8508b9",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/1204567890123456/stories",
+          "query": {
+            "opt_fields": [
+              "gid,created_at,created_by.gid,created_by.name,resource_subtype"
+            ]
+          },
+          "requestBody": {
+            "data": {
+              "text": "Approved by Grace.\n\u003cb\u003enot markup\u003c/b\u003e"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "taskId": "1204567890123456"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "148c4499-4299-5d5c-ba50-80c52f8508b9",
+      "input": {
+        "taskId": "1204567890123456",
+        "text": "Approved by Grace.\n\u003cb\u003enot markup\u003c/b\u003e"
+      },
+      "name": "addComment_not_found",
+      "operation": "addComment"
+    },
+    {
+      "callId": "148c4499-4299-5d5c-ba50-80c52f8508b9",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/1204567890123456/stories",
+          "query": {
+            "opt_fields": [
+              "gid,created_at,created_by.gid,created_by.name,resource_subtype"
+            ]
+          },
+          "requestBody": {
+            "data": {
+              "text": "Approved by Grace.\n\u003cb\u003enot markup\u003c/b\u003e"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "taskId": "1204567890123456"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "148c4499-4299-5d5c-ba50-80c52f8508b9",
+      "input": {
+        "taskId": "1204567890123456",
+        "text": "Approved by Grace.\n\u003cb\u003enot markup\u003c/b\u003e"
+      },
+      "name": "addComment_provider_rejected",
+      "operation": "addComment"
+    },
+    {
+      "callId": "148c4499-4299-5d5c-ba50-80c52f8508b9",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/1204567890123456/stories",
+          "query": {
+            "opt_fields": [
+              "gid,created_at,created_by.gid,created_by.name,resource_subtype"
+            ]
+          },
+          "requestBody": {
+            "data": {
+              "text": "Approved by Grace.\n\u003cb\u003enot markup\u003c/b\u003e"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "taskId": "1204567890123456"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "148c4499-4299-5d5c-ba50-80c52f8508b9",
+      "input": {
+        "taskId": "1204567890123456",
+        "text": "Approved by Grace.\n\u003cb\u003enot markup\u003c/b\u003e"
+      },
+      "name": "addComment_uncertain_500",
+      "operation": "addComment"
+    },
+    {
+      "callId": "148c4499-4299-5d5c-ba50-80c52f8508b9",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"gid\":\"invalid\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/1204567890123456/stories",
+          "query": {
+            "opt_fields": [
+              "gid,created_at,created_by.gid,created_by.name,resource_subtype"
+            ]
+          },
+          "requestBody": {
+            "data": {
+              "text": "Approved by Grace.\n\u003cb\u003enot markup\u003c/b\u003e"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "taskId": "1204567890123456"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "148c4499-4299-5d5c-ba50-80c52f8508b9",
+      "input": {
+        "taskId": "1204567890123456",
+        "text": "Approved by Grace.\n\u003cb\u003enot markup\u003c/b\u003e"
+      },
+      "name": "addComment_uncertain_invalid_body",
+      "operation": "addComment"
+    },
+    {
+      "callId": "29c259d4-fc5d-506f-9b3e-f4a2db39450e",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks",
+          "query": {
+            "completed_since": [
+              "now"
+            ],
+            "limit": [
+              "100"
+            ],
+            "modified_since": [
+              "2026-09-29T15:30:00Z"
+            ],
+            "opt_fields": [
+              "name,resource_subtype,completed,completed_at,assignee.name,due_on,due_at,start_on,memberships.project.name,memberships.section.name,parent.name,permalink_url,created_at,modified_at"
+            ],
+            "project": [
+              "1201000000000001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "isIncompleteOnly": true,
+        "modifiedSince": "2026-09-29T15:30:00Z",
+        "pageSize": 100,
+        "projectId": "1201000000000001"
+      },
+      "name": "listTasks_rate_limited",
+      "operation": "listTasks"
+    },
+    {
+      "callId": "8fd8c572-fbe4-52b5-9355-2378f2e8c036",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks",
+          "query": {
+            "completed_since": [
+              "now"
+            ],
+            "limit": [
+              "100"
+            ],
+            "modified_since": [
+              "2026-09-29T15:30:00Z"
+            ],
+            "opt_fields": [
+              "name,resource_subtype,completed,completed_at,assignee.name,due_on,due_at,start_on,memberships.project.name,memberships.section.name,parent.name,permalink_url,created_at,modified_at"
+            ],
+            "project": [
+              "1201000000000001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "isIncompleteOnly": true,
+        "modifiedSince": "2026-09-29T15:30:00Z",
+        "pageSize": 100,
+        "projectId": "1201000000000001"
+      },
+      "name": "listTasks_unavailable",
+      "operation": "listTasks"
+    },
+    {
+      "callId": "09cd9c73-6420-5ea0-9686-30dd1e2a3528",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks",
+          "query": {
+            "completed_since": [
+              "now"
+            ],
+            "limit": [
+              "100"
+            ],
+            "modified_since": [
+              "2026-09-29T15:30:00Z"
+            ],
+            "opt_fields": [
+              "name,resource_subtype,completed,completed_at,assignee.name,due_on,due_at,start_on,memberships.project.name,memberships.section.name,parent.name,permalink_url,created_at,modified_at"
+            ],
+            "project": [
+              "1201000000000001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "isIncompleteOnly": true,
+        "modifiedSince": "2026-09-29T15:30:00Z",
+        "pageSize": 100,
+        "projectId": "1201000000000001"
+      },
+      "name": "listTasks_transport_before_send",
+      "operation": "listTasks"
+    },
+    {
+      "callId": "15801944-3752-514c-ad51-b343d4810156",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks/1204567890123456",
+          "query": {
+            "opt_fields": [
+              "name,resource_subtype,completed,completed_at,assignee.name,due_on,due_at,start_on,memberships.project.name,memberships.section.name,parent.name,permalink_url,created_at,modified_at,workspace.name,notes,custom_fields.name,custom_fields.resource_subtype,custom_fields.display_value,custom_fields.text_value,custom_fields.number_value,custom_fields.enum_value.name,custom_fields.multi_enum_values.name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taskId": "1204567890123456"
+      },
+      "name": "getTask_rate_limited",
+      "operation": "getTask"
+    },
+    {
+      "callId": "52246df8-da2d-5d37-951f-6d49fa4892f8",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks/1204567890123456",
+          "query": {
+            "opt_fields": [
+              "name,resource_subtype,completed,completed_at,assignee.name,due_on,due_at,start_on,memberships.project.name,memberships.section.name,parent.name,permalink_url,created_at,modified_at,workspace.name,notes,custom_fields.name,custom_fields.resource_subtype,custom_fields.display_value,custom_fields.text_value,custom_fields.number_value,custom_fields.enum_value.name,custom_fields.multi_enum_values.name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taskId": "1204567890123456"
+      },
+      "name": "getTask_unavailable",
+      "operation": "getTask"
+    },
+    {
+      "callId": "27628335-5099-5306-bd33-6e93313db06d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks/1204567890123456",
+          "query": {
+            "opt_fields": [
+              "name,resource_subtype,completed,completed_at,assignee.name,due_on,due_at,start_on,memberships.project.name,memberships.section.name,parent.name,permalink_url,created_at,modified_at,workspace.name,notes,custom_fields.name,custom_fields.resource_subtype,custom_fields.display_value,custom_fields.text_value,custom_fields.number_value,custom_fields.enum_value.name,custom_fields.multi_enum_values.name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taskId": "1204567890123456"
+      },
+      "name": "getTask_transport_before_send",
+      "operation": "getTask"
+    },
+    {
+      "callId": "6072a0ce-9ddb-5937-8998-675e48cfa406",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks",
+          "query": {
+            "opt_fields": [
+              "gid,name,permalink_url,created_at"
+            ]
+          },
+          "requestBody": {
+            "data": {
+              "assignee": "ada@example.com",
+              "custom_fields": {
+                "1300000000000001": "REQ-1042",
+                "1300000000000002": "1300000000000021",
+                "1300000000000003": 1250.5,
+                "1300000000000004": [
+                  "1300000000000041",
+                  "1300000000000042"
+                ]
+              },
+              "due_on": "2026-10-15",
+              "memberships": [
+                {
+                  "project": "1201000000000001",
+                  "section": "1201000000000101"
+                }
+              ],
+              "name": "[REQ-1042] Replace badge reader",
+              "notes": "Badge reader at door 4 is offline.\nApproved by Grace."
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6072a0ce-9ddb-5937-8998-675e48cfa406",
+      "input": {
+        "assigneeId": "ada@example.com",
+        "customFields": [
+          {
+            "customFieldId": "1300000000000001",
+            "text": "REQ-1042"
+          },
+          {
+            "customFieldId": "1300000000000002",
+            "enumOptionId": "1300000000000021"
+          },
+          {
+            "customFieldId": "1300000000000003",
+            "number": 1250.5
+          },
+          {
+            "customFieldId": "1300000000000004",
+            "multiEnumOptionIds": [
+              "1300000000000041",
+              "1300000000000042"
+            ]
+          }
+        ],
+        "dueOn": "2026-10-15",
+        "name": "[REQ-1042] Replace badge reader",
+        "notes": "Badge reader at door 4 is offline.\nApproved by Grace.",
+        "projectId": "1201000000000001",
+        "sectionId": "1201000000000101"
+      },
+      "name": "createTask_rate_limited",
+      "operation": "createTask"
+    },
+    {
+      "callId": "6072a0ce-9ddb-5937-8998-675e48cfa406",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks",
+          "query": {
+            "opt_fields": [
+              "gid,name,permalink_url,created_at"
+            ]
+          },
+          "requestBody": {
+            "data": {
+              "assignee": "ada@example.com",
+              "custom_fields": {
+                "1300000000000001": "REQ-1042",
+                "1300000000000002": "1300000000000021",
+                "1300000000000003": 1250.5,
+                "1300000000000004": [
+                  "1300000000000041",
+                  "1300000000000042"
+                ]
+              },
+              "due_on": "2026-10-15",
+              "memberships": [
+                {
+                  "project": "1201000000000001",
+                  "section": "1201000000000101"
+                }
+              ],
+              "name": "[REQ-1042] Replace badge reader",
+              "notes": "Badge reader at door 4 is offline.\nApproved by Grace."
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6072a0ce-9ddb-5937-8998-675e48cfa406",
+      "input": {
+        "assigneeId": "ada@example.com",
+        "customFields": [
+          {
+            "customFieldId": "1300000000000001",
+            "text": "REQ-1042"
+          },
+          {
+            "customFieldId": "1300000000000002",
+            "enumOptionId": "1300000000000021"
+          },
+          {
+            "customFieldId": "1300000000000003",
+            "number": 1250.5
+          },
+          {
+            "customFieldId": "1300000000000004",
+            "multiEnumOptionIds": [
+              "1300000000000041",
+              "1300000000000042"
+            ]
+          }
+        ],
+        "dueOn": "2026-10-15",
+        "name": "[REQ-1042] Replace badge reader",
+        "notes": "Badge reader at door 4 is offline.\nApproved by Grace.",
+        "projectId": "1201000000000001",
+        "sectionId": "1201000000000101"
+      },
+      "name": "createTask_unavailable",
+      "operation": "createTask"
+    },
+    {
+      "callId": "6072a0ce-9ddb-5937-8998-675e48cfa406",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks",
+          "query": {
+            "opt_fields": [
+              "gid,name,permalink_url,created_at"
+            ]
+          },
+          "requestBody": {
+            "data": {
+              "assignee": "ada@example.com",
+              "custom_fields": {
+                "1300000000000001": "REQ-1042",
+                "1300000000000002": "1300000000000021",
+                "1300000000000003": 1250.5,
+                "1300000000000004": [
+                  "1300000000000041",
+                  "1300000000000042"
+                ]
+              },
+              "due_on": "2026-10-15",
+              "memberships": [
+                {
+                  "project": "1201000000000001",
+                  "section": "1201000000000101"
+                }
+              ],
+              "name": "[REQ-1042] Replace badge reader",
+              "notes": "Badge reader at door 4 is offline.\nApproved by Grace."
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6072a0ce-9ddb-5937-8998-675e48cfa406",
+      "input": {
+        "assigneeId": "ada@example.com",
+        "customFields": [
+          {
+            "customFieldId": "1300000000000001",
+            "text": "REQ-1042"
+          },
+          {
+            "customFieldId": "1300000000000002",
+            "enumOptionId": "1300000000000021"
+          },
+          {
+            "customFieldId": "1300000000000003",
+            "number": 1250.5
+          },
+          {
+            "customFieldId": "1300000000000004",
+            "multiEnumOptionIds": [
+              "1300000000000041",
+              "1300000000000042"
+            ]
+          }
+        ],
+        "dueOn": "2026-10-15",
+        "name": "[REQ-1042] Replace badge reader",
+        "notes": "Badge reader at door 4 is offline.\nApproved by Grace.",
+        "projectId": "1201000000000001",
+        "sectionId": "1201000000000101"
+      },
+      "name": "createTask_transport_before_send",
+      "operation": "createTask"
+    },
+    {
+      "callId": "a3c0cf82-b349-588d-90bd-d23a614eee64",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sections/1201000000000101/addTask",
+          "requestBody": {
+            "data": {
+              "task": "1204567890123456"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a3c0cf82-b349-588d-90bd-d23a614eee64",
+      "input": {
+        "assigneeId": "1200000000000042",
+        "customFields": [
+          {
+            "customFieldId": "1300000000000001",
+            "text": "REQ-1042"
+          }
+        ],
+        "dueOn": "2026-10-15",
+        "isCompleted": true,
+        "sectionId": "1201000000000101",
+        "taskId": "1204567890123456"
+      },
+      "name": "updateTask_rate_limited",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "a3c0cf82-b349-588d-90bd-d23a614eee64",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sections/1201000000000101/addTask",
+          "requestBody": {
+            "data": {
+              "task": "1204567890123456"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a3c0cf82-b349-588d-90bd-d23a614eee64",
+      "input": {
+        "assigneeId": "1200000000000042",
+        "customFields": [
+          {
+            "customFieldId": "1300000000000001",
+            "text": "REQ-1042"
+          }
+        ],
+        "dueOn": "2026-10-15",
+        "isCompleted": true,
+        "sectionId": "1201000000000101",
+        "taskId": "1204567890123456"
+      },
+      "name": "updateTask_unavailable",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "a3c0cf82-b349-588d-90bd-d23a614eee64",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/sections/1201000000000101/addTask",
+          "requestBody": {
+            "data": {
+              "task": "1204567890123456"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a3c0cf82-b349-588d-90bd-d23a614eee64",
+      "input": {
+        "assigneeId": "1200000000000042",
+        "customFields": [
+          {
+            "customFieldId": "1300000000000001",
+            "text": "REQ-1042"
+          }
+        ],
+        "dueOn": "2026-10-15",
+        "isCompleted": true,
+        "sectionId": "1201000000000101",
+        "taskId": "1204567890123456"
+      },
+      "name": "updateTask_transport_before_send",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "148c4499-4299-5d5c-ba50-80c52f8508b9",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/1204567890123456/stories",
+          "query": {
+            "opt_fields": [
+              "gid,created_at,created_by.gid,created_by.name,resource_subtype"
+            ]
+          },
+          "requestBody": {
+            "data": {
+              "text": "Approved by Grace.\n\u003cb\u003enot markup\u003c/b\u003e"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "148c4499-4299-5d5c-ba50-80c52f8508b9",
+      "input": {
+        "taskId": "1204567890123456",
+        "text": "Approved by Grace.\n\u003cb\u003enot markup\u003c/b\u003e"
+      },
+      "name": "addComment_rate_limited",
+      "operation": "addComment"
+    },
+    {
+      "callId": "148c4499-4299-5d5c-ba50-80c52f8508b9",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/1204567890123456/stories",
+          "query": {
+            "opt_fields": [
+              "gid,created_at,created_by.gid,created_by.name,resource_subtype"
+            ]
+          },
+          "requestBody": {
+            "data": {
+              "text": "Approved by Grace.\n\u003cb\u003enot markup\u003c/b\u003e"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "148c4499-4299-5d5c-ba50-80c52f8508b9",
+      "input": {
+        "taskId": "1204567890123456",
+        "text": "Approved by Grace.\n\u003cb\u003enot markup\u003c/b\u003e"
+      },
+      "name": "addComment_unavailable",
+      "operation": "addComment"
+    },
+    {
+      "callId": "148c4499-4299-5d5c-ba50-80c52f8508b9",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/1204567890123456/stories",
+          "query": {
+            "opt_fields": [
+              "gid,created_at,created_by.gid,created_by.name,resource_subtype"
+            ]
+          },
+          "requestBody": {
+            "data": {
+              "text": "Approved by Grace.\n\u003cb\u003enot markup\u003c/b\u003e"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "148c4499-4299-5d5c-ba50-80c52f8508b9",
+      "input": {
+        "taskId": "1204567890123456",
+        "text": "Approved by Grace.\n\u003cb\u003enot markup\u003c/b\u003e"
+      },
+      "name": "addComment_transport_before_send",
+      "operation": "addComment"
+    },
+    {
+      "callId": "6072a0ce-9ddb-5937-8998-675e48cfa406",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"gid\":\"1204567890123456\",\"name\":\"[REQ-1042] Replace badge reader\",\"permalink_url\":\"https://app.asana.com/0/1201000000000001/1204567890123456\",\"created_at\":\"2026-09-30T16:15:00.000Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tasks/1204567890123456",
+          "query": {
+            "opt_fields": [
+              "gid,name,permalink_url,created_at"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "createdAt": "2026-09-30T16:15:00Z",
+          "name": "[REQ-1042] Replace badge reader",
+          "permalinkUrl": "https://app.asana.com/0/1201000000000001/1204567890123456",
+          "projectId": "1201000000000001",
+          "sectionId": "1201000000000101",
+          "taskId": "1204567890123456"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6072a0ce-9ddb-5937-8998-675e48cfa406",
+      "input": {
+        "assigneeId": "ada@example.com",
+        "customFields": [
+          {
+            "customFieldId": "1300000000000001",
+            "text": "REQ-1042"
+          },
+          {
+            "customFieldId": "1300000000000002",
+            "enumOptionId": "1300000000000021"
+          },
+          {
+            "customFieldId": "1300000000000003",
+            "number": 1250.5
+          },
+          {
+            "customFieldId": "1300000000000004",
+            "multiEnumOptionIds": [
+              "1300000000000041",
+              "1300000000000042"
+            ]
+          }
+        ],
+        "dueOn": "2026-10-15",
+        "name": "[REQ-1042] Replace badge reader",
+        "notes": "Badge reader at door 4 is offline.\nApproved by Grace.",
+        "projectId": "1201000000000001",
+        "sectionId": "1201000000000101"
+      },
+      "name": "createTask_checkpoint_readback",
+      "operation": "createTask",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "6072a0ce-9ddb-5937-8998-675e48cfa406",
+        "providerId": "1204567890123456",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "148c4499-4299-5d5c-ba50-80c52f8508b9",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"gid\":\"1205000000000001\",\"resource_subtype\":\"comment_added\",\"created_at\":\"2026-09-30T16:20:00.000Z\",\"created_by\":{\"gid\":\"1200000000000042\",\"name\":\"Ada Lovelace\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/stories/1205000000000001",
+          "query": {
+            "opt_fields": [
+              "gid,created_at,created_by.gid,created_by.name,resource_subtype"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "author": {
+            "id": "1200000000000042",
+            "name": "Ada Lovelace"
+          },
+          "commentId": "1205000000000001",
+          "createdAt": "2026-09-30T16:20:00Z",
+          "taskId": "1204567890123456"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "148c4499-4299-5d5c-ba50-80c52f8508b9",
+      "input": {
+        "taskId": "1204567890123456",
+        "text": "Approved by Grace.\n\u003cb\u003enot markup\u003c/b\u003e"
+      },
+      "name": "addComment_checkpoint_readback",
+      "operation": "addComment",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "148c4499-4299-5d5c-ba50-80c52f8508b9",
+        "providerId": "1205000000000001",
+        "state": "claimed"
+      }
+    },
+    {
+      "attempts": 2,
+      "callId": "6072a0ce-9ddb-5937-8998-675e48cfa406",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks",
+          "query": {
+            "opt_fields": [
+              "gid,name,permalink_url,created_at"
+            ]
+          },
+          "requestBody": {
+            "data": {
+              "assignee": "ada@example.com",
+              "custom_fields": {
+                "1300000000000001": "REQ-1042",
+                "1300000000000002": "1300000000000021",
+                "1300000000000003": 1250.5,
+                "1300000000000004": [
+                  "1300000000000041",
+                  "1300000000000042"
+                ]
+              },
+              "due_on": "2026-10-15",
+              "memberships": [
+                {
+                  "project": "1201000000000001",
+                  "section": "1201000000000101"
+                }
+              ],
+              "name": "[REQ-1042] Replace badge reader",
+              "notes": "Badge reader at door 4 is offline.\nApproved by Grace."
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        },
+        {
+          "body": "{\"data\":{\"gid\":\"1204567890123456\",\"name\":\"[REQ-1042] Replace badge reader\",\"permalink_url\":\"https://app.asana.com/0/1201000000000001/1204567890123456\",\"created_at\":\"2026-09-30T16:15:00.000Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks",
+          "query": {
+            "opt_fields": [
+              "gid,name,permalink_url,created_at"
+            ]
+          },
+          "requestBody": {
+            "data": {
+              "assignee": "ada@example.com",
+              "custom_fields": {
+                "1300000000000001": "REQ-1042",
+                "1300000000000002": "1300000000000021",
+                "1300000000000003": 1250.5,
+                "1300000000000004": [
+                  "1300000000000041",
+                  "1300000000000042"
+                ]
+              },
+              "due_on": "2026-10-15",
+              "memberships": [
+                {
+                  "project": "1201000000000001",
+                  "section": "1201000000000101"
+                }
+              ],
+              "name": "[REQ-1042] Replace badge reader",
+              "notes": "Badge reader at door 4 is offline.\nApproved by Grace."
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "createdAt": "2026-09-30T16:15:00Z",
+          "name": "[REQ-1042] Replace badge reader",
+          "permalinkUrl": "https://app.asana.com/0/1201000000000001/1204567890123456",
+          "projectId": "1201000000000001",
+          "sectionId": "1201000000000101",
+          "taskId": "1204567890123456"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6072a0ce-9ddb-5937-8998-675e48cfa406",
+      "input": {
+        "assigneeId": "ada@example.com",
+        "customFields": [
+          {
+            "customFieldId": "1300000000000001",
+            "text": "REQ-1042"
+          },
+          {
+            "customFieldId": "1300000000000002",
+            "enumOptionId": "1300000000000021"
+          },
+          {
+            "customFieldId": "1300000000000003",
+            "number": 1250.5
+          },
+          {
+            "customFieldId": "1300000000000004",
+            "multiEnumOptionIds": [
+              "1300000000000041",
+              "1300000000000042"
+            ]
+          }
+        ],
+        "dueOn": "2026-10-15",
+        "name": "[REQ-1042] Replace badge reader",
+        "notes": "Badge reader at door 4 is offline.\nApproved by Grace.",
+        "projectId": "1201000000000001",
+        "sectionId": "1201000000000101"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "RATE_LIMIT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createTask_rate_limit_then_success",
+      "operation": "createTask"
+    },
+    {
+      "attempts": 2,
+      "callId": "148c4499-4299-5d5c-ba50-80c52f8508b9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/1204567890123456/stories",
+          "query": {
+            "opt_fields": [
+              "gid,created_at,created_by.gid,created_by.name,resource_subtype"
+            ]
+          },
+          "requestBody": {
+            "data": {
+              "text": "Approved by Grace.\n\u003cb\u003enot markup\u003c/b\u003e"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        },
+        {
+          "body": "{\"data\":{\"gid\":\"1205000000000001\",\"resource_subtype\":\"comment_added\",\"created_at\":\"2026-09-30T16:20:00.000Z\",\"created_by\":{\"gid\":\"1200000000000042\",\"name\":\"Ada Lovelace\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/tasks/1204567890123456/stories",
+          "query": {
+            "opt_fields": [
+              "gid,created_at,created_by.gid,created_by.name,resource_subtype"
+            ]
+          },
+          "requestBody": {
+            "data": {
+              "text": "Approved by Grace.\n\u003cb\u003enot markup\u003c/b\u003e"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer asana-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "author": {
+            "id": "1200000000000042",
+            "name": "Ada Lovelace"
+          },
+          "commentId": "1205000000000001",
+          "createdAt": "2026-09-30T16:20:00Z",
+          "taskId": "1204567890123456"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "148c4499-4299-5d5c-ba50-80c52f8508b9",
+      "input": {
+        "taskId": "1204567890123456",
+        "text": "Approved by Grace.\n\u003cb\u003enot markup\u003c/b\u003e"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "RATE_LIMIT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "addComment_rate_limit_then_success",
+      "operation": "addComment"
+    },
+    {
+      "callId": "52b9bedc-a1cb-52a7-bef4-cbf9cd47c3b4",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "tasks": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listTasks_validation_defect",
+      "operation": "listTasks"
+    },
+    {
+      "callId": "96b68845-333c-5d6a-b1c2-a6bb95906a3f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "createdAt": "0001-01-01T00:00:00Z",
+          "id": "",
+          "isCompleted": false,
+          "modifiedAt": "0001-01-01T00:00:00Z",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "taskId": "invalid"
+      },
+      "name": "getTask_validation_defect",
+      "operation": "getTask"
+    },
+    {
+      "callId": "6072a0ce-9ddb-5937-8998-675e48cfa406",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "name": "Missing container"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "6072a0ce-9ddb-5937-8998-675e48cfa406",
+      "input": {
+        "name": "Missing container"
+      },
+      "name": "createTask_validation_defect",
+      "operation": "createTask"
+    },
+    {
+      "callId": "a3c0cf82-b349-588d-90bd-d23a614eee64",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "taskId": "invalid"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a3c0cf82-b349-588d-90bd-d23a614eee64",
+      "input": {
+        "isCompleted": true,
+        "taskId": "invalid"
+      },
+      "name": "updateTask_validation_defect",
+      "operation": "updateTask"
+    },
+    {
+      "callId": "148c4499-4299-5d5c-ba50-80c52f8508b9",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "taskId": "invalid"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "148c4499-4299-5d5c-ba50-80c52f8508b9",
+      "input": {
+        "taskId": "invalid",
+        "text": "Approved."
+      },
+      "name": "addComment_validation_defect",
+      "operation": "addComment"
+    }
+  ],
+  "schemaVersion": 1
+}

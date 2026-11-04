@@ -1,50 +1,31 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Manifest-backed Coda scripts for consuming Flow tests."""
+"""Public manifest-backed mock helpers."""
 
-from dex_connectors.sdk import ConnectionRef
-from dex_connectors.sdk.connectormock import Case, Query
+from dex_connectors.sdk import ConnectionRef as ConnectionRef
+from dex_connectors.sdk.connectormock import Case as Case
+from dex_connectors.sdk.connectormock import Query as Query
 
-from ..client import CONNECTOR_ID, GET_ROW_DEFINITION, LIST_ROWS_DEFINITION
-from ..connection import Connection, new_connection_with_operations
-from ..models import GetRowInput, GetRowOutput, ListRowsInput, ListRowsOutput
+from .._generated.mock import Mock as Mock
+from .._generated.mock import get_row_default_get_row as get_row_default_get_row
+from .._generated.mock import list_rows_default_list_rows as list_rows_default_list_rows
+from ..client import CONNECTOR_ID as CONNECTOR_ID
+from ..client import GET_ROW_DEFINITION as GET_ROW_DEFINITION
+from ..client import LIST_ROWS_DEFINITION as LIST_ROWS_DEFINITION
+from ..connection import Connection as Connection
+from ..connection import new_connection_with_operations as new_connection_with_operations
+from ..models import GetRowInput as GetRowInput
+from ..models import GetRowOutput as GetRowOutput
+from ..models import ListRowsInput as ListRowsInput
+from ..models import ListRowsOutput as ListRowsOutput
 
+__all__ = [
+    "Mock",
+    "list_rows_default_list_rows",
+    "get_row_default_get_row",
+]
 
-def list_rows_default_list_rows() -> Case[ListRowsOutput]:
-    """Return the manifest's listRows defaultListRows answer."""
-    return Case.branch_result(
-        "listed",
-        ListRowsOutput(
-            {
-                "items": [{"id": "i-Meridian", "name": "Meridian", "values": {"c-Name": "Meridian"}}],
-                "nextPageToken": "",
-            }
-        ),
-    )
+Mock.__doc__ = "Script Coda Queries, defaulting to their manifest answers."
 
-
-def get_row_default_get_row() -> Case[GetRowOutput]:
-    """Return the manifest's getRow defaultGetRow answer."""
-    return Case.branch_result(
-        "found", GetRowOutput({"id": "i-Meridian", "name": "Meridian", "values": {"c-Name": "Meridian"}})
-    )
-
-
-class Mock:
-    """Script Coda Queries, defaulting to their manifest answers."""
-
-    def __init__(self, connection_name: str = "coda") -> None:
-        self.list_rows_script: Query[ListRowsInput, ListRowsOutput] = Query(LIST_ROWS_DEFINITION)
-        self.list_rows_script.default(list_rows_default_list_rows())
-        self.get_row_script: Query[GetRowInput, GetRowOutput] = Query(GET_ROW_DEFINITION)
-        self.get_row_script.default(get_row_default_get_row())
-        self._connection = new_connection_with_operations(
-            self.list_rows_script, self.get_row_script, ConnectionRef(CONNECTOR_ID, connection_name)
-        )
-
-    def connection(self) -> Connection:
-        """Return this mock's named connection for Step registration."""
-        return self._connection
-
-
-__all__ = ["Mock", "list_rows_default_list_rows", "get_row_default_get_row"]
+list_rows_default_list_rows.__doc__ = "Return the manifest's listRows defaultListRows answer."
+get_row_default_get_row.__doc__ = "Return the manifest's getRow defaultGetRow answer."

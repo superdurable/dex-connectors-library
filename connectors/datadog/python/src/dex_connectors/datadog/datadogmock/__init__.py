@@ -1,52 +1,43 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Manifest-backed Datadog scripts for consuming Flow tests."""
+"""Public manifest-backed mock helpers."""
 
-from dex_connectors.sdk import ConnectionRef, Failure
-from dex_connectors.sdk.connectormock import Case, Query
+from dex_connectors.sdk import ConnectionRef as ConnectionRef
+from dex_connectors.sdk import Failure as Failure
+from dex_connectors.sdk.connectormock import Case as Case
+from dex_connectors.sdk.connectormock import Case as _Case
+from dex_connectors.sdk.connectormock import Query as Query
 
-from ..client import CONNECTOR_ID, LIST_MONITORS_DEFINITION, LISTED, QUERIED, QUERY_METRICS_DEFINITION
-from ..connection import Connection, new_connection_with_operations
-from ..models import ListMonitorsInput, MetricSeries, MetricsQuery, Monitor, MonitorsPage, QueryMetricsInput
+from .._generated.mock import Mock as Mock
+from .._generated.mock import list_monitors_listed as list_monitors_listed
+from .._generated.mock import list_monitors_listed_default as _list_monitors_listed_default
+from .._generated.mock import query_metrics_queried as query_metrics_queried
+from .._generated.mock import query_metrics_queried_default as _query_metrics_queried_default
+from ..client import CONNECTOR_ID as CONNECTOR_ID
+from ..client import LIST_MONITORS_DEFINITION as LIST_MONITORS_DEFINITION
+from ..client import LISTED as LISTED
+from ..client import QUERIED as QUERIED
+from ..client import QUERY_METRICS_DEFINITION as QUERY_METRICS_DEFINITION
+from ..connection import Connection as Connection
+from ..connection import new_connection_with_operations as new_connection_with_operations
+from ..models import ListMonitorsInput as ListMonitorsInput
+from ..models import MetricSeries as MetricSeries
+from ..models import MetricsQuery as MetricsQuery
+from ..models import MetricsQuery as _MetricsQuery
+from ..models import Monitor as Monitor
+from ..models import MonitorsPage as MonitorsPage
+from ..models import MonitorsPage as _MonitorsPage
+from ..models import QueryMetricsInput as QueryMetricsInput
 
 
-def query_metrics_queried(value: MetricsQuery, failure: Failure | None = None) -> Case[MetricsQuery]:
-    """Script the successful queried route."""
-    return Case.branch_result(QUERIED, value, failure)
-
-
-def query_metrics_default_answer() -> Case[MetricsQuery]:
-    """Return the manifest's queryMetrics default answer."""
-    return query_metrics_queried(
-        MetricsQuery("ok", (MetricSeries("system.cpu.user", ((1761436800000, 0.23),)),))
-    )
-
-
-def list_monitors_listed(value: MonitorsPage, failure: Failure | None = None) -> Case[MonitorsPage]:
-    """Script the successful listed route."""
-    return Case.branch_result(LISTED, value, failure)
-
-
-def list_monitors_default_answer() -> Case[MonitorsPage]:
+def list_monitors_default_answer() -> _Case[_MonitorsPage]:
     """Return the manifest's listMonitors default answer."""
-    return list_monitors_listed(MonitorsPage((Monitor(12345, "Meridian API latency", "metric alert", "OK"),)))
+    return _list_monitors_listed_default()
 
 
-class Mock:
-    """Script Datadog Queries, defaulting to their manifest answers."""
-
-    def __init__(self, connection_name: str = "datadog") -> None:
-        self.query_metrics_script: Query[QueryMetricsInput, MetricsQuery] = Query(QUERY_METRICS_DEFINITION)
-        self.query_metrics_script.default(query_metrics_default_answer())
-        self.list_monitors_script: Query[ListMonitorsInput, MonitorsPage] = Query(LIST_MONITORS_DEFINITION)
-        self.list_monitors_script.default(list_monitors_default_answer())
-        self._connection = new_connection_with_operations(
-            self.query_metrics_script, self.list_monitors_script, ConnectionRef(CONNECTOR_ID, connection_name)
-        )
-
-    def connection(self) -> Connection:
-        """Return this mock's named connection for Step registration."""
-        return self._connection
+def query_metrics_default_answer() -> _Case[_MetricsQuery]:
+    """Return the manifest's queryMetrics default answer."""
+    return _query_metrics_queried_default()
 
 
 __all__ = [
@@ -56,3 +47,8 @@ __all__ = [
     "list_monitors_listed",
     "list_monitors_default_answer",
 ]
+
+Mock.__doc__ = "Script Datadog Queries, defaulting to their manifest answers."
+
+query_metrics_queried.__doc__ = "Script the successful queried route."
+list_monitors_listed.__doc__ = "Script the successful listed route."

@@ -17,6 +17,12 @@ jobs:
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
       count: ${{ steps.plan.outputs.count }}
+      common: ${{ steps.plan.outputs.common }}
+      sdkpython: ${{ steps.plan.outputs.sdkpython }}
+      sdkts: ${{ steps.plan.outputs.sdkts }}
+      sdkgo_integration: ${{ steps.plan.outputs.sdkgo_integration }}
+      react: ${{ steps.plan.outputs.react }}
+      site: ${{ steps.plan.outputs.site }}
     env:
       CONNECTOR_SCOPE: ${{ (github.event_name == 'pull_request' || github.event_name == 'push') && 'changed' || 'all' }}
       CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
@@ -27,7 +33,9 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version: '1.24'
+          check-latest: false
+          token: ''
       - name: Plan affected Connector shards
         id: plan
         run: |
@@ -43,8 +51,21 @@ jobs:
             arguments+=(--base "${CONNECTOR_BASE}")
           fi
           GOWORK=off go run ./cmd/connectorctl test-matrix "${arguments[@]}"
+      - name: Resolve release inventory once for connector validation
+        if: steps.plan.outputs.count != '0' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 script/release/github_release_inventory.py --output "${RUNNER_TEMP}/release-inventory.json"
+      - uses: actions/upload-artifact@v4
+        if: steps.plan.outputs.count != '0' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+        with:
+          name: ci-release-inventory
+          path: ${{ runner.temp }}/release-inventory.json
+          retention-days: 1
 
   dex-version-plan:
+    needs: connector-plan
+    if: needs.connector-plan.outputs.count != '0' || needs.connector-plan.outputs.sdkpython == 'true' || needs.connector-plan.outputs.sdkts == 'true' || needs.connector-plan.outputs.sdkgo_integration == 'true'
     runs-on: ubuntu-latest
     outputs:
       cli_tag: ${{ steps.versions.outputs.cli_tag }}
@@ -55,7 +76,9 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version: '1.24'
+          check-latest: false
+          token: ''
       - name: Resolve Dex versions once for this run
         id: versions
         env:
@@ -63,14 +86,21 @@ jobs:
         run: python3 script/dex_compatibility.py plan --github-output "${GITHUB_OUTPUT}"
 
   common:
+    needs: connector-plan
+    if: needs.connector-plan.outputs.common == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
       - uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version: '1.24'
+          check-latest: false
+          token: ''
           cache: true
           cache-dependency-path: |
             go.sum
@@ -78,24 +108,19 @@ jobs:
       - run: make test-common
 
   sdkpython:
+    needs: connector-plan
+    if: needs.connector-plan.outputs.sdkpython == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - uses: astral-sh/setup-uv@v7
-      - name: Test Python connector SDK when changed
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
-        run: |
-          if [ ! -f sdkpython/pyproject.toml ]; then exit 0; fi
-          if [ -n "${BASE_SHA}" ] && git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null &&
-             ! git diff --name-only "${BASE_SHA}" HEAD | grep -Eq '^sdkpython/'; then exit 0; fi
-          make test-sdkpython
+      - run: make test-sdkpython
 
   sdkpython-integration:
-    needs: dex-version-plan
-    if: github.event_name != 'schedule'
+    needs: [connector-plan, dex-version-plan]
+    if: github.event_name != 'schedule' && needs.connector-plan.outputs.sdkpython == 'true'
     runs-on: ubuntu-latest
     env:
       DEX_CLI_RELEASE_TAG: ${{ needs.dex-version-plan.outputs.cli_tag }}
@@ -106,23 +131,9 @@ jobs:
         with:
           fetch-depth: 0
       - uses: astral-sh/setup-uv@v7
-      - name: Check Python SDK changes
-        id: sdkpython_changes
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
-        run: |
-          if [ ! -f sdkpython/pyproject.toml ]; then echo 'run=false' >> "$GITHUB_OUTPUT"; exit 0; fi
-          if [ -n "$BASE_SHA" ] && git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null &&
-             ! git diff --name-only "$BASE_SHA" HEAD | grep -Eq '^sdkpython/'; then
-            echo 'run=false' >> "$GITHUB_OUTPUT"
-          else
-            echo 'run=true' >> "$GITHUB_OUTPUT"
-          fi
       - name: Install Dex CLI from the run's resolved release
-        if: steps.sdkpython_changes.outputs.run == 'true'
         run: python3 script/dex_compatibility.py install-dexcli --output .bin/dexcli
       - name: Run Python SDK against real Dex Flows
-        if: steps.sdkpython_changes.outputs.run == 'true'
         run: |
           uv sync --locked --project sdkpython
           mkdir -p sdkpython/.dexcli-data/logs
@@ -143,6 +154,8 @@ jobs:
           exit 1
 
   sdkts:
+    needs: connector-plan
+    if: needs.connector-plan.outputs.sdkts == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -151,18 +164,11 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-      - name: Test TypeScript connector SDK when changed
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
-        run: |
-          if [ ! -f sdkts/package.json ]; then exit 0; fi
-          if [ -n "${BASE_SHA}" ] && git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null &&
-             ! git diff --name-only "${BASE_SHA}" HEAD | grep -Eq '^sdkts/'; then exit 0; fi
-          make test-sdkts
+      - run: make test-sdkts
 
   sdkts-integration:
-    needs: dex-version-plan
-    if: github.event_name != 'schedule'
+    needs: [connector-plan, dex-version-plan]
+    if: github.event_name != 'schedule' && needs.connector-plan.outputs.sdkts == 'true'
     runs-on: ubuntu-latest
     env:
       DEX_CLI_RELEASE_TAG: ${{ needs.dex-version-plan.outputs.cli_tag }}
@@ -175,23 +181,9 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-      - name: Check TypeScript SDK changes
-        id: sdkts_changes
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
-        run: |
-          if [ ! -f sdkts/package.json ]; then echo 'run=false' >> "$GITHUB_OUTPUT"; exit 0; fi
-          if [ -n "$BASE_SHA" ] && git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null &&
-             ! git diff --name-only "$BASE_SHA" HEAD | grep -Eq '^sdkts/'; then
-            echo 'run=false' >> "$GITHUB_OUTPUT"
-          else
-            echo 'run=true' >> "$GITHUB_OUTPUT"
-          fi
       - name: Install Dex CLI from the run's resolved release
-        if: steps.sdkts_changes.outputs.run == 'true'
         run: python3 script/dex_compatibility.py install-dexcli --output .bin/dexcli
       - name: Run TypeScript SDK against real Dex Flows
-        if: steps.sdkts_changes.outputs.run == 'true'
         run: |
           npm ci --prefix sdkts
           mkdir -p "$RUNNER_TEMP/sdkts-dex/logs"
@@ -217,6 +209,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
+      GH_RELEASE_INVENTORY_PATH: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '/tmp/release-inventory.json' || '' }}
       CONNECTOR_SCOPE: ${{ (github.event_name == 'pull_request' || github.event_name == 'push') && 'changed' || 'all' }}
       CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
       CONNECTOR_HEAD: ${{ github.sha }}
@@ -224,14 +217,277 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        with:
+          name: ci-release-inventory
+          path: /tmp
       - uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version: '1.24'
+          check-latest: false
+          token: ''
       - uses: astral-sh/setup-uv@v7
       - uses: actions/setup-node@v6
         with:
           node-version: 24
       - run: make test-python-connectors test-typescript-connectors
+      - name: Replay Go-verified scenarios for directly changed connectors
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
+        run: make test-connector-conformance
+      - name: Prove connector conformance runners reject fixture mutations
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
+        run: python3 script/connector_conformance.py --mutation-self-test
+
+  database-language-plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      count: ${{ steps.plan.outputs.count }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Select exempt database packages
+        id: plan
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+        run: |
+          args=(--database-ci-matrix)
+          if [ -n "$BASE_SHA" ] && git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+            args+=(--base "$BASE_SHA")
+          fi
+          matrix="$(python3 script/connector_conformance.py "${args[@]}")"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "count=$(python3 -c 'import json,sys; print(len(json.load(sys.stdin)["include"]))' <<< "$matrix")" >> "$GITHUB_OUTPUT"
+
+  database-language-integration:
+    needs: database-language-plan
+    if: needs.database-language-plan.outputs.count != '0'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.database-language-plan.outputs.matrix) }}
+    services:
+      database:
+        image: ${{ matrix.image }}
+        ports:
+          - ${{ matrix.port }}:${{ matrix.port }}
+        env:
+          POSTGRES_PASSWORD: connector_test
+          POSTGRES_DB: connector_test
+          MYSQL_ROOT_PASSWORD: connector_test
+          MYSQL_DATABASE: connector_test
+          ACCEPT_EULA: Y
+          MSSQL_SA_PASSWORD: Connector_test_123!
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Run native-driver integration suites
+        env:
+          CONNECTOR: ${{ matrix.connector }}
+          DATABASE_PORT: ${{ matrix.port }}
+        run: |
+          for _ in $(seq 1 120); do
+            if (echo > /dev/tcp/127.0.0.1/"$DATABASE_PORT") 2>/dev/null; then break; fi
+            sleep 1
+          done
+          (echo > /dev/tcp/127.0.0.1/"$DATABASE_PORT") 2>/dev/null
+          case "$CONNECTOR" in
+            connectors/postgresql)
+              export POSTGRESQL_CONNECTOR_TEST_HOST=127.0.0.1 POSTGRESQL_CONNECTOR_TEST_PORT=5432
+              export POSTGRESQL_CONNECTOR_TEST_DATABASE=connector_test POSTGRESQL_CONNECTOR_TEST_USER=postgres
+              export POSTGRESQL_CONNECTOR_TEST_PASSWORD=connector_test POSTGRESQL_CONNECTOR_TEST_SSL_MODE=disable
+              ;;
+            connectors/mysql)
+              export MYSQL_CONNECTOR_TEST_HOST=127.0.0.1 MYSQL_CONNECTOR_TEST_PORT=3306
+              export MYSQL_CONNECTOR_TEST_DATABASE=connector_test MYSQL_CONNECTOR_TEST_USER=root
+              export MYSQL_CONNECTOR_TEST_PASSWORD=connector_test MYSQL_CONNECTOR_TEST_SSL_MODE=disabled
+              ;;
+            connectors/microsoft/sql-server)
+              export SQLSERVER_CONNECTOR_TEST_HOST=127.0.0.1 SQLSERVER_CONNECTOR_TEST_PORT=1433
+              export SQLSERVER_CONNECTOR_TEST_DATABASE=master SQLSERVER_CONNECTOR_TEST_USER=sa
+              export SQLSERVER_CONNECTOR_TEST_PASSWORD='Connector_test_123!' SQLSERVER_CONNECTOR_TEST_ENCRYPT=disable
+              ;;
+          esac
+          if [ -f "$CONNECTOR/python/pyproject.toml" ]; then
+            test -d "$CONNECTOR/python/tests/integration"
+            uv sync --locked --project "$CONNECTOR/python"
+            uv run --project "$CONNECTOR/python" pytest "$CONNECTOR/python/tests/integration"
+          fi
+          if [ -f "$CONNECTOR/typescript/package.json" ]; then
+            test -f "$CONNECTOR/typescript/test/integration.test.ts"
+            npm ci --prefix "$CONNECTOR/typescript"
+            npm run build --prefix "$CONNECTOR/typescript"
+            "$CONNECTOR/typescript/node_modules/.bin/vitest" run test/integration.test.ts --root "$CONNECTOR/typescript"
+          fi
+          if [ "$CONNECTOR" = connectors/microsoft/sql-server ]; then
+            tls_directory="$(mktemp -d)"
+            openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+              -keyout "$tls_directory/server.key" -out "$tls_directory/server.crt" \
+              -subj '/CN=localhost' -addext 'subjectAltName=DNS:localhost,IP:127.0.0.1' \
+              -addext 'extendedKeyUsage=serverAuth'
+            database_container='${{ job.services.database.id }}'
+            docker cp "$tls_directory/server.key" "$database_container:/var/opt/mssql/connector-server.key"
+            docker cp "$tls_directory/server.crt" "$database_container:/var/opt/mssql/connector-server.crt"
+            docker exec -u root "$database_container" chown mssql:mssql /var/opt/mssql/connector-server.key /var/opt/mssql/connector-server.crt
+            docker exec -u root "$database_container" chmod 600 /var/opt/mssql/connector-server.key
+            docker exec -u root "$database_container" /opt/mssql/bin/mssql-conf set network.tlscert /var/opt/mssql/connector-server.crt
+            docker exec -u root "$database_container" /opt/mssql/bin/mssql-conf set network.tlskey /var/opt/mssql/connector-server.key
+            docker exec -u root "$database_container" /opt/mssql/bin/mssql-conf set network.forceencryption 1
+            docker restart "$database_container"
+            login_ready=false
+            for _ in $(seq 1 120); do
+              if docker exec "$database_container" /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$SQLSERVER_CONNECTOR_TEST_PASSWORD" -Q 'SELECT 1' >/dev/null 2>&1; then
+                login_ready=true
+                break
+              fi
+              sleep 1
+            done
+            test "$login_ready" = true
+            export SQLSERVER_CONNECTOR_TEST_ENCRYPT=mandatory
+            export SQLSERVER_TLS_CA_FILE="$tls_directory/server.crt" SQLSERVER_TLS_HOST=127.0.0.1
+            export SQLSERVER_SSL_CA="$SQLSERVER_TLS_CA_FILE"
+            if [ -f "$CONNECTOR/python/pyproject.toml" ]; then
+              uv run --project "$CONNECTOR/python" pytest "$CONNECTOR/python/tests/integration"
+            fi
+            if [ -f "$CONNECTOR/typescript/package.json" ]; then
+              "$CONNECTOR/typescript/node_modules/.bin/vitest" run test/integration.test.ts --root "$CONNECTOR/typescript"
+            fi
+          fi
+
+  email-language-plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      count: ${{ steps.plan.outputs.count }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Select exempt email packages
+        id: plan
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+        run: |
+          args=(--email-ci-matrix)
+          if [ -n "$BASE_SHA" ] && git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+            args+=(--base "$BASE_SHA")
+          fi
+          matrix="$(python3 script/connector_conformance.py "${args[@]}")"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "count=$(python3 -c 'import json,sys; print(len(json.load(sys.stdin)["include"]))' <<< "$matrix")" >> "$GITHUB_OUTPUT"
+
+  email-language-integration:
+    needs: email-language-plan
+    if: needs.email-language-plan.outputs.count != '0'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.email-language-plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Create trusted GreenMail certificate and start server
+        run: |
+          certificate_directory="$RUNNER_TEMP/email-certificates"
+          mkdir -p "$certificate_directory"
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+            -subj '/CN=Dex email integration CA' \
+            -addext 'basicConstraints=critical,CA:TRUE' \
+            -addext 'keyUsage=critical,keyCertSign,cRLSign' \
+            -keyout "$certificate_directory/ca.key" -out "$certificate_directory/ca.crt"
+          openssl req -newkey rsa:2048 -nodes -subj '/CN=localhost' \
+            -keyout "$certificate_directory/server.key" -out "$certificate_directory/server.csr"
+          printf 'subjectAltName=IP:127.0.0.1,DNS:localhost\nextendedKeyUsage=serverAuth\n' > "$certificate_directory/server.ext"
+          openssl x509 -req -days 1 -in "$certificate_directory/server.csr" \
+            -CA "$certificate_directory/ca.crt" -CAkey "$certificate_directory/ca.key" \
+            -CAcreateserial -extfile "$certificate_directory/server.ext" \
+            -out "$certificate_directory/server.crt"
+          openssl pkcs12 -export -inkey "$certificate_directory/server.key" \
+            -in "$certificate_directory/server.crt" -certfile "$certificate_directory/ca.crt" \
+            -out "$certificate_directory/greenmail.p12" -passout pass:changeit
+          chmod 644 "$certificate_directory/greenmail.p12"
+          echo "EMAIL_CONNECTOR_TEST_CA_CERT=$certificate_directory/ca.crt" >> "$GITHUB_ENV"
+          docker run -d --name greenmail-email-integration \
+            -p 3025:3025 -p 3143:3143 -p 3465:3465 -p 3993:3993 \
+            -v "$certificate_directory/greenmail.p12:/certs/greenmail.p12:ro" \
+            -e 'GREENMAIL_OPTS=-Dgreenmail.setup.test.all -Dgreenmail.hostname=0.0.0.0 -Dgreenmail.users=connector:connector_test@example.com -Dgreenmail.tls.keystore.file=/certs/greenmail.p12 -Dgreenmail.tls.keystore.password=changeit' \
+            greenmail/standalone:2.1.15@sha256:309ba544ea482e5d4265d09921cdab07c8dad2cc4481d715c9b8ff5d3f0a149f
+      - name: Run SMTP and IMAP integration suites
+        env:
+          CONNECTOR: ${{ matrix.connector }}
+          EMAIL_CONNECTOR_TEST_SMTP_HOST: 127.0.0.1
+          EMAIL_CONNECTOR_TEST_SMTP_PORT: '3025'
+          EMAIL_CONNECTOR_TEST_SMTPS_PORT: '3465'
+          EMAIL_CONNECTOR_TEST_IMAP_HOST: 127.0.0.1
+          EMAIL_CONNECTOR_TEST_IMAP_PORT: '3143'
+          EMAIL_CONNECTOR_TEST_IMAPS_PORT: '3993'
+          EMAIL_CONNECTOR_TEST_USERNAME: connector
+          EMAIL_CONNECTOR_TEST_PASSWORD: connector_test
+          EMAIL_CONNECTOR_TEST_ADDRESS: connector@example.com
+        run: |
+          for protocol in smtp imap; do
+            if [ "$protocol" = smtp ]; then
+              port="$EMAIL_CONNECTOR_TEST_SMTP_PORT"
+            else
+              port="$EMAIL_CONNECTOR_TEST_IMAP_PORT"
+            fi
+            ready=false
+            for _ in $(seq 1 120); do
+              if exec 3<>/dev/tcp/127.0.0.1/"$port" 2>/dev/null; then
+                if read -r -t 5 greeting <&3; then
+                  if { [ "$protocol" = smtp ] && [[ "$greeting" == 220* ]]; } ||
+                     { [ "$protocol" = imap ] && [[ "$greeting" == '* OK'* ]]; }; then
+                    ready=true
+                  fi
+                fi
+                if [ "$ready" = true ]; then
+                  exec 3<&- 3>&-
+                  break
+                fi
+                exec 3<&- 3>&-
+              fi
+              sleep 1
+            done
+            if [ "$ready" != true ]; then
+              docker logs greenmail-email-integration
+              exit 1
+            fi
+          done
+          for port in "$EMAIL_CONNECTOR_TEST_SMTPS_PORT" "$EMAIL_CONNECTOR_TEST_IMAPS_PORT"; do
+            ready=false
+            for _ in $(seq 1 120); do
+              if timeout 5 openssl s_client -connect "127.0.0.1:$port" \
+                -CAfile "$EMAIL_CONNECTOR_TEST_CA_CERT" -verify_return_error \
+                -verify_ip 127.0.0.1 < /dev/null > /dev/null 2>&1; then
+                ready=true
+                break
+              fi
+              sleep 1
+            done
+            if [ "$ready" != true ]; then
+              docker logs greenmail-email-integration
+              exit 1
+            fi
+          done
+          if [ -f "$CONNECTOR/python/pyproject.toml" ]; then
+            test -d "$CONNECTOR/python/tests/integration"
+            uv sync --locked --project "$CONNECTOR/python"
+            uv run --project "$CONNECTOR/python" pytest "$CONNECTOR/python/tests/integration"
+          fi
+          if [ -f "$CONNECTOR/typescript/package.json" ]; then
+            test -f "$CONNECTOR/typescript/test/integration.test.ts"
+            npm ci --prefix "$CONNECTOR/typescript"
+            npm run build --prefix "$CONNECTOR/typescript"
+            "$CONNECTOR/typescript/node_modules/.bin/vitest" run test/integration.test.ts --root "$CONNECTOR/typescript"
+          fi
 
   connectors:
     needs: connector-plan
@@ -249,13 +505,21 @@ jobs:
       CONNECTOR_SHARD_COUNT: ${{ matrix.shard_count }}
       # make test-connectors checks each affected connector's published SDK and connector dependencies.
       GH_TOKEN: ${{ github.token }}
+      GH_RELEASE_INVENTORY_PATH: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '/tmp/release-inventory.json' || '' }}
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        with:
+          name: ci-release-inventory
+          path: /tmp
       - uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version: '1.24'
+          check-latest: false
+          token: ''
           cache: true
           cache-dependency-path: |
             go.sum
@@ -272,14 +536,23 @@ jobs:
 
   workspace-connector-dependents:
     # Advisory: a dependency PR cannot also update its dependents under the one-released-module rule.
-    if: github.event_name != 'schedule'
+    needs: connector-plan
+    if: github.event_name != 'schedule' && needs.connector-plan.outputs.count != '0'
     runs-on: ubuntu-latest
     continue-on-error: true
+    env:
+      CONNECTOR_SCOPE: ${{ (github.event_name == 'pull_request' || github.event_name == 'push') && 'changed' || 'all' }}
+      CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+      CONNECTOR_HEAD: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version: '1.24'
+          check-latest: false
+          token: ''
           cache: true
           cache-dependency-path: |
             go.sum
@@ -289,9 +562,13 @@ jobs:
         run: make workspace
       - name: Test connectors that require other connectors against workspace source
         run: |
+          arguments=(--catalog catalog.yaml --scope "${CONNECTOR_SCOPE}" --head "${CONNECTOR_HEAD}" --shard-index 0 --shard-count 1)
+          if [ "${CONNECTOR_SCOPE}" = changed ]; then arguments+=(--base "${CONNECTOR_BASE}"); fi
+          selected_directories="$(GOWORK=off go run ./cmd/connectorctl test-matrix "${arguments[@]}")"
           failed=false
-          while IFS= read -r manifest; do
-            module="${manifest%/connector.yaml}/go"
+          while IFS= read -r directory; do
+            [ -n "${directory}" ] || continue
+            module="${directory}/go"
             if ! go mod edit -json "${module}/go.mod" | jq -e \
               --arg prefix github.com/superdurable/dex-connectors-library/connectors/ \
               'any(.Require[]?; .Path | startswith($prefix))' > /dev/null; then
@@ -302,12 +579,12 @@ jobs:
               echo "::warning title=Workspace connector dependency::${module} fails against the current source of a connector it requires"
               failed=true
             fi
-          done < <(find connectors -name connector.yaml -print | sort)
+          done <<< "${selected_directories}"
           [ "${failed}" = false ]
 
   dex-integration-sdk:
-    needs: dex-version-plan
-    if: github.event_name != 'schedule'
+    needs: [connector-plan, dex-version-plan]
+    if: github.event_name != 'schedule' && needs.connector-plan.outputs.sdkgo_integration == 'true'
     runs-on: ubuntu-latest
     env:
       DEX_CLI_RELEASE_TAG: ${{ needs.dex-version-plan.outputs.cli_tag }}
@@ -317,7 +594,9 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version: '1.24'
+          check-latest: false
+          token: ''
           cache: true
           cache-dependency-path: |
             go.sum
@@ -366,7 +645,9 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version: '1.24'
+          check-latest: false
+          token: ''
           cache: true
           cache-dependency-path: |
             go.sum
@@ -416,7 +697,9 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version: '1.24'
+          check-latest: false
+          token: ''
       - uses: actions/setup-node@v6
         with:
           node-version: 24
@@ -431,6 +714,7 @@ jobs:
       max-parallel: 32
       matrix: ${{ fromJSON(needs.connector-plan.outputs.matrix) }}
     env:
+      GH_RELEASE_INVENTORY_PATH: /tmp/release-inventory.json
       DEX_CLI_RELEASE_TAG: ${{ needs.dex-version-plan.outputs.cli_tag }}
       DEX_CLI_ASSET_URL: ${{ needs.dex-version-plan.outputs.cli_asset_url }}
       DEX_CLI_SHA256: ${{ needs.dex-version-plan.outputs.cli_sha256 }}
@@ -440,9 +724,15 @@ jobs:
       CONNECTOR_SHARD_COUNT: ${{ matrix.shard_count }}
     steps:
       - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v4
+        with:
+          name: ci-release-inventory
+          path: /tmp
       - uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version: '1.24'
+          check-latest: false
+          token: ''
       - uses: actions/setup-node@v6
         with:
           node-version: 24
@@ -469,7 +759,9 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version: '1.24'
+          check-latest: false
+          token: ''
           cache: true
           cache-dependency-path: |
             go.sum
@@ -556,7 +848,8 @@ jobs:
             }
 
   react:
-    if: github.event_name != 'schedule'
+    needs: connector-plan
+    if: github.event_name != 'schedule' && needs.connector-plan.outputs.react == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -568,7 +861,8 @@ jobs:
       - run: make react-sdk
 
   site:
-    if: github.event_name != 'schedule'
+    needs: connector-plan
+    if: github.event_name != 'schedule' && needs.connector-plan.outputs.site == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -584,3 +878,87 @@ jobs:
         working-directory: site
       - run: npm run build
         working-directory: site
+
+  ci-summary:
+    if: always()
+    needs:
+      - connector-plan
+      - dex-version-plan
+      - common
+      - sdkpython
+      - sdkpython-integration
+      - sdkts
+      - sdkts-integration
+      - language-connectors
+      - database-language-plan
+      - database-language-integration
+      - email-language-plan
+      - email-language-integration
+      - connectors
+      - workspace-connector-dependents
+      - dex-integration-sdk
+      - dex-integration-connectors
+      - dex-compat-current
+      - dex-compat-released
+      - dex-compat-latest-go-sdk
+      - dex-compat-canary-issue
+      - react
+      - site
+    runs-on: ubuntu-latest
+    env:
+      JOB_RESULTS: ${{ toJSON(needs) }}
+      PLAN_COUNT: ${{ needs.connector-plan.outputs.count }}
+      RUN_COMMON: ${{ needs.connector-plan.outputs.common }}
+      RUN_SDKPYTHON: ${{ needs.connector-plan.outputs.sdkpython }}
+      RUN_SDKTS: ${{ needs.connector-plan.outputs.sdkts }}
+      RUN_SDKGO_INTEGRATION: ${{ needs.connector-plan.outputs.sdkgo_integration }}
+      RUN_REACT: ${{ needs.connector-plan.outputs.react }}
+      RUN_SITE: ${{ needs.connector-plan.outputs.site }}
+      EVENT_NAME: ${{ github.event_name }}
+    steps:
+      - name: Require every selected CI job to pass
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+
+          results = {name: job['result'] for name, job in json.loads(os.environ['JOB_RESULTS']).items()}
+          failed = {name: result for name, result in results.items() if name != 'workspace-connector-dependents' and result in ('failure', 'cancelled')}
+          expected = {'connector-plan', 'database-language-plan', 'email-language-plan'}
+          event_name = os.environ['EVENT_NAME']
+          connector_count = int(os.environ.get('PLAN_COUNT') or '0')
+          for output, jobs in {
+              'RUN_COMMON': ('common',),
+              'RUN_SDKPYTHON': ('sdkpython',),
+              'RUN_SDKTS': ('sdkts',),
+              'RUN_SDKGO_INTEGRATION': ('dex-integration-sdk',),
+              'RUN_REACT': ('react',),
+              'RUN_SITE': ('site',),
+          }.items():
+              if os.environ[output] == 'true':
+                  if event_name != 'schedule' or output not in ('RUN_SDKGO_INTEGRATION', 'RUN_REACT', 'RUN_SITE'):
+                      expected.update(jobs)
+          if event_name != 'schedule' and os.environ['RUN_SDKPYTHON'] == 'true':
+              expected.add('sdkpython-integration')
+          if event_name != 'schedule' and os.environ['RUN_SDKTS'] == 'true':
+              expected.add('sdkts-integration')
+          if connector_count or os.environ['RUN_SDKPYTHON'] == 'true' or os.environ['RUN_SDKTS'] == 'true' or os.environ['RUN_SDKGO_INTEGRATION'] == 'true':
+              expected.add('dex-version-plan')
+          if connector_count:
+              expected.update(('language-connectors', 'connectors', 'dex-compat-latest-go-sdk'))
+              if event_name != 'schedule':
+                  expected.update(('dex-integration-connectors', 'dex-compat-current'))
+              if event_name in ('schedule', 'workflow_dispatch'):
+                  expected.add('dex-compat-released')
+          if event_name == 'schedule':
+              expected.add('dex-compat-canary-issue')
+          for name in expected:
+              if results[name] != 'success':
+                  failed[name] = results[name]
+          if failed:
+              for name, result in sorted(failed.items()):
+                  print(f'{name}: {result}', file=sys.stderr)
+              sys.exit(1)
+          print('All selected CI jobs passed; unselected jobs were skipped.')
+          PY
