@@ -576,6 +576,8 @@ example, YouTube read-only refresh accepts either `youtube.readonly` or the
 broader `youtube` scope. An omitted response scope remains accepted unless
 `exactScopes` is true. A JWT bearer grant may use `acceptedScopeSets` for its
 response without changing the scopes signed into its assertion.
+Use `scopeSeparators: whitespaceAndComma` on that grant when its Go driver
+accepts comma-separated scope responses.
 `refresh.exactScopes: true` requires set equality, including a reported scope
 value. An individual grant may override this with `exactScopes: true` or `false`. Choose these
 rules from the provider's actual response and the Go refresh driver; grant

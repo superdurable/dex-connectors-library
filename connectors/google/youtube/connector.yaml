@@ -77,6 +77,7 @@ spec:
           refresh:
             storedMissingExpiry: refresh
             acceptedScopeSets: [[https://www.googleapis.com/auth/youtube.readonly], [https://www.googleapis.com/auth/youtube]]
+            scopeSeparators: whitespaceAndComma
             terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
       - id: google-oauth-manage
         displayName: Google OAuth, manage

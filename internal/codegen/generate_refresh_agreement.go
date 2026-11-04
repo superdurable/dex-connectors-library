@@ -243,6 +243,11 @@ func (agreement *refreshAgreementGenerator) responseVariations(base RefreshAgree
 	}
 	variations = append(variations, missingType)
 	if grant.checksResponseScopes && len(grant.responseScopes) > 0 {
+		if grant.scopeSeparators == schema.ScopeSeparatorsWhitespaceAndComma {
+			comma := clone(" with comma-separated scopes", "")
+			comma.Response["scope"] = strings.Join(grant.responseScopes, ",") + ",manifest-extra-scope"
+			variations = append(variations, comma)
+		}
 		for index, scopeSet := range grant.acceptedScopeSets {
 			if index == 0 {
 				continue
@@ -286,6 +291,7 @@ type declaredGrant struct {
 	requestScopes           []string
 	responseScopes          []string
 	acceptedScopeSets       [][]string
+	scopeSeparators         string
 	terminalCodes           []string
 	acceptedTokenTypes      []string
 	acceptsMissingTokenType bool
@@ -434,6 +440,7 @@ func declaredGrants(manifest schema.Manifest) []declaredGrant {
 					terminalCodes: defaultStrings(refresh.TerminalErrorCodes, "invalid_grant"), missingExpiry: refresh.MissingExpiry, additional: refresh.AdditionalParameters,
 					acceptedTokenTypes: acceptedTokenTypes, acceptsMissingTokenType: acceptsMissingTokenType, exactScopes: exactScopes,
 					acceptedScopeSets:    refresh.AcceptedScopeSets,
+					scopeSeparators:      refresh.ScopeSeparators,
 					allowsPublicClient:   refresh.AllowsPublicClient,
 					checksResponseScopes: len(refresh.RequiredScopes) > 0 || len(refresh.AcceptedScopeSets) > 0 || refresh.ExactScopes || refreshGrant.ExactScopes != nil || refresh.ScopeSeparators != "",
 				})
@@ -458,7 +465,7 @@ func declaredGrants(manifest schema.Manifest) []declaredGrant {
 			grants = append(grants, declaredGrant{
 				name: label + " jwtBearer", methodLabel: label, method: method, kind: "jwtBearer", endpoint: jwtBearer.TokenEndpoint,
 				encoding: schema.FormTokenRequestEncoding, mappings: jwtBearer.CredentialMappings, copies: jwtBearer.CredentialCopies,
-				requestScopes: jwtBearer.Scopes, responseScopes: responseScopes, acceptedScopeSets: jwtBearer.AcceptedScopeSets, terminalCodes: defaultStrings(jwtBearer.TerminalErrorCodes, "invalid_grant"),
+				requestScopes: jwtBearer.Scopes, responseScopes: responseScopes, acceptedScopeSets: jwtBearer.AcceptedScopeSets, scopeSeparators: jwtBearer.ScopeSeparators, terminalCodes: defaultStrings(jwtBearer.TerminalErrorCodes, "invalid_grant"),
 				missingExpiry: jwtBearer.MissingExpiry, jwtBearer: jwtBearer,
 				acceptedTokenTypes: defaultStrings(jwtBearer.AcceptedTokenTypes, "Bearer"), acceptsMissingTokenType: jwtBearer.AcceptsMissingTokenType,
 				checksResponseScopes: true,

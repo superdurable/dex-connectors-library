@@ -88,6 +88,7 @@ spec:
           pkce: true
           refresh:
             acceptedScopeSets: [[api], [full]]
+            scopeSeparators: whitespaceAndComma
             terminalErrorCodes: [inactive_org, inactive_user, invalid_client, invalid_client_credentials, invalid_client_id, invalid_grant, unauthorized_client, unsupported_grant_type]
             missingExpiry: {lifetime: 2h}
       - id: salesforce-sandbox-oauth
@@ -142,6 +143,7 @@ spec:
           pkce: true
           refresh:
             acceptedScopeSets: [[api], [full]]
+            scopeSeparators: whitespaceAndComma
             terminalErrorCodes: [inactive_org, inactive_user, invalid_client, invalid_client_credentials, invalid_client_id, invalid_grant, unauthorized_client, unsupported_grant_type]
             missingExpiry: {lifetime: 2h}
       - id: salesforce-jwt-bearer
@@ -202,6 +204,7 @@ spec:
               values: {"": https://login.salesforce.com/services/oauth2/token, production: https://login.salesforce.com/services/oauth2/token, sandbox: https://test.salesforce.com/services/oauth2/token}
             lifetime: 2m
             acceptedScopeSets: [[api], [full]]
+            scopeSeparators: whitespaceAndComma
             credentialMappings:
               - {credential: access_token, source: access_token}
               - {credential: instance_url, source: instance_url}

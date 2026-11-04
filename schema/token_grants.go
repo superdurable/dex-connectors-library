@@ -170,6 +170,8 @@ type JWTBearerGrant struct {
 	Scopes []string `yaml:"scopes,omitempty" json:"scopes,omitempty"`
 	// AcceptedScopeSets replaces Scopes when checking a returned token's scope set.
 	AcceptedScopeSets [][]string `yaml:"acceptedScopeSets,omitempty" json:"acceptedScopeSets,omitempty"`
+	// ScopeSeparators selects whitespace or space-and-comma parsing for reported scopes; empty means whitespace.
+	ScopeSeparators string `yaml:"scopeSeparators,omitempty" json:"scopeSeparators,omitempty"`
 	// Lifetime sets the exp claim after iat, such as 1h.
 	Lifetime string `yaml:"lifetime" json:"lifetime"`
 	// CredentialMappings map the token response into credential fields.
@@ -515,6 +517,9 @@ func (grantContext tokenGrantContext) validateJWTBearer(grant *JWTBearerGrant) [
 	problems = append(problems, grantContext.validateEndpointSource(label+" tokenEndpoint", grant.TokenEndpoint, hasKey)...)
 	problems = append(problems, validateScopeList(label+" scopes", grant.Scopes)...)
 	problems = append(problems, validateAcceptedScopeSets(label+" acceptedScopeSets", grant.AcceptedScopeSets)...)
+	if grant.ScopeSeparators != "" && grant.ScopeSeparators != ScopeSeparatorsWhitespace && grant.ScopeSeparators != ScopeSeparatorsWhitespaceAndComma {
+		problems = append(problems, label+" scopeSeparators must be whitespace or whitespaceAndComma")
+	}
 	if lifetime, err := time.ParseDuration(grant.Lifetime); err != nil || lifetime <= 0 {
 		problems = append(problems, label+" lifetime must be a positive duration")
 	}
