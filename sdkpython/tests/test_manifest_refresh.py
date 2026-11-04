@@ -774,6 +774,8 @@ async def test_manifest_jwt_bearer_resolves_key_sources_and_copies_identity() ->
                 "audience": {"fromKey": "token_uri"},
                 "tokenEndpoint": {"fromKey": "token_uri"},
                 "scopes": ["mail.read", "offline_access"],
+                "acceptedScopeSets": [["mail.read"], ["mail.manage"]],
+                "scopeSeparators": "whitespaceAndComma",
                 "lifetime": "1h",
                 "credentialMappings": [{"credential": "access_token", "source": "access_token"}],
                 "credentialCopies": [{"credential": "primary_email", "fromCredential": "delegated_user"}],
@@ -781,6 +783,7 @@ async def test_manifest_jwt_bearer_resolves_key_sources_and_copies_identity() ->
         },
     }
     requests: list[httpx.Request] = []
+    returned_scope = "mail.read offline_access"
 
     def respond(request: httpx.Request) -> httpx.Response:
         requests.append(request)
@@ -790,7 +793,7 @@ async def test_manifest_jwt_bearer_resolves_key_sources_and_copies_identity() ->
                 "access_token": "delegated-access",
                 "expires_in": 3600,
                 "token_type": "Bearer",
-                "scope": "mail.read offline_access",
+                "scope": returned_scope,
             },
         )
 
@@ -838,6 +841,14 @@ async def test_manifest_jwt_bearer_resolves_key_sources_and_copies_identity() ->
     assert decoded_claims["aud"] == "https://oauth.example.test/token"
     assert decoded_claims["scope"] == "mail.read offline_access"
     assert decoded_claims["exp"] - decoded_claims["iat"] == 3600
+
+    returned_scope = "mail.manage,extra"
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+        driver = ManifestCredentialRefreshDriver[DelegatedCredentials]("Example", auth, fields, client)
+        await driver.refresh(CredentialRefreshState(credentials, None, datetime.now(UTC)))
+        returned_scope = "mail.other"
+        with pytest.raises(ReauthorizationRequiredError):
+            await driver.refresh(CredentialRefreshState(credentials, None, datetime.now(UTC)))
 
     invalid_auth: dict[str, Any] = deepcopy(auth)
     invalid_auth["serviceAccount"]["jwtBearer"]["lifetime"] = "invalid"
