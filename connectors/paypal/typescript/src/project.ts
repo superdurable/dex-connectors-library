@@ -1,0 +1,54 @@
+// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+
+import { SecretString, type Call, type CredentialProvider } from '@superdurable/connectors-sdk';
+import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
+import { z } from 'zod';
+import type { Config, Credentials } from './generated/models.js';
+import { newProjectConnection as newGeneratedProjectConnection } from './generated/connection.js';
+import { PayPalClient, type PayPalClientOptions } from './client.js';
+
+const projectSettingsSchema = z.strictObject({
+  baseUrl: z.string().optional(),
+  timeout: z.union([z.string(), z.number().int()]).optional(),
+  maxResponseBytes: z.number().int().optional(),
+});
+
+/** Open one static PayPal connection declared in a Dex project. */
+export function newProjectConnection(project: LoadedProject, connectionName: string, options: PayPalClientOptions = {}) {
+  return newGeneratedProjectConnection(project, connectionName, (loadedProject, name) => {
+    const selected = loadedProject.configuration.connections.find(entry => entry.connectorId === 'paypal' && entry.connectionName === name);
+    if (!selected) throw new TypeError('PayPal project connection is not configured');
+    const settings = projectSettingsSchema.parse(selected.configuration);
+    const timeoutMs = typeof settings.timeout === 'number' ? Math.ceil(settings.timeout / 1_000_000)
+      : settings.timeout !== undefined ? parseDurationMilliseconds(settings.timeout) : undefined;
+    const config: Config = {
+      ...(settings.baseUrl !== undefined ? { baseUrl: settings.baseUrl } : {}),
+      ...(timeoutMs !== undefined ? { timeoutMs } : {}),
+      ...(settings.maxResponseBytes !== undefined ? { maxResponseBytes: settings.maxResponseBytes } : {}),
+    };
+    const credentials: CredentialProvider<Credentials> = {
+      async resolve(call: Call, signal?: AbortSignal): Promise<Credentials> {
+        void call;
+        const fields = await loadedProject.resolveCredential('paypal', name, signal);
+        if (typeof fields.client_id !== 'string' || typeof fields.client_secret !== 'string') throw new TypeError('PayPal credentials are unavailable');
+        return { clientId: fields.client_id, clientSecret: new SecretString(fields.client_secret) };
+      },
+    };
+    return new PayPalClient(config, credentials, options);
+  });
+}
+
+function parseDurationMilliseconds(value: string): number {
+  let remaining = value;
+  let milliseconds = 0;
+  const units: Record<string, number> = { ns: 0.000001, us: 0.001, 'µs': 0.001, ms: 1, s: 1_000, m: 60_000, h: 3_600_000 };
+  while (remaining) {
+    const component = /^(\d+(?:\.\d+)?)(ns|us|µs|ms|s|m|h)/.exec(remaining);
+    if (!component) throw new TypeError('PayPal timeout must be a positive Go duration');
+    milliseconds += Number(component[1]) * (units[component[2] ?? ''] ?? NaN);
+    remaining = remaining.slice(component[0].length);
+  }
+  if (!Number.isSafeInteger(milliseconds) || milliseconds <= 0) throw new TypeError('PayPal timeout must resolve to positive whole milliseconds');
+  return milliseconds;
+}
