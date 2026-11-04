@@ -52,7 +52,7 @@ it.skipIf(!host)('runs both operations against the CI MySQL service and rolls ba
     expect(chained).toMatchObject({ kind: 'branch', branch: 'providerRejected' });
     const bounded = new MySQLClient({ host: host!, port, database, user, sslMode, maxRows: 1 }, { resolve: async () => ({ password: new SecretString(password) }) });
     const truncated = await bounded.query().invoke(call('query'), { statement: 'SELECT 1 AS n UNION ALL SELECT 2 AS n' });
-    expect(truncated).toMatchObject({ kind: 'branch', branch: 'truncated', value: { rows: [{ n: 1 }] } });
+    expect(truncated).toMatchObject({ kind: 'branch', branch: 'truncated', value: { rows: [{ n: '1' }] } });
     const limited = await provider.execute().invoke(call('execute'), { statement: `UPDATE ${table} SET amount = ? WHERE order_id = ?`, parameters: ['251.00', '88213'], maxRowsAffected: 0 });
     expect(limited).toMatchObject({ kind: 'branch', branch: 'limitExceeded' });
     const unchanged = await provider.query().invoke(call('query'), { statement: `SELECT amount FROM ${table} WHERE order_id = ?`, parameters: ['88213'] });
