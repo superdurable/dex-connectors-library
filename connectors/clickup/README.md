@@ -389,3 +389,7 @@ documented `OAUTH_` codes); whether `assignees.add` of an assigned user and
 `date_created_gt` on `GET /list/{list_id}/task`; webhook payload shapes beyond
 the documented examples, the hex case of `X-Signature`, and retry timing; and
 429 behavior under load.
+
+## Python package
+
+The `python/` package implements all seven task and Workspace member operations in this manifest. The `taskEvent` webhook Trigger remains Go-only. The runnable [Python getTask Flow](python/examples/get_task/README.md) uses the static `clickup-workspace` connection and includes a real Dex Worker/Client integration test. Create and comment mutations checkpoint the dispatch before sending, and a retried attempt reads back rather than risking a duplicate. Live ClickUp provider behavior for this Python port remains unverified.
