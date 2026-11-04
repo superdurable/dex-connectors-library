@@ -936,6 +936,10 @@ def render_connection():
         "def _decode_config(value: dict[str, Any]) -> Config:",
     ]
     config_fields = configuration_fields()
+    # Preserve generated behavior for published packages without optional credentials.
+    has_optional_credential = not auth_methods and any(
+        not field_info["required"] for field_info in credential_fields
+    )
     allowed = (
         "{"
         + ", ".join(quoted(field_info["name"]) for field_info in config_fields)
@@ -953,11 +957,16 @@ def render_connection():
         raw_name = (
             name.removesuffix("_seconds") if field_info["type"] == "duration" else name
         )
-        lines.append(f"    if {quoted(field_info['name'])} in value:")
+        field_present = f"{quoted(field_info['name'])} in value"
+        if has_optional_credential and not field_info["required"]:
+            field_present += f" and value[{quoted(field_info['name'])}] != ''"
+        lines.append(f"    if {field_present}:")
         lines.append(f"        {raw_name} = value[{quoted(field_info['name'])}]")
         field_type = field_info["type"]
         if field_type in ("string", "url"):
             check = f"isinstance({raw_name}, str)"
+            if has_optional_credential and field_info["required"]:
+                check += f" and bool({raw_name})"
         elif field_type == "enum":
             check = f"isinstance({raw_name}, str) and {raw_name} in {tuple(field_info['enum'])!r}"
         elif field_type == "stringList":
