@@ -223,3 +223,7 @@ if err != nil {
 static connection name as `ConnectionName` in each generated GitHub Step
 config. The latest credential state is read before every provider call, so
 refresh and reauthorization do not require restarting the application.
+
+## TypeScript package
+
+The TypeScript package `@superdurable/connector-github` implements all six Query operations at package version `v0.1.0`. Its generated operation-specific Step factories preserve Go branch identities, and its generated OAuth declaration drives token refresh and credential decoding. The runnable [repository releases Flow](typescript/examples/repository-releases/README.md) uses the static `github-repository-releases` connection and verifies a successful page and an unwired scope rejection through a real Dex Worker. The Go-recorded [provider conformance scenarios](../../conformance/connectors/github/scenarios.json) cover every operation branch, rate limits, availability retries, and transport failures. Live GitHub authorization and provider calls remain unverified.

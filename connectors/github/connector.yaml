@@ -8,6 +8,12 @@ metadata:
   version: v0.24.0
 spec:
   provider: github
+  languages:
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-github'
+      operations: [getAuthenticatedProfile, listPublicRepositories, listMergedPullRequests, listPullRequestFiles, listReleases, listCommits]
+      triggers: []
   codegen:
     go:
       package: github
@@ -111,6 +117,7 @@ spec:
         - {credential: refresh_token, source: refresh_token}
       pkce: true
       refresh:
+        requiredScopes: [read:user, user:email]
         scopeSeparators: whitespaceAndComma
         exactScopes: true
         terminalErrorCodes: [bad_refresh_token, incorrect_client_credentials, invalid_client, invalid_grant]
