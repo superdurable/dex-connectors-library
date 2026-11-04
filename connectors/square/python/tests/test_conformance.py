@@ -17,13 +17,21 @@ import connector_scenarios as conformance  # noqa: E402
 SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/square/scenarios.json")
 CONNECTION = sdk.ConnectionRef("square", "square")
 ADAPTER = conformance.PythonOperationAdapter(
-    "square", CONNECTION, square,
+    "square",
+    CONNECTION,
+    square,
     lambda client, recorder: square.Client(
         square.Config(base_url="http://127.0.0.1:28711/v2"),
-        conformance.static_credentials(CONNECTION, square.Credentials(sdk.SecretString("" if recorder.scenario["name"] == "listPayments-defect" else "test-token"))),
+        conformance.static_credentials(
+            CONNECTION,
+            square.Credentials(
+                sdk.SecretString("" if recorder.scenario["name"] == "listPayments-defect" else "test-token")
+            ),
+        ),
         client,
     ),
 )
+
 
 @pytest.mark.parametrize("scenario", SCENARIOS, ids=lambda scenario: scenario["name"])
 async def test_connector_conformance(scenario: dict[str, object]) -> None:
