@@ -8,26 +8,24 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/notion/go"
-	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
 const conformanceEndpointPath = ""
-const conformanceFixturePathPrefix = ""
+const conformanceFixturePathPrefix = "/v1"
 
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint string, transport *http.Client) conformanceInvoker {
-	t.Helper()
-	client, err := notion.New(notion.Config{Endpoint: endpoint}, sdkgo.StaticCredentialProvider[notion.Credentials]{
-		notionConnection: {APIToken: sdkgo.NewSecretString(testAPIToken)},
-	}, notion.WithHTTPClient(transport))
-	require.NoError(t, err)
-	context := singledispatchtest.NewContext("notion-conformance", "connector")
-	if len(scenario.PriorHeartbeat) != 0 {
-		var checkpoint any
-		require.NoError(t, json.Unmarshal(scenario.PriorHeartbeat, &checkpoint))
-		require.NoError(t, context.SetPersistedCheckpoint(checkpoint))
+	client := newNotionClient(t, endpoint, notion.WithHTTPClient(transport))
+	context := singledispatchtest.NewContext("notion-conformance", scenario.Name)
+	if len(scenario.PriorHeartbeat) > 0 {
+		var marker any
+		if err := json.Unmarshal(scenario.PriorHeartbeat, &marker); err != nil {
+			t.Fatal(err)
+		}
+		if err := context.SetPersistedCheckpoint(marker); err != nil {
+			t.Fatal(err)
+		}
 		context.AdvanceAttempt()
 	}
 	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {

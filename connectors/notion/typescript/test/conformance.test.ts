@@ -11,7 +11,7 @@ import { CreatePageInputSchema, GetPageInputSchema, QueryDatabaseInputSchema, Se
 const scenarios = loadScenarios(new URL('../../../../conformance/connectors/notion/scenarios.json', import.meta.url));
 const connection = { provider: 'notion', name: 'notion-test' };
 
-it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeNotion));
+it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeNotion, '/v1'));
 
 function productionMutation<Input, Output>(operation: Mutation<Input, Output>, call: Call, input: Input, key: string) {
   return invokeProductionMutation(operation, key, recording => runMutation(recording as Mutation<Input, Output>, call, input), error => error instanceof RetryError);
