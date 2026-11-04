@@ -32,7 +32,7 @@ interface Grant {
   allowsPublicClient: boolean;
   acceptsMissingTokenType: boolean;
   acceptsMissingExpiresIn: boolean;
-  storedMissingExpiry: 'refresh' | 'keep';
+  storedMissingExpiry: unknown;
   missingExpiry: string;
   additionalParameters: Record<string, string>;
 }
@@ -71,6 +71,10 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
     this.#settings = options.settings ?? {};
     this.#fetch = options.fetch ?? fetch;
     this.#now = options.now ?? (() => new Date());
+    const methods = manifestList(this.#auth.methods);
+    for (const method of methods.length ? methods : [this.#auth]) {
+      for (const grant of this.#grants(manifestObject(method))) this.#validateStoredMissingExpiry(grant);
+    }
   }
 
   /** Check declared access fields against the host's single credential expiry. */
@@ -154,7 +158,7 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
         acceptsMissingTokenType: declaration.acceptsMissingTokenType === undefined
           ? refresh?.acceptsMissingTokenType === true : declaration.acceptsMissingTokenType === true,
         acceptsMissingExpiresIn: refresh?.missingExpiry !== undefined,
-        storedMissingExpiry: refresh?.storedMissingExpiry === 'refresh' ? 'refresh' : 'keep',
+        storedMissingExpiry: refresh?.storedMissingExpiry === undefined ? 'keep' : refresh.storedMissingExpiry,
         missingExpiry: missingExpiryLifetime(refresh?.missingExpiry), additionalParameters: stringRecord(refresh?.additionalParameters),
       }));
     }
@@ -172,7 +176,7 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
         scopeSeparators: 'whitespace', allowsPublicClient: false,
         acceptsMissingTokenType: client.acceptsMissingTokenType === true,
         acceptsMissingExpiresIn: client.missingExpiry !== undefined,
-        storedMissingExpiry: client.storedMissingExpiry === 'refresh' ? 'refresh' : 'keep',
+        storedMissingExpiry: client.storedMissingExpiry === undefined ? 'keep' : client.storedMissingExpiry,
         missingExpiry: missingExpiryLifetime(client.missingExpiry), additionalParameters: stringRecord(client.additionalParameters),
       }];
     }
@@ -190,7 +194,7 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
       scopeSeparators: 'whitespace', allowsPublicClient: false,
       acceptsMissingTokenType: bearer.acceptsMissingTokenType === true,
       acceptsMissingExpiresIn: bearer.missingExpiry !== undefined,
-      storedMissingExpiry: bearer.storedMissingExpiry === 'refresh' ? 'refresh' : 'keep',
+      storedMissingExpiry: bearer.storedMissingExpiry === undefined ? 'keep' : bearer.storedMissingExpiry,
       missingExpiry: missingExpiryLifetime(bearer.missingExpiry), additionalParameters: {},
     }];
   }
@@ -267,6 +271,11 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
       throw new TypeError('manifest grant duration must be positive');
     if (grant.kind === 'jwt_bearer' && parseDurationMs(manifestText(grant.assertion.lifetime)) < 1)
       throw new TypeError('manifest JWT assertion lifetime must be at least one millisecond');
+  }
+
+  #validateStoredMissingExpiry(grant: Grant): void {
+    if (grant.storedMissingExpiry !== 'refresh' && grant.storedMissingExpiry !== 'keep')
+      throw new TypeError('manifest storedMissingExpiry must be refresh or keep');
   }
 
   #scopes(source: unknown): string[] {
