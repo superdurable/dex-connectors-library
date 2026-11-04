@@ -577,7 +577,11 @@ def _prior_dispatch(call: Call) -> _DispatchCheckpoint | None:
     assert call.context is not None
     if not call.context.has_last_heartbeat_value():
         return None
-    return call.context.get_last_heartbeat_value(_DispatchCheckpoint)
+    try:
+        return call.context.get_last_heartbeat_value(_DispatchCheckpoint)
+    except Exception:
+        # An unreadable persisted marker still prohibits a duplicate unkeyed write.
+        return _DispatchCheckpoint("", 0)
 
 
 def _dispatch_time(client: Client) -> int:
