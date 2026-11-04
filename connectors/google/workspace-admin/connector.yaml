@@ -67,6 +67,7 @@ spec:
             - Enter as delegated_user an administrator with the User Management Admin and Groups Admin roles; a User Management Admin cannot change administrator accounts, so use a super administrator only when Flows must manage administrators.
         serviceAccount:
           jwtBearer:
+            storedMissingExpiry: refresh
             keyCredential: service_account_key
             privateKey: {fromKey: private_key}
             issuer: {fromKey: client_email}
@@ -123,6 +124,7 @@ spec:
             - {credential: refresh_token, source: refresh_token}
           pkce: true
           refresh:
+            storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
   operations:
     - name: getUser

@@ -71,6 +71,7 @@ spec:
       pkce: true
       tokenEndpointAuthMethod: client_secret_basic
       refresh:
+        storedMissingExpiry: refresh
         terminalErrorCodes: [invalid_request, invalid_client, invalid_grant, unauthorized_client]
   operations:
     - name: listMeetings

@@ -500,6 +500,10 @@ Every grant shares these rules:
 - `missingExpiry` decides the expiry of a token whose response has no
   `expires_in`: `keep`, the default, stores it without an expiry, so the host
   replaces it only after the provider rejects it; `{lifetime: 2h}` sets one.
+- `storedMissingExpiry` independently decides whether an existing access token
+  without recorded expiry is refreshed: `keep` is the default, and `refresh`
+  exchanges it before a provider request. Declare it on each refresh,
+  client-credentials, or JWT-bearer grant to match the Go driver.
 - `additionalParameters` are fixed, non-secret parameters added to every
   request. They cannot replace `grant_type`, `refresh_token`, `client_id`,
   `client_secret`, `assertion`, `client_assertion`, or
@@ -807,7 +811,8 @@ can omit only fields its host keeps.
 1. Confirm the Go driver and manifest agree on token types, missing token type,
    scope policy, response mapping, and terminal error codes. Add declarations
    before changing the language driver.
-2. Generate the language package with Python Connector SDK 0.3.0 or later.
+2. Generate the language package with Python Connector SDK 0.4.0 or later or
+   TypeScript Connector SDK 0.4.0 or later when `storedMissingExpiry` is used.
    Python `_generated/connection.py` binds
    private and shared decoders, credential encoding, durable project refresh,
    and `ManifestCredentialRefreshDriver` to `new_project_connection`. A Python

@@ -70,6 +70,7 @@ spec:
             - {credential: refresh_token, source: refresh_token}
           pkce: true
           refresh:
+            storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_request, invalid_grant, unauthorized_client, invalid_client, unsupported_grant_type, invalid_resource, interaction_required, consent_required, invalid_scope]
             additionalParameters: {scope: offline_access Mail.ReadWrite Mail.Send}
       - id: app-only
@@ -114,6 +115,7 @@ spec:
             - "Do not also add Microsoft Graph application permissions Mail.ReadWrite or Mail.Send under API permissions: Entra grants them for every mailbox in the tenant, and Exchange adds them to the scoped roles. If your tenant cannot use RBAC for Applications, those two application permissions with Grant admin consent also work, but they reach every mailbox; Microsoft replaced the older application access policies with RBAC for Applications."
             - "Enter mailbox and leave access_token blank: on its first Outlook call the application requests a token from https://login.microsoftonline.com/<tenant_id>/oauth2/v2.0/token with the scope https://graph.microsoft.com/.default and renews it before it expires. To revoke access, delete the client secret or remove the role assignments with Remove-ManagementRoleAssignment."
         clientCredentials:
+          storedMissingExpiry: refresh
           tokenEndpoint: {template: "https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"}
           clientIDCredential: client_id
           clientSecretCredential: client_secret

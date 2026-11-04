@@ -38,6 +38,13 @@ const (
 // keepMissingExpiry is the scalar form of MissingExpiry that keeps a token whose response has no expires_in.
 const keepMissingExpiry = "keep"
 
+const (
+	// StoredMissingExpiryKeep preserves a present access token without recorded expiry.
+	StoredMissingExpiryKeep = "keep"
+	// StoredMissingExpiryRefresh renews a present access token without recorded expiry.
+	StoredMissingExpiryRefresh = "refresh"
+)
+
 // OAuthRefresh declares how a host refreshes an OAuth method's access token with the stored refresh token. The
 // method's tokenEndpoint, tokenEndpointAuthMethod, tokenRequestEncoding, client credentials and credentialMappings
 // apply to the refresh request and response too.
@@ -59,6 +66,8 @@ type OAuthRefresh struct {
 	TerminalErrorCodes []string `yaml:"terminalErrorCodes,omitempty" json:"terminalErrorCodes,omitempty"`
 	// MissingExpiry decides the expiry of a refreshed token whose response has no expires_in. Nil keeps it.
 	MissingExpiry *MissingExpiry `yaml:"missingExpiry,omitempty" json:"missingExpiry,omitempty"`
+	// StoredMissingExpiry refreshes an existing token without recorded expiry when set to refresh; empty keeps it.
+	StoredMissingExpiry string `yaml:"storedMissingExpiry,omitempty" json:"storedMissingExpiry,omitempty"`
 	// AdditionalParameters are fixed, non-secret parameters added to every refresh request, such as a scope that a
 	// provider expects again. They cannot replace a grant or client parameter.
 	AdditionalParameters map[string]string `yaml:"additionalParameters,omitempty" json:"additionalParameters,omitempty"`
@@ -121,6 +130,8 @@ type ClientCredentialsGrant struct {
 	TerminalErrorCodes []string `yaml:"terminalErrorCodes,omitempty" json:"terminalErrorCodes,omitempty"`
 	// MissingExpiry decides the expiry of a token whose response has no expires_in. Nil keeps it.
 	MissingExpiry *MissingExpiry `yaml:"missingExpiry,omitempty" json:"missingExpiry,omitempty"`
+	// StoredMissingExpiry refreshes an existing token without recorded expiry when set to refresh; empty keeps it.
+	StoredMissingExpiry string `yaml:"storedMissingExpiry,omitempty" json:"storedMissingExpiry,omitempty"`
 	// AdditionalParameters are fixed, non-secret parameters added to every request.
 	AdditionalParameters map[string]string `yaml:"additionalParameters,omitempty" json:"additionalParameters,omitempty"`
 }
@@ -164,6 +175,8 @@ type JWTBearerGrant struct {
 	TerminalErrorCodes []string `yaml:"terminalErrorCodes,omitempty" json:"terminalErrorCodes,omitempty"`
 	// MissingExpiry decides the expiry of a token whose response has no expires_in. Nil keeps it.
 	MissingExpiry *MissingExpiry `yaml:"missingExpiry,omitempty" json:"missingExpiry,omitempty"`
+	// StoredMissingExpiry refreshes an existing token without recorded expiry when set to refresh; empty keeps it.
+	StoredMissingExpiry string `yaml:"storedMissingExpiry,omitempty" json:"storedMissingExpiry,omitempty"`
 }
 
 // CredentialCopy sets one credential field to the value of another.
@@ -424,6 +437,7 @@ func (grantContext tokenGrantContext) validateOAuthTokenRequests(oauth *OAuth2) 
 		return problems
 	}
 	problems = append(problems, grantContext.validateResponseRules(label, refresh.TerminalErrorCodes, refresh.MissingExpiry, refresh.AdditionalParameters)...)
+	problems = append(problems, validateStoredMissingExpiry(label, refresh.StoredMissingExpiry)...)
 	problems = append(problems, validateAcceptedTokenTypes(label, refresh.AcceptedTokenTypes)...)
 	problems = append(problems, validateScopeList(label+" requiredScopes", refresh.RequiredScopes)...)
 	if refresh.ScopeSeparators != "" && refresh.ScopeSeparators != ScopeSeparatorsWhitespace && refresh.ScopeSeparators != ScopeSeparatorsWhitespaceAndComma {
@@ -464,6 +478,7 @@ func (grantContext tokenGrantContext) validateClientCredentials(grant *ClientCre
 	problems = append(problems, validateScopeList(label+" scopes", grant.Scopes)...)
 	problems = append(problems, grantContext.validateCredentialMappings(label, grant.CredentialMappings)...)
 	problems = append(problems, grantContext.validateResponseRules(label, grant.TerminalErrorCodes, grant.MissingExpiry, grant.AdditionalParameters)...)
+	problems = append(problems, validateStoredMissingExpiry(label, grant.StoredMissingExpiry)...)
 	problems = append(problems, validateAcceptedTokenTypes(label, grant.AcceptedTokenTypes)...)
 	return problems
 }
@@ -502,6 +517,7 @@ func (grantContext tokenGrantContext) validateJWTBearer(grant *JWTBearerGrant) [
 		}
 	}
 	problems = append(problems, grantContext.validateResponseRules(label, grant.TerminalErrorCodes, grant.MissingExpiry, nil)...)
+	problems = append(problems, validateStoredMissingExpiry(label, grant.StoredMissingExpiry)...)
 	return problems
 }
 
@@ -546,6 +562,13 @@ func (grantContext tokenGrantContext) validateClientAuthentication(label string,
 		}
 	}
 	return problems
+}
+
+func validateStoredMissingExpiry(label, policy string) []string {
+	if policy != "" && policy != StoredMissingExpiryKeep && policy != StoredMissingExpiryRefresh {
+		return []string{label + " storedMissingExpiry must be keep or refresh"}
+	}
+	return nil
 }
 
 func (grantContext tokenGrantContext) validateResponseRules(label string, terminalErrorCodes []string, missingExpiry *MissingExpiry, additionalParameters map[string]string) []string {

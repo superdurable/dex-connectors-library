@@ -93,6 +93,7 @@ spec:
             - {credential: refresh_token, source: refresh_token}
           pkce: true
           refresh:
+            storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
       - id: workspace-domain-delegation
         displayName: Workspace domain-wide delegation
@@ -125,6 +126,7 @@ spec:
             - Enter one managed Workspace user as delegated_user; personal @gmail.com accounts and users outside the administrator's domain cannot use this method.
         serviceAccount:
           jwtBearer:
+            storedMissingExpiry: refresh
             keyCredential: service_account_key
             privateKey: {fromKey: private_key}
             issuer: {fromKey: client_email}

@@ -11,7 +11,7 @@ from dex_connectors.sdk.projectconfig.provider import RefreshingCredentialProvid
 from dex_connectors.sdk.oauthtoken import ManifestCredentialRefreshDriver
 
 from ..client import Client, Config, Credentials
-from .definitions import CONNECTOR_ID, GET_THING_DEFINITION
+from .definitions import CONNECTOR_ID, PROVIDER, GET_THING_DEFINITION
 from .refresh import AUTHORIZATION, CREDENTIAL_FIELDS
 from ..models import GetThingInput, GetThingOutput
 
@@ -25,7 +25,7 @@ class Connection:
         client: Client | None = None,
     ) -> None:
         reference.validate()
-        if reference.provider != CONNECTOR_ID or get_thing is None:
+        if reference.provider != PROVIDER or get_thing is None:
             raise ValueError("Token Grants Fixture connection provider and operations are required")
         if get_thing.definition().operation != GET_THING_DEFINITION.operation:
             raise ValueError("Token Grants Fixture connection operation identity differs")
@@ -135,12 +135,12 @@ def encode_credentials(credentials: Credentials) -> dict[str, Any]:
             material["client_id"] = credentials.client_id
         if credentials.username:
             material["username"] = credentials.username
-        if credentials.private_key.reveal():
-            material["private_key"] = credentials.private_key.reveal()
+        if (credentials.private_key.reveal() if credentials.private_key is not None else ''):
+            material["private_key"] = (credentials.private_key.reveal() if credentials.private_key is not None else '')
         if credentials.login_environment:
             material["login_environment"] = credentials.login_environment
-        if credentials.access_token.reveal():
-            material["access_token"] = credentials.access_token.reveal()
+        if (credentials.access_token.reveal() if credentials.access_token is not None else ''):
+            material["access_token"] = (credentials.access_token.reveal() if credentials.access_token is not None else '')
         if credentials.instance_url:
             material["instance_url"] = credentials.instance_url
     else:
@@ -171,7 +171,7 @@ def new_project_connection(
 ) -> Connection:
     if project is None:
         raise ValueError("Token Grants Fixture connection requires loaded project configuration")
-    reference = ConnectionRef(CONNECTOR_ID, connection_name)
+    reference = ConnectionRef(PROVIDER, connection_name)
     reference.validate()
     key = ConnectionKey(CONNECTOR_ID, connection_name)
     matching = [
@@ -181,7 +181,7 @@ def new_project_connection(
     ]
     if len(matching) != 1:
         raise ValueError("Token Grants Fixture project connection is missing or duplicated")
-    if matching[0].provider != CONNECTOR_ID:
+    if matching[0].provider != PROVIDER:
         raise ValueError("Token Grants Fixture project connection provider differs")
     config = _decode_config(matching[0].configuration)
     http_client = http_client or httpx.AsyncClient()

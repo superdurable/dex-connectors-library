@@ -54,6 +54,7 @@ export const Authorization = {
             "https://www.googleapis.com/auth/gmail.send"
           ],
           "scopeSeparators": "whitespace",
+          "storedMissingExpiry": "refresh",
           "terminalErrorCodes": [
             "invalid_grant",
             "invalid_client",
@@ -123,6 +124,7 @@ export const Authorization = {
             "https://www.googleapis.com/auth/gmail.readonly",
             "https://www.googleapis.com/auth/gmail.send"
           ],
+          "storedMissingExpiry": "refresh",
           "subject": {
             "fromCredential": "delegated_user"
           },

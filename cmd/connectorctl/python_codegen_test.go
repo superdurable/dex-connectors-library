@@ -72,6 +72,82 @@ func TestPythonCodegenGoldenBitbucketMockUsesProviderIdentity(t *testing.T) {
 	}
 }
 
+func TestPythonCodegenJiraServiceManagementProviderGolden(t *testing.T) {
+	manifestPath := filepath.Join("..", "..", "connectors", "atlassian", "jira-service-management", "connector.yaml")
+	manifest, err := load(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest.Spec.Languages = &schema.Languages{Python: &schema.LanguagePackage{Operations: []string{"getTicket"}}}
+	generated, err := renderPythonCodegen(pythonCodegenInput{Manifest: manifest, PackageName: "atlassian_jira_service_management", MockPackageName: "jiraservicemanagementmock"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"connection.py", "mock.py", "refresh.py"} {
+		goldenPath := filepath.Join("testdata", "jira-service-management-golden", name)
+		if os.Getenv("UPDATE_JIRA_SERVICE_MANAGEMENT_GOLDEN") == "1" {
+			if err := os.MkdirAll(filepath.Dir(goldenPath), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(goldenPath, []byte(generated[name]), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		want, err := os.ReadFile(goldenPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if generated[name] != string(want) {
+			t.Errorf("%s differs from Jira Service Management golden output", name)
+		}
+	}
+	for _, expected := range []string{"ConnectionRef(PROVIDER, connection_name)", "reference.provider != PROVIDER", "matching[0].provider != PROVIDER", "ConnectionKey(CONNECTOR_ID, connection_name)"} {
+		if !strings.Contains(generated["connection.py"]+generated["mock.py"], expected) {
+			t.Errorf("Jira Service Management generated wiring omits %s", expected)
+		}
+	}
+	if !strings.Contains(generated["refresh.py"], "'storedMissingExpiry': 'refresh'") {
+		t.Error("Jira Service Management refresh declaration must preserve stored expiry policy")
+	}
+}
+
+func TestPythonCodegenDocuSignOptionalSecretsGolden(t *testing.T) {
+	manifestPath := filepath.Join("..", "..", "connectors", "docusign", "connector.yaml")
+	manifest, err := load(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest.Spec.Languages = &schema.Languages{Python: &schema.LanguagePackage{Operations: []string{"getEnvelope"}}}
+	generated, err := renderPythonCodegen(pythonCodegenInput{Manifest: manifest, PackageName: "docusign_fixture", MockPackageName: "docusignmock"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"config.py", "connection.py"} {
+		goldenPath := filepath.Join("testdata", "docusign-golden", name)
+		if os.Getenv("UPDATE_DOCUSIGN_GOLDEN") == "1" {
+			if err := os.MkdirAll(filepath.Dir(goldenPath), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(goldenPath, []byte(generated[name]), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		want, err := os.ReadFile(goldenPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if generated[name] != string(want) {
+			t.Errorf("%s differs from DocuSign golden output", name)
+		}
+	}
+	if !strings.Contains(generated["connection.py"], "credentials.oauth_client_secret.reveal() if credentials.oauth_client_secret is not None") {
+		t.Error("DocuSign encoding must guard a missing method secret before reveal")
+	}
+	if !strings.Contains(generated["connection.py"], "credentials.connect_hmac_key.reveal() if credentials.connect_hmac_key is not None") {
+		t.Error("DocuSign encoding must guard optional Connect HMAC secret before reveal")
+	}
+}
+
 func TestPythonCodegenMultiAuthGolden(t *testing.T) {
 	manifestPath := filepath.Join("..", "..", "schema", "testdata", "multi-auth.yaml")
 	manifest, err := load(manifestPath)

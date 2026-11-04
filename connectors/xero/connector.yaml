@@ -54,6 +54,7 @@ spec:
             - "After Xero emails that the connection is authorised, open the app's Configuration page, copy the Client ID, choose Generate a secret, and copy both into the fields below. A Custom Connection reaches exactly one organisation, so there is nothing else to choose."
             - "To revoke access, generate a new secret or disconnect the app from the organisation's Connected Apps page at https://apps.xero.com/connected."
         clientCredentials:
+          storedMissingExpiry: refresh
           tokenEndpoint: https://identity.xero.com/connect/token
           tokenEndpointAuthMethod: client_secret_basic
           clientIDCredential: client_id
@@ -116,6 +117,7 @@ spec:
           pkce: false
           tokenEndpointAuthMethod: client_secret_basic
           refresh:
+            storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_client, invalid_grant, unauthorized_client, unsupported_grant_type, invalid_scope]
   operations:
     - name: listContacts

@@ -79,6 +79,7 @@ func TestDecodeTokenGrantDeclarations(t *testing.T) {
 	require.Equal(t, &schema.OAuthRefresh{
 		TerminalErrorCodes:   []string{"invalid_grant", "invalid_client"},
 		MissingExpiry:        &schema.MissingExpiry{Lifetime: "2h"},
+		StoredMissingExpiry:  schema.StoredMissingExpiryRefresh,
 		AdditionalParameters: map[string]string{"scope": "offline_access files.read"},
 	}, userOAuth.Refresh)
 
@@ -117,10 +118,13 @@ func TestTokenGrantDeclarationsMarshalForReleaseConsumers(t *testing.T) {
 	}
 	require.NoError(t, json.Unmarshal(encoded, &methods))
 	require.Equal(t, map[string]any{"lifetime": "2h"}, methods[0].OAuth2.Refresh["missingExpiry"])
+	require.Equal(t, "refresh", methods[0].OAuth2.Refresh["storedMissingExpiry"])
 	require.Equal(t, "keep", methods[1].OAuth2.Refresh["missingExpiry"])
 	require.Equal(t, map[string]any{"template": "https://login.example.com/{tenant_id}/token"}, methods[2].ClientCredentials["tokenEndpoint"])
+	require.Equal(t, "refresh", methods[2].ClientCredentials["storedMissingExpiry"])
 	require.Equal(t, map[string]any{"fromKey": "client_email"}, methods[3].ServiceAccount.JWTBearer["issuer"])
 	require.Equal(t, "1h", methods[3].ServiceAccount.JWTBearer["lifetime"])
+	require.Equal(t, "refresh", methods[3].ServiceAccount.JWTBearer["storedMissingExpiry"])
 
 	literal, err := json.Marshal(schema.ValueSource{Value: "https://login.example.com/token"})
 	require.NoError(t, err)
@@ -151,6 +155,9 @@ func TestTokenGrantDeclarationsRejectInvalidReferences(t *testing.T) {
 		"a missing expiry that is neither keep nor a lifetime": {edits: []manifestEdit{
 			{"missingExpiry: keep", "missingExpiry: refresh"},
 		}, problem: "missingExpiry must be keep or {lifetime: <duration>}"},
+		"an unknown stored missing expiry policy": {edits: []manifestEdit{
+			{"storedMissingExpiry: refresh", "storedMissingExpiry: never"},
+		}, problem: "storedMissingExpiry must be keep or refresh"},
 		"a negative missing expiry lifetime": {edits: []manifestEdit{
 			{"missingExpiry: {lifetime: 2h}\n            additionalParameters", "missingExpiry: {lifetime: -2h}\n            additionalParameters"},
 		}, problem: "missingExpiry lifetime must be a positive duration"},
