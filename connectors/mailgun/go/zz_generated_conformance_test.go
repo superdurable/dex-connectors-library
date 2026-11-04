@@ -232,7 +232,7 @@ func TestConnectorConformance(t *testing.T) {
 	requiredInputs := map[string][]string{}
 	for _, scenario := range scenarios {
 		t.Run(scenario.Name, func(t *testing.T) {
-			_ = conformanceClock(t, scenario)
+			_ = conformanceFixedClock(t, scenario)
 			recorder := &conformanceRecorder{scenario: scenario}
 			client := &http.Client{Transport: recorder}
 			endpoint := "http://127.0.0.1:12345" + conformanceEndpointPath
@@ -289,7 +289,7 @@ func TestConnectorConformance(t *testing.T) {
 	}
 }
 
-func conformanceClock(t *testing.T, scenario conformanceScenario) func() time.Time {
+func conformanceFixedClock(t *testing.T, scenario conformanceScenario) func() time.Time {
 	t.Helper()
 	if scenario.Clock == nil {
 		return time.Now
