@@ -2,7 +2,7 @@
 
 `TaskLifecycleFlow` uses the static `todoist` connection. It creates a disposable task, reads it, replaces its title and optional description, lists its project, and deletes it. The Flow stores only task data and nonsecret input; the personal API token remains in Dex Web Connections.
 
-Start `dexcli dev` and set `DEX_FLOW_SERVICE_ADDRESS` to its gRPC address. In Dex Web Connections, create a `todoist` connection with the personal API token from [Todoist Developer settings](https://app.todoist.com/app/settings/integrations/developer). Set `DEX_CONNECTOR_CONFIG_FILE` to the local Dex Web `connections.json` file. From `connectors/doist/todoist/typescript`, start the Worker:
+Start `dexcli dev` and set `DEX_FLOW_SERVICE_ADDRESS` to its gRPC address. In Dex Web Connections, create a `todoist` connection with the personal API token from [Todoist Developer settings](https://app.todoist.com/app/settings/integrations/developer). To exercise fractional duration parsing, set its timeout to `24.999999s`; the Worker rounds that request limit to 25 seconds. Set `DEX_CONNECTOR_CONFIG_FILE` to the local Dex Web `connections.json` file. From `connectors/doist/todoist/typescript`, start the Worker:
 
 ```sh
 npm run example:task-crud
