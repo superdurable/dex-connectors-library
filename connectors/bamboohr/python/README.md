@@ -12,6 +12,9 @@ application entrypoint. Its `worker.py` loads the static `bamboohr` connection
 from Dex Web project configuration; `start.py` decodes a bounded JSON request
 and starts a unique Flow ID. The [connector README](../README.md#bamboohr-setup)
 explains the BambooHR company domain, API key, and provider field vocabulary.
+Time off request and daily amounts retain Go-compatible JSON number shapes:
+whole amounts serialize as integers, while fractional amounts remain decimals.
+Provider IDs outside Go's signed 64-bit range select `invalidResponse`.
 
 Run the package checks with `uv sync --locked`, `uv run --locked pytest tests`,
 `uv run --locked ruff check src examples tests`, and
