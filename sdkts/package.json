@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connectors-sdk",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Provider-neutral TypeScript contracts for Dex connectors",
   "repository": {
     "type": "git",
