@@ -6,7 +6,7 @@ import { isBareEmailAddress, ZendeskClient } from '../src/client.js';
 import { buildTicketSearchQuery } from '../src/operations.js';
 
 const validEmail = ['agent@example.com', 'é@example.com', 'a@例子.测试', 'agent@[127.0.0.1]', 'agent@[::1]', 'a@-bad.com', 'a@foo_bar.com'];
-const invalidEmail = ['Agent <agent@example.com>', 'a@bad..com', 'a@[abc]', 'a@[IPv6:::1]', 'a:b@example.com', 'a@example.com status:solved'];
+const invalidEmail = ['Agent <agent@example.com>', 'a@bad..com', 'a@[abc]', 'a@[IPv6:::1]', 'a:b@example.com', 'a@example.com status:solved', 'a\0@b.com', 'a@b.com\0', 'a@[fe80::1%eth0]'];
 
 describe('Go-compatible input validation', () => {
   it.each(validEmail)('accepts a bare address: %s', value => expect(isBareEmailAddress(value)).toBe(true));
@@ -15,7 +15,7 @@ describe('Go-compatible input validation', () => {
     'rejects an impossible RFC 3339 instant: %s', value => expect(() => buildTicketSearchQuery({ updatedSince: value })).toThrow(),
   );
   it('accepts Go offset ranges and comma fractions', () => {
-    expect(buildTicketSearchQuery({ updatedSince: '2024-02-29T12:00:00,123456789+99:59' })).toBe('updated>=2024-02-25T08:01:00.123456789Z');
+    expect(buildTicketSearchQuery({ updatedSince: '2024-02-29T12:00:00,123456789+99:59' })).toBe('updated>=2024-02-25T08:01:00Z');
   });
   it('validates subdomain and response limits at construction', () => {
     const credentials = { resolve: async () => { throw new Error('unused'); } };

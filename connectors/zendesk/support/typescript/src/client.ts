@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, readErrorTokens, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { isIP } from 'node:net';
 import type { Call, CredentialProvider, Failure, Receipt } from '@superdurable/connectors-sdk';
 import type { Config, Credentials } from './generated/models.js';
@@ -121,17 +121,18 @@ export function zendeskFailure(operation: string, kind: Failure['kind'], message
 /** Return one case-insensitive provider response header. */
 export function header(headers: ProviderResponse['headers'], name: string): string { const value = headers[name.toLowerCase()]; return Array.isArray(value) ? (value[0] ?? '') : (value ?? ''); }
 function emptyResponse(): ZendeskResponse { return { status: 0, headers: {}, body: new Uint8Array(), requestId: '' }; }
-function goQueryEscape(value: string): string { return encodeURIComponent(value).replace(/%20/g, '+').replace(/~/g, '%7E').replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`); }
+function goQueryEscape(value: string): string { return encodeURIComponent(Buffer.from(value, 'utf8').toString('utf8')).replace(/%20/g, '+').replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`); }
 function describeError(body: Uint8Array, secret: string): string {
   try {
     const parsed: unknown = JSON.parse(Buffer.from(body).toString('utf8'));
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return '';
     const error = parsed as Record<string, unknown>;
     const parts: string[] = [];
-    if (typeof error.error === 'string' && !error.error.includes(secret)) parts.push(error.error);
+    const errorToken = readErrorTokens(body, ['/error'])[0];
+    if (errorToken && !errorToken.includes(secret)) parts.push(errorToken);
     if (error.details && typeof error.details === 'object' && !Array.isArray(error.details)) {
-      const details = Object.entries(error.details).filter(([key]) => /^[a-z][a-z0-9_]{0,63}$/.test(key) && !key.includes(secret)).sort(([left], [right]) => left.localeCompare(right)).slice(0, 5);
-      const fields = details.map(([key, value]) => { const entry = Array.isArray(value) ? value[0] : undefined; const token = entry && typeof entry === 'object' ? ((entry as Record<string, unknown>).type ?? (entry as Record<string, unknown>).error) : undefined; return `${key}${typeof token === 'string' && !token.includes(secret) ? `=${token}` : ''}`; });
+      const details = Object.keys(error.details).filter(key => /^[a-z][a-z0-9_]{0,63}$/.test(key) && !key.includes(secret)).sort().slice(0, 5);
+      const fields = details.map(key => { const token = readErrorTokens(body, [`/details/${key}/0/type`, `/details/${key}/0/error`])[0]; return `${key}${token && !token.includes(secret) ? `=${token}` : ''}`; });
       if (fields.length) parts.push(`details: ${fields.join(', ')}`);
     }
     return parts.length ? ` [${parts.join('; ')}]` : '';
@@ -139,13 +140,13 @@ function describeError(body: Uint8Array, secret: string): string {
 }
 /** Match Go's bare mail.ParseAddress result, including Unicode atoms and domain literals. */
 export function isBareEmailAddress(value: string): boolean {
-  if (/[\s"'()<>,;]/u.test(value) || value.includes('\\')) return false;
+  if (/[\s\p{Cc}"'()<>,;]/u.test(value) || value.includes('\\')) return false;
   const at = value.lastIndexOf('@');
   if (at < 1 || at !== value.indexOf('@') || at === value.length - 1) return false;
   const local = value.slice(0, at);
   const domain = value.slice(at + 1);
   const dotAtom = /^[^\s@.[\]:]+(?:\.[^\s@.[\]:]+)*$/u;
   if (!dotAtom.test(local)) return false;
-  if (domain.startsWith('[') && domain.endsWith(']')) return isIP(domain.slice(1, -1)) !== 0;
+  if (domain.startsWith('[') && domain.endsWith(']')) return !domain.includes('%') && isIP(domain.slice(1, -1)) !== 0;
   return dotAtom.test(domain);
 }

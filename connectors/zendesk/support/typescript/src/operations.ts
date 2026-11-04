@@ -35,7 +35,7 @@ export class SearchTicketsOperation implements Query<SearchTicketsInput, SearchT
       const body = objectJSON(result.response.body);
       if (!Array.isArray(body.results)) throw new Error('search page has no results array');
       const tickets = body.results.map(raw => { const wire = object(raw); if (wire.result_type !== undefined && wire.result_type !== '' && wire.result_type !== 'ticket') throw new Error('search result is not a ticket'); const decoded = decodeTicket(wire, this.client.agentTicketURL).ticket; delete decoded.description; delete decoded.isDescriptionTruncated; return decoded; });
-      const meta = body.meta === undefined ? {} : object(body.meta);
+      const meta = body.meta == null ? {} : object(body.meta);
       const hasMore = optionalBoolean(meta.has_more);
       const nextCursor = optionalString(meta.after_cursor);
       if (hasMore && !nextCursor) throw new Error('search page has more results but no cursor');
@@ -75,8 +75,8 @@ export class GetTicketOperation implements Query<GetTicketInput, TicketDetails> 
       const page = objectJSON(comments.response.body);
       const rawComments = array(page.comments);
       if (rawComments.length > commentLimit) throw new Error('comment page is larger than requested');
-      const latestComments = rawComments.map(raw => decodeComment(object(raw))).sort((left, right) => right.createdAt.localeCompare(left.createdAt) || right.id - left.id);
-      const meta = page.meta === undefined ? {} : object(page.meta);
+      const latestComments = rawComments.map(raw => decodeComment(object(raw))).sort((left, right) => compareCommentTimes(right.createdAt, left.createdAt) || right.id - left.id);
+      const meta = page.meta == null ? {} : object(page.meta);
       return newQueryBranch('found', { ...details, latestComments, ...(optionalBoolean(meta.has_more) ? { hasOlderComments: true } : {}) }, receipt);
     } catch (error) { return queryInvalid('getTicket', zeroDetails, receipt, 'Zendesk returned an invalid comment page', error); }
   }
@@ -140,7 +140,7 @@ export class UpdateTicketOperation implements Mutation<UpdateTicketInput, Update
       if (auditTerminal) return auditTerminal;
       try {
         const page = objectJSON(audits.response.body);
-        const hasEarlierChange = array(page.audits).some(raw => { const audit = object(raw); const metadata = audit.metadata === undefined ? {} : object(audit.metadata); const custom = metadata.custom === undefined ? {} : object(metadata.custom); return custom.dex_idempotency_key === call.idempotencyKey; });
+        const hasEarlierChange = array(page.audits).some(raw => { const audit = object(raw); const metadata = audit.metadata == null ? {} : object(audit.metadata); const custom = metadata.custom == null ? {} : object(metadata.custom); return custom.dex_idempotency_key === call.idempotencyKey; });
         if (hasEarlierChange) return newMutationBranch('updated', { ticket: current.ticket, wasAlreadyApplied: true }, receipt);
       } catch (error) { return mutationInvalid('updateTicket', currentOutput, receipt, 'Zendesk returned an invalid audit page', error); }
     }
@@ -172,7 +172,7 @@ export function buildTicketSearchQuery(input: SearchTicketsInput): string {
   if (input.requesterEmail) { if (!isBareEmailAddress(input.requesterEmail)) throw new Error('requesterEmail must be one bare email address'); terms.push(`requester:${input.requesterEmail}`); }
   validateTags('tags', input.tags);
   for (const tag of input.tags ?? []) terms.push(`tags:${tag}`);
-  if (input.updatedSince) terms.push(`updated>=${formatGoUTC(input.updatedSince)}`);
+  if (input.updatedSince) terms.push(`updated>=${parseRFC3339(input.updatedSince).toISOString().slice(0, 19)}Z`);
   const words = (input.text ?? '').trim().split(/\s+/u).filter(Boolean);
   if (words.length > 32) throw new Error('text has more than 32 keywords');
   for (const word of words) { if (/[:<>="*]/.test(word) || /^[+-]/.test(word)) throw new Error('text keyword contains a search operator'); terms.push(word); }
@@ -210,6 +210,12 @@ function formatGoUTC(value: string): string {
   const nanos = fraction.slice(0, 9).padEnd(9, '0').replace(/0+$/, '');
   return `${date.toISOString().slice(0, 19)}${nanos ? `.${nanos}` : ''}Z`;
 }
+function compareCommentTimes(left: string, right: string): number {
+  const milliseconds = parseRFC3339(left).getTime() - parseRFC3339(right).getTime();
+  if (milliseconds) return milliseconds;
+  const fractionalNanoseconds = (value: string) => Number((/\.(\d+)Z$/.exec(value)?.[1] ?? '').padEnd(9, '0').slice(3, 9));
+  return fractionalNanoseconds(left) - fractionalNanoseconds(right);
+}
 function object(value: unknown): Record<string, unknown> { if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('expected object'); return value as Record<string, unknown>; }
 function objectJSON(body: Uint8Array): Record<string, unknown> { return object(JSON.parse(Buffer.from(body).toString('utf8')) as unknown); }
 function array(value: unknown): unknown[] { if (!Array.isArray(value)) throw new Error('expected array'); return value; }
@@ -224,6 +230,7 @@ function decodeTicket(wire: Record<string, unknown>, agentTicketURL: string): { 
   const createdStamp = optionalTime(wire.created_at); const updatedStamp = optionalTime(wire.updated_at);
   const createdAt = formatGoUTC(createdStamp); const updatedAt = formatGoUTC(updatedStamp);
   const description = truncateUTF8(optionalString(wire.description));
+  const tags = optionalStringArray(wire.tags);
   const channel = wire.via === undefined || wire.via === null ? '' : (() => { const via = object(wire.via); return via.channel === undefined ? '' : typeof via.channel === 'string' ? via.channel : JSON.stringify(via.channel).trim(); })();
   const ticket: Ticket = { id, agentUrl: `${agentTicketURL}${id}`, status, createdAt, updatedAt,
     ...(optionalString(wire.subject) ? { subject: optionalString(wire.subject) } : {}), ...(description.value ? { description: description.value } : {}),
@@ -233,7 +240,7 @@ function decodeTicket(wire: Record<string, unknown>, agentTicketURL: string): { 
     ...(optionalNumber(wire.requester_id) ? { requesterId: optionalNumber(wire.requester_id) } : {}), ...(optionalNumber(wire.submitter_id) ? { submitterId: optionalNumber(wire.submitter_id) } : {}),
     ...(optionalNumber(wire.assignee_id) ? { assigneeId: optionalNumber(wire.assignee_id) } : {}), ...(optionalNumber(wire.group_id) ? { groupId: optionalNumber(wire.group_id) } : {}),
     ...(optionalNumber(wire.organization_id) ? { organizationId: optionalNumber(wire.organization_id) } : {}), ...(optionalNumber(wire.brand_id) ? { brandId: optionalNumber(wire.brand_id) } : {}),
-    ...(wire.tags === undefined || wire.tags === null ? {} : { tags: optionalStringArray(wire.tags) }),
+    ...(tags.length ? { tags } : {}),
     ...(optionalString(wire.external_id) ? { externalId: optionalString(wire.external_id) } : {}), ...(channel ? { channel } : {}),
     ...(optionalTime(wire.due_at) ? { dueAt: formatGoUTC(optionalTime(wire.due_at)) } : {}) };
   return { ticket, updatedStamp };
