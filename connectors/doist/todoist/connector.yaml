@@ -14,6 +14,11 @@ spec:
       package: dex-connector-doist-todoist
       operations: [getTask, updateTaskContent, listTasks, createTask, deleteTask]
       triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-doist-todoist'
+      operations: [getTask, updateTaskContent, listTasks, createTask, deleteTask]
+      triggers: []
   codegen:
     go:
       package: todoist
