@@ -47,3 +47,7 @@ The generated `openweathermapmock` package uses one consistent default answer pe
 ## Unverified live behavior
 
 A real account key, plan access, live current and forecast data, and Dex Web connection form have not been verified. OpenWeatherMap requires `appid` in the URL query; treat HTTP infrastructure logs as secret-bearing and avoid request-URL logging.
+
+## TypeScript package
+
+The [TypeScript connector](typescript/README.md) provides `getCurrentWeather` and `getForecast` Queries at package version `v0.1.0`. Its runnable weather Flow uses the static `openweathermap` connection.
