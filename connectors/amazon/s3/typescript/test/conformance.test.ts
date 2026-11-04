@@ -15,11 +15,7 @@ it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario,
 
 async function invokeS3(scenario: Scenario, recorder: ExchangeRecorder, context: unknown) {
   const send = (request: ProviderRequest) => {
-    const headers = { ...request.headers };
-    delete headers.authorization;
-    delete headers['x-amz-date'];
-    delete headers['x-amz-security-token'];
-    return answerRecordedRequest(recorder, { ...request, headers }, before => new ProviderTransportError(before));
+    return answerRecordedRequest(recorder, request, before => new ProviderTransportError(before));
   };
   const client = new S3Client({ endpoint: 'http://127.0.0.1:12345', region: 'eu-west-1', defaultBucket: 'acme-reports' }, {
     resolve: async () => ({ accessKeyId: new SecretString('AKIAS3CONNECTORTEST1'), secretAccessKey: new SecretString('s3-connector-test/secret+value') }),
