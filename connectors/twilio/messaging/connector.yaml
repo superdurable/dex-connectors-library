@@ -9,6 +9,11 @@ metadata:
 spec:
   provider: twilio
   languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-twilio-messaging
+      operations: [sendMessage, getMessage]
+      triggers: []
     typescript:
       version: v0.1.0
       package: '@superdurable/connector-twilio-messaging'

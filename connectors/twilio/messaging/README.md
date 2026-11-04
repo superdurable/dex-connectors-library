@@ -271,6 +271,10 @@ behavior under load, regional endpoints, Restricted API key permissions,
 test-credential rejection of `getMessage`, and the Console paths in the setup
 guidance.
 
+## Python
+
+The `python/` package publishes `dex-connector-twilio-messaging` v0.1.0 with `sendMessage` and `getMessage` Steps. Its [runnable example](python/examples/text_message_delivery) sends one message through a static `twilio-messaging` connection, then reads its status. The send uses the Dex single-dispatch fence; an uncertain outcome must be reconciled before sending again. Configure the Twilio Account SID, sender, and selected credential method through Dex Web Connections. Live Twilio behavior requires a user-controlled account and has not been verified by local replay.
+
 ## TypeScript package
 
 The first TypeScript release is `@superdurable/connector-twilio-messaging@0.1.0`.

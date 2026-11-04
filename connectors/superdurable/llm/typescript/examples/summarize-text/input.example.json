@@ -1,0 +1,5 @@
+{
+  "messages": [
+    {"role": "user", "text": "Summarize the value of durable workflows in one sentence."}
+  ]
+}
