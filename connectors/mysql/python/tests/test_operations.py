@@ -24,10 +24,16 @@ class _Cursor:
         rows: list[tuple[Any, ...]] | None = None,
         description: tuple[Any, ...] | None = None,
         error: Exception | None = None,
+        rows_affected: int = 1,
+        last_insert_id: int = 1,
+        warning_count: int = 0,
     ) -> None:
         self.rows = list(rows or [])
         self.description = description
         self.error = error
+        self.rowcount = rows_affected
+        self.lastrowid = last_insert_id
+        self.warning_count = warning_count
         self.sql: list[str] = []
         self.did_close = False
         self._connection: _Connection | None = None
@@ -78,7 +84,11 @@ class _Connection:
 
     def cmd_stmt_execute(self, statement_id: int, data: tuple[Any, ...], **kwargs: object) -> dict[str, Any]:
         self.prepared.execute(self.prepared._executed, data)
-        return {}
+        return {
+            "affected_rows": self.prepared.rowcount,
+            "insert_id": self.prepared.lastrowid,
+            "warning_count": self.prepared.warning_count,
+        }
 
     def commit(self) -> None:
         if self.commit_error:
@@ -195,7 +205,7 @@ async def test_execute_success_limit_retry_and_uncertain(monkeypatch: pytest.Mon
     completed = await _client(monkeypatch, connection).execute().invoke(_call("execute"), input)
     assert completed.branch == "completed" and connection.did_commit
     assert completed.value is not None and completed.value.rows_affected == 1
-    limit_connection = _Connection(_Cursor(), _Cursor([(2, 1, 0)]))
+    limit_connection = _Connection(_Cursor(rows_affected=2))
     limited = (
         await _client(monkeypatch, limit_connection)
         .execute()
@@ -228,24 +238,18 @@ async def test_execute_success_limit_retry_and_uncertain(monkeypatch: pytest.Mon
 
 
 @pytest.mark.asyncio
-async def test_execute_reads_session_outcome_before_prepared_cursor_close(
+async def test_execute_uses_prepared_server_outcome_before_cursor_close(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    prepared = _Cursor()
-
-    class OutcomeCursor(_Cursor):
-        def execute(self, statement: str, parameters: tuple[Any, ...] = ()) -> None:
-            assert not prepared.did_close
-            super().execute(statement, parameters)
-
-    connection = _Connection(prepared, OutcomeCursor([(2, 8, 1)]))
+    prepared = _Cursor(rows_affected=2, last_insert_id=8, warning_count=1)
+    connection = _Connection(prepared)
     client = _client(monkeypatch, connection)
     limited = await client.execute().invoke(
         _call("execute"), ExecuteStatementInput("UPDATE t SET value = 1", max_rows_affected=1)
     )
     assert limited.branch == "limitExceeded" and not connection.did_commit
-    prepared = _Cursor()
-    connection = _Connection(prepared, OutcomeCursor([(2, 8, 1)]))
+    prepared = _Cursor(rows_affected=2, last_insert_id=8, warning_count=1)
+    connection = _Connection(prepared)
     completed = (
         await _client(monkeypatch, connection)
         .execute()

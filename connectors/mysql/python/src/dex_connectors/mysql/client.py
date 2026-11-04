@@ -502,16 +502,10 @@ class ExecuteStatementOperation:
                     "RETURNING rows exceeded maxRows or maxResponseBytes, so the transaction was rolled back",
                     _receipt(call, metadata),
                 )
-            cursor = connection.cursor()
-            cursor.execute("SELECT ROW_COUNT(), LAST_INSERT_ID(), @@warning_count")
-            outcome = cursor.fetchone()
-            cursor.close()
+            affected = prepared_cursor.rowcount
+            last_insert_id = prepared_cursor.lastrowid
+            warning_count = prepared_cursor.warning_count
             prepared_cursor.close()
-            if outcome is None or len(outcome) != 3:
-                raise ValueError(
-                    "server returned an unreadable ROW_COUNT(), LAST_INSERT_ID(), or @@warning_count"
-                )
-            affected = int(outcome[0])
             if affected < 0:
                 affected = len(rows)
             if input.max_rows_affected is not None and affected > input.max_rows_affected:
@@ -526,7 +520,7 @@ class ExecuteStatementOperation:
                 )
             phase = "commit"
             _commit_transaction(connection)
-            result = StatementExecution(affected, str(outcome[1]), int(outcome[2]), columns, rows)
+            result = StatementExecution(affected, str(last_insert_id or 0), warning_count, columns, rows)
             return MutationAttempt.branch_result(COMPLETED, result, _receipt(call, metadata))
         except Exception as error:
             disposition = _classify(error, phase)
