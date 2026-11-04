@@ -145,7 +145,7 @@ class Client:
             )
         headers = {
             "Authorization": "Bearer " + token,
-            "Accept": "application/vnd.tmdb+json;version=2",
+            "Accept": "application/json",
             "User-Agent": "superdurable-tmdb/0.1",
         }
         try:

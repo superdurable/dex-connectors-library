@@ -8,6 +8,8 @@ Read-only Dex Query Steps for Shopify. The module is `github.com/superdurable/de
 
 The Python package is [`dex-connector-shopify`](python/README.md), imported as
 `dex_connectors.shopify`.
+The TypeScript package is [`@superdurable/connector-shopify`](typescript/README.md),
+with a [runnable order read Flow](typescript/examples/order-read/README.md).
 
 ## Operations
 
