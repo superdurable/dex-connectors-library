@@ -5,9 +5,10 @@
 import sys
 from pathlib import Path
 
-import dex_connectors.postmark as postmark
 import dex_connectors.sdk as sdk
 import pytest
+
+import dex_connectors.postmark as postmark
 
 ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
@@ -16,10 +17,14 @@ import connector_scenarios as conformance  # noqa: E402
 SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/postmark/scenarios.json")
 CONNECTION = sdk.ConnectionRef("postmark", "postmark")
 ADAPTER = conformance.PythonOperationAdapter(
-    "postmark", CONNECTION, postmark,
+    "postmark",
+    CONNECTION,
+    postmark,
     lambda client, _: postmark.Client(
         postmark.Config(base_url="http://127.0.0.1:8848"),
-        conformance.static_credentials(CONNECTION, postmark.Credentials(sdk.SecretString("test-secret-token"))),
+        conformance.static_credentials(
+            CONNECTION, postmark.Credentials(sdk.SecretString("test-secret-token"))
+        ),
         client,
     ),
 )
