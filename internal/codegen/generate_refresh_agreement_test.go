@@ -61,6 +61,25 @@ func TestGenerateRefreshAgreementCasesCoverAlternativeScopes(t *testing.T) {
 	}
 }
 
+func TestHelpScoutRejectsMissingResponseExpiryAsRetryable(t *testing.T) {
+	manifestFile, err := os.Open(filepath.Join("..", "..", "connectors", "helpscout", "connector.yaml"))
+	require.NoError(t, err)
+	manifest, err := schema.Decode(manifestFile)
+	require.NoError(t, err)
+	require.NoError(t, manifestFile.Close())
+	encoded, err := codegen.GenerateRefreshAgreementCases(manifest, nil)
+	require.NoError(t, err)
+	var cases []codegen.RefreshAgreementCase
+	require.NoError(t, json.Unmarshal(encoded, &cases))
+	for _, agreementCase := range cases {
+		if strings.Contains(agreementCase.Name, "without expires_in") {
+			require.Equal(t, "retryable", agreementCase.ExpectedError)
+			return
+		}
+	}
+	t.Fatal("Help Scout missing expires_in case was not generated")
+}
+
 func TestGenerateRefreshAgreementCasesCoverGrantResponses(t *testing.T) {
 	manifestFile, err := os.Open(filepath.Join("..", "..", "connectors", "slack", "connector.yaml"))
 	require.NoError(t, err)

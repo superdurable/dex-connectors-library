@@ -94,6 +94,7 @@ spec:
             - {credential: refresh_token, source: refresh_token}
           pkce: true
           refresh:
+            missingExpiry: reject
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client, invalid_request, invalid_scope, interaction_required, consent_required]
             additionalParameters: {scope: Files.ReadWrite.All Sites.Read.All offline_access}
@@ -132,6 +133,7 @@ spec:
             - Open Certificates & secrets > Client secrets > New client secret and copy the Value shown once; copy the Directory (tenant) ID and Application (client) ID from Overview.
             - Enter the three values below and leave access_token blank; the application requests a token from https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token on its first Graph call. App-only connections have no signed-in user, so every Step must name a drive ID, which the drive picker or Graph Explorer provides.
         clientCredentials:
+          missingExpiry: reject
           storedMissingExpiry: refresh
           tokenEndpoint: {template: "https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"}
           clientIDCredential: app_client_id

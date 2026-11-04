@@ -35,8 +35,12 @@ const (
 	ScopeSeparatorsWhitespaceAndComma = "whitespaceAndComma"
 )
 
-// keepMissingExpiry is the scalar form of MissingExpiry that keeps a token whose response has no expires_in.
-const keepMissingExpiry = "keep"
+const (
+	// keepMissingExpiry keeps a token whose response has no expires_in.
+	keepMissingExpiry = "keep"
+	// rejectMissingExpiry requires a positive expires_in.
+	rejectMissingExpiry = "reject"
+)
 
 const (
 	// StoredMissingExpiryKeep preserves a present access token without recorded expiry.
@@ -96,9 +100,11 @@ type OAuthRefreshGrant struct {
 	GrantedScopes string `yaml:"grantedScopes,omitempty" json:"grantedScopes,omitempty"`
 }
 
-// MissingExpiry decides the expiry of a token whose token response has no expires_in. In YAML and JSON it is the
-// string keep, which stores the token without an expiry, or {lifetime: <duration>}.
+// MissingExpiry decides whether a response without expires_in is rejected, kept without expiry, or assigned a
+// lifetime. Nil rejects a missing expiry, matching the default Go token endpoint.
 type MissingExpiry struct {
+	// Reject requires a positive expires_in and treats its absence as a retryable malformed response.
+	Reject bool `yaml:"-" json:"-"`
 	// Lifetime is how long such a token lasts, such as 2h. Empty keeps the token without an expiry, so a host
 	// replaces it only after the provider rejects it.
 	Lifetime string
@@ -218,13 +224,13 @@ type ValueSource struct {
 	Values map[string]string `yaml:"values,omitempty" json:"values,omitempty"`
 }
 
-// UnmarshalYAML reads keep or {lifetime: <duration>}.
+// UnmarshalYAML reads reject, keep, or {lifetime: <duration>}.
 func (missingExpiry *MissingExpiry) UnmarshalYAML(node *yaml.Node) error {
 	if node.Kind == yaml.ScalarNode {
-		if node.Value != keepMissingExpiry {
-			return fmt.Errorf("missingExpiry must be keep or {lifetime: <duration>}, not %q", node.Value)
+		if node.Value != keepMissingExpiry && node.Value != rejectMissingExpiry {
+			return fmt.Errorf("missingExpiry must be reject, keep, or {lifetime: <duration>}, not %q", node.Value)
 		}
-		*missingExpiry = MissingExpiry{}
+		*missingExpiry = MissingExpiry{Reject: node.Value == rejectMissingExpiry}
 		return nil
 	}
 	var lifetime struct {
@@ -234,35 +240,38 @@ func (missingExpiry *MissingExpiry) UnmarshalYAML(node *yaml.Node) error {
 		return fmt.Errorf("missingExpiry: %w", err)
 	}
 	if lifetime.Lifetime == "" {
-		return errors.New("missingExpiry must be keep or {lifetime: <duration>}")
+		return errors.New("missingExpiry must be reject, keep, or {lifetime: <duration>}")
 	}
 	*missingExpiry = MissingExpiry{Lifetime: lifetime.Lifetime}
 	return nil
 }
 
-// MarshalJSON writes "keep" or {"lifetime": "<duration>"}.
+// MarshalJSON writes "reject", "keep", or {"lifetime": "<duration>"}.
 func (missingExpiry MissingExpiry) MarshalJSON() ([]byte, error) {
+	if missingExpiry.Reject {
+		return json.Marshal(rejectMissingExpiry)
+	}
 	if missingExpiry.Lifetime == "" {
 		return json.Marshal(keepMissingExpiry)
 	}
 	return json.Marshal(map[string]string{"lifetime": missingExpiry.Lifetime})
 }
 
-// UnmarshalJSON reads "keep" or {"lifetime": "<duration>"}.
+// UnmarshalJSON reads "reject", "keep", or {"lifetime": "<duration>"}.
 func (missingExpiry *MissingExpiry) UnmarshalJSON(contents []byte) error {
 	var scalar string
 	if json.Unmarshal(contents, &scalar) == nil {
-		if scalar != keepMissingExpiry {
-			return fmt.Errorf("missingExpiry must be keep or {lifetime: <duration>}, not %q", scalar)
+		if scalar != keepMissingExpiry && scalar != rejectMissingExpiry {
+			return fmt.Errorf("missingExpiry must be reject, keep, or {lifetime: <duration>}, not %q", scalar)
 		}
-		*missingExpiry = MissingExpiry{}
+		*missingExpiry = MissingExpiry{Reject: scalar == rejectMissingExpiry}
 		return nil
 	}
 	var lifetime struct {
 		Lifetime string `json:"lifetime"`
 	}
 	if err := json.Unmarshal(contents, &lifetime); err != nil || lifetime.Lifetime == "" {
-		return errors.New("missingExpiry must be keep or {lifetime: <duration>}")
+		return errors.New("missingExpiry must be reject, keep, or {lifetime: <duration>}")
 	}
 	*missingExpiry = MissingExpiry{Lifetime: lifetime.Lifetime}
 	return nil

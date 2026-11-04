@@ -76,6 +76,22 @@ func TestOAuthAlternativeScopesAndDelegatedSubjectDeclarations(t *testing.T) {
 	}
 }
 
+func TestMissingExpiryRejectRoundTrips(t *testing.T) {
+	var policy schema.MissingExpiry
+	require.NoError(t, json.Unmarshal([]byte(`"reject"`), &policy))
+	require.True(t, policy.Reject)
+	encoded, err := json.Marshal(policy)
+	require.NoError(t, err)
+	require.JSONEq(t, `"reject"`, string(encoded))
+	require.ErrorContains(t, json.Unmarshal([]byte(`"unknown"`), &policy), "missingExpiry")
+	manifestFile, err := os.Open(filepath.Join("..", "connectors", "helpscout", "connector.yaml"))
+	require.NoError(t, err)
+	defer manifestFile.Close()
+	manifest, err := schema.Decode(manifestFile)
+	require.NoError(t, err)
+	require.True(t, manifest.Spec.Auth.ClientCredentials.MissingExpiry.Reject)
+}
+
 func TestGrantExactScopesFalseSurvivesJSONEncoding(t *testing.T) {
 	falseValue := false
 	encoded, err := json.Marshal(schema.OAuthRefreshGrant{ExactScopes: &falseValue})
@@ -179,7 +195,7 @@ func TestTokenGrantDeclarationsRejectInvalidReferences(t *testing.T) {
 		}, problem: "tokenRequestEncoding must be form or json"},
 		"a missing expiry that is neither keep nor a lifetime": {edits: []manifestEdit{
 			{"missingExpiry: keep", "missingExpiry: refresh"},
-		}, problem: "missingExpiry must be keep or {lifetime: <duration>}"},
+		}, problem: "missingExpiry must be reject, keep, or {lifetime: <duration>}"},
 		"an unknown stored missing expiry policy": {edits: []manifestEdit{
 			{"storedMissingExpiry: refresh", "storedMissingExpiry: never"},
 		}, problem: "storedMissingExpiry must be keep or refresh"},

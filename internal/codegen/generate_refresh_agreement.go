@@ -265,7 +265,7 @@ func (agreement *refreshAgreementGenerator) responseVariations(base RefreshAgree
 			variations = append(variations, extra)
 		}
 	}
-	if grant.missingExpiry == nil {
+	if grant.missingExpiry == nil || grant.missingExpiry.Reject {
 		missingExpiry := clone(" without expires_in", "retryable")
 		delete(missingExpiry.Response, "expires_in")
 		variations = append(variations, missingExpiry)

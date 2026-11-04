@@ -334,7 +334,9 @@ Use `auth.methods` when one named connection can use more than one provider
 authentication model. Every method has a stable lowercase kebab-case ID, such
 as `google-oauth`, its own fields, guide, and optional OAuth metadata.
 `defaultMethod` must identify the method the setup UI selects first; mark at
-most one method `recommended`.
+most one method `recommended`. The same declaration selects the method when
+an older stored credential has a blank or absent `auth_method`; generated Go,
+Python, and TypeScript decoders use it before validating method fields.
 
 ```yaml
 auth:
@@ -497,9 +499,10 @@ Every grant shares these rules:
 - `credentialMappings` map the response into credential fields by dotted JSON
   path. A mapped value that the response omits keeps the stored one, so a
   provider that does not rotate its refresh token keeps it.
-- `missingExpiry` decides the expiry of a token whose response has no
-  `expires_in`: `keep`, the default, stores it without an expiry, so the host
-  replaces it only after the provider rejects it; `{lifetime: 2h}` sets one.
+- `missingExpiry` decides what a successful token response without a positive
+  `expires_in` means. `reject` (also the default) treats it as a retryable
+  malformed response; `keep` stores it without an expiry; `{lifetime: 2h}`
+  assigns one. Declare `reject` when matching a Go driver that requires expiry.
 - `storedMissingExpiry` independently decides whether an existing access token
   without recorded expiry is refreshed: `keep` is the default, and `refresh`
   exchanges it before a provider request. Declare it on each refresh,

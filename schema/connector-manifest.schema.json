@@ -502,8 +502,9 @@
       "items": { "type": "string", "pattern": "\\S" }
     },
     "missingExpiry": {
-      "description": "The expiry of a token whose response has no expires_in: keep stores it without an expiry; lifetime sets one.",
+      "description": "The expiry of a token whose response has no positive expires_in: reject makes a malformed successful response retryable (also the default); keep stores it without expiry; lifetime sets one.",
       "oneOf": [
+        { "const": "reject" },
         { "const": "keep" },
         {
           "type": "object",
