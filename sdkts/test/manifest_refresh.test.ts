@@ -540,4 +540,31 @@ describe('manifest credential refresh', () => {
       }
     }
   });
+
+  it('retries a Help Scout style response without positive expires_in', async () => {
+    const clientAuth = { fields: [{ name: 'access_token', type: 'secretString' }], clientCredentials: {
+      tokenEndpoint: 'https://oauth.example.test/token', clientIDCredential: 'client_id',
+      clientSecretCredential: 'client_secret', missingExpiry: 'reject',
+      credentialMappings: [{ credential: 'access_token', source: 'access_token' }],
+    } };
+    let response: Record<string, unknown> = { access_token: 'next', token_type: 'Bearer' };
+    const driver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Help Scout', auth: clientAuth,
+      credentialFields, fetch: async () => Response.json(response) });
+    for (const expiry of [undefined, 0, -1]) {
+      response = { access_token: 'next', token_type: 'Bearer', ...(expiry === undefined ? {} : { expires_in: expiry }) };
+      await expect(driver.refresh(state(), new AbortController().signal)).rejects.toThrow('omitted required fields');
+    }
+    response = { access_token: 'next', token_type: 'Bearer', expires_in: 3600 };
+    await expect(driver.refresh(state(), new AbortController().signal)).resolves.toBeDefined();
+  });
+
+  it('rejects unknown manifest response declarations', () => {
+    for (const declaration of [{ missingExpiry: 'unknown' }, { acceptedScopeSets: [] },
+      { acceptedScopeSets: [['read'], []] }, { scopeSeparators: 'comma' }]) {
+      const configured = structuredClone(auth) as Record<string, unknown>;
+      const method = (configured.methods as Record<string, unknown>[])[0]!;
+      Object.assign((method.oauth2 as Record<string, unknown>).refresh as object, declaration);
+      expect(() => new ManifestCredentialRefreshDriver({ providerName: 'Example', auth: configured, credentialFields })).toThrow(TypeError);
+    }
+  });
 });

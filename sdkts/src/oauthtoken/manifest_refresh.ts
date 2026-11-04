@@ -34,6 +34,7 @@ interface Grant {
   allowsPublicClient: boolean;
   acceptsMissingTokenType: boolean;
   acceptsMissingExpiresIn: boolean;
+  missingExpiryPolicy: unknown;
   storedMissingExpiry: unknown;
   missingExpiry: string;
   additionalParameters: Record<string, string>;
@@ -75,7 +76,10 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
     this.#now = options.now ?? (() => new Date());
     const methods = manifestList(this.#auth.methods);
     for (const method of methods.length ? methods : [this.#auth]) {
-      for (const grant of this.#grants(manifestObject(method))) this.#validateStoredMissingExpiry(grant);
+      for (const grant of this.#grants(manifestObject(method))) {
+        this.#validateStoredMissingExpiry(grant);
+        this.#validateNewDeclarations(grant);
+      }
     }
   }
 
@@ -159,11 +163,12 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
         terminalCodes: strings(refresh?.terminalErrorCodes, ['invalid_grant']),
         acceptedTokenTypes: strings(declaration.acceptedTokenTypes ?? refresh?.acceptedTokenTypes, ['Bearer']),
         exactScopes: declaration.exactScopes === true || (declaration.exactScopes === undefined && refresh?.exactScopes === true),
-        scopeSeparators: refresh?.scopeSeparators === 'whitespaceAndComma' ? 'whitespaceAndComma' : 'whitespace',
+        scopeSeparators: (refresh?.scopeSeparators ?? 'whitespace') as Grant['scopeSeparators'],
         allowsPublicClient: refresh?.allowsPublicClient === true,
         acceptsMissingTokenType: declaration.acceptsMissingTokenType === undefined
           ? refresh?.acceptsMissingTokenType === true : declaration.acceptsMissingTokenType === true,
-        acceptsMissingExpiresIn: refresh?.missingExpiry !== undefined,
+        acceptsMissingExpiresIn: refresh?.missingExpiry !== undefined && refresh.missingExpiry !== 'reject',
+        missingExpiryPolicy: refresh?.missingExpiry,
         storedMissingExpiry: refresh?.storedMissingExpiry === undefined ? 'keep' : refresh.storedMissingExpiry,
         missingExpiry: missingExpiryLifetime(refresh?.missingExpiry), additionalParameters: stringRecord(refresh?.additionalParameters),
       }));
@@ -176,12 +181,13 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
         encoding: manifestText(client.tokenRequestEncoding) || 'form', clientID: manifestText(client.clientIDCredential),
         clientSecret: manifestText(client.clientSecretCredential), refreshField: '', keyCredential: '', assertion: {},
         mappings: manifestList(client.credentialMappings).map(manifestObject), copies: [], scopes: client.scopes,
-        requestScopes: client.scopes, acceptedScopeSets: [], terminalCodes: strings(client.terminalErrorCodes, ['invalid_client']),
+        requestScopes: client.scopes, acceptedScopeSets: undefined, terminalCodes: strings(client.terminalErrorCodes, ['invalid_client']),
         acceptedTokenTypes: strings(client.acceptedTokenTypes, ['Bearer']),
         exactScopes: false,
         scopeSeparators: 'whitespace', allowsPublicClient: false,
         acceptsMissingTokenType: client.acceptsMissingTokenType === true,
-        acceptsMissingExpiresIn: client.missingExpiry !== undefined,
+        acceptsMissingExpiresIn: client.missingExpiry !== undefined && client.missingExpiry !== 'reject',
+        missingExpiryPolicy: client.missingExpiry,
         storedMissingExpiry: client.storedMissingExpiry === undefined ? 'keep' : client.storedMissingExpiry,
         missingExpiry: missingExpiryLifetime(client.missingExpiry), additionalParameters: stringRecord(client.additionalParameters),
       }];
@@ -197,9 +203,10 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
       terminalCodes: strings(bearer.terminalErrorCodes, ['invalid_grant']),
       acceptedTokenTypes: strings(bearer.acceptedTokenTypes, ['Bearer']),
       exactScopes: false,
-      scopeSeparators: bearer.scopeSeparators === 'whitespaceAndComma' ? 'whitespaceAndComma' : 'whitespace', allowsPublicClient: false,
+      scopeSeparators: (bearer.scopeSeparators ?? 'whitespace') as Grant['scopeSeparators'], allowsPublicClient: false,
       acceptsMissingTokenType: bearer.acceptsMissingTokenType === true,
-      acceptsMissingExpiresIn: bearer.missingExpiry !== undefined,
+      acceptsMissingExpiresIn: bearer.missingExpiry !== undefined && bearer.missingExpiry !== 'reject',
+      missingExpiryPolicy: bearer.missingExpiry,
       storedMissingExpiry: bearer.storedMissingExpiry === undefined ? 'keep' : bearer.storedMissingExpiry,
       missingExpiry: missingExpiryLifetime(bearer.missingExpiry), additionalParameters: {},
     }];
@@ -282,6 +289,23 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
       throw new TypeError('manifest grant duration must be positive');
     if (grant.kind === 'jwt_bearer' && parseDurationMs(manifestText(grant.assertion.lifetime)) < 1)
       throw new TypeError('manifest JWT assertion lifetime must be at least one millisecond');
+  }
+
+  #validateNewDeclarations(grant: Grant): void {
+    const policy = grant.missingExpiryPolicy;
+    if (policy !== undefined && policy !== 'reject' && policy !== 'keep' &&
+      !(Object.keys(manifestObject(policy)).length === 1 && typeof manifestObject(policy).lifetime === 'string'
+        && manifestText(manifestObject(policy).lifetime) !== ''))
+      throw new TypeError('manifest missingExpiry must be reject, keep, or a positive lifetime');
+    if (grant.scopeSeparators !== 'whitespace' && grant.scopeSeparators !== 'whitespaceAndComma')
+      throw new TypeError('manifest scopeSeparators is invalid');
+    if (grant.acceptedScopeSets !== undefined && (!Array.isArray(grant.acceptedScopeSets)
+      || grant.acceptedScopeSets.length === 0 || grant.acceptedScopeSets.some((set: unknown) =>
+        !Array.isArray(set) || set.length === 0 || set.some(scope => typeof scope !== 'string' || !scope))))
+      throw new TypeError('manifest acceptedScopeSets is invalid');
+    if (grant.kind === 'jwt_bearer' && grant.assertion.subjectValidation !== undefined
+      && grant.assertion.subjectValidation !== 'goMailAddress')
+      throw new TypeError('manifest subjectValidation is invalid');
   }
 
   #validateStoredMissingExpiry(grant: Grant): void {

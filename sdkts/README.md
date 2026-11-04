@@ -283,7 +283,7 @@ await fence.recordProviderId(result.providerId);
 
 ### 0.5.0
 
-Manifest refresh supports `acceptedScopeSets` for providers that grant equivalent scope alternatives. JWT bearer grants may declare `subjectValidation: goMailAddress`; the driver then validates the trimmed delegated subject using Go `mail.ParseAddress` address equality before sending a token request.
+Manifest refresh supports `acceptedScopeSets` for providers that grant equivalent scope alternatives. JWT bearer grants may declare `subjectValidation: goMailAddress`; the driver then validates the trimmed delegated subject using Go `mail.ParseAddress` address equality before sending a token request. `missingExpiry: reject` requires a positive `expires_in` and treats a malformed successful response as retryable.
 
 ### 0.4.0
 
