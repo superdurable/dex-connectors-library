@@ -256,6 +256,9 @@ The core example sends through an in-process HTTP transport.
 
 ## Version history
 
+- `0.5.0`: Manifest refresh accepts alternative scope sets and validates
+  declared delegated JWT subjects using Go `mail.ParseAddress` address equality
+  before token requests.
 - `0.4.0`: Added `storedMissingExpiry` for refresh-token, client-credentials,
   and JWT-bearer grants. A stored token without expiry can now trigger refresh
   even when a replacement response must include `expires_in`. `missingExpiry`

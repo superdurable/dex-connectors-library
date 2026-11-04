@@ -7,6 +7,7 @@ import re
 from collections.abc import Callable, Mapping
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
+from ipaddress import ip_address
 from typing import Any, Generic, TypeVar, cast
 from urllib.parse import quote
 
@@ -115,11 +116,14 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                 required_scopes = [scope for scope in required_scopes if scope != "offline_access"]
             separators = r"[ ,]+" if grant["scope_separators"] == "whitespaceAndComma" else r"\s+"
             granted_scopes = set(re.split(separators, token.scope)) - {""}
-            required_scope_set = set(required_scopes)
+            accepted_scope_sets = grant.get("accepted_scope_sets") or [required_scopes]
             has_wrong_scopes = (
                 (bool(token.scope.strip()) or grant["exact_scopes"])
-                and (not required_scope_set <= granted_scopes
-                     or (grant["exact_scopes"] and granted_scopes != required_scope_set))
+                and not any(
+                    set(scope_set) <= granted_scopes
+                    and (not grant["exact_scopes"] or granted_scopes == set(scope_set))
+                    for scope_set in accepted_scope_sets
+                )
             )
             if has_wrong_scopes:
                 raise ReauthorizationRequiredError()
@@ -199,6 +203,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                     "scopes": (oauth.get("userScopes", [])
                     if grant.get("grantedScopes") == "userScopes"
                     else refresh.get("requiredScopes", oauth.get("scopes", []))),
+                    "accepted_scope_sets": refresh.get("acceptedScopeSets", []),
                     "terminal_codes": refresh.get("terminalErrorCodes") or ["invalid_grant"],
                     "accepted_token_types": grant.get("acceptedTokenTypes")
                     or refresh.get("acceptedTokenTypes") or ["Bearer"],
@@ -305,15 +310,21 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
             assertion = grant["assertion"]
             lifetime = _parse_duration(assertion["lifetime"])
             try:
+                subject = (
+                    self._resolve_source(assertion["subject"], credentials, key)
+                    if assertion.get("subject") else ""
+                )
+                if assertion.get("subjectValidation") == "goMailAddress":
+                    subject = _trim_go_space(subject)
+                    if not _is_go_mail_address(subject):
+                        raise ReauthorizationRequiredError()
                 private_key = parse_rsa_private_key_pem(
                     self._resolve_source(assertion["privateKey"], credentials, key)
                 )
                 signed = sign_jwt_bearer_assertion(
                     JWTBearerAssertion(
                         issuer=self._resolve_source(assertion["issuer"], credentials, key),
-                        subject=self._resolve_source(assertion["subject"], credentials, key)
-                        if assertion.get("subject")
-                        else "",
+                        subject=subject,
                         audience=self._resolve_source(assertion["audience"], credentials, key),
                         scope=" ".join(self._scopes(assertion.get("scopes", []))),
                         issued_at=self._now(),
@@ -437,6 +448,51 @@ def _parse_duration(value: str) -> timedelta:
     if position != len(value) or total_nanoseconds > maximum:
         raise ValueError("manifest grant duration is invalid")
     return sign * timedelta(microseconds=total_nanoseconds // 1000)
+
+
+def _trim_go_space(value: str) -> str:
+    """Trim the Unicode White_Space points used by Go strings.TrimSpace."""
+    def is_space(character: str) -> bool:
+        code = ord(character)
+        return (code == 0x20 or 0x09 <= code <= 0x0D or code in (0x85, 0xA0, 0x1680)
+                or 0x2000 <= code <= 0x200A or code in (0x2028, 0x2029, 0x202F, 0x205F, 0x3000))
+
+    start, end = 0, len(value)
+    while start < end and is_space(value[start]):
+        start += 1
+    while end > start and is_space(value[end - 1]):
+        end -= 1
+    return value[start:end]
+
+
+def _is_go_mail_address(value: str) -> bool:
+    """Match addr-spec cases whose Go mail.ParseAddress address equals its input."""
+    if value.count("@") != 1:
+        return False
+    local, domain = value.split("@")
+
+    def is_atom(text: str) -> bool:
+        if not text or text[0] == "." or text[-1] == "." or ".." in text:
+            return False
+        for character in text:
+            code = ord(character)
+            if 0xD800 <= code <= 0xDFFF:
+                return False
+            if code >= 0x80:
+                continue
+            if code < 0x21 or code > 0x7E or character in '()<>[]:;@\\,"':
+                return False
+        return True
+
+    if not is_atom(local):
+        return False
+    if domain.startswith("[") and domain.endswith("]"):
+        try:
+            ip_address(domain[1:-1])
+        except ValueError:
+            return False
+        return True
+    return is_atom(domain)
 
 
 __all__ = ["ManifestCredentialRefreshDriver"]

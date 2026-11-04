@@ -770,6 +770,7 @@ async def test_manifest_jwt_bearer_resolves_key_sources_and_copies_identity() ->
                 "privateKey": {"fromKey": "private_key"},
                 "issuer": {"fromKey": "client_email"},
                 "subject": {"fromCredential": "delegated_user"},
+                "subjectValidation": "goMailAddress",
                 "audience": {"fromKey": "token_uri"},
                 "tokenEndpoint": {"fromKey": "token_uri"},
                 "scopes": ["mail.read", "offline_access"],
@@ -861,3 +862,79 @@ async def test_manifest_jwt_bearer_resolves_key_sources_and_copies_identity() ->
         )
         with pytest.raises(OSError, match="unavailable"):
             await retryable.refresh(CredentialRefreshState(credentials, None, datetime.now(UTC)))
+
+
+@pytest.mark.asyncio
+async def test_manifest_alternative_scope_sets() -> None:
+    """A returned scope can satisfy either declared set, including a broader one."""
+    auth: dict[str, Any] = deepcopy(AUTH)
+    refresh = auth["methods"][0]["oauth2"]["refresh"]
+    refresh["acceptedScopeSets"] = [["files.read"], ["files.manage"]]
+    returned_scope = ""
+
+    def respond(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={
+            "access_token": "next", "expires_in": 3600, "token_type": "Bearer", "scope": returned_scope,
+        })
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+        driver = ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)
+        state = CredentialRefreshState(
+            Credentials(SecretString("old"), SecretString("prior")), None, datetime.now(UTC)
+        )
+        for scope in ("", "files.read", "files.manage", "files.manage extra"):
+            returned_scope = scope
+            await driver.refresh(state)
+        returned_scope = "files.other"
+        with pytest.raises(ReauthorizationRequiredError):
+            await driver.refresh(state)
+        refresh["exactScopes"] = True
+        returned_scope = "files.manage extra"
+        with pytest.raises(ReauthorizationRequiredError):
+            await driver.refresh(state)
+
+
+@pytest.mark.asyncio
+async def test_manifest_delegated_subject_matches_go_mail_parse_address() -> None:
+    """Go-derived address cases are rejected before token I/O when invalid."""
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    pem = private_key.private_bytes(
+        serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()
+    ).decode()
+    key = SecretString(json.dumps({
+        "private_key": pem, "client_email": "service@example.test",
+        "token_uri": "https://oauth.example.test/token",
+    }))
+    auth: dict[str, Any] = {"type": "serviceAccount", "serviceAccount": {"jwtBearer": {
+        "keyCredential": "service_account_key", "privateKey": {"fromKey": "private_key"},
+        "issuer": {"fromKey": "client_email"}, "subject": {"fromCredential": "delegated_user"},
+        "subjectValidation": "goMailAddress", "audience": {"fromKey": "token_uri"},
+        "tokenEndpoint": {"fromKey": "token_uri"}, "scopes": ["mail.read"], "lifetime": "1h",
+        "credentialMappings": [{"credential": "access_token", "source": "access_token"}],
+    }}}
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json={"access_token": "next", "expires_in": 3600, "token_type": "Bearer"})
+
+    cases = [json.loads(line) for line in (
+        Path(__file__).parent / "fixtures" / "go-mail-addresses.jsonl"
+    ).read_text().splitlines()]
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+        driver = ManifestCredentialRefreshDriver[DelegatedCredentials]("Google", auth, {
+            "access_token": "access_token", "service_account_key": "service_account_key",
+            "delegated_user": "delegated_user",
+        }, client)
+        for case in cases:
+            before = len(requests)
+            state = CredentialRefreshState(
+                DelegatedCredentials(SecretString(""), key, case["input"]), None, datetime.now(UTC)
+            )
+            if case["accepted"]:
+                await driver.refresh(state)
+                assert len(requests) == before + 1, case["input"]
+            else:
+                with pytest.raises(ReauthorizationRequiredError):
+                    await driver.refresh(state)
+                assert len(requests) == before, case["input"]
