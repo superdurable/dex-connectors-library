@@ -63,7 +63,7 @@ describe('manifest credential refresh', () => {
     expect(requests).toBe(4);
   });
 
-  it('refreshes schema-decoded Jira and Slack declarations with declared token-type fields', async () => {
+  it('refreshes schema-decoded provider declarations with declared token-type fields', async () => {
     const jiraAuth = JSON.parse(readFileSync(new URL('./fixtures/jira-auth.json', import.meta.url), 'utf8')) as Record<string, unknown>;
     const slackAuth = JSON.parse(readFileSync(new URL('./fixtures/slack-auth.json', import.meta.url), 'utf8')) as Record<string, unknown>;
     const jira = new ManifestCredentialRefreshDriver<{

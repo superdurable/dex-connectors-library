@@ -259,6 +259,7 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
   }
 
   #validateGrant(grant: Grant): void {
+    this.#validateStoredMissingExpiry(grant);
     for (const mapping of grant.mappings) {
       if (!manifestText(mapping.source) || !this.#credentialFields[manifestText(mapping.credential)])
         throw new TypeError('manifest credential field is not mapped');
