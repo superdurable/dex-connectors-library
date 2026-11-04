@@ -312,3 +312,7 @@ one Idempotency-Key; whether a 5xx response is cached under a key; the
 `X-Idempotency-Lookup` header casing; safe-update comparison precision; audit
 metadata storage for API-token requests; rate-limit headers; and the Admin
 Center paths in the setup guidance.
+
+## Python package
+
+The independent `dex-connector-zendesk-support` Python `v0.1.0` package implements all four ticket operations. Its [README](python/README.md) and [read-ticket example](python/examples/read_ticket/README.md) show the static connection and Worker path. Go-recorded provider conformance scenarios cover Python request and outcome parity; the Python example runs against a real local Dex Worker and a provider stand-in. Live Zendesk authorization and provider behavior remain unverified.
