@@ -1,0 +1,206 @@
+{
+  "connectorId": "notion",
+  "releaseTag": "connectors/notion/go/v0.24.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-notion",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_search_step",
+      "kind": "query",
+      "operationId": "search",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "searched",
+          "field": "searched",
+          "optional": false
+        },
+        {
+          "id": "noMatch",
+          "field": "no_match",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "name": "new_query_database_step",
+      "kind": "query",
+      "operationId": "queryDatabase",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "queried",
+          "field": "queried",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "not_found",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "name": "new_get_page_step",
+      "kind": "query",
+      "operationId": "getPage",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "not_found",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "name": "new_create_page_step",
+      "kind": "mutation",
+      "operationId": "createPage",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "created",
+          "field": "created",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "not_found",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "uncertain",
+          "field": "uncertain",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "name": "new_update_page_properties_step",
+      "kind": "mutation",
+      "operationId": "updatePageProperties",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "updated",
+          "field": "updated",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "not_found",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    }
+  ]
+}
