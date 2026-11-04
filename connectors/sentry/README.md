@@ -5,13 +5,14 @@ Install the Go module with `go get github.com/superdurable/dex-connectors-librar
 Moved from `github.com/superdurable/dex-connectors-library/connectors/sentry`.
 
 This Dex connector calls the public Sentry JSON API. Its
-manifest version is `v0.1.0`; the Go module requires connector SDK `v0.33.0`
+manifest version is `v0.2.0`; the Go module requires connector SDK `v0.33.0`
     and Dex Go SDK `v1.5.0` or newer. The runnable
 [`issue-review` example](go/examples/issue-review/README.md) shows a
 complete Worker and the generated operation-specific Step factory.
 
 The Python package is [`dex-connector-sentry`](python/README.md), imported as
-`dex_connectors.sentry`.
+`dex_connectors.sentry`. The TypeScript package is
+[`@superdurable/connector-sentry`](typescript/README.md).
 
 ## Operations
 
@@ -67,7 +68,8 @@ flow := NewFlow(mock.Connection())
 - [https://docs.sentry.io/api/events/update-an-issue/](https://docs.sentry.io/api/events/update-an-issue/)
 
 The HTTP unit tests verify request shapes and local classification against
-an `httptest` server. Provider authorization, live API response variations,
-and real Dex integration remain unverified locally. CI runs the mock backed
-real Dex test; a user-controlled live connection is still needed to confirm
+an `httptest` server. The TypeScript example runs against a local HTTP fixture
+through a real Dex Worker. Provider authorization, live API response variations,
+and Dex Web Connections rendering remain unverified. CI also runs the Go mock
+backed real Dex test; a user-controlled live connection is needed to confirm
 the provider account and permissions.

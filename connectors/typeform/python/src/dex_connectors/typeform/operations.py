@@ -143,6 +143,8 @@ def _timestamp(value: str | None) -> datetime:
     if match is None:
         raise ValueError(_MALFORMED)
     try:
+        if int(match.group(2)[:2]) > 23:
+            raise ValueError
         fraction = (match.group(3) or "")[:6].ljust(6, "0")
         parsed = datetime.fromisoformat(f"{match.group(1)}T{match.group(2)}").replace(
             microsecond=int(fraction or "0"), tzinfo=UTC

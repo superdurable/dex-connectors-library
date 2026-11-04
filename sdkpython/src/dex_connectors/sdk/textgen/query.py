@@ -20,6 +20,8 @@ from ..credentials import SecretString
 from ..errors import Failure, FailureKind
 from ..providerhttp import (
     MAX_ERROR_BODY_BYTES,
+    AddressPolicy,
+    AddressRefusal,
     BodyTooLargeError,
     ProviderTransportError,
     is_header_safe_credential,
@@ -130,6 +132,8 @@ class TextGenerationQueryConfig:
     ``max_response_bytes`` bounds every body, while ``max_stream_event_bytes``
     bounds each SSE event and is required for streaming. ``http_client`` is
     optional and caller-owned, and must remain open during invocation.
+    ``address_policy`` defaults to unrestricted; restricted policies require
+    the Query to create its own policy-enforcing HTTP client.
     """
 
     definition: QueryDefinition
@@ -141,6 +145,7 @@ class TextGenerationQueryConfig:
     max_response_bytes: int
     max_stream_event_bytes: int = 0
     http_client: httpx.AsyncClient | None = None
+    address_policy: AddressPolicy = "unrestricted"
 
 
 class TextGenerationQuery:
@@ -192,6 +197,10 @@ class TextGenerationQuery:
             raise ValueError("text generation query credential resolver is required")
         if config.max_response_bytes < 1:
             raise ValueError("text generation query maxResponseBytes must be positive")
+        if config.address_policy not in ("publicHTTPS", "privateNetworkHTTP", "unrestricted"):
+            raise ValueError("text generation query address policy is invalid")
+        if config.address_policy != "unrestricted" and config.http_client is not None:
+            raise ValueError("restricted address policy requires a query-owned HTTP client")
         if config.wire_format.decode_stream is not None and config.max_stream_event_bytes < 1:
             raise ValueError(
                 "text generation query maxStreamEventBytes must be positive for a streaming wire format"
@@ -484,6 +493,8 @@ class _TextGenerationAttempt:
                     return self._retry(
                         FailureKind.AVAILABILITY, "provider sent no bytes within the stall timeout"
                     )
+                except AddressRefusal:
+                    return self._defect(FailureKind.LOCAL_DEFECT, "provider address is not allowed")
                 except (ProviderTransportError, httpx.TimeoutException):
                     return self._retry(
                         FailureKind.TRANSPORT, "provider request failed before a response was received"
@@ -573,7 +584,10 @@ class _TextGenerationAttempt:
             async with asyncio.timeout(self.query._config.request_timeout_seconds):
                 if self.query._config.http_client is not None:
                     return await dispatch(self.query._config.http_client)
-                async with new_provider_http_client(self.query._config.request_timeout_seconds) as client:
+                async with new_provider_http_client(
+                    self.query._config.request_timeout_seconds,
+                    address_policy=self.query._config.address_policy,
+                ) as client:
                     return await dispatch(client)
         except TimeoutError:
             message = (

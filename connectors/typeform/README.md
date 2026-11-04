@@ -230,3 +230,13 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -p 1 -tags=integratio
 
 The integration run needs `dexcli dev`; the duplicate-dispatch test forces a
 retry after the first accepted PUT.
+
+## TypeScript package
+
+The independently released [`@superdurable/connector-typeform`](typescript/README.md)
+package implements `listForms`, `getForm`, `listResponses`, and `upsertWebhook`.
+The `responseSubmitted` Trigger remains Go only. The runnable TypeScript
+[`listForms` Flow](typescript/examples/list-forms/README.md) uses the static
+`typeform-forms` connection. A Typeform personal access token is required for
+all operations; `webhook_secret` is optional for the three read operations and
+required only when registering a webhook.

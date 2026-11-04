@@ -926,6 +926,25 @@ def test_invalid_query_configuration_is_rejected(change: dict[str, object]) -> N
         TextGenerationQuery(replace(query._config, **cast(Any, change)))
 
 
+@pytest.mark.asyncio
+async def test_text_generation_passes_address_policy_to_provider_http() -> None:
+    query = _query(lambda request: httpx.Response(200, json=_completion()))
+    with pytest.raises(ValueError, match="query-owned HTTP client"):
+        TextGenerationQuery(replace(query._config, address_policy="publicHTTPS"))
+    restricted = TextGenerationQuery(
+        replace(
+            query._config,
+            base_url="https://127.0.0.1/v1",
+            http_client=None,
+            address_policy="publicHTTPS",
+        )
+    )
+    result = await restricted.invoke(_call(), _REQUEST)
+    assert result.branch == "defect"
+    assert result.failure is not None
+    assert result.failure.message == "provider address is not allowed"
+
+
 @pytest.mark.parametrize(
     "profile",
     [

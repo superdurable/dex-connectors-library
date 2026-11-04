@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/amazon/s3/go"
@@ -15,13 +16,10 @@ import (
 const conformanceEndpointPath = ""
 const conformanceFixturePathPrefix = ""
 
-// Scrub time-varying signing headers before recording; TypeScript checks a fixed signature against the Go signer.
 type conformanceSigningTransport struct{ recorder http.RoundTripper }
 
 func (transport conformanceSigningTransport) RoundTrip(request *http.Request) (*http.Response, error) {
 	observed := request.Clone(request.Context())
-	observed.Header.Del("Authorization")
-	observed.Header.Del("X-Amz-Date")
 	observed.Header.Del("X-Amz-Security-Token")
 	response, err := transport.recorder.RoundTrip(observed)
 	if err == nil {
@@ -37,7 +35,8 @@ func (transport conformanceSigningTransport) RoundTrip(request *http.Request) (*
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint string, transport *http.Client) conformanceInvoker {
 	t.Helper()
 	client, err := s3.New(s3.Config{Endpoint: endpoint, Region: testRegion, DefaultBucket: testBucket}, staticCredentials(""),
-		s3.WithHTTPClient(&http.Client{Transport: conformanceSigningTransport{recorder: transport.Transport}}))
+		s3.WithHTTPClient(&http.Client{Transport: conformanceSigningTransport{recorder: transport.Transport}}),
+		s3.WithClock(func() time.Time { return time.Date(2026, 10, 25, 9, 0, 0, 0, time.UTC) }))
 	require.NoError(t, err)
 	context := newDexContext("conformance")
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{

@@ -14,6 +14,11 @@ spec:
       package: dex-connector-typeform
       operations: [listForms, getForm, listResponses, upsertWebhook]
       triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-typeform"
+      operations: [listForms, getForm, listResponses, upsertWebhook]
+      triggers: []
   codegen:
     go:
       package: typeform
