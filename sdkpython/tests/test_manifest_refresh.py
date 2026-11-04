@@ -147,7 +147,7 @@ async def test_declared_scope_separators_apply_to_all_and_exact_checks() -> None
 
 
 @pytest.mark.asyncio
-async def test_schema_decoded_jira_and_slack_auth_refresh_with_planned_fields() -> None:
+async def test_schema_decoded_provider_auth_refresh_with_declared_fields() -> None:
     """Real decoded declarations accept Jira's omitted type and Slack's bot/user types."""
     # schema.Decode(connector.yaml) JSON-encodes Spec.Auth; add planned token-type fields.
     fixture_dir = Path(__file__).parent / "fixtures"
