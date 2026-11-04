@@ -153,9 +153,11 @@ clock for expiry and JWT claims. A credential dataclass for an authorization
 declaration with several `methods` carries `auth_method_id`; an empty value
 selects the declaration's `defaultMethod`.
 
-The manifest's `missingExpiry` declaration controls the decision when stored
-expiry is absent: `keep` (the default) leaves a present access token in place,
-and a declared lifetime refreshes it. The driver accepts
+The manifest's `storedMissingExpiry: refresh` declaration refreshes a stored
+access token without recorded expiry; `keep` is the default and leaves a
+present token in place. The separate `missingExpiry` declaration controls
+token responses without `expires_in`.
+The driver accepts
 `acceptsMissingTokenType: true` in a refresh declaration for a provider that
 omits `token_type`. A provider such as Slack that returns `bot` or `user` must
 declare grant `acceptedTokenTypes`. Refresh validation uses `requiredScopes`
@@ -254,6 +256,10 @@ The core example sends through an in-process HTTP transport.
 
 ## Version history
 
+- `0.4.0`: Added `storedMissingExpiry` for refresh-token, client-credentials,
+  and JWT-bearer grants. A stored token without expiry can now trigger refresh
+  even when a replacement response must include `expires_in`. `missingExpiry`
+  no longer implicitly triggers refresh of a stored token without expiry.
 - `0.3.0`: Added opt-in provider address policies and text generation policy
   forwarding. The unrestricted default keeps the `0.2.0` network behavior.
 - `0.2.0`: Added portable text generation and single-dispatch checkpoints.

@@ -406,7 +406,38 @@ async def test_manifest_missing_expiry_follows_declaration_not_grant_count() -> 
 
         auth["methods"][0]["oauth2"]["refresh"]["missingExpiry"] = {"lifetime": "2h"}
         lifetime_driver = ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)
-        assert lifetime_driver.refresh_required(state)
+        assert not lifetime_driver.refresh_required(state)
+        auth["methods"][0]["oauth2"]["refresh"]["storedMissingExpiry"] = "refresh"
+        stored_expiry_driver = ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)
+        assert stored_expiry_driver.refresh_required(state)
+
+
+@pytest.mark.asyncio
+async def test_atlassian_stored_missing_expiry_refreshes_but_response_requires_expires_in() -> None:
+    """Go Atlassian refreshes an undated stored token and rejects an undated replacement."""
+    auth: dict[str, Any] = deepcopy(AUTH)
+    refresh = auth["methods"][0]["oauth2"]["refresh"]
+    refresh["storedMissingExpiry"] = "refresh"
+    refresh["acceptsMissingTokenType"] = True
+    response: dict[str, Any] = {"access_token": "next", "expires_in": 3600, "scope": "files.read"}
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json=response)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+        driver = ManifestCredentialRefreshDriver[Credentials]("Atlassian", auth, FIELDS, client)
+        state = CredentialRefreshState(
+            Credentials(SecretString("old"), SecretString("prior")), None, datetime.now(UTC)
+        )
+        assert driver.refresh_required(state)
+        result = await driver.refresh(state)
+        assert result.credentials.access_token.reveal() == "next"
+        response.pop("expires_in")
+        with pytest.raises(ValueError, match="omitted required fields"):
+            await driver.refresh(state)
+        assert len(requests) == 2
 
 
 @pytest.mark.asyncio
@@ -701,6 +732,7 @@ async def test_manifest_multi_grant_rotation_and_missing_expiry() -> None:
                 ).refresh(CredentialRefreshState(credentials, now, now))
         auth["methods"][0]["oauth2"]["refresh"]["exactScopes"] = False
         auth["methods"][0]["oauth2"]["refresh"]["missingExpiry"] = {"lifetime": "2h"}
+        auth["methods"][0]["oauth2"]["refresh"]["storedMissingExpiry"] = "refresh"
         lifetime_driver = ManifestCredentialRefreshDriver[MultiGrantCredentials](
             "Example", auth, fields, client
         )

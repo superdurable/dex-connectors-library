@@ -87,7 +87,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
         )
         missing_expiry_rule = (
             MissingExpiryRule.REFRESH_WHEN_EXPIRY_MISSING
-            if any(grant["missing_expiry"] for grant in grants)
+            if any(grant["stored_missing_expiry"] == "refresh" for grant in grants)
             else MissingExpiryRule.KEEP_WHEN_EXPIRY_MISSING
         )
         return is_refresh_required(
@@ -208,6 +208,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                         "acceptsMissingTokenType", refresh.get("acceptsMissingTokenType", False)
                     ),
                     "accepts_missing_expires_in": "missingExpiry" in refresh,
+                    "stored_missing_expiry": refresh.get("storedMissingExpiry", "keep"),
                     "missing_expiry": (refresh.get("missingExpiry") or {}).get("lifetime", "")
                     if isinstance(refresh.get("missingExpiry"), dict)
                     else "",
@@ -234,6 +235,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                     "scope_separators": "whitespace",
                     "accepts_missing_token_type": client.get("acceptsMissingTokenType", False),
                     "accepts_missing_expires_in": "missingExpiry" in client,
+                    "stored_missing_expiry": client.get("storedMissingExpiry", "keep"),
                     "missing_expiry": (client.get("missingExpiry") or {}).get("lifetime", "")
                     if isinstance(client.get("missingExpiry"), dict)
                     else "",
@@ -258,6 +260,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                     "scope_separators": "whitespace",
                     "accepts_missing_token_type": bearer.get("acceptsMissingTokenType", False),
                     "accepts_missing_expires_in": "missingExpiry" in bearer,
+                    "stored_missing_expiry": bearer.get("storedMissingExpiry", "keep"),
                     "missing_expiry": (bearer.get("missingExpiry") or {}).get("lifetime", "")
                     if isinstance(bearer.get("missingExpiry"), dict)
                     else "",
