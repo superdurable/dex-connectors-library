@@ -5,7 +5,7 @@
 import html
 import json
 import re
-from dataclasses import replace
+from dataclasses import dataclass, field, replace
 from functools import cmp_to_key
 from typing import Any
 
@@ -21,7 +21,7 @@ from dex_connectors.sdk import (
     QueryDefinition,
     Receipt,
 )
-from dex_connectors.sdk.singledispatch import Marker, State
+from dex_connectors.sdk.singledispatch import State
 
 from ._generated import definitions as defs
 from .client import (
@@ -53,6 +53,11 @@ from .models import (
 
 _ZERO_TICKET = Ticket(status="")
 _RETRY_OUTCOMES = frozenset(("rateLimited", "notSent", "unavailable"))
+
+
+@dataclass(frozen=True, slots=True)
+class _DispatchMarker:
+    dispatched_call_id: CallID = field(metadata={"dex_json_name": "gorgiasDispatchedCallId"})
 _STATUSES = frozenset(("open", "closed"))
 _PRIORITIES = frozenset(("low", "normal", "high", "critical"))
 _CURSOR = re.compile(r"^[A-Za-z0-9+/=_.:-]{1,2048}$")
@@ -538,8 +543,8 @@ async def _prior_dispatch(call: Call) -> bool:
     try:
         if not context.has_last_heartbeat_value():
             return False
-        marker = context.get_last_heartbeat_value(Marker)
-        return marker is None or marker.state == State.CLAIMED
+        context.get_last_heartbeat_value(_DispatchMarker)
+        return True
     except Exception:
         return True
 
@@ -548,7 +553,10 @@ async def _checkpoint(call: Call, state: State) -> bool:
     if call.context is None:
         return False
     try:
-        await call.context.heartbeat(Marker(call.id, call.context.attempt, state))
+        if state == State.CLAIMED:
+            await call.context.heartbeat(_DispatchMarker(call.id))
+        else:
+            await call.context.heartbeat()
         return True
     except Exception:
         return False
