@@ -570,6 +570,12 @@ The scopes of a refresh response follow RFC 6749 section 5.1:
 
 `refresh.requiredScopes` replaces the authorization scope set checked on a
 refresh response when a provider reports only API scopes, as Gmail does.
+`refresh.acceptedScopeSets` replaces that single required set with alternatives:
+the returned scopes must contain every member of at least one listed set. For
+example, YouTube read-only refresh accepts either `youtube.readonly` or the
+broader `youtube` scope. An omitted response scope remains accepted unless
+`exactScopes` is true. A JWT bearer grant may use `acceptedScopeSets` for its
+response without changing the scopes signed into its assertion.
 `refresh.exactScopes: true` requires set equality, including a reported scope
 value. An individual grant may override this with `exactScopes: true` or `false`. Choose these
 rules from the provider's actual response and the Go refresh driver; grant
@@ -641,6 +647,10 @@ space-separated `scope` claim (when `scopes` is declared), and posts it as
 without client authentication. `credentialCopies` set credential fields from
 other credential fields after each mint. `terminalErrorCodes` defaults to
 `[invalid_grant]`.
+`subjectValidation: goMailAddress` trims Go Unicode whitespace and requires
+the delegated `sub` to equal the bare address returned by Go
+`mail.ParseAddress`. A bad subject requires reauthorization before any token
+request. Declare it only when the Go refresh driver applies that rule.
 
 ```yaml
 serviceAccount:

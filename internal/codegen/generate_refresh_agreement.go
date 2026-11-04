@@ -243,6 +243,14 @@ func (agreement *refreshAgreementGenerator) responseVariations(base RefreshAgree
 	}
 	variations = append(variations, missingType)
 	if grant.checksResponseScopes && len(grant.responseScopes) > 0 {
+		for index, scopeSet := range grant.acceptedScopeSets {
+			if index == 0 {
+				continue
+			}
+			alternative := clone(fmt.Sprintf(" with accepted scope set %d", index+1), "")
+			alternative.Response["scope"] = strings.Join(scopeSet, " ")
+			variations = append(variations, alternative)
+		}
 		partial := clone(" with partial scopes", "reauthorization")
 		partial.Response["scope"] = "manifest-ungranted-scope"
 		variations = append(variations, partial)
@@ -277,6 +285,7 @@ type declaredGrant struct {
 	// requestScopes are sent as the scope parameter or claim; responseScopes are what a successful response reports.
 	requestScopes           []string
 	responseScopes          []string
+	acceptedScopeSets       [][]string
 	terminalCodes           []string
 	acceptedTokenTypes      []string
 	acceptsMissingTokenType bool
@@ -401,6 +410,9 @@ func declaredGrants(manifest schema.Manifest) []declaredGrant {
 				if refreshGrant.GrantedScopes == schema.UserScopes {
 					responseScopes = oauth.UserScopes
 				}
+				if len(refresh.AcceptedScopeSets) > 0 {
+					responseScopes = refresh.AcceptedScopeSets[0]
+				}
 				acceptedTokenTypes := refreshGrant.AcceptedTokenTypes
 				if len(acceptedTokenTypes) == 0 {
 					acceptedTokenTypes = refresh.AcceptedTokenTypes
@@ -421,8 +433,9 @@ func declaredGrants(manifest schema.Manifest) []declaredGrant {
 					mappings: refreshGrant.CredentialMappings, responseScopes: withoutString(responseScopes, offlineAccessScope),
 					terminalCodes: defaultStrings(refresh.TerminalErrorCodes, "invalid_grant"), missingExpiry: refresh.MissingExpiry, additional: refresh.AdditionalParameters,
 					acceptedTokenTypes: acceptedTokenTypes, acceptsMissingTokenType: acceptsMissingTokenType, exactScopes: exactScopes,
+					acceptedScopeSets:    refresh.AcceptedScopeSets,
 					allowsPublicClient:   refresh.AllowsPublicClient,
-					checksResponseScopes: len(refresh.RequiredScopes) > 0 || refresh.ExactScopes || refreshGrant.ExactScopes != nil || refresh.ScopeSeparators != "",
+					checksResponseScopes: len(refresh.RequiredScopes) > 0 || len(refresh.AcceptedScopeSets) > 0 || refresh.ExactScopes || refreshGrant.ExactScopes != nil || refresh.ScopeSeparators != "",
 				})
 			}
 		}
@@ -438,10 +451,14 @@ func declaredGrants(manifest schema.Manifest) []declaredGrant {
 		}
 		if method.ServiceAccount != nil && method.ServiceAccount.JWTBearer != nil {
 			jwtBearer := method.ServiceAccount.JWTBearer
+			responseScopes := jwtBearer.Scopes
+			if len(jwtBearer.AcceptedScopeSets) > 0 {
+				responseScopes = jwtBearer.AcceptedScopeSets[0]
+			}
 			grants = append(grants, declaredGrant{
 				name: label + " jwtBearer", methodLabel: label, method: method, kind: "jwtBearer", endpoint: jwtBearer.TokenEndpoint,
 				encoding: schema.FormTokenRequestEncoding, mappings: jwtBearer.CredentialMappings, copies: jwtBearer.CredentialCopies,
-				requestScopes: jwtBearer.Scopes, responseScopes: jwtBearer.Scopes, terminalCodes: defaultStrings(jwtBearer.TerminalErrorCodes, "invalid_grant"),
+				requestScopes: jwtBearer.Scopes, responseScopes: responseScopes, acceptedScopeSets: jwtBearer.AcceptedScopeSets, terminalCodes: defaultStrings(jwtBearer.TerminalErrorCodes, "invalid_grant"),
 				missingExpiry: jwtBearer.MissingExpiry, jwtBearer: jwtBearer,
 				acceptedTokenTypes: defaultStrings(jwtBearer.AcceptedTokenTypes, "Bearer"), acceptsMissingTokenType: jwtBearer.AcceptsMissingTokenType,
 				checksResponseScopes: true,

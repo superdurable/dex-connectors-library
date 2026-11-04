@@ -119,6 +119,7 @@ spec:
             privateKey: {fromKey: private_key}
             issuer: {fromKey: client_email}
             subject: {fromCredential: delegated_user}
+            subjectValidation: goMailAddress
             audience: {fromKey: token_uri}
             tokenEndpoint: {fromKey: token_uri}
             scopes: [https://www.googleapis.com/auth/forms.body.readonly, https://www.googleapis.com/auth/forms.responses.readonly, https://www.googleapis.com/auth/drive.metadata.readonly]

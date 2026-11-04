@@ -61,6 +61,8 @@ type OAuthRefresh struct {
 	AllowsPublicClient bool `yaml:"allowsPublicClient,omitempty" json:"allowsPublicClient,omitempty"`
 	// RequiredScopes overrides the authorization scopes checked on refresh responses.
 	RequiredScopes []string `yaml:"requiredScopes,omitempty" json:"requiredScopes,omitempty"`
+	// AcceptedScopeSets replaces the required scopes with any one of these complete accepted sets.
+	AcceptedScopeSets [][]string `yaml:"acceptedScopeSets,omitempty" json:"acceptedScopeSets,omitempty"`
 	// TerminalErrorCodes are the OAuth error codes, in a response below HTTP 500, after which the refresh token can
 	// never succeed again, so the connection needs reauthorization. Empty means invalid_grant.
 	TerminalErrorCodes []string `yaml:"terminalErrorCodes,omitempty" json:"terminalErrorCodes,omitempty"`
@@ -158,12 +160,16 @@ type JWTBearerGrant struct {
 	Issuer ValueSource `yaml:"issuer" json:"issuer"`
 	// Subject is the sub claim. Nil omits it.
 	Subject *ValueSource `yaml:"subject,omitempty" json:"subject,omitempty"`
+	// SubjectValidation validates a delegated subject before signing; goMailAddress uses Go mail.ParseAddress equality.
+	SubjectValidation string `yaml:"subjectValidation,omitempty" json:"subjectValidation,omitempty"`
 	// Audience is the aud claim.
 	Audience ValueSource `yaml:"audience" json:"audience"`
 	// TokenEndpoint is the HTTPS endpoint that exchanges the assertion.
 	TokenEndpoint ValueSource `yaml:"tokenEndpoint" json:"tokenEndpoint"`
 	// Scopes are sent space-separated as the scope claim. Empty omits it.
 	Scopes []string `yaml:"scopes,omitempty" json:"scopes,omitempty"`
+	// AcceptedScopeSets replaces Scopes when checking a returned token's scope set.
+	AcceptedScopeSets [][]string `yaml:"acceptedScopeSets,omitempty" json:"acceptedScopeSets,omitempty"`
 	// Lifetime sets the exp claim after iat, such as 1h.
 	Lifetime string `yaml:"lifetime" json:"lifetime"`
 	// CredentialMappings map the token response into credential fields.
@@ -440,6 +446,7 @@ func (grantContext tokenGrantContext) validateOAuthTokenRequests(oauth *OAuth2) 
 	problems = append(problems, validateStoredMissingExpiry(label, refresh.StoredMissingExpiry)...)
 	problems = append(problems, validateAcceptedTokenTypes(label, refresh.AcceptedTokenTypes)...)
 	problems = append(problems, validateScopeList(label+" requiredScopes", refresh.RequiredScopes)...)
+	problems = append(problems, validateAcceptedScopeSets(label+" acceptedScopeSets", refresh.AcceptedScopeSets)...)
 	if refresh.ScopeSeparators != "" && refresh.ScopeSeparators != ScopeSeparatorsWhitespace && refresh.ScopeSeparators != ScopeSeparatorsWhitespaceAndComma {
 		problems = append(problems, label+" scopeSeparators must be whitespace or whitespaceAndComma")
 	}
@@ -502,8 +509,12 @@ func (grantContext tokenGrantContext) validateJWTBearer(grant *JWTBearerGrant) [
 	if grant.Subject != nil {
 		problems = append(problems, grantContext.validateValueSource(label+" subject", *grant.Subject, hasKey)...)
 	}
+	if grant.SubjectValidation != "" && (grant.SubjectValidation != "goMailAddress" || grant.Subject == nil) {
+		problems = append(problems, label+" subjectValidation requires a subject and must be goMailAddress")
+	}
 	problems = append(problems, grantContext.validateEndpointSource(label+" tokenEndpoint", grant.TokenEndpoint, hasKey)...)
 	problems = append(problems, validateScopeList(label+" scopes", grant.Scopes)...)
+	problems = append(problems, validateAcceptedScopeSets(label+" acceptedScopeSets", grant.AcceptedScopeSets)...)
 	if lifetime, err := time.ParseDuration(grant.Lifetime); err != nil || lifetime <= 0 {
 		problems = append(problems, label+" lifetime must be a positive duration")
 	}
@@ -680,6 +691,21 @@ func validateScopeList(label string, scopes []string) []string {
 			return []string{label + " must be non-empty and unique"}
 		}
 		seen[scope] = true
+	}
+	return nil
+}
+
+func validateAcceptedScopeSets(label string, scopeSets [][]string) []string {
+	seen := map[string]bool{}
+	for _, scopeSet := range scopeSets {
+		if len(scopeSet) == 0 || len(validateScopeList(label, scopeSet)) > 0 {
+			return []string{label + " must contain non-empty sets of unique scopes"}
+		}
+		canonical := strings.Join(scopeSet, "\x00")
+		if seen[canonical] {
+			return []string{label + " must not repeat a scope set"}
+		}
+		seen[canonical] = true
 	}
 	return nil
 }
