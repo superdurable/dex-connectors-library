@@ -281,6 +281,10 @@ await fence.recordProviderId(result.providerId);
 
 ## Release notes
 
+### 0.5.0
+
+Manifest refresh supports `acceptedScopeSets` for providers that grant equivalent scope alternatives. JWT bearer grants may declare `subjectValidation: goMailAddress`; the driver then validates the trimmed delegated subject using Go `mail.ParseAddress` address equality before sending a token request.
+
 ### 0.4.0
 
 Adds `storedMissingExpiry` to refresh-token, client-credentials, and JWT-bearer declarations. `refresh` renews a stored credential without expiry independently of `missingExpiry`, which still controls token responses without `expires_in`.

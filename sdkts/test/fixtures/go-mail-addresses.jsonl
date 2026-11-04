@@ -1,0 +1,35 @@
+{"accepted":true,"input":"user@example.com"}
+{"accepted":true,"input":" user@example.com "}
+{"accepted":false,"input":"Name \u003cuser@example.com\u003e"}
+{"accepted":false,"input":"user@example.com (Name)"}
+{"accepted":true,"input":"a+b@example.com"}
+{"accepted":false,"input":"a..b@example.com"}
+{"accepted":false,"input":".a@example.com"}
+{"accepted":false,"input":"a.@example.com"}
+{"accepted":false,"input":"a@example..com"}
+{"accepted":false,"input":"a@.example.com"}
+{"accepted":false,"input":"a@example.com."}
+{"accepted":true,"input":"a@localhost"}
+{"accepted":true,"input":"a@sub.example.com"}
+{"accepted":true,"input":"a@[127.0.0.1]"}
+{"accepted":true,"input":"a@[::1]"}
+{"accepted":false,"input":"a@[bad]"}
+{"accepted":false,"input":"\"a b\"@example.com"}
+{"accepted":false,"input":"\"user\"@example.com"}
+{"accepted":false,"input":"a b@example.com"}
+{"accepted":false,"input":"a@exam ple.com"}
+{"accepted":true,"input":"a@例子.测试"}
+{"accepted":true,"input":"用戶@example.com"}
+{"accepted":true,"input":"a@foo_bar.com"}
+{"accepted":false,"input":"a@example.com,other@example.com"}
+{"accepted":true,"input":"a@example.com\n"}
+{"accepted":true,"input":"a@example.com "}
+{"accepted":true,"input":"a@ex​am.ple"}
+{"accepted":true,"input":"a@ex‍ample.com"}
+{"accepted":false,"input":"a@ex\tample.com"}
+{"accepted":false,"input":"a@example.com"}
+{"accepted":false,"input":"a@exa(m)ple.com"}
+{"accepted":true,"input":"a@-example.com"}
+{"accepted":true,"input":"a@example-.com"}
+{"accepted":true,"input":"a@💡.com"}
+{"accepted":true,"input":"a@﻿example.com"}

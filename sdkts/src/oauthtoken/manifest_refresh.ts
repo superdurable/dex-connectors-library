@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { ReauthorizationRequiredError } from '../errors.js';
+import { isIP } from 'node:net';
 import { SecretString, type CredentialRefreshDriver, type CredentialRefreshResult, type CredentialRefreshState } from '../credentials.js';
 import {
   isRefreshRequired, parseRSAPrivateKeyPEM, signJWTBearerAssertion, TokenEndpoint,
@@ -24,6 +25,7 @@ interface Grant {
   mappings: ManifestObject[];
   copies: ManifestObject[];
   scopes: unknown;
+  acceptedScopeSets: unknown;
   requestScopes: unknown;
   terminalCodes: string[];
   acceptedTokenTypes: string[];
@@ -95,8 +97,11 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
       if (grant.refreshField && !this.#credentialValue(credentials, grant.refreshField)) continue;
       const token = await this.#exchange(grant, credentials, method, signal);
       const requiredScopes = this.#scopes(grant.scopes).filter(scope => grant.kind !== 'refresh' || scope !== 'offline_access');
-      if (grant.exactScopes ? !hasDeclaredScopes(token.scope, requiredScopes, grant.scopeSeparators, true)
-        : token.scope.trim() !== '' && !hasDeclaredScopes(token.scope, requiredScopes, grant.scopeSeparators, false)) throw new ReauthorizationRequiredError();
+      const acceptedScopeSets = manifestList(grant.acceptedScopeSets).map(manifestList)
+        .map(set => set.filter((scope): scope is string => typeof scope === 'string'));
+      const scopeSets = acceptedScopeSets.length ? acceptedScopeSets : [requiredScopes];
+      if (grant.exactScopes ? !scopeSets.some(set => hasDeclaredScopes(token.scope, set, grant.scopeSeparators, true))
+        : token.scope.trim() !== '' && !scopeSets.some(set => hasDeclaredScopes(token.scope, set, grant.scopeSeparators, false))) throw new ReauthorizationRequiredError();
       const updates: Record<string, unknown> = {};
       for (const mapping of grant.mappings) {
         const destination = manifestText(mapping.credential);
@@ -146,6 +151,7 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
         clientSecret: manifestText(oauth.clientSecretCredential), refreshField: manifestText(declaration.refreshTokenCredential),
         keyCredential: '', assertion: {}, mappings: manifestList(declaration.credentialMappings).map(manifestObject), copies: [],
         scopes: declaration.grantedScopes === 'userScopes' ? oauth.userScopes : (refresh?.requiredScopes ?? oauth.scopes), requestScopes: [],
+        acceptedScopeSets: refresh?.acceptedScopeSets,
         terminalCodes: strings(refresh?.terminalErrorCodes, ['invalid_grant']),
         acceptedTokenTypes: strings(declaration.acceptedTokenTypes ?? refresh?.acceptedTokenTypes, ['Bearer']),
         exactScopes: declaration.exactScopes === true || (declaration.exactScopes === undefined && refresh?.exactScopes === true),
@@ -166,7 +172,7 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
         encoding: manifestText(client.tokenRequestEncoding) || 'form', clientID: manifestText(client.clientIDCredential),
         clientSecret: manifestText(client.clientSecretCredential), refreshField: '', keyCredential: '', assertion: {},
         mappings: manifestList(client.credentialMappings).map(manifestObject), copies: [], scopes: client.scopes,
-        requestScopes: client.scopes, terminalCodes: strings(client.terminalErrorCodes, ['invalid_client']),
+        requestScopes: client.scopes, acceptedScopeSets: [], terminalCodes: strings(client.terminalErrorCodes, ['invalid_client']),
         acceptedTokenTypes: strings(client.acceptedTokenTypes, ['Bearer']),
         exactScopes: false,
         scopeSeparators: 'whitespace', allowsPublicClient: false,
@@ -183,7 +189,7 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
       kind: 'jwt_bearer', endpoint: bearer.tokenEndpoint, authentication: '', encoding: 'form',
       clientID: '', clientSecret: '', refreshField: '', keyCredential: manifestText(bearer.keyCredential),
       assertion: bearer, mappings: manifestList(bearer.credentialMappings).map(manifestObject),
-      copies: manifestList(bearer.credentialCopies).map(manifestObject), scopes: bearer.scopes, requestScopes: [],
+      copies: manifestList(bearer.credentialCopies).map(manifestObject), scopes: bearer.scopes, requestScopes: [], acceptedScopeSets: [],
       terminalCodes: strings(bearer.terminalErrorCodes, ['invalid_grant']),
       acceptedTokenTypes: strings(bearer.acceptedTokenTypes, ['Bearer']),
       exactScopes: false,
@@ -214,10 +220,14 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
       const lifetimeMs = parseDurationMs(manifestText(assertion.lifetime));
       let signed: SecretString;
       try {
+        const subject = assertion.subject ? this.#resolveSource(assertion.subject, credentials, key) : '';
+        const validatedSubject = assertion.subjectValidation === 'goMailAddress' ? trimGoSpace(subject) : subject;
+        if (assertion.subjectValidation === 'goMailAddress' && !isGoMailAddress(validatedSubject))
+          throw new ReauthorizationRequiredError();
         signed = signJWTBearerAssertion({
           issuer: this.#resolveSource(assertion.issuer, credentials, key),
           audience: this.#resolveSource(assertion.audience, credentials, key),
-          ...(assertion.subject ? { subject: this.#resolveSource(assertion.subject, credentials, key) } : {}),
+          ...(assertion.subject ? { subject: validatedSubject } : {}),
           scope: this.#scopes(assertion.scopes).join(' '), issuedAt: this.#now(),
           lifetimeMs,
         }, parseRSAPrivateKeyPEM(this.#resolveSource(assertion.privateKey, credentials, key)));
@@ -313,6 +323,37 @@ function hasDeclaredScopes(returnedScopes: string, requiredScopes: readonly stri
   const granted = new Set(returnedScopes.split(separators === 'whitespaceAndComma' ? /[ ,]+/ : /\s+/).filter(Boolean));
   const required = new Set(requiredScopes);
   return (!exact || granted.size === required.size) && [...required].every(scope => granted.has(scope));
+}
+
+function trimGoSpace(value: string): string {
+  const isSpace = (code: number): boolean => code === 0x20 || (code >= 0x09 && code <= 0x0d)
+    || code === 0x85 || code === 0xa0 || code === 0x1680 || (code >= 0x2000 && code <= 0x200a)
+    || code === 0x2028 || code === 0x2029 || code === 0x202f || code === 0x205f || code === 0x3000;
+  const characters = Array.from(value);
+  while (characters.length && isSpace(characters[0]!.codePointAt(0)!)) characters.shift();
+  while (characters.length && isSpace(characters.at(-1)!.codePointAt(0)!)) characters.pop();
+  return characters.join('');
+}
+
+// Address equality after Go mail.ParseAddress leaves only its addr-spec grammar.
+function isGoMailAddress(value: string): boolean {
+  const at = value.indexOf('@');
+  if (at <= 0 || at !== value.lastIndexOf('@') || at === value.length - 1) return false;
+  const local = value.slice(0, at);
+  const domain = value.slice(at + 1);
+  const isAtom = (text: string): boolean => {
+    if (!text || text.startsWith('.') || text.endsWith('.') || text.includes('..')) return false;
+    for (const character of text) {
+      const code = character.codePointAt(0)!;
+      if (code >= 0xd800 && code <= 0xdfff) return false;
+      if (code >= 0x80) continue;
+      if (code < 0x21 || code > 0x7e || '()<>[]:;@\\,"'.includes(character)) return false;
+    }
+    return true;
+  };
+  if (!isAtom(local)) return false;
+  if (domain.startsWith('[') && domain.endsWith(']')) return isIP(domain.slice(1, -1)) !== 0;
+  return isAtom(domain);
 }
 function pathEscape(value: string): string {
   return encodeURIComponent(value).replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`)

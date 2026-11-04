@@ -399,6 +399,25 @@ describe('manifest credential refresh', () => {
     await check('files.read,files.write', false);
   });
 
+  it('accepts any declared alternative scope set and rejects unrelated scopes', async () => {
+    const configured = structuredClone(auth) as Record<string, unknown>;
+    const oauth = ((configured.methods as Record<string, unknown>[])[0]!.oauth2 as Record<string, unknown>);
+    const refresh = oauth.refresh as Record<string, unknown>;
+    refresh.acceptedScopeSets = [['files.read'], ['files.manage']];
+    let returnedScope = '';
+    const driver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth: configured, credentialFields,
+      fetch: async () => Response.json({ access_token: 'next', expires_in: 3600, token_type: 'Bearer', scope: returnedScope }) });
+    for (const scope of ['', 'files.read', 'files.manage', 'files.manage extra']) {
+      returnedScope = scope;
+      await expect(driver.refresh(state(), new AbortController().signal)).resolves.toBeDefined();
+    }
+    returnedScope = 'files.other';
+    await expect(driver.refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+    refresh.exactScopes = true;
+    returnedScope = 'files.manage extra';
+    await expect(driver.refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+  });
+
   it('never refreshes a method without a declared grant', async () => {
     const driver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth, credentialFields });
     expect(driver.refreshRequired({ ...state(), credentials: { ...credentials(), authMethodId: 'static' } })).toBe(false);
@@ -418,6 +437,7 @@ describe('manifest credential refresh', () => {
       ], serviceAccount: { jwtBearer: {
         keyCredential: 'service_account_key', privateKey: { fromKey: 'private_key' },
         issuer: { fromKey: 'client_email' }, subject: { fromCredential: 'delegated_user' },
+        subjectValidation: 'goMailAddress',
         audience: { fromKey: 'token_uri' }, tokenEndpoint: { fromKey: 'token_uri' },
         scopes: ['offline_access', 'mail.read'], lifetime: '1h',
         credentialMappings: [{ credential: 'access_token', source: 'access_token' }],
@@ -454,5 +474,35 @@ describe('manifest credential refresh', () => {
     invalidLifetime.serviceAccount.jwtBearer.lifetime = '500us';
     await expect(invalid.refresh({ credentials: { accessToken: new SecretString(''), serviceAccountKey: new SecretString(key), delegatedUser: 'user@example.test', primaryEmail: '' }, now: new Date() },
       new AbortController().signal)).rejects.toThrow('at least one millisecond');
+  });
+
+  it('matches Go mail.ParseAddress for delegated subjects before any token request', async () => {
+    const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+    const key = JSON.stringify({ private_key: privateKey.export({ format: 'pem', type: 'pkcs8' }).toString(),
+      client_email: 'service@example.test', token_uri: 'https://oauth.example.test/token' });
+    const delegatedAuth = { type: 'serviceAccount', serviceAccount: { jwtBearer: {
+      keyCredential: 'service_account_key', privateKey: { fromKey: 'private_key' }, issuer: { fromKey: 'client_email' },
+      subject: { fromCredential: 'delegated_user' }, subjectValidation: 'goMailAddress',
+      audience: { fromKey: 'token_uri' }, tokenEndpoint: { fromKey: 'token_uri' }, scopes: ['mail.read'], lifetime: '1h',
+      credentialMappings: [{ credential: 'access_token', source: 'access_token' }],
+    } } };
+    let requests = 0;
+    const driver = new ManifestCredentialRefreshDriver({ providerName: 'Google', auth: delegatedAuth,
+      credentialFields: { access_token: 'accessToken', service_account_key: 'serviceAccountKey', delegated_user: 'delegatedUser' },
+      fetch: async () => { requests++; return Response.json({ access_token: 'next', expires_in: 3600, token_type: 'Bearer' }); } });
+    const cases = readFileSync(new URL('./fixtures/go-mail-addresses.jsonl', import.meta.url), 'utf8').trim().split('\n')
+      .map(line => JSON.parse(line) as { input: string; accepted: boolean });
+    for (const testCase of cases) {
+      const previousRequests = requests;
+      const refresh = driver.refresh({ credentials: { accessToken: new SecretString(''), serviceAccountKey: new SecretString(key),
+        delegatedUser: testCase.input }, now: new Date() }, new AbortController().signal);
+      if (testCase.accepted) {
+        await expect(refresh, testCase.input).resolves.toBeDefined();
+        expect(requests).toBe(previousRequests + 1);
+      } else {
+        await expect(refresh, testCase.input).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+        expect(requests).toBe(previousRequests);
+      }
+    }
   });
 });
