@@ -8,6 +8,11 @@ See the [Python package guide](python/README.md) and its runnable
 package has no Trigger. Its provider behavior has been replayed against the
 Go conformance recording; live Front authorization remains unverified.
 
+The [TypeScript package](typescript/README.md) implements all five operations
+at v0.1.0. Its [find-contact example](typescript/examples/find-contact/) runs
+through a real Dex Worker and Client against a local provider fixture; live
+Front behavior remains unverified.
+
 Moved from `github.com/superdurable/dex-connectors-library/connectors/front`.
 
 > **Verification status: partial live.** Only placeholder-token requests reached Front, and all returned 401; everything else ran on a real Dex stack against a local stand-in. No live Front account was used. See
