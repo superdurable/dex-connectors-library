@@ -43,6 +43,13 @@ it without an alias:
 "github.com/superdurable/dex-connectors-library/connectors/superdurable/llm/go"
 ```
 
+The TypeScript package `@superdurable/connector-superdurable-llm` implements
+the same `generateText` operation for all ten providers. Its
+[`summarize-text` example](typescript/examples/summarize-text/README.md)
+opens the static `llm` connection, runs a real Dex Worker, and persists text
+deltas. [TypeScript package documentation](typescript/README.md) covers local
+commands and verification.
+
 ## Connection
 
 An application declares a named `llm` connection in `dex-app.yaml`. On a Dex
