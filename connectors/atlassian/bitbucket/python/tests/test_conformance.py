@@ -5,9 +5,10 @@
 import sys
 from pathlib import Path
 
-import dex_connectors.atlassian_bitbucket as bitbucket
 import dex_connectors.sdk as sdk
 import pytest
+
+import dex_connectors.atlassian_bitbucket as bitbucket
 
 ROOT = Path(__file__).parents[5]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
