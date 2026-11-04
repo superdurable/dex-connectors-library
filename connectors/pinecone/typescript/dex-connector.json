@@ -1,0 +1,77 @@
+{
+  "connectorId": "pinecone",
+  "releaseTag": "connectors/pinecone/go/v0.2.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-pinecone",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newUpsertVectorsStep",
+      "kind": "mutation",
+      "operationId": "upsertVectors",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "upserted",
+          "field": "upserted",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "name": "newQueryVectorsStep",
+      "kind": "query",
+      "operationId": "queryVectors",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "queried",
+          "field": "queried",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    }
+  ]
+}
