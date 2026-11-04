@@ -562,7 +562,7 @@ async def _checkpoint(call: Call, state: State) -> bool:
         return False
 
 
-def _reconcile_failure(
+async def _reconcile_failure(
     call: Call,
     operation: str,
     reason: Failure,
@@ -572,7 +572,8 @@ def _reconcile_failure(
     can_retry: bool = True,
 ) -> MutationAttempt[Any]:
     if can_retry and call.context is not None and call.context.attempt < 4:
-        return MutationAttempt.retry(reason, min(max(delay, 15), 60))
+        if await _checkpoint(call, State.CLAIMED):
+            return MutationAttempt.retry(reason, min(max(delay, 15), 60))
     return MutationAttempt.uncertain(
         zero,
         failure(
@@ -636,7 +637,7 @@ class CreateTicketOperation:
         credentials, credential_failure = await self.client.resolve_credentials(call, operation)
         if credential_failure:
             if prior_dispatch:
-                return _reconcile_failure(call, operation, credential_failure, Receipt(), zero)
+                return await _reconcile_failure(call, operation, credential_failure, Receipt(), zero)
             return MutationAttempt.branch_result(defs.DEFECT, zero, Receipt(), credential_failure)
         assert credentials is not None
 
@@ -655,7 +656,10 @@ class CreateTicketOperation:
             try:
                 records, _ = decode_list(result.body, "ticket")
                 for record in records:
-                    ticket = decode_ticket(record)
+                    try:
+                        ticket = decode_ticket(record)
+                    except (ValueError, TypeError, KeyError, AttributeError):
+                        continue
                     if ticket.external_id == str(call.idempotency_key):
                         return ticket, result, self.client.receipt(call, result, ticket.id)
             except (ValueError, TypeError, KeyError, AttributeError) as error:
@@ -676,7 +680,7 @@ class CreateTicketOperation:
             if result.outcome != "success":
                 assert result.failure is not None
                 if prior_dispatch:
-                    return _reconcile_failure(
+                    return await _reconcile_failure(
                         call,
                         operation,
                         result.failure,
@@ -697,7 +701,7 @@ class CreateTicketOperation:
                     "an earlier attempt of this Step sent the request and Gorgias shows no ticket "
                     "with its external ID, so it is not sent again",
                 )
-                return _reconcile_failure(call, operation, reason, receipt, zero)
+                return await _reconcile_failure(call, operation, reason, receipt, zero)
         if not await _checkpoint(call, State.CLAIMED):
             return MutationAttempt.retry(
                 failure(
@@ -800,7 +804,7 @@ class AddNoteOperation:
         credentials, credential_failure = await self.client.resolve_credentials(call, operation)
         if credential_failure:
             if prior_dispatch:
-                return _reconcile_failure(call, operation, credential_failure, Receipt(), zero)
+                return await _reconcile_failure(call, operation, credential_failure, Receipt(), zero)
             return MutationAttempt.branch_result(defs.DEFECT, zero, Receipt(), credential_failure)
         assert credentials is not None
         path = f"/tickets/{input.ticket_id}"
@@ -836,7 +840,7 @@ class AddNoteOperation:
             if result.outcome != "success":
                 assert result.failure is not None
                 if prior_dispatch:
-                    return _reconcile_failure(
+                    return await _reconcile_failure(
                         call,
                         operation,
                         result.failure,
@@ -857,7 +861,7 @@ class AddNoteOperation:
                     "an earlier attempt of this Step sent the request and Gorgias shows no message "
                     "with its external ID, so it is not sent again",
                 )
-                return _reconcile_failure(call, operation, reason, receipt, zero)
+                return await _reconcile_failure(call, operation, reason, receipt, zero)
         payload: dict[str, Any] = {
             "channel": "internal-note",
             "via": "api",

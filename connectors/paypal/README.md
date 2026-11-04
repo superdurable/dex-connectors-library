@@ -55,3 +55,11 @@ flow := resourceread.NewFlow(mock.Connection())
 ## Unverified live behavior
 
 No real PayPal account or Dex Web connection was available in this dispatch. Live credential creation, access scope selection, store configuration, provider data shapes beyond the documented fields, and response behavior remain unverified. GitHub Actions runs real Dex integration coverage; a user-controlled connection is needed for a live provider check.
+
+## TypeScript package
+
+`@superdurable/connector-paypal` v0.1.0 implements `getOrder` and `listTransactions` as Dex Query operations. The package exports generated models, operation-specific Step factories, typed named connections, and a PayPal client that exchanges the configured REST app client ID and secret for a short-lived access token. It retries temporary token and read failures and selects the same terminal branches as the Go connector.
+
+The runnable TypeScript [resource-read example](typescript/examples/resource-read/README.md) binds the static `paypal` connection and reads one checkout order through a real Dex Worker. It includes a local PayPal HTTP stand-in integration test. Run `npm ci` and `npm run check` from `connectors/paypal/typescript`; then start `dexcli dev` and run `DEX_FLOW_SERVICE_ADDRESS=<dev-address> npm run test:integration`.
+
+Live PayPal authorization, token exchange, and order or transaction reads have not been verified against a real PayPal account.

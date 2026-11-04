@@ -77,6 +77,8 @@ def _keys(value: object, required: set[str], optional: set[str], where: str) -> 
 
 
 def _same_json_value(actual: object, expected: object) -> bool:
+    if isinstance(actual, (int, float)) and not isinstance(actual, bool):
+        return isinstance(expected, (int, float)) and not isinstance(expected, bool) and actual == expected
     if type(actual) is not type(expected):
         return False
     if isinstance(actual, dict):
