@@ -992,3 +992,89 @@ async def test_manifest_delegated_subject_matches_go_mail_parse_address() -> Non
                 with pytest.raises(ReauthorizationRequiredError):
                     await driver.refresh(state)
                 assert len(requests) == before, case["input"]
+
+
+@pytest.mark.asyncio
+async def test_client_credentials_rejects_missing_positive_expiry_without_reauthorization() -> None:
+    """Help Scout's strict expires_in failure retries a malformed success response."""
+    auth: dict[str, Any] = {"fields": [{"name": "access_token", "type": "secretString"}],
+        "clientCredentials": {
+        "tokenEndpoint": "https://oauth.example.test/token", "clientIDCredential": "client_id",
+        "clientSecretCredential": "client_secret", "missingExpiry": "reject",
+        "credentialMappings": [{"credential": "access_token", "source": "access_token"}],
+        "terminalErrorCodes": ["invalid_client"],
+    }}
+    response: dict[str, Any] = {"access_token": "next", "token_type": "Bearer"}
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json=response)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+        driver = ManifestCredentialRefreshDriver[Credentials]("Help Scout", auth, FIELDS, client)
+        state = CredentialRefreshState(
+            Credentials(SecretString("old"), SecretString("prior")), None, datetime.now(UTC)
+        )
+        for expiry in (None, 0, -1):
+            if expiry is None:
+                response.pop("expires_in", None)
+            else:
+                response["expires_in"] = expiry
+            with pytest.raises(ValueError, match="omitted required fields"):
+                await driver.refresh(state)
+        response["expires_in"] = 3600
+        assert (await driver.refresh(state)).credentials.access_token.reveal() == "next"
+        assert len(requests) == 4
+
+
+@pytest.mark.parametrize("declaration", [
+    {"missingExpiry": "unknown"}, {"acceptedScopeSets": []},
+    {"acceptedScopeSets": [["read"], []]}, {"scopeSeparators": "comma"},
+])
+@pytest.mark.asyncio
+async def test_manifest_rejects_unknown_refresh_declarations(declaration: dict[str, Any]) -> None:
+    """SDK callers cannot silently weaken schema-validated response rules."""
+    auth: dict[str, Any] = deepcopy(AUTH)
+    auth["methods"][0]["oauth2"]["refresh"].update(declaration)
+    async with httpx.AsyncClient() as client:
+        with pytest.raises(ValueError):
+            ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)
+
+
+@pytest.mark.asyncio
+async def test_go_agreement_scope_expiry_and_client_secret_decisions() -> None:
+    """Replay the three LinkedIn Go agreement failure classes through one grant."""
+    auth: dict[str, Any] = deepcopy(AUTH)
+    auth["methods"][0]["oauth2"]["refresh"].update({
+        "requiredScopes": ["files.read"], "exactScopes": True, "missingExpiry": "reject",
+    })
+    response: dict[str, Any] = {
+        "access_token": "next", "token_type": "Bearer", "expires_in": 3600, "scope": "files.read",
+    }
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json=response)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+        driver = ManifestCredentialRefreshDriver[Credentials]("LinkedIn", auth, FIELDS, client)
+        state = CredentialRefreshState(
+            Credentials(SecretString("old"), SecretString("prior")), None, datetime.now(UTC)
+        )
+        response["scope"] = "files.read extra"
+        with pytest.raises(ReauthorizationRequiredError):
+            await driver.refresh(state)
+        response["scope"] = "files.read"
+        response.pop("expires_in")
+        with pytest.raises(ValueError, match="omitted required fields"):
+            await driver.refresh(state)
+        assert len(requests) == 2
+        no_secret = CredentialRefreshState(
+            Credentials(SecretString("old"), SecretString("prior"), client_secret=SecretString("")),
+            None, datetime.now(UTC),
+        )
+        with pytest.raises(ReauthorizationRequiredError):
+            await driver.refresh(no_secret)
+        assert len(requests) == 2
