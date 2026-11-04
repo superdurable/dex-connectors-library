@@ -413,8 +413,8 @@ async def test_manifest_missing_expiry_follows_declaration_not_grant_count() -> 
 
 
 @pytest.mark.asyncio
-async def test_atlassian_stored_missing_expiry_refreshes_but_response_requires_expires_in() -> None:
-    """Go Atlassian refreshes an undated stored token and rejects an undated replacement."""
+async def test_stored_missing_expiry_refreshes_but_response_requires_expires_in() -> None:
+    """An undated stored token refreshes while its replacement still requires expiry."""
     auth: dict[str, Any] = deepcopy(AUTH)
     refresh = auth["methods"][0]["oauth2"]["refresh"]
     refresh["storedMissingExpiry"] = "refresh"
@@ -427,7 +427,7 @@ async def test_atlassian_stored_missing_expiry_refreshes_but_response_requires_e
         return httpx.Response(200, json=response)
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
-        driver = ManifestCredentialRefreshDriver[Credentials]("Atlassian", auth, FIELDS, client)
+        driver = ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)
         state = CredentialRefreshState(
             Credentials(SecretString("old"), SecretString("prior")), None, datetime.now(UTC)
         )
@@ -438,6 +438,49 @@ async def test_atlassian_stored_missing_expiry_refreshes_but_response_requires_e
         with pytest.raises(ValueError, match="omitted required fields"):
             await driver.refresh(state)
         assert len(requests) == 2
+
+
+@pytest.mark.parametrize("grant_kind", ["refresh", "client_credentials", "jwt_bearer"])
+@pytest.mark.asyncio
+async def test_stored_missing_expiry_is_independent_and_validated_for_every_grant(
+    grant_kind: str,
+) -> None:
+    """A response lifetime does not refresh an undated credential for any grant."""
+    if grant_kind == "refresh":
+        auth: dict[str, Any] = deepcopy(AUTH)
+        grant = auth["methods"][0]["oauth2"]["refresh"]
+    elif grant_kind == "client_credentials":
+        grant = {
+            "tokenEndpoint": "https://oauth.example.test/token",
+            "clientIDCredential": "client_id",
+            "clientSecretCredential": "client_secret",
+            "credentialMappings": [{"credential": "access_token", "source": "access_token"}],
+        }
+        auth = {"clientCredentials": grant}
+    else:
+        grant = {
+            "tokenEndpoint": "https://oauth.example.test/token",
+            "keyCredential": "client_secret",
+            "credentialMappings": [{"credential": "access_token", "source": "access_token"}],
+        }
+        auth = {"serviceAccount": {"jwtBearer": grant}}
+
+    state = CredentialRefreshState(
+        Credentials(SecretString("old"), SecretString("prior")), None, datetime.now(UTC)
+    )
+    grant["missingExpiry"] = {"lifetime": "1h"}
+    async with httpx.AsyncClient() as client:
+        def driver() -> ManifestCredentialRefreshDriver[Credentials]:
+            return ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)
+
+        assert not driver().refresh_required(state)
+        grant["storedMissingExpiry"] = "refresh"
+        assert driver().refresh_required(state)
+        grant["storedMissingExpiry"] = "keep"
+        assert not driver().refresh_required(state)
+        grant["storedMissingExpiry"] = "invalid"
+        with pytest.raises(ValueError, match="storedMissingExpiry must be refresh or keep"):
+            driver()
 
 
 @pytest.mark.asyncio

@@ -41,6 +41,9 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
     Credentials for a multi-method manifest carry ``auth_method_id``; an empty
     value selects ``defaultMethod``. The host
     owns the HTTP client, refresh admission, and complete replacement.
+    ``storedMissingExpiry`` controls undated stored tokens for every grant and
+    defaults to ``keep``. The separate ``missingExpiry`` controls responses
+    without ``expires_in``; a declared lifetime does not refresh stored tokens.
     """
 
     def __init__(
@@ -69,6 +72,9 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
         self._http_client = http_client
         self._settings = dict(settings or {})
         self._now = now or (lambda: datetime.now(UTC))
+        for method in auth.get("methods") or [auth]:
+            for grant in self._grants(method):
+                self._validate_stored_missing_expiry(grant)
 
     def refresh_required(self, state: CredentialRefreshState[Credential]) -> bool:
         """Check declared access fields and the host's single credential expiry."""
@@ -354,6 +360,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
         return False
 
     def _validate_grant(self, grant: Mapping[str, Any]) -> None:
+        self._validate_stored_missing_expiry(grant)
         for mapping in grant["mappings"]:
             if not mapping.get("source") or mapping.get("credential") not in self._fields:
                 raise ValueError("manifest credential field is not mapped")
@@ -366,6 +373,10 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
         if grant["kind"] == "jwt_bearer":
             if _parse_duration(grant["assertion"]["lifetime"]) < timedelta(milliseconds=1):
                 raise ValueError("manifest JWT assertion lifetime must be at least one millisecond")
+
+    def _validate_stored_missing_expiry(self, grant: Mapping[str, Any]) -> None:
+        if grant["stored_missing_expiry"] not in ("refresh", "keep"):
+            raise ValueError("manifest storedMissingExpiry must be refresh or keep")
 
     def _scopes(self, source: Any) -> list[str]:
         if isinstance(source, list):
