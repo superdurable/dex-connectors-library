@@ -8,7 +8,6 @@ import (
 	"net"
 	"net/http"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/intercom/go"
@@ -23,19 +22,20 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	transport.Transport = &conformanceDialTransport{exchanges: scenario.Exchanges, underlying: transport.Transport}
 	client, err := intercom.New(intercom.Config{}, sdkgo.StaticCredentialProvider[intercom.Credentials]{
 		intercomConnection: {AccessToken: sdkgo.NewSecretString(testAccessToken)},
-	}, intercom.WithAPIBaseURL(endpoint), intercom.WithHTTPClient(transport), intercom.WithClock(func() time.Time {
-		return time.Date(2026, time.October, 30, 0, 0, 0, 0, time.UTC)
-	}))
+	}, intercom.WithAPIBaseURL(endpoint), intercom.WithHTTPClient(transport), intercom.WithClock(conformanceFixedClock(t, scenario)))
 	require.NoError(t, err)
 	context := newTestDexContext("conformance")
 	if len(scenario.PriorHeartbeat) != 0 {
 		var previous struct {
-			CallID string `json:"callId"`
+			Value struct {
+				DispatchedCallID string `json:"intercomReplyDispatchedCallId"`
+				DispatchedAt int64 `json:"intercomReplyDispatchedAt"`
+			} `json:"value"`
 		}
 		require.NoError(t, json.Unmarshal(scenario.PriorHeartbeat, &previous))
 		require.NoError(t, context.RecordHeartbeat(map[string]any{
-			"intercomReplyDispatchedCallId": previous.CallID,
-			"intercomReplyDispatchedAt":     time.Date(2026, time.October, 30, 0, 0, 0, 0, time.UTC).Unix(),
+			"intercomReplyDispatchedCallId": previous.Value.DispatchedCallID,
+			"intercomReplyDispatchedAt":     previous.Value.DispatchedAt,
 		}))
 	}
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{

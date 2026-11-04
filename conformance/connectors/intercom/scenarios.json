@@ -554,6 +554,10 @@
       "expected": {
         "branch": "replied",
         "failureKind": "",
+        "heartbeat": {
+          "intercomReplyDispatchedAt": 1793318400,
+          "intercomReplyDispatchedCallId": "086d15f9-0a76-5218-9367-313eebf7077a"
+        },
         "output": {
           "conversationId": "2002",
           "conversationState": "open",
@@ -573,6 +577,7 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",
@@ -618,6 +623,10 @@
       "expected": {
         "branch": "notFound",
         "failureKind": "NOT_FOUND",
+        "heartbeat": {
+          "intercomReplyDispatchedAt": 1793318400,
+          "intercomReplyDispatchedCallId": "086d15f9-0a76-5218-9367-313eebf7077a"
+        },
         "output": {
           "conversationId": "2002",
           "part": {
@@ -632,6 +641,7 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",
@@ -677,6 +687,10 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "AUTHENTICATION",
+        "heartbeat": {
+          "intercomReplyDispatchedAt": 1793318400,
+          "intercomReplyDispatchedCallId": "086d15f9-0a76-5218-9367-313eebf7077a"
+        },
         "output": {
           "conversationId": "2002",
           "part": {
@@ -691,6 +705,7 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",
@@ -736,6 +751,10 @@
       "expected": {
         "branch": "invalidResponse",
         "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "intercomReplyDispatchedAt": 1793318400,
+          "intercomReplyDispatchedCallId": "086d15f9-0a76-5218-9367-313eebf7077a"
+        },
         "output": {
           "conversationId": "2002",
           "part": {
@@ -750,6 +769,7 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",
@@ -780,6 +800,7 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",
@@ -865,6 +886,7 @@
         "retryAfterMs": 0,
         "uncertain": true
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",
@@ -876,6 +898,10 @@
         {
           "exchangeCount": 1,
           "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "intercomReplyDispatchedAt": 1793318400,
+            "intercomReplyDispatchedCallId": "086d15f9-0a76-5218-9367-313eebf7077a"
+          },
           "retryAfterMs": 0
         }
       ],
@@ -962,6 +988,7 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",
@@ -973,6 +1000,10 @@
         {
           "exchangeCount": 1,
           "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "intercomReplyDispatchedAt": 1793318400,
+            "intercomReplyDispatchedCallId": "086d15f9-0a76-5218-9367-313eebf7077a"
+          },
           "retryAfterMs": 0
         }
       ],
@@ -2440,11 +2471,15 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "cleared": true
+        },
         "requestCount": 2,
         "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",
@@ -2456,6 +2491,9 @@
         {
           "exchangeCount": 1,
           "failureKind": "RATE_LIMIT",
+          "heartbeat": {
+            "cleared": true
+          },
           "retryAfterMs": 0
         }
       ],
@@ -2527,6 +2565,7 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",
@@ -2538,6 +2577,10 @@
         {
           "exchangeCount": 1,
           "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "intercomReplyDispatchedAt": 1793318400,
+            "intercomReplyDispatchedCallId": "086d15f9-0a76-5218-9367-313eebf7077a"
+          },
           "retryAfterMs": 0
         }
       ],
@@ -2577,11 +2620,15 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "cleared": true
+        },
         "requestCount": 0,
         "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",
@@ -3085,6 +3132,7 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",
@@ -3096,6 +3144,10 @@
         {
           "exchangeCount": 1,
           "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "intercomReplyDispatchedAt": 1793318400,
+            "intercomReplyDispatchedCallId": "086d15f9-0a76-5218-9367-313eebf7077a"
+          },
           "retryAfterMs": 0
         }
       ],
@@ -3337,6 +3389,7 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",
@@ -3348,6 +3401,10 @@
         {
           "exchangeCount": 1,
           "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "intercomReplyDispatchedAt": 1793318400,
+            "intercomReplyDispatchedCallId": "086d15f9-0a76-5218-9367-313eebf7077a"
+          },
           "retryAfterMs": 0
         }
       ],
@@ -3587,6 +3644,7 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",
@@ -3598,6 +3656,10 @@
         {
           "exchangeCount": 1,
           "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "intercomReplyDispatchedAt": 1793318400,
+            "intercomReplyDispatchedCallId": "086d15f9-0a76-5218-9367-313eebf7077a"
+          },
           "retryAfterMs": 0
         }
       ],
@@ -3833,6 +3895,7 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",
@@ -3844,6 +3907,10 @@
         {
           "exchangeCount": 1,
           "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "intercomReplyDispatchedAt": 1793318400,
+            "intercomReplyDispatchedCallId": "086d15f9-0a76-5218-9367-313eebf7077a"
+          },
           "retryAfterMs": 0
         }
       ],
@@ -4094,6 +4161,7 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",
@@ -4105,6 +4173,10 @@
         {
           "exchangeCount": 1,
           "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "intercomReplyDispatchedAt": 1793318400,
+            "intercomReplyDispatchedCallId": "086d15f9-0a76-5218-9367-313eebf7077a"
+          },
           "retryAfterMs": 0
         }
       ],
@@ -4146,6 +4218,10 @@
       "expected": {
         "branch": "replied",
         "failureKind": "",
+        "heartbeat": {
+          "intercomReplyDispatchedAt": 1793318400,
+          "intercomReplyDispatchedCallId": "086d15f9-0a76-5218-9367-313eebf7077a"
+        },
         "output": {
           "conversationId": "2002",
           "conversationState": "open",
@@ -4165,6 +4241,7 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",
@@ -4210,6 +4287,10 @@
       "expected": {
         "branch": "replied",
         "failureKind": "",
+        "heartbeat": {
+          "intercomReplyDispatchedAt": 1793318400,
+          "intercomReplyDispatchedCallId": "086d15f9-0a76-5218-9367-313eebf7077a"
+        },
         "output": {
           "conversationId": "2002",
           "conversationState": "open",
@@ -4229,6 +4310,7 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",
@@ -4537,6 +4619,7 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",
@@ -4548,8 +4631,10 @@
       "operation": "replyToConversation",
       "priorHeartbeat": {
         "attempt": 1,
-        "callId": "086d15f9-0a76-5218-9367-313eebf7077a",
-        "state": "claimed"
+        "value": {
+          "intercomReplyDispatchedAt": 1793318400,
+          "intercomReplyDispatchedCallId": "086d15f9-0a76-5218-9367-313eebf7077a"
+        }
       }
     },
     {
@@ -4614,6 +4699,10 @@
       "expected": {
         "branch": "replied",
         "failureKind": "",
+        "heartbeat": {
+          "intercomReplyDispatchedAt": 1793318400,
+          "intercomReplyDispatchedCallId": "086d15f9-0a76-5218-9367-313eebf7077a"
+        },
         "output": {
           "conversationId": "2002",
           "conversationState": "open",
@@ -4633,6 +4722,7 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",
@@ -4644,6 +4734,9 @@
         {
           "exchangeCount": 1,
           "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "cleared": true
+          },
           "retryAfterMs": 0
         }
       ],
