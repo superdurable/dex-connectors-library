@@ -32,6 +32,7 @@ interface Grant {
   allowsPublicClient: boolean;
   acceptsMissingTokenType: boolean;
   acceptsMissingExpiresIn: boolean;
+  storedMissingExpiry: 'refresh' | 'keep';
   missingExpiry: string;
   additionalParameters: Record<string, string>;
 }
@@ -48,7 +49,7 @@ export interface ManifestCredentialRefreshOptions {
 
 /** Exchange manifest-declared grants while a credential provider owns admission and storage.
  *
- * Missing expiry keeps an existing access token. Refresh sends each active grant
+ * Stored missing expiry follows storedMissingExpiry, defaulting to keep. Refresh sends each active grant
  * and reports the earliest expiry. Declared sub-500 terminal errors require
  * reauthorization; other token endpoint failures remain retryable. A credential
  * with multiple methods uses the declared default when authMethodId is empty.
@@ -78,7 +79,8 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
     if (!grants.length) return false;
     const accessFields = grants.flatMap(grant => grant.mappings.filter(mapping => mapping.source === 'access_token').map(mapping => manifestText(mapping.credential)));
     const hasAccessToken = accessFields.length > 0 && accessFields.every(name => Boolean(this.#credentialValue(state.credentials, name)));
-    return isRefreshRequired(hasAccessToken, state.expiresAt, state.now, 'keep');
+    return isRefreshRequired(hasAccessToken, state.expiresAt, state.now,
+      grants.some(grant => grant.storedMissingExpiry === 'refresh') ? 'refresh' : 'keep');
   }
 
   /** Send each active grant and return one complete credential with the earliest expiry. */
@@ -152,6 +154,7 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
         acceptsMissingTokenType: declaration.acceptsMissingTokenType === undefined
           ? refresh?.acceptsMissingTokenType === true : declaration.acceptsMissingTokenType === true,
         acceptsMissingExpiresIn: refresh?.missingExpiry !== undefined,
+        storedMissingExpiry: refresh?.storedMissingExpiry === 'refresh' ? 'refresh' : 'keep',
         missingExpiry: missingExpiryLifetime(refresh?.missingExpiry), additionalParameters: stringRecord(refresh?.additionalParameters),
       }));
     }
@@ -169,6 +172,7 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
         scopeSeparators: 'whitespace', allowsPublicClient: false,
         acceptsMissingTokenType: client.acceptsMissingTokenType === true,
         acceptsMissingExpiresIn: client.missingExpiry !== undefined,
+        storedMissingExpiry: client.storedMissingExpiry === 'refresh' ? 'refresh' : 'keep',
         missingExpiry: missingExpiryLifetime(client.missingExpiry), additionalParameters: stringRecord(client.additionalParameters),
       }];
     }
@@ -186,6 +190,7 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
       scopeSeparators: 'whitespace', allowsPublicClient: false,
       acceptsMissingTokenType: bearer.acceptsMissingTokenType === true,
       acceptsMissingExpiresIn: bearer.missingExpiry !== undefined,
+      storedMissingExpiry: bearer.storedMissingExpiry === 'refresh' ? 'refresh' : 'keep',
       missingExpiry: missingExpiryLifetime(bearer.missingExpiry), additionalParameters: {},
     }];
   }
