@@ -2,7 +2,9 @@
 # SPDX-License-Identifier: MIT
 """Zendesk Support parsing, credentials, and response classification edge cases."""
 
+import json
 from datetime import UTC, datetime
+from pathlib import Path
 
 import httpx
 import pytest
@@ -18,7 +20,13 @@ from dex_connectors.sdk import (
 )
 
 from dex_connectors.zendesk_support import Client, Config, Credentials
-from dex_connectors.zendesk_support.client import bare_email, decode_ticket, parse_time
+from dex_connectors.zendesk_support.client import (
+    _describe_error,
+    _query_escape,
+    bare_email,
+    decode_ticket,
+    parse_time,
+)
 
 
 @pytest.mark.parametrize(
@@ -39,15 +47,25 @@ def test_bare_email_rejects_invalid_or_decorated_forms(value: str) -> None:
 
 @pytest.mark.parametrize(
     "value",
-    ["2026-02-30T10:00:00Z", "2026-02-29T10:00:00Z", "2026-01-01T24:00:00Z", "2026-01-01T00:00:00+03:60"],
+    [
+        "2026-02-30T10:00:00Z",
+        "2026-02-29T10:00:00Z",
+        "2026-01-01T24:00:00Z",
+        "2026-01-01T00:00:00+99:59",
+        "٢٠٢٦-01-01T00:00:00Z",
+        "0000-01-01T00:00:00Z",
+        "0001-01-01T00:00:00+05:00",
+        "9999-12-31T23:59:59-23:59",
+    ],
 )
 def test_rfc3339_rejects_invalid_calendar_or_clock(value: str) -> None:
     with pytest.raises(ValueError):
         parse_time(value)
 
 
-def test_rfc3339_accepts_go_large_offset_and_comma_fraction() -> None:
-    assert parse_time("2026-01-01T00:00:00+99:59") == datetime(2025, 12, 27, 20, 1, tzinfo=UTC)
+def test_rfc3339_accepts_go_offset_bounds_and_comma_fraction() -> None:
+    assert parse_time("2026-01-02T00:00:00+24:00") == datetime(2026, 1, 1, tzinfo=UTC)
+    assert parse_time("2026-01-01T01:00:00+00:60") == datetime(2026, 1, 1, tzinfo=UTC)
     assert parse_time("2024-02-29T10:00:00,25Z") == datetime(2024, 2, 29, 10, 0, 0, 250000, UTC)
 
 
@@ -81,3 +99,34 @@ async def test_large_error_body_still_classifies_by_status() -> None:
         exchange = await client.exchange(call, credentials, "searchTickets", "GET", "/search/export")
         assert exchange.outcome == "retry"
         assert exchange.failure is not None and exchange.failure.kind == FailureKind.RATE_LIMIT
+
+
+@pytest.mark.parametrize(
+    "value, expected", json.loads((Path(__file__).parent / "email_parse_regressions.json").read_text())
+)
+def test_bare_email_matches_go_differential_cases(value: str, expected: bool) -> None:
+    assert bare_email(value) is expected
+
+
+def test_query_escape_preserves_tilde() -> None:
+    assert _query_escape('text:"a~b"') == "text%3A%22a~b%22"
+
+
+def test_error_tokens_ignore_boolean_and_keep_number_spelling() -> None:
+    assert _describe_error(b'{"details":{"base":[{"type":true}]}}', "secret") == "details: base"
+    assert _describe_error(b'{"error":1e2}', "secret") == "1e2"
+    assert _describe_error(b'{"details":{"base":[{"type":1e2}]}}', "secret") == "details: base=1e2"
+
+
+def test_ticket_null_tag_decodes_as_empty_string() -> None:
+    ticket, _ = decode_ticket(
+        {
+            "id": 1,
+            "status": "open",
+            "created_at": "2026-01-01T00:00:00Z",
+            "updated_at": "2026-01-01T00:00:00Z",
+            "tags": [None],
+        },
+        "https://acme.zendesk.com/agent/tickets/",
+    )
+    assert ticket.tags == ("",)

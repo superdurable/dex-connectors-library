@@ -9,7 +9,6 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from email.utils import parseaddr
 from typing import TYPE_CHECKING, Any
 from urllib.parse import quote_plus
 
@@ -41,7 +40,9 @@ if TYPE_CHECKING:
 _SUBDOMAIN = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
 _ERROR_FIELD = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 _ERROR_TOKEN = re.compile(r"^[A-Za-z0-9_.:-]{1,64}$")
-_RFC3339 = re.compile(r"^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)(?:[.,](\d+))?(Z|([+-])(\d\d):(\d\d))$")
+_RFC3339 = re.compile(
+    r"^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)(?:[.,](\d+))?(Z|([+-])(\d\d):(\d\d))$", re.ASCII
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,7 +69,19 @@ def bare_email(value: str) -> bool:
     local, separator, domain = value.rpartition("@")
     if not separator or not local or not domain:
         return False
-    if any(not part for part in local.split(".")):
+    atom_characters = frozenset("!#$%&'*+-/=?^_`{|}~")
+
+    def is_dot_atom(text: str) -> bool:
+        return all(
+            part
+            and all(
+                char.isascii() and (char.isalnum() or char in atom_characters) or ord(char) >= 128
+                for char in part
+            )
+            for part in text.split(".")
+        )
+
+    if not is_dot_atom(local):
         return False
     if domain.startswith("[") and domain.endswith("]"):
         try:
@@ -76,10 +89,7 @@ def bare_email(value: str) -> bool:
         except ValueError:
             return False
         return True
-    if any(not part for part in domain.split(".")):
-        return False
-    name, address = parseaddr(value)
-    return not name and address == value
+    return is_dot_atom(domain)
 
 
 def parse_time(value: str) -> datetime:
@@ -87,7 +97,7 @@ def parse_time(value: str) -> datetime:
     if not isinstance(value, str) or (match := _RFC3339.fullmatch(value)) is None:
         raise ValueError("timestamp is not RFC 3339")
     year, month, day, hour, minute, second, fraction, _, sign, offset_hour, offset_minute = match.groups()
-    if offset_hour is not None and int(offset_minute) > 59:
+    if offset_hour is not None and (int(offset_hour) > 24 or int(offset_minute) > 60):
         raise ValueError("timestamp offset minute is invalid")
     try:
         parsed = datetime(
@@ -100,11 +110,14 @@ def parse_time(value: str) -> datetime:
             int((fraction or "")[:6].ljust(6, "0")),
             tzinfo=UTC,
         )
-    except ValueError as error:
+    except (ValueError, OverflowError) as error:
         raise ValueError("timestamp is not RFC 3339") from error
     if offset_hour is not None:
         offset = timedelta(hours=int(offset_hour), minutes=int(offset_minute))
-        parsed += -offset if sign == "+" else offset
+        try:
+            parsed += -offset if sign == "+" else offset
+        except OverflowError as error:
+            raise ValueError("timestamp is outside Python datetime range") from error
     return parsed
 
 
@@ -148,7 +161,7 @@ def decode_ticket(value: Any, agent_ticket_url: str) -> tuple[Ticket, str]:
     tags = value.get("tags")
     if tags is None:
         tags = []
-    if not isinstance(tags, list) or not all(isinstance(tag, str) for tag in tags):
+    if not isinstance(tags, list) or not all(tag is None or isinstance(tag, str) for tag in tags):
         raise ValueError("ticket tags are invalid")
     via = value.get("via") or {}
     if not isinstance(via, dict):
@@ -178,7 +191,7 @@ def decode_ticket(value: Any, agent_ticket_url: str) -> tuple[Ticket, str]:
         group_id=_int_field(value, "group_id"),
         organization_id=_int_field(value, "organization_id"),
         brand_id=_int_field(value, "brand_id"),
-        tags=tuple(tags),
+        tags=tuple(tag or "" for tag in tags),
         external_id=_string_field(value, "external_id"),
         channel=channel,
         created_at=created_at,
@@ -469,15 +482,20 @@ class Client:
 
 def _describe_error(body: bytes, secret: str) -> str:
     try:
-        document = json.loads(body)
+        document = json.loads(body, parse_int=str, parse_float=str)
     except (ValueError, UnicodeDecodeError):
         return ""
     if not isinstance(document, dict):
         return ""
     parts = []
     code = document.get("error")
-    if isinstance(code, str) and _ERROR_TOKEN.fullmatch(code) and secret not in code:
-        parts.append(code)
+    if (
+        isinstance(code, (str, int, float))
+        and not isinstance(code, bool)
+        and _ERROR_TOKEN.fullmatch(str(code))
+        and secret not in str(code)
+    ):
+        parts.append(str(code))
     details = document.get("details")
     if isinstance(details, dict):
         fields = sorted(field for field in details if _ERROR_FIELD.fullmatch(field) and secret not in field)[
@@ -490,10 +508,14 @@ def _describe_error(body: bytes, secret: str) -> str:
             if isinstance(entry, list) and entry and isinstance(entry[0], dict):
                 for key in ("type", "error"):
                     candidate = entry[0].get(key)
-                    if isinstance(candidate, (str, int, float)) and _ERROR_TOKEN.fullmatch(str(candidate)):
+                    if (
+                        isinstance(candidate, (str, int, float))
+                        and not isinstance(candidate, bool)
+                        and _ERROR_TOKEN.fullmatch(str(candidate))
+                    ):
                         token = str(candidate)
                         break
-            tokens.append(field + ("=" + token if isinstance(token, str) and secret not in token else ""))
+            tokens.append(field + ("=" + token if token and secret not in token else ""))
         if tokens:
             parts.append("details: " + ", ".join(tokens))
     return "; ".join(parts)
@@ -501,4 +523,4 @@ def _describe_error(body: bytes, secret: str) -> str:
 
 def _query_escape(value: str) -> str:
     """Encode a Zendesk query parameter like Go url.Values.Encode."""
-    return quote_plus(value, safe="").replace("~", "%7E")
+    return quote_plus(value, safe="")

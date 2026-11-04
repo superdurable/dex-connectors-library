@@ -124,7 +124,9 @@ def _search_query(input: SearchTicketsInput) -> str:
     if input.updated_since:
         instant = parse_time(input.updated_since)
         terms.append("updated>=" + instant.isoformat(timespec="seconds").replace("+00:00", "Z"))
-    words = input.text.split()
+    words = re.findall(
+        r"[^\t\n\v\f\r \u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]+", input.text
+    )
     if len(words) > 32:
         raise ValueError("text has more than 32 keywords")
     for word in words:
@@ -180,20 +182,29 @@ class SearchTicketsOperation:
                 raise ValueError("search page has no results array")
             tickets = []
             for result in page["results"]:
-                if not isinstance(result, dict) or result.get("result_type", "ticket") not in ("", "ticket"):
+                if not isinstance(result, dict) or result.get("result_type", "ticket") not in (
+                    None,
+                    "",
+                    "ticket",
+                ):
                     raise ValueError("search result is not a ticket")
                 ticket, _ = decode_ticket(result, self.client.agent_ticket_url)
                 from dataclasses import replace
 
                 tickets.append(replace(ticket, description="", is_description_truncated=False))
             meta = page.get("meta") or {}
-            if not isinstance(meta, dict) or not isinstance(meta.get("has_more", False), bool):
+            if not isinstance(meta, dict):
+                raise ValueError("page meta is invalid")
+            has_more = meta.get("has_more")
+            if has_more is None:
+                has_more = False
+            elif not isinstance(has_more, bool):
                 raise ValueError("search page meta is invalid")
             after_cursor = meta.get("after_cursor")
             if after_cursor is not None and not isinstance(after_cursor, str):
                 raise ValueError("search page cursor is invalid")
-            next_cursor = (after_cursor or "") if meta.get("has_more") else ""
-            if not isinstance(next_cursor, str) or (meta.get("has_more") and not next_cursor):
+            next_cursor = (after_cursor or "") if has_more else ""
+            if not isinstance(next_cursor, str) or (has_more and not next_cursor):
                 raise ValueError("search page has more results but no cursor")
             output = SearchTicketsOutput(tuple(tickets), next_cursor)
         except (ValueError, TypeError, KeyError) as error:
@@ -249,9 +260,8 @@ class GetTicketOperation:
                 raise ValueError("users are invalid")
             for user in users:
                 decoded_user = decode_user(user)
-                if decoded_user.id == ticket.requester_id and ticket.requester_id > 0:
+                if requester is None and decoded_user.id == ticket.requester_id and ticket.requester_id > 0:
                     requester = decoded_user
-                    break
         except (ValueError, TypeError, KeyError) as error:
             return QueryAttempt.branch_result(
                 defs.INVALID_RESPONSE,
@@ -286,9 +296,14 @@ class GetTicketOperation:
                 )
             )
             meta = page.get("meta") or {}
-            if not isinstance(meta, dict) or not isinstance(meta.get("has_more", False), bool):
+            if not isinstance(meta, dict):
+                raise ValueError("page meta is invalid")
+            has_more = meta.get("has_more")
+            if has_more is None:
+                has_more = False
+            elif not isinstance(has_more, bool):
                 raise ValueError("comment page meta is invalid")
-            output = TicketDetails(ticket, requester, comments, meta.get("has_more", False))
+            output = TicketDetails(ticket, requester, comments, has_more)
         except (ValueError, TypeError, KeyError) as error:
             return QueryAttempt.branch_result(
                 defs.INVALID_RESPONSE,
@@ -399,8 +414,8 @@ class CreateTicketOperation:
             )
         receipt = self.client.receipt(call, exchange, created.id)
         lookup = (
-            exchange.headers.get("X-Idempotency-Lookup", "") if exchange.headers is not None else "".lower()
-        )
+            exchange.headers.get("X-Idempotency-Lookup", "") if exchange.headers is not None else ""
+        ).lower()
         if lookup:
             from dataclasses import replace
 
@@ -505,6 +520,8 @@ class UpdateTicketOperation:
                 if not isinstance(page, dict) or not isinstance(page.get("audits"), list):
                     raise ValueError("audit page has no audits array")
                 for audit in page["audits"]:
+                    if audit is None:
+                        continue
                     if not isinstance(audit, dict):
                         raise ValueError("audit is invalid")
                     metadata = audit.get("metadata") or {}
