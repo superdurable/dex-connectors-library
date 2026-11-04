@@ -69,6 +69,7 @@ func TestTypeScriptMultiAuthModelsGolden(t *testing.T) {
 	}
 	manifest.Spec.Auth.Methods[0].Configuration = &schema.Configuration{Fields: []schema.Field{{Name: "workspaceId", GoName: "WorkspaceID", Type: "string", Description: "Workspace for the selected method.", Required: true}}}
 	manifest.Spec.Auth.Methods[1].Fields = append(manifest.Spec.Auth.Methods[1].Fields, schema.Field{Name: "session_note", GoName: "SessionNote", Type: "string", Description: "Optional session note.", Required: false})
+	manifest.Spec.Auth.Methods[0].Fields = append(manifest.Spec.Auth.Methods[0].Fields, schema.Field{Name: "webhook_signing_key", GoName: "WebhookSigningKey", Type: "secretString", Description: "Optional webhook signing key.", Required: false})
 	manifest.Spec.Auth.Methods[1].Fields = append(manifest.Spec.Auth.Methods[1].Fields, schema.Field{Name: "environment", GoName: "Environment", Type: "enum", Enum: []string{"production", "sandbox"}, Description: "Login environment.", Required: false}, schema.Field{Name: "login_url", GoName: "LoginURL", Type: "url", Description: "Login URL.", Required: false})
 	manifest.Spec.Auth.Methods = append(manifest.Spec.Auth.Methods, schema.AuthMethod{ID: "typed", Fields: []schema.Field{
 		{Name: "request_count", GoName: "RequestCount", Type: "integer", Required: true},
@@ -220,6 +221,7 @@ assert.equal(ConfigSchema.parse({ accountId: 'account', region: 'west', workspac
 assert.throws(() => ConfigSchema.parse({}));
 const oauth = decodeCredentials({ auth_method: null, oauth_client_id: 'id', oauth_client_secret: 'secret', access_token: 'access', refresh_token: 'refresh' });
 assert.equal(oauth.authMethodId, 'google-oauth');
+assert.equal(oauth.webhookSigningKey?.reveal(), '');
 assert.equal(oauth.serviceAccountKey, undefined);
 assert.equal(decodeSharedCredentials({ oauth_client_id: 'id', access_token: 'access' }).accessToken?.reveal(), 'access');
 assert.equal(decodeSharedCredentials({ auth_method: 'app-only', tenant_id: 'tenant', client_id: 'id', access_token: 'access' }).accessToken?.reveal(), 'access');
@@ -244,7 +246,7 @@ for (const field of ['request_count', 'wait_duration']) {
   }
 }
 assert.throws(() => decodeCredentials({ auth_method: 'typed', request_count: 1, wait_duration: 2, optional_count: -1 }), /credential optional_count cannot be negative/);
-assert.equal(decodeCredentials({ auth_method: 'workspace-service-account', service_account_key: 'key', delegated_user: 'user', session_note: null }).sessionNote, undefined);
+assert.equal(decodeCredentials({ auth_method: 'workspace-service-account', service_account_key: 'key', delegated_user: 'user', session_note: null }).sessionNote, '');
 assert.throws(() => decodeCredentials({ auth_method: 'workspace-service-account', service_account_key: null, delegated_user: 'user' }), /credential service_account_key is required/);
 assert.throws(() => decodeCredentials({ auth_method: 'workspace-service-account', delegated_user: 'user' }));
 assert.throws(() => decodeCredentials({ auth_method: 'unknown' }));

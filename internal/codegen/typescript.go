@@ -540,6 +540,8 @@ func writeTypeScriptCredentialDecoder(output *bytes.Buffer, manifest schema.Mani
 			}
 			if isSingleMethod {
 				fmt.Fprintf(output, "  credentials.%s = %s;\n", typeScriptFieldName(field.Name), typeScriptCredentialValue(field, true))
+			} else if !field.Required && (field.Type == "secretString" || field.Type == "string" || field.Type == "enum" || field.Type == "url") {
+				fmt.Fprintf(output, "    credentials.%s = %s;\n", typeScriptFieldName(field.Name), typeScriptCredentialValue(field, true))
 			} else {
 				fmt.Fprintf(output, "    if (%s) credentials.%s = %s;\n", value, typeScriptFieldName(field.Name), typeScriptCredentialValue(field, false))
 			}

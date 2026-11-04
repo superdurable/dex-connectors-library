@@ -85,6 +85,7 @@ func TestPythonCodegenMultiAuthGolden(t *testing.T) {
 	}
 	manifest.Spec.Auth.Methods[0].Configuration = &schema.Configuration{Fields: []schema.Field{{Name: "workspaceId", GoName: "WorkspaceID", Type: "string", Description: "Workspace for the selected method.", Required: true}}}
 	manifest.Spec.Auth.Methods[1].Fields = append(manifest.Spec.Auth.Methods[1].Fields, schema.Field{Name: "session_note", GoName: "SessionNote", Type: "string", Description: "Optional session note.", Required: false})
+	manifest.Spec.Auth.Methods[0].Fields = append(manifest.Spec.Auth.Methods[0].Fields, schema.Field{Name: "webhook_signing_key", GoName: "WebhookSigningKey", Type: "secretString", Description: "Optional webhook signing key.", Required: false})
 	manifest.Spec.Auth.Methods[1].Fields = append(manifest.Spec.Auth.Methods[1].Fields, schema.Field{Name: "environment", GoName: "Environment", Type: "enum", Enum: []string{"production", "sandbox"}, Description: "Login environment.", Required: false}, schema.Field{Name: "login_url", GoName: "LoginURL", Type: "url", Description: "Login URL.", Required: false})
 	manifest.Spec.Auth.Methods = append(manifest.Spec.Auth.Methods, schema.AuthMethod{ID: "typed", Fields: []schema.Field{
 		{Name: "request_count", GoName: "RequestCount", Type: "integer", Required: true},
@@ -132,6 +133,53 @@ func TestPythonCodegenMultiAuthGolden(t *testing.T) {
 	}
 }
 
+func TestPythonCalendlyOptionalSecretRefreshRoundTrip(t *testing.T) {
+	manifest, err := load(filepath.Join("..", "..", "connectors", "calendly", "connector.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest.Spec.Languages = &schema.Languages{Python: &schema.LanguagePackage{Operations: []string{"listScheduledEvents"}}}
+	generated, err := renderPythonCodegen(pythonCodegenInput{Manifest: manifest, PackageName: "calendly_fixture", MockPackageName: "calendlymock"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sources, err := json.Marshal(map[string]string{"config.py": generated["config.py"], "connection.py": generated["connection.py"]})
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := exec.Command("python3", "-c", calendlyOptionalSecretRuntimeTest)
+	command.Stdin = bytes.NewReader(sources)
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("Calendly optional secret refresh round-trip: %v\n%s", err, output)
+	}
+}
+
+const calendlyOptionalSecretRuntimeTest = `
+import ast, json, sys
+from dataclasses import dataclass, replace
+from typing import Any
+sources = json.load(sys.stdin)
+class SecretString:
+    def __init__(self, value): self.value = value
+    def reveal(self): return self.value
+namespace = {'__name__': '__main__', 'dataclass': dataclass, 'SecretString': SecretString, 'Any': Any}
+config = ast.parse(sources['config.py'])
+credentials = next(node for node in config.body if isinstance(node, ast.ClassDef) and node.name == 'Credentials')
+exec(compile(ast.Module(body=[credentials], type_ignores=[]), '<credentials>', 'exec'), namespace)
+connection = ast.parse(sources['connection.py'])
+codec = [node for node in connection.body if isinstance(node, ast.FunctionDef) and node.name in ('decode_credentials', 'encode_credentials')]
+exec(compile(ast.Module(body=codec, type_ignores=[]), '<codec>', 'exec'), namespace)
+decode, encode = namespace['decode_credentials'], namespace['encode_credentials']
+oauth = {'auth_method': 'calendly-oauth', 'oauth_client_id': 'client', 'oauth_client_secret': 'secret', 'access_token': 'access', 'refresh_token': 'refresh'}
+pat = {'auth_method': 'personal-access-token', 'access_token': 'token'}
+for material in (oauth, pat):
+    resolved = decode(material)
+    assert resolved.webhook_signing_key.reveal() == ''
+    assert encode(resolved) == material
+    assert decode(encode(resolved)).webhook_signing_key.reveal() == ''
+    assert encode(replace(resolved, webhook_signing_key=SecretString('key')))['webhook_signing_key'] == 'key'
+`
+
 const multiAuthPythonRuntimeTest = `
 import ast, asyncio, json, sys
 from dataclasses import dataclass
@@ -167,6 +215,9 @@ def resolve(values, shared=False):
 default = resolve({'auth_method':None, 'oauth_client_id':'id', 'oauth_client_secret':'secret', 'access_token':'access', 'refresh_token':'refresh'})
 assert default.auth_method_id == 'google-oauth' and not hasattr(default, 'service_account_key')
 assert namespace['encode_credentials'](default)['auth_method'] == 'google-oauth'
+assert default.webhook_signing_key.reveal() == ''
+assert 'webhook_signing_key' not in namespace['encode_credentials'](default)
+assert resolve(namespace['encode_credentials'](default)).webhook_signing_key.reveal() == ''
 shared = resolve({'oauth_client_id':'id', 'access_token':'access'}, shared=True)
 assert shared.access_token.value == 'access' and not hasattr(shared, 'oauth_client_secret')
 app_only = resolve({'auth_method':'app-only', 'tenant_id':'tenant', 'client_id':'id', 'access_token':'access'}, shared=True)
@@ -197,7 +248,7 @@ try: resolve({'auth_method':'typed', 'request_count':1, 'wait_duration':2, 'opti
 except ValueError as error: assert str(error) == 'Multi Auth Fixture credential optional_count cannot be negative', str(error)
 else: raise AssertionError('negative optional number accepted')
 optional_null = resolve({'auth_method':'workspace-service-account', 'service_account_key':'key', 'delegated_user':'user', 'session_note':None})
-assert not hasattr(optional_null, 'session_note')
+assert optional_null.session_note == ''
 for values, message in (
     ({'auth_method':'workspace-service-account', 'service_account_key':None, 'delegated_user':'user'}, 'credential service_account_key is required'),
     ({'auth_method':'unknown'}, 'credential auth_method is invalid'),

@@ -112,14 +112,11 @@ def decode_credentials(material: dict[str, Any], *, shared: bool = False) -> Cre
             values["private_key"] = SecretString(private_key)
         if login_environment and login_environment not in ('production', 'sandbox'):
             raise ValueError("Token Grants Fixture credential login_environment is invalid")
-        if login_environment:
-            values["login_environment"] = login_environment
+        values["login_environment"] = login_environment or ''
         if not access_token and is_shared:
             raise ValueError("Token Grants Fixture credential access_token is required")
-        if access_token:
-            values["access_token"] = SecretString(access_token)
-        if instance_url:
-            values["instance_url"] = instance_url
+        values["access_token"] = SecretString(access_token or '')
+        values["instance_url"] = instance_url or ''
     else:
         raise ValueError("Token Grants Fixture credential auth_method is invalid")
     return Credentials(**values)

@@ -498,7 +498,12 @@ def render_config():
         for field_info in credential_fields:
             field_type = {"secretString": "SecretString", "integer": "int", "duration": "int", "boolean": "bool", "stringList": "list[str]", "stringMap": "dict[str, str]"}.get(field_info["type"], "str")
             if auth_methods:
-                lines.append(f"    {snake(field_info['name'])}: {field_type} | None = None")
+                if not field_info["required"] and field_info["type"] == "secretString":
+                    lines.append(f"    {snake(field_info['name'])}: {field_type} = SecretString('')")
+                elif not field_info["required"] and field_info["type"] in ("string", "enum", "url"):
+                    lines.append(f"    {snake(field_info['name'])}: {field_type} = ''")
+                else:
+                    lines.append(f"    {snake(field_info['name'])}: {field_type} | None = None")
             else:
                 lines.append(f"    {snake(field_info['name'])}: {field_type}")
         lines += [
@@ -865,6 +870,13 @@ def render_connection():
                         f"[item or '' for item in {name}]" if field_info["type"] == "stringList" else
                         f"{{key: item or '' for key, item in {name}.items()}}" if field_info["type"] == "stringMap" else name
                     )
+                    if not field_info["required"] and field_info["type"] == "secretString":
+                        expression = f"SecretString({name} or '')"
+                        lines.append(f"            values[{quoted(name)}] = {expression}")
+                        continue
+                    if not field_info["required"] and field_info["type"] in ("string", "enum", "url"):
+                        lines.append(f"            values[{quoted(name)}] = {name} or ''")
+                        continue
                     lines.append(f"            if {name}:")
                     lines.append(f"                values[{quoted(name)}] = {expression}")
             lines += [

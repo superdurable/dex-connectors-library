@@ -80,7 +80,7 @@ setattr(new_connection_with_operations, '__module__', 'dex_connectors.multi_auth
 def decode_credentials(material: dict[str, Any], *, shared: bool = False) -> Credentials:
     if not isinstance(material, dict):
         raise ValueError("Multi Auth Fixture stored credential does not match the connector credential fields")
-    if set(material) - set(('oauth_client_id', 'oauth_client_secret', 'access_token', 'refresh_token', 'service_account_key', 'delegated_user', 'session_note', 'environment', 'login_url', 'request_count', 'wait_duration', 'labels', 'headers', 'optional_count', 'optional_note', 'tenant_id', 'client_id', 'client_secret', 'auth_method')):
+    if set(material) - set(('oauth_client_id', 'oauth_client_secret', 'access_token', 'refresh_token', 'webhook_signing_key', 'service_account_key', 'delegated_user', 'session_note', 'environment', 'login_url', 'request_count', 'wait_duration', 'labels', 'headers', 'optional_count', 'optional_note', 'tenant_id', 'client_id', 'client_secret', 'auth_method')):
         raise ValueError("Multi Auth Fixture stored credential does not match the connector credential fields")
     is_shared = shared
     oauth_client_id = material.get("oauth_client_id")
@@ -95,6 +95,9 @@ def decode_credentials(material: dict[str, Any], *, shared: bool = False) -> Cre
     refresh_token = material.get("refresh_token")
     if refresh_token is not None and not (isinstance(refresh_token, str)):
         raise ValueError("Multi Auth Fixture credential refresh_token has an invalid type")
+    webhook_signing_key = material.get("webhook_signing_key")
+    if webhook_signing_key is not None and not (isinstance(webhook_signing_key, str)):
+        raise ValueError("Multi Auth Fixture credential webhook_signing_key has an invalid type")
     service_account_key = material.get("service_account_key")
     if service_account_key is not None and not (isinstance(service_account_key, str)):
         raise ValueError("Multi Auth Fixture credential service_account_key has an invalid type")
@@ -161,6 +164,7 @@ def decode_credentials(material: dict[str, Any], *, shared: bool = False) -> Cre
             raise ValueError("Multi Auth Fixture credential refresh_token is required")
         if refresh_token:
             values["refresh_token"] = SecretString(refresh_token)
+        values["webhook_signing_key"] = SecretString(webhook_signing_key or '')
     elif method == "workspace-service-account":
         if not service_account_key:
             raise ValueError("Multi Auth Fixture credential service_account_key is required")
@@ -170,16 +174,13 @@ def decode_credentials(material: dict[str, Any], *, shared: bool = False) -> Cre
             raise ValueError("Multi Auth Fixture credential delegated_user is required")
         if delegated_user:
             values["delegated_user"] = delegated_user
-        if session_note:
-            values["session_note"] = session_note
+        values["session_note"] = session_note or ''
         if environment and environment not in ('production', 'sandbox'):
             raise ValueError("Multi Auth Fixture credential environment is invalid")
-        if environment:
-            values["environment"] = environment
+        values["environment"] = environment or ''
         if login_url and not _is_absolute_credential_url(login_url):
             raise ValueError("Multi Auth Fixture credential login_url must be an absolute URL")
-        if login_url:
-            values["login_url"] = login_url
+        values["login_url"] = login_url or ''
     elif method == "typed":
         if (request_count is None or request_count <= 0):
             raise ValueError("Multi Auth Fixture credential request_count must be positive")
@@ -202,8 +203,7 @@ def decode_credentials(material: dict[str, Any], *, shared: bool = False) -> Cre
         if optional_count:
             values["optional_count"] = optional_count
     elif method == "optional-only":
-        if optional_note:
-            values["optional_note"] = optional_note
+        values["optional_note"] = optional_note or ''
     elif method == "app-only":
         if not tenant_id:
             raise ValueError("Multi Auth Fixture credential tenant_id is required")
@@ -219,8 +219,7 @@ def decode_credentials(material: dict[str, Any], *, shared: bool = False) -> Cre
             values["client_secret"] = SecretString(client_secret)
         if not access_token and is_shared:
             raise ValueError("Multi Auth Fixture credential access_token is required")
-        if access_token:
-            values["access_token"] = SecretString(access_token)
+        values["access_token"] = SecretString(access_token or '')
     else:
         raise ValueError("Multi Auth Fixture credential auth_method is invalid")
     return Credentials(**values)
@@ -243,6 +242,8 @@ def encode_credentials(credentials: Credentials) -> dict[str, Any]:
             material["access_token"] = credentials.access_token.reveal()
         if credentials.refresh_token.reveal():
             material["refresh_token"] = credentials.refresh_token.reveal()
+        if credentials.webhook_signing_key.reveal():
+            material["webhook_signing_key"] = credentials.webhook_signing_key.reveal()
     elif method == "workspace-service-account":
         if credentials.service_account_key.reveal():
             material["service_account_key"] = credentials.service_account_key.reveal()
