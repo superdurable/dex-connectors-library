@@ -1,25 +1,26 @@
 {
-  "connector": "llm",
+  "connector": "superdurable/llm",
   "scenarios": [
     {
-      "callId": "7a6bc333-4db8-5543-af22-8210f808b167",
+      "callId": "4ed533c7-73ad-5aaf-a284-47e93c79e442",
       "exchanges": [
         {
-          "body": "data: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Hello.\"},\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n",
+          "body": "{\"id\":\"resp-generated\",\"model\":\"gpt-6-sol\",\"status\":\"completed\",\"output\":[{\"type\":\"message\",\"content\":[{\"type\":\"output_text\",\"text\":\"Hello Dex.\"}]}],\"usage\":{\"input_tokens\":5,\"output_tokens\":3,\"total_tokens\":8}}",
           "headers": {
-            "Content-Type": "text/event-stream"
+            "Content-Type": "application/json"
           },
           "keyMode": "absent",
           "method": "POST",
-          "path": "/chat/completions",
+          "path": "/responses",
           "requestBody": {
-            "messages": [
+            "input": [
               {
                 "content": "Say hello.",
                 "role": "user"
               }
             ],
-            "model": "mock-model",
+            "model": "gpt-6-sol",
+            "store": false,
             "stream": true
           },
           "requestHeaders": {
@@ -27,10 +28,7 @@
               "text/event-stream"
             ],
             "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Length": [
-              "88"
+              "Bearer sk-llm-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -44,15 +42,15 @@
         "failureKind": "",
         "output": {
           "finishReason": "stop",
-          "providerFinishReason": "stop",
-          "requestedModel": "mock-model",
-          "responseId": "chatcmpl-inert",
-          "servedModel": "mock-model",
-          "text": "Hello.",
+          "providerFinishReason": "completed",
+          "requestedModel": "gpt-6-sol",
+          "responseId": "resp-generated",
+          "servedModel": "gpt-6-sol",
+          "text": "Hello Dex.",
           "usage": {
-            "inputTokens": 0,
-            "outputTokens": 0,
-            "totalTokens": 0
+            "inputTokens": 5,
+            "outputTokens": 3,
+            "totalTokens": 8
           }
         },
         "requestCount": 1,
@@ -68,28 +66,29 @@
           }
         ]
       },
-      "name": "openai-compatible/generated",
+      "name": "generated",
       "operation": "generateText"
     },
     {
-      "callId": "f42089d7-1835-557b-a5f4-bf34139afef4",
+      "callId": "4ed533c7-73ad-5aaf-a284-47e93c79e442",
       "exchanges": [
         {
-          "body": "data: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Partial\"},\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"length\"}]}\n\ndata: [DONE]\n\n",
+          "body": "{\"id\":\"resp-truncated\",\"model\":\"gpt-6-sol\",\"status\":\"incomplete\",\"incomplete_details\":{\"reason\":\"max_output_tokens\"},\"output\":[{\"type\":\"message\",\"content\":[{\"type\":\"output_text\",\"text\":\"Partial answer\"}]}]}",
           "headers": {
-            "Content-Type": "text/event-stream"
+            "Content-Type": "application/json"
           },
           "keyMode": "absent",
           "method": "POST",
-          "path": "/chat/completions",
+          "path": "/responses",
           "requestBody": {
-            "messages": [
+            "input": [
               {
-                "content": "Say hello.",
+                "content": "Write a long answer.",
                 "role": "user"
               }
             ],
-            "model": "mock-model",
+            "model": "gpt-6-sol",
+            "store": false,
             "stream": true
           },
           "requestHeaders": {
@@ -97,10 +96,7 @@
               "text/event-stream"
             ],
             "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Length": [
-              "88"
+              "Bearer sk-llm-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -114,11 +110,11 @@
         "failureKind": "RESPONSE_TOO_LARGE",
         "output": {
           "finishReason": "length",
-          "providerFinishReason": "length",
-          "requestedModel": "mock-model",
-          "responseId": "chatcmpl-inert",
-          "servedModel": "mock-model",
-          "text": "Partial",
+          "providerFinishReason": "max_output_tokens",
+          "requestedModel": "gpt-6-sol",
+          "responseId": "resp-truncated",
+          "servedModel": "gpt-6-sol",
+          "text": "Partial answer",
           "usage": {
             "inputTokens": 0,
             "outputTokens": 0,
@@ -134,32 +130,33 @@
         "messages": [
           {
             "role": "user",
-            "text": "Say hello."
+            "text": "Write a long answer."
           }
         ]
       },
-      "name": "openai-compatible/truncated",
+      "name": "truncated",
       "operation": "generateText"
     },
     {
-      "callId": "4c605d74-b1d6-5a5f-a807-98304a01219b",
+      "callId": "4ed533c7-73ad-5aaf-a284-47e93c79e442",
       "exchanges": [
         {
-          "body": "data: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"\"},\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"content_filter\"}]}\n\ndata: [DONE]\n\n",
+          "body": "{\"id\":\"resp-blocked\",\"model\":\"gpt-6-sol\",\"status\":\"incomplete\",\"incomplete_details\":{\"reason\":\"content_filter\"},\"output\":[]}",
           "headers": {
-            "Content-Type": "text/event-stream"
+            "Content-Type": "application/json"
           },
           "keyMode": "absent",
           "method": "POST",
-          "path": "/chat/completions",
+          "path": "/responses",
           "requestBody": {
-            "messages": [
+            "input": [
               {
-                "content": "Say hello.",
+                "content": "Blocked prompt.",
                 "role": "user"
               }
             ],
-            "model": "mock-model",
+            "model": "gpt-6-sol",
+            "store": false,
             "stream": true
           },
           "requestHeaders": {
@@ -167,10 +164,7 @@
               "text/event-stream"
             ],
             "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Length": [
-              "88"
+              "Bearer sk-llm-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -185,9 +179,9 @@
         "output": {
           "finishReason": "contentPolicy",
           "providerFinishReason": "content_filter",
-          "requestedModel": "mock-model",
-          "responseId": "chatcmpl-inert",
-          "servedModel": "mock-model",
+          "requestedModel": "gpt-6-sol",
+          "responseId": "resp-blocked",
+          "servedModel": "gpt-6-sol",
           "text": "",
           "usage": {
             "inputTokens": 0,
@@ -204,30 +198,33 @@
         "messages": [
           {
             "role": "user",
-            "text": "Say hello."
+            "text": "Blocked prompt."
           }
         ]
       },
-      "name": "openai-compatible/blocked",
+      "name": "blocked",
       "operation": "generateText"
     },
     {
-      "callId": "1bd6f592-79d5-5926-9c01-b6eaef4730be",
+      "callId": "4ed533c7-73ad-5aaf-a284-47e93c79e442",
       "exchanges": [
         {
-          "body": "{\"error\":{\"type\":\"invalid_api_key\"}}",
-          "headers": {},
+          "body": "{\"error\":{\"type\":\"invalid_api_key\",\"message\":\"secret omitted\"}}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
           "keyMode": "absent",
           "method": "POST",
-          "path": "/chat/completions",
+          "path": "/responses",
           "requestBody": {
-            "messages": [
+            "input": [
               {
                 "content": "Say hello.",
                 "role": "user"
               }
             ],
-            "model": "mock-model",
+            "model": "gpt-6-sol",
+            "store": false,
             "stream": true
           },
           "requestHeaders": {
@@ -235,10 +232,7 @@
               "text/event-stream"
             ],
             "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Length": [
-              "88"
+              "Bearer sk-llm-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -251,7 +245,7 @@
         "branch": "providerRejected",
         "failureKind": "AUTHENTICATION",
         "output": {
-          "requestedModel": "mock-model",
+          "requestedModel": "gpt-6-sol",
           "text": "",
           "usage": {
             "inputTokens": 0,
@@ -272,26 +266,29 @@
           }
         ]
       },
-      "name": "openai-compatible/provider-rejected",
+      "name": "provider-rejected",
       "operation": "generateText"
     },
     {
-      "callId": "2b15b600-69f1-5d8a-b588-e7bb708b9320",
+      "callId": "4ed533c7-73ad-5aaf-a284-47e93c79e442",
       "exchanges": [
         {
-          "body": "{\"bad\":true}",
-          "headers": {},
+          "body": "{}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
           "keyMode": "absent",
           "method": "POST",
-          "path": "/chat/completions",
+          "path": "/responses",
           "requestBody": {
-            "messages": [
+            "input": [
               {
                 "content": "Say hello.",
                 "role": "user"
               }
             ],
-            "model": "mock-model",
+            "model": "gpt-6-sol",
+            "store": false,
             "stream": true
           },
           "requestHeaders": {
@@ -299,10 +296,7 @@
               "text/event-stream"
             ],
             "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Length": [
-              "88"
+              "Bearer sk-llm-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -315,7 +309,7 @@
         "branch": "invalidResponse",
         "failureKind": "PROTOCOL",
         "output": {
-          "requestedModel": "mock-model",
+          "requestedModel": "gpt-6-sol",
           "text": "",
           "usage": {
             "inputTokens": 0,
@@ -336,26 +330,81 @@
           }
         ]
       },
-      "name": "openai-compatible/invalid-response",
+      "name": "invalid-response",
       "operation": "generateText"
     },
     {
-      "callId": "8b76adf9-2666-5042-a1a4-76bfeeb5533e",
+      "callId": "4ed533c7-73ad-5aaf-a284-47e93c79e442",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "requestedModel": "gpt-6-sol",
+          "text": "",
+          "usage": {
+            "inputTokens": 0,
+            "outputTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "instructions": "Return JSON.",
+        "maxOutputTokens": 42,
+        "messages": [
+          {
+            "role": "user",
+            "text": "Say hello."
+          }
+        ],
+        "model": "gpt-6-sol",
+        "reasoningEffort": "low",
+        "structuredOutput": {
+          "description": "Answer schema",
+          "name": "answer",
+          "schema": {
+            "additionalProperties": false,
+            "properties": {
+              "status": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "status"
+            ],
+            "type": "object"
+          }
+        },
+        "temperature": 0.3
+      },
+      "name": "defect-all-fields",
+      "operation": "generateText"
+    },
+    {
+      "callId": "4ed533c7-73ad-5aaf-a284-47e93c79e442",
       "exchanges": [
         {
-          "body": "{\"error\":{\"type\":\"rate_limit_exceeded\"}}",
-          "headers": {},
+          "body": "{\"error\":{\"type\":\"rate_limit_error\"}}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
           "keyMode": "absent",
           "method": "POST",
-          "path": "/chat/completions",
+          "path": "/responses",
           "requestBody": {
-            "messages": [
+            "input": [
               {
                 "content": "Say hello.",
                 "role": "user"
               }
             ],
-            "model": "mock-model",
+            "model": "gpt-6-sol",
+            "store": false,
             "stream": true
           },
           "requestHeaders": {
@@ -363,10 +412,7 @@
               "text/event-stream"
             ],
             "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Length": [
-              "88"
+              "Bearer sk-llm-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -391,26 +437,29 @@
           }
         ]
       },
-      "name": "openai-compatible/rate-limited",
+      "name": "retry-429",
       "operation": "generateText"
     },
     {
-      "callId": "528d25af-fcf2-575b-96cd-844c2ab2dce0",
+      "callId": "4ed533c7-73ad-5aaf-a284-47e93c79e442",
       "exchanges": [
         {
           "body": "{\"error\":{\"type\":\"server_error\"}}",
-          "headers": {},
+          "headers": {
+            "Content-Type": "application/json"
+          },
           "keyMode": "absent",
           "method": "POST",
-          "path": "/chat/completions",
+          "path": "/responses",
           "requestBody": {
-            "messages": [
+            "input": [
               {
                 "content": "Say hello.",
                 "role": "user"
               }
             ],
-            "model": "mock-model",
+            "model": "gpt-6-sol",
+            "store": false,
             "stream": true
           },
           "requestHeaders": {
@@ -418,10 +467,7 @@
               "text/event-stream"
             ],
             "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Length": [
-              "88"
+              "Bearer sk-llm-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -446,24 +492,25 @@
           }
         ]
       },
-      "name": "openai-compatible/server-error",
+      "name": "retry-503",
       "operation": "generateText"
     },
     {
-      "callId": "9e5ad1e4-63c9-56cd-9a68-48016240fe85",
+      "callId": "4ed533c7-73ad-5aaf-a284-47e93c79e442",
       "exchanges": [
         {
           "keyMode": "absent",
           "method": "POST",
-          "path": "/chat/completions",
+          "path": "/responses",
           "requestBody": {
-            "messages": [
+            "input": [
               {
                 "content": "Say hello.",
                 "role": "user"
               }
             ],
-            "model": "mock-model",
+            "model": "gpt-6-sol",
+            "store": false,
             "stream": true
           },
           "requestHeaders": {
@@ -471,10 +518,7 @@
               "text/event-stream"
             ],
             "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Length": [
-              "88"
+              "Bearer sk-llm-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -499,2500 +543,7 @@
           }
         ]
       },
-      "name": "openai-compatible/transport-failure",
-      "operation": "generateText"
-    },
-    {
-      "callId": "97497d3d-f9f9-558d-8b9f-7008d2fb5442",
-      "exchanges": [],
-      "expected": {
-        "branch": "defect",
-        "failureKind": "VALIDATION",
-        "output": {
-          "requestedModel": "mock-model",
-          "text": "",
-          "usage": {
-            "inputTokens": 0,
-            "outputTokens": 0,
-            "totalTokens": 0
-          }
-        },
-        "requestCount": 0,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "instructions": "Use a short answer.",
-        "maxOutputTokens": 32,
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ],
-        "model": "mock-model",
-        "reasoningEffort": "high",
-        "structuredOutput": {
-          "name": "answer",
-          "schema": {
-            "additionalProperties": false,
-            "properties": {
-              "status": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "status"
-            ],
-            "type": "object"
-          }
-        },
-        "temperature": 0.5
-      },
-      "name": "openai-compatible/defect-all-fields",
-      "operation": "generateText"
-    },
-    {
-      "callId": "1f0307ef-a2a0-5bcb-9eaf-c94c7647cddd",
-      "exchanges": [
-        {
-          "body": "data: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp-inert\",\"model\":\"mock-model\",\"status\":\"completed\",\"output\":[{\"type\":\"message\",\"content\":[{\"type\":\"output_text\",\"text\":\"Hello.\"}]}],\"usage\":{\"input_tokens\":2,\"output_tokens\":3,\"total_tokens\":5}}}\n\n",
-          "headers": {
-            "Content-Type": "text/event-stream"
-          },
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/responses",
-          "requestBody": {
-            "input": [
-              {
-                "content": "Say hello.",
-                "role": "user"
-              }
-            ],
-            "model": "mock-model",
-            "store": false,
-            "stream": true
-          },
-          "requestHeaders": {
-            "Accept": [
-              "text/event-stream"
-            ],
-            "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "generated",
-        "failureKind": "",
-        "output": {
-          "finishReason": "stop",
-          "providerFinishReason": "completed",
-          "requestedModel": "mock-model",
-          "responseId": "resp-inert",
-          "servedModel": "mock-model",
-          "text": "Hello.",
-          "usage": {
-            "inputTokens": 2,
-            "outputTokens": 3,
-            "totalTokens": 5
-          }
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ]
-      },
-      "name": "openai/generated",
-      "operation": "generateText"
-    },
-    {
-      "callId": "91ef3347-c7bf-5cbb-b088-6d24390b1000",
-      "exchanges": [
-        {
-          "body": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"type\":\"message\",\"id\":\"msg-inert\",\"model\":\"mock-model\",\"usage\":{\"input_tokens\":2,\"output_tokens\":0}}}\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Hello.\"}}\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":3}}\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"}\n\n",
-          "headers": {
-            "Content-Type": "text/event-stream"
-          },
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/v1/messages",
-          "requestBody": {
-            "max_tokens": 16000,
-            "messages": [
-              {
-                "content": "Say hello.",
-                "role": "user"
-              }
-            ],
-            "model": "mock-model",
-            "stream": true
-          },
-          "requestHeaders": {
-            "Accept": [
-              "text/event-stream"
-            ],
-            "Anthropic-Version": [
-              "2023-06-01"
-            ],
-            "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "generated",
-        "failureKind": "",
-        "output": {
-          "finishReason": "stop",
-          "providerFinishReason": "end_turn",
-          "requestedModel": "mock-model",
-          "responseId": "msg-inert",
-          "servedModel": "mock-model",
-          "text": "Hello.",
-          "usage": {
-            "inputTokens": 2,
-            "outputTokens": 3,
-            "totalTokens": 5
-          }
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ]
-      },
-      "name": "anthropic/generated",
-      "operation": "generateText"
-    },
-    {
-      "callId": "e20e139c-1a48-542b-b3d7-e73656ed4160",
-      "exchanges": [
-        {
-          "body": "{\"responseId\":\"gem-inert\",\"modelVersion\":\"mock-model\",\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"Hello.\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":2,\"candidatesTokenCount\":3,\"totalTokenCount\":5}}",
-          "headers": {
-            "Content-Type": "application/json"
-          },
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/models/mock-model:generateContent",
-          "requestBody": {
-            "contents": [
-              {
-                "parts": [
-                  {
-                    "text": "Say hello."
-                  }
-                ],
-                "role": "user"
-              }
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Content-Type": [
-              "application/json"
-            ],
-            "X-Goog-Api-Key": [
-              "sk-conformance-inert"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "generated",
-        "failureKind": "",
-        "output": {
-          "finishReason": "stop",
-          "providerFinishReason": "STOP",
-          "requestedModel": "mock-model",
-          "responseId": "gem-inert",
-          "servedModel": "mock-model",
-          "text": "Hello.",
-          "usage": {
-            "inputTokens": 2,
-            "outputTokens": 3,
-            "totalTokens": 5
-          }
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ]
-      },
-      "name": "gemini/generated",
-      "operation": "generateText"
-    },
-    {
-      "callId": "8bda608b-6267-53bc-a0ac-7ade63fc6a5c",
-      "exchanges": [
-        {
-          "body": "data: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Hello.\"},\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n",
-          "headers": {
-            "Content-Type": "text/event-stream"
-          },
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/chat/completions",
-          "requestBody": {
-            "messages": [
-              {
-                "content": "Say hello.",
-                "role": "user"
-              }
-            ],
-            "model": "mock-model",
-            "stream": true,
-            "stream_options": {
-              "include_usage": true
-            }
-          },
-          "requestHeaders": {
-            "Accept": [
-              "text/event-stream"
-            ],
-            "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "generated",
-        "failureKind": "",
-        "output": {
-          "finishReason": "stop",
-          "providerFinishReason": "stop",
-          "requestedModel": "mock-model",
-          "responseId": "chatcmpl-inert",
-          "servedModel": "mock-model",
-          "text": "Hello.",
-          "usage": {
-            "inputTokens": 0,
-            "outputTokens": 0,
-            "totalTokens": 0
-          }
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ]
-      },
-      "name": "qwen/generated",
-      "operation": "generateText"
-    },
-    {
-      "callId": "0941d8ed-36a6-5496-a05d-f17ff2d5bab6",
-      "exchanges": [
-        {
-          "body": "data: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Hello.\"},\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n",
-          "headers": {
-            "Content-Type": "text/event-stream"
-          },
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/chat/completions",
-          "requestBody": {
-            "messages": [
-              {
-                "content": "Say hello.",
-                "role": "user"
-              }
-            ],
-            "model": "mock-model",
-            "stream": true
-          },
-          "requestHeaders": {
-            "Accept": [
-              "text/event-stream"
-            ],
-            "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "generated",
-        "failureKind": "",
-        "output": {
-          "finishReason": "stop",
-          "providerFinishReason": "stop",
-          "requestedModel": "mock-model",
-          "responseId": "chatcmpl-inert",
-          "servedModel": "mock-model",
-          "text": "Hello.",
-          "usage": {
-            "inputTokens": 0,
-            "outputTokens": 0,
-            "totalTokens": 0
-          }
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ]
-      },
-      "name": "deepseek/generated",
-      "operation": "generateText"
-    },
-    {
-      "callId": "b7f5a089-0323-529b-8faa-fa97733cf9ea",
-      "exchanges": [
-        {
-          "body": "data: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Hello.\"},\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n",
-          "headers": {
-            "Content-Type": "text/event-stream"
-          },
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/v1/chat/completions",
-          "requestBody": {
-            "messages": [
-              {
-                "content": "Say hello.",
-                "role": "user"
-              }
-            ],
-            "model": "mock-model",
-            "stream": true,
-            "stream_options": {
-              "include_usage": true
-            }
-          },
-          "requestHeaders": {
-            "Accept": [
-              "text/event-stream"
-            ],
-            "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "generated",
-        "failureKind": "",
-        "output": {
-          "finishReason": "stop",
-          "providerFinishReason": "stop",
-          "requestedModel": "mock-model",
-          "responseId": "chatcmpl-inert",
-          "servedModel": "mock-model",
-          "text": "Hello.",
-          "usage": {
-            "inputTokens": 0,
-            "outputTokens": 0,
-            "totalTokens": 0
-          }
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ]
-      },
-      "name": "meta/generated",
-      "operation": "generateText"
-    },
-    {
-      "callId": "0811281c-e338-5fa7-bb5b-22cbabb0e78b",
-      "exchanges": [
-        {
-          "body": "data: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Hello.\"},\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n",
-          "headers": {
-            "Content-Type": "text/event-stream"
-          },
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/chat/completions",
-          "requestBody": {
-            "messages": [
-              {
-                "content": "Say hello.",
-                "role": "user"
-              }
-            ],
-            "model": "mock-model",
-            "stream": true
-          },
-          "requestHeaders": {
-            "Accept": [
-              "text/event-stream"
-            ],
-            "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "generated",
-        "failureKind": "",
-        "output": {
-          "finishReason": "stop",
-          "providerFinishReason": "stop",
-          "requestedModel": "mock-model",
-          "responseId": "chatcmpl-inert",
-          "servedModel": "mock-model",
-          "text": "Hello.",
-          "usage": {
-            "inputTokens": 0,
-            "outputTokens": 0,
-            "totalTokens": 0
-          }
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ]
-      },
-      "name": "mistral/generated",
-      "operation": "generateText"
-    },
-    {
-      "callId": "f13201b6-ae47-54e7-98ae-887763c23c6d",
-      "exchanges": [
-        {
-          "body": "data: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Hello.\"},\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n",
-          "headers": {
-            "Content-Type": "text/event-stream"
-          },
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/chat/completions",
-          "requestBody": {
-            "messages": [
-              {
-                "content": "Say hello.",
-                "role": "user"
-              }
-            ],
-            "model": "mock-model",
-            "stream": true,
-            "stream_options": {
-              "include_usage": true
-            }
-          },
-          "requestHeaders": {
-            "Accept": [
-              "text/event-stream"
-            ],
-            "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "generated",
-        "failureKind": "",
-        "output": {
-          "finishReason": "stop",
-          "providerFinishReason": "stop",
-          "requestedModel": "mock-model",
-          "responseId": "chatcmpl-inert",
-          "servedModel": "mock-model",
-          "text": "Hello.",
-          "usage": {
-            "inputTokens": 0,
-            "outputTokens": 0,
-            "totalTokens": 0
-          }
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ]
-      },
-      "name": "kimi/generated",
-      "operation": "generateText"
-    },
-    {
-      "callId": "46a0b8f6-770b-53bc-928a-32ee8eaa46a6",
-      "exchanges": [
-        {
-          "body": "data: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Hello.\"},\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n",
-          "headers": {
-            "Content-Type": "text/event-stream"
-          },
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/chat/completions",
-          "requestBody": {
-            "messages": [
-              {
-                "content": "Say hello.",
-                "role": "user"
-              }
-            ],
-            "model": "mock-model",
-            "stream": true,
-            "stream_options": {
-              "include_usage": true
-            }
-          },
-          "requestHeaders": {
-            "Accept": [
-              "text/event-stream"
-            ],
-            "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "generated",
-        "failureKind": "",
-        "output": {
-          "finishReason": "stop",
-          "providerFinishReason": "stop",
-          "requestedModel": "mock-model",
-          "responseId": "chatcmpl-inert",
-          "servedModel": "mock-model",
-          "text": "Hello.",
-          "usage": {
-            "inputTokens": 0,
-            "outputTokens": 0,
-            "totalTokens": 0
-          }
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ]
-      },
-      "name": "xai/generated",
-      "operation": "generateText"
-    },
-    {
-      "callId": "11dae3df-b772-5eea-bcb8-eb0bbfd55084",
-      "exchanges": [
-        {
-          "body": "data: {\"id\":\"chatcmpl-reasoning\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Hello.\"},\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-reasoning\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":2,\"completion_tokens\":3,\"total_tokens\":6,\"completion_tokens_details\":{\"reasoning_tokens\":1}}}\n\ndata: [DONE]\n\n",
-          "headers": {
-            "Content-Type": "text/event-stream"
-          },
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/chat/completions",
-          "requestBody": {
-            "messages": [
-              {
-                "content": "Say hello.",
-                "role": "user"
-              }
-            ],
-            "model": "mock-model",
-            "stream": true,
-            "stream_options": {
-              "include_usage": true
-            }
-          },
-          "requestHeaders": {
-            "Accept": [
-              "text/event-stream"
-            ],
-            "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "generated",
-        "failureKind": "",
-        "output": {
-          "finishReason": "stop",
-          "providerFinishReason": "stop",
-          "requestedModel": "mock-model",
-          "responseId": "chatcmpl-reasoning",
-          "servedModel": "mock-model",
-          "text": "Hello.",
-          "usage": {
-            "inputTokens": 2,
-            "outputTokens": 4,
-            "reasoningTokens": 1,
-            "totalTokens": 6
-          }
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ]
-      },
-      "name": "xai/reasoning-usage",
-      "operation": "generateText"
-    },
-    {
-      "callId": "136f6b4e-e814-5217-87fa-4922c74d0985",
-      "exchanges": [
-        {
-          "body": "{\"error\":{\"type\":\"rate_limit_error\"}}",
-          "headers": {
-            "Content-Type": "application/json"
-          },
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/responses",
-          "requestBody": {
-            "input": [
-              {
-                "content": "Say hello.",
-                "role": "user"
-              }
-            ],
-            "model": "mock-model",
-            "store": false,
-            "stream": true
-          },
-          "requestHeaders": {
-            "Accept": [
-              "text/event-stream"
-            ],
-            "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 429
-        }
-      ],
-      "expected": {
-        "branch": "",
-        "failureKind": "RATE_LIMIT",
-        "requestCount": 1,
-        "retry": true,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ]
-      },
-      "name": "openai/rate-limited",
-      "operation": "generateText"
-    },
-    {
-      "callId": "4d450f01-eecf-5d22-a2f6-36d7a821a2bd",
-      "exchanges": [
-        {
-          "body": "data: {\"type\":\"response.incomplete\",\"response\":{\"id\":\"resp-inert\",\"model\":\"mock-model\",\"status\":\"incomplete\",\"incomplete_details\":{\"reason\":\"content_filter\"},\"output\":[{\"type\":\"message\",\"content\":[{\"type\":\"output_text\",\"text\":\"\"}]}],\"usage\":{\"input_tokens\":2,\"output_tokens\":3,\"total_tokens\":5}}}\n\n",
-          "headers": {
-            "Content-Type": "text/event-stream"
-          },
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/responses",
-          "requestBody": {
-            "input": [
-              {
-                "content": "Say hello.",
-                "role": "user"
-              }
-            ],
-            "model": "mock-model",
-            "store": false,
-            "stream": true
-          },
-          "requestHeaders": {
-            "Accept": [
-              "text/event-stream"
-            ],
-            "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "blocked",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "finishReason": "contentPolicy",
-          "providerFinishReason": "content_filter",
-          "requestedModel": "mock-model",
-          "responseId": "resp-inert",
-          "servedModel": "mock-model",
-          "text": "",
-          "usage": {
-            "inputTokens": 2,
-            "outputTokens": 3,
-            "totalTokens": 5
-          }
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ]
-      },
-      "name": "openai/blocked",
-      "operation": "generateText"
-    },
-    {
-      "callId": "493c56d1-417b-5085-bbae-fb6cf760a827",
-      "exchanges": [
-        {
-          "body": "data: {\"type\":\"response.incomplete\",\"response\":{\"id\":\"resp-inert\",\"model\":\"mock-model\",\"status\":\"incomplete\",\"incomplete_details\":{\"reason\":\"max_output_tokens\"},\"output\":[{\"type\":\"message\",\"content\":[{\"type\":\"output_text\",\"text\":\"Hello.\"}]}],\"usage\":{\"input_tokens\":2,\"output_tokens\":3,\"total_tokens\":5}}}\n\n",
-          "headers": {
-            "Content-Type": "text/event-stream"
-          },
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/responses",
-          "requestBody": {
-            "input": [
-              {
-                "content": "Say hello.",
-                "role": "user"
-              }
-            ],
-            "model": "mock-model",
-            "store": false,
-            "stream": true
-          },
-          "requestHeaders": {
-            "Accept": [
-              "text/event-stream"
-            ],
-            "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "truncated",
-        "failureKind": "RESPONSE_TOO_LARGE",
-        "output": {
-          "finishReason": "length",
-          "providerFinishReason": "max_output_tokens",
-          "requestedModel": "mock-model",
-          "responseId": "resp-inert",
-          "servedModel": "mock-model",
-          "text": "Hello.",
-          "usage": {
-            "inputTokens": 2,
-            "outputTokens": 3,
-            "totalTokens": 5
-          }
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ]
-      },
-      "name": "openai/truncated",
-      "operation": "generateText"
-    },
-    {
-      "callId": "4e2f81be-5f0d-5c5f-bcb1-fa11cab57d43",
-      "exchanges": [
-        {
-          "body": "{\"error\":{\"type\":\"rate_limit_error\"}}",
-          "headers": {
-            "Content-Type": "application/json"
-          },
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/v1/messages",
-          "requestBody": {
-            "max_tokens": 16000,
-            "messages": [
-              {
-                "content": "Say hello.",
-                "role": "user"
-              }
-            ],
-            "model": "mock-model",
-            "stream": true
-          },
-          "requestHeaders": {
-            "Accept": [
-              "text/event-stream"
-            ],
-            "Anthropic-Version": [
-              "2023-06-01"
-            ],
-            "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 429
-        }
-      ],
-      "expected": {
-        "branch": "",
-        "failureKind": "RATE_LIMIT",
-        "requestCount": 1,
-        "retry": true,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ]
-      },
-      "name": "anthropic/rate-limited",
-      "operation": "generateText"
-    },
-    {
-      "callId": "3a6a4a63-4d25-56ca-83db-737846fe4615",
-      "exchanges": [
-        {
-          "body": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"type\":\"message\",\"id\":\"msg-inert\",\"model\":\"mock-model\",\"usage\":{\"input_tokens\":2,\"output_tokens\":0}}}\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"\"}}\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"refusal\"},\"usage\":{\"output_tokens\":3}}\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"}\n\n",
-          "headers": {
-            "Content-Type": "text/event-stream"
-          },
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/v1/messages",
-          "requestBody": {
-            "max_tokens": 16000,
-            "messages": [
-              {
-                "content": "Say hello.",
-                "role": "user"
-              }
-            ],
-            "model": "mock-model",
-            "stream": true
-          },
-          "requestHeaders": {
-            "Accept": [
-              "text/event-stream"
-            ],
-            "Anthropic-Version": [
-              "2023-06-01"
-            ],
-            "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "blocked",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "finishReason": "refusal",
-          "providerFinishReason": "refusal",
-          "requestedModel": "mock-model",
-          "responseId": "msg-inert",
-          "servedModel": "mock-model",
-          "text": "",
-          "usage": {
-            "inputTokens": 2,
-            "outputTokens": 3,
-            "totalTokens": 5
-          }
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ]
-      },
-      "name": "anthropic/blocked",
-      "operation": "generateText"
-    },
-    {
-      "callId": "a3443557-20a6-5c7d-b232-244670c64b72",
-      "exchanges": [
-        {
-          "body": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"type\":\"message\",\"id\":\"msg-inert\",\"model\":\"mock-model\",\"usage\":{\"input_tokens\":2,\"output_tokens\":0}}}\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Hello.\"}}\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"max_tokens\"},\"usage\":{\"output_tokens\":3}}\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"}\n\n",
-          "headers": {
-            "Content-Type": "text/event-stream"
-          },
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/v1/messages",
-          "requestBody": {
-            "max_tokens": 16000,
-            "messages": [
-              {
-                "content": "Say hello.",
-                "role": "user"
-              }
-            ],
-            "model": "mock-model",
-            "stream": true
-          },
-          "requestHeaders": {
-            "Accept": [
-              "text/event-stream"
-            ],
-            "Anthropic-Version": [
-              "2023-06-01"
-            ],
-            "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "truncated",
-        "failureKind": "RESPONSE_TOO_LARGE",
-        "output": {
-          "finishReason": "length",
-          "providerFinishReason": "max_tokens",
-          "requestedModel": "mock-model",
-          "responseId": "msg-inert",
-          "servedModel": "mock-model",
-          "text": "Hello.",
-          "usage": {
-            "inputTokens": 2,
-            "outputTokens": 3,
-            "totalTokens": 5
-          }
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ]
-      },
-      "name": "anthropic/truncated",
-      "operation": "generateText"
-    },
-    {
-      "callId": "97f7961f-92ca-511e-87e1-71396a3f814b",
-      "exchanges": [
-        {
-          "body": "{\"error\":{\"type\":\"rate_limit_error\"}}",
-          "headers": {
-            "Content-Type": "application/json"
-          },
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/models/mock-model:generateContent",
-          "requestBody": {
-            "contents": [
-              {
-                "parts": [
-                  {
-                    "text": "Say hello."
-                  }
-                ],
-                "role": "user"
-              }
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Content-Type": [
-              "application/json"
-            ],
-            "X-Goog-Api-Key": [
-              "sk-conformance-inert"
-            ]
-          },
-          "status": 429
-        }
-      ],
-      "expected": {
-        "branch": "",
-        "failureKind": "RATE_LIMIT",
-        "requestCount": 1,
-        "retry": true,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ]
-      },
-      "name": "gemini/rate-limited",
-      "operation": "generateText"
-    },
-    {
-      "callId": "d3c35645-a29b-5ae0-ac83-23d366497206",
-      "exchanges": [
-        {
-          "body": "{\"responseId\":\"gem-inert\",\"modelVersion\":\"mock-model\",\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"\"}]},\"finishReason\":\"SAFETY\"}],\"usageMetadata\":{\"promptTokenCount\":2,\"candidatesTokenCount\":3,\"totalTokenCount\":5}}",
-          "headers": {
-            "Content-Type": "application/json"
-          },
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/models/mock-model:generateContent",
-          "requestBody": {
-            "contents": [
-              {
-                "parts": [
-                  {
-                    "text": "Say hello."
-                  }
-                ],
-                "role": "user"
-              }
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Content-Type": [
-              "application/json"
-            ],
-            "X-Goog-Api-Key": [
-              "sk-conformance-inert"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "blocked",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "finishReason": "contentPolicy",
-          "providerFinishReason": "SAFETY",
-          "requestedModel": "mock-model",
-          "responseId": "gem-inert",
-          "servedModel": "mock-model",
-          "text": "",
-          "usage": {
-            "inputTokens": 2,
-            "outputTokens": 3,
-            "totalTokens": 5
-          }
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ]
-      },
-      "name": "gemini/blocked",
-      "operation": "generateText"
-    },
-    {
-      "callId": "f429e81a-8d0b-5349-81d6-e2a1344c8aca",
-      "exchanges": [
-        {
-          "body": "{\"responseId\":\"gem-inert\",\"modelVersion\":\"mock-model\",\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"Hello.\"}]},\"finishReason\":\"MAX_TOKENS\"}],\"usageMetadata\":{\"promptTokenCount\":2,\"candidatesTokenCount\":3,\"totalTokenCount\":5}}",
-          "headers": {
-            "Content-Type": "application/json"
-          },
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/models/mock-model:generateContent",
-          "requestBody": {
-            "contents": [
-              {
-                "parts": [
-                  {
-                    "text": "Say hello."
-                  }
-                ],
-                "role": "user"
-              }
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Content-Type": [
-              "application/json"
-            ],
-            "X-Goog-Api-Key": [
-              "sk-conformance-inert"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "truncated",
-        "failureKind": "RESPONSE_TOO_LARGE",
-        "output": {
-          "finishReason": "length",
-          "providerFinishReason": "MAX_TOKENS",
-          "requestedModel": "mock-model",
-          "responseId": "gem-inert",
-          "servedModel": "mock-model",
-          "text": "Hello.",
-          "usage": {
-            "inputTokens": 2,
-            "outputTokens": 3,
-            "totalTokens": 5
-          }
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ]
-      },
-      "name": "gemini/truncated",
-      "operation": "generateText"
-    },
-    {
-      "callId": "9ff84b24-072e-5dde-9bd9-4b17cc66a587",
-      "exchanges": [
-        {
-          "body": "{\"error\":{\"type\":\"rate_limit_error\"}}",
-          "headers": {
-            "Content-Type": "application/json"
-          },
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/chat/completions",
-          "requestBody": {
-            "messages": [
-              {
-                "content": "Say hello.",
-                "role": "user"
-              }
-            ],
-            "model": "mock-model",
-            "stream": true,
-            "stream_options": {
-              "include_usage": true
-            }
-          },
-          "requestHeaders": {
-            "Accept": [
-              "text/event-stream"
-            ],
-            "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 429
-        }
-      ],
-      "expected": {
-        "branch": "",
-        "failureKind": "RATE_LIMIT",
-        "requestCount": 1,
-        "retry": true,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ]
-      },
-      "name": "qwen/rate-limited",
-      "operation": "generateText"
-    },
-    {
-      "callId": "2ecc44ad-d975-55dd-86d5-8511a1f2b865",
-      "exchanges": [
-        {
-          "body": "data: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"\"},\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"content_filter\"}]}\n\ndata: [DONE]\n\n",
-          "headers": {
-            "Content-Type": "text/event-stream"
-          },
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/chat/completions",
-          "requestBody": {
-            "messages": [
-              {
-                "content": "Say hello.",
-                "role": "user"
-              }
-            ],
-            "model": "mock-model",
-            "stream": true,
-            "stream_options": {
-              "include_usage": true
-            }
-          },
-          "requestHeaders": {
-            "Accept": [
-              "text/event-stream"
-            ],
-            "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "blocked",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "finishReason": "contentPolicy",
-          "providerFinishReason": "content_filter",
-          "requestedModel": "mock-model",
-          "responseId": "chatcmpl-inert",
-          "servedModel": "mock-model",
-          "text": "",
-          "usage": {
-            "inputTokens": 0,
-            "outputTokens": 0,
-            "totalTokens": 0
-          }
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ]
-      },
-      "name": "qwen/blocked",
-      "operation": "generateText"
-    },
-    {
-      "callId": "6b427b2a-96aa-5dcd-9e9b-1c710962d548",
-      "exchanges": [
-        {
-          "body": "data: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Hello.\"},\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"length\"}]}\n\ndata: [DONE]\n\n",
-          "headers": {
-            "Content-Type": "text/event-stream"
-          },
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/chat/completions",
-          "requestBody": {
-            "messages": [
-              {
-                "content": "Say hello.",
-                "role": "user"
-              }
-            ],
-            "model": "mock-model",
-            "stream": true,
-            "stream_options": {
-              "include_usage": true
-            }
-          },
-          "requestHeaders": {
-            "Accept": [
-              "text/event-stream"
-            ],
-            "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "truncated",
-        "failureKind": "RESPONSE_TOO_LARGE",
-        "output": {
-          "finishReason": "length",
-          "providerFinishReason": "length",
-          "requestedModel": "mock-model",
-          "responseId": "chatcmpl-inert",
-          "servedModel": "mock-model",
-          "text": "Hello.",
-          "usage": {
-            "inputTokens": 0,
-            "outputTokens": 0,
-            "totalTokens": 0
-          }
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ]
-      },
-      "name": "qwen/truncated",
-      "operation": "generateText"
-    },
-    {
-      "callId": "6309b389-39af-5a8d-b87b-06069d5f108a",
-      "exchanges": [
-        {
-          "body": "{\"error\":{\"type\":\"rate_limit_error\"}}",
-          "headers": {
-            "Content-Type": "application/json"
-          },
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/chat/completions",
-          "requestBody": {
-            "messages": [
-              {
-                "content": "Say hello.",
-                "role": "user"
-              }
-            ],
-            "model": "mock-model",
-            "stream": true
-          },
-          "requestHeaders": {
-            "Accept": [
-              "text/event-stream"
-            ],
-            "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 429
-        }
-      ],
-      "expected": {
-        "branch": "",
-        "failureKind": "RATE_LIMIT",
-        "requestCount": 1,
-        "retry": true,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ]
-      },
-      "name": "deepseek/rate-limited",
-      "operation": "generateText"
-    },
-    {
-      "callId": "f89e0d69-f6a1-52b6-8cd8-174d1415e35b",
-      "exchanges": [
-        {
-          "body": "data: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"\"},\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"content_filter\"}]}\n\ndata: [DONE]\n\n",
-          "headers": {
-            "Content-Type": "text/event-stream"
-          },
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/chat/completions",
-          "requestBody": {
-            "messages": [
-              {
-                "content": "Say hello.",
-                "role": "user"
-              }
-            ],
-            "model": "mock-model",
-            "stream": true
-          },
-          "requestHeaders": {
-            "Accept": [
-              "text/event-stream"
-            ],
-            "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "blocked",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "finishReason": "contentPolicy",
-          "providerFinishReason": "content_filter",
-          "requestedModel": "mock-model",
-          "responseId": "chatcmpl-inert",
-          "servedModel": "mock-model",
-          "text": "",
-          "usage": {
-            "inputTokens": 0,
-            "outputTokens": 0,
-            "totalTokens": 0
-          }
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ]
-      },
-      "name": "deepseek/blocked",
-      "operation": "generateText"
-    },
-    {
-      "callId": "cbc8fe64-cad1-5df7-9872-c20660d14482",
-      "exchanges": [
-        {
-          "body": "data: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Hello.\"},\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"length\"}]}\n\ndata: [DONE]\n\n",
-          "headers": {
-            "Content-Type": "text/event-stream"
-          },
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/chat/completions",
-          "requestBody": {
-            "messages": [
-              {
-                "content": "Say hello.",
-                "role": "user"
-              }
-            ],
-            "model": "mock-model",
-            "stream": true
-          },
-          "requestHeaders": {
-            "Accept": [
-              "text/event-stream"
-            ],
-            "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "truncated",
-        "failureKind": "RESPONSE_TOO_LARGE",
-        "output": {
-          "finishReason": "length",
-          "providerFinishReason": "length",
-          "requestedModel": "mock-model",
-          "responseId": "chatcmpl-inert",
-          "servedModel": "mock-model",
-          "text": "Hello.",
-          "usage": {
-            "inputTokens": 0,
-            "outputTokens": 0,
-            "totalTokens": 0
-          }
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ]
-      },
-      "name": "deepseek/truncated",
-      "operation": "generateText"
-    },
-    {
-      "callId": "0ed011ff-1409-5730-9077-1134284f5f00",
-      "exchanges": [
-        {
-          "body": "{\"error\":{\"type\":\"rate_limit_error\"}}",
-          "headers": {
-            "Content-Type": "application/json"
-          },
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/v1/chat/completions",
-          "requestBody": {
-            "messages": [
-              {
-                "content": "Say hello.",
-                "role": "user"
-              }
-            ],
-            "model": "mock-model",
-            "stream": true,
-            "stream_options": {
-              "include_usage": true
-            }
-          },
-          "requestHeaders": {
-            "Accept": [
-              "text/event-stream"
-            ],
-            "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 429
-        }
-      ],
-      "expected": {
-        "branch": "",
-        "failureKind": "RATE_LIMIT",
-        "requestCount": 1,
-        "retry": true,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ]
-      },
-      "name": "meta/rate-limited",
-      "operation": "generateText"
-    },
-    {
-      "callId": "d20ba138-b56f-54fd-a83b-78bda28c3697",
-      "exchanges": [
-        {
-          "body": "data: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"\"},\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"content_filter\"}]}\n\ndata: [DONE]\n\n",
-          "headers": {
-            "Content-Type": "text/event-stream"
-          },
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/v1/chat/completions",
-          "requestBody": {
-            "messages": [
-              {
-                "content": "Say hello.",
-                "role": "user"
-              }
-            ],
-            "model": "mock-model",
-            "stream": true,
-            "stream_options": {
-              "include_usage": true
-            }
-          },
-          "requestHeaders": {
-            "Accept": [
-              "text/event-stream"
-            ],
-            "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "blocked",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "finishReason": "contentPolicy",
-          "providerFinishReason": "content_filter",
-          "requestedModel": "mock-model",
-          "responseId": "chatcmpl-inert",
-          "servedModel": "mock-model",
-          "text": "",
-          "usage": {
-            "inputTokens": 0,
-            "outputTokens": 0,
-            "totalTokens": 0
-          }
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ]
-      },
-      "name": "meta/blocked",
-      "operation": "generateText"
-    },
-    {
-      "callId": "d1b63d30-ec23-5829-9a2d-475a3e2ae7d9",
-      "exchanges": [
-        {
-          "body": "data: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Hello.\"},\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"length\"}]}\n\ndata: [DONE]\n\n",
-          "headers": {
-            "Content-Type": "text/event-stream"
-          },
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/v1/chat/completions",
-          "requestBody": {
-            "messages": [
-              {
-                "content": "Say hello.",
-                "role": "user"
-              }
-            ],
-            "model": "mock-model",
-            "stream": true,
-            "stream_options": {
-              "include_usage": true
-            }
-          },
-          "requestHeaders": {
-            "Accept": [
-              "text/event-stream"
-            ],
-            "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "truncated",
-        "failureKind": "RESPONSE_TOO_LARGE",
-        "output": {
-          "finishReason": "length",
-          "providerFinishReason": "length",
-          "requestedModel": "mock-model",
-          "responseId": "chatcmpl-inert",
-          "servedModel": "mock-model",
-          "text": "Hello.",
-          "usage": {
-            "inputTokens": 0,
-            "outputTokens": 0,
-            "totalTokens": 0
-          }
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ]
-      },
-      "name": "meta/truncated",
-      "operation": "generateText"
-    },
-    {
-      "callId": "7c1ba909-aa8a-5d67-bcbe-97d0e9cfb793",
-      "exchanges": [
-        {
-          "body": "{\"error\":{\"type\":\"rate_limit_error\"}}",
-          "headers": {
-            "Content-Type": "application/json"
-          },
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/chat/completions",
-          "requestBody": {
-            "messages": [
-              {
-                "content": "Say hello.",
-                "role": "user"
-              }
-            ],
-            "model": "mock-model",
-            "stream": true
-          },
-          "requestHeaders": {
-            "Accept": [
-              "text/event-stream"
-            ],
-            "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 429
-        }
-      ],
-      "expected": {
-        "branch": "",
-        "failureKind": "RATE_LIMIT",
-        "requestCount": 1,
-        "retry": true,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ]
-      },
-      "name": "mistral/rate-limited",
-      "operation": "generateText"
-    },
-    {
-      "callId": "846b8674-3a5f-531b-837a-27ab75943373",
-      "exchanges": [
-        {
-          "body": "data: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"\"},\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"content_filter\"}]}\n\ndata: [DONE]\n\n",
-          "headers": {
-            "Content-Type": "text/event-stream"
-          },
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/chat/completions",
-          "requestBody": {
-            "messages": [
-              {
-                "content": "Say hello.",
-                "role": "user"
-              }
-            ],
-            "model": "mock-model",
-            "stream": true
-          },
-          "requestHeaders": {
-            "Accept": [
-              "text/event-stream"
-            ],
-            "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "blocked",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "finishReason": "contentPolicy",
-          "providerFinishReason": "content_filter",
-          "requestedModel": "mock-model",
-          "responseId": "chatcmpl-inert",
-          "servedModel": "mock-model",
-          "text": "",
-          "usage": {
-            "inputTokens": 0,
-            "outputTokens": 0,
-            "totalTokens": 0
-          }
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ]
-      },
-      "name": "mistral/blocked",
-      "operation": "generateText"
-    },
-    {
-      "callId": "60fb7628-6508-50ae-a547-5a040cf85bc9",
-      "exchanges": [
-        {
-          "body": "data: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Hello.\"},\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"length\"}]}\n\ndata: [DONE]\n\n",
-          "headers": {
-            "Content-Type": "text/event-stream"
-          },
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/chat/completions",
-          "requestBody": {
-            "messages": [
-              {
-                "content": "Say hello.",
-                "role": "user"
-              }
-            ],
-            "model": "mock-model",
-            "stream": true
-          },
-          "requestHeaders": {
-            "Accept": [
-              "text/event-stream"
-            ],
-            "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "truncated",
-        "failureKind": "RESPONSE_TOO_LARGE",
-        "output": {
-          "finishReason": "length",
-          "providerFinishReason": "length",
-          "requestedModel": "mock-model",
-          "responseId": "chatcmpl-inert",
-          "servedModel": "mock-model",
-          "text": "Hello.",
-          "usage": {
-            "inputTokens": 0,
-            "outputTokens": 0,
-            "totalTokens": 0
-          }
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ]
-      },
-      "name": "mistral/truncated",
-      "operation": "generateText"
-    },
-    {
-      "callId": "295f6c16-08a6-539e-a474-69067d90c9c5",
-      "exchanges": [
-        {
-          "body": "{\"error\":{\"type\":\"rate_limit_error\"}}",
-          "headers": {
-            "Content-Type": "application/json"
-          },
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/chat/completions",
-          "requestBody": {
-            "messages": [
-              {
-                "content": "Say hello.",
-                "role": "user"
-              }
-            ],
-            "model": "mock-model",
-            "stream": true,
-            "stream_options": {
-              "include_usage": true
-            }
-          },
-          "requestHeaders": {
-            "Accept": [
-              "text/event-stream"
-            ],
-            "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 429
-        }
-      ],
-      "expected": {
-        "branch": "",
-        "failureKind": "RATE_LIMIT",
-        "requestCount": 1,
-        "retry": true,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ]
-      },
-      "name": "kimi/rate-limited",
-      "operation": "generateText"
-    },
-    {
-      "callId": "464929c9-bea3-58de-9540-fab747fa5563",
-      "exchanges": [
-        {
-          "body": "data: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"\"},\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"content_filter\"}]}\n\ndata: [DONE]\n\n",
-          "headers": {
-            "Content-Type": "text/event-stream"
-          },
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/chat/completions",
-          "requestBody": {
-            "messages": [
-              {
-                "content": "Say hello.",
-                "role": "user"
-              }
-            ],
-            "model": "mock-model",
-            "stream": true,
-            "stream_options": {
-              "include_usage": true
-            }
-          },
-          "requestHeaders": {
-            "Accept": [
-              "text/event-stream"
-            ],
-            "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "blocked",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "finishReason": "contentPolicy",
-          "providerFinishReason": "content_filter",
-          "requestedModel": "mock-model",
-          "responseId": "chatcmpl-inert",
-          "servedModel": "mock-model",
-          "text": "",
-          "usage": {
-            "inputTokens": 0,
-            "outputTokens": 0,
-            "totalTokens": 0
-          }
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ]
-      },
-      "name": "kimi/blocked",
-      "operation": "generateText"
-    },
-    {
-      "callId": "6fa52128-7044-5e8a-ae89-890f740d4abc",
-      "exchanges": [
-        {
-          "body": "data: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Hello.\"},\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"length\"}]}\n\ndata: [DONE]\n\n",
-          "headers": {
-            "Content-Type": "text/event-stream"
-          },
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/chat/completions",
-          "requestBody": {
-            "messages": [
-              {
-                "content": "Say hello.",
-                "role": "user"
-              }
-            ],
-            "model": "mock-model",
-            "stream": true,
-            "stream_options": {
-              "include_usage": true
-            }
-          },
-          "requestHeaders": {
-            "Accept": [
-              "text/event-stream"
-            ],
-            "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "truncated",
-        "failureKind": "RESPONSE_TOO_LARGE",
-        "output": {
-          "finishReason": "length",
-          "providerFinishReason": "length",
-          "requestedModel": "mock-model",
-          "responseId": "chatcmpl-inert",
-          "servedModel": "mock-model",
-          "text": "Hello.",
-          "usage": {
-            "inputTokens": 0,
-            "outputTokens": 0,
-            "totalTokens": 0
-          }
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ]
-      },
-      "name": "kimi/truncated",
-      "operation": "generateText"
-    },
-    {
-      "callId": "1df9fe68-14dc-5817-87c8-28e6bee0cfa7",
-      "exchanges": [
-        {
-          "body": "{\"error\":{\"type\":\"rate_limit_error\"}}",
-          "headers": {
-            "Content-Type": "application/json"
-          },
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/chat/completions",
-          "requestBody": {
-            "messages": [
-              {
-                "content": "Say hello.",
-                "role": "user"
-              }
-            ],
-            "model": "mock-model",
-            "stream": true,
-            "stream_options": {
-              "include_usage": true
-            }
-          },
-          "requestHeaders": {
-            "Accept": [
-              "text/event-stream"
-            ],
-            "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 429
-        }
-      ],
-      "expected": {
-        "branch": "",
-        "failureKind": "RATE_LIMIT",
-        "requestCount": 1,
-        "retry": true,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ]
-      },
-      "name": "xai/rate-limited",
-      "operation": "generateText"
-    },
-    {
-      "callId": "40492687-1833-5095-baf5-5ada870c32fc",
-      "exchanges": [
-        {
-          "body": "data: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"\"},\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"content_filter\"}]}\n\ndata: [DONE]\n\n",
-          "headers": {
-            "Content-Type": "text/event-stream"
-          },
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/chat/completions",
-          "requestBody": {
-            "messages": [
-              {
-                "content": "Say hello.",
-                "role": "user"
-              }
-            ],
-            "model": "mock-model",
-            "stream": true,
-            "stream_options": {
-              "include_usage": true
-            }
-          },
-          "requestHeaders": {
-            "Accept": [
-              "text/event-stream"
-            ],
-            "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "blocked",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "finishReason": "contentPolicy",
-          "providerFinishReason": "content_filter",
-          "requestedModel": "mock-model",
-          "responseId": "chatcmpl-inert",
-          "servedModel": "mock-model",
-          "text": "",
-          "usage": {
-            "inputTokens": 0,
-            "outputTokens": 0,
-            "totalTokens": 0
-          }
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ]
-      },
-      "name": "xai/blocked",
-      "operation": "generateText"
-    },
-    {
-      "callId": "d3783121-51b3-5624-87d8-3ef0ec0bdcdf",
-      "exchanges": [
-        {
-          "body": "data: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Hello.\"},\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-inert\",\"model\":\"mock-model\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"length\"}]}\n\ndata: [DONE]\n\n",
-          "headers": {
-            "Content-Type": "text/event-stream"
-          },
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/chat/completions",
-          "requestBody": {
-            "messages": [
-              {
-                "content": "Say hello.",
-                "role": "user"
-              }
-            ],
-            "model": "mock-model",
-            "stream": true,
-            "stream_options": {
-              "include_usage": true
-            }
-          },
-          "requestHeaders": {
-            "Accept": [
-              "text/event-stream"
-            ],
-            "Authorization": [
-              "Bearer sk-conformance-inert"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "truncated",
-        "failureKind": "RESPONSE_TOO_LARGE",
-        "output": {
-          "finishReason": "length",
-          "providerFinishReason": "length",
-          "requestedModel": "mock-model",
-          "responseId": "chatcmpl-inert",
-          "servedModel": "mock-model",
-          "text": "Hello.",
-          "usage": {
-            "inputTokens": 0,
-            "outputTokens": 0,
-            "totalTokens": 0
-          }
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "messages": [
-          {
-            "role": "user",
-            "text": "Say hello."
-          }
-        ]
-      },
-      "name": "xai/truncated",
+      "name": "transport-before-send",
       "operation": "generateText"
     }
   ],

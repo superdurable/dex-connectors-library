@@ -16,6 +16,8 @@ Official documentation used for the endpoint, authentication, and response contr
 - [https://supabase.com/docs/guides/getting-started/api-keys](https://supabase.com/docs/guides/getting-started/api-keys)
 - [https://docs.postgrest.org/en/v14/references/api/tables_views.html](https://docs.postgrest.org/en/v14/references/api/tables_views.html)
 
+The TypeScript package is [`@superdurable/connector-supabase`](typescript/README.md), with a [runnable select rows Flow](typescript/examples/select-rows/README.md).
+
 The Python package is [`dex-connector-supabase`](python/README.md), imported as
 `dex_connectors.supabase`.
 
@@ -48,4 +50,4 @@ The mock defaults represent the same Meridian example resource across both opera
 
 ## Verification limits
 
-The provider HTTP behavior is tested with local `httptest` servers, and the sample's mapping has a deterministic unit test. No live provider account or Dex stack was used during this batch. Real provider authorization, permissions, response variants, and the mock-backed Dex integration remain unverified locally; CI covers the Dex integration.
+The provider HTTP behavior is tested with local `httptest` servers, and the sample's mapping has a deterministic unit test. The TypeScript select rows example passed against a local Dex stack and an HTTP provider stand-in. Real Supabase authorization, permissions, and response variants remain unverified.
