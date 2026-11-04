@@ -20,7 +20,7 @@ function productionMutation<Input, Output>(operation: Mutation<Input, Output>, c
 }
 async function invokeMailchimp(scenario: Scenario, recorder: ExchangeRecorder, context: HeartbeatContext) {
   const sender = (request: ProviderRequest) => answerRecordedRequest(recorder, request, before => new ProviderTransportError(before));
-  const client = new MailchimpClient({}, { resolve: async () => ({ apiKey: new SecretString('TESTKEY1-us6') }) },
+  const client = new MailchimpClient({}, { resolve: async () => ({ apiKey: new SecretString('mailchimpfixturekey-us6') }) },
     { apiBaseURL: 'http://127.0.0.1:12345/3.0', send: sender });
   const call = scenarioCall(scenario, connection, 'mailchimp', context,
     { reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false }) as Call;

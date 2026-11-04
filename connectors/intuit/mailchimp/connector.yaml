@@ -14,6 +14,11 @@ spec:
       package: '@superdurable/connector-intuit-mailchimp'
       operations: [getMember, listMembers, upsertMember, updateMemberTags, sendCampaign]
       triggers: []
+    python:
+      version: v0.1.0
+      package: dex-connector-intuit-mailchimp
+      operations: [getMember, listMembers, upsertMember, updateMemberTags, sendCampaign]
+      triggers: []
   codegen:
     go:
       package: mailchimp
