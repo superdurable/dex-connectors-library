@@ -355,6 +355,16 @@ latest message, reads it, sends one threaded reply that quotes it, marks it
 seen and answered, and archives it, or sends a new message to a customer
 without one.
 
+## TypeScript package
+
+The `typescript/` package implements all six operations with generated typed Step
+factories and a checked-in [send-message Flow](typescript/examples/send-message/README.md).
+It uses the same static `email` connection fields and verified TLS rules described
+above. Run its package suite with `npm ci --prefix typescript` and
+`npm run check --prefix typescript`. CI uses GreenMail for real IMAPS and SMTPS
+integration; local HTTP conformance replay is exempt for this wire protocol.
+Live provider authorization and delivery are still unverified for this port.
+
 ## Verification
 
 ```bash

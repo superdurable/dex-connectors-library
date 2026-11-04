@@ -22,17 +22,18 @@ ADAPTER = conformance.PythonOperationAdapter(
     "webhook",
     CONNECTION,
     webhook,
-    lambda http_client, _: webhook.Client(
+    lambda http_client, recorder: webhook.Client(
         webhook.Config(
             signature_prefix="",
             event_id_header="",
             event_id_pointer="",
             forwarded_headers=(),
-            delivery_url="https://127.0.0.1:12345/hooks?tenant=forms",
+            delivery_url=("" if recorder.scenario["name"] == "defect-no-delivery-url"
+                          else "https://receiver.example/events"),
         ),
         conformance.static_credentials(
             CONNECTION,
-            webhook.Credentials(sdk.SecretString("whsec_c3RhbmRhcmQtd2ViaG9va3MtdGVzdC1rZXk=")),
+            webhook.Credentials(sdk.SecretString("SENTINEL-SIGNING-SECRET")),
         ),
         http_client,
         lambda: datetime(2026, 9, 30, 12, 0, 0, tzinfo=UTC),
@@ -54,13 +55,4 @@ async def test_connector_conformance(scenario: dict[str, object]) -> None:
         raw_scenario = {**replay_scenario, "input": {"payload": payload}}
         return await ADAPTER.invoke(raw_scenario, recorder, context)
 
-    replay_scenario = scenario
-    if scenario["name"] == "large-integer-payload":
-        input_value = scenario["input"]
-        assert isinstance(input_value, dict)
-        exchanges = scenario["exchanges"]
-        assert isinstance(exchanges, list)
-        replay_scenario = {**scenario, "exchanges": [
-            {**exchange, "requestBody": input_value["payload"]} for exchange in exchanges
-        ]}
-    await conformance.replay(replay_scenario, invoke_with_go_raw_message)
+    await conformance.replay(scenario, invoke_with_go_raw_message)
