@@ -56,7 +56,7 @@
           "reader@example.test"
         ]
       },
-      "name": "send success",
+      "name": "send-success",
       "operation": "sendEmail"
     },
     {
@@ -114,7 +114,7 @@
           "reader@example.test"
         ]
       },
-      "name": "send reject",
+      "name": "send-reject",
       "operation": "sendEmail"
     },
     {
@@ -172,7 +172,7 @@
           "reader@example.test"
         ]
       },
-      "name": "send malformed",
+      "name": "send-malformed",
       "operation": "sendEmail"
     },
     {
@@ -198,7 +198,7 @@
           "reader@example.test"
         ]
       },
-      "name": "send invalid input",
+      "name": "send-invalid-input",
       "operation": "sendEmail"
     },
     {
@@ -253,7 +253,7 @@
           "reader@example.test"
         ]
       },
-      "name": "send rate limited",
+      "name": "send-rate-limited",
       "operation": "sendEmail"
     },
     {
@@ -308,7 +308,7 @@
           "reader@example.test"
         ]
       },
-      "name": "send unavailable",
+      "name": "send-unavailable",
       "operation": "sendEmail"
     },
     {
@@ -361,7 +361,7 @@
           "reader@example.test"
         ]
       },
-      "name": "send transport before",
+      "name": "send-transport-before",
       "operation": "sendEmail"
     },
     {
@@ -419,7 +419,7 @@
           "reader@example.test"
         ]
       },
-      "name": "send idempotency conflict",
+      "name": "send-idempotency-conflict",
       "operation": "sendEmail"
     },
     {
@@ -474,7 +474,7 @@
           "reader@example.test"
         ]
       },
-      "name": "send processing conflict",
+      "name": "send-processing-conflict",
       "operation": "sendEmail"
     },
     {
@@ -520,7 +520,7 @@
       "input": {
         "id": "email-1"
       },
-      "name": "get found",
+      "name": "get-found",
       "operation": "getEmail"
     },
     {
@@ -564,7 +564,7 @@
       "input": {
         "id": "email-1"
       },
-      "name": "get missing",
+      "name": "get-missing",
       "operation": "getEmail"
     },
     {
@@ -608,7 +608,7 @@
       "input": {
         "id": "email-1"
       },
-      "name": "get reject",
+      "name": "get-reject",
       "operation": "getEmail"
     },
     {
@@ -652,7 +652,7 @@
       "input": {
         "id": "email-1"
       },
-      "name": "get malformed",
+      "name": "get-malformed",
       "operation": "getEmail"
     },
     {
@@ -676,7 +676,7 @@
       "input": {
         "id": ""
       },
-      "name": "get invalid input",
+      "name": "get-invalid-input",
       "operation": "getEmail"
     },
     {
@@ -713,7 +713,7 @@
       "input": {
         "id": "email-1"
       },
-      "name": "get rate limited",
+      "name": "get-rate-limited",
       "operation": "getEmail"
     },
     {
@@ -750,7 +750,7 @@
       "input": {
         "id": "email-1"
       },
-      "name": "get unavailable",
+      "name": "get-unavailable",
       "operation": "getEmail"
     },
     {
@@ -785,7 +785,7 @@
       "input": {
         "id": "email-1"
       },
-      "name": "get transport before",
+      "name": "get-transport-before",
       "operation": "getEmail"
     },
     {
@@ -829,7 +829,7 @@
       "input": {
         "id": "email+one@a:b"
       },
-      "name": "get escaped path",
+      "name": "get-escaped-path",
       "operation": "getEmail"
     }
   ],
