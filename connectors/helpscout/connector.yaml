@@ -64,6 +64,7 @@ spec:
         - "Save the app and copy its App ID and App Secret into the fields below; the App Secret is sensitive. Help Scout apps have no scopes, and the Free plan has no API access."
         - "Leave access_token blank: the application obtains a two-day token from https://api.helpscout.net/v2/oauth2/token on its first Help Scout call and renews it before expiry. To revoke access, delete the app under My Apps."
     clientCredentials:
+      missingExpiry: reject
       tokenEndpoint: https://api.helpscout.net/v2/oauth2/token
       clientIDCredential: app_id
       clientSecretCredential: app_secret
