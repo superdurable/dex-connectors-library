@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { sendProviderRequest } from '../providerhttp/index.js';
+import { AddressRefusal, sendProviderRequest } from '../providerhttp/index.js';
 import { createPrivateKey, sign, type KeyObject } from 'node:crypto';
 import { ReauthorizationRequiredError } from '../errors.js';
 import { SecretString } from '../credentials.js';
@@ -144,7 +144,8 @@ export class TokenEndpoint {
       } else {
         response = await (options.fetch ?? fetch)(options.url, { method: 'POST', headers, body, redirect: 'manual', ...(signal ? { signal } : {}) });
       }
-    } catch {
+    } catch (error) {
+      if (error instanceof AddressRefusal) throw error;
       throw new Error(`${options.providerName} token endpoint is unavailable`);
     }
     let contents: Uint8Array;
@@ -193,6 +194,9 @@ function responsePathValue(response: Record<string, unknown>, path: string): str
 }
 
 function validateEndpointURL(value: string, allowsPlainHTTP: boolean, providerName: string): void {
+  if (!/^[Hh][Tt][Tt][Pp][Ss]:\/\//.test(value) &&
+    !(allowsPlainHTTP && /^[Hh][Tt][Tt][Pp]:\/\//.test(value)))
+    throw new TypeError(`${providerName} token endpoint is invalid`);
   let parsed: URL;
   try { parsed = new URL(value); } catch { throw new TypeError(`${providerName} token endpoint is invalid`); }
   if (!parsed.hostname || (parsed.protocol !== 'https:' && !(allowsPlainHTTP && parsed.protocol === 'http:')) || parsed.username || parsed.password) throw new TypeError(`${providerName} token endpoint is invalid`);

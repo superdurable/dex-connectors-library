@@ -383,6 +383,18 @@ runnable Dex application using a static `intercom` connection. The
 request and outcome parity; live Intercom behavior is unverified for the
 TypeScript package.
 
+## Python package
+
+`dex-connector-intercom==0.1.0` implements the same five conversation and
+contact operations with operation-specific Python Step factories. The
+[`read_conversation` example](python/examples/read_conversation) runs a Dex
+Worker with the static `intercom-support-inbox` connection and includes a real
+Dex integration test that checks rate-limit retry and completion. The
+`conversationEvent` Trigger remains Go-only. Run the package checks and example
+as described in the [Python README](python/README.md). The Go-recorded provider
+scenarios verify request and outcome parity; live Intercom authorization and API
+behavior are unverified for the Python package.
+
 ## Verification
 
 ```bash

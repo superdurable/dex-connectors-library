@@ -31,6 +31,7 @@ type Client struct {
 	baseURL          string
 	maxResponseBytes int64
 	httpClient       *http.Client
+	clock            func() time.Time
 }
 
 // ListStoryIDsInput selects one feed snapshot. It does not select a historical time window.
@@ -107,7 +108,7 @@ func New(config Config, _ sdkgo.CredentialProvider[Credentials], options ...Opti
 	if err != nil {
 		return nil, fmt.Errorf("Hacker News base URL: %w", err)
 	}
-	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes}
+	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, clock: time.Now}
 	for _, option := range options {
 		option.applyClientOption(client)
 	}
@@ -141,11 +142,11 @@ func (operation ListStoryIDsOperation) Invoke(call sdkgo.Call, input ListStoryID
 		return failedBranch[StoryIDs]("listStoryIDs", ListStoryIDsBranchDefect, sdkgo.FailureValidation, "limit must be from 1 through 500")
 	}
 	return getJSON(operation.client, call, "listStoryIDs", "/"+input.Feed+"stories.json", func(body []byte) sdkgo.QueryAttempt[StoryIDs] {
-		return decodeStoryIDs(body, input.Limit)
+		return decodeStoryIDs(body, input.Limit, operation.client.clock)
 	})
 }
 
-func decodeStoryIDs(body []byte, limit int) sdkgo.QueryAttempt[StoryIDs] {
+func decodeStoryIDs(body []byte, limit int, clock func() time.Time) sdkgo.QueryAttempt[StoryIDs] {
 	var ids []int64
 	if err := json.Unmarshal(body, &ids); err != nil || ids == nil {
 		return failedBranch[StoryIDs]("listStoryIDs", ListStoryIDsBranchInvalidResponse, sdkgo.FailureProtocol, "Hacker News returned an invalid feed")
@@ -157,7 +158,7 @@ func decodeStoryIDs(body []byte, limit int) sdkgo.QueryAttempt[StoryIDs] {
 	}
 	result := StoryIDs{
 		IDs:     ids[:min(limit, len(ids))],
-		HasMore: len(ids) > limit, ObservedAt: time.Now().UTC(),
+		HasMore: len(ids) > limit, ObservedAt: clock().UTC(),
 	}
 	return sdkgo.NewQueryBranch(ListStoryIDsBranchListed, result, nil, sdkgo.Receipt{})
 }

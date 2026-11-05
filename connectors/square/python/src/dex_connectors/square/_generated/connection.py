@@ -79,8 +79,14 @@ class _ProjectCredentialSource:
 
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
+        if not isinstance(material, dict):
+            raise ValueError("Square stored credential does not match the connector credential fields")
+        if set(material) - set(('access_token',)):
+            raise ValueError("Square stored credential does not match the connector credential fields")
         access_token = material.get("access_token")
-        if not isinstance(access_token, str) or not access_token:
+        if access_token is not None and not (isinstance(access_token, str)):
+            raise ValueError("Square credential access_token has an invalid type")
+        if not access_token:
             raise ValueError("Square credential access_token is required")
         return Credentials(SecretString(access_token))
 

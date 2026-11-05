@@ -10,11 +10,13 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/amazon/sqs
 
 ## TypeScript package
 
-The independent `@superdurable/connector-amazon-sqs@0.1.0` package implements all three operations and no Trigger. Its [package README](typescript/README.md) documents the TypeScript connection, signing, operation behavior, tests, and [runnable queue consumer](typescript/examples/queue-consumer/README.md). The TypeScript port passes Go-recorded provider conformance and a real Dex Worker and Client integration check with scripted SQS responses; live Amazon SQS behavior remains unverified for the TypeScript package.
+The independent `@superdurable/connector-amazon-sqs@0.1.1` package implements all three operations and no Trigger. Its [package README](typescript/README.md) documents the TypeScript connection, signing, operation behavior, tests, and [runnable queue consumer](typescript/examples/queue-consumer/README.md). The TypeScript port passes Go-recorded provider conformance and a real Dex Worker and Client integration check with scripted SQS responses; live Amazon SQS behavior remains unverified for the TypeScript package.
 
 The Amazon SQS Connector consumes messages from Amazon SQS standard and FIFO
 queues, and from SQS-compatible servers such as ElasticMQ, through the SQS JSON
-protocol. It exposes operation-specific Dex Step factories:
+protocol. The Python package is [`dex-connector-amazon-sqs`](python/README.md),
+imported as `dex_connectors.amazon_sqs`. It exposes operation-specific Dex Step
+factories:
 
 | Operation | Kind | SQS action | Durability | Happy branch | Other branches |
 | --- | --- | --- | --- | --- | --- |

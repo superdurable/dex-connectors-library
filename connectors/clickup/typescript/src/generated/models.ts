@@ -3,7 +3,42 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
-import type { CredentialProvider, SecretString } from '@superdurable/connectors-sdk';
+import { SecretString } from '@superdurable/connectors-sdk';
+import type { CredentialProvider } from '@superdurable/connectors-sdk';
+
+const goTimeJSONPattern = /^(\d{4})-(\d{2})-(\d{2})T(\d{1,2}):(\d{2}):(\d{2})(?:[.,](\d+))?(Z|([+-])(\d{2}):(\d{2}))$/;
+
+/** Match the timestamp strings accepted by Go time.Time.UnmarshalJSON. */
+function isGoTimeJSON(value: string): boolean {
+  const match = goTimeJSONPattern.exec(value);
+  if (!match) return false;
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText, , zone, , zoneHourText, zoneMinuteText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const isLeap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const monthDays = [31, isLeap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return month >= 1 && month <= 12 && day >= 1 && day <= monthDays[month - 1]!
+    && Number(hourText) <= 23 && Number(minuteText) <= 59 && Number(secondText) <= 59
+    && (zone === 'Z' || (Number(zoneHourText) <= 24 && Number(zoneMinuteText) <= 60));
+}
+
+/** Reproduce Go time.Time.MarshalJSON for timestamps it can marshal. */
+function canonicalGoTimeJSON(value: string): string {
+  const match = goTimeJSONPattern.exec(value)!;
+  const [, year, month, day, hour, minute, second, fraction, zone, sign, zoneHour, zoneMinute] = match;
+  const clock = year + '-' + month + '-' + day + 'T' + hour!.padStart(2, '0') + ':' + minute + ':' + second;
+  const digits = (fraction ?? '').slice(0, 9).replace(/0+$/, '');
+  const offsetMinutes = zone === 'Z' ? 0 : (Number(zoneHour) * 60 + Number(zoneMinute)) * (sign === '+' ? 1 : -1);
+  if (Math.abs(offsetMinutes) >= 1440) return value;
+  const offset = offsetMinutes === 0 ? 'Z' : (offsetMinutes > 0 ? '+' : '-')
+    + String(Math.floor(Math.abs(offsetMinutes) / 60)).padStart(2, '0') + ':'
+    + String(Math.abs(offsetMinutes) % 60).padStart(2, '0');
+  return clock + (digits ? '.' + digits : '') + offset;
+}
+
+/** Go time.Time JSON input schema, including Go's accepted legacy spellings. */
+const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time JSON timestamp').transform(canonicalGoTimeJSON);
 
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
@@ -25,6 +60,21 @@ export interface Credentials {
   apiToken: SecretString;
   /** Secret signing secret of the ClickUp webhook that delivers task events to this connection, returned once as webhook.secret by Create Webhook (POST https://api.clickup.com/api/v2/team/{team_id}/webhook, documented at https://developer.clickup.com/reference/createwebhook). It is an opaque string of letters and digits, stored only in this credential field and never sent to ClickUp; the taskEvent Trigger checks each request's X-Signature, a hex HMAC-SHA256 of the body, with it. Leave it blank when no Flow uses the taskEvent Trigger; while it is blank, the webhook endpoint answers 503. */
   webhookSecret?: SecretString;
+}
+
+/** Decode private credential fields for the connector. */
+export function decodeCredentials(value: unknown): Credentials {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  const fields = value as { [key: string]: unknown };
+  const allowed = new Set<string>(["api_token", "webhook_secret"]);
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
+  if (fields["api_token"] != null && !(typeof fields["api_token"] === 'string')) throw new TypeError("credential api_token has an invalid type");
+  if (fields["webhook_secret"] != null && !(typeof fields["webhook_secret"] === 'string')) throw new TypeError("credential webhook_secret has an invalid type");
+  const credentials = {} as Credentials;
+  if (!fields["api_token"]) throw new TypeError("credential api_token is required");
+  credentials.apiToken = new SecretString((fields["api_token"] ?? '') as string);
+  credentials.webhookSecret = new SecretString((fields["webhook_secret"] ?? '') as string);
+  return credentials;
 }
 
 /** Host-owned source of private connector credentials. */
@@ -297,7 +347,7 @@ export const SearchTasksInputSchema = z.strictObject({
   "statuses": z.array(z.string()).optional(),
   "assigneeIds": z.array(z.number().int()).optional(),
   "tags": z.array(z.string()).optional(),
-  "updatedAfter": z.iso.datetime({ offset: true }).nullable().optional(),
+  "updatedAfter": GoTimeJSONSchema.nullable().optional(),
   "isClosedIncluded": z.boolean().optional(),
   "areSubtasksIncluded": z.boolean().optional(),
   "orderBy": z.string().optional(),
@@ -334,11 +384,11 @@ export const TaskSchema = z.strictObject({
   "status": TaskStatusSchema,
   "priority": z.number().int().optional(),
   "priorityName": z.string().optional(),
-  "dueAt": z.iso.datetime({ offset: true }).nullable().optional(),
-  "startAt": z.iso.datetime({ offset: true }).nullable().optional(),
-  "createdAt": z.iso.datetime({ offset: true }).optional(),
-  "updatedAt": z.iso.datetime({ offset: true }).optional(),
-  "closedAt": z.iso.datetime({ offset: true }).nullable().optional(),
+  "dueAt": GoTimeJSONSchema.nullable().optional(),
+  "startAt": GoTimeJSONSchema.nullable().optional(),
+  "createdAt": GoTimeJSONSchema.optional(),
+  "updatedAt": GoTimeJSONSchema.optional(),
+  "closedAt": GoTimeJSONSchema.nullable().optional(),
   "isArchived": z.boolean().optional(),
   "creator": UserSchema.optional(),
   "assignees": z.array(UserSchema).nullable(),
@@ -381,7 +431,7 @@ export const CreateTaskInputSchema = z.strictObject({
   "markdownDescription": z.string().optional(),
   "status": z.string().optional(),
   "priority": z.number().int().optional(),
-  "dueAt": z.iso.datetime({ offset: true }).nullable().optional(),
+  "dueAt": GoTimeJSONSchema.nullable().optional(),
   "assigneeIds": z.array(z.number().int()).optional(),
   "tags": z.array(z.string()).optional(),
   "parentTaskId": z.string().optional(),
@@ -404,7 +454,7 @@ export const UpdateTaskInputSchema = z.strictObject({
   "markdownDescription": z.string().optional(),
   "status": z.string().optional(),
   "priority": z.number().int().optional(),
-  "dueAt": z.iso.datetime({ offset: true }).nullable().optional(),
+  "dueAt": GoTimeJSONSchema.nullable().optional(),
   "addAssigneeIds": z.array(z.number().int()).optional(),
   "removeAssigneeIds": z.array(z.number().int()).optional(),
 }) satisfies z.ZodType<UpdateTaskInput>;
@@ -439,7 +489,7 @@ export const AddCommentInputSchema = z.strictObject({
 export const AddCommentOutputSchema = z.strictObject({
   "taskId": z.string(),
   "commentId": z.string().optional(),
-  "createdAt": z.iso.datetime({ offset: true }).nullable().optional(),
+  "createdAt": GoTimeJSONSchema.nullable().optional(),
   "wasAlreadyApplied": z.boolean().optional(),
 }) satisfies z.ZodType<AddCommentOutput>;
 

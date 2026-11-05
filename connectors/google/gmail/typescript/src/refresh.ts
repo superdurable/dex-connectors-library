@@ -1,78 +1,57 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import type { CredentialRefreshDriver, CredentialRefreshResult, CredentialRefreshState } from '@superdurable/connectors-sdk';
-import { ReauthorizationRequiredError } from '@superdurable/connectors-sdk';
-import {
-  hasAllScopes, isRefreshRequired, parseRSAPrivateKeyPEM, signJWTBearerAssertion, TokenEndpoint,
-} from '@superdurable/connectors-sdk/oauthtoken';
-import { z } from 'zod';
+import { ReauthorizationRequiredError, type CredentialRefreshDriver, type CredentialRefreshResult, type CredentialRefreshState } from '@superdurable/connectors-sdk';
+import { isRefreshRequired, ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
+import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Credentials } from './models.js';
 import { GoogleOAuthAuthMethodID, WorkspaceDomainDelegationAuthMethodID } from './models.js';
-import { parseMailbox } from './message.js';
 
-const GoogleOAuthTokenEndpoint = 'https://oauth2.googleapis.com/token';
-const RequiredGmailScopes = ['https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/gmail.send'];
-const TerminalErrorCodes = ['invalid_grant', 'invalid_client', 'unauthorized_client'];
-const ServiceAccountKeySchema = z.object({ client_email: z.string().min(1), private_key: z.string().min(1), token_uri: z.url() });
-
-/** Refresh Gmail OAuth or Workspace delegation credentials without owning persistence. */
+/** Refresh Gmail credentials using generated grant declarations and Google-specific validation. */
 export class GmailCredentialRefreshDriver implements CredentialRefreshDriver<Credentials> {
-  readonly #fetch: typeof fetch;
-  readonly #now: () => Date;
+  readonly #manifestDriver: ManifestCredentialRefreshDriver<Credentials>;
 
-  /** Inject the token request transport and clock for deterministic verification. */
+  /** Inject the token transport and clock without transferring ownership. */
   constructor(fetchImplementation: typeof fetch = fetch, now: () => Date = () => new Date()) {
     if (!fetchImplementation || !now) throw new TypeError('Gmail token transport and clock are required');
-    this.#fetch = fetchImplementation;
-    this.#now = now;
+    this.#manifestDriver = new ManifestCredentialRefreshDriver<Credentials>({
+      providerName: 'Google', auth: Authorization, credentialFields: CredentialFields, fetch: fetchImplementation, now,
+    });
   }
 
-  /** Refresh absent credentials or tokens whose expiry is within five minutes. */
+  /** Refresh absent credentials and tokens approaching expiry, including missing expiry. */
   refreshRequired(state: CredentialRefreshState<Credentials>): boolean {
     return isRefreshRequired(Boolean(state.credentials.accessToken.reveal()), state.expiresAt, state.now, 'refresh');
   }
 
-  /** Make one Google token exchange after the host admits and serializes refresh. */
+  /** Apply Gmail's method and delegated mailbox checks before the declared token exchange. */
   async refresh(state: CredentialRefreshState<Credentials>, signal: AbortSignal): Promise<CredentialRefreshResult<Credentials>> {
     const credentials = state.credentials;
-    if (!credentials.authMethodId || credentials.authMethodId === GoogleOAuthAuthMethodID) {
-      if (!credentials.oauthClientId || !credentials.oauthClientSecret || !credentials.refreshToken) throw new ReauthorizationRequiredError();
-      const token = await this.#tokenEndpoint(GoogleOAuthTokenEndpoint).exchangeRefreshToken({
-        id: credentials.oauthClientId, secret: credentials.oauthClientSecret, authenticationMethod: 'client_secret_post',
-      }, credentials.refreshToken, signal);
-      this.#verifyScopes(token.scope);
-      return {
-        credentials: { ...credentials, accessToken: token.accessToken, refreshToken: token.nextRefreshToken(credentials.refreshToken) },
-        expiresAt: new Date(this.#now().getTime() + token.expiresInMs),
-      };
-    }
-    if (credentials.authMethodId !== WorkspaceDomainDelegationAuthMethodID) throw new ReauthorizationRequiredError();
-    let key: z.infer<typeof ServiceAccountKeySchema>;
-    try { key = ServiceAccountKeySchema.parse(JSON.parse(credentials.serviceAccountKey?.reveal() ?? '') as unknown); }
-    catch { throw new ReauthorizationRequiredError(); }
-    const delegatedUser = credentials.delegatedUser;
-    if (new URL(key.token_uri).protocol !== 'https:' || !delegatedUser || !parseMailbox(delegatedUser)) throw new ReauthorizationRequiredError();
-    let assertion;
+    const method = credentials.authMethodId || GoogleOAuthAuthMethodID;
+    if (method !== GoogleOAuthAuthMethodID && method !== WorkspaceDomainDelegationAuthMethodID)
+      throw new TypeError('Gmail authorization method is not supported');
+    if (method !== WorkspaceDomainDelegationAuthMethodID) return this.#manifestDriver.refresh(state, signal);
+
+    this.#validateServiceAccountKey(credentials.serviceAccountKey?.reveal() ?? '');
+    const delegatedUser = (credentials.delegatedUser ?? '').trim();
+    if (!delegatedUser || !delegatedUser.includes('@')) throw new ReauthorizationRequiredError();
+    const result = await this.#manifestDriver.refresh({ ...state, credentials: { ...credentials, delegatedUser } }, signal);
+    return { ...result, credentials: { ...result.credentials, delegatedUser: credentials.delegatedUser } };
+  }
+
+  #validateServiceAccountKey(raw: string): void {
+    let key: Record<string, unknown>;
     try {
-      assertion = signJWTBearerAssertion({
-        issuer: key.client_email, subject: delegatedUser, audience: key.token_uri,
-        scope: RequiredGmailScopes.join(' '), issuedAt: this.#now(), lifetimeMs: 3_600_000,
-      }, parseRSAPrivateKeyPEM(key.private_key));
+      const parsed: unknown = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new TypeError();
+      key = parsed as Record<string, unknown>;
     } catch { throw new ReauthorizationRequiredError(); }
-    const token = await this.#tokenEndpoint(key.token_uri).exchangeJWTBearerAssertion(assertion, signal);
-    this.#verifyScopes(token.scope);
-    return {
-      credentials: { ...credentials, accessToken: token.accessToken, primaryEmail: credentials.delegatedUser ?? '' },
-      expiresAt: new Date(this.#now().getTime() + token.expiresInMs),
-    };
-  }
-
-  #tokenEndpoint(url: string): TokenEndpoint {
-    return new TokenEndpoint({ providerName: 'Google', url, terminalErrorCodes: TerminalErrorCodes, fetch: this.#fetch });
-  }
-
-  #verifyScopes(scope: string): void {
-    if (scope && !hasAllScopes(scope, RequiredGmailScopes)) throw new ReauthorizationRequiredError();
+    if (typeof key.client_email !== 'string' || !key.client_email ||
+      typeof key.private_key !== 'string' || !key.private_key ||
+      typeof key.token_uri !== 'string' || !key.token_uri) throw new ReauthorizationRequiredError();
+    try {
+      const endpoint = new URL(key.token_uri);
+      if (endpoint.protocol !== 'https:' || !endpoint.hostname) throw new TypeError();
+    } catch { throw new ReauthorizationRequiredError(); }
   }
 }

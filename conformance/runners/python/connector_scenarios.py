@@ -5,6 +5,8 @@
 from __future__ import annotations
 
 import base64
+import hashlib
+import importlib
 import json
 import os
 import re
@@ -22,6 +24,66 @@ from dex_connectors import sdk
 from dex_connectors.sdk.singledispatch import Marker
 
 _NO_HEARTBEAT_VALUE = object()
+
+
+class SyntheticRandomSource:
+    """Reproduce Go conformance random bytes from an obvious non-secret seed."""
+
+    def __init__(self, seed: str) -> None:
+        if not seed.startswith("SYNTHETIC_CONFORMANCE_") or len(seed) > 128:
+            raise ValueError("random seed must be an obvious synthetic conformance marker")
+        self._seed = seed.encode("utf-8")
+        self._counter = 0
+        self._block = b""
+        self._offset = 0
+
+    def read(self, count: int) -> bytes:
+        """Read the SHA-256 counter stream used by the Go reference test."""
+        if count < 0:
+            raise ValueError("random byte count must be nonnegative")
+        result = bytearray()
+        while len(result) < count:
+            if self._offset == len(self._block):
+                self._block = hashlib.sha256(self._seed + self._counter.to_bytes(8, "big")).digest()
+                self._counter += 1
+                self._offset = 0
+            size = min(count - len(result), len(self._block) - self._offset)
+            result.extend(self._block[self._offset:self._offset + size])
+            self._offset += size
+        return bytes(result)
+
+    def go_random_int(self, maximum: int) -> int:
+        """Match crypto/rand.Int rejection sampling for a positive maximum."""
+        if maximum < 1:
+            raise ValueError("random maximum must be positive")
+        bit_count = (maximum - 1).bit_length()
+        byte_count = (bit_count + 7) // 8
+        while True:
+            candidate = bytearray(self.read(byte_count))
+            if bit_count % 8:
+                candidate[0] &= (1 << (bit_count % 8)) - 1
+            number = int.from_bytes(candidate, "big")
+            if number < maximum:
+                return number
+
+
+def _redact_synthetic_random(actual: object, expected: object) -> object:
+    if isinstance(expected, dict) and set(expected) == {"$syntheticSha256"}:
+        return {"$syntheticSha256": hashlib.sha256(actual.encode()).hexdigest()} if isinstance(actual, str) else {"$syntheticSha256": "invalid"}
+    if isinstance(actual, dict) and isinstance(expected, dict):
+        return {key: _redact_synthetic_random(value, expected.get(key)) for key, value in actual.items()}
+    if isinstance(actual, list) and isinstance(expected, list):
+        return [_redact_synthetic_random(value, expected[index] if index < len(expected) else None)
+                for index, value in enumerate(actual)]
+    return actual
+
+
+def _contains_synthetic_digest(value: object) -> bool:
+    if isinstance(value, dict):
+        return set(value) == {"$syntheticSha256"} or any(_contains_synthetic_digest(item) for item in value.values())
+    if isinstance(value, list):
+        return any(_contains_synthetic_digest(item) for item in value)
+    return False
 
 
 class HeartbeatContext:
@@ -103,10 +165,20 @@ def load_scenarios(path: Path) -> list[dict[str, Any]]:
         raise ValueError(f"{path}: scenarios must be nonempty")
     for scenario in scenarios:
         _keys(scenario, {"name", "operation", "callId", "input", "exchanges", "expected"},
-              {"idempotencyKey", "attempts", "intermediate", "priorHeartbeat", "fixedClock"}, str(path))
+              {"idempotencyKey", "attempts", "intermediate", "priorHeartbeat", "fixedClock", "randomSeed", "randomRequestFields"}, str(path))
         if any(not isinstance(scenario[field], str) or not scenario[field]
                for field in ("name", "operation", "callId")):
             raise ValueError(f"{scenario['name']}: invalid Call ID")
+        if "randomSeed" in scenario and (not isinstance(scenario["randomSeed"], str)
+                                         or not scenario["randomSeed"].startswith("SYNTHETIC_CONFORMANCE_")
+                                         or len(scenario["randomSeed"]) > 128):
+            raise ValueError(f"{scenario['name']}: invalid synthetic random seed")
+        if "randomRequestFields" in scenario and ("randomSeed" not in scenario
+                                                  or not isinstance(scenario["randomRequestFields"], list)
+                                                  or not scenario["randomRequestFields"]
+                                                  or any(not isinstance(field, str) or not field.startswith("/") or "~" in field
+                                                         for field in scenario["randomRequestFields"])):
+            raise ValueError(f"{scenario['name']}: invalid random request fields")
         if not isinstance(scenario["input"], dict) or not isinstance(scenario["exchanges"], list):
             raise TypeError(f"{scenario['name']}: invalid input or exchanges")
         for exchange in scenario["exchanges"]:
@@ -208,7 +280,7 @@ def _multipart_media_type(content_type: str) -> tuple[str, tuple[tuple[str, str]
 
 
 def _is_multipart(content_type: str) -> bool:
-    return _multipart_media_type(content_type)[0] in {"multipart/form-data", "multipart/mixed"}
+    return _multipart_media_type(content_type)[0] in {"multipart/form-data", "multipart/mixed", "multipart/related"}
 
 
 def _multipart_body(content_type: str, body: bytes) -> dict[str, object]:
@@ -333,8 +405,14 @@ class ExchangeRecorder:
                 try:
                     actual_body = json.loads(actual_body)
                 except ValueError:
-                    pass
-                self._equal(index, "body", actual_body, expected_body)
+                    if _contains_synthetic_digest(expected_body):
+                        actual_body = "invalid JSON"
+                redacted_body = _redact_synthetic_random(actual_body, expected_body)
+                if _contains_synthetic_digest(expected_body):
+                    if redacted_body != expected_body:
+                        self.mismatches.append(f"request {index}: body mismatch")
+                else:
+                    self._equal(index, "body", redacted_body, expected_body)
             else:
                 self._equal(index, "body", actual_body, expected_body)
         elif not exchange.get("form") and request.content:
@@ -452,12 +530,14 @@ class PythonOperationAdapter:
             operation = (self.operation_types[operation_name](client) if operation_name in self.operation_types
                          else getattr(client, self._snake_case(operation_name))())
             input_type = getattr(self.module, operation_name[0].upper() + operation_name[1:] + "Input")
+            generated_models = importlib.import_module(f"{self.module.__name__}._generated.models")
+            is_generated_input = getattr(generated_models, input_type.__name__, None) is input_type
             fields_by_wire_name = {field.metadata.get("dex_json_name", field.name): field
                                    for field in fields(input_type)}
             input_arguments = {}
             for key, value in scenario["input"].items():
                 field = fields_by_wire_name[key]
-                if field.metadata.get("dex_json_format") == "rfc3339" and isinstance(value, str):
+                if not is_generated_input and field.metadata.get("dex_json_format") == "rfc3339" and isinstance(value, str):
                     value = datetime.fromisoformat(value.replace("Z", "+00:00"))
                 input_arguments[field.name] = value
             input_value = input_type(**input_arguments)
