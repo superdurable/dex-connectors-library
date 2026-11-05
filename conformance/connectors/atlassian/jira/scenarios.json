@@ -250,6 +250,12 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "62d8b09d-d5a4-53c5-991a-4adc7a1ae5cd",
+          "providerId": "10043",
+          "state": "claimed"
+        },
         "output": {
           "issueId": "10043",
           "issueKey": "OPS-43",
@@ -423,6 +429,12 @@
       "expected": {
         "branch": "added",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "79f8626e-fa53-5e65-96cd-c0dcbf63f187",
+          "providerId": "10500",
+          "state": "claimed"
+        },
         "output": {
           "authorAccountId": "5b10ac8d82e05b22cc7d4ef5",
           "commentId": "10500",
@@ -787,6 +799,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "62d8b09d-d5a4-53c5-991a-4adc7a1ae5cd",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -870,6 +887,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "62d8b09d-d5a4-53c5-991a-4adc7a1ae5cd",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -951,6 +973,11 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "62d8b09d-d5a4-53c5-991a-4adc7a1ae5cd",
+          "state": "canResend"
+        },
         "requestCount": 0,
         "retry": true,
         "retryAfterMs": 0,
@@ -1187,6 +1214,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "79f8626e-fa53-5e65-96cd-c0dcbf63f187",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -1249,6 +1281,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "79f8626e-fa53-5e65-96cd-c0dcbf63f187",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -1309,6 +1346,11 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "79f8626e-fa53-5e65-96cd-c0dcbf63f187",
+          "state": "canResend"
+        },
         "requestCount": 0,
         "retry": true,
         "retryAfterMs": 0,
@@ -1365,6 +1407,11 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "VALIDATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "62d8b09d-d5a4-53c5-991a-4adc7a1ae5cd",
+          "state": "claimed"
+        },
         "output": {
           "projectId": "10000",
           "rejectedFieldIds": [
@@ -1812,6 +1859,11 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "62d8b09d-d5a4-53c5-991a-4adc7a1ae5cd",
+          "state": "claimed"
+        },
         "output": {
           "projectId": "10000",
           "summary": "Fire panel wiring"
@@ -2239,6 +2291,11 @@
       "expected": {
         "branch": "notFound",
         "failureKind": "NOT_FOUND",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "79f8626e-fa53-5e65-96cd-c0dcbf63f187",
+          "state": "claimed"
+        },
         "output": {
           "createdAt": "0001-01-01T00:00:00Z",
           "issueIdOrKey": "OPS-43"
@@ -2305,6 +2362,11 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "79f8626e-fa53-5e65-96cd-c0dcbf63f187",
+          "state": "claimed"
+        },
         "output": {
           "createdAt": "0001-01-01T00:00:00Z",
           "issueIdOrKey": "OPS-43"
@@ -2398,6 +2460,11 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "79f8626e-fa53-5e65-96cd-c0dcbf63f187",
+          "state": "claimed"
+        },
         "output": {
           "createdAt": "0001-01-01T00:00:00Z",
           "issueIdOrKey": "OPS-43"

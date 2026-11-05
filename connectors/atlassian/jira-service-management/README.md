@@ -15,12 +15,6 @@ labels, priority, and workflow transitions use the Jira platform API at
 
 Install this connector with `go get github.com/superdurable/dex-connectors-library/connectors/atlassian/jira-service-management/go@v0.24.0`.
 
-## Python package
-
-The `python/` package declares Python release `v0.1.0` independently of the Go connector. It implements all seven operations listed below and uses generated OAuth credential refresh wiring. Its [support request example](python/examples/support_request/README.md) runs lookup and create Flows with the static connection name `jira-service-management-support`, storing only non-secret customer identity details and ticket references. Run the package suite from `python/` with `uv run pytest`; the real Dex integration test requires `DEX_FLOW_SERVICE_ADDRESS` to point at a running `dexcli dev` server.
-
-Provider conformance replays the Go-recorded scenarios under `conformance/connectors/atlassian/jira-service-management`. The Python integration test uses a local provider stand-in; live Atlassian OAuth and API behavior remain unverified.
-
 | Operation | Kind | Durability | Happy branch | Other branches |
 | --- | --- | --- | --- | --- |
 | `findCustomerByEmail` | Query | async | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |

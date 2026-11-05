@@ -11,12 +11,6 @@ spec:
   codegen:
     go:
       package: jiraservicemanagement
-  languages:
-    python:
-      version: v0.1.0
-      package: dex-connector-atlassian-jira-service-management
-      operations: [findCustomerByEmail, searchTickets, getTicket, createTicket, updateTicket, transitionTicket, addComment]
-      triggers: []
   configuration:
     fields:
       - name: cloudId

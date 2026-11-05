@@ -6,6 +6,8 @@ from dataclasses import dataclass, field as _dataclass_field
 from datetime import UTC, datetime
 from typing import Any
 
+from .timestamps import parse_go_datetime, validate_go_datetime
+
 def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
@@ -37,6 +39,16 @@ class ListScheduledEventsInput:
     page_size: int = _dataclass_field(default=0, metadata={'dex_json_name': 'pageSize', 'dex_json_omit_default': True})
     # PageToken is the NextPageToken of the previous page; blank reads the first page.
     page_token: str = _dataclass_field(default='', metadata={'dex_json_name': 'pageToken', 'dex_json_omit_default': True})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.min_start_time, str):
+            object.__setattr__(self, 'min_start_time', parse_go_datetime(self.min_start_time, 'min_start_time'))
+        elif self.min_start_time is not None:
+            validate_go_datetime(self.min_start_time, 'min_start_time')
+        if isinstance(self.max_start_time, str):
+            object.__setattr__(self, 'max_start_time', parse_go_datetime(self.max_start_time, 'max_start_time'))
+        elif self.max_start_time is not None:
+            validate_go_datetime(self.max_start_time, 'max_start_time')
 
 
 setattr(ListScheduledEventsInput, '__module__', 'dex_connectors.calendly.models')
@@ -99,6 +111,12 @@ class Cancellation:
     # CreatedAt is when the cancellation happened.
     created_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'createdAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
 
+    def __post_init__(self) -> None:
+        if isinstance(self.created_at, str):
+            object.__setattr__(self, 'created_at', parse_go_datetime(self.created_at, 'created_at'))
+        elif self.created_at is not None:
+            validate_go_datetime(self.created_at, 'created_at')
+
 
 setattr(Cancellation, '__module__', 'dex_connectors.calendly.models')
 
@@ -132,6 +150,24 @@ class ScheduledEvent:
     # UpdatedAt is when the event last changed.
     updated_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'updatedAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
 
+    def __post_init__(self) -> None:
+        if isinstance(self.start_time, str):
+            object.__setattr__(self, 'start_time', parse_go_datetime(self.start_time, 'start_time'))
+        elif self.start_time is not None:
+            validate_go_datetime(self.start_time, 'start_time')
+        if isinstance(self.end_time, str):
+            object.__setattr__(self, 'end_time', parse_go_datetime(self.end_time, 'end_time'))
+        elif self.end_time is not None:
+            validate_go_datetime(self.end_time, 'end_time')
+        if isinstance(self.created_at, str):
+            object.__setattr__(self, 'created_at', parse_go_datetime(self.created_at, 'created_at'))
+        elif self.created_at is not None:
+            validate_go_datetime(self.created_at, 'created_at')
+        if isinstance(self.updated_at, str):
+            object.__setattr__(self, 'updated_at', parse_go_datetime(self.updated_at, 'updated_at'))
+        elif self.updated_at is not None:
+            validate_go_datetime(self.updated_at, 'updated_at')
+
 
 setattr(ScheduledEvent, '__module__', 'dex_connectors.calendly.models')
 
@@ -153,6 +189,14 @@ class ScheduledEventPage:
     max_start_time: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'maxStartTime', 'dex_json_format': 'rfc3339'})
 
     def __post_init__(self) -> None:
+        if isinstance(self.min_start_time, str):
+            object.__setattr__(self, 'min_start_time', parse_go_datetime(self.min_start_time, 'min_start_time'))
+        elif self.min_start_time is not None:
+            validate_go_datetime(self.min_start_time, 'min_start_time')
+        if isinstance(self.max_start_time, str):
+            object.__setattr__(self, 'max_start_time', parse_go_datetime(self.max_start_time, 'max_start_time'))
+        elif self.max_start_time is not None:
+            validate_go_datetime(self.max_start_time, 'max_start_time')
         object.__setattr__(self, 'events', _replace_nil_slices(self.events, 1))
 
 
@@ -242,6 +286,16 @@ class Invitee:
     created_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'createdAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
     # UpdatedAt is when the invitee last changed.
     updated_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'updatedAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.created_at, str):
+            object.__setattr__(self, 'created_at', parse_go_datetime(self.created_at, 'created_at'))
+        elif self.created_at is not None:
+            validate_go_datetime(self.created_at, 'created_at')
+        if isinstance(self.updated_at, str):
+            object.__setattr__(self, 'updated_at', parse_go_datetime(self.updated_at, 'updated_at'))
+        elif self.updated_at is not None:
+            validate_go_datetime(self.updated_at, 'updated_at')
 
 
 setattr(Invitee, '__module__', 'dex_connectors.calendly.models')
@@ -359,6 +413,10 @@ class WebhookSubscription:
     was_created: bool = _dataclass_field(default=False, metadata={'dex_json_name': 'wasCreated'})
 
     def __post_init__(self) -> None:
+        if isinstance(self.created_at, str):
+            object.__setattr__(self, 'created_at', parse_go_datetime(self.created_at, 'created_at'))
+        elif self.created_at is not None:
+            validate_go_datetime(self.created_at, 'created_at')
         object.__setattr__(self, 'events', _replace_nil_slices(self.events, 1))
 
 

@@ -31,3 +31,35 @@ from .steps import new_get_event_step as new_get_event_step
 from .steps import new_list_events_step as new_list_events_step
 from .steps import new_query_free_busy_step as new_query_free_busy_step
 from .steps import new_update_event_step as new_update_event_step
+
+__all__ = [
+    "Client",
+    "Config",
+    "Credentials",
+    "Connection",
+    "new_connection",
+    "new_connection_with_operations",
+    "new_project_connection",
+    "BusyInterval",
+    "CalendarFreeBusy",
+    "CreateEventInput",
+    "CreateEventOutput",
+    "Event",
+    "EventAttendee",
+    "EventAttendeeInput",
+    "EventConference",
+    "EventDateTime",
+    "FreeBusyError",
+    "GetEventInput",
+    "ListEventsInput",
+    "ListEventsOutput",
+    "QueryFreeBusyInput",
+    "QueryFreeBusyOutput",
+    "UpdateEventInput",
+    "UpdateEventOutput",
+    "new_create_event_step",
+    "new_get_event_step",
+    "new_list_events_step",
+    "new_query_free_busy_step",
+    "new_update_event_step",
+]

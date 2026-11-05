@@ -12,7 +12,7 @@ import httpx
 import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
-from dex_connectors.sdk import CredentialRefreshState, ReauthorizationRequiredError
+from dex_connectors.sdk import CredentialRefreshState, ReauthorizationRequiredError, RetryError
 from dex_connectors.sdk.oauthtoken import ManifestCredentialRefreshDriver
 
 from dex_connectors.google_calendar import Credentials
@@ -50,7 +50,7 @@ async def test_generated_refresh_matches_go(case: dict[str, object]) -> None:
         prior = decode_credentials(material)
         if case.get("expectedError"):
             expected_error = (
-                ReauthorizationRequiredError if case["expectedError"] == "reauthorization" else ValueError
+                ReauthorizationRequiredError if case["expectedError"] == "reauthorization" else RetryError
             )
             with pytest.raises(expected_error):
                 await driver.refresh(CredentialRefreshState(prior, None, datetime.now(UTC)))

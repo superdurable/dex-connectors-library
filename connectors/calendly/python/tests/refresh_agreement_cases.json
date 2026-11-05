@@ -33,6 +33,32 @@
       "invalid_grant",
       "invalid_client",
       "unauthorized_client"
+    ],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
     ]
   },
   {
@@ -66,7 +92,33 @@
       "access_token": "manifest-access-token-2",
       "refresh_token": "manifest-refresh-token-2"
     },
-    "terminalErrorCodes": []
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
   },
   {
     "name": "calendly-oauth refresh without token type",
@@ -98,7 +150,91 @@
       "access_token": "manifest-access-token-2",
       "refresh_token": "manifest-refresh-token-2"
     },
-    "terminalErrorCodes": []
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "calendly-oauth refresh with different reported scope",
+    "methodId": "calendly-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token",
+      "webhook_signing_key": "manifest-webhook_signing_key"
+    },
+    "endpoint": "https://auth.calendly.com/oauth/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "manifest-ungranted-scope",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
   },
   {
     "name": "calendly-oauth refresh without expires_in",
@@ -130,6 +266,88 @@
       "access_token": "manifest-access-token-2",
       "refresh_token": "manifest-refresh-token-2"
     },
-    "terminalErrorCodes": []
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "calendly-oauth refresh without refresh_token",
+    "methodId": "calendly-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token",
+      "webhook_signing_key": "manifest-webhook_signing_key"
+    },
+    "endpoint": "https://auth.calendly.com/oauth/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "users:read event_types:read scheduled_events:write scheduling_links:write webhooks:write",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
   }
 ]

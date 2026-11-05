@@ -6,6 +6,8 @@ from dataclasses import dataclass, field as _dataclass_field
 from datetime import UTC, datetime
 from typing import Any
 
+from .timestamps import parse_go_datetime, validate_go_datetime
+
 def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
@@ -58,6 +60,16 @@ class AuthenticatedProfile:
     created_at: datetime | None = _dataclass_field(default=None, metadata={'dex_json_name': 'createdAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
     # UpdatedAt is the updated at for authenticated profile.
     updated_at: datetime | None = _dataclass_field(default=None, metadata={'dex_json_name': 'updatedAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.created_at, str):
+            object.__setattr__(self, 'created_at', parse_go_datetime(self.created_at, 'created_at'))
+        elif self.created_at is not None:
+            validate_go_datetime(self.created_at, 'created_at')
+        if isinstance(self.updated_at, str):
+            object.__setattr__(self, 'updated_at', parse_go_datetime(self.updated_at, 'updated_at'))
+        elif self.updated_at is not None:
+            validate_go_datetime(self.updated_at, 'updated_at')
 
 
 setattr(AuthenticatedProfile, '__module__', 'dex_connectors.github.models')
@@ -113,6 +125,20 @@ class Repository:
     # PushedAt is the pushed at for repository.
     pushed_at: datetime | None = _dataclass_field(default=None, metadata={'dex_json_name': 'pushedAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
 
+    def __post_init__(self) -> None:
+        if isinstance(self.created_at, str):
+            object.__setattr__(self, 'created_at', parse_go_datetime(self.created_at, 'created_at'))
+        elif self.created_at is not None:
+            validate_go_datetime(self.created_at, 'created_at')
+        if isinstance(self.updated_at, str):
+            object.__setattr__(self, 'updated_at', parse_go_datetime(self.updated_at, 'updated_at'))
+        elif self.updated_at is not None:
+            validate_go_datetime(self.updated_at, 'updated_at')
+        if isinstance(self.pushed_at, str):
+            object.__setattr__(self, 'pushed_at', parse_go_datetime(self.pushed_at, 'pushed_at'))
+        elif self.pushed_at is not None:
+            validate_go_datetime(self.pushed_at, 'pushed_at')
+
 
 setattr(Repository, '__module__', 'dex_connectors.github.models')
 
@@ -151,6 +177,16 @@ class ListMergedPullRequestsInput:
     # Page is one-based. Zero selects 1.
     page: int = _dataclass_field(default=0, metadata={'dex_json_omit_default': True})
 
+    def __post_init__(self) -> None:
+        if isinstance(self.merged_after, str):
+            object.__setattr__(self, 'merged_after', parse_go_datetime(self.merged_after, 'merged_after'))
+        elif self.merged_after is not None:
+            validate_go_datetime(self.merged_after, 'merged_after')
+        if isinstance(self.merged_before, str):
+            object.__setattr__(self, 'merged_before', parse_go_datetime(self.merged_before, 'merged_before'))
+        elif self.merged_before is not None:
+            validate_go_datetime(self.merged_before, 'merged_before')
+
 
 setattr(ListMergedPullRequestsInput, '__module__', 'dex_connectors.github.models')
 
@@ -175,6 +211,12 @@ class MergedPullRequest:
     merged_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'mergedAt', 'dex_json_format': 'rfc3339'})
     # Labels holds up to 100 non-empty label names, each bounded to 256 bytes.
     labels: tuple[str, ...] = _dataclass_field(default=(), metadata={'dex_json_omit_default': True})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.merged_at, str):
+            object.__setattr__(self, 'merged_at', parse_go_datetime(self.merged_at, 'merged_at'))
+        elif self.merged_at is not None:
+            validate_go_datetime(self.merged_at, 'merged_at')
 
 
 setattr(MergedPullRequest, '__module__', 'dex_connectors.github.models')
@@ -304,6 +346,16 @@ class Release:
     # PublishedAt is the publication time in UTC, absent for an unpublished draft.
     published_at: datetime | None = _dataclass_field(default=None, metadata={'dex_json_name': 'publishedAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
 
+    def __post_init__(self) -> None:
+        if isinstance(self.created_at, str):
+            object.__setattr__(self, 'created_at', parse_go_datetime(self.created_at, 'created_at'))
+        elif self.created_at is not None:
+            validate_go_datetime(self.created_at, 'created_at')
+        if isinstance(self.published_at, str):
+            object.__setattr__(self, 'published_at', parse_go_datetime(self.published_at, 'published_at'))
+        elif self.published_at is not None:
+            validate_go_datetime(self.published_at, 'published_at')
+
 
 setattr(Release, '__module__', 'dex_connectors.github.models')
 
@@ -346,6 +398,16 @@ class ListCommitsInput:
     # Page is one-based. Zero selects 1.
     page: int = _dataclass_field(default=0, metadata={'dex_json_omit_default': True})
 
+    def __post_init__(self) -> None:
+        if isinstance(self.since, str):
+            object.__setattr__(self, 'since', parse_go_datetime(self.since, 'since'))
+        elif self.since is not None:
+            validate_go_datetime(self.since, 'since')
+        if isinstance(self.until, str):
+            object.__setattr__(self, 'until', parse_go_datetime(self.until, 'until'))
+        elif self.until is not None:
+            validate_go_datetime(self.until, 'until')
+
 
 setattr(ListCommitsInput, '__module__', 'dex_connectors.github.models')
 
@@ -370,6 +432,16 @@ class CommitSummary:
     committed_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'committedAt', 'dex_json_format': 'rfc3339'})
     # URL is the commit's GitHub web URL, or empty when GitHub returns an unsafe URL.
     url: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.authored_at, str):
+            object.__setattr__(self, 'authored_at', parse_go_datetime(self.authored_at, 'authored_at'))
+        elif self.authored_at is not None:
+            validate_go_datetime(self.authored_at, 'authored_at')
+        if isinstance(self.committed_at, str):
+            object.__setattr__(self, 'committed_at', parse_go_datetime(self.committed_at, 'committed_at'))
+        elif self.committed_at is not None:
+            validate_go_datetime(self.committed_at, 'committed_at')
 
 
 setattr(CommitSummary, '__module__', 'dex_connectors.github.models')

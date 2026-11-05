@@ -6,6 +6,8 @@ from dataclasses import dataclass, field as _dataclass_field
 from datetime import UTC, datetime
 from typing import Any
 
+from .timestamps import parse_go_datetime, validate_go_datetime
+
 def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
@@ -164,6 +166,16 @@ class Issue:
     # AdditionalFields holds the raw Jira JSON of each requested additional field that the issue has,
     # keyed by field ID such as customfield_10020. A requested field Jira omits is absent.
     additional_fields: dict[str, Any] = _dataclass_field(default_factory=dict, metadata={'dex_json_name': 'additionalFields', 'dex_json_omit_default': True})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.created_at, str):
+            object.__setattr__(self, 'created_at', parse_go_datetime(self.created_at, 'created_at'))
+        elif self.created_at is not None:
+            validate_go_datetime(self.created_at, 'created_at')
+        if isinstance(self.updated_at, str):
+            object.__setattr__(self, 'updated_at', parse_go_datetime(self.updated_at, 'updated_at'))
+        elif self.updated_at is not None:
+            validate_go_datetime(self.updated_at, 'updated_at')
 
 
 setattr(Issue, '__module__', 'dex_connectors.atlassian_jira.models')
@@ -336,6 +348,12 @@ class AddCommentOutput:
     created_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'createdAt', 'dex_json_format': 'rfc3339'})
     # RejectedFieldIDs lists the field IDs Jira named in a rejection.
     rejected_field_ids: tuple[str, ...] = _dataclass_field(default=(), metadata={'dex_json_name': 'rejectedFieldIds', 'dex_json_omit_default': True})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.created_at, str):
+            object.__setattr__(self, 'created_at', parse_go_datetime(self.created_at, 'created_at'))
+        elif self.created_at is not None:
+            validate_go_datetime(self.created_at, 'created_at')
 
 
 setattr(AddCommentOutput, '__module__', 'dex_connectors.atlassian_jira.models')
