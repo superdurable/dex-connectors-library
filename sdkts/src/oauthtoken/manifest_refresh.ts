@@ -544,9 +544,32 @@ function validateTemplateValueRule(declaration: unknown): void {
     (rule.patterns !== undefined && (!Array.isArray(rule.patterns) || rule.patterns.some(value => typeof value !== 'string'))))
     throw new TypeError('manifest template value rule is invalid');
   for (const pattern of manifestList(rule.patterns)) {
-    try { new RegExp(`^(?:${String(pattern)})$`); }
-    catch { throw new TypeError('manifest template value pattern is invalid'); }
+    validatePortableTemplateValuePattern(String(pattern));
   }
+}
+function validatePortableTemplateValuePattern(pattern: string): void {
+  let isCharacterClass = false;
+  for (let index = 0; index < pattern.length; index++) {
+    const character = pattern[index];
+    if (character === '\\') {
+      if (index + 1 < pattern.length && /[1-9pPQEk]/.test(pattern[++index]!))
+        throw new TypeError('manifest template value pattern is invalid');
+      continue;
+    }
+    if (character === '[') {
+      if (isCharacterClass && pattern[index + 1] === ':')
+        throw new TypeError('manifest template value pattern is invalid');
+      isCharacterClass = true;
+      continue;
+    }
+    if (character === ']') { isCharacterClass = false; continue; }
+    if (!isCharacterClass && character === '(' && pattern[index + 1] === '?' && pattern[index + 2] !== ':')
+      throw new TypeError('manifest template value pattern is invalid');
+  }
+  try {
+    new RegExp(pattern);
+    new RegExp(`^(?:${pattern})$`);
+  } catch { throw new TypeError('manifest template value pattern is invalid'); }
 }
 function parseDurationMs(value: string): number {
   if (!value) return 0;

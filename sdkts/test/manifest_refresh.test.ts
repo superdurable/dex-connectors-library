@@ -413,6 +413,13 @@ describe('manifest credential refresh', () => {
     expect(clientIDs.at(-1)).toBe('  client  ');
     for (const value of ['K', 'ſ'])
       await expect(refresh(value)).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+    for (const invalidPattern of ['(?=a)a', '(a)\\1', 'a)|(b', '\\p{L}', '\\Qa\\E', '[[:alpha:]]', '(?i)a']) {
+      rule.patterns = [invalidPattern];
+      expect(createDriver, invalidPattern).toThrow(TypeError);
+    }
+    rule.patterns = ['\\(?x'];
+    expect(createDriver).not.toThrow();
+    rule.patterns = ['[A-Za-z]+'];
     for (const invalidRule of [{ patterns: ['(?i)abc'] }, { reject: [42] }, { unknown: true }]) {
       Object.assign(rule, invalidRule);
       expect(createDriver).toThrow(TypeError);
