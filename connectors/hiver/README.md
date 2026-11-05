@@ -372,3 +372,7 @@ draft body renders markup; the order of `message_ids`; whether
 describes; whether 429 responses carry `Retry-After` and are always returned
 before a write is applied; the `X-Request-Id` header; and the Admin Panel path
 in the setup guidance.
+
+## TypeScript package
+
+The TypeScript package at [`typescript/`](typescript/README.md) implements all six operations in `@superdurable/connector-hiver` version `0.1.0`. Its checked-in list-inboxes Flow uses the static `hiver-support` connection and runs through a real Dex Worker and Client in the integration test. The Go-recorded cross-language scenarios cover every operation branch, 429 and 503 Retry, transport failure, multipart note and draft writes, and uncertain outcomes. Live Hiver provider behavior is still unverified.

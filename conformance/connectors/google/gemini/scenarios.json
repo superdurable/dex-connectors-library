@@ -1,0 +1,871 @@
+{
+  "connector": "gemini",
+  "scenarios": [
+    {
+      "callId": "gemini-generated",
+      "exchanges": [
+        {
+          "body": "{\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"thinking\",\"thought\":true},{\"text\":\"{\\\"headline\\\":\\\"Launch\\\"}\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":4,\"candidatesTokenCount\":3,\"thoughtsTokenCount\":1,\"cachedContentTokenCount\":1,\"totalTokenCount\":8},\"modelVersion\":\"gemini-2.5-flash\",\"responseId\":\"resp-123\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1beta/models/gemini-2.5-flash:generateContent",
+          "requestBody": {
+            "contents": [
+              {
+                "parts": [
+                  {
+                    "text": "Summarize launch"
+                  }
+                ],
+                "role": "user"
+              }
+            ],
+            "generationConfig": {
+              "maxOutputTokens": 128,
+              "responseJsonSchema": {
+                "properties": {
+                  "headline": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "responseMimeType": "application/json",
+              "temperature": 0.2,
+              "thinkingConfig": {
+                "thinkingBudget": 1
+              }
+            },
+            "systemInstruction": {
+              "parts": [
+                {
+                  "text": "Be concise."
+                }
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Goog-Api-Key": [
+              "AIzaSENTINEL-test-key_0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "generated",
+        "failureKind": "",
+        "output": {
+          "finishReason": "STOP",
+          "modelVersion": "gemini-2.5-flash",
+          "responseId": "resp-123",
+          "text": "{\"headline\":\"Launch\"}",
+          "usage": {
+            "cachedContentTokens": 1,
+            "candidateTokens": 3,
+            "promptTokens": 4,
+            "thoughtsTokens": 1,
+            "totalTokens": 8
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contents": [
+          {
+            "parts": [
+              {
+                "text": "Summarize launch"
+              }
+            ],
+            "role": "user"
+          }
+        ],
+        "maxOutputTokens": 128,
+        "model": "gemini-2.5-flash",
+        "responseJsonSchema": {
+          "properties": {
+            "headline": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "responseMimeType": "application/json",
+        "systemInstruction": "Be concise.",
+        "temperature": 0.2,
+        "thinkingBudget": 1
+      },
+      "name": "generated",
+      "operation": "generateContent"
+    },
+    {
+      "callId": "gemini-truncated",
+      "exchanges": [
+        {
+          "body": "{\"candidates\":[{\"finishReason\":\"MAX_TOKENS\",\"content\":{\"parts\":[{\"text\":\"Partial\"}]}}],\"responseId\":\"resp-truncated\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1beta/models/gemini-2.5-flash:generateContent",
+          "requestBody": {
+            "contents": [
+              {
+                "parts": [
+                  {
+                    "text": "Summarize launch"
+                  }
+                ],
+                "role": "user"
+              }
+            ],
+            "generationConfig": {
+              "maxOutputTokens": 128,
+              "responseJsonSchema": {
+                "properties": {
+                  "headline": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "responseMimeType": "application/json",
+              "temperature": 0.2,
+              "thinkingConfig": {
+                "thinkingBudget": 0
+              }
+            },
+            "systemInstruction": {
+              "parts": [
+                {
+                  "text": "Be concise."
+                }
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Goog-Api-Key": [
+              "AIzaSENTINEL-test-key_0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "truncated",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "finishReason": "MAX_TOKENS",
+          "responseId": "resp-truncated",
+          "text": "Partial",
+          "usage": {
+            "cachedContentTokens": 0,
+            "candidateTokens": 0,
+            "promptTokens": 0,
+            "thoughtsTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contents": [
+          {
+            "parts": [
+              {
+                "text": "Summarize launch"
+              }
+            ],
+            "role": "user"
+          }
+        ],
+        "maxOutputTokens": 128,
+        "model": "gemini-2.5-flash",
+        "responseJsonSchema": {
+          "properties": {
+            "headline": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "responseMimeType": "application/json",
+        "systemInstruction": "Be concise.",
+        "temperature": 0.2,
+        "thinkingBudget": 0
+      },
+      "name": "truncated",
+      "operation": "generateContent"
+    },
+    {
+      "callId": "gemini-blocked",
+      "exchanges": [
+        {
+          "body": "{\"promptFeedback\":{\"blockReason\":\"SAFETY\"},\"responseId\":\"resp-blocked\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1beta/models/gemini-2.5-flash:generateContent",
+          "requestBody": {
+            "contents": [
+              {
+                "parts": [
+                  {
+                    "text": "Summarize launch"
+                  }
+                ],
+                "role": "user"
+              }
+            ],
+            "generationConfig": {
+              "maxOutputTokens": 128,
+              "responseJsonSchema": {
+                "properties": {
+                  "headline": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "responseMimeType": "application/json",
+              "temperature": 0.2,
+              "thinkingConfig": {
+                "thinkingBudget": 0
+              }
+            },
+            "systemInstruction": {
+              "parts": [
+                {
+                  "text": "Be concise."
+                }
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Goog-Api-Key": [
+              "AIzaSENTINEL-test-key_0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "blocked",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "blockReason": "SAFETY",
+          "responseId": "resp-blocked",
+          "text": "",
+          "usage": {
+            "cachedContentTokens": 0,
+            "candidateTokens": 0,
+            "promptTokens": 0,
+            "thoughtsTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contents": [
+          {
+            "parts": [
+              {
+                "text": "Summarize launch"
+              }
+            ],
+            "role": "user"
+          }
+        ],
+        "maxOutputTokens": 128,
+        "model": "gemini-2.5-flash",
+        "responseJsonSchema": {
+          "properties": {
+            "headline": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "responseMimeType": "application/json",
+        "systemInstruction": "Be concise.",
+        "temperature": 0.2,
+        "thinkingBudget": 0
+      },
+      "name": "blocked",
+      "operation": "generateContent"
+    },
+    {
+      "callId": "gemini-invalid-response",
+      "exchanges": [
+        {
+          "body": "{\"candidates\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1beta/models/gemini-2.5-flash:generateContent",
+          "requestBody": {
+            "contents": [
+              {
+                "parts": [
+                  {
+                    "text": "Summarize launch"
+                  }
+                ],
+                "role": "user"
+              }
+            ],
+            "generationConfig": {
+              "maxOutputTokens": 128,
+              "responseJsonSchema": {
+                "properties": {
+                  "headline": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "responseMimeType": "application/json",
+              "temperature": 0.2,
+              "thinkingConfig": {
+                "thinkingBudget": 0
+              }
+            },
+            "systemInstruction": {
+              "parts": [
+                {
+                  "text": "Be concise."
+                }
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Goog-Api-Key": [
+              "AIzaSENTINEL-test-key_0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "text": "",
+          "usage": {
+            "cachedContentTokens": 0,
+            "candidateTokens": 0,
+            "promptTokens": 0,
+            "thoughtsTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contents": [
+          {
+            "parts": [
+              {
+                "text": "Summarize launch"
+              }
+            ],
+            "role": "user"
+          }
+        ],
+        "maxOutputTokens": 128,
+        "model": "gemini-2.5-flash",
+        "responseJsonSchema": {
+          "properties": {
+            "headline": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "responseMimeType": "application/json",
+        "systemInstruction": "Be concise.",
+        "temperature": 0.2,
+        "thinkingBudget": 0
+      },
+      "name": "invalid-response",
+      "operation": "generateContent"
+    },
+    {
+      "callId": "gemini-rejected",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"INVALID_ARGUMENT\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1beta/models/gemini-2.5-flash:generateContent",
+          "requestBody": {
+            "contents": [
+              {
+                "parts": [
+                  {
+                    "text": "Summarize launch"
+                  }
+                ],
+                "role": "user"
+              }
+            ],
+            "generationConfig": {
+              "maxOutputTokens": 128,
+              "responseJsonSchema": {
+                "properties": {
+                  "headline": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "responseMimeType": "application/json",
+              "temperature": 0.2,
+              "thinkingConfig": {
+                "thinkingBudget": 0
+              }
+            },
+            "systemInstruction": {
+              "parts": [
+                {
+                  "text": "Be concise."
+                }
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Goog-Api-Key": [
+              "AIzaSENTINEL-test-key_0123456789"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "text": "",
+          "usage": {
+            "cachedContentTokens": 0,
+            "candidateTokens": 0,
+            "promptTokens": 0,
+            "thoughtsTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contents": [
+          {
+            "parts": [
+              {
+                "text": "Summarize launch"
+              }
+            ],
+            "role": "user"
+          }
+        ],
+        "maxOutputTokens": 128,
+        "model": "gemini-2.5-flash",
+        "responseJsonSchema": {
+          "properties": {
+            "headline": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "responseMimeType": "application/json",
+        "systemInstruction": "Be concise.",
+        "temperature": 0.2,
+        "thinkingBudget": 0
+      },
+      "name": "rejected",
+      "operation": "generateContent"
+    },
+    {
+      "callId": "gemini-defect",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "text": "",
+          "usage": {
+            "cachedContentTokens": 0,
+            "candidateTokens": 0,
+            "promptTokens": 0,
+            "thoughtsTokens": 0,
+            "totalTokens": 0
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contents": [
+          {
+            "parts": [
+              {
+                "text": "Summarize launch"
+              }
+            ],
+            "role": "user"
+          }
+        ],
+        "maxOutputTokens": 128,
+        "model": "../invalid",
+        "responseJsonSchema": {
+          "properties": {
+            "headline": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "responseMimeType": "application/json",
+        "systemInstruction": "Be concise.",
+        "temperature": 0.2,
+        "thinkingBudget": 0
+      },
+      "name": "defect",
+      "operation": "generateContent"
+    },
+    {
+      "callId": "gemini-retry-429",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"RESOURCE_EXHAUSTED\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1beta/models/gemini-2.5-flash:generateContent",
+          "requestBody": {
+            "contents": [
+              {
+                "parts": [
+                  {
+                    "text": "Summarize launch"
+                  }
+                ],
+                "role": "user"
+              }
+            ],
+            "generationConfig": {
+              "maxOutputTokens": 128,
+              "responseJsonSchema": {
+                "properties": {
+                  "headline": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "responseMimeType": "application/json",
+              "temperature": 0.2,
+              "thinkingConfig": {
+                "thinkingBudget": 0
+              }
+            },
+            "systemInstruction": {
+              "parts": [
+                {
+                  "text": "Be concise."
+                }
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Goog-Api-Key": [
+              "AIzaSENTINEL-test-key_0123456789"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contents": [
+          {
+            "parts": [
+              {
+                "text": "Summarize launch"
+              }
+            ],
+            "role": "user"
+          }
+        ],
+        "maxOutputTokens": 128,
+        "model": "gemini-2.5-flash",
+        "responseJsonSchema": {
+          "properties": {
+            "headline": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "responseMimeType": "application/json",
+        "systemInstruction": "Be concise.",
+        "temperature": 0.2,
+        "thinkingBudget": 0
+      },
+      "name": "retry-429",
+      "operation": "generateContent"
+    },
+    {
+      "callId": "gemini-retry-503",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"UNAVAILABLE\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1beta/models/gemini-2.5-flash:generateContent",
+          "requestBody": {
+            "contents": [
+              {
+                "parts": [
+                  {
+                    "text": "Summarize launch"
+                  }
+                ],
+                "role": "user"
+              }
+            ],
+            "generationConfig": {
+              "maxOutputTokens": 128,
+              "responseJsonSchema": {
+                "properties": {
+                  "headline": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "responseMimeType": "application/json",
+              "temperature": 0.2,
+              "thinkingConfig": {
+                "thinkingBudget": 0
+              }
+            },
+            "systemInstruction": {
+              "parts": [
+                {
+                  "text": "Be concise."
+                }
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Goog-Api-Key": [
+              "AIzaSENTINEL-test-key_0123456789"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contents": [
+          {
+            "parts": [
+              {
+                "text": "Summarize launch"
+              }
+            ],
+            "role": "user"
+          }
+        ],
+        "maxOutputTokens": 128,
+        "model": "gemini-2.5-flash",
+        "responseJsonSchema": {
+          "properties": {
+            "headline": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "responseMimeType": "application/json",
+        "systemInstruction": "Be concise.",
+        "temperature": 0.2,
+        "thinkingBudget": 0
+      },
+      "name": "retry-503",
+      "operation": "generateContent"
+    },
+    {
+      "callId": "gemini-transport",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1beta/models/gemini-2.5-flash:generateContent",
+          "requestBody": {
+            "contents": [
+              {
+                "parts": [
+                  {
+                    "text": "Summarize launch"
+                  }
+                ],
+                "role": "user"
+              }
+            ],
+            "generationConfig": {
+              "maxOutputTokens": 128,
+              "responseJsonSchema": {
+                "properties": {
+                  "headline": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "responseMimeType": "application/json",
+              "temperature": 0.2,
+              "thinkingConfig": {
+                "thinkingBudget": 0
+              }
+            },
+            "systemInstruction": {
+              "parts": [
+                {
+                  "text": "Be concise."
+                }
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Goog-Api-Key": [
+              "AIzaSENTINEL-test-key_0123456789"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contents": [
+          {
+            "parts": [
+              {
+                "text": "Summarize launch"
+              }
+            ],
+            "role": "user"
+          }
+        ],
+        "maxOutputTokens": 128,
+        "model": "gemini-2.5-flash",
+        "responseJsonSchema": {
+          "properties": {
+            "headline": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "responseMimeType": "application/json",
+        "systemInstruction": "Be concise.",
+        "temperature": 0.2,
+        "thinkingBudget": 0
+      },
+      "name": "transport",
+      "operation": "generateContent"
+    }
+  ],
+  "schemaVersion": 1
+}

@@ -8,6 +8,17 @@ metadata:
   version: v0.23.0
 spec:
   provider: postgresql
+  languages:
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-postgresql'
+      operations: [query, execute]
+      triggers: []
+    python:
+      version: v0.1.0
+      package: dex-connector-postgresql
+      operations: [query, execute]
+      triggers: []
   codegen:
     go:
       package: postgresql

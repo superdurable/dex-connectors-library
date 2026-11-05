@@ -8,6 +8,17 @@ metadata:
   version: v0.23.0
 spec:
   provider: microsoft-sql-server
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-microsoft-sql-server
+      operations: [query, execute]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-microsoft-sql-server'
+      operations: [query, execute]
+      triggers: []
   codegen:
     go:
       package: sqlserver
