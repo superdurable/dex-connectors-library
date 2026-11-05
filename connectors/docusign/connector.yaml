@@ -94,6 +94,7 @@ spec:
           pkce: false
           tokenEndpointAuthMethod: client_secret_basic
           refresh:
+            missingExpiry: reject
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_request, invalid_client, invalid_grant, unauthorized_client]
       - id: docusign-developer-oauth
@@ -122,6 +123,7 @@ spec:
           pkce: false
           tokenEndpointAuthMethod: client_secret_basic
           refresh:
+            missingExpiry: reject
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_request, invalid_client, invalid_grant, unauthorized_client]
   triggers:

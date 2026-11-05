@@ -78,6 +78,7 @@ spec:
       pkce: false
       tokenRequestEncoding: json
       refresh:
+        missingExpiry: reject
         storedMissingExpiry: refresh
         scopeSeparators: whitespaceAndComma
         acceptsMissingTokenType: true
