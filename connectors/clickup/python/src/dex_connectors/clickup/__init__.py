@@ -34,3 +34,38 @@ from .steps import new_get_task_step as new_get_task_step
 from .steps import new_search_tasks_step as new_search_tasks_step
 from .steps import new_update_task_step as new_update_task_step
 from .steps import new_update_task_tags_step as new_update_task_tags_step
+
+__all__ = [
+    "AddCommentInput",
+    "AddCommentOutput",
+    "Client",
+    "Config",
+    "Connection",
+    "CreateTaskInput",
+    "CreateTaskOutput",
+    "Credentials",
+    "CustomFieldInput",
+    "CustomFieldValue",
+    "FindMemberByEmailInput",
+    "GetTaskInput",
+    "Member",
+    "SearchTasksInput",
+    "SearchTasksOutput",
+    "Task",
+    "TaskStatus",
+    "UpdateTaskInput",
+    "UpdateTaskOutput",
+    "UpdateTaskTagsInput",
+    "UpdateTaskTagsOutput",
+    "User",
+    "new_add_comment_step",
+    "new_connection",
+    "new_connection_with_operations",
+    "new_create_task_step",
+    "new_find_member_by_email_step",
+    "new_get_task_step",
+    "new_project_connection",
+    "new_search_tasks_step",
+    "new_update_task_step",
+    "new_update_task_tags_step",
+]

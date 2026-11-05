@@ -6,6 +6,8 @@ from dataclasses import dataclass, field as _dataclass_field
 from datetime import UTC, datetime
 from typing import Any
 
+from .timestamps import parse_go_datetime, validate_go_datetime
+
 def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
@@ -44,6 +46,12 @@ class SearchTasksInput:
     is_reverse: bool = _dataclass_field(default=False, metadata={'dex_json_name': 'isReverse', 'dex_json_omit_default': True})
     # Page is the zero-based page to read; continue with SearchTasksOutput.NextPage.
     page: int = _dataclass_field(default=0, metadata={'dex_json_omit_default': True})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.updated_after, str):
+            object.__setattr__(self, 'updated_after', parse_go_datetime(self.updated_after, 'updated_after'))
+        elif self.updated_after is not None:
+            validate_go_datetime(self.updated_after, 'updated_after')
 
 
 setattr(SearchTasksInput, '__module__', 'dex_connectors.clickup.models')
@@ -145,6 +153,26 @@ class Task:
     custom_fields: tuple[CustomFieldValue, ...] = _dataclass_field(default=(), metadata={'dex_json_name': 'customFields', 'dex_json_omit_default': True})
 
     def __post_init__(self) -> None:
+        if isinstance(self.due_at, str):
+            object.__setattr__(self, 'due_at', parse_go_datetime(self.due_at, 'due_at'))
+        elif self.due_at is not None:
+            validate_go_datetime(self.due_at, 'due_at')
+        if isinstance(self.start_at, str):
+            object.__setattr__(self, 'start_at', parse_go_datetime(self.start_at, 'start_at'))
+        elif self.start_at is not None:
+            validate_go_datetime(self.start_at, 'start_at')
+        if isinstance(self.created_at, str):
+            object.__setattr__(self, 'created_at', parse_go_datetime(self.created_at, 'created_at'))
+        elif self.created_at is not None:
+            validate_go_datetime(self.created_at, 'created_at')
+        if isinstance(self.updated_at, str):
+            object.__setattr__(self, 'updated_at', parse_go_datetime(self.updated_at, 'updated_at'))
+        elif self.updated_at is not None:
+            validate_go_datetime(self.updated_at, 'updated_at')
+        if isinstance(self.closed_at, str):
+            object.__setattr__(self, 'closed_at', parse_go_datetime(self.closed_at, 'closed_at'))
+        elif self.closed_at is not None:
+            validate_go_datetime(self.closed_at, 'closed_at')
         object.__setattr__(self, 'assignees', _replace_nil_slices(self.assignees, 1))
         object.__setattr__(self, 'tags', _replace_nil_slices(self.tags, 1))
 
@@ -229,6 +257,12 @@ class CreateTaskInput:
     # IsCreatorNotified also notifies the token's user; assignees and watchers are always notified.
     is_creator_notified: bool = _dataclass_field(default=False, metadata={'dex_json_name': 'isCreatorNotified', 'dex_json_omit_default': True})
 
+    def __post_init__(self) -> None:
+        if isinstance(self.due_at, str):
+            object.__setattr__(self, 'due_at', parse_go_datetime(self.due_at, 'due_at'))
+        elif self.due_at is not None:
+            validate_go_datetime(self.due_at, 'due_at')
+
 
 setattr(CreateTaskInput, '__module__', 'dex_connectors.clickup.models')
 
@@ -270,6 +304,12 @@ class UpdateTaskInput:
     add_assignee_ids: tuple[int, ...] = _dataclass_field(default=(), metadata={'dex_json_name': 'addAssigneeIds', 'dex_json_omit_default': True})
     # RemoveAssigneeIDs unassigns these users; a user who is not assigned is ignored.
     remove_assignee_ids: tuple[int, ...] = _dataclass_field(default=(), metadata={'dex_json_name': 'removeAssigneeIds', 'dex_json_omit_default': True})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.due_at, str):
+            object.__setattr__(self, 'due_at', parse_go_datetime(self.due_at, 'due_at'))
+        elif self.due_at is not None:
+            validate_go_datetime(self.due_at, 'due_at')
 
 
 setattr(UpdateTaskInput, '__module__', 'dex_connectors.clickup.models')
@@ -344,6 +384,12 @@ class AddCommentOutput:
     # WasAlreadyApplied reports that an earlier attempt of this Step added the comment without a
     # confirmed outcome and this attempt found it on the task, so nothing was sent again.
     was_already_applied: bool = _dataclass_field(default=False, metadata={'dex_json_name': 'wasAlreadyApplied', 'dex_json_omit_default': True})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.created_at, str):
+            object.__setattr__(self, 'created_at', parse_go_datetime(self.created_at, 'created_at'))
+        elif self.created_at is not None:
+            validate_go_datetime(self.created_at, 'created_at')
 
 
 setattr(AddCommentOutput, '__module__', 'dex_connectors.clickup.models')
