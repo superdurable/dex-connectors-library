@@ -80,6 +80,11 @@ def _failure(operation: str, kind: FailureKind, message: str) -> Failure:
     return Failure(kind, "slack", operation, message)
 
 
+def _encode_query(values: dict[str, str]) -> str:
+    """Match Go url.Values.Encode for sorted query pairs."""
+    return urlencode(sorted(values.items()))
+
+
 def _query_branch(operation: str, branch: str, kind: FailureKind, message: str) -> QueryAttempt[Any]:
     return QueryAttempt.branch_result(
         branch, _empty_output(operation), Receipt(), _failure(operation, kind, message)
@@ -240,7 +245,7 @@ class Client:
     ) -> _Response:
         url = self.endpoint + "/" + api_method
         if query:
-            url += "?" + urlencode(sorted(query.items()))
+            url += "?" + _encode_query(query)
         headers = {"Authorization": "Bearer " + getattr(credentials, token_field).reveal()}
         if payload is not None:
             headers["Content-Type"] = "application/json; charset=utf-8"

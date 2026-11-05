@@ -6,7 +6,22 @@ import json
 
 import pytest
 
+from dex_connectors.zoom.client import _encode_query
 from dex_connectors.zoom.meeting import decode_meeting_body, start_instant
+
+
+@pytest.mark.parametrize(
+    ("values", "encoded"),
+    [
+        ({"z": "a b~*", "a": "x/y"}, "a=x%2Fy&z=a+b~%2A"),
+        ({"k !'()": "~!*'()"}, "k+%21%27%28%29=~%21%2A%27%28%29"),
+        ({"ü": "雪 &+"}, "%C3%BC=%E9%9B%AA+%26%2B"),
+        ({"blank": ""}, "blank="),
+        ({"key": "a.b_c-d~e"}, "key=a.b_c-d~e"),
+    ],
+)
+def test_query_encoding_matches_go_values_encode(values: dict[str, str], encoded: str) -> None:
+    assert _encode_query(values) == encoded
 
 
 @pytest.mark.parametrize(

@@ -6,7 +6,7 @@ import ipaddress
 import json
 import re
 from datetime import UTC, datetime
-from urllib.parse import urlsplit
+from urllib.parse import urlencode, urlsplit
 
 import httpx
 from dex_connectors.sdk import (
@@ -43,6 +43,11 @@ from ._generated.timestamps import parse_go_datetime
 from .models import ListPlaylistTracksInput, PlaylistAlbum, PlaylistArtist, PlaylistTrack, PlaylistTrackPage
 
 _SPOTIFY_ID = re.compile(r"[A-Za-z0-9]{22}\Z")
+
+
+def _encode_query(values: dict[str, str]) -> str:
+    """Match Go url.Values.Encode for sorted query pairs."""
+    return urlencode(sorted(values.items()))
 
 
 def _failure(kind: FailureKind, message: str) -> Failure:
@@ -141,11 +146,10 @@ class ListPlaylistTracksOperation:
             return _branch(
                 DEFECT, FailureKind.AUTHENTICATION, "Spotify authorization is unavailable or revoked"
             )
-        query = f"limit={limit}"
+        query_values = {"limit": str(limit), "offset": str(offset)}
         if market:
-            query += f"&market={market}"
-        query += f"&offset={offset}"
-        target = f"{self.client.endpoint}/playlists/{playlist_id}/items?{query}"
+            query_values["market"] = market
+        target = f"{self.client.endpoint}/playlists/{playlist_id}/items?{_encode_query(query_values)}"
         for request_attempt in range(2):
             try:
                 request = self.client.http_client.build_request(

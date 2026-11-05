@@ -7,7 +7,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
-from urllib.parse import quote_plus
+from urllib.parse import urlencode
 
 import httpx
 from dex_connectors.sdk import (
@@ -56,6 +56,11 @@ class Exchange:
     is_body_too_large: bool = False
     has_body_read_failed: bool = False
     reflects_secret: bool = False
+
+
+def _encode_query(values: dict[str, str]) -> str:
+    """Match Go url.Values.Encode for sorted query pairs."""
+    return urlencode(sorted(values.items()))
 
 
 class Client:
@@ -187,12 +192,7 @@ class Client:
         """Perform one HTTP exchange without following redirects."""
         target = self.endpoint + path
         if query:
-            target += "?" + "&".join(
-                quote_plus(key, safe="")
-                + "="
-                + quote_plus(value, safe="")
-                for key, value in sorted(query.items())
-            )
+            target += "?" + _encode_query(query)
         headers = {"Authorization": "Bearer " + token, "Accept": "application/json"}
         body = None
         if payload is not None:

@@ -7,7 +7,7 @@ import re
 from datetime import datetime, timedelta
 from email._header_value_parser import get_addr_spec
 from typing import Any, cast
-from urllib.parse import quote_plus
+from urllib.parse import urlencode
 
 from dex_connectors.sdk import (
     Call,
@@ -70,11 +70,7 @@ def _equal_fold(left: str, right: str) -> bool:
 
 def _encode_query(values: dict[str, str]) -> str:
     """Encode sorted query pairs like Go's url.Values.Encode."""
-
-    def escape(value: str) -> str:
-        return quote_plus(value, safe="")
-
-    return "&".join(f"{escape(key)}={escape(values[key])}" for key in sorted(values))
+    return urlencode(sorted(values.items()))
 
 
 def _statuses(values: tuple[str, ...], allow_deleted: bool) -> str:

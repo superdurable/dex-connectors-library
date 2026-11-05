@@ -14,6 +14,20 @@ from dex_connectors.xero.client import _error_summary, go_path_escape, go_query
 from dex_connectors.xero.operations import _single, _wire_decimal
 
 
+@pytest.mark.parametrize(
+    ("values", "encoded"),
+    [
+        ({"z": "a b~*", "a": "x/y"}, "a=x%2Fy&z=a+b~%2A"),
+        ({"k !'()": "~!*'()"}, "k+%21%27%28%29=~%21%2A%27%28%29"),
+        ({"ü": "雪 &+"}, "%C3%BC=%E9%9B%AA+%26%2B"),
+        ({"blank": ""}, "blank="),
+        ({"key": "a.b_c-d~e"}, "key=a.b_c-d~e"),
+    ],
+)
+def test_query_encoding_matches_go_values_encode(values: dict[str, str], encoded: str) -> None:
+    assert go_query(values) == encoded
+
+
 class _FailedCredentials:
     def __init__(self, error: Exception) -> None:
         self.error = error
@@ -48,6 +62,30 @@ def test_error_summary_uses_only_safe_tokens_and_bounded_validation_count() -> N
     assert _error_summary(body, "secret") == (
         " [ValidationException; error 42; BadRequest; 2 validation errors]"
     )
+
+
+@pytest.mark.asyncio
+async def test_success_body_interruption_retries_with_transport_failure() -> None:
+    """A 2xx header does not turn an interrupted provider body into success."""
+    import httpx
+    from dex_connectors.sdk import SecretString, StaticCredentialProvider
+
+    from dex_connectors.xero import Credentials
+
+    class InterruptedBody(httpx.AsyncByteStream):
+        async def __aiter__(self):  # type: ignore[no-untyped-def]
+            yield b'{"Contacts":'
+            raise httpx.ReadError("interrupted")
+
+    reference = ConnectionRef("xero", "books")
+    credentials = Credentials(auth_method_id="custom-connection", access_token=SecretString("inert-token"))
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, stream=InterruptedBody()))
+    ) as transport:
+        client = Client(Config(), StaticCredentialProvider({reference: credentials}), transport)
+        result = await client.exchange(_call(), "listContacts", "GET", "/Contacts")
+    assert result.outcome == "retry"
+    assert result.error is not None and result.error.kind == FailureKind.TRANSPORT
 
 
 def test_local_provider_url_rejects_non_loopback_host() -> None:

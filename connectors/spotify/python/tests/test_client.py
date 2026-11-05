@@ -9,7 +9,21 @@ import pytest
 from dex_connectors.sdk import ConnectionRef, SecretString, StaticCredentialProvider
 
 from dex_connectors.spotify import Client, Config, Credentials
-from dex_connectors.spotify.client import _decode_page
+from dex_connectors.spotify.client import _decode_page, _encode_query
+
+
+@pytest.mark.parametrize(
+    ("values", "encoded"),
+    [
+        ({"z": "a b~*", "a": "x/y"}, "a=x%2Fy&z=a+b~%2A"),
+        ({"k !'()": "~!*'()"}, "k+%21%27%28%29=~%21%2A%27%28%29"),
+        ({"ü": "雪 &+"}, "%C3%BC=%E9%9B%AA+%26%2B"),
+        ({"blank": ""}, "blank="),
+        ({"key": "a.b_c-d~e"}, "key=a.b_c-d~e"),
+    ],
+)
+def test_query_encoding_matches_go_values_encode(values: dict[str, str], encoded: str) -> None:
+    assert _encode_query(values) == encoded
 
 
 @pytest.fixture
