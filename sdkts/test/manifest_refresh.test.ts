@@ -8,6 +8,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { SecretString } from '../src/credentials.js';
 import { ReauthorizationRequiredError, RetryError } from '../src/errors.js';
 import { ManifestCredentialRefreshDriver } from '../src/oauthtoken/index.js';
+import { AddressRefusal } from '../src/providerhttp/index.js';
 
 interface Credentials {
   accessToken: SecretString;
@@ -338,6 +339,92 @@ describe('manifest credential refresh', () => {
       now: new Date(),
     }, new AbortController().signal);
     expect(result.credentials.accessToken.reveal()).toBe('minted');
+  });
+
+  it('validates and canonicalizes Microsoft tenant templates before dispatch', async () => {
+    const requests: string[] = [];
+    const auth = {
+      type: 'apiKey', fields: [
+        { name: 'tenant_id', type: 'string' }, { name: 'client_id', type: 'string' },
+        { name: 'client_secret', type: 'secretString' }, { name: 'access_token', type: 'secretString' },
+      ], clientCredentials: {
+        tokenEndpoint: { template: 'https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token',
+          templateValueRules: { tenant_id: { trimSpace: true, lowercase: true, maxBytes: 253,
+            patterns: ['^[0-9A-Fa-f]{8}(?:-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}$',
+              '^(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)+[A-Za-z]{2,63}$'],
+            reject: ['common', 'organizations', 'consumers'] } } },
+        trimClientID: true,
+        clientIDCredential: 'client_id', clientSecretCredential: 'client_secret',
+        scopes: ['https://graph.microsoft.com/.default'],
+        credentialMappings: [{ credential: 'access_token', source: 'access_token' }],
+      },
+    };
+    const driver = new ManifestCredentialRefreshDriver<{ tenantId: string; clientId: string; clientSecret: SecretString; accessToken: SecretString }>({
+      providerName: 'Microsoft', auth,
+      credentialFields: { tenant_id: 'tenantId', client_id: 'clientId', client_secret: 'clientSecret', access_token: 'accessToken' },
+      fetch: async (input, init) => {
+        requests.push(String(input));
+        expect(new URLSearchParams(String(init?.body)).get('client_id')).toBe('client');
+        return Response.json({ access_token: 'new', expires_in: 3600, token_type: 'Bearer' });
+      },
+    });
+    const refresh = (tenantId: string) => driver.refresh({ credentials: {
+      tenantId, clientId: '  client  ', clientSecret: new SecretString('secret'), accessToken: new SecretString(''),
+    }, now: new Date() }, new AbortController().signal);
+    for (const tenant of ['common', ' Organizations ', 'CONSUMERS', 'contoso', 'a/b.com', 'x'.repeat(254)])
+      await expect(refresh(tenant)).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+    expect(requests).toEqual([]);
+    await refresh('  Contoso.OnMicrosoft.com  ');
+    expect(requests).toEqual(['https://login.microsoftonline.com/contoso.onmicrosoft.com/oauth2/v2.0/token']);
+  });
+
+  it('checks complete template alternatives and validates rules at construction', async () => {
+    const declaration = { clientCredentials: {
+      tokenEndpoint: { template: 'https://example.test/{tenant}', templateValueRules: {
+        tenant: { patterns: ['a|ab'], maxBytes: 253, lowercase: false },
+      } },
+      clientIDCredential: 'client_id', clientSecretCredential: 'client_secret',
+      credentialMappings: [{ credential: 'access_token', source: 'access_token' }],
+    } };
+    const fields = { tenant: 'tenant', client_id: 'client_id', client_secret: 'client_secret', access_token: 'access_token' };
+    const endpoints: string[] = [];
+    const clientIDs: string[] = [];
+    const createDriver = () => new ManifestCredentialRefreshDriver({ providerName: 'Example', auth: declaration,
+      credentialFields: fields, fetch: async (input, init) => { endpoints.push(String(input));
+        clientIDs.push(new URLSearchParams(String(init?.body)).get('client_id') ?? '');
+        return Response.json({ access_token: 'next', expires_in: 3600, token_type: 'Bearer' }); } });
+    const refresh = (tenant: string, clientID = 'client') => createDriver().refresh({ credentials: {
+      tenant, client_id: clientID, client_secret: new SecretString('secret'), access_token: new SecretString(''),
+    }, now: new Date() }, new AbortController().signal);
+    await refresh('ab');
+    expect(endpoints).toEqual(['https://example.test/ab']);
+    const rule = declaration.clientCredentials.tokenEndpoint.templateValueRules.tenant as Record<string, unknown>;
+    rule.patterns = ['[A-Za-z]+'];
+    await refresh('A'.repeat(253));
+    await expect(refresh('A'.repeat(254))).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+    rule.maxBytes = 0;
+    await expect(refresh('A')).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+    rule.maxBytes = 253;
+    await refresh('AbC');
+    expect(endpoints.at(-1)).toBe('https://example.test/AbC');
+    expect(clientIDs.at(-1)).toBe('client');
+    (declaration.clientCredentials as Record<string, unknown>).trimClientID = false;
+    await refresh('AbC', '  client  ');
+    expect(clientIDs.at(-1)).toBe('  client  ');
+    for (const value of ['K', 'ſ'])
+      await expect(refresh(value)).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+    for (const invalidPattern of ['(?=a)a', '(a)\\1', 'a)|(b', '\\p{L}', '\\Qa\\E', '[[:alpha:]]', '(?i)a']) {
+      rule.patterns = [invalidPattern];
+      expect(createDriver, invalidPattern).toThrow(TypeError);
+    }
+    rule.patterns = ['\\(?x'];
+    expect(createDriver).not.toThrow();
+    rule.patterns = ['[A-Za-z]+'];
+    for (const invalidRule of [{ patterns: ['(?i)abc'] }, { reject: [42] }, { unknown: true }]) {
+      Object.assign(rule, invalidRule);
+      expect(createDriver).toThrow(TypeError);
+      for (const key of Object.keys(invalidRule)) delete rule[key];
+    }
   });
 
   it('rotates both declared Slack-style grants and keeps the earliest expiry', async () => {
@@ -743,7 +830,15 @@ describe('manifest token endpoint address policy', () => {
       ]) {
         const driver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth: configured,
           credentialFields, settings: { tokenEndpoint } });
-        await expect(driver.refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(RetryError);
+        await expect(driver.refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(AddressRefusal);
+        expect(globalFetch, tokenEndpoint).not.toHaveBeenCalled();
+        expect(request, tokenEndpoint).not.toHaveBeenCalled();
+      }
+      for (const tokenEndpoint of ['https://identity.example/token#fragment', 'https://identity.example/a b',
+        'https://identity.example/é', 'https://identity.example/\tpath']) {
+        const driver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth: configured,
+          credentialFields, settings: { tokenEndpoint } });
+        await expect(driver.refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(ReauthorizationRequiredError);
         expect(globalFetch, tokenEndpoint).not.toHaveBeenCalled();
         expect(request, tokenEndpoint).not.toHaveBeenCalled();
       }

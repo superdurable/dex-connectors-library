@@ -281,6 +281,15 @@ await fence.recordProviderId(result.providerId);
 
 ## Release notes
 
+### 0.7.0
+
+Manifest token endpoint templates now apply declared `templateValueRules` to each placeholder before path escaping. A rule can trim Go Unicode whitespace, reject names, bound UTF-8 length, accept full-match patterns, and lowercase the accepted value. An invalid value requires reauthorization before any token request. The Microsoft app-only manifests use this to reject multi-tenant aliases and invalid tenants.
+Template patterns use a portable Go and JavaScript subset: lookaround, backreferences, Unicode property escapes, quoted literals, POSIX classes, and inline flags are rejected when the manifest is loaded.
+`trimClientID` on refresh or client-credentials declarations trims the client ID sent in the token request when the Go driver does so.
+JWT-bearer grants accept a PEM private key directly from a credential field, as Salesforce declares, without requiring a JSON key credential.
+Private-network HTTP token endpoints also reject fragments and non-printable or non-ASCII URL text before transport, matching the configurable Go connector.
+Migration: `TokenEndpoint` accepts uppercase ASCII `HTTP://` and `HTTPS://` schemes; leading whitespace remains invalid. An address-policy refusal retains its `AddressRefusal` type so a connector can classify it as a terminal validation defect.
+
 ### 0.6.0
 
 Manifest token grants accept `responseScopes: ignore` when the Go credential driver does not inspect reported scope values. The default checks returned scopes against declared requirements. Retryable token endpoint failures from manifest refresh now throw `RetryError`. Manifest grants also check HubSpot scope arrays, Microsoft Graph resource-prefixed scopes, Zoho and Salesforce provider origins, Pipedrive domain changes, one-hour expiry caps, and monday.com JWT expiry. Each scope-array element is one name, including any comma it contains. A configurable token endpoint can use the private-network HTTP address policy.
