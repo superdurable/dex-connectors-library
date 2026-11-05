@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-doist-todoist",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Todoist task operations for Dex Flows",
   "repository": {
     "type": "git",

@@ -153,17 +153,22 @@ clock for expiry and JWT claims. A credential dataclass for an authorization
 declaration with several `methods` carries `auth_method_id`; an empty value
 selects the declaration's `defaultMethod`.
 
-The manifest's `missingExpiry` declaration controls the decision when stored
-expiry is absent: `keep` (the default) leaves a present access token in place,
-and a declared lifetime refreshes it. The driver accepts
+The manifest's `storedMissingExpiry: refresh` declaration refreshes a stored
+access token without recorded expiry; `keep` is the default and leaves a
+present token in place. The separate `missingExpiry` declaration controls
+token responses without `expires_in`.
+The driver accepts
 `acceptsMissingTokenType: true` in a refresh declaration for a provider that
 omits `token_type`. A provider such as Slack that returns `bot` or `user` must
 declare grant `acceptedTokenTypes`. Refresh validation uses `requiredScopes`
 when declared, and a grant can override `exactScopes` or
-`acceptsMissingTokenType`. `refresh.scopeSeparators` selects `whitespace`
+`acceptsMissingTokenType`. `acceptedScopeSets` applies to every grant under
+`refresh.grants` and excludes `offline_access` from response checks.
+`refresh.scopeSeparators` selects `whitespace`
 (the default) or `whitespaceAndComma` for both exact and all-scope checks.
-A response lacking `expires_in` is retryable unless
-the manifest declares `missingExpiry`. The default requires `Bearer`.
+A response lacking `expires_in` is retryable by default or with
+`missingExpiry: reject`; `keep` returns an expired result, while a positive
+declared lifetime supplies its expiry. The default requires `Bearer`.
 Only `refresh.allowsPublicClient: true` permits a public-client refresh request
 with a blank client secret; other blank secrets require reauthorization before
 any provider request.
@@ -254,6 +259,14 @@ The core example sends through an in-process HTTP transport.
 
 ## Version history
 
+- `0.5.0`: Manifest refresh accepts alternative scope sets and validates
+  declared delegated JWT subjects using Go `mail.ParseAddress` address equality
+  before token requests. `missingExpiry: reject` requires a positive
+  `expires_in`; a malformed successful response remains retryable.
+- `0.4.0`: Added `storedMissingExpiry` for refresh-token, client-credentials,
+  and JWT-bearer grants. A stored token without expiry can now trigger refresh
+  even when a replacement response must include `expires_in`. `missingExpiry`
+  no longer implicitly triggers refresh of a stored token without expiry.
 - `0.3.0`: Added opt-in provider address policies and text generation policy
   forwarding. The unrestricted default keeps the `0.2.0` network behavior.
 - `0.2.0`: Added portable text generation and single-dispatch checkpoints.

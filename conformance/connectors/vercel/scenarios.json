@@ -1,0 +1,627 @@
+{
+  "connector": "vercel",
+  "scenarios": [
+    {
+      "callId": "c2771e9c-a223-50fd-86a1-f48bd72646b0",
+      "exchanges": [
+        {
+          "body": "{\"deployments\":[{\"uid\":\"dpl_meridian1\",\"name\":\"meridian-web\",\"url\":\"meridian-web.vercel.app\",\"state\":\"READY\",\"created\":1761436800000}],\"pagination\":{\"next\":null}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v6/deployments",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "deployments": [
+            {
+              "created": 1761436800000,
+              "id": "",
+              "name": "meridian-web",
+              "readyState": "",
+              "state": "READY",
+              "uid": "dpl_meridian1",
+              "url": "meridian-web.vercel.app"
+            }
+          ],
+          "pagination": {
+            "next": null
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "teamId": "team_123"
+      },
+      "name": "listDeployments-success",
+      "operation": "listDeployments"
+    },
+    {
+      "callId": "aa5f1002-cc18-5555-b7af-ac8266fc4489",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "deployments": [],
+          "pagination": {
+            "next": null
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listDeployments-defect",
+      "operation": "listDeployments"
+    },
+    {
+      "callId": "6d3e35c3-e95b-5329-b849-d3952b49d293",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v6/deployments",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "deployments": [],
+          "pagination": {
+            "next": null
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "teamId": "team_123"
+      },
+      "name": "listDeployments-rejected",
+      "operation": "listDeployments"
+    },
+    {
+      "callId": "4ae22d92-c634-513e-82fa-20f58a5c7407",
+      "exchanges": [
+        {
+          "body": "{\"wrong\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v6/deployments",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "deployments": [],
+          "pagination": {
+            "next": null
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "teamId": "team_123"
+      },
+      "name": "listDeployments-invalid-response",
+      "operation": "listDeployments"
+    },
+    {
+      "callId": "97639e86-733a-501c-90d4-64b5ea1f4edf",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v6/deployments",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "teamId": "team_123"
+      },
+      "name": "listDeployments-retry-429",
+      "operation": "listDeployments"
+    },
+    {
+      "callId": "27e6fc36-8da2-5222-9de0-e781057d54ba",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v6/deployments",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "teamId": "team_123"
+      },
+      "name": "listDeployments-retry-503",
+      "operation": "listDeployments"
+    },
+    {
+      "callId": "a0d515df-43c3-5bbd-8820-6eb89cb9cbfd",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v6/deployments",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "teamId": "team_123"
+      },
+      "name": "listDeployments-transport",
+      "operation": "listDeployments"
+    },
+    {
+      "callId": "fc259c64-3c20-567e-9ad8-f34d334d8cb9",
+      "exchanges": [
+        {
+          "body": "{\"uid\":\"dpl_meridian1\",\"name\":\"meridian-web\",\"url\":\"meridian-web.vercel.app\",\"readyState\":\"READY\",\"created\":1761436800000}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v13/deployments/dpl_meridian1",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "created": 1761436800000,
+          "id": "",
+          "name": "meridian-web",
+          "readyState": "READY",
+          "state": "",
+          "uid": "dpl_meridian1",
+          "url": "meridian-web.vercel.app"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "idOrUrl": "dpl_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "getDeployment-success",
+      "operation": "getDeployment"
+    },
+    {
+      "callId": "dcbbdcec-6158-57fc-97a7-ffda7f680eab",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v13/deployments/dpl_meridian1",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "created": 0,
+          "id": "",
+          "name": "",
+          "readyState": "",
+          "state": "",
+          "uid": "",
+          "url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "idOrUrl": "dpl_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "getDeployment-not-found",
+      "operation": "getDeployment"
+    },
+    {
+      "callId": "636abfb9-d613-5181-abb5-3962da337502",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "created": 0,
+          "id": "",
+          "name": "",
+          "readyState": "",
+          "state": "",
+          "uid": "",
+          "url": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "idOrUrl": " "
+      },
+      "name": "getDeployment-defect",
+      "operation": "getDeployment"
+    },
+    {
+      "callId": "dc9ac801-223e-5724-8235-f2c7d1ca5210",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v13/deployments/dpl_meridian1",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "created": 0,
+          "id": "",
+          "name": "",
+          "readyState": "",
+          "state": "",
+          "uid": "",
+          "url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "idOrUrl": "dpl_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "getDeployment-rejected",
+      "operation": "getDeployment"
+    },
+    {
+      "callId": "5cb16aff-fdca-5a23-a3cd-6e5626a9971d",
+      "exchanges": [
+        {
+          "body": "{\"wrong\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v13/deployments/dpl_meridian1",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "created": 0,
+          "id": "",
+          "name": "",
+          "readyState": "",
+          "state": "",
+          "uid": "",
+          "url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "idOrUrl": "dpl_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "getDeployment-invalid-response",
+      "operation": "getDeployment"
+    },
+    {
+      "callId": "ae852434-9ff2-53b4-8db1-cb44fb1abda6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v13/deployments/dpl_meridian1",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "idOrUrl": "dpl_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "getDeployment-retry-429",
+      "operation": "getDeployment"
+    },
+    {
+      "callId": "d8d0d4b0-0f54-5981-8e92-16753b93c21f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v13/deployments/dpl_meridian1",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "idOrUrl": "dpl_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "getDeployment-retry-503",
+      "operation": "getDeployment"
+    },
+    {
+      "callId": "f9524911-1844-5aa7-b900-63bf539d78ff",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v13/deployments/dpl_meridian1",
+          "query": {
+            "teamId": [
+              "team_123"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-accesstoken"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "idOrUrl": "dpl_meridian1",
+        "teamId": "team_123"
+      },
+      "name": "getDeployment-transport",
+      "operation": "getDeployment"
+    }
+  ],
+  "schemaVersion": 1
+}
