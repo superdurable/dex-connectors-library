@@ -3,7 +3,7 @@
 # connectorctl: handwritten facade
 """Manifest-backed OpenAI scripts for consuming Flow tests."""
 
-from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
+from dex_connectors.sdk import Call, ConnectionRef, Failure, FailureKind, MutationAttempt, Receipt
 from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..client import (
@@ -17,6 +17,7 @@ from ..client import (
     RETRIEVE_RESPONSE_DEFINITION,
 )
 from ..connection import Connection, new_connection_with_operations
+from ..mock_checks import validate_create_response_answer, validate_create_response_request
 from ..models import CreateRequest, Response, RetrieveRequest, Usage
 
 _STORED_SUMMARY = Response(
@@ -107,11 +108,25 @@ def retrieve_response_rejected() -> Case[Response]:
     )
 
 
+class _CheckedCreateResponse(Mutation[CreateRequest, Response]):
+    async def invoke(self, call: Call, input: CreateRequest) -> MutationAttempt[Response]:
+        failure = validate_create_response_request(input)
+        if failure is not None:
+            return MutationAttempt.branch_result("defect", Response(), Receipt(), failure)
+        attempt = await super().invoke(call, input)
+        if attempt.branch == COMPLETED:
+            assert attempt.value is not None
+            validate_create_response_answer(input, attempt.value)
+        return attempt
+
+
 class Mock:
     """Script OpenAI operations, defaulting to the manifest's default answers."""
 
     def __init__(self, connection_name: str = "openai") -> None:
-        self.create_response_script: Mutation[CreateRequest, Response] = Mutation(CREATE_RESPONSE_DEFINITION)
+        self.create_response_script: Mutation[CreateRequest, Response] = _CheckedCreateResponse(
+            CREATE_RESPONSE_DEFINITION
+        )
         self.create_response_script.default(create_response_stored_summary())
         self.retrieve_response_script: Query[RetrieveRequest, Response] = Query(RETRIEVE_RESPONSE_DEFINITION)
         self.retrieve_response_script.default(retrieve_response_stored_response())

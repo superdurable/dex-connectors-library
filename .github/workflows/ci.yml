@@ -292,10 +292,16 @@ jobs:
           DATABASE_PORT: ${{ matrix.port }}
         run: |
           for _ in $(seq 1 120); do
-            if (echo > /dev/tcp/127.0.0.1/"$DATABASE_PORT") 2>/dev/null; then break; fi
+            if [ "$CONNECTOR" = connectors/postgresql ]; then
+              if docker exec "${{ job.services.database.id }}" pg_isready -h 127.0.0.1 -p 5432 -U postgres -d connector_test >/dev/null 2>&1; then break; fi
+            elif (echo > /dev/tcp/127.0.0.1/"$DATABASE_PORT") 2>/dev/null; then break; fi
             sleep 1
           done
-          (echo > /dev/tcp/127.0.0.1/"$DATABASE_PORT") 2>/dev/null
+          if [ "$CONNECTOR" = connectors/postgresql ]; then
+            docker exec "${{ job.services.database.id }}" pg_isready -h 127.0.0.1 -p 5432 -U postgres -d connector_test
+          else
+            (echo > /dev/tcp/127.0.0.1/"$DATABASE_PORT") 2>/dev/null
+          fi
           case "$CONNECTOR" in
             connectors/postgresql)
               export POSTGRESQL_CONNECTOR_TEST_HOST=127.0.0.1 POSTGRESQL_CONNECTOR_TEST_PORT=5432
@@ -306,6 +312,13 @@ jobs:
               export MYSQL_CONNECTOR_TEST_HOST=127.0.0.1 MYSQL_CONNECTOR_TEST_PORT=3306
               export MYSQL_CONNECTOR_TEST_DATABASE=connector_test MYSQL_CONNECTOR_TEST_USER=root
               export MYSQL_CONNECTOR_TEST_PASSWORD=connector_test MYSQL_CONNECTOR_TEST_SSL_MODE=disabled
+              for _ in $(seq 1 90); do
+                if docker exec '${{ job.services.database.id }}' mysqladmin ping -h127.0.0.1 --protocol=tcp -uroot -pconnector_test --silent; then break; fi
+                sleep 1
+              done
+              docker exec '${{ job.services.database.id }}' mysqladmin ping -h127.0.0.1 --protocol=tcp -uroot -pconnector_test --silent
+              docker cp '${{ job.services.database.id }}:/var/lib/mysql/ca.pem' "$RUNNER_TEMP/mysql-ca.pem"
+              export MYSQL_TLS_CA_FILE="$RUNNER_TEMP/mysql-ca.pem" MYSQL_SSL_CA="$RUNNER_TEMP/mysql-ca.pem"
               ;;
             connectors/microsoft/sql-server)
               export SQLSERVER_CONNECTOR_TEST_HOST=127.0.0.1 SQLSERVER_CONNECTOR_TEST_PORT=1433

@@ -373,7 +373,13 @@ func TestQueryRowsCancelsAStatementThatExceedsStatementTimeout(t *testing.T) {
 	require.Equal(t, sqlserver.QueryRowsBranchProviderRejected, result.Branch, result.Failure)
 	require.Equal(t, sdkgo.FailureAvailability, result.Failure.Kind)
 	require.Contains(t, result.Failure.Message, "statementTimeout")
-	require.Len(t, server.EventsOfKind(scriptedtds.EventAttention), 1, "the driver canceled the statement on the server")
+	statements := server.EventsOfKind(scriptedtds.EventBatch)
+	require.Len(t, statements, 1, "the timed-out statement was sent only once")
+	attentions := server.EventsOfKind(scriptedtds.EventAttention)
+	require.NotEmpty(t, attentions, "the driver canceled the statement on the server")
+	for _, attention := range attentions {
+		require.Equal(t, statements[0].Connection, attention.Connection)
+	}
 	require.Contains(t, server.EventsOfKind(scriptedtds.EventSessionSettings)[0].Text, "SET LOCK_TIMEOUT 300;")
 }
 

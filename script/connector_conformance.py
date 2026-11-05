@@ -301,6 +301,18 @@ def mutation_self_test(connectors: list[Path]) -> None:
                                           for exchange in item["exchanges"])), None)
         keyed_scenario = next((item for item in original["scenarios"]
                                if item.get("idempotencyKey")), None)
+        heartbeat_scenario = next((item for item in original["scenarios"]
+                                   if any("heartbeat" in intermediate
+                                          for intermediate in item.get("intermediate", []))), None)
+        final_heartbeat_scenario = next((item for item in original["scenarios"]
+                                         if "heartbeat" in item["expected"]), None)
+        cleared_heartbeat_scenario = next((item for item in original["scenarios"]
+                                           if item["expected"].get("heartbeat") == {"cleared": True}
+                                           or any(value.get("heartbeat") == {"cleared": True}
+                                                  for value in item.get("intermediate", []))), None)
+        no_heartbeat_scenario = next((item for item in original["scenarios"]
+                                      if declared_operations[item["operation"]]["kind"] == "mutation"
+                                      and "priorHeartbeat" in item and "heartbeat" not in item["expected"]), None)
         mutation_sources.extend((name, source) for name, source in (
             ("dropped-query", query_scenario), ("renamed-query", query_scenario),
             ("renamed-optional-query", optional_query_scenario),
@@ -310,6 +322,11 @@ def mutation_self_test(connectors: list[Path]) -> None:
             ("multipart-part-name", multipart_scenario), ("multipart-part-body", multipart_scenario),
             ("multipart-missing-part", multipart_scenario), ("multipart-part-order", multipart_scenario),
             ("wrong-nonempty-list", list_output_scenario),
+            ("wrong-heartbeat-shape", heartbeat_scenario),
+            ("port-heartbeat-shape", heartbeat_scenario),
+            ("present-null-for-clear", cleared_heartbeat_scenario),
+            ("wrong-final-heartbeat-shape", final_heartbeat_scenario),
+            ("extra-heartbeat", no_heartbeat_scenario),
         ) if source is not None)
         for mutation, source in mutation_sources:
             changed = json.loads(json.dumps(source))
@@ -351,6 +368,13 @@ def mutation_self_test(connectors: list[Path]) -> None:
                 key = next(key for key, value in changed["expected"]["output"].items()
                            if isinstance(value, list))
                 changed["expected"]["output"][key] = ["__wrong_nonempty_list__"]
+            elif mutation == "wrong-heartbeat-shape":
+                intermediate = next(value for value in changed["intermediate"] if "heartbeat" in value)
+                intermediate["heartbeat"] = {"__wrong_heartbeat_shape__": True}
+            elif mutation == "wrong-final-heartbeat-shape":
+                changed["expected"]["heartbeat"] = {"__wrong_heartbeat_shape__": True}
+            elif mutation in ("port-heartbeat-shape", "present-null-for-clear", "extra-heartbeat"):
+                pass
             elif mutation.startswith("mime-"):
                 exchange = next(exchange for exchange in changed["exchanges"]
                                 if "$rawMime" in exchange.get("requestBody", {}))
@@ -388,10 +412,18 @@ def mutation_self_test(connectors: list[Path]) -> None:
             with tempfile.TemporaryDirectory(prefix="connector-conformance-") as directory:
                 fixture = Path(directory) / "scenarios.json"
                 fixture.write_text(json.dumps(document))
-                for language, (command, cwd) in commands.items():
+                selected_commands = ({language: value for language, value in commands.items() if language != "go"}
+                                     if mutation in ("port-heartbeat-shape", "present-null-for-clear", "extra-heartbeat") else commands)
+                for language, (command, cwd) in selected_commands.items():
                     result = subprocess.run(command, cwd=cwd, text=True, capture_output=True, check=False,
                                             env={**os.environ, "GOWORK": "off",
-                                                 "CONNECTOR_CONFORMANCE_FIXTURE": str(fixture)})
+                                                 "CONNECTOR_CONFORMANCE_FIXTURE": str(fixture),
+                                                 **({"CONNECTOR_CONFORMANCE_MUTATE_HEARTBEAT": changed["name"]}
+                                                    if mutation == "port-heartbeat-shape" else {}),
+                                                 **({"CONNECTOR_CONFORMANCE_MUTATE_CLEAR_AS_NULL": changed["name"]}
+                                                    if mutation == "present-null-for-clear" else {}),
+                                                 **({"CONNECTOR_CONFORMANCE_MUTATE_EXTRA_HEARTBEAT": changed["name"]}
+                                                    if mutation == "extra-heartbeat" else {})})
                     if result.returncode == 0:
                         raise AssertionError(f"{relative} {language} runner accepted {mutation} mutation")
                     if mutation != "pending-passing-go" and changed["name"] not in result.stdout + result.stderr:
@@ -419,10 +451,15 @@ def main() -> None:
         print(json.dumps({"include": email_ci_matrix(paths)}))
         return
     if arguments.mutation_self_test:
-        connectors = changed_connectors(changed_paths(arguments.base, arguments.head)) if arguments.base else sorted(
-            ROOT / "connectors" / fixture.relative_to(ROOT / "conformance/connectors").parent
-            for fixture in (ROOT / "conformance/connectors").rglob("scenarios.json")
-        )
+        if arguments.connector:
+            connectors = sorted({(ROOT / path).resolve() for path in arguments.connector})
+        elif arguments.base:
+            connectors = changed_connectors(changed_paths(arguments.base, arguments.head))
+        else:
+            connectors = sorted(
+                ROOT / "connectors" / fixture.relative_to(ROOT / "conformance/connectors").parent
+                for fixture in (ROOT / "conformance/connectors").rglob("scenarios.json")
+            )
         mutation_self_test([connector for connector in connectors
                             if str(connector.relative_to(ROOT)) not in exemptions])
         return
