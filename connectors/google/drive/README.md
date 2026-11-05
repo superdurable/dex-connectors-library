@@ -24,6 +24,10 @@ The connector does not modify, move, share, or delete existing files, and this
 release has no Triggers. A Drive change Trigger needs a durable change-cursor
 design that is still open.
 
+## TypeScript package
+
+The `@superdurable/connector-google-drive` TypeScript package at `v0.1.0` exposes the same four operations. Its [runnable text-copy Flow](typescript/examples/text-copy/README.md) uses a Dex Worker and the static `google-drive-files` connection. Go-recorded provider conformance scenarios, generated OAuth refresh agreement tests, and a real Dex integration test cover this port with a local Drive stand-in. Live Google authorization and API behavior remain unverified.
+
 ## Scopes
 
 Both authorization methods request exactly these canonical scopes:

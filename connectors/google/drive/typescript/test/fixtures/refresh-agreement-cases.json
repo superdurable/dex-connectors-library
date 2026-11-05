@@ -1,0 +1,369 @@
+[
+  {
+    "name": "google-oauth refresh",
+    "methodId": "google-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://oauth2.googleapis.com/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [
+      "invalid_grant",
+      "invalid_client",
+      "unauthorized_client"
+    ]
+  },
+  {
+    "name": "google-oauth refresh with unaccepted token type",
+    "expectedError": "retryable",
+    "methodId": "google-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://oauth2.googleapis.com/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file",
+      "token_type": "manifest-unaccepted-token-type"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": []
+  },
+  {
+    "name": "google-oauth refresh without token type",
+    "expectedError": "retryable",
+    "methodId": "google-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://oauth2.googleapis.com/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": []
+  },
+  {
+    "name": "google-oauth refresh with partial scopes",
+    "expectedError": "reauthorization",
+    "methodId": "google-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://oauth2.googleapis.com/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "manifest-ungranted-scope",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": []
+  },
+  {
+    "name": "google-oauth refresh without expires_in",
+    "expectedError": "retryable",
+    "methodId": "google-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://oauth2.googleapis.com/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": []
+  },
+  {
+    "name": "workspace-domain-delegation jwtBearer",
+    "methodId": "workspace-domain-delegation",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "delegated_user": "manifest-user@example.com",
+      "service_account_key": ""
+    },
+    "endpoint": "https://manifest.example.com/token",
+    "encoding": "form",
+    "clientAuth": "none",
+    "parameters": {
+      "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [
+      "invalid_grant",
+      "invalid_client",
+      "unauthorized_client"
+    ],
+    "keyCredential": "service_account_key",
+    "privateKeyMember": "private_key",
+    "keyMembers": {
+      "client_email": "manifest-issuer@example.com",
+      "token_uri": "https://manifest.example.com/token"
+    },
+    "assertion": {
+      "issuer": "manifest-issuer@example.com",
+      "subject": "manifest-user@example.com",
+      "audience": "https://manifest.example.com/token",
+      "scope": "https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file",
+      "lifetimeSeconds": 3600
+    }
+  },
+  {
+    "name": "workspace-domain-delegation jwtBearer with unaccepted token type",
+    "expectedError": "retryable",
+    "methodId": "workspace-domain-delegation",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "delegated_user": "manifest-user@example.com",
+      "service_account_key": ""
+    },
+    "endpoint": "https://manifest.example.com/token",
+    "encoding": "form",
+    "clientAuth": "none",
+    "parameters": {
+      "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file",
+      "token_type": "manifest-unaccepted-token-type"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "keyCredential": "service_account_key",
+    "privateKeyMember": "private_key",
+    "keyMembers": {
+      "client_email": "manifest-issuer@example.com",
+      "token_uri": "https://manifest.example.com/token"
+    },
+    "assertion": {
+      "issuer": "manifest-issuer@example.com",
+      "subject": "manifest-user@example.com",
+      "audience": "https://manifest.example.com/token",
+      "scope": "https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file",
+      "lifetimeSeconds": 3600
+    }
+  },
+  {
+    "name": "workspace-domain-delegation jwtBearer without token type",
+    "expectedError": "retryable",
+    "methodId": "workspace-domain-delegation",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "delegated_user": "manifest-user@example.com",
+      "service_account_key": ""
+    },
+    "endpoint": "https://manifest.example.com/token",
+    "encoding": "form",
+    "clientAuth": "none",
+    "parameters": {
+      "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "keyCredential": "service_account_key",
+    "privateKeyMember": "private_key",
+    "keyMembers": {
+      "client_email": "manifest-issuer@example.com",
+      "token_uri": "https://manifest.example.com/token"
+    },
+    "assertion": {
+      "issuer": "manifest-issuer@example.com",
+      "subject": "manifest-user@example.com",
+      "audience": "https://manifest.example.com/token",
+      "scope": "https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file",
+      "lifetimeSeconds": 3600
+    }
+  },
+  {
+    "name": "workspace-domain-delegation jwtBearer with partial scopes",
+    "expectedError": "reauthorization",
+    "methodId": "workspace-domain-delegation",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "delegated_user": "manifest-user@example.com",
+      "service_account_key": ""
+    },
+    "endpoint": "https://manifest.example.com/token",
+    "encoding": "form",
+    "clientAuth": "none",
+    "parameters": {
+      "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "manifest-ungranted-scope",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "keyCredential": "service_account_key",
+    "privateKeyMember": "private_key",
+    "keyMembers": {
+      "client_email": "manifest-issuer@example.com",
+      "token_uri": "https://manifest.example.com/token"
+    },
+    "assertion": {
+      "issuer": "manifest-issuer@example.com",
+      "subject": "manifest-user@example.com",
+      "audience": "https://manifest.example.com/token",
+      "scope": "https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file",
+      "lifetimeSeconds": 3600
+    }
+  },
+  {
+    "name": "workspace-domain-delegation jwtBearer without expires_in",
+    "expectedError": "retryable",
+    "methodId": "workspace-domain-delegation",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "delegated_user": "manifest-user@example.com",
+      "service_account_key": ""
+    },
+    "endpoint": "https://manifest.example.com/token",
+    "encoding": "form",
+    "clientAuth": "none",
+    "parameters": {
+      "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "scope": "https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "keyCredential": "service_account_key",
+    "privateKeyMember": "private_key",
+    "keyMembers": {
+      "client_email": "manifest-issuer@example.com",
+      "token_uri": "https://manifest.example.com/token"
+    },
+    "assertion": {
+      "issuer": "manifest-issuer@example.com",
+      "subject": "manifest-user@example.com",
+      "audience": "https://manifest.example.com/token",
+      "scope": "https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file",
+      "lifetimeSeconds": 3600
+    }
+  }
+]
