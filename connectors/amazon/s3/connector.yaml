@@ -9,8 +9,13 @@ metadata:
 spec:
   provider: amazon-s3
   languages:
-    typescript:
+    python:
       version: v0.1.0
+      package: dex-connector-amazon-s3
+      operations: [listObjects, headObject, getObjectText, putObject]
+      triggers: []
+    typescript:
+      version: v0.1.1
       operations: [listObjects, headObject, getObjectText, putObject]
       triggers: []
   codegen:
