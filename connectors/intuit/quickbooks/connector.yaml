@@ -8,6 +8,12 @@ metadata:
   version: v0.24.0
 spec:
   provider: quickbooks
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-intuit-quickbooks
+      operations: [findCustomer, createCustomer, createInvoice, getInvoice, listInvoices, sendInvoice, recordPayment]
+      triggers: []
   codegen:
     go:
       package: quickbooks
@@ -86,6 +92,7 @@ spec:
       refresh:
         missingExpiry: reject
         storedMissingExpiry: refresh
+        requiredScopes: [com.intuit.quickbooks.accounting]
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client, unsupported_grant_type]
         grants:
           - refreshTokenCredential: refresh_token

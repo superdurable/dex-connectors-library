@@ -1,0 +1,4550 @@
+{
+  "connector": "quickbooks",
+  "scenarios": [
+    {
+      "callId": "b423dc58-efab-5b02-bbf7-4b539dbad99f",
+      "exchanges": [
+        {
+          "body": "{\"QueryResponse\": {\"Customer\": [{\"Id\": \"58\", \"DisplayName\": \"City Agency\", \"GivenName\": \"City\", \"FamilyName\": \"Agency\", \"CompanyName\": \"City Agency LLC\", \"PrimaryEmailAddr\": {\"Address\": \"accounts@cityagency.example.com\"}, \"Active\": true}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "query": [
+              "select * from Customer where PrimaryEmailAddr = 'accounts@cityagency.example.com' AND Active IN (true, false) MAXRESULTS 10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "customer": {
+            "companyName": "City Agency LLC",
+            "customerId": "58",
+            "displayName": "City Agency",
+            "emailAddress": "accounts@cityagency.example.com",
+            "familyName": "Agency",
+            "givenName": "City",
+            "isActive": true
+          },
+          "emailAddress": "accounts@cityagency.example.com"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "accounts@cityagency.example.com",
+        "includesInactive": true
+      },
+      "name": "findCustomer-success",
+      "operation": "findCustomer"
+    },
+    {
+      "callId": "b423dc58-efab-5b02-bbf7-4b539dbad99f",
+      "exchanges": [
+        {
+          "body": "{\"Fault\": {\"type\": \"SystemFault\", \"Error\": [{\"code\": \"500\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "query": [
+              "select * from Customer where PrimaryEmailAddr = 'accounts@cityagency.example.com' AND Active IN (true, false) MAXRESULTS 10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 60000,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "accounts@cityagency.example.com",
+        "includesInactive": true
+      },
+      "name": "findCustomer-429",
+      "operation": "findCustomer"
+    },
+    {
+      "callId": "b423dc58-efab-5b02-bbf7-4b539dbad99f",
+      "exchanges": [
+        {
+          "body": "{\"Fault\": {\"type\": \"SystemFault\", \"Error\": [{\"code\": \"500\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "query": [
+              "select * from Customer where PrimaryEmailAddr = 'accounts@cityagency.example.com' AND Active IN (true, false) MAXRESULTS 10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "accounts@cityagency.example.com",
+        "includesInactive": true
+      },
+      "name": "findCustomer-503",
+      "operation": "findCustomer"
+    },
+    {
+      "callId": "b423dc58-efab-5b02-bbf7-4b539dbad99f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "query": [
+              "select * from Customer where PrimaryEmailAddr = 'accounts@cityagency.example.com' AND Active IN (true, false) MAXRESULTS 10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "accounts@cityagency.example.com",
+        "includesInactive": true
+      },
+      "name": "findCustomer-transport",
+      "operation": "findCustomer"
+    },
+    {
+      "callId": "b423dc58-efab-5b02-bbf7-4b539dbad99f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "query": [
+              "select * from Customer where PrimaryEmailAddr = 'accounts@cityagency.example.com' AND Active IN (true, false) MAXRESULTS 10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "emailAddress": "accounts@cityagency.example.com"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "accounts@cityagency.example.com",
+        "includesInactive": true
+      },
+      "name": "findCustomer-providerRejected",
+      "operation": "findCustomer"
+    },
+    {
+      "callId": "b423dc58-efab-5b02-bbf7-4b539dbad99f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "emailAddress": "!"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "!",
+        "includesInactive": true
+      },
+      "name": "findCustomer-defect",
+      "operation": "findCustomer"
+    },
+    {
+      "callId": "0fda9033-4ba6-5462-98fa-01d400ec4987",
+      "exchanges": [
+        {
+          "body": "{\"Customer\": {\"Id\": \"58\", \"DisplayName\": \"City Agency\", \"GivenName\": \"City\", \"FamilyName\": \"Agency\", \"CompanyName\": \"City Agency LLC\", \"PrimaryEmailAddr\": {\"Address\": \"accounts@cityagency.example.com\"}, \"Active\": true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customer",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "0fda9033-4ba6-5462-98fa-01d400ec4987"
+            ]
+          },
+          "requestBody": {
+            "CompanyName": "City Agency LLC",
+            "CurrencyRef": {
+              "value": "USD"
+            },
+            "DisplayName": "City Agency",
+            "FamilyName": "Agency",
+            "GivenName": "City",
+            "PrimaryEmailAddr": {
+              "Address": "accounts@cityagency.example.com"
+            },
+            "PrimaryPhone": {
+              "FreeFormNumber": "555-0101"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "customer": {
+            "companyName": "City Agency LLC",
+            "customerId": "58",
+            "displayName": "City Agency",
+            "emailAddress": "accounts@cityagency.example.com",
+            "familyName": "Agency",
+            "givenName": "City",
+            "isActive": true
+          },
+          "displayName": "City Agency"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0fda9033-4ba6-5462-98fa-01d400ec4987",
+      "input": {
+        "companyName": "City Agency LLC",
+        "currencyCode": "USD",
+        "displayName": "City Agency",
+        "emailAddress": "accounts@cityagency.example.com",
+        "familyName": "Agency",
+        "givenName": "City",
+        "phone": "555-0101"
+      },
+      "name": "createCustomer-success",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "0fda9033-4ba6-5462-98fa-01d400ec4987",
+      "exchanges": [
+        {
+          "body": "{\"Fault\": {\"type\": \"SystemFault\", \"Error\": [{\"code\": \"500\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customer",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "0fda9033-4ba6-5462-98fa-01d400ec4987"
+            ]
+          },
+          "requestBody": {
+            "CompanyName": "City Agency LLC",
+            "CurrencyRef": {
+              "value": "USD"
+            },
+            "DisplayName": "City Agency",
+            "FamilyName": "Agency",
+            "GivenName": "City",
+            "PrimaryEmailAddr": {
+              "Address": "accounts@cityagency.example.com"
+            },
+            "PrimaryPhone": {
+              "FreeFormNumber": "555-0101"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 60000,
+        "uncertain": false
+      },
+      "idempotencyKey": "0fda9033-4ba6-5462-98fa-01d400ec4987",
+      "input": {
+        "companyName": "City Agency LLC",
+        "currencyCode": "USD",
+        "displayName": "City Agency",
+        "emailAddress": "accounts@cityagency.example.com",
+        "familyName": "Agency",
+        "givenName": "City",
+        "phone": "555-0101"
+      },
+      "name": "createCustomer-429",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "0fda9033-4ba6-5462-98fa-01d400ec4987",
+      "exchanges": [
+        {
+          "body": "{\"Fault\": {\"type\": \"SystemFault\", \"Error\": [{\"code\": \"500\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customer",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "0fda9033-4ba6-5462-98fa-01d400ec4987"
+            ]
+          },
+          "requestBody": {
+            "CompanyName": "City Agency LLC",
+            "CurrencyRef": {
+              "value": "USD"
+            },
+            "DisplayName": "City Agency",
+            "FamilyName": "Agency",
+            "GivenName": "City",
+            "PrimaryEmailAddr": {
+              "Address": "accounts@cityagency.example.com"
+            },
+            "PrimaryPhone": {
+              "FreeFormNumber": "555-0101"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0fda9033-4ba6-5462-98fa-01d400ec4987",
+      "input": {
+        "companyName": "City Agency LLC",
+        "currencyCode": "USD",
+        "displayName": "City Agency",
+        "emailAddress": "accounts@cityagency.example.com",
+        "familyName": "Agency",
+        "givenName": "City",
+        "phone": "555-0101"
+      },
+      "name": "createCustomer-503",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "0fda9033-4ba6-5462-98fa-01d400ec4987",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customer",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "0fda9033-4ba6-5462-98fa-01d400ec4987"
+            ]
+          },
+          "requestBody": {
+            "CompanyName": "City Agency LLC",
+            "CurrencyRef": {
+              "value": "USD"
+            },
+            "DisplayName": "City Agency",
+            "FamilyName": "Agency",
+            "GivenName": "City",
+            "PrimaryEmailAddr": {
+              "Address": "accounts@cityagency.example.com"
+            },
+            "PrimaryPhone": {
+              "FreeFormNumber": "555-0101"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0fda9033-4ba6-5462-98fa-01d400ec4987",
+      "input": {
+        "companyName": "City Agency LLC",
+        "currencyCode": "USD",
+        "displayName": "City Agency",
+        "emailAddress": "accounts@cityagency.example.com",
+        "familyName": "Agency",
+        "givenName": "City",
+        "phone": "555-0101"
+      },
+      "name": "createCustomer-transport",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "0fda9033-4ba6-5462-98fa-01d400ec4987",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customer",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "0fda9033-4ba6-5462-98fa-01d400ec4987"
+            ]
+          },
+          "requestBody": {
+            "CompanyName": "City Agency LLC",
+            "CurrencyRef": {
+              "value": "USD"
+            },
+            "DisplayName": "City Agency",
+            "FamilyName": "Agency",
+            "GivenName": "City",
+            "PrimaryEmailAddr": {
+              "Address": "accounts@cityagency.example.com"
+            },
+            "PrimaryPhone": {
+              "FreeFormNumber": "555-0101"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "customer": {
+            "customerId": "",
+            "displayName": "",
+            "isActive": false
+          },
+          "displayName": "City Agency"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0fda9033-4ba6-5462-98fa-01d400ec4987",
+      "input": {
+        "companyName": "City Agency LLC",
+        "currencyCode": "USD",
+        "displayName": "City Agency",
+        "emailAddress": "accounts@cityagency.example.com",
+        "familyName": "Agency",
+        "givenName": "City",
+        "phone": "555-0101"
+      },
+      "name": "createCustomer-providerRejected",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "0fda9033-4ba6-5462-98fa-01d400ec4987",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "customer": {
+            "customerId": "",
+            "displayName": "",
+            "isActive": false
+          },
+          "displayName": ":"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0fda9033-4ba6-5462-98fa-01d400ec4987",
+      "input": {
+        "companyName": "City Agency LLC",
+        "currencyCode": "USD",
+        "displayName": ":",
+        "emailAddress": "accounts@cityagency.example.com",
+        "familyName": "Agency",
+        "givenName": "City",
+        "phone": "555-0101"
+      },
+      "name": "createCustomer-defect",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "fcb56f17-680f-58b2-8f78-271bd00c381c",
+      "exchanges": [
+        {
+          "body": "{\"Invoice\": {\"Id\": \"130\", \"DocNumber\": \"ORDER-1042\", \"CustomerRef\": {\"value\": \"58\"}, \"TotalAmt\": 112.4, \"Balance\": 112.4, \"EmailStatus\": \"EmailSent\", \"BillEmail\": {\"Address\": \"accounts@cityagency.example.com\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoice",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "fcb56f17-680f-58b2-8f78-271bd00c381c"
+            ]
+          },
+          "requestBody": {
+            "BillEmail": {
+              "Address": "accounts@cityagency.example.com"
+            },
+            "CurrencyRef": {
+              "value": "USD"
+            },
+            "CustomerMemo": {
+              "value": "Thank you"
+            },
+            "CustomerRef": {
+              "value": "58"
+            },
+            "DocNumber": "ORDER-1042",
+            "DueDate": "2026-11-01",
+            "Line": [
+              {
+                "Amount": 112.4,
+                "Description": "Service",
+                "DetailType": "SalesItemLineDetail",
+                "SalesItemLineDetail": {
+                  "ItemRef": {
+                    "value": "1"
+                  },
+                  "Qty": 2,
+                  "ServiceDate": "2026-10-01",
+                  "TaxCodeRef": {
+                    "value": "NON"
+                  },
+                  "UnitPrice": 56.2
+                }
+              }
+            ],
+            "PrivateNote": "Order 1042",
+            "TxnDate": "2026-10-01"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "docNumber": "ORDER-1042",
+          "invoice": {
+            "balance": "112.4",
+            "billEmail": "accounts@cityagency.example.com",
+            "customerId": "58",
+            "docNumber": "ORDER-1042",
+            "emailStatus": "EmailSent",
+            "invoiceId": "130",
+            "lines": [],
+            "totalAmount": "112.4"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fcb56f17-680f-58b2-8f78-271bd00c381c",
+      "input": {
+        "billEmail": "accounts@cityagency.example.com",
+        "currencyCode": "USD",
+        "customerId": "58",
+        "customerMemo": "Thank you",
+        "docNumber": "ORDER-1042",
+        "dueDate": "2026-11-01",
+        "lines": [
+          {
+            "amount": "112.40",
+            "description": "Service",
+            "itemId": "1",
+            "quantity": "2",
+            "serviceDate": "2026-10-01",
+            "taxCodeId": "NON",
+            "unitPrice": "56.20"
+          }
+        ],
+        "privateNote": "Order 1042",
+        "txnDate": "2026-10-01"
+      },
+      "name": "createInvoice-success",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "fcb56f17-680f-58b2-8f78-271bd00c381c",
+      "exchanges": [
+        {
+          "body": "{\"Fault\": {\"type\": \"SystemFault\", \"Error\": [{\"code\": \"500\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoice",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "fcb56f17-680f-58b2-8f78-271bd00c381c"
+            ]
+          },
+          "requestBody": {
+            "BillEmail": {
+              "Address": "accounts@cityagency.example.com"
+            },
+            "CurrencyRef": {
+              "value": "USD"
+            },
+            "CustomerMemo": {
+              "value": "Thank you"
+            },
+            "CustomerRef": {
+              "value": "58"
+            },
+            "DocNumber": "ORDER-1042",
+            "DueDate": "2026-11-01",
+            "Line": [
+              {
+                "Amount": 112.4,
+                "Description": "Service",
+                "DetailType": "SalesItemLineDetail",
+                "SalesItemLineDetail": {
+                  "ItemRef": {
+                    "value": "1"
+                  },
+                  "Qty": 2,
+                  "ServiceDate": "2026-10-01",
+                  "TaxCodeRef": {
+                    "value": "NON"
+                  },
+                  "UnitPrice": 56.2
+                }
+              }
+            ],
+            "PrivateNote": "Order 1042",
+            "TxnDate": "2026-10-01"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 60000,
+        "uncertain": false
+      },
+      "idempotencyKey": "fcb56f17-680f-58b2-8f78-271bd00c381c",
+      "input": {
+        "billEmail": "accounts@cityagency.example.com",
+        "currencyCode": "USD",
+        "customerId": "58",
+        "customerMemo": "Thank you",
+        "docNumber": "ORDER-1042",
+        "dueDate": "2026-11-01",
+        "lines": [
+          {
+            "amount": "112.40",
+            "description": "Service",
+            "itemId": "1",
+            "quantity": "2",
+            "serviceDate": "2026-10-01",
+            "taxCodeId": "NON",
+            "unitPrice": "56.20"
+          }
+        ],
+        "privateNote": "Order 1042",
+        "txnDate": "2026-10-01"
+      },
+      "name": "createInvoice-429",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "fcb56f17-680f-58b2-8f78-271bd00c381c",
+      "exchanges": [
+        {
+          "body": "{\"Fault\": {\"type\": \"SystemFault\", \"Error\": [{\"code\": \"500\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoice",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "fcb56f17-680f-58b2-8f78-271bd00c381c"
+            ]
+          },
+          "requestBody": {
+            "BillEmail": {
+              "Address": "accounts@cityagency.example.com"
+            },
+            "CurrencyRef": {
+              "value": "USD"
+            },
+            "CustomerMemo": {
+              "value": "Thank you"
+            },
+            "CustomerRef": {
+              "value": "58"
+            },
+            "DocNumber": "ORDER-1042",
+            "DueDate": "2026-11-01",
+            "Line": [
+              {
+                "Amount": 112.4,
+                "Description": "Service",
+                "DetailType": "SalesItemLineDetail",
+                "SalesItemLineDetail": {
+                  "ItemRef": {
+                    "value": "1"
+                  },
+                  "Qty": 2,
+                  "ServiceDate": "2026-10-01",
+                  "TaxCodeRef": {
+                    "value": "NON"
+                  },
+                  "UnitPrice": 56.2
+                }
+              }
+            ],
+            "PrivateNote": "Order 1042",
+            "TxnDate": "2026-10-01"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fcb56f17-680f-58b2-8f78-271bd00c381c",
+      "input": {
+        "billEmail": "accounts@cityagency.example.com",
+        "currencyCode": "USD",
+        "customerId": "58",
+        "customerMemo": "Thank you",
+        "docNumber": "ORDER-1042",
+        "dueDate": "2026-11-01",
+        "lines": [
+          {
+            "amount": "112.40",
+            "description": "Service",
+            "itemId": "1",
+            "quantity": "2",
+            "serviceDate": "2026-10-01",
+            "taxCodeId": "NON",
+            "unitPrice": "56.20"
+          }
+        ],
+        "privateNote": "Order 1042",
+        "txnDate": "2026-10-01"
+      },
+      "name": "createInvoice-503",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "fcb56f17-680f-58b2-8f78-271bd00c381c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoice",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "fcb56f17-680f-58b2-8f78-271bd00c381c"
+            ]
+          },
+          "requestBody": {
+            "BillEmail": {
+              "Address": "accounts@cityagency.example.com"
+            },
+            "CurrencyRef": {
+              "value": "USD"
+            },
+            "CustomerMemo": {
+              "value": "Thank you"
+            },
+            "CustomerRef": {
+              "value": "58"
+            },
+            "DocNumber": "ORDER-1042",
+            "DueDate": "2026-11-01",
+            "Line": [
+              {
+                "Amount": 112.4,
+                "Description": "Service",
+                "DetailType": "SalesItemLineDetail",
+                "SalesItemLineDetail": {
+                  "ItemRef": {
+                    "value": "1"
+                  },
+                  "Qty": 2,
+                  "ServiceDate": "2026-10-01",
+                  "TaxCodeRef": {
+                    "value": "NON"
+                  },
+                  "UnitPrice": 56.2
+                }
+              }
+            ],
+            "PrivateNote": "Order 1042",
+            "TxnDate": "2026-10-01"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fcb56f17-680f-58b2-8f78-271bd00c381c",
+      "input": {
+        "billEmail": "accounts@cityagency.example.com",
+        "currencyCode": "USD",
+        "customerId": "58",
+        "customerMemo": "Thank you",
+        "docNumber": "ORDER-1042",
+        "dueDate": "2026-11-01",
+        "lines": [
+          {
+            "amount": "112.40",
+            "description": "Service",
+            "itemId": "1",
+            "quantity": "2",
+            "serviceDate": "2026-10-01",
+            "taxCodeId": "NON",
+            "unitPrice": "56.20"
+          }
+        ],
+        "privateNote": "Order 1042",
+        "txnDate": "2026-10-01"
+      },
+      "name": "createInvoice-transport",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "fcb56f17-680f-58b2-8f78-271bd00c381c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoice",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "fcb56f17-680f-58b2-8f78-271bd00c381c"
+            ]
+          },
+          "requestBody": {
+            "BillEmail": {
+              "Address": "accounts@cityagency.example.com"
+            },
+            "CurrencyRef": {
+              "value": "USD"
+            },
+            "CustomerMemo": {
+              "value": "Thank you"
+            },
+            "CustomerRef": {
+              "value": "58"
+            },
+            "DocNumber": "ORDER-1042",
+            "DueDate": "2026-11-01",
+            "Line": [
+              {
+                "Amount": 112.4,
+                "Description": "Service",
+                "DetailType": "SalesItemLineDetail",
+                "SalesItemLineDetail": {
+                  "ItemRef": {
+                    "value": "1"
+                  },
+                  "Qty": 2,
+                  "ServiceDate": "2026-10-01",
+                  "TaxCodeRef": {
+                    "value": "NON"
+                  },
+                  "UnitPrice": 56.2
+                }
+              }
+            ],
+            "PrivateNote": "Order 1042",
+            "TxnDate": "2026-10-01"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "docNumber": "ORDER-1042",
+          "invoice": {
+            "balance": "",
+            "customerId": "",
+            "invoiceId": "",
+            "lines": [],
+            "totalAmount": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fcb56f17-680f-58b2-8f78-271bd00c381c",
+      "input": {
+        "billEmail": "accounts@cityagency.example.com",
+        "currencyCode": "USD",
+        "customerId": "58",
+        "customerMemo": "Thank you",
+        "docNumber": "ORDER-1042",
+        "dueDate": "2026-11-01",
+        "lines": [
+          {
+            "amount": "112.40",
+            "description": "Service",
+            "itemId": "1",
+            "quantity": "2",
+            "serviceDate": "2026-10-01",
+            "taxCodeId": "NON",
+            "unitPrice": "56.20"
+          }
+        ],
+        "privateNote": "Order 1042",
+        "txnDate": "2026-10-01"
+      },
+      "name": "createInvoice-providerRejected",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "fcb56f17-680f-58b2-8f78-271bd00c381c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "docNumber": "ORDER-1042",
+          "invoice": {
+            "balance": "",
+            "customerId": "",
+            "invoiceId": "",
+            "lines": [],
+            "totalAmount": ""
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fcb56f17-680f-58b2-8f78-271bd00c381c",
+      "input": {
+        "billEmail": "accounts@cityagency.example.com",
+        "currencyCode": "USD",
+        "customerId": "!",
+        "customerMemo": "Thank you",
+        "docNumber": "ORDER-1042",
+        "dueDate": "2026-11-01",
+        "lines": [
+          {
+            "amount": "112.40",
+            "description": "Service",
+            "itemId": "1",
+            "quantity": "2",
+            "serviceDate": "2026-10-01",
+            "taxCodeId": "NON",
+            "unitPrice": "56.20"
+          }
+        ],
+        "privateNote": "Order 1042",
+        "txnDate": "2026-10-01"
+      },
+      "name": "createInvoice-defect",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "5530acf0-2017-5962-8529-d27ede486881",
+      "exchanges": [
+        {
+          "body": "{\"Invoice\": {\"Id\": \"130\", \"DocNumber\": \"ORDER-1042\", \"CustomerRef\": {\"value\": \"58\"}, \"TotalAmt\": 112.4, \"Balance\": 112.4, \"EmailStatus\": \"EmailSent\", \"BillEmail\": {\"Address\": \"accounts@cityagency.example.com\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoice/130",
+          "query": {
+            "minorversion": [
+              "75"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "balance": "112.4",
+          "billEmail": "accounts@cityagency.example.com",
+          "customerId": "58",
+          "docNumber": "ORDER-1042",
+          "emailStatus": "EmailSent",
+          "invoiceId": "130",
+          "lines": [],
+          "totalAmount": "112.4"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceId": "130"
+      },
+      "name": "getInvoice-success",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "5530acf0-2017-5962-8529-d27ede486881",
+      "exchanges": [
+        {
+          "body": "{\"Fault\": {\"type\": \"SystemFault\", \"Error\": [{\"code\": \"500\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoice/130",
+          "query": {
+            "minorversion": [
+              "75"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 60000,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceId": "130"
+      },
+      "name": "getInvoice-429",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "5530acf0-2017-5962-8529-d27ede486881",
+      "exchanges": [
+        {
+          "body": "{\"Fault\": {\"type\": \"SystemFault\", \"Error\": [{\"code\": \"500\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoice/130",
+          "query": {
+            "minorversion": [
+              "75"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceId": "130"
+      },
+      "name": "getInvoice-503",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "5530acf0-2017-5962-8529-d27ede486881",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoice/130",
+          "query": {
+            "minorversion": [
+              "75"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceId": "130"
+      },
+      "name": "getInvoice-transport",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "5530acf0-2017-5962-8529-d27ede486881",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoice/130",
+          "query": {
+            "minorversion": [
+              "75"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "balance": "",
+          "customerId": "",
+          "invoiceId": "130",
+          "lines": [],
+          "totalAmount": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceId": "130"
+      },
+      "name": "getInvoice-providerRejected",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "5530acf0-2017-5962-8529-d27ede486881",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "balance": "",
+          "customerId": "",
+          "invoiceId": "!",
+          "lines": [],
+          "totalAmount": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceId": "!"
+      },
+      "name": "getInvoice-defect",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "95044330-32ad-5ca6-90c2-9a4a9fcaa3ad",
+      "exchanges": [
+        {
+          "body": "{\"QueryResponse\": {\"Invoice\": [{\"Id\": \"130\", \"DocNumber\": \"ORDER-1042\", \"CustomerRef\": {\"value\": \"58\"}, \"TotalAmt\": 112.4, \"Balance\": 112.4, \"EmailStatus\": \"EmailSent\", \"BillEmail\": {\"Address\": \"accounts@cityagency.example.com\"}}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "query": [
+              "select * from Invoice where CustomerRef = '58' AND DocNumber = 'ORDER-1042' AND Balance \u003e '0' AND TxnDate \u003e= '2026-10-01' AND TxnDate \u003c= '2026-11-01' AND MetaData.LastUpdatedTime \u003e= '2026-10-01T12:30:00Z' ORDERBY MetaData.CreateTime STARTPOSITION 1 MAXRESULTS 2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "hasMorePages": false,
+          "invoices": [
+            {
+              "balance": "112.4",
+              "billEmail": "accounts@cityagency.example.com",
+              "customerId": "58",
+              "docNumber": "ORDER-1042",
+              "emailStatus": "EmailSent",
+              "invoiceId": "130",
+              "lines": [],
+              "totalAmount": "112.4"
+            }
+          ],
+          "maxResults": 2,
+          "startPosition": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "58",
+        "docNumber": "ORDER-1042",
+        "isOpenOnly": true,
+        "maxResults": 2,
+        "startPosition": 1,
+        "txnDateFrom": "2026-10-01",
+        "txnDateTo": "2026-11-01",
+        "updatedSince": "2026-10-01T12:30:00Z"
+      },
+      "name": "listInvoices-success",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "95044330-32ad-5ca6-90c2-9a4a9fcaa3ad",
+      "exchanges": [
+        {
+          "body": "{\"Fault\": {\"type\": \"SystemFault\", \"Error\": [{\"code\": \"500\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "query": [
+              "select * from Invoice where CustomerRef = '58' AND DocNumber = 'ORDER-1042' AND Balance \u003e '0' AND TxnDate \u003e= '2026-10-01' AND TxnDate \u003c= '2026-11-01' AND MetaData.LastUpdatedTime \u003e= '2026-10-01T12:30:00Z' ORDERBY MetaData.CreateTime STARTPOSITION 1 MAXRESULTS 2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 60000,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "58",
+        "docNumber": "ORDER-1042",
+        "isOpenOnly": true,
+        "maxResults": 2,
+        "startPosition": 1,
+        "txnDateFrom": "2026-10-01",
+        "txnDateTo": "2026-11-01",
+        "updatedSince": "2026-10-01T12:30:00Z"
+      },
+      "name": "listInvoices-429",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "95044330-32ad-5ca6-90c2-9a4a9fcaa3ad",
+      "exchanges": [
+        {
+          "body": "{\"Fault\": {\"type\": \"SystemFault\", \"Error\": [{\"code\": \"500\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "query": [
+              "select * from Invoice where CustomerRef = '58' AND DocNumber = 'ORDER-1042' AND Balance \u003e '0' AND TxnDate \u003e= '2026-10-01' AND TxnDate \u003c= '2026-11-01' AND MetaData.LastUpdatedTime \u003e= '2026-10-01T12:30:00Z' ORDERBY MetaData.CreateTime STARTPOSITION 1 MAXRESULTS 2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "58",
+        "docNumber": "ORDER-1042",
+        "isOpenOnly": true,
+        "maxResults": 2,
+        "startPosition": 1,
+        "txnDateFrom": "2026-10-01",
+        "txnDateTo": "2026-11-01",
+        "updatedSince": "2026-10-01T12:30:00Z"
+      },
+      "name": "listInvoices-503",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "95044330-32ad-5ca6-90c2-9a4a9fcaa3ad",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "query": [
+              "select * from Invoice where CustomerRef = '58' AND DocNumber = 'ORDER-1042' AND Balance \u003e '0' AND TxnDate \u003e= '2026-10-01' AND TxnDate \u003c= '2026-11-01' AND MetaData.LastUpdatedTime \u003e= '2026-10-01T12:30:00Z' ORDERBY MetaData.CreateTime STARTPOSITION 1 MAXRESULTS 2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "58",
+        "docNumber": "ORDER-1042",
+        "isOpenOnly": true,
+        "maxResults": 2,
+        "startPosition": 1,
+        "txnDateFrom": "2026-10-01",
+        "txnDateTo": "2026-11-01",
+        "updatedSince": "2026-10-01T12:30:00Z"
+      },
+      "name": "listInvoices-transport",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "95044330-32ad-5ca6-90c2-9a4a9fcaa3ad",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "query": [
+              "select * from Invoice where CustomerRef = '58' AND DocNumber = 'ORDER-1042' AND Balance \u003e '0' AND TxnDate \u003e= '2026-10-01' AND TxnDate \u003c= '2026-11-01' AND MetaData.LastUpdatedTime \u003e= '2026-10-01T12:30:00Z' ORDERBY MetaData.CreateTime STARTPOSITION 1 MAXRESULTS 2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "hasMorePages": false,
+          "invoices": [],
+          "maxResults": 0,
+          "startPosition": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "58",
+        "docNumber": "ORDER-1042",
+        "isOpenOnly": true,
+        "maxResults": 2,
+        "startPosition": 1,
+        "txnDateFrom": "2026-10-01",
+        "txnDateTo": "2026-11-01",
+        "updatedSince": "2026-10-01T12:30:00Z"
+      },
+      "name": "listInvoices-providerRejected",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "95044330-32ad-5ca6-90c2-9a4a9fcaa3ad",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "hasMorePages": false,
+          "invoices": [],
+          "maxResults": 0,
+          "startPosition": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "!",
+        "docNumber": "ORDER-1042",
+        "isOpenOnly": true,
+        "maxResults": 2,
+        "startPosition": 1,
+        "txnDateFrom": "2026-10-01",
+        "txnDateTo": "2026-11-01",
+        "updatedSince": "2026-10-01T12:30:00Z"
+      },
+      "name": "listInvoices-defect",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "39ff2ddf-a8a2-5929-bab9-ac1a20782797",
+      "exchanges": [
+        {
+          "body": "{\"Invoice\": {\"Id\": \"130\", \"DocNumber\": \"ORDER-1042\", \"CustomerRef\": {\"value\": \"58\"}, \"TotalAmt\": 112.4, \"Balance\": 112.4, \"EmailStatus\": \"EmailSent\", \"BillEmail\": {\"Address\": \"accounts@cityagency.example.com\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoice/130/send",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "39ff2ddf-a8a2-5929-bab9-ac1a20782797"
+            ],
+            "sendTo": [
+              "accounts@cityagency.example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/octet-stream"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "output": {
+          "balance": "112.4",
+          "billEmail": "accounts@cityagency.example.com",
+          "customerId": "58",
+          "docNumber": "ORDER-1042",
+          "emailStatus": "EmailSent",
+          "invoiceId": "130",
+          "lines": [],
+          "totalAmount": "112.4"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "39ff2ddf-a8a2-5929-bab9-ac1a20782797",
+      "input": {
+        "invoiceId": "130",
+        "sendTo": "accounts@cityagency.example.com"
+      },
+      "name": "sendInvoice-success",
+      "operation": "sendInvoice"
+    },
+    {
+      "callId": "39ff2ddf-a8a2-5929-bab9-ac1a20782797",
+      "exchanges": [
+        {
+          "body": "{\"Fault\": {\"type\": \"SystemFault\", \"Error\": [{\"code\": \"500\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoice/130/send",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "39ff2ddf-a8a2-5929-bab9-ac1a20782797"
+            ],
+            "sendTo": [
+              "accounts@cityagency.example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/octet-stream"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 60000,
+        "uncertain": false
+      },
+      "idempotencyKey": "39ff2ddf-a8a2-5929-bab9-ac1a20782797",
+      "input": {
+        "invoiceId": "130",
+        "sendTo": "accounts@cityagency.example.com"
+      },
+      "name": "sendInvoice-429",
+      "operation": "sendInvoice"
+    },
+    {
+      "callId": "39ff2ddf-a8a2-5929-bab9-ac1a20782797",
+      "exchanges": [
+        {
+          "body": "{\"Fault\": {\"type\": \"SystemFault\", \"Error\": [{\"code\": \"500\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoice/130/send",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "39ff2ddf-a8a2-5929-bab9-ac1a20782797"
+            ],
+            "sendTo": [
+              "accounts@cityagency.example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/octet-stream"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "39ff2ddf-a8a2-5929-bab9-ac1a20782797",
+      "input": {
+        "invoiceId": "130",
+        "sendTo": "accounts@cityagency.example.com"
+      },
+      "name": "sendInvoice-503",
+      "operation": "sendInvoice"
+    },
+    {
+      "callId": "39ff2ddf-a8a2-5929-bab9-ac1a20782797",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoice/130/send",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "39ff2ddf-a8a2-5929-bab9-ac1a20782797"
+            ],
+            "sendTo": [
+              "accounts@cityagency.example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/octet-stream"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "39ff2ddf-a8a2-5929-bab9-ac1a20782797",
+      "input": {
+        "invoiceId": "130",
+        "sendTo": "accounts@cityagency.example.com"
+      },
+      "name": "sendInvoice-transport",
+      "operation": "sendInvoice"
+    },
+    {
+      "callId": "39ff2ddf-a8a2-5929-bab9-ac1a20782797",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoice/130/send",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "39ff2ddf-a8a2-5929-bab9-ac1a20782797"
+            ],
+            "sendTo": [
+              "accounts@cityagency.example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/octet-stream"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "balance": "",
+          "customerId": "",
+          "invoiceId": "130",
+          "lines": [],
+          "totalAmount": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "39ff2ddf-a8a2-5929-bab9-ac1a20782797",
+      "input": {
+        "invoiceId": "130",
+        "sendTo": "accounts@cityagency.example.com"
+      },
+      "name": "sendInvoice-providerRejected",
+      "operation": "sendInvoice"
+    },
+    {
+      "callId": "39ff2ddf-a8a2-5929-bab9-ac1a20782797",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "balance": "",
+          "customerId": "",
+          "invoiceId": "!",
+          "lines": [],
+          "totalAmount": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "39ff2ddf-a8a2-5929-bab9-ac1a20782797",
+      "input": {
+        "invoiceId": "!",
+        "sendTo": "accounts@cityagency.example.com"
+      },
+      "name": "sendInvoice-defect",
+      "operation": "sendInvoice"
+    },
+    {
+      "callId": "d502de74-eb2f-5da7-85b3-29d74a685439",
+      "exchanges": [
+        {
+          "body": "{\"Payment\": {\"Id\": \"186\", \"CustomerRef\": {\"value\": \"58\"}, \"TotalAmt\": 112.4, \"Line\": [{\"Amount\": 112.4, \"LinkedTxn\": [{\"TxnId\": \"130\", \"TxnType\": \"Invoice\"}]}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payment",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "d502de74-eb2f-5da7-85b3-29d74a685439"
+            ]
+          },
+          "requestBody": {
+            "CurrencyRef": {
+              "value": "USD"
+            },
+            "CustomerRef": {
+              "value": "58"
+            },
+            "DepositToAccountRef": {
+              "value": "5"
+            },
+            "Line": [
+              {
+                "Amount": 112.4,
+                "LinkedTxn": [
+                  {
+                    "TxnId": "130",
+                    "TxnType": "Invoice"
+                  }
+                ]
+              }
+            ],
+            "PaymentMethodRef": {
+              "value": "2"
+            },
+            "PaymentRefNum": "CHECK-1042",
+            "PrivateNote": "Order 1042",
+            "TotalAmt": 112.4,
+            "TxnDate": "2026-10-01"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "recorded",
+        "failureKind": "",
+        "output": {
+          "appliedInvoices": [
+            {
+              "amount": "112.4",
+              "invoiceId": "130"
+            }
+          ],
+          "customerId": "58",
+          "paymentId": "186",
+          "totalAmount": "112.4"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d502de74-eb2f-5da7-85b3-29d74a685439",
+      "input": {
+        "amount": "112.40",
+        "currencyCode": "USD",
+        "customerId": "58",
+        "depositAccountId": "5",
+        "invoiceId": "130",
+        "paymentMethodId": "2",
+        "paymentReferenceNumber": "CHECK-1042",
+        "privateNote": "Order 1042",
+        "txnDate": "2026-10-01"
+      },
+      "name": "recordPayment-success",
+      "operation": "recordPayment"
+    },
+    {
+      "callId": "d502de74-eb2f-5da7-85b3-29d74a685439",
+      "exchanges": [
+        {
+          "body": "{\"Fault\": {\"type\": \"SystemFault\", \"Error\": [{\"code\": \"500\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payment",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "d502de74-eb2f-5da7-85b3-29d74a685439"
+            ]
+          },
+          "requestBody": {
+            "CurrencyRef": {
+              "value": "USD"
+            },
+            "CustomerRef": {
+              "value": "58"
+            },
+            "DepositToAccountRef": {
+              "value": "5"
+            },
+            "Line": [
+              {
+                "Amount": 112.4,
+                "LinkedTxn": [
+                  {
+                    "TxnId": "130",
+                    "TxnType": "Invoice"
+                  }
+                ]
+              }
+            ],
+            "PaymentMethodRef": {
+              "value": "2"
+            },
+            "PaymentRefNum": "CHECK-1042",
+            "PrivateNote": "Order 1042",
+            "TotalAmt": 112.4,
+            "TxnDate": "2026-10-01"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 60000,
+        "uncertain": false
+      },
+      "idempotencyKey": "d502de74-eb2f-5da7-85b3-29d74a685439",
+      "input": {
+        "amount": "112.40",
+        "currencyCode": "USD",
+        "customerId": "58",
+        "depositAccountId": "5",
+        "invoiceId": "130",
+        "paymentMethodId": "2",
+        "paymentReferenceNumber": "CHECK-1042",
+        "privateNote": "Order 1042",
+        "txnDate": "2026-10-01"
+      },
+      "name": "recordPayment-429",
+      "operation": "recordPayment"
+    },
+    {
+      "callId": "d502de74-eb2f-5da7-85b3-29d74a685439",
+      "exchanges": [
+        {
+          "body": "{\"Fault\": {\"type\": \"SystemFault\", \"Error\": [{\"code\": \"500\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payment",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "d502de74-eb2f-5da7-85b3-29d74a685439"
+            ]
+          },
+          "requestBody": {
+            "CurrencyRef": {
+              "value": "USD"
+            },
+            "CustomerRef": {
+              "value": "58"
+            },
+            "DepositToAccountRef": {
+              "value": "5"
+            },
+            "Line": [
+              {
+                "Amount": 112.4,
+                "LinkedTxn": [
+                  {
+                    "TxnId": "130",
+                    "TxnType": "Invoice"
+                  }
+                ]
+              }
+            ],
+            "PaymentMethodRef": {
+              "value": "2"
+            },
+            "PaymentRefNum": "CHECK-1042",
+            "PrivateNote": "Order 1042",
+            "TotalAmt": 112.4,
+            "TxnDate": "2026-10-01"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d502de74-eb2f-5da7-85b3-29d74a685439",
+      "input": {
+        "amount": "112.40",
+        "currencyCode": "USD",
+        "customerId": "58",
+        "depositAccountId": "5",
+        "invoiceId": "130",
+        "paymentMethodId": "2",
+        "paymentReferenceNumber": "CHECK-1042",
+        "privateNote": "Order 1042",
+        "txnDate": "2026-10-01"
+      },
+      "name": "recordPayment-503",
+      "operation": "recordPayment"
+    },
+    {
+      "callId": "d502de74-eb2f-5da7-85b3-29d74a685439",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payment",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "d502de74-eb2f-5da7-85b3-29d74a685439"
+            ]
+          },
+          "requestBody": {
+            "CurrencyRef": {
+              "value": "USD"
+            },
+            "CustomerRef": {
+              "value": "58"
+            },
+            "DepositToAccountRef": {
+              "value": "5"
+            },
+            "Line": [
+              {
+                "Amount": 112.4,
+                "LinkedTxn": [
+                  {
+                    "TxnId": "130",
+                    "TxnType": "Invoice"
+                  }
+                ]
+              }
+            ],
+            "PaymentMethodRef": {
+              "value": "2"
+            },
+            "PaymentRefNum": "CHECK-1042",
+            "PrivateNote": "Order 1042",
+            "TotalAmt": 112.4,
+            "TxnDate": "2026-10-01"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d502de74-eb2f-5da7-85b3-29d74a685439",
+      "input": {
+        "amount": "112.40",
+        "currencyCode": "USD",
+        "customerId": "58",
+        "depositAccountId": "5",
+        "invoiceId": "130",
+        "paymentMethodId": "2",
+        "paymentReferenceNumber": "CHECK-1042",
+        "privateNote": "Order 1042",
+        "txnDate": "2026-10-01"
+      },
+      "name": "recordPayment-transport",
+      "operation": "recordPayment"
+    },
+    {
+      "callId": "d502de74-eb2f-5da7-85b3-29d74a685439",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payment",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "d502de74-eb2f-5da7-85b3-29d74a685439"
+            ]
+          },
+          "requestBody": {
+            "CurrencyRef": {
+              "value": "USD"
+            },
+            "CustomerRef": {
+              "value": "58"
+            },
+            "DepositToAccountRef": {
+              "value": "5"
+            },
+            "Line": [
+              {
+                "Amount": 112.4,
+                "LinkedTxn": [
+                  {
+                    "TxnId": "130",
+                    "TxnType": "Invoice"
+                  }
+                ]
+              }
+            ],
+            "PaymentMethodRef": {
+              "value": "2"
+            },
+            "PaymentRefNum": "CHECK-1042",
+            "PrivateNote": "Order 1042",
+            "TotalAmt": 112.4,
+            "TxnDate": "2026-10-01"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "customerId": "58",
+          "paymentId": "",
+          "totalAmount": "112.40"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d502de74-eb2f-5da7-85b3-29d74a685439",
+      "input": {
+        "amount": "112.40",
+        "currencyCode": "USD",
+        "customerId": "58",
+        "depositAccountId": "5",
+        "invoiceId": "130",
+        "paymentMethodId": "2",
+        "paymentReferenceNumber": "CHECK-1042",
+        "privateNote": "Order 1042",
+        "txnDate": "2026-10-01"
+      },
+      "name": "recordPayment-providerRejected",
+      "operation": "recordPayment"
+    },
+    {
+      "callId": "d502de74-eb2f-5da7-85b3-29d74a685439",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "customerId": "!",
+          "paymentId": "",
+          "totalAmount": "112.40"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d502de74-eb2f-5da7-85b3-29d74a685439",
+      "input": {
+        "amount": "112.40",
+        "currencyCode": "USD",
+        "customerId": "!",
+        "depositAccountId": "5",
+        "invoiceId": "130",
+        "paymentMethodId": "2",
+        "paymentReferenceNumber": "CHECK-1042",
+        "privateNote": "Order 1042",
+        "txnDate": "2026-10-01"
+      },
+      "name": "recordPayment-defect",
+      "operation": "recordPayment"
+    },
+    {
+      "callId": "b423dc58-efab-5b02-bbf7-4b539dbad99f",
+      "exchanges": [
+        {
+          "body": "{\"unexpected\": 1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "query": [
+              "select * from Customer where PrimaryEmailAddr = 'accounts@cityagency.example.com' AND Active IN (true, false) MAXRESULTS 10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "emailAddress": "accounts@cityagency.example.com"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "accounts@cityagency.example.com",
+        "includesInactive": true
+      },
+      "name": "findCustomer-invalidResponse",
+      "operation": "findCustomer"
+    },
+    {
+      "callId": "5530acf0-2017-5962-8529-d27ede486881",
+      "exchanges": [
+        {
+          "body": "{\"unexpected\": 1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoice/130",
+          "query": {
+            "minorversion": [
+              "75"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "balance": "",
+          "customerId": "",
+          "invoiceId": "130",
+          "lines": [],
+          "totalAmount": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceId": "130"
+      },
+      "name": "getInvoice-invalidResponse",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "95044330-32ad-5ca6-90c2-9a4a9fcaa3ad",
+      "exchanges": [
+        {
+          "body": "{\"unexpected\": 1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "query": [
+              "select * from Invoice where CustomerRef = '58' AND DocNumber = 'ORDER-1042' AND Balance \u003e '0' AND TxnDate \u003e= '2026-10-01' AND TxnDate \u003c= '2026-11-01' AND MetaData.LastUpdatedTime \u003e= '2026-10-01T12:30:00Z' ORDERBY MetaData.CreateTime STARTPOSITION 1 MAXRESULTS 2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "hasMorePages": false,
+          "invoices": [],
+          "maxResults": 0,
+          "startPosition": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerId": "58",
+        "docNumber": "ORDER-1042",
+        "isOpenOnly": true,
+        "maxResults": 2,
+        "startPosition": 1,
+        "txnDateFrom": "2026-10-01",
+        "txnDateTo": "2026-11-01",
+        "updatedSince": "2026-10-01T12:30:00Z"
+      },
+      "name": "listInvoices-invalidResponse",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "0fda9033-4ba6-5462-98fa-01d400ec4987",
+      "exchanges": [
+        {
+          "body": "{\"Customer\": {}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customer",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "0fda9033-4ba6-5462-98fa-01d400ec4987"
+            ]
+          },
+          "requestBody": {
+            "CompanyName": "City Agency LLC",
+            "CurrencyRef": {
+              "value": "USD"
+            },
+            "DisplayName": "City Agency",
+            "FamilyName": "Agency",
+            "GivenName": "City",
+            "PrimaryEmailAddr": {
+              "Address": "accounts@cityagency.example.com"
+            },
+            "PrimaryPhone": {
+              "FreeFormNumber": "555-0101"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "customer": {
+            "customerId": "",
+            "displayName": "",
+            "isActive": false
+          },
+          "displayName": "City Agency"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "0fda9033-4ba6-5462-98fa-01d400ec4987",
+      "input": {
+        "companyName": "City Agency LLC",
+        "currencyCode": "USD",
+        "displayName": "City Agency",
+        "emailAddress": "accounts@cityagency.example.com",
+        "familyName": "Agency",
+        "givenName": "City",
+        "phone": "555-0101"
+      },
+      "name": "createCustomer-uncertain",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "fcb56f17-680f-58b2-8f78-271bd00c381c",
+      "exchanges": [
+        {
+          "body": "{\"Invoice\": {}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoice",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "fcb56f17-680f-58b2-8f78-271bd00c381c"
+            ]
+          },
+          "requestBody": {
+            "BillEmail": {
+              "Address": "accounts@cityagency.example.com"
+            },
+            "CurrencyRef": {
+              "value": "USD"
+            },
+            "CustomerMemo": {
+              "value": "Thank you"
+            },
+            "CustomerRef": {
+              "value": "58"
+            },
+            "DocNumber": "ORDER-1042",
+            "DueDate": "2026-11-01",
+            "Line": [
+              {
+                "Amount": 112.4,
+                "Description": "Service",
+                "DetailType": "SalesItemLineDetail",
+                "SalesItemLineDetail": {
+                  "ItemRef": {
+                    "value": "1"
+                  },
+                  "Qty": 2,
+                  "ServiceDate": "2026-10-01",
+                  "TaxCodeRef": {
+                    "value": "NON"
+                  },
+                  "UnitPrice": 56.2
+                }
+              }
+            ],
+            "PrivateNote": "Order 1042",
+            "TxnDate": "2026-10-01"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "docNumber": "ORDER-1042",
+          "invoice": {
+            "balance": "",
+            "customerId": "",
+            "invoiceId": "",
+            "lines": [],
+            "totalAmount": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "fcb56f17-680f-58b2-8f78-271bd00c381c",
+      "input": {
+        "billEmail": "accounts@cityagency.example.com",
+        "currencyCode": "USD",
+        "customerId": "58",
+        "customerMemo": "Thank you",
+        "docNumber": "ORDER-1042",
+        "dueDate": "2026-11-01",
+        "lines": [
+          {
+            "amount": "112.40",
+            "description": "Service",
+            "itemId": "1",
+            "quantity": "2",
+            "serviceDate": "2026-10-01",
+            "taxCodeId": "NON",
+            "unitPrice": "56.20"
+          }
+        ],
+        "privateNote": "Order 1042",
+        "txnDate": "2026-10-01"
+      },
+      "name": "createInvoice-uncertain",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "39ff2ddf-a8a2-5929-bab9-ac1a20782797",
+      "exchanges": [
+        {
+          "body": "{\"Invoice\": {}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoice/130/send",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "39ff2ddf-a8a2-5929-bab9-ac1a20782797"
+            ],
+            "sendTo": [
+              "accounts@cityagency.example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/octet-stream"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoice/130",
+          "query": {
+            "minorversion": [
+              "75"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "balance": "",
+          "customerId": "",
+          "invoiceId": "130",
+          "lines": [],
+          "totalAmount": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "39ff2ddf-a8a2-5929-bab9-ac1a20782797",
+      "input": {
+        "invoiceId": "130",
+        "sendTo": "accounts@cityagency.example.com"
+      },
+      "name": "sendInvoice-uncertain",
+      "operation": "sendInvoice"
+    },
+    {
+      "callId": "d502de74-eb2f-5da7-85b3-29d74a685439",
+      "exchanges": [
+        {
+          "body": "{\"Payment\": {}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payment",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "d502de74-eb2f-5da7-85b3-29d74a685439"
+            ]
+          },
+          "requestBody": {
+            "CurrencyRef": {
+              "value": "USD"
+            },
+            "CustomerRef": {
+              "value": "58"
+            },
+            "DepositToAccountRef": {
+              "value": "5"
+            },
+            "Line": [
+              {
+                "Amount": 112.4,
+                "LinkedTxn": [
+                  {
+                    "TxnId": "130",
+                    "TxnType": "Invoice"
+                  }
+                ]
+              }
+            ],
+            "PaymentMethodRef": {
+              "value": "2"
+            },
+            "PaymentRefNum": "CHECK-1042",
+            "PrivateNote": "Order 1042",
+            "TotalAmt": 112.4,
+            "TxnDate": "2026-10-01"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "customerId": "58",
+          "paymentId": "",
+          "totalAmount": "112.40"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "d502de74-eb2f-5da7-85b3-29d74a685439",
+      "input": {
+        "amount": "112.40",
+        "currencyCode": "USD",
+        "customerId": "58",
+        "depositAccountId": "5",
+        "invoiceId": "130",
+        "paymentMethodId": "2",
+        "paymentReferenceNumber": "CHECK-1042",
+        "privateNote": "Order 1042",
+        "txnDate": "2026-10-01"
+      },
+      "name": "recordPayment-uncertain",
+      "operation": "recordPayment"
+    },
+    {
+      "callId": "b423dc58-efab-5b02-bbf7-4b539dbad99f",
+      "exchanges": [
+        {
+          "body": "{\"QueryResponse\": {}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "query": [
+              "select * from Customer where PrimaryEmailAddr = 'accounts@cityagency.example.com' AND Active IN (true, false) MAXRESULTS 10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "emailAddress": "accounts@cityagency.example.com"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "accounts@cityagency.example.com",
+        "includesInactive": true
+      },
+      "name": "findCustomer-notFound",
+      "operation": "findCustomer"
+    },
+    {
+      "callId": "b423dc58-efab-5b02-bbf7-4b539dbad99f",
+      "exchanges": [
+        {
+          "body": "{\"QueryResponse\": {\"Customer\": [{\"Id\": \"58\", \"DisplayName\": \"City Agency\", \"GivenName\": \"City\", \"FamilyName\": \"Agency\", \"CompanyName\": \"City Agency LLC\", \"PrimaryEmailAddr\": {\"Address\": \"accounts@cityagency.example.com\"}, \"Active\": true}, {\"Id\": \"59\", \"DisplayName\": \"City Agency\", \"GivenName\": \"City\", \"FamilyName\": \"Agency\", \"CompanyName\": \"City Agency LLC\", \"PrimaryEmailAddr\": {\"Address\": \"accounts@cityagency.example.com\"}, \"Active\": true}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "query": [
+              "select * from Customer where PrimaryEmailAddr = 'accounts@cityagency.example.com' AND Active IN (true, false) MAXRESULTS 10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "ambiguous",
+        "failureKind": "CONFLICT",
+        "output": {
+          "emailAddress": "accounts@cityagency.example.com",
+          "matches": [
+            {
+              "companyName": "City Agency LLC",
+              "customerId": "58",
+              "displayName": "City Agency",
+              "emailAddress": "accounts@cityagency.example.com",
+              "familyName": "Agency",
+              "givenName": "City",
+              "isActive": true
+            },
+            {
+              "companyName": "City Agency LLC",
+              "customerId": "59",
+              "displayName": "City Agency",
+              "emailAddress": "accounts@cityagency.example.com",
+              "familyName": "Agency",
+              "givenName": "City",
+              "isActive": true
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "accounts@cityagency.example.com",
+        "includesInactive": true
+      },
+      "name": "findCustomer-ambiguous",
+      "operation": "findCustomer"
+    },
+    {
+      "callId": "b423dc58-efab-5b02-bbf7-4b539dbad99f",
+      "exchanges": [
+        {
+          "body": "{\"QueryResponse\": {\"Customer\": [{\"Id\": \"58\", \"DisplayName\": \"City Agency\", \"GivenName\": \"City\", \"FamilyName\": \"Agency\", \"CompanyName\": \"City Agency LLC\", \"PrimaryEmailAddr\": {\"Address\": \"accounts@cityagency.example.com\"}, \"Active\": true}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/query",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "query": [
+              "select * from Customer where DisplayName = 'City Agency' MAXRESULTS 10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "customer": {
+            "companyName": "City Agency LLC",
+            "customerId": "58",
+            "displayName": "City Agency",
+            "emailAddress": "accounts@cityagency.example.com",
+            "familyName": "Agency",
+            "givenName": "City",
+            "isActive": true
+          },
+          "displayName": "City Agency"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "displayName": "City Agency"
+      },
+      "name": "findCustomer-displayName",
+      "operation": "findCustomer"
+    },
+    {
+      "callId": "5530acf0-2017-5962-8529-d27ede486881",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoice/130",
+          "query": {
+            "minorversion": [
+              "75"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "balance": "",
+          "customerId": "",
+          "invoiceId": "130",
+          "lines": [],
+          "totalAmount": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceId": "130"
+      },
+      "name": "getInvoice-notFound",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "0fda9033-4ba6-5462-98fa-01d400ec4987",
+      "exchanges": [
+        {
+          "body": "{\"Fault\": {\"type\": \"ValidationFault\", \"Error\": [{\"code\": \"6240\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customer",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "0fda9033-4ba6-5462-98fa-01d400ec4987"
+            ]
+          },
+          "requestBody": {
+            "CompanyName": "City Agency LLC",
+            "CurrencyRef": {
+              "value": "USD"
+            },
+            "DisplayName": "City Agency",
+            "FamilyName": "Agency",
+            "GivenName": "City",
+            "PrimaryEmailAddr": {
+              "Address": "accounts@cityagency.example.com"
+            },
+            "PrimaryPhone": {
+              "FreeFormNumber": "555-0101"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "nameConflict",
+        "failureKind": "CONFLICT",
+        "output": {
+          "customer": {
+            "customerId": "",
+            "displayName": "",
+            "isActive": false
+          },
+          "displayName": "City Agency"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0fda9033-4ba6-5462-98fa-01d400ec4987",
+      "input": {
+        "companyName": "City Agency LLC",
+        "currencyCode": "USD",
+        "displayName": "City Agency",
+        "emailAddress": "accounts@cityagency.example.com",
+        "familyName": "Agency",
+        "givenName": "City",
+        "phone": "555-0101"
+      },
+      "name": "createCustomer-nameConflict",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "fcb56f17-680f-58b2-8f78-271bd00c381c",
+      "exchanges": [
+        {
+          "body": "{\"Fault\": {\"type\": \"ValidationFault\", \"Error\": [{\"code\": \"610\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoice",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "fcb56f17-680f-58b2-8f78-271bd00c381c"
+            ]
+          },
+          "requestBody": {
+            "BillEmail": {
+              "Address": "accounts@cityagency.example.com"
+            },
+            "CurrencyRef": {
+              "value": "USD"
+            },
+            "CustomerMemo": {
+              "value": "Thank you"
+            },
+            "CustomerRef": {
+              "value": "58"
+            },
+            "DocNumber": "ORDER-1042",
+            "DueDate": "2026-11-01",
+            "Line": [
+              {
+                "Amount": 112.4,
+                "Description": "Service",
+                "DetailType": "SalesItemLineDetail",
+                "SalesItemLineDetail": {
+                  "ItemRef": {
+                    "value": "1"
+                  },
+                  "Qty": 2,
+                  "ServiceDate": "2026-10-01",
+                  "TaxCodeRef": {
+                    "value": "NON"
+                  },
+                  "UnitPrice": 56.2
+                }
+              }
+            ],
+            "PrivateNote": "Order 1042",
+            "TxnDate": "2026-10-01"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "docNumber": "ORDER-1042",
+          "invoice": {
+            "balance": "",
+            "customerId": "",
+            "invoiceId": "",
+            "lines": [],
+            "totalAmount": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fcb56f17-680f-58b2-8f78-271bd00c381c",
+      "input": {
+        "billEmail": "accounts@cityagency.example.com",
+        "currencyCode": "USD",
+        "customerId": "58",
+        "customerMemo": "Thank you",
+        "docNumber": "ORDER-1042",
+        "dueDate": "2026-11-01",
+        "lines": [
+          {
+            "amount": "112.40",
+            "description": "Service",
+            "itemId": "1",
+            "quantity": "2",
+            "serviceDate": "2026-10-01",
+            "taxCodeId": "NON",
+            "unitPrice": "56.20"
+          }
+        ],
+        "privateNote": "Order 1042",
+        "txnDate": "2026-10-01"
+      },
+      "name": "createInvoice-notFoundRejection",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "39ff2ddf-a8a2-5929-bab9-ac1a20782797",
+      "exchanges": [
+        {
+          "body": "{\"Fault\": {\"type\": \"ValidationFault\", \"Error\": [{\"code\": \"610\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoice/130/send",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "39ff2ddf-a8a2-5929-bab9-ac1a20782797"
+            ],
+            "sendTo": [
+              "accounts@cityagency.example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/octet-stream"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "balance": "",
+          "customerId": "",
+          "invoiceId": "130",
+          "lines": [],
+          "totalAmount": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "39ff2ddf-a8a2-5929-bab9-ac1a20782797",
+      "input": {
+        "invoiceId": "130",
+        "sendTo": "accounts@cityagency.example.com"
+      },
+      "name": "sendInvoice-notFoundRejection",
+      "operation": "sendInvoice"
+    },
+    {
+      "callId": "d502de74-eb2f-5da7-85b3-29d74a685439",
+      "exchanges": [
+        {
+          "body": "{\"Fault\": {\"type\": \"ValidationFault\", \"Error\": [{\"code\": \"610\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payment",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "d502de74-eb2f-5da7-85b3-29d74a685439"
+            ]
+          },
+          "requestBody": {
+            "CurrencyRef": {
+              "value": "USD"
+            },
+            "CustomerRef": {
+              "value": "58"
+            },
+            "DepositToAccountRef": {
+              "value": "5"
+            },
+            "Line": [
+              {
+                "Amount": 112.4,
+                "LinkedTxn": [
+                  {
+                    "TxnId": "130",
+                    "TxnType": "Invoice"
+                  }
+                ]
+              }
+            ],
+            "PaymentMethodRef": {
+              "value": "2"
+            },
+            "PaymentRefNum": "CHECK-1042",
+            "PrivateNote": "Order 1042",
+            "TotalAmt": 112.4,
+            "TxnDate": "2026-10-01"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "customerId": "58",
+          "paymentId": "",
+          "totalAmount": "112.40"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d502de74-eb2f-5da7-85b3-29d74a685439",
+      "input": {
+        "amount": "112.40",
+        "currencyCode": "USD",
+        "customerId": "58",
+        "depositAccountId": "5",
+        "invoiceId": "130",
+        "paymentMethodId": "2",
+        "paymentReferenceNumber": "CHECK-1042",
+        "privateNote": "Order 1042",
+        "txnDate": "2026-10-01"
+      },
+      "name": "recordPayment-notFoundRejection",
+      "operation": "recordPayment"
+    },
+    {
+      "callId": "0fda9033-4ba6-5462-98fa-01d400ec4987",
+      "exchanges": [
+        {
+          "body": "{\"Customer\": {\"Id\": \"58\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customer",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "0fda9033-4ba6-5462-98fa-01d400ec4987"
+            ]
+          },
+          "requestBody": {
+            "CompanyName": "City Agency LLC",
+            "CurrencyRef": {
+              "value": "USD"
+            },
+            "DisplayName": "City Agency",
+            "FamilyName": "Agency",
+            "GivenName": "City",
+            "PrimaryEmailAddr": {
+              "Address": "accounts@cityagency.example.com"
+            },
+            "PrimaryPhone": {
+              "FreeFormNumber": "555-0101"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"Customer\": {\"Id\": \"58\", \"DisplayName\": \"City Agency\", \"GivenName\": \"City\", \"FamilyName\": \"Agency\", \"CompanyName\": \"City Agency LLC\", \"PrimaryEmailAddr\": {\"Address\": \"accounts@cityagency.example.com\"}, \"Active\": true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/customer/58",
+          "query": {
+            "minorversion": [
+              "75"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "customer": {
+            "companyName": "City Agency LLC",
+            "customerId": "58",
+            "displayName": "City Agency",
+            "emailAddress": "accounts@cityagency.example.com",
+            "familyName": "Agency",
+            "givenName": "City",
+            "isActive": true
+          },
+          "displayName": "City Agency"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0fda9033-4ba6-5462-98fa-01d400ec4987",
+      "input": {
+        "companyName": "City Agency LLC",
+        "currencyCode": "USD",
+        "displayName": "City Agency",
+        "emailAddress": "accounts@cityagency.example.com",
+        "familyName": "Agency",
+        "givenName": "City",
+        "phone": "555-0101"
+      },
+      "name": "createCustomer-readBackConfirmed",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "0fda9033-4ba6-5462-98fa-01d400ec4987",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customer",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "0fda9033-4ba6-5462-98fa-01d400ec4987"
+            ]
+          },
+          "requestBody": {
+            "CompanyName": "City Agency LLC",
+            "CurrencyRef": {
+              "value": "USD"
+            },
+            "DisplayName": "City Agency",
+            "FamilyName": "Agency",
+            "GivenName": "City",
+            "PrimaryEmailAddr": {
+              "Address": "accounts@cityagency.example.com"
+            },
+            "PrimaryPhone": {
+              "FreeFormNumber": "555-0101"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0fda9033-4ba6-5462-98fa-01d400ec4987",
+      "input": {
+        "companyName": "City Agency LLC",
+        "currencyCode": "USD",
+        "displayName": "City Agency",
+        "emailAddress": "accounts@cityagency.example.com",
+        "familyName": "Agency",
+        "givenName": "City",
+        "phone": "555-0101"
+      },
+      "name": "createCustomer-afterSendTransport",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "0fda9033-4ba6-5462-98fa-01d400ec4987",
+      "exchanges": [
+        {
+          "body": "{\"Fault\": {\"type\": \"ValidationFault\", \"Error\": [{\"code\": \"600\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/customer",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "0fda9033-4ba6-5462-98fa-01d400ec4987"
+            ]
+          },
+          "requestBody": {
+            "CompanyName": "City Agency LLC",
+            "CurrencyRef": {
+              "value": "USD"
+            },
+            "DisplayName": "City Agency",
+            "FamilyName": "Agency",
+            "GivenName": "City",
+            "PrimaryEmailAddr": {
+              "Address": "accounts@cityagency.example.com"
+            },
+            "PrimaryPhone": {
+              "FreeFormNumber": "555-0101"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "CONFLICT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0fda9033-4ba6-5462-98fa-01d400ec4987",
+      "input": {
+        "companyName": "City Agency LLC",
+        "currencyCode": "USD",
+        "displayName": "City Agency",
+        "emailAddress": "accounts@cityagency.example.com",
+        "familyName": "Agency",
+        "givenName": "City",
+        "phone": "555-0101"
+      },
+      "name": "createCustomer-duplicateRequestId",
+      "operation": "createCustomer"
+    },
+    {
+      "callId": "fcb56f17-680f-58b2-8f78-271bd00c381c",
+      "exchanges": [
+        {
+          "body": "{\"Invoice\": {\"Id\": \"130\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoice",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "fcb56f17-680f-58b2-8f78-271bd00c381c"
+            ]
+          },
+          "requestBody": {
+            "BillEmail": {
+              "Address": "accounts@cityagency.example.com"
+            },
+            "CurrencyRef": {
+              "value": "USD"
+            },
+            "CustomerMemo": {
+              "value": "Thank you"
+            },
+            "CustomerRef": {
+              "value": "58"
+            },
+            "DocNumber": "ORDER-1042",
+            "DueDate": "2026-11-01",
+            "Line": [
+              {
+                "Amount": 112.4,
+                "Description": "Service",
+                "DetailType": "SalesItemLineDetail",
+                "SalesItemLineDetail": {
+                  "ItemRef": {
+                    "value": "1"
+                  },
+                  "Qty": 2,
+                  "ServiceDate": "2026-10-01",
+                  "TaxCodeRef": {
+                    "value": "NON"
+                  },
+                  "UnitPrice": 56.2
+                }
+              }
+            ],
+            "PrivateNote": "Order 1042",
+            "TxnDate": "2026-10-01"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"Invoice\": {\"Id\": \"130\", \"DocNumber\": \"ORDER-1042\", \"CustomerRef\": {\"value\": \"58\"}, \"TotalAmt\": 112.4, \"Balance\": 112.4, \"EmailStatus\": \"EmailSent\", \"BillEmail\": {\"Address\": \"accounts@cityagency.example.com\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoice/130",
+          "query": {
+            "minorversion": [
+              "75"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "docNumber": "ORDER-1042",
+          "invoice": {
+            "balance": "112.4",
+            "billEmail": "accounts@cityagency.example.com",
+            "customerId": "58",
+            "docNumber": "ORDER-1042",
+            "emailStatus": "EmailSent",
+            "invoiceId": "130",
+            "lines": [],
+            "totalAmount": "112.4"
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fcb56f17-680f-58b2-8f78-271bd00c381c",
+      "input": {
+        "billEmail": "accounts@cityagency.example.com",
+        "currencyCode": "USD",
+        "customerId": "58",
+        "customerMemo": "Thank you",
+        "docNumber": "ORDER-1042",
+        "dueDate": "2026-11-01",
+        "lines": [
+          {
+            "amount": "112.40",
+            "description": "Service",
+            "itemId": "1",
+            "quantity": "2",
+            "serviceDate": "2026-10-01",
+            "taxCodeId": "NON",
+            "unitPrice": "56.20"
+          }
+        ],
+        "privateNote": "Order 1042",
+        "txnDate": "2026-10-01"
+      },
+      "name": "createInvoice-readBackConfirmed",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "fcb56f17-680f-58b2-8f78-271bd00c381c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoice",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "fcb56f17-680f-58b2-8f78-271bd00c381c"
+            ]
+          },
+          "requestBody": {
+            "BillEmail": {
+              "Address": "accounts@cityagency.example.com"
+            },
+            "CurrencyRef": {
+              "value": "USD"
+            },
+            "CustomerMemo": {
+              "value": "Thank you"
+            },
+            "CustomerRef": {
+              "value": "58"
+            },
+            "DocNumber": "ORDER-1042",
+            "DueDate": "2026-11-01",
+            "Line": [
+              {
+                "Amount": 112.4,
+                "Description": "Service",
+                "DetailType": "SalesItemLineDetail",
+                "SalesItemLineDetail": {
+                  "ItemRef": {
+                    "value": "1"
+                  },
+                  "Qty": 2,
+                  "ServiceDate": "2026-10-01",
+                  "TaxCodeRef": {
+                    "value": "NON"
+                  },
+                  "UnitPrice": 56.2
+                }
+              }
+            ],
+            "PrivateNote": "Order 1042",
+            "TxnDate": "2026-10-01"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fcb56f17-680f-58b2-8f78-271bd00c381c",
+      "input": {
+        "billEmail": "accounts@cityagency.example.com",
+        "currencyCode": "USD",
+        "customerId": "58",
+        "customerMemo": "Thank you",
+        "docNumber": "ORDER-1042",
+        "dueDate": "2026-11-01",
+        "lines": [
+          {
+            "amount": "112.40",
+            "description": "Service",
+            "itemId": "1",
+            "quantity": "2",
+            "serviceDate": "2026-10-01",
+            "taxCodeId": "NON",
+            "unitPrice": "56.20"
+          }
+        ],
+        "privateNote": "Order 1042",
+        "txnDate": "2026-10-01"
+      },
+      "name": "createInvoice-afterSendTransport",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "fcb56f17-680f-58b2-8f78-271bd00c381c",
+      "exchanges": [
+        {
+          "body": "{\"Fault\": {\"type\": \"ValidationFault\", \"Error\": [{\"code\": \"600\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoice",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "fcb56f17-680f-58b2-8f78-271bd00c381c"
+            ]
+          },
+          "requestBody": {
+            "BillEmail": {
+              "Address": "accounts@cityagency.example.com"
+            },
+            "CurrencyRef": {
+              "value": "USD"
+            },
+            "CustomerMemo": {
+              "value": "Thank you"
+            },
+            "CustomerRef": {
+              "value": "58"
+            },
+            "DocNumber": "ORDER-1042",
+            "DueDate": "2026-11-01",
+            "Line": [
+              {
+                "Amount": 112.4,
+                "Description": "Service",
+                "DetailType": "SalesItemLineDetail",
+                "SalesItemLineDetail": {
+                  "ItemRef": {
+                    "value": "1"
+                  },
+                  "Qty": 2,
+                  "ServiceDate": "2026-10-01",
+                  "TaxCodeRef": {
+                    "value": "NON"
+                  },
+                  "UnitPrice": 56.2
+                }
+              }
+            ],
+            "PrivateNote": "Order 1042",
+            "TxnDate": "2026-10-01"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "CONFLICT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fcb56f17-680f-58b2-8f78-271bd00c381c",
+      "input": {
+        "billEmail": "accounts@cityagency.example.com",
+        "currencyCode": "USD",
+        "customerId": "58",
+        "customerMemo": "Thank you",
+        "docNumber": "ORDER-1042",
+        "dueDate": "2026-11-01",
+        "lines": [
+          {
+            "amount": "112.40",
+            "description": "Service",
+            "itemId": "1",
+            "quantity": "2",
+            "serviceDate": "2026-10-01",
+            "taxCodeId": "NON",
+            "unitPrice": "56.20"
+          }
+        ],
+        "privateNote": "Order 1042",
+        "txnDate": "2026-10-01"
+      },
+      "name": "createInvoice-duplicateRequestId",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "39ff2ddf-a8a2-5929-bab9-ac1a20782797",
+      "exchanges": [
+        {
+          "body": "{\"Invoice\": {}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoice/130/send",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "39ff2ddf-a8a2-5929-bab9-ac1a20782797"
+            ],
+            "sendTo": [
+              "accounts@cityagency.example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/octet-stream"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"Invoice\": {\"Id\": \"130\", \"DocNumber\": \"ORDER-1042\", \"CustomerRef\": {\"value\": \"58\"}, \"TotalAmt\": 112.4, \"Balance\": 112.4, \"EmailStatus\": \"EmailSent\", \"BillEmail\": {\"Address\": \"accounts@cityagency.example.com\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/invoice/130",
+          "query": {
+            "minorversion": [
+              "75"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "output": {
+          "balance": "112.4",
+          "billEmail": "accounts@cityagency.example.com",
+          "customerId": "58",
+          "docNumber": "ORDER-1042",
+          "emailStatus": "EmailSent",
+          "invoiceId": "130",
+          "lines": [],
+          "totalAmount": "112.4"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "39ff2ddf-a8a2-5929-bab9-ac1a20782797",
+      "input": {
+        "invoiceId": "130",
+        "sendTo": "accounts@cityagency.example.com"
+      },
+      "name": "sendInvoice-readBackConfirmed",
+      "operation": "sendInvoice"
+    },
+    {
+      "callId": "39ff2ddf-a8a2-5929-bab9-ac1a20782797",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoice/130/send",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "39ff2ddf-a8a2-5929-bab9-ac1a20782797"
+            ],
+            "sendTo": [
+              "accounts@cityagency.example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/octet-stream"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "39ff2ddf-a8a2-5929-bab9-ac1a20782797",
+      "input": {
+        "invoiceId": "130",
+        "sendTo": "accounts@cityagency.example.com"
+      },
+      "name": "sendInvoice-afterSendTransport",
+      "operation": "sendInvoice"
+    },
+    {
+      "callId": "39ff2ddf-a8a2-5929-bab9-ac1a20782797",
+      "exchanges": [
+        {
+          "body": "{\"Fault\": {\"type\": \"ValidationFault\", \"Error\": [{\"code\": \"600\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/invoice/130/send",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "39ff2ddf-a8a2-5929-bab9-ac1a20782797"
+            ],
+            "sendTo": [
+              "accounts@cityagency.example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/octet-stream"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "CONFLICT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "39ff2ddf-a8a2-5929-bab9-ac1a20782797",
+      "input": {
+        "invoiceId": "130",
+        "sendTo": "accounts@cityagency.example.com"
+      },
+      "name": "sendInvoice-duplicateRequestId",
+      "operation": "sendInvoice"
+    },
+    {
+      "callId": "d502de74-eb2f-5da7-85b3-29d74a685439",
+      "exchanges": [
+        {
+          "body": "{\"Payment\": {\"Id\": \"186\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payment",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "d502de74-eb2f-5da7-85b3-29d74a685439"
+            ]
+          },
+          "requestBody": {
+            "CurrencyRef": {
+              "value": "USD"
+            },
+            "CustomerRef": {
+              "value": "58"
+            },
+            "DepositToAccountRef": {
+              "value": "5"
+            },
+            "Line": [
+              {
+                "Amount": 112.4,
+                "LinkedTxn": [
+                  {
+                    "TxnId": "130",
+                    "TxnType": "Invoice"
+                  }
+                ]
+              }
+            ],
+            "PaymentMethodRef": {
+              "value": "2"
+            },
+            "PaymentRefNum": "CHECK-1042",
+            "PrivateNote": "Order 1042",
+            "TotalAmt": 112.4,
+            "TxnDate": "2026-10-01"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"Payment\": {\"Id\": \"186\", \"CustomerRef\": {\"value\": \"58\"}, \"TotalAmt\": 112.4, \"Line\": [{\"Amount\": 112.4, \"LinkedTxn\": [{\"TxnId\": \"130\", \"TxnType\": \"Invoice\"}]}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payment/186",
+          "query": {
+            "minorversion": [
+              "75"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "recorded",
+        "failureKind": "",
+        "output": {
+          "appliedInvoices": [
+            {
+              "amount": "112.4",
+              "invoiceId": "130"
+            }
+          ],
+          "customerId": "58",
+          "paymentId": "186",
+          "totalAmount": "112.4"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d502de74-eb2f-5da7-85b3-29d74a685439",
+      "input": {
+        "amount": "112.40",
+        "currencyCode": "USD",
+        "customerId": "58",
+        "depositAccountId": "5",
+        "invoiceId": "130",
+        "paymentMethodId": "2",
+        "paymentReferenceNumber": "CHECK-1042",
+        "privateNote": "Order 1042",
+        "txnDate": "2026-10-01"
+      },
+      "name": "recordPayment-readBackConfirmed",
+      "operation": "recordPayment"
+    },
+    {
+      "callId": "d502de74-eb2f-5da7-85b3-29d74a685439",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payment",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "d502de74-eb2f-5da7-85b3-29d74a685439"
+            ]
+          },
+          "requestBody": {
+            "CurrencyRef": {
+              "value": "USD"
+            },
+            "CustomerRef": {
+              "value": "58"
+            },
+            "DepositToAccountRef": {
+              "value": "5"
+            },
+            "Line": [
+              {
+                "Amount": 112.4,
+                "LinkedTxn": [
+                  {
+                    "TxnId": "130",
+                    "TxnType": "Invoice"
+                  }
+                ]
+              }
+            ],
+            "PaymentMethodRef": {
+              "value": "2"
+            },
+            "PaymentRefNum": "CHECK-1042",
+            "PrivateNote": "Order 1042",
+            "TotalAmt": 112.4,
+            "TxnDate": "2026-10-01"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d502de74-eb2f-5da7-85b3-29d74a685439",
+      "input": {
+        "amount": "112.40",
+        "currencyCode": "USD",
+        "customerId": "58",
+        "depositAccountId": "5",
+        "invoiceId": "130",
+        "paymentMethodId": "2",
+        "paymentReferenceNumber": "CHECK-1042",
+        "privateNote": "Order 1042",
+        "txnDate": "2026-10-01"
+      },
+      "name": "recordPayment-afterSendTransport",
+      "operation": "recordPayment"
+    },
+    {
+      "callId": "d502de74-eb2f-5da7-85b3-29d74a685439",
+      "exchanges": [
+        {
+          "body": "{\"Fault\": {\"type\": \"ValidationFault\", \"Error\": [{\"code\": \"600\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/payment",
+          "query": {
+            "minorversion": [
+              "75"
+            ],
+            "requestid": [
+              "d502de74-eb2f-5da7-85b3-29d74a685439"
+            ]
+          },
+          "requestBody": {
+            "CurrencyRef": {
+              "value": "USD"
+            },
+            "CustomerRef": {
+              "value": "58"
+            },
+            "DepositToAccountRef": {
+              "value": "5"
+            },
+            "Line": [
+              {
+                "Amount": 112.4,
+                "LinkedTxn": [
+                  {
+                    "TxnId": "130",
+                    "TxnType": "Invoice"
+                  }
+                ]
+              }
+            ],
+            "PaymentMethodRef": {
+              "value": "2"
+            },
+            "PaymentRefNum": "CHECK-1042",
+            "PrivateNote": "Order 1042",
+            "TotalAmt": 112.4,
+            "TxnDate": "2026-10-01"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer intuit-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "CONFLICT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d502de74-eb2f-5da7-85b3-29d74a685439",
+      "input": {
+        "amount": "112.40",
+        "currencyCode": "USD",
+        "customerId": "58",
+        "depositAccountId": "5",
+        "invoiceId": "130",
+        "paymentMethodId": "2",
+        "paymentReferenceNumber": "CHECK-1042",
+        "privateNote": "Order 1042",
+        "txnDate": "2026-10-01"
+      },
+      "name": "recordPayment-duplicateRequestId",
+      "operation": "recordPayment"
+    }
+  ],
+  "schemaVersion": 1
+}
