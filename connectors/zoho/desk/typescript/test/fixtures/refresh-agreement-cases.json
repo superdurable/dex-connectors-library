@@ -1,0 +1,3755 @@
+[
+  {
+    "name": "zoho-us-oauth refresh",
+    "methodId": "zoho-us-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.com/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [
+      "invalid_code",
+      "invalid_client",
+      "invalid_client_secret"
+    ],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-us-oauth refresh with unaccepted token type",
+    "expectedError": "retryable",
+    "methodId": "zoho-us-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.com/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "manifest-unaccepted-token-type"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-us-oauth refresh without token type",
+    "expectedError": "retryable",
+    "methodId": "zoho-us-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.com/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-us-oauth refresh with different reported scope",
+    "methodId": "zoho-us-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.com/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "manifest-ungranted-scope",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-us-oauth refresh without expires_in",
+    "expectedError": "retryable",
+    "methodId": "zoho-us-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.com/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-us-oauth refresh with expiry above cap",
+    "methodId": "zoho-us-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.com/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 7200,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ],
+    "expectedExpiryMilliseconds": 3600000
+  },
+  {
+    "name": "zoho-us-oauth refresh without refresh_token",
+    "methodId": "zoho-us-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.com/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-eu-oauth refresh",
+    "methodId": "zoho-eu-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.eu/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [
+      "invalid_code",
+      "invalid_client",
+      "invalid_client_secret"
+    ],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-eu-oauth refresh with unaccepted token type",
+    "expectedError": "retryable",
+    "methodId": "zoho-eu-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.eu/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "manifest-unaccepted-token-type"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-eu-oauth refresh without token type",
+    "expectedError": "retryable",
+    "methodId": "zoho-eu-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.eu/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-eu-oauth refresh with different reported scope",
+    "methodId": "zoho-eu-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.eu/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "manifest-ungranted-scope",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-eu-oauth refresh without expires_in",
+    "expectedError": "retryable",
+    "methodId": "zoho-eu-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.eu/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-eu-oauth refresh with expiry above cap",
+    "methodId": "zoho-eu-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.eu/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 7200,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ],
+    "expectedExpiryMilliseconds": 3600000
+  },
+  {
+    "name": "zoho-eu-oauth refresh without refresh_token",
+    "methodId": "zoho-eu-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.eu/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-in-oauth refresh",
+    "methodId": "zoho-in-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.in/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [
+      "invalid_code",
+      "invalid_client",
+      "invalid_client_secret"
+    ],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-in-oauth refresh with unaccepted token type",
+    "expectedError": "retryable",
+    "methodId": "zoho-in-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.in/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "manifest-unaccepted-token-type"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-in-oauth refresh without token type",
+    "expectedError": "retryable",
+    "methodId": "zoho-in-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.in/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-in-oauth refresh with different reported scope",
+    "methodId": "zoho-in-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.in/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "manifest-ungranted-scope",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-in-oauth refresh without expires_in",
+    "expectedError": "retryable",
+    "methodId": "zoho-in-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.in/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-in-oauth refresh with expiry above cap",
+    "methodId": "zoho-in-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.in/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 7200,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ],
+    "expectedExpiryMilliseconds": 3600000
+  },
+  {
+    "name": "zoho-in-oauth refresh without refresh_token",
+    "methodId": "zoho-in-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.in/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-au-oauth refresh",
+    "methodId": "zoho-au-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.com.au/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [
+      "invalid_code",
+      "invalid_client",
+      "invalid_client_secret"
+    ],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-au-oauth refresh with unaccepted token type",
+    "expectedError": "retryable",
+    "methodId": "zoho-au-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.com.au/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "manifest-unaccepted-token-type"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-au-oauth refresh without token type",
+    "expectedError": "retryable",
+    "methodId": "zoho-au-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.com.au/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-au-oauth refresh with different reported scope",
+    "methodId": "zoho-au-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.com.au/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "manifest-ungranted-scope",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-au-oauth refresh without expires_in",
+    "expectedError": "retryable",
+    "methodId": "zoho-au-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.com.au/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-au-oauth refresh with expiry above cap",
+    "methodId": "zoho-au-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.com.au/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 7200,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ],
+    "expectedExpiryMilliseconds": 3600000
+  },
+  {
+    "name": "zoho-au-oauth refresh without refresh_token",
+    "methodId": "zoho-au-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.com.au/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-jp-oauth refresh",
+    "methodId": "zoho-jp-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.jp/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [
+      "invalid_code",
+      "invalid_client",
+      "invalid_client_secret"
+    ],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-jp-oauth refresh with unaccepted token type",
+    "expectedError": "retryable",
+    "methodId": "zoho-jp-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.jp/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "manifest-unaccepted-token-type"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-jp-oauth refresh without token type",
+    "expectedError": "retryable",
+    "methodId": "zoho-jp-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.jp/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-jp-oauth refresh with different reported scope",
+    "methodId": "zoho-jp-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.jp/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "manifest-ungranted-scope",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-jp-oauth refresh without expires_in",
+    "expectedError": "retryable",
+    "methodId": "zoho-jp-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.jp/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-jp-oauth refresh with expiry above cap",
+    "methodId": "zoho-jp-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.jp/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 7200,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ],
+    "expectedExpiryMilliseconds": 3600000
+  },
+  {
+    "name": "zoho-jp-oauth refresh without refresh_token",
+    "methodId": "zoho-jp-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.jp/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-ca-oauth refresh",
+    "methodId": "zoho-ca-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zohocloud.ca/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [
+      "invalid_code",
+      "invalid_client",
+      "invalid_client_secret"
+    ],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-ca-oauth refresh with unaccepted token type",
+    "expectedError": "retryable",
+    "methodId": "zoho-ca-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zohocloud.ca/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "manifest-unaccepted-token-type"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-ca-oauth refresh without token type",
+    "expectedError": "retryable",
+    "methodId": "zoho-ca-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zohocloud.ca/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-ca-oauth refresh with different reported scope",
+    "methodId": "zoho-ca-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zohocloud.ca/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "manifest-ungranted-scope",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-ca-oauth refresh without expires_in",
+    "expectedError": "retryable",
+    "methodId": "zoho-ca-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zohocloud.ca/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-ca-oauth refresh with expiry above cap",
+    "methodId": "zoho-ca-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zohocloud.ca/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 7200,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ],
+    "expectedExpiryMilliseconds": 3600000
+  },
+  {
+    "name": "zoho-ca-oauth refresh without refresh_token",
+    "methodId": "zoho-ca-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zohocloud.ca/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-sa-oauth refresh",
+    "methodId": "zoho-sa-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.sa/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [
+      "invalid_code",
+      "invalid_client",
+      "invalid_client_secret"
+    ],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-sa-oauth refresh with unaccepted token type",
+    "expectedError": "retryable",
+    "methodId": "zoho-sa-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.sa/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "manifest-unaccepted-token-type"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-sa-oauth refresh without token type",
+    "expectedError": "retryable",
+    "methodId": "zoho-sa-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.sa/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-sa-oauth refresh with different reported scope",
+    "methodId": "zoho-sa-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.sa/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "manifest-ungranted-scope",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-sa-oauth refresh without expires_in",
+    "expectedError": "retryable",
+    "methodId": "zoho-sa-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.sa/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-sa-oauth refresh with expiry above cap",
+    "methodId": "zoho-sa-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.sa/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 7200,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ],
+    "expectedExpiryMilliseconds": 3600000
+  },
+  {
+    "name": "zoho-sa-oauth refresh without refresh_token",
+    "methodId": "zoho-sa-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.sa/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-sg-oauth refresh",
+    "methodId": "zoho-sg-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.sg/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [
+      "invalid_code",
+      "invalid_client",
+      "invalid_client_secret"
+    ],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-sg-oauth refresh with unaccepted token type",
+    "expectedError": "retryable",
+    "methodId": "zoho-sg-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.sg/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "manifest-unaccepted-token-type"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-sg-oauth refresh without token type",
+    "expectedError": "retryable",
+    "methodId": "zoho-sg-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.sg/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-sg-oauth refresh with different reported scope",
+    "methodId": "zoho-sg-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.sg/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "manifest-ungranted-scope",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-sg-oauth refresh without expires_in",
+    "expectedError": "retryable",
+    "methodId": "zoho-sg-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.sg/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-sg-oauth refresh with expiry above cap",
+    "methodId": "zoho-sg-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.sg/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 7200,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ],
+    "expectedExpiryMilliseconds": 3600000
+  },
+  {
+    "name": "zoho-sg-oauth refresh without refresh_token",
+    "methodId": "zoho-sg-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.sg/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-ae-oauth refresh",
+    "methodId": "zoho-ae-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.ae/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [
+      "invalid_code",
+      "invalid_client",
+      "invalid_client_secret"
+    ],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-ae-oauth refresh with unaccepted token type",
+    "expectedError": "retryable",
+    "methodId": "zoho-ae-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.ae/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "manifest-unaccepted-token-type"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-ae-oauth refresh without token type",
+    "expectedError": "retryable",
+    "methodId": "zoho-ae-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.ae/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-ae-oauth refresh with different reported scope",
+    "methodId": "zoho-ae-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.ae/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "manifest-ungranted-scope",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-ae-oauth refresh without expires_in",
+    "expectedError": "retryable",
+    "methodId": "zoho-ae-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.ae/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "zoho-ae-oauth refresh with expiry above cap",
+    "methodId": "zoho-ae-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.ae/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 7200,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ],
+    "expectedExpiryMilliseconds": 3600000
+  },
+  {
+    "name": "zoho-ae-oauth refresh without refresh_token",
+    "methodId": "zoho-ae-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://accounts.zoho.ae/oauth/v2/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "Desk.tickets.READ Desk.tickets.CREATE Desk.tickets.UPDATE Desk.search.READ Desk.basic.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  }
+]
