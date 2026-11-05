@@ -316,6 +316,8 @@ def _error_summary(body: bytes) -> tuple[str, str]:
         return "", ""
     request_id = document.get("request_id", "")
     entries = document.get("errors")
+    if request_id is None:
+        request_id = ""
     if not isinstance(request_id, str) or (entries is not None and not isinstance(entries, list)):
         return "", ""
     if not re.fullmatch(r"[A-Za-z0-9-]{1,64}", request_id):
@@ -331,6 +333,10 @@ def _error_summary(body: bytes) -> tuple[str, str]:
             return "", ""
         code = entry.get("code", "")
         field = entry.get("field", "")
+        if code is None:
+            code = ""
+        if field is None:
+            field = ""
         if not isinstance(code, str) or not isinstance(field, str):
             return "", ""
         if re.fullmatch(r"[a-z][a-z0-9_.]{0,63}", code):

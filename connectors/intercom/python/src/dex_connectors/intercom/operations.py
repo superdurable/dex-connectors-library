@@ -383,7 +383,7 @@ def _rfc3339(value: str) -> int | None:
     year, month, day, hour, minute, second = map(int, matched.group(1, 2, 3, 4, 5, 6))
     offset_hours = int(matched.group(9) or 0)
     offset_minutes = int(matched.group(10) or 0)
-    if hour > 23 or minute > 59 or second > 59 or offset_hours > 24 or offset_minutes > 59:
+    if hour > 23 or minute > 59 or second > 59 or offset_hours > 24 or offset_minutes > 60:
         return None
     try:
         instant = datetime(year, month, day, hour, minute, second, tzinfo=UTC)

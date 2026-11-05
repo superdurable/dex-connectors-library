@@ -42,6 +42,18 @@ def test_extended_offset_and_comma_fraction() -> None:
     assert _rfc3339("2026-01-01T00:00:00,1+25:00") is None
 
 
+@pytest.mark.parametrize("offset", ["+00:60", "+24:59", "-00:60", "+24:60"])
+def test_go_accepted_offset_minutes(offset: str) -> None:
+    """Go time.Parse permits offset minutes through 60."""
+    assert _rfc3339("2026-01-01T00:00:00" + offset) is not None
+
+
+@pytest.mark.parametrize("offset", ["+00:61", "+25:00"])
+def test_go_rejected_offsets(offset: str) -> None:
+    """Reject offsets beyond Go time.Parse limits."""
+    assert _rfc3339("2026-01-01T00:00:00" + offset) is None
+
+
 def test_wrong_typed_provider_timestamp() -> None:
     """Reject a provider timestamp that Go cannot decode."""
     with pytest.raises(ValueError):
@@ -96,3 +108,12 @@ def test_error_summary_discards_wrong_typed_fields() -> None:
         "",
         "",
     )
+
+
+def test_error_summary_keeps_valid_fields_around_json_nulls() -> None:
+    """JSON null leaves Go string fields at their zero value."""
+    assert _error_summary(
+        b'{"request_id":null,"errors":['
+        b'{"code":null,"field":"admin_id"},'
+        b'{"code":"not_found","field":null}]}'
+    ) == ("not_found; fields: admin_id", "")
