@@ -1,0 +1,2443 @@
+{
+  "connector": "atlassian/jira",
+  "scenarios": [
+    {
+      "callId": "59f15aa6-0044-568a-b154-c0177ca8abcf",
+      "exchanges": [
+        {
+          "body": "{\"issues\":[{\"id\":\"10043\",\"key\":\"OPS-43\",\"fields\":{\"summary\":\"Fire panel wiring\",\"status\":{\"id\":\"1\",\"name\":\"To Do\",\"statusCategory\":{\"key\":\"new\"}},\"issuetype\":{\"id\":\"10001\",\"name\":\"Task\",\"subtask\":false},\"project\":{\"id\":\"10000\",\"key\":\"OPS\",\"name\":\"Operations\"},\"assignee\":null,\"reporter\":null,\"priority\":null,\"labels\":[\"incident\"],\"created\":\"2026-09-30T09:15:00.000-0700\",\"updated\":\"2026-09-30T10:00:00.000-0700\",\"description\":{\"type\":\"doc\",\"version\":1,\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Check wiring\"}]}]},\"customfield_10020\":\"alpha\"}}],\"nextPageToken\":\"next-token-2\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/search/jql",
+          "requestBody": {
+            "fields": [
+              "summary",
+              "status",
+              "issuetype",
+              "project",
+              "assignee",
+              "reporter",
+              "priority",
+              "labels",
+              "created",
+              "updated",
+              "customfield_10020"
+            ],
+            "jql": "project in (\"OPS\") AND issuetype in (\"Task\") AND status in (\"To Do\") AND labels in (\"incident\") AND statusCategory in (2) AND (assignee in (\"5b10ac8d82e05b22cc7d4ef5\") OR assignee is EMPTY) AND summary ~ \"\\\"Fire panel\\\"\" ORDER BY created DESC",
+            "maxResults": 25,
+            "nextPageToken": "next-token"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "searched",
+        "failureKind": "",
+        "output": {
+          "issues": [
+            {
+              "additionalFields": {
+                "customfield_10020": "alpha"
+              },
+              "createdAt": "2026-09-30T16:15:00Z",
+              "id": "10043",
+              "issueType": {
+                "id": "10001",
+                "name": "Task"
+              },
+              "key": "OPS-43",
+              "labels": [
+                "incident"
+              ],
+              "project": {
+                "id": "10000",
+                "key": "OPS",
+                "name": "Operations"
+              },
+              "status": {
+                "categoryKey": "new",
+                "id": "1",
+                "name": "To Do"
+              },
+              "summary": "Fire panel wiring",
+              "updatedAt": "2026-09-30T17:00:00Z"
+            }
+          ],
+          "jql": "project in (\"OPS\") AND issuetype in (\"Task\") AND status in (\"To Do\") AND labels in (\"incident\") AND statusCategory in (2) AND (assignee in (\"5b10ac8d82e05b22cc7d4ef5\") OR assignee is EMPTY) AND summary ~ \"\\\"Fire panel\\\"\" ORDER BY created DESC",
+          "nextPageToken": "next-token-2"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "additionalFields": [
+          "customfield_10020"
+        ],
+        "filter": {
+          "assigneeAccountIds": [
+            "5b10ac8d82e05b22cc7d4ef5"
+          ],
+          "includesUnassigned": true,
+          "issueTypeNames": [
+            "Task"
+          ],
+          "labels": [
+            "incident"
+          ],
+          "order": "createdDescending",
+          "projectKeys": [
+            "OPS"
+          ],
+          "statusCategories": [
+            "new"
+          ],
+          "statusNames": [
+            "To Do"
+          ],
+          "summaryPhrase": "Fire panel"
+        },
+        "nextPageToken": "next-token",
+        "pageSize": 25
+      },
+      "name": "search_searched",
+      "operation": "searchIssues"
+    },
+    {
+      "callId": "4553de43-0185-5f03-bc63-fa24c7b7d73c",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"10043\",\"key\":\"OPS-43\",\"fields\":{\"summary\":\"Fire panel wiring\",\"status\":{\"id\":\"1\",\"name\":\"To Do\",\"statusCategory\":{\"key\":\"new\"}},\"issuetype\":{\"id\":\"10001\",\"name\":\"Task\",\"subtask\":false},\"project\":{\"id\":\"10000\",\"key\":\"OPS\",\"name\":\"Operations\"},\"assignee\":null,\"reporter\":null,\"priority\":null,\"labels\":[\"incident\"],\"created\":\"2026-09-30T09:15:00.000-0700\",\"updated\":\"2026-09-30T10:00:00.000-0700\",\"description\":{\"type\":\"doc\",\"version\":1,\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Check wiring\"}]}]},\"customfield_10020\":\"alpha\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/issue/OPS-43",
+          "query": {
+            "fields": [
+              "summary,status,issuetype,project,assignee,reporter,priority,labels,created,updated,description,customfield_10020"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "additionalFields": {
+            "customfield_10020": "alpha"
+          },
+          "createdAt": "2026-09-30T16:15:00Z",
+          "description": "Check wiring",
+          "id": "10043",
+          "issueType": {
+            "id": "10001",
+            "name": "Task"
+          },
+          "key": "OPS-43",
+          "labels": [
+            "incident"
+          ],
+          "project": {
+            "id": "10000",
+            "key": "OPS",
+            "name": "Operations"
+          },
+          "status": {
+            "categoryKey": "new",
+            "id": "1",
+            "name": "To Do"
+          },
+          "summary": "Fire panel wiring",
+          "updatedAt": "2026-09-30T17:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "additionalFields": [
+          "customfield_10020"
+        ],
+        "issueIdOrKey": "OPS-43"
+      },
+      "name": "get_found",
+      "operation": "getIssue"
+    },
+    {
+      "callId": "62d8b09d-d5a4-53c5-991a-4adc7a1ae5cd",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"10043\",\"key\":\"OPS-43\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/issue",
+          "requestBody": {
+            "fields": {
+              "assignee": {
+                "accountId": "5b10ac8d82e05b22cc7d4ef5"
+              },
+              "description": {
+                "content": [
+                  {
+                    "content": [
+                      {
+                        "text": "Check wiring",
+                        "type": "text"
+                      }
+                    ],
+                    "type": "paragraph"
+                  }
+                ],
+                "type": "doc",
+                "version": 1
+              },
+              "issuetype": {
+                "name": "Task"
+              },
+              "labels": [
+                "incident"
+              ],
+              "project": {
+                "key": "OPS"
+              },
+              "summary": "Fire panel wiring"
+            },
+            "properties": [
+              {
+                "key": "dex.connector.call",
+                "value": "f8e4e6c9568fd3740d262235c184c5107fde46cb554aa3a748b4c57257a11f57"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "issueId": "10043",
+          "issueKey": "OPS-43",
+          "projectKey": "OPS",
+          "summary": "Fire panel wiring"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "62d8b09d-d5a4-53c5-991a-4adc7a1ae5cd",
+      "input": {
+        "assigneeAccountId": "5b10ac8d82e05b22cc7d4ef5",
+        "description": "Check wiring",
+        "issueTypeName": "Task",
+        "labels": [
+          "incident"
+        ],
+        "projectKey": "OPS",
+        "summary": "Fire panel wiring"
+      },
+      "name": "create_created",
+      "operation": "createIssue"
+    },
+    {
+      "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"10043\",\"key\":\"OPS-43\",\"fields\":{\"status\":{\"id\":\"1\",\"name\":\"To Do\",\"statusCategory\":{\"key\":\"new\"}}},\"transitions\":[{\"id\":\"11\",\"name\":\"Start Progress\",\"to\":{\"id\":\"3\",\"name\":\"In Progress\",\"statusCategory\":{\"key\":\"indeterminate\"}}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/issue/OPS-43",
+          "query": {
+            "expand": [
+              "transitions"
+            ],
+            "fields": [
+              "status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/issue/OPS-43/transitions",
+          "requestBody": {
+            "fields": {
+              "resolution": {
+                "name": "Done"
+              }
+            },
+            "transition": {
+              "id": "11"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "transitioned",
+        "failureKind": "",
+        "output": {
+          "issueId": "10043",
+          "issueKey": "OPS-43",
+          "previousStatus": {
+            "categoryKey": "new",
+            "id": "1",
+            "name": "To Do"
+          },
+          "status": {
+            "categoryKey": "indeterminate",
+            "id": "3",
+            "name": "In Progress"
+          },
+          "transition": {
+            "destinationStatus": {
+              "categoryKey": "indeterminate",
+              "id": "3",
+              "name": "In Progress"
+            },
+            "id": "11",
+            "name": "Start Progress"
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+      "input": {
+        "destinationStatusName": "In Progress",
+        "issueIdOrKey": "OPS-43",
+        "resolutionName": "Done",
+        "transitionId": "11",
+        "transitionName": "Start Progress"
+      },
+      "name": "transition_transitioned",
+      "operation": "transitionIssue"
+    },
+    {
+      "callId": "79f8626e-fa53-5e65-96cd-c0dcbf63f187",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"10500\",\"created\":\"2026-09-30T10:05:00.000-0700\",\"author\":{\"accountId\":\"5b10ac8d82e05b22cc7d4ef5\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/issue/OPS-43/comment",
+          "requestBody": {
+            "body": {
+              "content": [
+                {
+                  "content": [
+                    {
+                      "text": "Triage started.",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "paragraph"
+                }
+              ],
+              "type": "doc",
+              "version": 1
+            },
+            "properties": [
+              {
+                "key": "dex.connector.call",
+                "value": "97273c9eced5e981764f1086017ad2204ff6dce95b9504beeb94f48fd93b96ed"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "authorAccountId": "5b10ac8d82e05b22cc7d4ef5",
+          "commentId": "10500",
+          "createdAt": "2026-09-30T17:05:00Z",
+          "issueIdOrKey": "OPS-43"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "79f8626e-fa53-5e65-96cd-c0dcbf63f187",
+      "input": {
+        "body": "Triage started.",
+        "issueIdOrKey": "OPS-43"
+      },
+      "name": "comment_added",
+      "operation": "addComment"
+    },
+    {
+      "callId": "71d935f9-ead3-524a-af09-1c56dae13029",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/search/jql",
+          "requestBody": {
+            "fields": [
+              "summary",
+              "status",
+              "issuetype",
+              "project",
+              "assignee",
+              "reporter",
+              "priority",
+              "labels",
+              "created",
+              "updated"
+            ],
+            "jql": "project = OPS ORDER BY created DESC",
+            "maxResults": 50
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "jql": "project = OPS ORDER BY created DESC"
+      },
+      "name": "searchIssues_429",
+      "operation": "searchIssues"
+    },
+    {
+      "callId": "ad7c4e33-2299-5509-9065-1269378c1523",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/search/jql",
+          "requestBody": {
+            "fields": [
+              "summary",
+              "status",
+              "issuetype",
+              "project",
+              "assignee",
+              "reporter",
+              "priority",
+              "labels",
+              "created",
+              "updated"
+            ],
+            "jql": "project = OPS ORDER BY created DESC",
+            "maxResults": 50
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "jql": "project = OPS ORDER BY created DESC"
+      },
+      "name": "searchIssues_503",
+      "operation": "searchIssues"
+    },
+    {
+      "callId": "15aeed19-fa66-5a1e-b710-bf8ed8ae71f1",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/search/jql",
+          "requestBody": {
+            "fields": [
+              "summary",
+              "status",
+              "issuetype",
+              "project",
+              "assignee",
+              "reporter",
+              "priority",
+              "labels",
+              "created",
+              "updated"
+            ],
+            "jql": "project = OPS ORDER BY created DESC",
+            "maxResults": 50
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "jql": "project = OPS ORDER BY created DESC"
+      },
+      "name": "searchIssues_transport",
+      "operation": "searchIssues"
+    },
+    {
+      "callId": "4c6459d3-562b-5c42-96aa-e9459075bc37",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/issue/OPS-43",
+          "query": {
+            "fields": [
+              "summary,status,issuetype,project,assignee,reporter,priority,labels,created,updated,description,customfield_10020"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "additionalFields": [
+          "customfield_10020"
+        ],
+        "issueIdOrKey": "OPS-43"
+      },
+      "name": "getIssue_429",
+      "operation": "getIssue"
+    },
+    {
+      "callId": "70b59ebe-383f-51b3-aaff-5fc5ffc71749",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/issue/OPS-43",
+          "query": {
+            "fields": [
+              "summary,status,issuetype,project,assignee,reporter,priority,labels,created,updated,description,customfield_10020"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "additionalFields": [
+          "customfield_10020"
+        ],
+        "issueIdOrKey": "OPS-43"
+      },
+      "name": "getIssue_503",
+      "operation": "getIssue"
+    },
+    {
+      "callId": "967852d6-eb22-50d9-b4fc-bcf332f07243",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/issue/OPS-43",
+          "query": {
+            "fields": [
+              "summary,status,issuetype,project,assignee,reporter,priority,labels,created,updated,description,customfield_10020"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "additionalFields": [
+          "customfield_10020"
+        ],
+        "issueIdOrKey": "OPS-43"
+      },
+      "name": "getIssue_transport",
+      "operation": "getIssue"
+    },
+    {
+      "callId": "62d8b09d-d5a4-53c5-991a-4adc7a1ae5cd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/issue",
+          "requestBody": {
+            "fields": {
+              "assignee": {
+                "accountId": "5b10ac8d82e05b22cc7d4ef5"
+              },
+              "description": {
+                "content": [
+                  {
+                    "content": [
+                      {
+                        "text": "Check wiring",
+                        "type": "text"
+                      }
+                    ],
+                    "type": "paragraph"
+                  }
+                ],
+                "type": "doc",
+                "version": 1
+              },
+              "issuetype": {
+                "name": "Task"
+              },
+              "labels": [
+                "incident"
+              ],
+              "project": {
+                "key": "OPS"
+              },
+              "summary": "Fire panel wiring"
+            },
+            "properties": [
+              {
+                "key": "dex.connector.call",
+                "value": "f8e4e6c9568fd3740d262235c184c5107fde46cb554aa3a748b4c57257a11f57"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "62d8b09d-d5a4-53c5-991a-4adc7a1ae5cd",
+      "input": {
+        "assigneeAccountId": "5b10ac8d82e05b22cc7d4ef5",
+        "description": "Check wiring",
+        "issueTypeName": "Task",
+        "labels": [
+          "incident"
+        ],
+        "projectKey": "OPS",
+        "summary": "Fire panel wiring"
+      },
+      "name": "createIssue_429",
+      "operation": "createIssue"
+    },
+    {
+      "callId": "62d8b09d-d5a4-53c5-991a-4adc7a1ae5cd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/issue",
+          "requestBody": {
+            "fields": {
+              "assignee": {
+                "accountId": "5b10ac8d82e05b22cc7d4ef5"
+              },
+              "description": {
+                "content": [
+                  {
+                    "content": [
+                      {
+                        "text": "Check wiring",
+                        "type": "text"
+                      }
+                    ],
+                    "type": "paragraph"
+                  }
+                ],
+                "type": "doc",
+                "version": 1
+              },
+              "issuetype": {
+                "name": "Task"
+              },
+              "labels": [
+                "incident"
+              ],
+              "project": {
+                "key": "OPS"
+              },
+              "summary": "Fire panel wiring"
+            },
+            "properties": [
+              {
+                "key": "dex.connector.call",
+                "value": "f8e4e6c9568fd3740d262235c184c5107fde46cb554aa3a748b4c57257a11f57"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "62d8b09d-d5a4-53c5-991a-4adc7a1ae5cd",
+      "input": {
+        "assigneeAccountId": "5b10ac8d82e05b22cc7d4ef5",
+        "description": "Check wiring",
+        "issueTypeName": "Task",
+        "labels": [
+          "incident"
+        ],
+        "projectKey": "OPS",
+        "summary": "Fire panel wiring"
+      },
+      "name": "createIssue_503",
+      "operation": "createIssue"
+    },
+    {
+      "callId": "62d8b09d-d5a4-53c5-991a-4adc7a1ae5cd",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/issue",
+          "requestBody": {
+            "fields": {
+              "assignee": {
+                "accountId": "5b10ac8d82e05b22cc7d4ef5"
+              },
+              "description": {
+                "content": [
+                  {
+                    "content": [
+                      {
+                        "text": "Check wiring",
+                        "type": "text"
+                      }
+                    ],
+                    "type": "paragraph"
+                  }
+                ],
+                "type": "doc",
+                "version": 1
+              },
+              "issuetype": {
+                "name": "Task"
+              },
+              "labels": [
+                "incident"
+              ],
+              "project": {
+                "key": "OPS"
+              },
+              "summary": "Fire panel wiring"
+            },
+            "properties": [
+              {
+                "key": "dex.connector.call",
+                "value": "f8e4e6c9568fd3740d262235c184c5107fde46cb554aa3a748b4c57257a11f57"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "62d8b09d-d5a4-53c5-991a-4adc7a1ae5cd",
+      "input": {
+        "assigneeAccountId": "5b10ac8d82e05b22cc7d4ef5",
+        "description": "Check wiring",
+        "issueTypeName": "Task",
+        "labels": [
+          "incident"
+        ],
+        "projectKey": "OPS",
+        "summary": "Fire panel wiring"
+      },
+      "name": "createIssue_transport",
+      "operation": "createIssue"
+    },
+    {
+      "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/issue/OPS-43",
+          "query": {
+            "expand": [
+              "transitions"
+            ],
+            "fields": [
+              "status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+      "input": {
+        "destinationStatusName": "In Progress",
+        "issueIdOrKey": "OPS-43",
+        "resolutionName": "Done",
+        "transitionId": "11",
+        "transitionName": "Start Progress"
+      },
+      "name": "transitionIssue_429",
+      "operation": "transitionIssue"
+    },
+    {
+      "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/issue/OPS-43",
+          "query": {
+            "expand": [
+              "transitions"
+            ],
+            "fields": [
+              "status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+      "input": {
+        "destinationStatusName": "In Progress",
+        "issueIdOrKey": "OPS-43",
+        "resolutionName": "Done",
+        "transitionId": "11",
+        "transitionName": "Start Progress"
+      },
+      "name": "transitionIssue_503",
+      "operation": "transitionIssue"
+    },
+    {
+      "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"10043\",\"key\":\"OPS-43\",\"fields\":{\"status\":{\"id\":\"1\",\"name\":\"To Do\",\"statusCategory\":{\"key\":\"new\"}}},\"transitions\":[{\"id\":\"11\",\"name\":\"Start Progress\",\"to\":{\"id\":\"3\",\"name\":\"In Progress\",\"statusCategory\":{\"key\":\"indeterminate\"}}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/issue/OPS-43",
+          "query": {
+            "expand": [
+              "transitions"
+            ],
+            "fields": [
+              "status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/issue/OPS-43/transitions",
+          "requestBody": {
+            "fields": {
+              "resolution": {
+                "name": "Done"
+              }
+            },
+            "transition": {
+              "id": "11"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+      "input": {
+        "destinationStatusName": "In Progress",
+        "issueIdOrKey": "OPS-43",
+        "resolutionName": "Done",
+        "transitionId": "11",
+        "transitionName": "Start Progress"
+      },
+      "name": "transitionIssue_transport",
+      "operation": "transitionIssue"
+    },
+    {
+      "callId": "79f8626e-fa53-5e65-96cd-c0dcbf63f187",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/issue/OPS-43/comment",
+          "requestBody": {
+            "body": {
+              "content": [
+                {
+                  "content": [
+                    {
+                      "text": "Triage started.",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "paragraph"
+                }
+              ],
+              "type": "doc",
+              "version": 1
+            },
+            "properties": [
+              {
+                "key": "dex.connector.call",
+                "value": "97273c9eced5e981764f1086017ad2204ff6dce95b9504beeb94f48fd93b96ed"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "79f8626e-fa53-5e65-96cd-c0dcbf63f187",
+      "input": {
+        "body": "Triage started.",
+        "issueIdOrKey": "OPS-43"
+      },
+      "name": "addComment_429",
+      "operation": "addComment"
+    },
+    {
+      "callId": "79f8626e-fa53-5e65-96cd-c0dcbf63f187",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/issue/OPS-43/comment",
+          "requestBody": {
+            "body": {
+              "content": [
+                {
+                  "content": [
+                    {
+                      "text": "Triage started.",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "paragraph"
+                }
+              ],
+              "type": "doc",
+              "version": 1
+            },
+            "properties": [
+              {
+                "key": "dex.connector.call",
+                "value": "97273c9eced5e981764f1086017ad2204ff6dce95b9504beeb94f48fd93b96ed"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "79f8626e-fa53-5e65-96cd-c0dcbf63f187",
+      "input": {
+        "body": "Triage started.",
+        "issueIdOrKey": "OPS-43"
+      },
+      "name": "addComment_503",
+      "operation": "addComment"
+    },
+    {
+      "callId": "79f8626e-fa53-5e65-96cd-c0dcbf63f187",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/issue/OPS-43/comment",
+          "requestBody": {
+            "body": {
+              "content": [
+                {
+                  "content": [
+                    {
+                      "text": "Triage started.",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "paragraph"
+                }
+              ],
+              "type": "doc",
+              "version": 1
+            },
+            "properties": [
+              {
+                "key": "dex.connector.call",
+                "value": "97273c9eced5e981764f1086017ad2204ff6dce95b9504beeb94f48fd93b96ed"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "79f8626e-fa53-5e65-96cd-c0dcbf63f187",
+      "input": {
+        "body": "Triage started.",
+        "issueIdOrKey": "OPS-43"
+      },
+      "name": "addComment_transport",
+      "operation": "addComment"
+    },
+    {
+      "callId": "62d8b09d-d5a4-53c5-991a-4adc7a1ae5cd",
+      "exchanges": [
+        {
+          "body": "{\"errors\":{\"issuetype\":\"unavailable\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/issue",
+          "requestBody": {
+            "fields": {
+              "issuetype": {
+                "id": "10001"
+              },
+              "project": {
+                "id": "10000"
+              },
+              "summary": "Fire panel wiring"
+            },
+            "properties": [
+              {
+                "key": "dex.connector.call",
+                "value": "f8e4e6c9568fd3740d262235c184c5107fde46cb554aa3a748b4c57257a11f57"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "projectId": "10000",
+          "rejectedFieldIds": [
+            "issuetype"
+          ],
+          "summary": "Fire panel wiring"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "62d8b09d-d5a4-53c5-991a-4adc7a1ae5cd",
+      "input": {
+        "issueTypeId": "10001",
+        "projectId": "10000",
+        "summary": "Fire panel wiring"
+      },
+      "name": "create_issue_id_rejected",
+      "operation": "createIssue"
+    },
+    {
+      "callId": "15aeed19-fa66-5a1e-b710-bf8ed8ae71f1",
+      "exchanges": [
+        {
+          "body": "{\"errors\":{\"jql\":\"invalid\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/search/jql",
+          "requestBody": {
+            "fields": [
+              "summary",
+              "status",
+              "issuetype",
+              "project",
+              "assignee",
+              "reporter",
+              "priority",
+              "labels",
+              "created",
+              "updated"
+            ],
+            "jql": "project = OPS",
+            "maxResults": 50
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "issues": [],
+          "jql": "project = OPS"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "jql": "project = OPS"
+      },
+      "name": "search_rejected",
+      "operation": "searchIssues"
+    },
+    {
+      "callId": "15aeed19-fa66-5a1e-b710-bf8ed8ae71f1",
+      "exchanges": [
+        {
+          "body": "{\"issues\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/search/jql",
+          "requestBody": {
+            "fields": [
+              "summary",
+              "status",
+              "issuetype",
+              "project",
+              "assignee",
+              "reporter",
+              "priority",
+              "labels",
+              "created",
+              "updated"
+            ],
+            "jql": "project = OPS",
+            "maxResults": 50
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "issues": [],
+          "jql": "project = OPS"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "jql": "project = OPS"
+      },
+      "name": "search_invalid",
+      "operation": "searchIssues"
+    },
+    {
+      "callId": "15aeed19-fa66-5a1e-b710-bf8ed8ae71f1",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "issues": [],
+          "jql": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "jql": ""
+      },
+      "name": "search_defect",
+      "operation": "searchIssues"
+    },
+    {
+      "callId": "967852d6-eb22-50d9-b4fc-bcf332f07243",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/issue/OPS-43",
+          "query": {
+            "fields": [
+              "summary,status,issuetype,project,assignee,reporter,priority,labels,created,updated,description,customfield_10020"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "createdAt": "0001-01-01T00:00:00Z",
+          "id": "",
+          "issueType": {
+            "id": "",
+            "name": ""
+          },
+          "key": "",
+          "project": {
+            "id": "",
+            "key": ""
+          },
+          "status": {
+            "id": "",
+            "name": ""
+          },
+          "summary": "",
+          "updatedAt": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "additionalFields": [
+          "customfield_10020"
+        ],
+        "issueIdOrKey": "OPS-43"
+      },
+      "name": "get_not_found",
+      "operation": "getIssue"
+    },
+    {
+      "callId": "967852d6-eb22-50d9-b4fc-bcf332f07243",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/issue/OPS-43",
+          "query": {
+            "fields": [
+              "summary,status,issuetype,project,assignee,reporter,priority,labels,created,updated,description,customfield_10020"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "createdAt": "0001-01-01T00:00:00Z",
+          "id": "",
+          "issueType": {
+            "id": "",
+            "name": ""
+          },
+          "key": "",
+          "project": {
+            "id": "",
+            "key": ""
+          },
+          "status": {
+            "id": "",
+            "name": ""
+          },
+          "summary": "",
+          "updatedAt": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "additionalFields": [
+          "customfield_10020"
+        ],
+        "issueIdOrKey": "OPS-43"
+      },
+      "name": "get_rejected",
+      "operation": "getIssue"
+    },
+    {
+      "callId": "967852d6-eb22-50d9-b4fc-bcf332f07243",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/issue/OPS-43",
+          "query": {
+            "fields": [
+              "summary,status,issuetype,project,assignee,reporter,priority,labels,created,updated,description,customfield_10020"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "createdAt": "0001-01-01T00:00:00Z",
+          "id": "",
+          "issueType": {
+            "id": "",
+            "name": ""
+          },
+          "key": "",
+          "project": {
+            "id": "",
+            "key": ""
+          },
+          "status": {
+            "id": "",
+            "name": ""
+          },
+          "summary": "",
+          "updatedAt": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "additionalFields": [
+          "customfield_10020"
+        ],
+        "issueIdOrKey": "OPS-43"
+      },
+      "name": "get_invalid",
+      "operation": "getIssue"
+    },
+    {
+      "callId": "967852d6-eb22-50d9-b4fc-bcf332f07243",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "createdAt": "0001-01-01T00:00:00Z",
+          "id": "",
+          "issueType": {
+            "id": "",
+            "name": ""
+          },
+          "key": "",
+          "project": {
+            "id": "",
+            "key": ""
+          },
+          "status": {
+            "id": "",
+            "name": ""
+          },
+          "summary": "",
+          "updatedAt": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "issueIdOrKey": "bad"
+      },
+      "name": "get_defect",
+      "operation": "getIssue"
+    },
+    {
+      "callId": "62d8b09d-d5a4-53c5-991a-4adc7a1ae5cd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/issue",
+          "requestBody": {
+            "fields": {
+              "issuetype": {
+                "id": "10001"
+              },
+              "project": {
+                "id": "10000"
+              },
+              "summary": "Fire panel wiring"
+            },
+            "properties": [
+              {
+                "key": "dex.connector.call",
+                "value": "f8e4e6c9568fd3740d262235c184c5107fde46cb554aa3a748b4c57257a11f57"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        },
+        {
+          "body": "{\"issues\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/search/jql",
+          "requestBody": {
+            "fields": [
+              "summary"
+            ],
+            "jql": "project = 10000 AND summary ~ \"\\\"Fire panel wiring\\\"\" ORDER BY created DESC",
+            "maxResults": 50,
+            "properties": [
+              "dex.connector.call"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "projectId": "10000",
+          "summary": "Fire panel wiring"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "62d8b09d-d5a4-53c5-991a-4adc7a1ae5cd",
+      "input": {
+        "issueTypeId": "10001",
+        "projectId": "10000",
+        "summary": "Fire panel wiring"
+      },
+      "name": "create_uncertain",
+      "operation": "createIssue"
+    },
+    {
+      "callId": "62d8b09d-d5a4-53c5-991a-4adc7a1ae5cd",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "projectKey": "OPS",
+          "summary": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "62d8b09d-d5a4-53c5-991a-4adc7a1ae5cd",
+      "input": {
+        "issueTypeName": "Task",
+        "projectKey": "OPS",
+        "summary": ""
+      },
+      "name": "create_defect",
+      "operation": "createIssue"
+    },
+    {
+      "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/issue/OPS-43",
+          "query": {
+            "expand": [
+              "transitions"
+            ],
+            "fields": [
+              "status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "issueId": "",
+          "issueKey": "",
+          "previousStatus": {
+            "id": "",
+            "name": ""
+          },
+          "status": {
+            "id": "",
+            "name": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+      "input": {
+        "destinationStatusName": "In Progress",
+        "issueIdOrKey": "OPS-43",
+        "resolutionName": "Done",
+        "transitionId": "11",
+        "transitionName": "Start Progress"
+      },
+      "name": "transition_not_found",
+      "operation": "transitionIssue"
+    },
+    {
+      "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"10043\",\"key\":\"OPS-43\",\"fields\":{\"status\":{\"id\":\"1\",\"name\":\"To Do\",\"statusCategory\":{\"key\":\"new\"}}},\"transitions\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/issue/OPS-43",
+          "query": {
+            "expand": [
+              "transitions"
+            ],
+            "fields": [
+              "status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "transitionUnavailable",
+        "failureKind": "CONFLICT",
+        "output": {
+          "issueId": "10043",
+          "issueKey": "OPS-43",
+          "previousStatus": {
+            "categoryKey": "new",
+            "id": "1",
+            "name": "To Do"
+          },
+          "status": {
+            "categoryKey": "new",
+            "id": "1",
+            "name": "To Do"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+      "input": {
+        "destinationStatusName": "In Progress",
+        "issueIdOrKey": "OPS-43",
+        "resolutionName": "Done",
+        "transitionId": "11",
+        "transitionName": "Start Progress"
+      },
+      "name": "transition_unavailable",
+      "operation": "transitionIssue"
+    },
+    {
+      "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"10043\",\"key\":\"OPS-43\",\"fields\":{\"status\":{\"id\":\"1\",\"name\":\"To Do\",\"statusCategory\":{\"key\":\"new\"}}},\"transitions\":[{\"id\":\"11\",\"name\":\"Start Progress\",\"to\":{\"id\":\"3\",\"name\":\"In Progress\",\"statusCategory\":{\"key\":\"indeterminate\"}}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/issue/OPS-43",
+          "query": {
+            "expand": [
+              "transitions"
+            ],
+            "fields": [
+              "status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errors\":{\"resolution\":\"required\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/issue/OPS-43/transitions",
+          "requestBody": {
+            "fields": {
+              "resolution": {
+                "name": "Done"
+              }
+            },
+            "transition": {
+              "id": "11"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        },
+        {
+          "body": "{\"id\":\"10043\",\"key\":\"OPS-43\",\"fields\":{\"status\":{\"id\":\"1\",\"name\":\"To Do\",\"statusCategory\":{\"key\":\"new\"}}},\"transitions\":[{\"id\":\"11\",\"name\":\"Start Progress\",\"to\":{\"id\":\"3\",\"name\":\"In Progress\",\"statusCategory\":{\"key\":\"indeterminate\"}}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/issue/OPS-43",
+          "query": {
+            "expand": [
+              "transitions"
+            ],
+            "fields": [
+              "status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "issueId": "10043",
+          "issueKey": "OPS-43",
+          "previousStatus": {
+            "categoryKey": "new",
+            "id": "1",
+            "name": "To Do"
+          },
+          "rejectedFieldIds": [
+            "resolution"
+          ],
+          "status": {
+            "categoryKey": "new",
+            "id": "1",
+            "name": "To Do"
+          },
+          "transition": {
+            "destinationStatus": {
+              "categoryKey": "indeterminate",
+              "id": "3",
+              "name": "In Progress"
+            },
+            "id": "11",
+            "name": "Start Progress"
+          }
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+      "input": {
+        "destinationStatusName": "In Progress",
+        "issueIdOrKey": "OPS-43",
+        "resolutionName": "Done",
+        "transitionId": "11",
+        "transitionName": "Start Progress"
+      },
+      "name": "transition_rejected",
+      "operation": "transitionIssue"
+    },
+    {
+      "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/issue/OPS-43",
+          "query": {
+            "expand": [
+              "transitions"
+            ],
+            "fields": [
+              "status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "issueId": "",
+          "issueKey": "",
+          "previousStatus": {
+            "id": "",
+            "name": ""
+          },
+          "status": {
+            "id": "",
+            "name": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+      "input": {
+        "destinationStatusName": "In Progress",
+        "issueIdOrKey": "OPS-43",
+        "resolutionName": "Done",
+        "transitionId": "11",
+        "transitionName": "Start Progress"
+      },
+      "name": "transition_invalid",
+      "operation": "transitionIssue"
+    },
+    {
+      "callId": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "issueId": "",
+          "issueKey": "",
+          "previousStatus": {
+            "id": "",
+            "name": ""
+          },
+          "status": {
+            "id": "",
+            "name": ""
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e313a799-cb11-50e4-a61b-eafd7068e7c3",
+      "input": {
+        "issueIdOrKey": "bad",
+        "transitionId": "11"
+      },
+      "name": "transition_defect",
+      "operation": "transitionIssue"
+    },
+    {
+      "callId": "79f8626e-fa53-5e65-96cd-c0dcbf63f187",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/issue/OPS-43/comment",
+          "requestBody": {
+            "body": {
+              "content": [
+                {
+                  "content": [
+                    {
+                      "text": "Triage started.",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "paragraph"
+                }
+              ],
+              "type": "doc",
+              "version": 1
+            },
+            "properties": [
+              {
+                "key": "dex.connector.call",
+                "value": "97273c9eced5e981764f1086017ad2204ff6dce95b9504beeb94f48fd93b96ed"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "createdAt": "0001-01-01T00:00:00Z",
+          "issueIdOrKey": "OPS-43"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "79f8626e-fa53-5e65-96cd-c0dcbf63f187",
+      "input": {
+        "body": "Triage started.",
+        "issueIdOrKey": "OPS-43"
+      },
+      "name": "comment_not_found",
+      "operation": "addComment"
+    },
+    {
+      "callId": "79f8626e-fa53-5e65-96cd-c0dcbf63f187",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/issue/OPS-43/comment",
+          "requestBody": {
+            "body": {
+              "content": [
+                {
+                  "content": [
+                    {
+                      "text": "Triage started.",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "paragraph"
+                }
+              ],
+              "type": "doc",
+              "version": 1
+            },
+            "properties": [
+              {
+                "key": "dex.connector.call",
+                "value": "97273c9eced5e981764f1086017ad2204ff6dce95b9504beeb94f48fd93b96ed"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 413
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "createdAt": "0001-01-01T00:00:00Z",
+          "issueIdOrKey": "OPS-43"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "79f8626e-fa53-5e65-96cd-c0dcbf63f187",
+      "input": {
+        "body": "Triage started.",
+        "issueIdOrKey": "OPS-43"
+      },
+      "name": "comment_rejected",
+      "operation": "addComment"
+    },
+    {
+      "callId": "79f8626e-fa53-5e65-96cd-c0dcbf63f187",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/issue/OPS-43/comment",
+          "requestBody": {
+            "body": {
+              "content": [
+                {
+                  "content": [
+                    {
+                      "text": "Triage started.",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "paragraph"
+                }
+              ],
+              "type": "doc",
+              "version": 1
+            },
+            "properties": [
+              {
+                "key": "dex.connector.call",
+                "value": "97273c9eced5e981764f1086017ad2204ff6dce95b9504beeb94f48fd93b96ed"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        },
+        {
+          "body": "{\"comments\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/issue/OPS-43/comment",
+          "query": {
+            "expand": [
+              "properties"
+            ],
+            "maxResults": [
+              "50"
+            ],
+            "orderBy": [
+              "-created"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jira-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "createdAt": "0001-01-01T00:00:00Z",
+          "issueIdOrKey": "OPS-43"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "79f8626e-fa53-5e65-96cd-c0dcbf63f187",
+      "input": {
+        "body": "Triage started.",
+        "issueIdOrKey": "OPS-43"
+      },
+      "name": "comment_uncertain",
+      "operation": "addComment"
+    },
+    {
+      "callId": "79f8626e-fa53-5e65-96cd-c0dcbf63f187",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "createdAt": "0001-01-01T00:00:00Z",
+          "issueIdOrKey": "OPS-43"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "79f8626e-fa53-5e65-96cd-c0dcbf63f187",
+      "input": {
+        "body": "",
+        "issueIdOrKey": "OPS-43"
+      },
+      "name": "comment_defect",
+      "operation": "addComment"
+    }
+  ],
+  "schemaVersion": 1
+}
