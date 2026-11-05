@@ -245,7 +245,7 @@ def render_models():
     for model in dependency_order.ordered:
         description = model.get("description", "").strip()
         if description:
-            lines.extend("# " + line for line in description.splitlines())
+            lines.extend("# " + line if line else "#" for line in description.splitlines())
         lines += ["@dataclass(frozen=True, slots=True)", f"class {model['name']}:"]
         if not model["fields"]:
             lines.append("    pass")
@@ -270,7 +270,7 @@ def render_models():
                 metadata["dex_json_format"] = "rfc3339"
             if field_info.get("description"):
                 for comment_line in field_info["description"].strip().splitlines():
-                    lines.append("    # " + comment_line)
+                    lines.append("    # " + comment_line if comment_line else "    #")
             if default is None and has_default_field:
                 arguments = "kw_only=True"
                 if metadata:
@@ -1024,6 +1024,10 @@ def render_connection():
         "def _decode_config(value: dict[str, Any]) -> Config:",
     ]
     config_fields = configuration_fields()
+    # Preserve generated behavior for published packages without optional credentials.
+    has_optional_credential = not auth_methods and any(
+        not field_info["required"] for field_info in credential_fields
+    )
     allowed = (
         "{"
         + ", ".join(quoted(field_info["name"]) for field_info in config_fields)
@@ -1041,11 +1045,16 @@ def render_connection():
         raw_name = (
             name.removesuffix("_seconds") if field_info["type"] == "duration" else name
         )
-        lines.append(f"    if {quoted(field_info['name'])} in value:")
+        field_present = f"{quoted(field_info['name'])} in value"
+        if has_optional_credential and not field_info["required"]:
+            field_present += f" and value[{quoted(field_info['name'])}] != ''"
+        lines.append(f"    if {field_present}:")
         lines.append(f"        {raw_name} = value[{quoted(field_info['name'])}]")
         field_type = field_info["type"]
         if field_type in ("string", "url"):
             check = f"isinstance({raw_name}, str)"
+            if has_optional_credential and field_info["required"]:
+                check += f" and bool({raw_name})"
         elif field_type == "enum":
             check = f"isinstance({raw_name}, str) and {raw_name} in {tuple(field_info['enum'])!r}"
         elif field_type == "stringList":
