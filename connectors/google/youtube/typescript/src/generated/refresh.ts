@@ -107,6 +107,7 @@ export const Authorization = {
         ],
         "refresh": {
           "missingExpiry": "reject",
+          "scopeSeparators": "whitespaceAndComma",
           "storedMissingExpiry": "refresh",
           "terminalErrorCodes": [
             "invalid_grant",

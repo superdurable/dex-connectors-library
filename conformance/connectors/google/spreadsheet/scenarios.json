@@ -841,6 +841,12 @@
       "expected": {
         "branch": "upserted",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2eaa7d25-a13e-5a8b-a531-f90e41158c8c",
+          "providerId": "'Contacts'!A2:B2",
+          "state": "claimed"
+        },
         "output": {
           "action": "inserted",
           "rowNumber": 2,
@@ -1162,6 +1168,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2eaa7d25-a13e-5a8b-a531-f90e41158c8c",
+          "state": "notSent"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -1209,6 +1220,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2eaa7d25-a13e-5a8b-a531-f90e41158c8c",
+          "state": "notSent"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -1254,6 +1270,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2eaa7d25-a13e-5a8b-a531-f90e41158c8c",
+          "state": "notSent"
+        },
         "requestCount": 0,
         "retry": true,
         "retryAfterMs": 0,
@@ -1395,6 +1416,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2eaa7d25-a13e-5a8b-a531-f90e41158c8c",
+          "state": "canResend"
+        },
         "requestCount": 2,
         "retry": true,
         "retryAfterMs": 0,
@@ -1479,6 +1505,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2eaa7d25-a13e-5a8b-a531-f90e41158c8c",
+          "state": "canResend"
+        },
         "requestCount": 2,
         "retry": true,
         "retryAfterMs": 0,
@@ -1561,6 +1592,11 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2eaa7d25-a13e-5a8b-a531-f90e41158c8c",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -1733,6 +1769,11 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "AUTHENTICATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2eaa7d25-a13e-5a8b-a531-f90e41158c8c",
+          "state": "claimed"
+        },
         "output": {
           "action": "",
           "rowNumber": 0,
@@ -1819,6 +1860,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2eaa7d25-a13e-5a8b-a531-f90e41158c8c",
+          "state": "notSent"
+        },
         "requestCount": 2,
         "retry": true,
         "retryAfterMs": 0,
@@ -1922,6 +1968,11 @@
       "expected": {
         "branch": "upserted",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2eaa7d25-a13e-5a8b-a531-f90e41158c8c",
+          "state": "claimed"
+        },
         "output": {
           "action": "inserted",
           "rowNumber": 2,
@@ -2032,6 +2083,11 @@
       "expected": {
         "branch": "upserted",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "2eaa7d25-a13e-5a8b-a531-f90e41158c8c",
+          "state": "claimed"
+        },
         "output": {
           "action": "inserted",
           "rowNumber": 2,

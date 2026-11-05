@@ -14,6 +14,7 @@ export const Authorization = {
       }
     ],
     "missingExpiry": "reject",
+    "responseScopes": "ignore",
     "terminalErrorCodes": [
       "invalid_client",
       "unauthorized_client"

@@ -45,6 +45,7 @@ export const Authorization = {
           "privateKey": {
             "fromKey": "private_key"
           },
+          "scopeSeparators": "whitespaceAndComma",
           "scopes": [
             "https://www.googleapis.com/auth/admin.directory.user",
             "https://www.googleapis.com/auth/admin.directory.group.member"
@@ -104,6 +105,7 @@ export const Authorization = {
         ],
         "refresh": {
           "missingExpiry": "reject",
+          "scopeSeparators": "whitespaceAndComma",
           "storedMissingExpiry": "refresh",
           "terminalErrorCodes": [
             "invalid_grant",

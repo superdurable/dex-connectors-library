@@ -6,6 +6,40 @@ import { z } from 'zod';
 import { SecretString } from '@superdurable/connectors-sdk';
 import type { RefreshingCredentialProvider } from '@superdurable/connectors-sdk';
 
+const goTimeJSONPattern = /^(\d{4})-(\d{2})-(\d{2})T(\d{1,2}):(\d{2}):(\d{2})(?:[.,](\d+))?(Z|([+-])(\d{2}):(\d{2}))$/;
+
+/** Match the timestamp strings accepted by Go time.Time.UnmarshalJSON. */
+function isGoTimeJSON(value: string): boolean {
+  const match = goTimeJSONPattern.exec(value);
+  if (!match) return false;
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText, , zone, , zoneHourText, zoneMinuteText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const isLeap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const monthDays = [31, isLeap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return month >= 1 && month <= 12 && day >= 1 && day <= monthDays[month - 1]!
+    && Number(hourText) <= 23 && Number(minuteText) <= 59 && Number(secondText) <= 59
+    && (zone === 'Z' || (Number(zoneHourText) <= 24 && Number(zoneMinuteText) <= 60));
+}
+
+/** Reproduce Go time.Time.MarshalJSON for timestamps it can marshal. */
+function canonicalGoTimeJSON(value: string): string {
+  const match = goTimeJSONPattern.exec(value)!;
+  const [, year, month, day, hour, minute, second, fraction, zone, sign, zoneHour, zoneMinute] = match;
+  const clock = year + '-' + month + '-' + day + 'T' + hour!.padStart(2, '0') + ':' + minute + ':' + second;
+  const digits = (fraction ?? '').slice(0, 9).replace(/0+$/, '');
+  const offsetMinutes = zone === 'Z' ? 0 : (Number(zoneHour) * 60 + Number(zoneMinute)) * (sign === '+' ? 1 : -1);
+  if (Math.abs(offsetMinutes) >= 1440) return value;
+  const offset = offsetMinutes === 0 ? 'Z' : (offsetMinutes > 0 ? '+' : '-')
+    + String(Math.floor(Math.abs(offsetMinutes) / 60)).padStart(2, '0') + ':'
+    + String(Math.abs(offsetMinutes) % 60).padStart(2, '0');
+  return clock + (digits ? '.' + digits : '') + offset;
+}
+
+/** Go time.Time JSON input schema, including Go's accepted legacy spellings. */
+const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time JSON timestamp').transform(canonicalGoTimeJSON);
+
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
   /** YouTube Data API base URL including the v3 path; leave blank for Google's public API. Enter an absolute HTTPS URL only for an explicitly supported compatible gateway, or a loopback HTTP URL for a local test server. */
@@ -267,7 +301,7 @@ export const SearchVideosInputSchema = z.strictObject({
   "query": z.string().optional(),
   "channelId": z.string().optional(),
   "order": z.string().optional(),
-  "publishedAfter": z.iso.datetime({ offset: true }).nullable().optional(),
+  "publishedAfter": GoTimeJSONSchema.nullable().optional(),
   "maxResults": z.number().int().optional(),
   "pageToken": z.string().optional(),
 }) satisfies z.ZodType<SearchVideosInput>;
@@ -279,7 +313,7 @@ export const VideoSearchResultSchema = z.strictObject({
   "channelTitle": z.string(),
   "title": z.string(),
   "description": z.string(),
-  "publishedAt": z.iso.datetime({ offset: true }),
+  "publishedAt": GoTimeJSONSchema,
 }) satisfies z.ZodType<VideoSearchResult>;
 
 /** Runtime validator for VideoSearchPage. */
@@ -301,7 +335,7 @@ export const VideoSchema = z.strictObject({
   "channelTitle": z.string(),
   "title": z.string(),
   "description": z.string(),
-  "publishedAt": z.iso.datetime({ offset: true }),
+  "publishedAt": GoTimeJSONSchema,
   "duration": z.string().optional(),
   "privacyStatus": z.string(),
   "viewCount": z.number().int().optional(),
@@ -322,7 +356,7 @@ export const ChannelSchema = z.strictObject({
   "title": z.string(),
   "description": z.string(),
   "customUrl": z.string().optional(),
-  "publishedAt": z.iso.datetime({ offset: true }),
+  "publishedAt": GoTimeJSONSchema,
   "uploadsPlaylistId": z.string(),
   "subscriberCount": z.number().int().optional(),
   "videoCount": z.number().int().optional(),
@@ -344,8 +378,8 @@ export const PlaylistItemSchema = z.strictObject({
   "videoId": z.string(),
   "title": z.string(),
   "position": z.number().int(),
-  "addedAt": z.iso.datetime({ offset: true }),
-  "videoPublishedAt": z.iso.datetime({ offset: true }).nullable().optional(),
+  "addedAt": GoTimeJSONSchema,
+  "videoPublishedAt": GoTimeJSONSchema.nullable().optional(),
 }) satisfies z.ZodType<PlaylistItem>;
 
 /** Runtime validator for PlaylistItemPage. */
