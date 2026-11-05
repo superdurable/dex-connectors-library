@@ -25,6 +25,10 @@ application can move between them:
 
 This release has no Triggers; see [Triggers](#triggers).
 
+## Python package
+
+The `dex-connector-microsoft-outlook-calendar` Python package implements all five operations at version `v0.1.0`, with no Triggers. It uses generated connector models, Step factories, connection bindings, and manifest OAuth grants. See the [Python package README](python/README.md) for its runnable `ReadOutlookEventFlow`, real Dex integration test, and local conformance commands. Microsoft authorization and Graph calls remain unverified for this language port.
+
 ## Authorization
 
 The connector supports two authorization methods.
