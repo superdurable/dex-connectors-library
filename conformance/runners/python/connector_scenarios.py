@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import importlib
 import json
 import os
 import re
@@ -476,12 +477,14 @@ class PythonOperationAdapter:
             operation = (self.operation_types[operation_name](client) if operation_name in self.operation_types
                          else getattr(client, self._snake_case(operation_name))())
             input_type = getattr(self.module, operation_name[0].upper() + operation_name[1:] + "Input")
+            generated_models = importlib.import_module(f"{self.module.__name__}._generated.models")
+            is_generated_input = getattr(generated_models, input_type.__name__, None) is input_type
             fields_by_wire_name = {field.metadata.get("dex_json_name", field.name): field
                                    for field in fields(input_type)}
             input_arguments = {}
             for key, value in scenario["input"].items():
                 field = fields_by_wire_name[key]
-                if field.metadata.get("dex_json_format") == "rfc3339" and isinstance(value, str):
+                if not is_generated_input and field.metadata.get("dex_json_format") == "rfc3339" and isinstance(value, str):
                     value = datetime.fromisoformat(value.replace("Z", "+00:00"))
                 input_arguments[field.name] = value
             input_value = input_type(**input_arguments)

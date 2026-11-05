@@ -6,6 +6,40 @@ import { z } from 'zod';
 import { SecretString } from '@superdurable/connectors-sdk';
 import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
+const goTimeJSONPattern = /^(\d{4})-(\d{2})-(\d{2})T(\d{1,2}):(\d{2}):(\d{2})(?:[.,](\d+))?(Z|([+-])(\d{2}):(\d{2}))$/;
+
+/** Match the timestamp strings accepted by Go time.Time.UnmarshalJSON. */
+function isGoTimeJSON(value: string): boolean {
+  const match = goTimeJSONPattern.exec(value);
+  if (!match) return false;
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText, , zone, , zoneHourText, zoneMinuteText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const isLeap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const monthDays = [31, isLeap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return month >= 1 && month <= 12 && day >= 1 && day <= monthDays[month - 1]!
+    && Number(hourText) <= 23 && Number(minuteText) <= 59 && Number(secondText) <= 59
+    && (zone === 'Z' || (Number(zoneHourText) <= 24 && Number(zoneMinuteText) <= 60));
+}
+
+/** Reproduce Go time.Time.MarshalJSON for timestamps it can marshal. */
+function canonicalGoTimeJSON(value: string): string {
+  const match = goTimeJSONPattern.exec(value)!;
+  const [, year, month, day, hour, minute, second, fraction, zone, sign, zoneHour, zoneMinute] = match;
+  const clock = year + '-' + month + '-' + day + 'T' + hour!.padStart(2, '0') + ':' + minute + ':' + second;
+  const digits = (fraction ?? '').slice(0, 9).replace(/0+$/, '');
+  const offsetMinutes = zone === 'Z' ? 0 : (Number(zoneHour) * 60 + Number(zoneMinute)) * (sign === '+' ? 1 : -1);
+  if (Math.abs(offsetMinutes) >= 1440) return value;
+  const offset = offsetMinutes === 0 ? 'Z' : (offsetMinutes > 0 ? '+' : '-')
+    + String(Math.floor(Math.abs(offsetMinutes) / 60)).padStart(2, '0') + ':'
+    + String(Math.abs(offsetMinutes) % 60).padStart(2, '0');
+  return clock + (digits ? '.' + digits : '') + offset;
+}
+
+/** Go time.Time JSON input schema, including Go's accepted legacy spellings. */
+export const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time JSON timestamp').transform(canonicalGoTimeJSON);
+
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
   /** Non-secret IMAP server host name without a scheme or port, such as imap.example.com, copied from your mail provider's IMAP settings page: Fastmail lists imap.fastmail.com at https://www.fastmail.help/hc/en-us/articles/1500000278342, iCloud Mail lists imap.mail.me.com at https://support.apple.com/en-us/102525, and Yahoo Mail lists imap.mail.yahoo.com at https://help.yahoo.com/kb/SLN4075.html; for a self-hosted server such as Dovecot, ask its administrator. Gmail and Microsoft 365 do not belong here: use the Gmail connector, and Microsoft 365 needs OAuth. Blank is invalid. */
@@ -360,8 +394,8 @@ export const MessageSummarySchema = z.strictObject({
   "to": z.array(EmailAddressSchema).optional(),
   "cc": z.array(EmailAddressSchema).optional(),
   "subject": z.string(),
-  "sentAt": z.iso.datetime({ offset: true }).optional(),
-  "receivedAt": z.iso.datetime({ offset: true }),
+  "sentAt": GoTimeJSONSchema.optional(),
+  "receivedAt": GoTimeJSONSchema,
   "isSeen": z.boolean(),
   "isFlagged": z.boolean(),
   "isAnswered": z.boolean(),
@@ -403,8 +437,8 @@ export const MessageSchema = z.strictObject({
   "to": z.array(EmailAddressSchema).optional(),
   "cc": z.array(EmailAddressSchema).optional(),
   "subject": z.string(),
-  "sentAt": z.iso.datetime({ offset: true }).optional(),
-  "receivedAt": z.iso.datetime({ offset: true }),
+  "sentAt": GoTimeJSONSchema.optional(),
+  "receivedAt": GoTimeJSONSchema,
   "isSeen": z.boolean(),
   "isFlagged": z.boolean(),
   "isAnswered": z.boolean(),
@@ -436,7 +470,7 @@ export const SentMessageSchema = z.strictObject({
   "subject": z.string(),
   "inReplyTo": z.string().optional(),
   "references": z.array(z.string()).optional(),
-  "sentAt": z.iso.datetime({ offset: true }).optional(),
+  "sentAt": GoTimeJSONSchema.optional(),
 }) satisfies z.ZodType<SentMessage>;
 
 /** Runtime validator for ReplyToMessageInput. */
