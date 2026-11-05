@@ -57,7 +57,7 @@ export function decodeCredentials(value: unknown): Credentials {
   if (method === "personal-access-token") {
     if (!fields["access_token"]) throw new TypeError("credential access_token is required");
     if (fields["access_token"]) credentials.accessToken = new SecretString(fields["access_token"] as string);
-    if (fields["webhook_signing_key"]) credentials.webhookSigningKey = new SecretString(fields["webhook_signing_key"] as string);
+    credentials.webhookSigningKey = new SecretString((fields["webhook_signing_key"] ?? '') as string);
   } else if (method === "calendly-oauth") {
     if (!fields["oauth_client_id"]) throw new TypeError("credential oauth_client_id is required");
     if (fields["oauth_client_id"]) credentials.oauthClientId = fields["oauth_client_id"] as string;
@@ -67,7 +67,7 @@ export function decodeCredentials(value: unknown): Credentials {
     if (fields["access_token"]) credentials.accessToken = new SecretString(fields["access_token"] as string);
     if (!fields["refresh_token"]) throw new TypeError("credential refresh_token is required");
     if (fields["refresh_token"]) credentials.refreshToken = new SecretString(fields["refresh_token"] as string);
-    if (fields["webhook_signing_key"]) credentials.webhookSigningKey = new SecretString(fields["webhook_signing_key"] as string);
+    credentials.webhookSigningKey = new SecretString((fields["webhook_signing_key"] ?? '') as string);
   } else {
     throw new TypeError('credential auth_method is invalid');
   }
@@ -92,7 +92,7 @@ export function decodeSharedCredentials(value: unknown): Credentials {
   if (method === "personal-access-token") {
     if (!fields["access_token"]) throw new TypeError("credential access_token is required");
     if (fields["access_token"]) credentials.accessToken = new SecretString(fields["access_token"] as string);
-    if (fields["webhook_signing_key"]) credentials.webhookSigningKey = new SecretString(fields["webhook_signing_key"] as string);
+    credentials.webhookSigningKey = new SecretString((fields["webhook_signing_key"] ?? '') as string);
   } else if (method === "calendly-oauth") {
     if (!fields["oauth_client_id"]) throw new TypeError("credential oauth_client_id is required");
     if (fields["oauth_client_id"]) credentials.oauthClientId = fields["oauth_client_id"] as string;
@@ -100,7 +100,7 @@ export function decodeSharedCredentials(value: unknown): Credentials {
     if (!fields["access_token"]) throw new TypeError("credential access_token is required");
     if (fields["access_token"]) credentials.accessToken = new SecretString(fields["access_token"] as string);
     if (fields["refresh_token"]) credentials.refreshToken = new SecretString(fields["refresh_token"] as string);
-    if (fields["webhook_signing_key"]) credentials.webhookSigningKey = new SecretString(fields["webhook_signing_key"] as string);
+    credentials.webhookSigningKey = new SecretString((fields["webhook_signing_key"] ?? '') as string);
   } else {
     throw new TypeError('credential auth_method is invalid');
   }
