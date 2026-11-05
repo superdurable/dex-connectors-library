@@ -11,6 +11,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any, Generic, TypeVar
 
 from ..credentials import CredentialRefreshDriver, CredentialRefreshState, ReauthorizationRequiredError
+from ..providerhttp import AddressRefusal
 from ..timestamps import RFC3339NanoTimestamp, format_rfc3339_nano
 from ..types import Call
 from .broker import RejectedCredentialNotRefreshedError, SharedConnection
@@ -234,8 +235,10 @@ class RefreshingCredentialProvider(CredentialProvider[Credential]):
         except ReauthorizationRequiredError:
             await self._finish_exchange(admission, "REAUTHORIZATION_REQUIRED")
             raise
-        except Exception:
+        except Exception as error:
             await self._finish_exchange(admission, "READY")
+            if isinstance(error, AddressRefusal):
+                raise
             raise RefreshFailedError(
                 "project credential refresh failed; current authorization is kept"
             ) from None

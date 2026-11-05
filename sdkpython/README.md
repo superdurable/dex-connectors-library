@@ -2,7 +2,7 @@
 
 `dex-connectors-sdk` is the Python core for Dex-native provider connectors. It
 uses the PEP 420 `dex_connectors` namespace and imports as `dex_connectors.sdk`.
-Version `0.6.0` supplies the models, provider operation contracts, credential
+Version `0.7.0` supplies the models, provider operation contracts, credential
 helpers, OAuth token exchanges, portable text generation, and single-dispatch
 checkpoint values below, plus opt-in provider address policies. Query and
 Mutation Step factories use the released Dex SDK's instance-addressed async Steps.
@@ -259,6 +259,24 @@ The core example sends through an in-process HTTP transport.
 
 ## Version history
 
+- `0.7.0`: Manifest token endpoint templates apply declared
+  `templateValueRules` before path escaping. Rules trim Go Unicode whitespace,
+  reject names, bound UTF-8 length, accept full-match patterns, and lowercase
+  accepted values. Invalid values require reauthorization before a token request.
+  Template patterns use a portable Go and Python subset; lookaround,
+  backreferences, Unicode property escapes, quoted literals, POSIX classes,
+  and inline flags are rejected when the manifest is loaded.
+  `trimClientID` on refresh or client-credentials declarations trims the client
+  ID sent to the token endpoint when the Go driver does so.
+  JWT-bearer grants accept a PEM private key directly from a credential field,
+  as Salesforce declares, without requiring a JSON key credential.
+  Private-network HTTP token endpoints reject fragments and non-printable or
+  non-ASCII URL text before transport.
+  Migration: `TokenEndpoint` now accepts uppercase ASCII `HTTP://` and `HTTPS://`
+  schemes, while leading whitespace remains invalid. Address-policy refusals
+  retain their `AddressRefusal` type so callers can treat them as terminal validation defects.
+  A returned null response URL is invalid and retried; declared host matches
+  preserve case, including Zoho `api_domain` hosts.
 - `0.6.0`: Generated timestamp inputs follow Go `time.Time.UnmarshalJSON`.
   The string mode preserves every supplied fractional digit; the default
   `datetime` mode names a Go-valid value that cannot be represented exactly.
