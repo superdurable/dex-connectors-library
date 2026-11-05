@@ -49,6 +49,8 @@ export const Authorization = {
           }
         ],
         "refresh": {
+          "missingExpiry": "reject",
+          "storedMissingExpiry": "refresh",
           "terminalErrorCodes": [
             "invalid_request",
             "invalid_client",
@@ -108,6 +110,8 @@ export const Authorization = {
           }
         ],
         "refresh": {
+          "missingExpiry": "reject",
+          "storedMissingExpiry": "refresh",
           "terminalErrorCodes": [
             "invalid_request",
             "invalid_client",
