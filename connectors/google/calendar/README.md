@@ -23,6 +23,10 @@ operation-specific Dex Step factories:
 
 This release has no Triggers.
 
+## TypeScript package
+
+`@superdurable/connector-google-calendar@0.1.0` implements the same five operations as TypeScript Dex Steps. Its [package README](typescript/README.md) covers setup, generated OAuth refresh, and the runnable meeting lookup. The package has no Triggers. Its TypeScript version is independent of this Go connector's version.
+
 ## Scopes
 
 The OAuth grant requests exactly these scopes, each by its canonical URI:
