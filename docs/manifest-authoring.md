@@ -1189,6 +1189,8 @@ uncertainty need an uncertainty scenario. Python and TypeScript compare the
 complete recorded requests and exact outputs through their production Dex SDK
 codecs, and derive mutation idempotency keys through their production SDK paths.
 Other recovery paths remain a review requirement.
+For HTTP multipart/form-data, multipart/mixed, and multipart/related, recordings
+keep ordered part headers and bytes while ignoring the random outer boundary.
 
 Keep the language runners in `conformance/runners/`, outside published packages.
 Connector Python and TypeScript tests import them by repository path and only
