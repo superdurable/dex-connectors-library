@@ -161,11 +161,11 @@ func GenerateRefreshAgreementCases(manifest schema.Manifest, samples map[string]
 				response, updates := agreement.sampleResponse(grant, credentials, sample)
 				result := RefreshAgreementCase{Name: name, MethodID: grant.method.ID, Credentials: credentials,
 					Settings: settings, Endpoint: endpoint, Encoding: grant.encoding, ClientAuth: clientAuth, ClientID: clientID, ClientSecret: clientSecret,
-					Parameters: parameters, Response: response, Updates: updates, TerminalErrorCodes: grant.terminalCodes,
+					Parameters: parameters, Response: response, Updates: updates, TerminalErrorCodes: append([]string{}, grant.terminalCodes...),
 					MayRefuseWithoutCall: isPublicClient && !grant.allowsPublicClient}
 				if result.MayRefuseWithoutCall {
 					result.ExpectedError = "reauthorization"
-					result.TerminalErrorCodes = nil
+					result.TerminalErrorCodes = []string{}
 				}
 				if grant.jwtBearer != nil {
 					result.KeyCredential = grant.jwtBearer.KeyCredential
@@ -229,7 +229,7 @@ func (agreement *refreshAgreementGenerator) responseVariations(base RefreshAgree
 		for name, value := range base.Response {
 			variation.Response[name] = value
 		}
-		variation.TerminalErrorCodes = nil
+		variation.TerminalErrorCodes = []string{}
 		return variation
 	}
 	var variations []RefreshAgreementCase

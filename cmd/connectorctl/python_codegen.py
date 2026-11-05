@@ -245,7 +245,7 @@ def render_models():
     for model in dependency_order.ordered:
         description = model.get("description", "").strip()
         if description:
-            lines.extend("# " + line for line in description.splitlines())
+            lines.extend("# " + line if line else "#" for line in description.splitlines())
         lines += ["@dataclass(frozen=True, slots=True)", f"class {model['name']}:"]
         if not model["fields"]:
             lines.append("    pass")
@@ -270,7 +270,7 @@ def render_models():
                 metadata["dex_json_format"] = "rfc3339"
             if field_info.get("description"):
                 for comment_line in field_info["description"].strip().splitlines():
-                    lines.append("    # " + comment_line)
+                    lines.append("    # " + comment_line if comment_line else "    #")
             if default is None and has_default_field:
                 arguments = "kw_only=True"
                 if metadata:
