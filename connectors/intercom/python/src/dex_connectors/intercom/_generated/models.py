@@ -6,6 +6,8 @@ from dataclasses import dataclass, field as _dataclass_field
 from datetime import UTC, datetime
 from typing import Any
 
+from .timestamps import parse_go_datetime, validate_go_datetime
+
 def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
@@ -137,6 +139,24 @@ class Conversation:
     # SnoozedUntil is when a snoozed conversation reopens, or nil.
     snoozed_until: datetime | None = _dataclass_field(default=None, metadata={'dex_json_name': 'snoozedUntil', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
 
+    def __post_init__(self) -> None:
+        if isinstance(self.created_at, str):
+            object.__setattr__(self, 'created_at', parse_go_datetime(self.created_at, 'created_at'))
+        elif self.created_at is not None:
+            validate_go_datetime(self.created_at, 'created_at')
+        if isinstance(self.updated_at, str):
+            object.__setattr__(self, 'updated_at', parse_go_datetime(self.updated_at, 'updated_at'))
+        elif self.updated_at is not None:
+            validate_go_datetime(self.updated_at, 'updated_at')
+        if isinstance(self.waiting_since, str):
+            object.__setattr__(self, 'waiting_since', parse_go_datetime(self.waiting_since, 'waiting_since'))
+        elif self.waiting_since is not None:
+            validate_go_datetime(self.waiting_since, 'waiting_since')
+        if isinstance(self.snoozed_until, str):
+            object.__setattr__(self, 'snoozed_until', parse_go_datetime(self.snoozed_until, 'snoozed_until'))
+        elif self.snoozed_until is not None:
+            validate_go_datetime(self.snoozed_until, 'snoozed_until')
+
 
 setattr(Conversation, '__module__', 'dex_connectors.intercom.models')
 
@@ -188,6 +208,12 @@ class ConversationPart:
     author: ConversationAuthor = _dataclass_field(default_factory=ConversationAuthor)
     # CreatedAt is when the part was created.
     created_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'createdAt', 'dex_json_format': 'rfc3339'})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.created_at, str):
+            object.__setattr__(self, 'created_at', parse_go_datetime(self.created_at, 'created_at'))
+        elif self.created_at is not None:
+            validate_go_datetime(self.created_at, 'created_at')
 
 
 setattr(ConversationPart, '__module__', 'dex_connectors.intercom.models')
@@ -310,6 +336,16 @@ class Contact:
     created_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'createdAt', 'dex_json_format': 'rfc3339'})
     # UpdatedAt is when the contact last changed.
     updated_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'updatedAt', 'dex_json_format': 'rfc3339'})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.created_at, str):
+            object.__setattr__(self, 'created_at', parse_go_datetime(self.created_at, 'created_at'))
+        elif self.created_at is not None:
+            validate_go_datetime(self.created_at, 'created_at')
+        if isinstance(self.updated_at, str):
+            object.__setattr__(self, 'updated_at', parse_go_datetime(self.updated_at, 'updated_at'))
+        elif self.updated_at is not None:
+            validate_go_datetime(self.updated_at, 'updated_at')
 
 
 setattr(Contact, '__module__', 'dex_connectors.intercom.models')

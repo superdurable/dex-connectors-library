@@ -103,15 +103,19 @@ class _ProjectCredentialSource:
 
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
+        if not isinstance(material, dict):
+            raise ValueError("Intercom stored credential does not match the connector credential fields")
+        if set(material) - set(('access_token', 'client_secret')):
+            raise ValueError("Intercom stored credential does not match the connector credential fields")
         access_token = material.get("access_token")
-        if not isinstance(access_token, str) or not access_token:
-            raise ValueError("Intercom credential access_token is required")
+        if access_token is not None and not (isinstance(access_token, str)):
+            raise ValueError("Intercom credential access_token has an invalid type")
         client_secret = material.get("client_secret")
-        if client_secret is None:
-            client_secret = ''
-        if not isinstance(client_secret, str):
+        if client_secret is not None and not (isinstance(client_secret, str)):
             raise ValueError("Intercom credential client_secret has an invalid type")
-        return Credentials(SecretString(access_token), SecretString(client_secret))
+        if not access_token:
+            raise ValueError("Intercom credential access_token is required")
+        return Credentials(SecretString(access_token), SecretString(client_secret or ''))
 
 
 def new_project_connection(
