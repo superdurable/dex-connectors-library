@@ -124,6 +124,9 @@ func TestPythonCodegenJiraServiceManagementProviderGolden(t *testing.T) {
 	if !strings.Contains(generated["refresh.py"], "'storedMissingExpiry': 'refresh'") {
 		t.Error("Jira Service Management refresh declaration must preserve stored expiry policy")
 	}
+	if !strings.Contains(generated["refresh.py"], "'acceptedScopeSets': [['read:servicedesk-request', 'write:servicedesk-request', 'manage:servicedesk-customer', 'read:jira-work', 'write:jira-work']]") {
+		t.Error("Jira Service Management refresh declaration must require the resource scopes without offline_access")
+	}
 }
 
 func TestPythonCodegenDocuSignOptionalSecretsGolden(t *testing.T) {
@@ -928,6 +931,39 @@ func TestPythonPublishedModelNamesPreventExternalNameCollision(t *testing.T) {
 	_, err = gomodel.Load(goDirectory, []string{"ExternalFirstItem", "ExternalSameName"}, publishedNames...)
 	if err == nil || !strings.Contains(err.Error(), `Go model name "v1Item" conflicts`) {
 		t.Fatalf("published Python model name was renamed: %v", err)
+	}
+}
+
+func TestPythonNanosecondTimestampFieldsKeepStringWireValues(t *testing.T) {
+	manifest, err := load(filepath.Join("..", "..", "connectors", "newsapi", "connector.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest.Spec.Languages.Python.TimestampFormat = "rfc3339Nano"
+	generated, err := renderPythonCodegen(pythonCodegenInput{
+		Manifest: manifest,
+		Models: []gomodel.Model{{Name: "TimestampFixture", Fields: []gomodel.Field{
+			{Name: "submittedAt", Type: gomodel.Type{Kind: gomodel.Time}, Optional: true},
+			{Name: "updatedAt", Type: gomodel.Type{Kind: gomodel.Time, Nullable: true}, Optional: true},
+		}}},
+		PackageName: "newsapi", MockPackageName: "newsapimock",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	models := generated["models.py"]
+	for _, want := range []string{
+		"submitted_at: str = _dataclass_field(default='0001-01-01T00:00:00Z'",
+		"updated_at: str | None = _dataclass_field(default=None",
+		"RFC3339NanoTimestamp.from_wire(timestamp)",
+		"format_rfc3339_nano(timestamp)",
+	} {
+		if !strings.Contains(models, want) {
+			t.Errorf("nanosecond model omits %q:\n%s", want, models)
+		}
+	}
+	if strings.Contains(models, "dex_json_format") {
+		t.Error("Dex datetime codec would truncate a nine-digit timestamp")
 	}
 }
 

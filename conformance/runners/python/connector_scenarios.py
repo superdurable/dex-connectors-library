@@ -155,7 +155,7 @@ def _multipart_media_type(content_type: str) -> tuple[str, tuple[tuple[str, str]
 
 
 def _is_multipart(content_type: str) -> bool:
-    return _multipart_media_type(content_type)[0] in {"multipart/form-data", "multipart/mixed"}
+    return _multipart_media_type(content_type)[0] in {"multipart/form-data", "multipart/mixed", "multipart/related"}
 
 
 def _multipart_body(content_type: str, body: bytes) -> dict[str, object]:

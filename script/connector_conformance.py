@@ -299,6 +299,17 @@ def mutation_self_test(connectors: list[Path]) -> None:
                                    if any(isinstance(exchange.get("requestBody"), dict)
                                           and len(exchange["requestBody"].get("$multipart", [])) >= 2
                                           for exchange in item["exchanges"])), None)
+        multipart_named_scenario = next((item for item in original["scenarios"]
+                                         if any(isinstance(exchange.get("requestBody"), dict)
+                                                and len(exchange["requestBody"].get("$multipart", [])) >= 2
+                                                and any("Content-Disposition" in part["headers"]
+                                                        for part in exchange["requestBody"].get("$multipart", []))
+                                                for exchange in item["exchanges"])), None)
+        multipart_related_scenario = next((item for item in original["scenarios"]
+                                           if any(isinstance(exchange.get("requestBody"), dict)
+                                                  and len(exchange["requestBody"].get("$multipart", [])) >= 2
+                                                  and "multipart/related" in str(exchange.get("requestHeaders", {}).get("Content-Type", ""))
+                                                  for exchange in item["exchanges"])), None)
         keyed_scenario = next((item for item in original["scenarios"]
                                if item.get("idempotencyKey")), None)
         mutation_sources.extend((name, source) for name, source in (
@@ -307,8 +318,9 @@ def mutation_self_test(connectors: list[Path]) -> None:
             ("changed-form-value", form_scenario), ("read-5xx-classification", read_server_error),
             ("mime-subject", mime_scenario), ("mime-recipient", mime_scenario),
             ("mime-body", mime_scenario), ("random-idempotency-key", keyed_scenario),
-            ("multipart-part-name", multipart_scenario), ("multipart-part-body", multipart_scenario),
+            ("multipart-part-name", multipart_named_scenario), ("multipart-part-body", multipart_scenario),
             ("multipart-missing-part", multipart_scenario), ("multipart-part-order", multipart_scenario),
+            ("multipart-part-content-type", multipart_related_scenario),
             ("wrong-nonempty-list", list_output_scenario),
         ) if source is not None)
         for mutation, source in mutation_sources:
@@ -364,11 +376,18 @@ def mutation_self_test(connectors: list[Path]) -> None:
             elif mutation.startswith("multipart-"):
                 exchange = next(exchange for exchange in changed["exchanges"]
                                 if isinstance(exchange.get("requestBody"), dict)
-                                and len(exchange["requestBody"].get("$multipart", [])) >= 2)
+                                and len(exchange["requestBody"].get("$multipart", [])) >= 2
+                                and (mutation != "multipart-part-name" or
+                                     any("Content-Disposition" in part["headers"]
+                                         for part in exchange["requestBody"]["$multipart"]))
+                                and (mutation != "multipart-part-content-type" or
+                                     "multipart/related" in str(exchange.get("requestHeaders", {}).get("Content-Type", ""))))
                 parts = exchange["requestBody"]["$multipart"]
                 if mutation == "multipart-part-name":
                     part = next(part for part in parts if "Content-Disposition" in part["headers"])
                     part["headers"]["Content-Disposition"][0] += "; name=wrong"
+                elif mutation == "multipart-part-content-type":
+                    parts[0]["headers"]["Content-Type"][0] += "; mismatch=1"
                 elif mutation == "multipart-part-body":
                     parts[0]["bodyBase64"] = "d3Jvbmc="
                 elif mutation == "multipart-missing-part":
