@@ -70,7 +70,7 @@
       "access_token": "manifest-access-token-2",
       "refresh_token": "manifest-refresh-token-2"
     },
-    "terminalErrorCodes": null
+    "terminalErrorCodes": []
   },
   {
     "name": "google-oauth refresh without token type",
@@ -104,7 +104,7 @@
       "access_token": "manifest-access-token-2",
       "refresh_token": "manifest-refresh-token-2"
     },
-    "terminalErrorCodes": null
+    "terminalErrorCodes": []
   },
   {
     "name": "google-oauth refresh with partial scopes",
@@ -139,7 +139,7 @@
       "access_token": "manifest-access-token-2",
       "refresh_token": "manifest-refresh-token-2"
     },
-    "terminalErrorCodes": null
+    "terminalErrorCodes": []
   },
   {
     "name": "google-oauth refresh without expires_in",
@@ -173,7 +173,7 @@
       "access_token": "manifest-access-token-2",
       "refresh_token": "manifest-refresh-token-2"
     },
-    "terminalErrorCodes": null
+    "terminalErrorCodes": []
   },
   {
     "name": "workspace-domain-delegation jwtBearer",
@@ -245,7 +245,7 @@
       "access_token": "manifest-access-token-2",
       "primary_email": "manifest-user@example.com"
     },
-    "terminalErrorCodes": null,
+    "terminalErrorCodes": [],
     "keyCredential": "service_account_key",
     "privateKeyMember": "private_key",
     "keyMembers": {
@@ -285,7 +285,7 @@
       "access_token": "manifest-access-token-2",
       "primary_email": "manifest-user@example.com"
     },
-    "terminalErrorCodes": null,
+    "terminalErrorCodes": [],
     "keyCredential": "service_account_key",
     "privateKeyMember": "private_key",
     "keyMembers": {
@@ -326,7 +326,7 @@
       "access_token": "manifest-access-token-2",
       "primary_email": "manifest-user@example.com"
     },
-    "terminalErrorCodes": null,
+    "terminalErrorCodes": [],
     "keyCredential": "service_account_key",
     "privateKeyMember": "private_key",
     "keyMembers": {
@@ -366,7 +366,7 @@
       "access_token": "manifest-access-token-2",
       "primary_email": "manifest-user@example.com"
     },
-    "terminalErrorCodes": null,
+    "terminalErrorCodes": [],
     "keyCredential": "service_account_key",
     "privateKeyMember": "private_key",
     "keyMembers": {
