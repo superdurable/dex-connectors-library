@@ -809,6 +809,12 @@
       "expected": {
         "branch": "replied",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+          "providerId": "abc123",
+          "state": "claimed"
+        },
         "output": {
           "authorId": "tea_123",
           "conversationId": "cnv_100",
@@ -859,6 +865,12 @@
       "expected": {
         "branch": "replied",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+          "providerId": "com_100",
+          "state": "claimed"
+        },
         "output": {
           "authorId": "tea_123",
           "commentId": "com_100",
@@ -914,6 +926,11 @@
       "expected": {
         "branch": "notFound",
         "failureKind": "NOT_FOUND",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+          "state": "claimed"
+        },
         "output": {
           "authorId": "tea_123",
           "conversationId": "cnv_100"
@@ -967,6 +984,11 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "AUTHORIZATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+          "state": "claimed"
+        },
         "output": {
           "authorId": "tea_123",
           "conversationId": "cnv_100"
@@ -1020,6 +1042,11 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+          "state": "claimed"
+        },
         "output": {
           "authorId": "tea_123",
           "conversationId": "cnv_100"
@@ -1073,6 +1100,11 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "CONFLICT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+          "state": "claimed"
+        },
         "output": {
           "authorId": "tea_123",
           "conversationId": "cnv_100"
@@ -1148,6 +1180,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -1197,6 +1234,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -1244,6 +1286,11 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+          "state": "canResend"
+        },
         "requestCount": 0,
         "retry": true,
         "retryAfterMs": 0,
@@ -2391,6 +2438,11 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "AUTHENTICATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "76e76ff6-9e73-5db4-bb93-69b6a679fae5",
+          "state": "claimed"
+        },
         "output": {
           "conversationId": "cnv_100"
         },

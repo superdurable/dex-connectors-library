@@ -21,6 +21,9 @@ import (
 //go:embed python_codegen.py
 var pythonCodegenSource string
 
+//go:embed python_timestamp.py.txt
+var pythonTimestampSource string
+
 type pythonCodegenInput struct {
 	Manifest               schema.Manifest     `json:"manifest"`
 	Models                 []gomodel.Model     `json:"models"`
@@ -29,6 +32,7 @@ type pythonCodegenInput struct {
 	ModelAliases           map[string]string   `json:"modelAliases"`
 	SharedRequiredFields   map[string][]string `json:"sharedRequiredFields"`
 	HasDeclaredTokenGrants bool                `json:"hasDeclaredTokenGrants"`
+	TimestampSource        string              `json:"timestampSource"`
 }
 
 var pythonModelAliasPattern = regexp.MustCompile(`(?m)^# connectorctl: model-alias ([A-Za-z_][A-Za-z_0-9]*)=([A-Za-z_][A-Za-z_0-9]*)$`)
@@ -137,6 +141,7 @@ func publishedPythonModelNames(path string) ([]string, error) {
 }
 
 func renderPythonCodegen(input pythonCodegenInput) (map[string]string, error) {
+	input.TimestampSource = pythonTimestampSource
 	input.HasDeclaredTokenGrants = codegen.HasDeclaredTokenGrants(input.Manifest)
 	input.SharedRequiredFields = make(map[string][]string)
 	for _, method := range input.Manifest.Spec.Auth.AuthMethods() {

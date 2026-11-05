@@ -6,6 +6,8 @@ from dataclasses import dataclass, field as _dataclass_field
 from datetime import UTC, datetime
 from typing import Any
 
+from .timestamps import parse_go_datetime, validate_go_datetime
+
 def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
@@ -99,6 +101,16 @@ class Message:
     edited_timestamp: datetime | None = _dataclass_field(default=None, metadata={'dex_json_name': 'editedTimestamp', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
     # Type is Discord's message type number, such as 0 for a default message or 19 for a reply.
     type: int = 0
+
+    def __post_init__(self) -> None:
+        if isinstance(self.timestamp, str):
+            object.__setattr__(self, 'timestamp', parse_go_datetime(self.timestamp, 'timestamp'))
+        elif self.timestamp is not None:
+            validate_go_datetime(self.timestamp, 'timestamp')
+        if isinstance(self.edited_timestamp, str):
+            object.__setattr__(self, 'edited_timestamp', parse_go_datetime(self.edited_timestamp, 'edited_timestamp'))
+        elif self.edited_timestamp is not None:
+            validate_go_datetime(self.edited_timestamp, 'edited_timestamp')
 
 
 setattr(Message, '__module__', 'dex_connectors.discord.models')

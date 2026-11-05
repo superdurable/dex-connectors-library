@@ -56,6 +56,7 @@ spec:
         clientCredentials:
           missingExpiry: reject
           storedMissingExpiry: refresh
+          scopeSeparators: whitespaceAndComma
           tokenEndpoint: https://identity.xero.com/connect/token
           tokenEndpointAuthMethod: client_secret_basic
           clientIDCredential: client_id
@@ -118,6 +119,7 @@ spec:
           pkce: false
           tokenEndpointAuthMethod: client_secret_basic
           refresh:
+            scopeSeparators: whitespaceAndComma
             missingExpiry: reject
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_client, invalid_grant, unauthorized_client, unsupported_grant_type, invalid_scope]

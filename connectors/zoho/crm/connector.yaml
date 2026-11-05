@@ -78,6 +78,10 @@ spec:
             - {credential: api_domain, source: api_domain}
           pkce: false
           refresh:
+            responseURLValidation: {credential: api_domain, allowedHosts: [www.zohoapis.com, sandbox.zohoapis.com, developer.zohoapis.com], forbidPort: true, defaultURL: https://www.zohoapis.com}
+            refreshWhenCredentialBlank: api_domain
+            expiryCap: 1h
+            responseScopes: ignore
             missingExpiry: reject
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_code, invalid_client, invalid_client_secret]
@@ -106,6 +110,10 @@ spec:
           credentialMappings: *zohoCRMCredentialMappings
           pkce: false
           refresh:
+            responseURLValidation: {credential: api_domain, allowedHosts: [www.zohoapis.eu, sandbox.zohoapis.eu, developer.zohoapis.eu], forbidPort: true, defaultURL: https://www.zohoapis.eu}
+            refreshWhenCredentialBlank: api_domain
+            expiryCap: 1h
+            responseScopes: ignore
             missingExpiry: reject
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_code, invalid_client, invalid_client_secret]
@@ -134,6 +142,10 @@ spec:
           credentialMappings: *zohoCRMCredentialMappings
           pkce: false
           refresh:
+            responseURLValidation: {credential: api_domain, allowedHosts: [www.zohoapis.in, sandbox.zohoapis.in, developer.zohoapis.in], forbidPort: true, defaultURL: https://www.zohoapis.in}
+            refreshWhenCredentialBlank: api_domain
+            expiryCap: 1h
+            responseScopes: ignore
             missingExpiry: reject
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_code, invalid_client, invalid_client_secret]
@@ -162,6 +174,10 @@ spec:
           credentialMappings: *zohoCRMCredentialMappings
           pkce: false
           refresh:
+            responseURLValidation: {credential: api_domain, allowedHosts: [www.zohoapis.com.au, sandbox.zohoapis.com.au, developer.zohoapis.com.au], forbidPort: true, defaultURL: https://www.zohoapis.com.au}
+            refreshWhenCredentialBlank: api_domain
+            expiryCap: 1h
+            responseScopes: ignore
             missingExpiry: reject
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_code, invalid_client, invalid_client_secret]
@@ -190,6 +206,10 @@ spec:
           credentialMappings: *zohoCRMCredentialMappings
           pkce: false
           refresh:
+            responseURLValidation: {credential: api_domain, allowedHosts: [www.zohoapis.jp, sandbox.zohoapis.jp, developer.zohoapis.jp], forbidPort: true, defaultURL: https://www.zohoapis.jp}
+            refreshWhenCredentialBlank: api_domain
+            expiryCap: 1h
+            responseScopes: ignore
             missingExpiry: reject
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_code, invalid_client, invalid_client_secret]
@@ -218,6 +238,10 @@ spec:
           credentialMappings: *zohoCRMCredentialMappings
           pkce: false
           refresh:
+            responseURLValidation: {credential: api_domain, allowedHosts: [www.zohoapis.ca, sandbox.zohoapis.ca, developer.zohoapis.ca], forbidPort: true, defaultURL: https://www.zohoapis.ca}
+            refreshWhenCredentialBlank: api_domain
+            expiryCap: 1h
+            responseScopes: ignore
             missingExpiry: reject
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_code, invalid_client, invalid_client_secret]
@@ -246,6 +270,10 @@ spec:
           credentialMappings: *zohoCRMCredentialMappings
           pkce: false
           refresh:
+            responseURLValidation: {credential: api_domain, allowedHosts: [www.zohoapis.sa, sandbox.zohoapis.sa, developer.zohoapis.sa], forbidPort: true, defaultURL: https://www.zohoapis.sa}
+            refreshWhenCredentialBlank: api_domain
+            expiryCap: 1h
+            responseScopes: ignore
             missingExpiry: reject
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_code, invalid_client, invalid_client_secret]
