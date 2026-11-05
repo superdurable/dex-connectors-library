@@ -27,6 +27,7 @@ type manifestGrant struct {
 	// refreshToken is the credential field that holds the refresh token, or empty for a minting grant.
 	refreshToken       string
 	terminalErrorCodes []string
+	tokenExchangeTimeout time.Duration
 	missingExpiry      time.Duration
 	// mayRefuseWithoutRequest lets a driver refuse a public client refresh before calling the provider.
 	mayRefuseWithoutRequest bool
@@ -73,6 +74,8 @@ type manifestTokenRequest struct {
 	url    string
 	header http.Header
 	body   []byte
+	hasDeadline bool
+	deadlineRemaining time.Duration
 }
 
 const manifestTokenLifetime = time.Hour
@@ -86,12 +89,14 @@ var manifestStandardErrorCodes = []string{
 }
 
 func (endpoint *manifestTokenEndpoint) RoundTrip(request *http.Request) (*http.Response, error) {
+	deadline, hasDeadline := request.Context().Deadline()
 	body, err := io.ReadAll(request.Body)
 	if err != nil {
 		return nil, err
 	}
 	endpoint.requests = append(endpoint.requests, manifestTokenRequest{
 		method: request.Method, url: request.URL.String(), header: request.Header.Clone(), body: body,
+		hasDeadline: hasDeadline, deadlineRemaining: time.Until(deadline),
 	})
 	encoded, err := json.Marshal(endpoint.response)
 	if err != nil {
@@ -131,12 +136,27 @@ func TestCredentialRefreshDriverAgreesWithTheManifest(t *testing.T) {
 				return
 			}
 			requireManifestGrantUpdatesCredentials(t, grant, privateKeyPEM, &privateKey.PublicKey)
+			requireManifestTokenExchangeTimeout(t, grant, privateKeyPEM)
 			requireManifestRefreshTokenIsKept(t, grant, privateKeyPEM)
 			requireManifestTerminalErrorCodes(t, grant, privateKeyPEM)
 			requireManifestMissingExpiry(t, grant, privateKeyPEM)
 			requireManifestResponseVariations(t, grant, privateKeyPEM)
 		})
 	}
+}
+
+func requireManifestTokenExchangeTimeout(t *testing.T, grant manifestGrant, privateKeyPEM string) {
+	if grant.tokenExchangeTimeout == 0 {
+		return
+	}
+	_, endpoint, err := grant.refresh(t, privateKeyPEM, http.StatusOK, grant.response)
+	require.NoError(t, err)
+	require.Len(t, endpoint.requests, 1)
+	require.True(t, endpoint.requests[0].hasDeadline, "refresh exchange must have a deadline")
+	require.Positive(t, endpoint.requests[0].deadlineRemaining)
+	require.LessOrEqual(t, endpoint.requests[0].deadlineRemaining, grant.tokenExchangeTimeout)
+	require.Greater(t, endpoint.requests[0].deadlineRemaining, grant.tokenExchangeTimeout-time.Second,
+		"refresh exchange should use the manifest deadline, not a shorter fixed deadline")
 }
 
 func requireManifestRefreshRequired(t *testing.T, grant manifestGrant, privateKeyPEM string) {

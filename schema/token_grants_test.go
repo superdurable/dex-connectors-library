@@ -139,6 +139,11 @@ func TestNewRefreshDeclarationsRejectInvalidValues(t *testing.T) {
 	refresh.ExpiryCap = "-1h"
 	require.ErrorContains(t, manifest.Validate(), "expiryCap must be a positive duration")
 	refresh.ExpiryCap = ""
+	refresh.TokenExchangeTimeout = "-1s"
+	require.ErrorContains(t, manifest.Validate(), "tokenExchangeTimeout must be a positive duration")
+	refresh.TokenExchangeTimeout = "not-a-duration"
+	require.ErrorContains(t, manifest.Validate(), "tokenExchangeTimeout must be a positive duration")
+	refresh.TokenExchangeTimeout = "8s"
 	refresh.ScopeResourcePrefixCaseInsensitive = true
 	require.ErrorContains(t, manifest.Validate(), "scopeResourcePrefixCaseInsensitive requires scopeResourcePrefix")
 	refresh.ScopeResourcePrefixCaseInsensitive = false
@@ -151,6 +156,19 @@ func TestNewRefreshDeclarationsRejectInvalidValues(t *testing.T) {
 	require.ErrorContains(t, manifest.Validate(), "refreshWhenCredentialBlank must name a mapped credential field")
 	refresh.RefreshWhenCredentialBlank = ""
 	refresh.ExpiryCap = "30m"
+	require.NoError(t, manifest.Validate())
+}
+
+func TestClientCredentialsTokenExchangeTimeoutMatchesGoDuration(t *testing.T) {
+	manifestFile, err := os.Open("../connectors/xero/connector.yaml")
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, manifestFile.Close()) })
+	manifest, err := schema.Decode(manifestFile)
+	require.NoError(t, err)
+	grant := manifest.Spec.Auth.Methods[0].ClientCredentials
+	grant.TokenExchangeTimeout = "-1s"
+	require.ErrorContains(t, manifest.Validate(), "tokenExchangeTimeout must be a positive duration")
+	grant.TokenExchangeTimeout = "8s"
 	require.NoError(t, manifest.Validate())
 }
 

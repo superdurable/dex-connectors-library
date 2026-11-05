@@ -3,8 +3,11 @@
 # SPDX-License-Identifier: MIT
 """Replay Go's refresh agreement through the generated Python declaration."""
 
+import asyncio
 import base64
 import json
+from collections.abc import AsyncIterator
+from copy import deepcopy
 from dataclasses import fields, make_dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -195,3 +198,37 @@ async def test_generated_refresh_agreement(case: dict[str, Any]) -> None:
             with pytest.raises(expected_error):
                 await driver.refresh(state)
             assert len(requests) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("case", [case for case in CASES if case.get("tokenExchangeTimeout")],
+                         ids=lambda case: case["name"])
+async def test_generated_refresh_exchange_timeout(case: dict[str, Any]) -> None:
+    """A delayed valid token response must be cut off by the declared refresh deadline."""
+    authorization = deepcopy(AUTHORIZATION)
+    methods = authorization.get("methods") or []
+    method = next((item for item in methods if item["id"] == case.get("methodId")), authorization)
+    method["oauth2"]["refresh"]["tokenExchangeTimeout"] = "10ms"
+    requests: list[httpx.Request] = []
+
+    class SlowStream(httpx.AsyncByteStream):
+        async def __aiter__(self) -> AsyncIterator[bytes]:
+            await asyncio.sleep(0.05)
+            yield json.dumps(case["response"]).encode()
+
+        async def aclose(self) -> None:
+            pass
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, stream=SlowStream())
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+        driver = ManifestCredentialRefreshDriver[Any](
+            "Agreement", authorization, CREDENTIAL_FIELDS, client, settings=case.get("settings", {})
+        )
+        credentials = credentials_for(case, "")
+        state = CredentialRefreshState(credentials, datetime(2000, 1, 1, tzinfo=UTC), datetime.now(UTC))
+        with pytest.raises(RetryError):
+            await driver.refresh(state)
+    assert len(requests) == 1

@@ -33,6 +33,7 @@ interface AgreementCase {
   keyMembers?: Record<string, string>;
   assertion?: { issuer: string; subject?: string; audience: string; scope?: string; lifetimeSeconds: number };
   mayRefuseWithoutCall?: boolean;
+  tokenExchangeTimeout?: string;
 }
 
 const cases = JSON.parse(readFileSync(new URL('./fixtures/refresh-agreement-cases.json', import.meta.url), 'utf8')) as AgreementCase[];
@@ -167,5 +168,30 @@ describe('generated Go manifest refresh agreement', () => {
       await expect(driver.refresh(state, new AbortController().signal)).rejects.toBeInstanceOf(expectedError);
       expect(requests).toHaveLength(1);
     }
+  });
+});
+
+describe('generated refresh exchange timeout', () => {
+  for (const agreement of cases.filter(candidate => candidate.tokenExchangeTimeout)) it(agreement.name, async () => {
+    const authorization = structuredClone(Authorization) as Record<string, unknown>;
+    const methods = (authorization.methods ?? []) as Array<Record<string, unknown>>;
+    const method = methods.find(candidate => candidate.id === agreement.methodId) ?? authorization;
+    const oauth = method.oauth2 as Record<string, unknown>;
+    (oauth.refresh as Record<string, unknown>).tokenExchangeTimeout = '10ms';
+    let requests = 0;
+    const transport: typeof fetch = async (_input, init) => {
+      requests++;
+      return new Promise<Response>((resolve, reject) => {
+        const timer = setTimeout(() => resolve(Response.json(agreement.response)), 50);
+        init?.signal?.addEventListener('abort', () => { clearTimeout(timer); reject(new Error('aborted')); }, { once: true });
+      });
+    };
+    const driver = new ManifestCredentialRefreshDriver<Record<string, unknown>>({
+      providerName: 'Agreement', auth: authorization, credentialFields: CredentialFields,
+      settings: agreement.settings ?? {}, fetch: transport,
+    });
+    await expect(driver.refresh({ credentials: credentialsFor(agreement, ''), expiresAt: new Date(0), now: new Date() },
+      new AbortController().signal)).rejects.toBeInstanceOf(RetryError);
+    expect(requests).toBe(1);
   });
 });

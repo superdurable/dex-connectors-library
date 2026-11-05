@@ -151,7 +151,7 @@ func TestManifestDurationPatternsRejectZero(t *testing.T) {
 		}
 	}
 	findDurationDefinitions(definition)
-	require.Len(t, durationDefinitions, 4)
+	require.Len(t, durationDefinitions, 6)
 	for index, durationDefinition := range durationDefinitions {
 		compiler := jsonschema.NewCompiler()
 		resource := fmt.Sprintf("https://connectors.dex.dev/duration-%d.schema.json", index)

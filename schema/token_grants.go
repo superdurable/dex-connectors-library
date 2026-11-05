@@ -74,6 +74,8 @@ type OAuthRefresh struct {
 	RefreshWhenCredentialBlank string `yaml:"refreshWhenCredentialBlank,omitempty" json:"refreshWhenCredentialBlank,omitempty"`
 	// ExpiryCap limits a reported token lifetime.
 	ExpiryCap string `yaml:"expiryCap,omitempty" json:"expiryCap,omitempty"`
+	// TokenExchangeTimeout bounds one refresh exchange independently of the caller deadline.
+	TokenExchangeTimeout string `yaml:"tokenExchangeTimeout,omitempty" json:"tokenExchangeTimeout,omitempty"`
 	// AccessTokenJWTExpiryFallback uses JWT exp for an undated token and this lifetime if exp is unreadable.
 	AccessTokenJWTExpiryFallback string `yaml:"accessTokenJWTExpiryFallback,omitempty" json:"accessTokenJWTExpiryFallback,omitempty"`
 	// AcceptsMissingTokenType permits a successful response without token_type.
@@ -140,6 +142,8 @@ type MissingExpiry struct {
 type ClientCredentialsGrant struct {
 	// TrimClientID removes surrounding Go Unicode whitespace from the client ID before a mint request.
 	TrimClientID bool `yaml:"trimClientID,omitempty" json:"trimClientID,omitempty"`
+	// TokenExchangeTimeout bounds one token mint independently of the caller deadline.
+	TokenExchangeTimeout string `yaml:"tokenExchangeTimeout,omitempty" json:"tokenExchangeTimeout,omitempty"`
 	// ScopeSeparators selects whitespace or space-and-comma parsing for reported scopes.
 	ScopeSeparators string `yaml:"scopeSeparators,omitempty" json:"scopeSeparators,omitempty"`
 	// AcceptsMissingTokenType permits a successful response without token_type.
@@ -566,6 +570,11 @@ func (grantContext tokenGrantContext) validateOAuthTokenRequests(oauth *OAuth2) 
 			problems = append(problems, label+" expiryCap must be a positive duration")
 		}
 	}
+	if refresh.TokenExchangeTimeout != "" {
+		if duration, err := time.ParseDuration(refresh.TokenExchangeTimeout); err != nil || duration <= 0 {
+			problems = append(problems, label+" tokenExchangeTimeout must be a positive duration")
+		}
+	}
 	if refresh.AccessTokenJWTExpiryFallback != "" {
 		if duration, err := time.ParseDuration(refresh.AccessTokenJWTExpiryFallback); err != nil || duration <= 0 {
 			problems = append(problems, label+" accessTokenJWTExpiryFallback must be a positive duration")
@@ -611,6 +620,11 @@ func (grantContext tokenGrantContext) validateOAuthTokenRequests(oauth *OAuth2) 
 func (grantContext tokenGrantContext) validateClientCredentials(grant *ClientCredentialsGrant) []string {
 	label := grantContext.prefix + " clientCredentials"
 	problems := grantContext.validateTokenRequestSettings(label, grant.TokenEndpointAuthMethod, grant.TokenRequestEncoding)
+	if grant.TokenExchangeTimeout != "" {
+		if duration, err := time.ParseDuration(grant.TokenExchangeTimeout); err != nil || duration <= 0 {
+			problems = append(problems, label+" tokenExchangeTimeout must be a positive duration")
+		}
+	}
 	problems = append(problems, grantContext.validateEndpointSource(label+" tokenEndpoint", grant.TokenEndpoint, false)...)
 	if !grantContext.isCredential(grant.ClientIDCredential) || grantContext.isCredentialOfType(grant.ClientIDCredential, "secretString") ||
 		!grantContext.isCredentialOfType(grant.ClientSecretCredential, "secretString") {

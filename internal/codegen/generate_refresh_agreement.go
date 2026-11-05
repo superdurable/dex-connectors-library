@@ -84,6 +84,7 @@ type RefreshAgreementCase struct {
 	Updates                    map[string]string          `json:"updates"`
 	TerminalErrorCodes         []string                   `json:"terminalErrorCodes"`
 	StoredMissingExpiry        string                     `json:"storedMissingExpiry"`
+	TokenExchangeTimeout       string                     `json:"tokenExchangeTimeout,omitempty"`
 	RefreshRequiredCases       []RefreshRequiredCase      `json:"refreshRequiredCases"`
 	ExpectedExpiryMilliseconds *float64                   `json:"expectedExpiryMilliseconds,omitempty"`
 	KeyCredential              string                     `json:"keyCredential,omitempty"`
@@ -183,11 +184,13 @@ func GenerateRefreshAgreementCases(manifest schema.Manifest, samples map[string]
 					Settings: settings, Endpoint: endpoint, Encoding: grant.encoding, ClientAuth: clientAuth, ClientID: clientID, ClientSecret: clientSecret,
 					Parameters: parameters, Response: response, Updates: updates, TerminalErrorCodes: append([]string{}, grant.terminalCodes...),
 					StoredMissingExpiry:  defaultString(grant.storedMissingExpiry, schema.StoredMissingExpiryKeep),
+					TokenExchangeTimeout: grant.tokenExchangeTimeout,
 					MayRefuseWithoutCall: isPublicClient && !grant.allowsPublicClient}
 				result.RefreshRequiredCases = agreement.refreshRequiredCases(grant, credentials)
 				if result.MayRefuseWithoutCall {
 					result.ExpectedError = "reauthorization"
 					result.TerminalErrorCodes = []string{}
+					result.TokenExchangeTimeout = ""
 				}
 				if grant.jwtBearer != nil {
 					result.KeyCredential = grant.jwtBearer.KeyCredential
@@ -296,6 +299,7 @@ func (agreement *refreshAgreementGenerator) responseVariations(base RefreshAgree
 		variation := base
 		variation.Name += suffix
 		variation.ExpectedError = expectedError
+		variation.TokenExchangeTimeout = ""
 		variation.Response = make(map[string]any, len(base.Response))
 		for name, value := range base.Response {
 			variation.Response[name] = value
@@ -593,6 +597,7 @@ type declaredGrant struct {
 	caseInsensitiveScopes              bool
 	scopeResourcePrefixCaseInsensitive bool
 	expiryCap                          string
+	tokenExchangeTimeout               string
 	accessTokenJWTExpiryFallback       string
 	responseURLValidation              *schema.ResponseURLValidation
 	refreshWhenCredentialBlank         string
@@ -769,6 +774,7 @@ func declaredGrants(manifest schema.Manifest) []declaredGrant {
 					caseInsensitiveScopes:              refresh.CaseInsensitiveScopes,
 					scopeResourcePrefixCaseInsensitive: refresh.ScopeResourcePrefixCaseInsensitive,
 					expiryCap:                          refresh.ExpiryCap,
+					tokenExchangeTimeout:               refresh.TokenExchangeTimeout,
 					accessTokenJWTExpiryFallback:       refresh.AccessTokenJWTExpiryFallback,
 					responseURLValidation:              refresh.ResponseURLValidation,
 					refreshWhenCredentialBlank:         refresh.RefreshWhenCredentialBlank,
@@ -788,6 +794,7 @@ func declaredGrants(manifest schema.Manifest) []declaredGrant {
 				terminalCodes: defaultStrings(clientCredentials.TerminalErrorCodes, "invalid_client"), missingExpiry: clientCredentials.MissingExpiry, additional: clientCredentials.AdditionalParameters,
 				acceptedTokenTypes: defaultStrings(clientCredentials.AcceptedTokenTypes, "Bearer"), acceptsMissingTokenType: clientCredentials.AcceptsMissingTokenType,
 				responseScopesPolicy: clientCredentials.ResponseScopes, storedMissingExpiry: clientCredentials.StoredMissingExpiry, scopeSeparators: clientCredentials.ScopeSeparators,
+				tokenExchangeTimeout: clientCredentials.TokenExchangeTimeout,
 			})
 		}
 		if method.ServiceAccount != nil && method.ServiceAccount.JWTBearer != nil {
@@ -1028,6 +1035,13 @@ func (agreement *refreshAgreementGenerator) writeGrantCase(generation *generator
 		generation.mustWrite("\t\t\trefreshToken: %q,\n", grant.refreshToken)
 	}
 	generation.mustWrite("\t\t\tterminalErrorCodes: %s,\n", goStringSlice(grant.terminalCodes))
+	if grant.tokenExchangeTimeout != "" {
+		timeout, err := time.ParseDuration(grant.tokenExchangeTimeout)
+		if err != nil {
+			return fmt.Errorf("%s tokenExchangeTimeout: %w", name, err)
+		}
+		generation.mustWrite("\t\t\ttokenExchangeTimeout: time.Duration(%d),\n", timeout)
+	}
 	if grant.missingExpiry != nil && grant.missingExpiry.Lifetime != "" {
 		lifetime, err := time.ParseDuration(grant.missingExpiry.Lifetime)
 		if err != nil {
