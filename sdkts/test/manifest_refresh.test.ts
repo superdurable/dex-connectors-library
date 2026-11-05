@@ -637,6 +637,8 @@ describe('Go-specific manifest refresh declarations', () => {
     expect(result.expiresAt.getTime()).toBeLessThan(Date.now() + 3601_000);
     body = { ...body, scopes: ['other'] };
     await expect(driver.refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+    body = { ...body, scopes: ['files.read,other'] };
+    await expect(driver.refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(ReauthorizationRequiredError);
     body = { ...body, scopes: [] };
     await expect(driver.refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(ReauthorizationRequiredError);
     body = { ...body, scope: 'other' };

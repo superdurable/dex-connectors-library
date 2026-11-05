@@ -134,14 +134,14 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
         .map(set => set.filter((scope): scope is string => typeof scope === 'string')
           .filter(scope => grant.kind !== 'refresh' || scope !== 'offline_access'));
       const scopeSets = acceptedScopeSets.length ? acceptedScopeSets : [requiredScopes];
-      let reportedScopes = token.scope;
+      let reportedScopes: string | string[] = token.scope;
       let hasReportedScopes = reportedScopes.trim() !== '';
       if (grant.responseScopeField === 'scopesArray') {
         const returned = token.retainedFields.scopes;
         hasReportedScopes = false;
         if (returned !== undefined && returned !== null) {
           if (!Array.isArray(returned) || returned.some(value => typeof value !== 'string')) throw new ReauthorizationRequiredError();
-          reportedScopes = returned.join(' ');
+          reportedScopes = returned as string[];
           hasReportedScopes = true;
         }
       }
@@ -454,9 +454,10 @@ function stringRecord(value: unknown): Record<string, string> {
   return Object.fromEntries(Object.entries(manifestObject(value)).filter((entry): entry is [string, string] => typeof entry[1] === 'string'));
 }
 function missingExpiryLifetime(value: unknown): string { return manifestText(manifestObject(value).lifetime); }
-function hasDeclaredScopes(returnedScopes: string, requiredScopes: readonly string[], separators: Grant['scopeSeparators'], exact: boolean, prefix: string, ignoreCase: boolean, ignorePrefixCase: boolean): boolean {
+function hasDeclaredScopes(returnedScopes: string | readonly string[], requiredScopes: readonly string[], separators: Grant['scopeSeparators'], exact: boolean, prefix: string, ignoreCase: boolean, ignorePrefixCase: boolean): boolean {
   const canonical = (scope: string): string => { const stripped = prefix && (ignorePrefixCase ? scope.toLowerCase().startsWith(prefix.toLowerCase()) : scope.startsWith(prefix)) ? scope.slice(prefix.length) : scope; return ignoreCase ? stripped.toLowerCase() : stripped; };
-  const granted = new Set(returnedScopes.split(separators === 'whitespaceAndComma' ? /[ ,]+/ : /\s+/).filter(Boolean).map(canonical));
+  const returnedNames = typeof returnedScopes === 'string' ? returnedScopes.split(separators === 'whitespaceAndComma' ? /[ ,]+/ : /\s+/) : returnedScopes;
+  const granted = new Set(returnedNames.filter(Boolean).map(canonical));
   const required = new Set(requiredScopes.map(canonical));
   return (!exact || granted.size === required.size) && [...required].every(scope => granted.has(scope));
 }
