@@ -116,6 +116,8 @@ spec:
           pkce: true
           tokenEndpointAuthMethod: client_secret_basic
           refresh:
+            missingExpiry: reject
+            storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
   studio:
     setup:

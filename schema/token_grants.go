@@ -35,8 +35,19 @@ const (
 	ScopeSeparatorsWhitespaceAndComma = "whitespaceAndComma"
 )
 
-// keepMissingExpiry is the scalar form of MissingExpiry that keeps a token whose response has no expires_in.
-const keepMissingExpiry = "keep"
+const (
+	// keepMissingExpiry keeps a token whose response has no expires_in.
+	keepMissingExpiry = "keep"
+	// rejectMissingExpiry requires a positive expires_in.
+	rejectMissingExpiry = "reject"
+)
+
+const (
+	// StoredMissingExpiryKeep preserves a present access token without recorded expiry.
+	StoredMissingExpiryKeep = "keep"
+	// StoredMissingExpiryRefresh renews a present access token without recorded expiry.
+	StoredMissingExpiryRefresh = "refresh"
+)
 
 // OAuthRefresh declares how a host refreshes an OAuth method's access token with the stored refresh token. The
 // method's tokenEndpoint, tokenEndpointAuthMethod, tokenRequestEncoding, client credentials and credentialMappings
@@ -54,11 +65,15 @@ type OAuthRefresh struct {
 	AllowsPublicClient bool `yaml:"allowsPublicClient,omitempty" json:"allowsPublicClient,omitempty"`
 	// RequiredScopes overrides the authorization scopes checked on refresh responses.
 	RequiredScopes []string `yaml:"requiredScopes,omitempty" json:"requiredScopes,omitempty"`
+	// AcceptedScopeSets replaces the required scopes with any one of these complete accepted sets.
+	AcceptedScopeSets [][]string `yaml:"acceptedScopeSets,omitempty" json:"acceptedScopeSets,omitempty"`
 	// TerminalErrorCodes are the OAuth error codes, in a response below HTTP 500, after which the refresh token can
 	// never succeed again, so the connection needs reauthorization. Empty means invalid_grant.
 	TerminalErrorCodes []string `yaml:"terminalErrorCodes,omitempty" json:"terminalErrorCodes,omitempty"`
 	// MissingExpiry decides the expiry of a refreshed token whose response has no expires_in. Nil keeps it.
 	MissingExpiry *MissingExpiry `yaml:"missingExpiry,omitempty" json:"missingExpiry,omitempty"`
+	// StoredMissingExpiry refreshes an existing token without recorded expiry when set to refresh; empty keeps it.
+	StoredMissingExpiry string `yaml:"storedMissingExpiry,omitempty" json:"storedMissingExpiry,omitempty"`
 	// AdditionalParameters are fixed, non-secret parameters added to every refresh request, such as a scope that a
 	// provider expects again. They cannot replace a grant or client parameter.
 	AdditionalParameters map[string]string `yaml:"additionalParameters,omitempty" json:"additionalParameters,omitempty"`
@@ -85,9 +100,11 @@ type OAuthRefreshGrant struct {
 	GrantedScopes string `yaml:"grantedScopes,omitempty" json:"grantedScopes,omitempty"`
 }
 
-// MissingExpiry decides the expiry of a token whose token response has no expires_in. In YAML and JSON it is the
-// string keep, which stores the token without an expiry, or {lifetime: <duration>}.
+// MissingExpiry decides whether a response without expires_in is rejected, kept without expiry, or assigned a
+// lifetime. Nil rejects a missing expiry, matching the default Go token endpoint.
 type MissingExpiry struct {
+	// Reject requires a positive expires_in and treats its absence as a retryable malformed response.
+	Reject bool `yaml:"-" json:"-"`
 	// Lifetime is how long such a token lasts, such as 2h. Empty keeps the token without an expiry, so a host
 	// replaces it only after the provider rejects it.
 	Lifetime string
@@ -121,6 +138,8 @@ type ClientCredentialsGrant struct {
 	TerminalErrorCodes []string `yaml:"terminalErrorCodes,omitempty" json:"terminalErrorCodes,omitempty"`
 	// MissingExpiry decides the expiry of a token whose response has no expires_in. Nil keeps it.
 	MissingExpiry *MissingExpiry `yaml:"missingExpiry,omitempty" json:"missingExpiry,omitempty"`
+	// StoredMissingExpiry refreshes an existing token without recorded expiry when set to refresh; empty keeps it.
+	StoredMissingExpiry string `yaml:"storedMissingExpiry,omitempty" json:"storedMissingExpiry,omitempty"`
 	// AdditionalParameters are fixed, non-secret parameters added to every request.
 	AdditionalParameters map[string]string `yaml:"additionalParameters,omitempty" json:"additionalParameters,omitempty"`
 }
@@ -147,12 +166,18 @@ type JWTBearerGrant struct {
 	Issuer ValueSource `yaml:"issuer" json:"issuer"`
 	// Subject is the sub claim. Nil omits it.
 	Subject *ValueSource `yaml:"subject,omitempty" json:"subject,omitempty"`
+	// SubjectValidation validates a delegated subject before signing; goMailAddress uses Go mail.ParseAddress equality.
+	SubjectValidation string `yaml:"subjectValidation,omitempty" json:"subjectValidation,omitempty"`
 	// Audience is the aud claim.
 	Audience ValueSource `yaml:"audience" json:"audience"`
 	// TokenEndpoint is the HTTPS endpoint that exchanges the assertion.
 	TokenEndpoint ValueSource `yaml:"tokenEndpoint" json:"tokenEndpoint"`
 	// Scopes are sent space-separated as the scope claim. Empty omits it.
 	Scopes []string `yaml:"scopes,omitempty" json:"scopes,omitempty"`
+	// AcceptedScopeSets replaces Scopes when checking a returned token's scope set.
+	AcceptedScopeSets [][]string `yaml:"acceptedScopeSets,omitempty" json:"acceptedScopeSets,omitempty"`
+	// ScopeSeparators selects whitespace or space-and-comma parsing for reported scopes; empty means whitespace.
+	ScopeSeparators string `yaml:"scopeSeparators,omitempty" json:"scopeSeparators,omitempty"`
 	// Lifetime sets the exp claim after iat, such as 1h.
 	Lifetime string `yaml:"lifetime" json:"lifetime"`
 	// CredentialMappings map the token response into credential fields.
@@ -164,6 +189,8 @@ type JWTBearerGrant struct {
 	TerminalErrorCodes []string `yaml:"terminalErrorCodes,omitempty" json:"terminalErrorCodes,omitempty"`
 	// MissingExpiry decides the expiry of a token whose response has no expires_in. Nil keeps it.
 	MissingExpiry *MissingExpiry `yaml:"missingExpiry,omitempty" json:"missingExpiry,omitempty"`
+	// StoredMissingExpiry refreshes an existing token without recorded expiry when set to refresh; empty keeps it.
+	StoredMissingExpiry string `yaml:"storedMissingExpiry,omitempty" json:"storedMissingExpiry,omitempty"`
 }
 
 // CredentialCopy sets one credential field to the value of another.
@@ -197,13 +224,13 @@ type ValueSource struct {
 	Values map[string]string `yaml:"values,omitempty" json:"values,omitempty"`
 }
 
-// UnmarshalYAML reads keep or {lifetime: <duration>}.
+// UnmarshalYAML reads reject, keep, or {lifetime: <duration>}.
 func (missingExpiry *MissingExpiry) UnmarshalYAML(node *yaml.Node) error {
 	if node.Kind == yaml.ScalarNode {
-		if node.Value != keepMissingExpiry {
-			return fmt.Errorf("missingExpiry must be keep or {lifetime: <duration>}, not %q", node.Value)
+		if node.Value != keepMissingExpiry && node.Value != rejectMissingExpiry {
+			return fmt.Errorf("missingExpiry must be reject, keep, or {lifetime: <duration>}, not %q", node.Value)
 		}
-		*missingExpiry = MissingExpiry{}
+		*missingExpiry = MissingExpiry{Reject: node.Value == rejectMissingExpiry}
 		return nil
 	}
 	var lifetime struct {
@@ -213,35 +240,38 @@ func (missingExpiry *MissingExpiry) UnmarshalYAML(node *yaml.Node) error {
 		return fmt.Errorf("missingExpiry: %w", err)
 	}
 	if lifetime.Lifetime == "" {
-		return errors.New("missingExpiry must be keep or {lifetime: <duration>}")
+		return errors.New("missingExpiry must be reject, keep, or {lifetime: <duration>}")
 	}
 	*missingExpiry = MissingExpiry{Lifetime: lifetime.Lifetime}
 	return nil
 }
 
-// MarshalJSON writes "keep" or {"lifetime": "<duration>"}.
+// MarshalJSON writes "reject", "keep", or {"lifetime": "<duration>"}.
 func (missingExpiry MissingExpiry) MarshalJSON() ([]byte, error) {
+	if missingExpiry.Reject {
+		return json.Marshal(rejectMissingExpiry)
+	}
 	if missingExpiry.Lifetime == "" {
 		return json.Marshal(keepMissingExpiry)
 	}
 	return json.Marshal(map[string]string{"lifetime": missingExpiry.Lifetime})
 }
 
-// UnmarshalJSON reads "keep" or {"lifetime": "<duration>"}.
+// UnmarshalJSON reads "reject", "keep", or {"lifetime": "<duration>"}.
 func (missingExpiry *MissingExpiry) UnmarshalJSON(contents []byte) error {
 	var scalar string
 	if json.Unmarshal(contents, &scalar) == nil {
-		if scalar != keepMissingExpiry {
-			return fmt.Errorf("missingExpiry must be keep or {lifetime: <duration>}, not %q", scalar)
+		if scalar != keepMissingExpiry && scalar != rejectMissingExpiry {
+			return fmt.Errorf("missingExpiry must be reject, keep, or {lifetime: <duration>}, not %q", scalar)
 		}
-		*missingExpiry = MissingExpiry{}
+		*missingExpiry = MissingExpiry{Reject: scalar == rejectMissingExpiry}
 		return nil
 	}
 	var lifetime struct {
 		Lifetime string `json:"lifetime"`
 	}
 	if err := json.Unmarshal(contents, &lifetime); err != nil || lifetime.Lifetime == "" {
-		return errors.New("missingExpiry must be keep or {lifetime: <duration>}")
+		return errors.New("missingExpiry must be reject, keep, or {lifetime: <duration>}")
 	}
 	*missingExpiry = MissingExpiry{Lifetime: lifetime.Lifetime}
 	return nil
@@ -424,8 +454,10 @@ func (grantContext tokenGrantContext) validateOAuthTokenRequests(oauth *OAuth2) 
 		return problems
 	}
 	problems = append(problems, grantContext.validateResponseRules(label, refresh.TerminalErrorCodes, refresh.MissingExpiry, refresh.AdditionalParameters)...)
+	problems = append(problems, validateStoredMissingExpiry(label, refresh.StoredMissingExpiry)...)
 	problems = append(problems, validateAcceptedTokenTypes(label, refresh.AcceptedTokenTypes)...)
 	problems = append(problems, validateScopeList(label+" requiredScopes", refresh.RequiredScopes)...)
+	problems = append(problems, validateAcceptedScopeSets(label+" acceptedScopeSets", refresh.AcceptedScopeSets)...)
 	if refresh.ScopeSeparators != "" && refresh.ScopeSeparators != ScopeSeparatorsWhitespace && refresh.ScopeSeparators != ScopeSeparatorsWhitespaceAndComma {
 		problems = append(problems, label+" scopeSeparators must be whitespace or whitespaceAndComma")
 	}
@@ -464,6 +496,7 @@ func (grantContext tokenGrantContext) validateClientCredentials(grant *ClientCre
 	problems = append(problems, validateScopeList(label+" scopes", grant.Scopes)...)
 	problems = append(problems, grantContext.validateCredentialMappings(label, grant.CredentialMappings)...)
 	problems = append(problems, grantContext.validateResponseRules(label, grant.TerminalErrorCodes, grant.MissingExpiry, grant.AdditionalParameters)...)
+	problems = append(problems, validateStoredMissingExpiry(label, grant.StoredMissingExpiry)...)
 	problems = append(problems, validateAcceptedTokenTypes(label, grant.AcceptedTokenTypes)...)
 	return problems
 }
@@ -487,8 +520,15 @@ func (grantContext tokenGrantContext) validateJWTBearer(grant *JWTBearerGrant) [
 	if grant.Subject != nil {
 		problems = append(problems, grantContext.validateValueSource(label+" subject", *grant.Subject, hasKey)...)
 	}
+	if grant.SubjectValidation != "" && (grant.SubjectValidation != "goMailAddress" || grant.Subject == nil) {
+		problems = append(problems, label+" subjectValidation requires a subject and must be goMailAddress")
+	}
 	problems = append(problems, grantContext.validateEndpointSource(label+" tokenEndpoint", grant.TokenEndpoint, hasKey)...)
 	problems = append(problems, validateScopeList(label+" scopes", grant.Scopes)...)
+	problems = append(problems, validateAcceptedScopeSets(label+" acceptedScopeSets", grant.AcceptedScopeSets)...)
+	if grant.ScopeSeparators != "" && grant.ScopeSeparators != ScopeSeparatorsWhitespace && grant.ScopeSeparators != ScopeSeparatorsWhitespaceAndComma {
+		problems = append(problems, label+" scopeSeparators must be whitespace or whitespaceAndComma")
+	}
 	if lifetime, err := time.ParseDuration(grant.Lifetime); err != nil || lifetime <= 0 {
 		problems = append(problems, label+" lifetime must be a positive duration")
 	}
@@ -502,6 +542,7 @@ func (grantContext tokenGrantContext) validateJWTBearer(grant *JWTBearerGrant) [
 		}
 	}
 	problems = append(problems, grantContext.validateResponseRules(label, grant.TerminalErrorCodes, grant.MissingExpiry, nil)...)
+	problems = append(problems, validateStoredMissingExpiry(label, grant.StoredMissingExpiry)...)
 	return problems
 }
 
@@ -546,6 +587,13 @@ func (grantContext tokenGrantContext) validateClientAuthentication(label string,
 		}
 	}
 	return problems
+}
+
+func validateStoredMissingExpiry(label, policy string) []string {
+	if policy != "" && policy != StoredMissingExpiryKeep && policy != StoredMissingExpiryRefresh {
+		return []string{label + " storedMissingExpiry must be keep or refresh"}
+	}
+	return nil
 }
 
 func (grantContext tokenGrantContext) validateResponseRules(label string, terminalErrorCodes []string, missingExpiry *MissingExpiry, additionalParameters map[string]string) []string {
@@ -657,6 +705,21 @@ func validateScopeList(label string, scopes []string) []string {
 			return []string{label + " must be non-empty and unique"}
 		}
 		seen[scope] = true
+	}
+	return nil
+}
+
+func validateAcceptedScopeSets(label string, scopeSets [][]string) []string {
+	seen := map[string]bool{}
+	for _, scopeSet := range scopeSets {
+		if len(scopeSet) == 0 || len(validateScopeList(label, scopeSet)) > 0 {
+			return []string{label + " must contain non-empty sets of unique scopes"}
+		}
+		canonical := strings.Join(scopeSet, "\x00")
+		if seen[canonical] {
+			return []string{label + " must not repeat a scope set"}
+		}
+		seen[canonical] = true
 	}
 	return nil
 }
