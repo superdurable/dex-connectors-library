@@ -124,6 +124,9 @@ func TestPythonCodegenJiraServiceManagementProviderGolden(t *testing.T) {
 	if !strings.Contains(generated["refresh.py"], "'storedMissingExpiry': 'refresh'") {
 		t.Error("Jira Service Management refresh declaration must preserve stored expiry policy")
 	}
+	if !strings.Contains(generated["refresh.py"], "'acceptedScopeSets': [['read:servicedesk-request', 'write:servicedesk-request', 'manage:servicedesk-customer', 'read:jira-work', 'write:jira-work']]") {
+		t.Error("Jira Service Management refresh declaration must require the resource scopes without offline_access")
+	}
 }
 
 func TestPythonCodegenDocuSignOptionalSecretsGolden(t *testing.T) {

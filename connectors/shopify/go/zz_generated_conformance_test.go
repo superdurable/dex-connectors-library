@@ -836,7 +836,7 @@ func (recorder *conformanceRecorder) observeRequest(request *http.Request) (map[
 
 func conformanceIsMultipart(contentType string) bool {
 	mediaType, _, err := mime.ParseMediaType(contentType)
-	return err == nil && (mediaType == "multipart/form-data" || mediaType == "multipart/mixed")
+	return err == nil && (mediaType == "multipart/form-data" || mediaType == "multipart/mixed" || mediaType == "multipart/related")
 }
 
 func conformanceMultipartContentType(contentType string) string {
@@ -850,7 +850,7 @@ func conformanceMultipartContentType(contentType string) string {
 
 func conformanceMultipartBody(contentType string, body []byte) (map[string]any, error) {
 	mediaType, parameters, err := mime.ParseMediaType(contentType)
-	if err != nil || (mediaType != "multipart/form-data" && mediaType != "multipart/mixed") || parameters["boundary"] == "" {
+	if err != nil || (mediaType != "multipart/form-data" && mediaType != "multipart/mixed" && mediaType != "multipart/related") || parameters["boundary"] == "" {
 		return nil, errors.New("missing multipart boundary")
 	}
 	reader := multipart.NewReader(bytes.NewReader(body), parameters["boundary"])

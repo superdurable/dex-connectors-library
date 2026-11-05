@@ -199,7 +199,7 @@ function multipartMediaType(contentType: string): { mediaType: string; parameter
 }
 
 function isMultipart(contentType: string): boolean {
-  return ['multipart/form-data', 'multipart/mixed'].includes(multipartContentType(contentType).mediaType);
+  return ['multipart/form-data', 'multipart/mixed', 'multipart/related'].includes(multipartContentType(contentType).mediaType);
 }
 
 function multipartBody(contentType: string, body: Buffer): RecordValue {
