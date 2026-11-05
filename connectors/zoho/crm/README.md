@@ -2,6 +2,14 @@
 
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/zoho/crm/go@v0.24.0`.
 
+The Python package `dex-connector-zoho-crm==0.1.0` implements all six operations
+with the Connector SDK 0.7.0. Its runnable
+[record lookup example](python/examples/record_lookup/README.md) uses the static
+`zoho-crm-main` connection and a real Dex Worker. The Python package's OAuth
+refresh follows the generated manifest declaration. Its provider replay and
+Dex integration tests use inert credentials; live Zoho authorization, the
+consent screen, and real API calls remain unverified.
+
 Moved from `github.com/superdurable/dex-connectors-library/connectors/zoho/crm`.
 
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Zoho CRM; no live Zoho CRM account was used. See

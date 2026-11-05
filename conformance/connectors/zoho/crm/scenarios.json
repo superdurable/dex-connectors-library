@@ -1,0 +1,2944 @@
+{
+  "connector": "zoho-crm",
+  "scenarios": [
+    {
+      "callId": "5feab482-1f4c-5a89-bfd5-2fdfd987ce31",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"4150868000000376008\",\"Email\":\"jane@acme.example.com\",\"Account_Name\":{\"id\":\"4150868000000624046\"},\"Owner\":{\"id\":\"4150868000000225013\"},\"Modified_Time\":\"2026-01-28T13:00:05Z\"}],\"info\":{\"more_records\":true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/coql",
+          "requestBody": {
+            "select_query": "select Email, Account_Name, Owner, Modified_Time from Contacts where Email = 'jane@acme.example.com' order by id desc limit 1, 2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "module": "Contacts",
+          "nextOffset": 2,
+          "records": [
+            {
+              "fields": {
+                "Account_Name": {
+                  "id": "4150868000000624046"
+                },
+                "Email": "jane@acme.example.com",
+                "Modified_Time": "2026-01-28T13:00:05Z",
+                "Owner": {
+                  "id": "4150868000000225013"
+                }
+              },
+              "id": "4150868000000376008",
+              "module": "Contacts"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conditions": [
+          {
+            "field": "Email",
+            "operator": "=",
+            "value": {
+              "kind": "text",
+              "text": "jane@acme.example.com"
+            }
+          }
+        ],
+        "fields": [
+          "Email",
+          "Account_Name",
+          "Owner",
+          "Modified_Time"
+        ],
+        "limit": 2,
+        "module": "Contacts",
+        "offset": 1,
+        "sort": {
+          "field": "id",
+          "isDescending": true
+        }
+      },
+      "name": "findRecords-success",
+      "operation": "findRecords"
+    },
+    {
+      "callId": "5feab482-1f4c-5a89-bfd5-2fdfd987ce31",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"NO_PERMISSION\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/coql",
+          "requestBody": {
+            "select_query": "select Email, Account_Name, Owner, Modified_Time from Contacts where Email = 'jane@acme.example.com' order by id desc limit 1, 2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "module": "",
+          "records": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conditions": [
+          {
+            "field": "Email",
+            "operator": "=",
+            "value": {
+              "kind": "text",
+              "text": "jane@acme.example.com"
+            }
+          }
+        ],
+        "fields": [
+          "Email",
+          "Account_Name",
+          "Owner",
+          "Modified_Time"
+        ],
+        "limit": 2,
+        "module": "Contacts",
+        "offset": 1,
+        "sort": {
+          "field": "id",
+          "isDescending": true
+        }
+      },
+      "name": "findRecords-provider-rejected",
+      "operation": "findRecords"
+    },
+    {
+      "callId": "5feab482-1f4c-5a89-bfd5-2fdfd987ce31",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/coql",
+          "requestBody": {
+            "select_query": "select Email, Account_Name, Owner, Modified_Time from Contacts where Email = 'jane@acme.example.com' order by id desc limit 1, 2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "module": "",
+          "records": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conditions": [
+          {
+            "field": "Email",
+            "operator": "=",
+            "value": {
+              "kind": "text",
+              "text": "jane@acme.example.com"
+            }
+          }
+        ],
+        "fields": [
+          "Email",
+          "Account_Name",
+          "Owner",
+          "Modified_Time"
+        ],
+        "limit": 2,
+        "module": "Contacts",
+        "offset": 1,
+        "sort": {
+          "field": "id",
+          "isDescending": true
+        }
+      },
+      "name": "findRecords-invalid-response",
+      "operation": "findRecords"
+    },
+    {
+      "callId": "5feab482-1f4c-5a89-bfd5-2fdfd987ce31",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"TOO_MANY_REQUESTS\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/coql",
+          "requestBody": {
+            "select_query": "select Email, Account_Name, Owner, Modified_Time from Contacts where Email = 'jane@acme.example.com' order by id desc limit 1, 2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conditions": [
+          {
+            "field": "Email",
+            "operator": "=",
+            "value": {
+              "kind": "text",
+              "text": "jane@acme.example.com"
+            }
+          }
+        ],
+        "fields": [
+          "Email",
+          "Account_Name",
+          "Owner",
+          "Modified_Time"
+        ],
+        "limit": 2,
+        "module": "Contacts",
+        "offset": 1,
+        "sort": {
+          "field": "id",
+          "isDescending": true
+        }
+      },
+      "name": "findRecords-retry-429",
+      "operation": "findRecords"
+    },
+    {
+      "callId": "5feab482-1f4c-5a89-bfd5-2fdfd987ce31",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"INTERNAL_ERROR\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/coql",
+          "requestBody": {
+            "select_query": "select Email, Account_Name, Owner, Modified_Time from Contacts where Email = 'jane@acme.example.com' order by id desc limit 1, 2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conditions": [
+          {
+            "field": "Email",
+            "operator": "=",
+            "value": {
+              "kind": "text",
+              "text": "jane@acme.example.com"
+            }
+          }
+        ],
+        "fields": [
+          "Email",
+          "Account_Name",
+          "Owner",
+          "Modified_Time"
+        ],
+        "limit": 2,
+        "module": "Contacts",
+        "offset": 1,
+        "sort": {
+          "field": "id",
+          "isDescending": true
+        }
+      },
+      "name": "findRecords-retry-503",
+      "operation": "findRecords"
+    },
+    {
+      "callId": "5feab482-1f4c-5a89-bfd5-2fdfd987ce31",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/coql",
+          "requestBody": {
+            "select_query": "select Email, Account_Name, Owner, Modified_Time from Contacts where Email = 'jane@acme.example.com' order by id desc limit 1, 2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conditions": [
+          {
+            "field": "Email",
+            "operator": "=",
+            "value": {
+              "kind": "text",
+              "text": "jane@acme.example.com"
+            }
+          }
+        ],
+        "fields": [
+          "Email",
+          "Account_Name",
+          "Owner",
+          "Modified_Time"
+        ],
+        "limit": 2,
+        "module": "Contacts",
+        "offset": 1,
+        "sort": {
+          "field": "id",
+          "isDescending": true
+        }
+      },
+      "name": "findRecords-transport",
+      "operation": "findRecords"
+    },
+    {
+      "callId": "5feab482-1f4c-5a89-bfd5-2fdfd987ce31",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "module": "",
+          "records": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conditions": [
+          {
+            "field": "Email",
+            "operator": "=",
+            "value": {
+              "kind": "text",
+              "text": "jane@acme.example.com"
+            }
+          }
+        ],
+        "fields": [
+          "Email",
+          "Account_Name",
+          "Owner",
+          "Modified_Time"
+        ],
+        "limit": 2,
+        "module": "bad module",
+        "offset": 1,
+        "sort": {
+          "field": "id",
+          "isDescending": true
+        }
+      },
+      "name": "findRecords-defect",
+      "operation": "findRecords"
+    },
+    {
+      "callId": "5feab482-1f4c-5a89-bfd5-2fdfd987ce31",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"4150868000000376008\",\"Email\":\"jane@acme.example.com\",\"Account_Name\":{\"id\":\"4150868000000624046\"},\"Owner\":{\"id\":\"4150868000000225013\"},\"Modified_Time\":\"2026-01-28T13:00:05Z\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Contacts/4150868000000376008",
+          "query": {
+            "fields": [
+              "Email,Account_Name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "fields": {
+            "Account_Name": {
+              "id": "4150868000000624046"
+            },
+            "Email": "jane@acme.example.com",
+            "Modified_Time": "2026-01-28T13:00:05Z",
+            "Owner": {
+              "id": "4150868000000225013"
+            }
+          },
+          "id": "4150868000000376008",
+          "module": "Contacts"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Email",
+          "Account_Name"
+        ],
+        "module": "Contacts",
+        "recordId": "4150868000000376008"
+      },
+      "name": "getRecord-success",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "5feab482-1f4c-5a89-bfd5-2fdfd987ce31",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"NO_PERMISSION\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Contacts/4150868000000376008",
+          "query": {
+            "fields": [
+              "Email,Account_Name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "fields": {},
+          "id": "",
+          "module": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Email",
+          "Account_Name"
+        ],
+        "module": "Contacts",
+        "recordId": "4150868000000376008"
+      },
+      "name": "getRecord-provider-rejected",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "5feab482-1f4c-5a89-bfd5-2fdfd987ce31",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Contacts/4150868000000376008",
+          "query": {
+            "fields": [
+              "Email,Account_Name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "fields": {},
+          "id": "",
+          "module": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Email",
+          "Account_Name"
+        ],
+        "module": "Contacts",
+        "recordId": "4150868000000376008"
+      },
+      "name": "getRecord-invalid-response",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "5feab482-1f4c-5a89-bfd5-2fdfd987ce31",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"TOO_MANY_REQUESTS\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Contacts/4150868000000376008",
+          "query": {
+            "fields": [
+              "Email,Account_Name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Email",
+          "Account_Name"
+        ],
+        "module": "Contacts",
+        "recordId": "4150868000000376008"
+      },
+      "name": "getRecord-retry-429",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "5feab482-1f4c-5a89-bfd5-2fdfd987ce31",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"INTERNAL_ERROR\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Contacts/4150868000000376008",
+          "query": {
+            "fields": [
+              "Email,Account_Name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Email",
+          "Account_Name"
+        ],
+        "module": "Contacts",
+        "recordId": "4150868000000376008"
+      },
+      "name": "getRecord-retry-503",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "5feab482-1f4c-5a89-bfd5-2fdfd987ce31",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Contacts/4150868000000376008",
+          "query": {
+            "fields": [
+              "Email,Account_Name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Email",
+          "Account_Name"
+        ],
+        "module": "Contacts",
+        "recordId": "4150868000000376008"
+      },
+      "name": "getRecord-transport",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "5feab482-1f4c-5a89-bfd5-2fdfd987ce31",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "fields": {},
+          "id": "",
+          "module": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Email",
+          "Account_Name"
+        ],
+        "module": "bad module",
+        "recordId": "4150868000000376008"
+      },
+      "name": "getRecord-defect",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "5feab482-1f4c-5a89-bfd5-2fdfd987ce31",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"4150868000003194003\",\"Deal_Name\":\"Meridian Platform Deal\",\"Stage\":\"Qualification\",\"Modified_Time\":\"2026-01-28T13:00:05Z\"}],\"info\":{\"more_records\":true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/coql",
+          "requestBody": {
+            "select_query": "select Deal_Name, Stage, Modified_Time from Deals where Modified_Time \u003e= '2026-01-28T13:00:00+00:00' order by Modified_Time asc, id asc limit 0, 3"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "cursor": "2026-01-28T13:00:05Z/4150868000003194003",
+          "hasMore": true,
+          "module": "Deals",
+          "records": [
+            {
+              "fields": {
+                "Deal_Name": "Meridian Platform Deal",
+                "Modified_Time": "2026-01-28T13:00:05Z",
+                "Stage": "Qualification"
+              },
+              "id": "4150868000003194003",
+              "module": "Deals"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Deal_Name",
+          "Stage"
+        ],
+        "limit": 3,
+        "modifiedSince": "2026-01-28T13:00:00Z",
+        "module": "Deals"
+      },
+      "name": "listModifiedRecords-success",
+      "operation": "listModifiedRecords"
+    },
+    {
+      "callId": "5feab482-1f4c-5a89-bfd5-2fdfd987ce31",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"NO_PERMISSION\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/coql",
+          "requestBody": {
+            "select_query": "select Deal_Name, Stage, Modified_Time from Deals where Modified_Time \u003e= '2026-01-28T13:00:00+00:00' order by Modified_Time asc, id asc limit 0, 3"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "cursor": "",
+          "module": "",
+          "records": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Deal_Name",
+          "Stage"
+        ],
+        "limit": 3,
+        "modifiedSince": "2026-01-28T13:00:00Z",
+        "module": "Deals"
+      },
+      "name": "listModifiedRecords-provider-rejected",
+      "operation": "listModifiedRecords"
+    },
+    {
+      "callId": "5feab482-1f4c-5a89-bfd5-2fdfd987ce31",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/coql",
+          "requestBody": {
+            "select_query": "select Deal_Name, Stage, Modified_Time from Deals where Modified_Time \u003e= '2026-01-28T13:00:00+00:00' order by Modified_Time asc, id asc limit 0, 3"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "cursor": "",
+          "module": "",
+          "records": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Deal_Name",
+          "Stage"
+        ],
+        "limit": 3,
+        "modifiedSince": "2026-01-28T13:00:00Z",
+        "module": "Deals"
+      },
+      "name": "listModifiedRecords-invalid-response",
+      "operation": "listModifiedRecords"
+    },
+    {
+      "callId": "5feab482-1f4c-5a89-bfd5-2fdfd987ce31",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"TOO_MANY_REQUESTS\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/coql",
+          "requestBody": {
+            "select_query": "select Deal_Name, Stage, Modified_Time from Deals where Modified_Time \u003e= '2026-01-28T13:00:00+00:00' order by Modified_Time asc, id asc limit 0, 3"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Deal_Name",
+          "Stage"
+        ],
+        "limit": 3,
+        "modifiedSince": "2026-01-28T13:00:00Z",
+        "module": "Deals"
+      },
+      "name": "listModifiedRecords-retry-429",
+      "operation": "listModifiedRecords"
+    },
+    {
+      "callId": "5feab482-1f4c-5a89-bfd5-2fdfd987ce31",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"INTERNAL_ERROR\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/coql",
+          "requestBody": {
+            "select_query": "select Deal_Name, Stage, Modified_Time from Deals where Modified_Time \u003e= '2026-01-28T13:00:00+00:00' order by Modified_Time asc, id asc limit 0, 3"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Deal_Name",
+          "Stage"
+        ],
+        "limit": 3,
+        "modifiedSince": "2026-01-28T13:00:00Z",
+        "module": "Deals"
+      },
+      "name": "listModifiedRecords-retry-503",
+      "operation": "listModifiedRecords"
+    },
+    {
+      "callId": "5feab482-1f4c-5a89-bfd5-2fdfd987ce31",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/coql",
+          "requestBody": {
+            "select_query": "select Deal_Name, Stage, Modified_Time from Deals where Modified_Time \u003e= '2026-01-28T13:00:00+00:00' order by Modified_Time asc, id asc limit 0, 3"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Deal_Name",
+          "Stage"
+        ],
+        "limit": 3,
+        "modifiedSince": "2026-01-28T13:00:00Z",
+        "module": "Deals"
+      },
+      "name": "listModifiedRecords-transport",
+      "operation": "listModifiedRecords"
+    },
+    {
+      "callId": "5feab482-1f4c-5a89-bfd5-2fdfd987ce31",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "cursor": "",
+          "module": "",
+          "records": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Deal_Name",
+          "Stage"
+        ],
+        "limit": 3,
+        "modifiedSince": "2026-01-28T13:00:00Z",
+        "module": "bad module"
+      },
+      "name": "listModifiedRecords-defect",
+      "operation": "listModifiedRecords"
+    },
+    {
+      "callId": "d3d9c62c-f09a-5a4d-a59f-64d6862e2b59",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"code\":\"SUCCESS\",\"status\":\"success\",\"action\":\"insert\",\"details\":{\"id\":\"4150868000000376008\",\"Created_Time\":\"2026-01-28T12:00:00Z\",\"Modified_Time\":\"2026-01-28T13:00:05Z\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Contacts/upsert",
+          "requestBody": {
+            "data": [
+              {
+                "Account_Name": {
+                  "id": "4150868000000624046"
+                },
+                "Email": "jane@acme.example.com",
+                "Last_Name": "Smith"
+              }
+            ],
+            "duplicate_check_fields": [
+              "Email"
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "upserted",
+        "failureKind": "",
+        "output": {
+          "createdAt": "2026-01-28T12:00:00Z",
+          "id": "4150868000000376008",
+          "isCreated": true,
+          "modifiedAt": "2026-01-28T13:00:05Z",
+          "module": "Contacts"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d3d9c62c-f09a-5a4d-a59f-64d6862e2b59",
+      "input": {
+        "duplicateCheckFields": [
+          "Email"
+        ],
+        "fields": {
+          "Account_Name": {
+            "id": "4150868000000624046"
+          },
+          "Email": "jane@acme.example.com",
+          "Last_Name": "Smith"
+        },
+        "module": "Contacts",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "upsertRecord-success",
+      "operation": "upsertRecord"
+    },
+    {
+      "callId": "d3d9c62c-f09a-5a4d-a59f-64d6862e2b59",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"NO_PERMISSION\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Contacts/upsert",
+          "requestBody": {
+            "data": [
+              {
+                "Account_Name": {
+                  "id": "4150868000000624046"
+                },
+                "Email": "jane@acme.example.com",
+                "Last_Name": "Smith"
+              }
+            ],
+            "duplicate_check_fields": [
+              "Email"
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "module": "Contacts",
+          "providerErrors": [
+            {
+              "code": "NO_PERMISSION"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d3d9c62c-f09a-5a4d-a59f-64d6862e2b59",
+      "input": {
+        "duplicateCheckFields": [
+          "Email"
+        ],
+        "fields": {
+          "Account_Name": {
+            "id": "4150868000000624046"
+          },
+          "Email": "jane@acme.example.com",
+          "Last_Name": "Smith"
+        },
+        "module": "Contacts",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "upsertRecord-provider-rejected",
+      "operation": "upsertRecord"
+    },
+    {
+      "callId": "d3d9c62c-f09a-5a4d-a59f-64d6862e2b59",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Contacts/upsert",
+          "requestBody": {
+            "data": [
+              {
+                "Account_Name": {
+                  "id": "4150868000000624046"
+                },
+                "Email": "jane@acme.example.com",
+                "Last_Name": "Smith"
+              }
+            ],
+            "duplicate_check_fields": [
+              "Email"
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "module": "Contacts"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d3d9c62c-f09a-5a4d-a59f-64d6862e2b59",
+      "input": {
+        "duplicateCheckFields": [
+          "Email"
+        ],
+        "fields": {
+          "Account_Name": {
+            "id": "4150868000000624046"
+          },
+          "Email": "jane@acme.example.com",
+          "Last_Name": "Smith"
+        },
+        "module": "Contacts",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "upsertRecord-invalid-response",
+      "operation": "upsertRecord"
+    },
+    {
+      "callId": "d3d9c62c-f09a-5a4d-a59f-64d6862e2b59",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"TOO_MANY_REQUESTS\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Contacts/upsert",
+          "requestBody": {
+            "data": [
+              {
+                "Account_Name": {
+                  "id": "4150868000000624046"
+                },
+                "Email": "jane@acme.example.com",
+                "Last_Name": "Smith"
+              }
+            ],
+            "duplicate_check_fields": [
+              "Email"
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d3d9c62c-f09a-5a4d-a59f-64d6862e2b59",
+      "input": {
+        "duplicateCheckFields": [
+          "Email"
+        ],
+        "fields": {
+          "Account_Name": {
+            "id": "4150868000000624046"
+          },
+          "Email": "jane@acme.example.com",
+          "Last_Name": "Smith"
+        },
+        "module": "Contacts",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "upsertRecord-retry-429",
+      "operation": "upsertRecord"
+    },
+    {
+      "callId": "d3d9c62c-f09a-5a4d-a59f-64d6862e2b59",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"INTERNAL_ERROR\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Contacts/upsert",
+          "requestBody": {
+            "data": [
+              {
+                "Account_Name": {
+                  "id": "4150868000000624046"
+                },
+                "Email": "jane@acme.example.com",
+                "Last_Name": "Smith"
+              }
+            ],
+            "duplicate_check_fields": [
+              "Email"
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d3d9c62c-f09a-5a4d-a59f-64d6862e2b59",
+      "input": {
+        "duplicateCheckFields": [
+          "Email"
+        ],
+        "fields": {
+          "Account_Name": {
+            "id": "4150868000000624046"
+          },
+          "Email": "jane@acme.example.com",
+          "Last_Name": "Smith"
+        },
+        "module": "Contacts",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "upsertRecord-retry-503",
+      "operation": "upsertRecord"
+    },
+    {
+      "callId": "d3d9c62c-f09a-5a4d-a59f-64d6862e2b59",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Contacts/upsert",
+          "requestBody": {
+            "data": [
+              {
+                "Account_Name": {
+                  "id": "4150868000000624046"
+                },
+                "Email": "jane@acme.example.com",
+                "Last_Name": "Smith"
+              }
+            ],
+            "duplicate_check_fields": [
+              "Email"
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d3d9c62c-f09a-5a4d-a59f-64d6862e2b59",
+      "input": {
+        "duplicateCheckFields": [
+          "Email"
+        ],
+        "fields": {
+          "Account_Name": {
+            "id": "4150868000000624046"
+          },
+          "Email": "jane@acme.example.com",
+          "Last_Name": "Smith"
+        },
+        "module": "Contacts",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "upsertRecord-transport",
+      "operation": "upsertRecord"
+    },
+    {
+      "callId": "d3d9c62c-f09a-5a4d-a59f-64d6862e2b59",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "module": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d3d9c62c-f09a-5a4d-a59f-64d6862e2b59",
+      "input": {
+        "duplicateCheckFields": [
+          "Email"
+        ],
+        "fields": {
+          "Account_Name": {
+            "id": "4150868000000624046"
+          },
+          "Email": "jane@acme.example.com",
+          "Last_Name": "Smith"
+        },
+        "module": "bad module",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "upsertRecord-defect",
+      "operation": "upsertRecord"
+    },
+    {
+      "callId": "7645f34c-78f3-5493-ac62-d3e8c7cd6503",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"code\":\"SUCCESS\",\"status\":\"success\",\"action\":\"update\",\"details\":{\"id\":\"4150868000003194003\",\"Modified_Time\":\"2026-01-28T13:00:05Z\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/Deals/4150868000003194003",
+          "requestBody": {
+            "data": [
+              {
+                "Owner": {
+                  "id": "4150868000000225013"
+                },
+                "Stage": "Qualification"
+              }
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "4150868000003194003",
+          "modifiedAt": "2026-01-28T13:00:05Z",
+          "module": "Deals"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7645f34c-78f3-5493-ac62-d3e8c7cd6503",
+      "input": {
+        "fields": {
+          "Owner": {
+            "id": "4150868000000225013"
+          },
+          "Stage": "Qualification"
+        },
+        "module": "Deals",
+        "recordId": "4150868000003194003",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "updateRecord-success",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "7645f34c-78f3-5493-ac62-d3e8c7cd6503",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"NO_PERMISSION\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/Deals/4150868000003194003",
+          "requestBody": {
+            "data": [
+              {
+                "Owner": {
+                  "id": "4150868000000225013"
+                },
+                "Stage": "Qualification"
+              }
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "module": "Deals",
+          "providerErrors": [
+            {
+              "code": "NO_PERMISSION"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7645f34c-78f3-5493-ac62-d3e8c7cd6503",
+      "input": {
+        "fields": {
+          "Owner": {
+            "id": "4150868000000225013"
+          },
+          "Stage": "Qualification"
+        },
+        "module": "Deals",
+        "recordId": "4150868000003194003",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "updateRecord-provider-rejected",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "7645f34c-78f3-5493-ac62-d3e8c7cd6503",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/Deals/4150868000003194003",
+          "requestBody": {
+            "data": [
+              {
+                "Owner": {
+                  "id": "4150868000000225013"
+                },
+                "Stage": "Qualification"
+              }
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "module": "Deals"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7645f34c-78f3-5493-ac62-d3e8c7cd6503",
+      "input": {
+        "fields": {
+          "Owner": {
+            "id": "4150868000000225013"
+          },
+          "Stage": "Qualification"
+        },
+        "module": "Deals",
+        "recordId": "4150868000003194003",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "updateRecord-invalid-response",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "7645f34c-78f3-5493-ac62-d3e8c7cd6503",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"TOO_MANY_REQUESTS\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/Deals/4150868000003194003",
+          "requestBody": {
+            "data": [
+              {
+                "Owner": {
+                  "id": "4150868000000225013"
+                },
+                "Stage": "Qualification"
+              }
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7645f34c-78f3-5493-ac62-d3e8c7cd6503",
+      "input": {
+        "fields": {
+          "Owner": {
+            "id": "4150868000000225013"
+          },
+          "Stage": "Qualification"
+        },
+        "module": "Deals",
+        "recordId": "4150868000003194003",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "updateRecord-retry-429",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "7645f34c-78f3-5493-ac62-d3e8c7cd6503",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"INTERNAL_ERROR\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/Deals/4150868000003194003",
+          "requestBody": {
+            "data": [
+              {
+                "Owner": {
+                  "id": "4150868000000225013"
+                },
+                "Stage": "Qualification"
+              }
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7645f34c-78f3-5493-ac62-d3e8c7cd6503",
+      "input": {
+        "fields": {
+          "Owner": {
+            "id": "4150868000000225013"
+          },
+          "Stage": "Qualification"
+        },
+        "module": "Deals",
+        "recordId": "4150868000003194003",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "updateRecord-retry-503",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "7645f34c-78f3-5493-ac62-d3e8c7cd6503",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/Deals/4150868000003194003",
+          "requestBody": {
+            "data": [
+              {
+                "Owner": {
+                  "id": "4150868000000225013"
+                },
+                "Stage": "Qualification"
+              }
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7645f34c-78f3-5493-ac62-d3e8c7cd6503",
+      "input": {
+        "fields": {
+          "Owner": {
+            "id": "4150868000000225013"
+          },
+          "Stage": "Qualification"
+        },
+        "module": "Deals",
+        "recordId": "4150868000003194003",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "updateRecord-transport",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "7645f34c-78f3-5493-ac62-d3e8c7cd6503",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "module": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7645f34c-78f3-5493-ac62-d3e8c7cd6503",
+      "input": {
+        "fields": {
+          "Owner": {
+            "id": "4150868000000225013"
+          },
+          "Stage": "Qualification"
+        },
+        "module": "bad module",
+        "recordId": "4150868000003194003",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "updateRecord-defect",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "5feab482-1f4c-5a89-bfd5-2fdfd987ce31",
+      "exchanges": [
+        {
+          "body": "{\"fields\":[{\"api_name\":\"Stage\",\"display_label\":\"Stage\",\"data_type\":\"picklist\",\"custom_field\":true,\"read_only\":true,\"system_mandatory\":true,\"unique\":{\"case_sensitive\":false},\"length\":40,\"lookup\":{\"module\":{\"api_name\":\"Deals\"}},\"pick_list_values\":[{\"actual_value\":\"Qualification\",\"display_value\":\"Qualification\",\"type\":\"used\"},{\"actual_value\":\"Old\",\"display_value\":\"Old\",\"type\":\"unused\"}]}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/settings/fields",
+          "query": {
+            "module": [
+              "Deals"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "fields": [
+            {
+              "apiName": "Stage",
+              "dataType": "picklist",
+              "displayLabel": "Stage",
+              "isCustom": true,
+              "isReadOnly": true,
+              "isSystemMandatory": true,
+              "isUnique": true,
+              "length": 40,
+              "lookupModule": "Deals",
+              "picklistValues": [
+                {
+                  "actualValue": "Qualification",
+                  "displayValue": "Qualification"
+                },
+                {
+                  "actualValue": "Old",
+                  "displayValue": "Old",
+                  "isUnused": true
+                }
+              ]
+            }
+          ],
+          "module": "Deals"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "module": "Deals"
+      },
+      "name": "listModuleFields-success",
+      "operation": "listModuleFields"
+    },
+    {
+      "callId": "5feab482-1f4c-5a89-bfd5-2fdfd987ce31",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"NO_PERMISSION\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/settings/fields",
+          "query": {
+            "module": [
+              "Deals"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "fields": [],
+          "module": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "module": "Deals"
+      },
+      "name": "listModuleFields-provider-rejected",
+      "operation": "listModuleFields"
+    },
+    {
+      "callId": "5feab482-1f4c-5a89-bfd5-2fdfd987ce31",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/settings/fields",
+          "query": {
+            "module": [
+              "Deals"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "fields": [],
+          "module": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "module": "Deals"
+      },
+      "name": "listModuleFields-invalid-response",
+      "operation": "listModuleFields"
+    },
+    {
+      "callId": "5feab482-1f4c-5a89-bfd5-2fdfd987ce31",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"TOO_MANY_REQUESTS\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/settings/fields",
+          "query": {
+            "module": [
+              "Deals"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "module": "Deals"
+      },
+      "name": "listModuleFields-retry-429",
+      "operation": "listModuleFields"
+    },
+    {
+      "callId": "5feab482-1f4c-5a89-bfd5-2fdfd987ce31",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"INTERNAL_ERROR\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/settings/fields",
+          "query": {
+            "module": [
+              "Deals"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "module": "Deals"
+      },
+      "name": "listModuleFields-retry-503",
+      "operation": "listModuleFields"
+    },
+    {
+      "callId": "5feab482-1f4c-5a89-bfd5-2fdfd987ce31",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/settings/fields",
+          "query": {
+            "module": [
+              "Deals"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "module": "Deals"
+      },
+      "name": "listModuleFields-transport",
+      "operation": "listModuleFields"
+    },
+    {
+      "callId": "5feab482-1f4c-5a89-bfd5-2fdfd987ce31",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "fields": [],
+          "module": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "module": "bad module"
+      },
+      "name": "listModuleFields-defect",
+      "operation": "listModuleFields"
+    },
+    {
+      "callId": "5feab482-1f4c-5a89-bfd5-2fdfd987ce31",
+      "exchanges": [
+        {
+          "body": "{\"data\":[],\"info\":{\"more_records\":false}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/coql",
+          "requestBody": {
+            "select_query": "select Email, Account_Name, Owner, Modified_Time from Contacts where Email = 'jane@acme.example.com' order by id desc limit 1, 2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "",
+        "output": {
+          "module": "Contacts",
+          "records": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conditions": [
+          {
+            "field": "Email",
+            "operator": "=",
+            "value": {
+              "kind": "text",
+              "text": "jane@acme.example.com"
+            }
+          }
+        ],
+        "fields": [
+          "Email",
+          "Account_Name",
+          "Owner",
+          "Modified_Time"
+        ],
+        "limit": 2,
+        "module": "Contacts",
+        "offset": 1,
+        "sort": {
+          "field": "id",
+          "isDescending": true
+        }
+      },
+      "name": "findRecords-not-found",
+      "operation": "findRecords"
+    },
+    {
+      "callId": "5feab482-1f4c-5a89-bfd5-2fdfd987ce31",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Contacts/4150868000000376008",
+          "query": {
+            "fields": [
+              "Email,Account_Name"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "fields": {},
+          "id": "",
+          "module": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Email",
+          "Account_Name"
+        ],
+        "module": "Contacts",
+        "recordId": "4150868000000376008"
+      },
+      "name": "getRecord-not-found",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "5feab482-1f4c-5a89-bfd5-2fdfd987ce31",
+      "exchanges": [
+        {
+          "body": "{\"data\":[],\"info\":{\"more_records\":false}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/coql",
+          "requestBody": {
+            "select_query": "select Deal_Name, Modified_Time from Deals where Modified_Time \u003e= '2026-01-28T13:00:00+00:00' order by Modified_Time asc, id asc limit 0, 2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "cursor": "2026-01-28T13:00:00Z/0",
+          "module": "Deals",
+          "records": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "2026-01-28T13:00:00Z/0",
+        "fields": [
+          "Deal_Name"
+        ],
+        "limit": 2,
+        "module": "Deals"
+      },
+      "name": "listModifiedRecords-empty",
+      "operation": "listModifiedRecords"
+    },
+    {
+      "callId": "d3d9c62c-f09a-5a4d-a59f-64d6862e2b59",
+      "exchanges": [
+        {
+          "body": "{\"code\": \"DUPLICATE_DATA\", \"details\": {\"api_name\": \"Email\", \"duplicate_record\": {\"id\": \"4150868000000376008\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Contacts/upsert",
+          "requestBody": {
+            "data": [
+              {
+                "Account_Name": {
+                  "id": "4150868000000624046"
+                },
+                "Email": "jane@acme.example.com",
+                "Last_Name": "Smith"
+              }
+            ],
+            "duplicate_check_fields": [
+              "Email"
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        },
+        {
+          "body": "{\"code\": \"DUPLICATE_DATA\", \"details\": {\"api_name\": \"Email\", \"duplicate_record\": {\"id\": \"4150868000000376008\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Contacts/upsert",
+          "requestBody": {
+            "data": [
+              {
+                "Account_Name": {
+                  "id": "4150868000000624046"
+                },
+                "Email": "jane@acme.example.com",
+                "Last_Name": "Smith"
+              }
+            ],
+            "duplicate_check_fields": [
+              "Email"
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "conflict",
+        "failureKind": "CONFLICT",
+        "output": {
+          "module": "Contacts",
+          "providerErrors": [
+            {
+              "code": "DUPLICATE_DATA",
+              "duplicateRecordId": "4150868000000376008",
+              "field": "Email"
+            }
+          ]
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d3d9c62c-f09a-5a4d-a59f-64d6862e2b59",
+      "input": {
+        "duplicateCheckFields": [
+          "Email"
+        ],
+        "fields": {
+          "Account_Name": {
+            "id": "4150868000000624046"
+          },
+          "Email": "jane@acme.example.com",
+          "Last_Name": "Smith"
+        },
+        "module": "Contacts",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "upsertRecord-conflict",
+      "operation": "upsertRecord"
+    },
+    {
+      "callId": "d3d9c62c-f09a-5a4d-a59f-64d6862e2b59",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"MANDATORY_NOT_FOUND\",\"details\":{\"api_name\":\"Last_Name\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Contacts/upsert",
+          "requestBody": {
+            "data": [
+              {
+                "Account_Name": {
+                  "id": "4150868000000624046"
+                },
+                "Email": "jane@acme.example.com",
+                "Last_Name": "Smith"
+              }
+            ],
+            "duplicate_check_fields": [
+              "Email"
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "recordRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "module": "Contacts",
+          "providerErrors": [
+            {
+              "code": "MANDATORY_NOT_FOUND",
+              "field": "Last_Name"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d3d9c62c-f09a-5a4d-a59f-64d6862e2b59",
+      "input": {
+        "duplicateCheckFields": [
+          "Email"
+        ],
+        "fields": {
+          "Account_Name": {
+            "id": "4150868000000624046"
+          },
+          "Email": "jane@acme.example.com",
+          "Last_Name": "Smith"
+        },
+        "module": "Contacts",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "upsertRecord-record-rejected",
+      "operation": "upsertRecord"
+    },
+    {
+      "callId": "7645f34c-78f3-5493-ac62-d3e8c7cd6503",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"INVALID_DATA\",\"details\":{\"api_name\":\"id\",\"id\":\"4150868000003194003\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/Deals/4150868000003194003",
+          "requestBody": {
+            "data": [
+              {
+                "Owner": {
+                  "id": "4150868000000225013"
+                },
+                "Stage": "Qualification"
+              }
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "module": "Deals",
+          "providerErrors": [
+            {
+              "code": "INVALID_DATA",
+              "field": "id"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7645f34c-78f3-5493-ac62-d3e8c7cd6503",
+      "input": {
+        "fields": {
+          "Owner": {
+            "id": "4150868000000225013"
+          },
+          "Stage": "Qualification"
+        },
+        "module": "Deals",
+        "recordId": "4150868000003194003",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "updateRecord-not-found",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "7645f34c-78f3-5493-ac62-d3e8c7cd6503",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"DUPLICATE_DATA\",\"details\":{\"api_name\":\"Stage\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/Deals/4150868000003194003",
+          "requestBody": {
+            "data": [
+              {
+                "Owner": {
+                  "id": "4150868000000225013"
+                },
+                "Stage": "Qualification"
+              }
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "conflict",
+        "failureKind": "CONFLICT",
+        "output": {
+          "module": "Deals",
+          "providerErrors": [
+            {
+              "code": "DUPLICATE_DATA",
+              "field": "Stage"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7645f34c-78f3-5493-ac62-d3e8c7cd6503",
+      "input": {
+        "fields": {
+          "Owner": {
+            "id": "4150868000000225013"
+          },
+          "Stage": "Qualification"
+        },
+        "module": "Deals",
+        "recordId": "4150868000003194003",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "updateRecord-conflict",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "7645f34c-78f3-5493-ac62-d3e8c7cd6503",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"INVALID_DATA\",\"details\":{\"api_name\":\"Stage\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/Deals/4150868000003194003",
+          "requestBody": {
+            "data": [
+              {
+                "Owner": {
+                  "id": "4150868000000225013"
+                },
+                "Stage": "Qualification"
+              }
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "recordRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "module": "Deals",
+          "providerErrors": [
+            {
+              "code": "INVALID_DATA",
+              "field": "Stage"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7645f34c-78f3-5493-ac62-d3e8c7cd6503",
+      "input": {
+        "fields": {
+          "Owner": {
+            "id": "4150868000000225013"
+          },
+          "Stage": "Qualification"
+        },
+        "module": "Deals",
+        "recordId": "4150868000003194003",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "updateRecord-record-rejected",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "d3d9c62c-f09a-5a4d-a59f-64d6862e2b59",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"code\":\"SUCCESS\",\"status\":\"success\",\"action\":\"insert\",\"details\":{\"id\":\"4150868000000376008\",\"Created_Time\":\"2026-01-28T12:00:00Z\",\"Modified_Time\":\"2026-01-28T13:00:05Z\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Contacts/upsert",
+          "requestBody": {
+            "data": [
+              {
+                "Account_Name": {
+                  "id": "4150868000000624046"
+                },
+                "Email": "jane@acme.example.com",
+                "Last_Name": "Smith"
+              }
+            ],
+            "duplicate_check_fields": [
+              "Email"
+            ],
+            "trigger": []
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "upserted",
+        "failureKind": "",
+        "output": {
+          "createdAt": "2026-01-28T12:00:00Z",
+          "id": "4150868000000376008",
+          "isCreated": true,
+          "modifiedAt": "2026-01-28T13:00:05Z",
+          "module": "Contacts"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d3d9c62c-f09a-5a4d-a59f-64d6862e2b59",
+      "input": {
+        "duplicateCheckFields": [
+          "Email"
+        ],
+        "fields": {
+          "Account_Name": {
+            "id": "4150868000000624046"
+          },
+          "Email": "jane@acme.example.com",
+          "Last_Name": "Smith"
+        },
+        "module": "Contacts",
+        "shouldSkipAutomation": true
+      },
+      "name": "upsertRecord-skip-automation",
+      "operation": "upsertRecord"
+    },
+    {
+      "callId": "7645f34c-78f3-5493-ac62-d3e8c7cd6503",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"code\":\"SUCCESS\",\"status\":\"success\",\"action\":\"update\",\"details\":{\"id\":\"4150868000003194003\",\"Modified_Time\":\"2026-01-28T13:00:05Z\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/Deals/4150868000003194003",
+          "requestBody": {
+            "data": [
+              {
+                "Owner": {
+                  "id": "4150868000000225013"
+                },
+                "Stage": "Qualification"
+              }
+            ],
+            "trigger": []
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken 1000.zohoCRMTestAccessToken0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "4150868000003194003",
+          "modifiedAt": "2026-01-28T13:00:05Z",
+          "module": "Deals"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7645f34c-78f3-5493-ac62-d3e8c7cd6503",
+      "input": {
+        "fields": {
+          "Owner": {
+            "id": "4150868000000225013"
+          },
+          "Stage": "Qualification"
+        },
+        "module": "Deals",
+        "recordId": "4150868000003194003",
+        "shouldSkipAutomation": true
+      },
+      "name": "updateRecord-skip-automation",
+      "operation": "updateRecord"
+    }
+  ],
+  "schemaVersion": 1
+}

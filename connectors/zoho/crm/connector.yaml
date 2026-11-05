@@ -8,6 +8,13 @@ metadata:
   version: v0.24.0
 spec:
   provider: zoho
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-zoho-crm
+      operations: [findRecords, getRecord, listModifiedRecords, upsertRecord, updateRecord, listModuleFields]
+      triggers: []
+      timestampFormat: rfc3339Nano
   codegen:
     go:
       package: crm
