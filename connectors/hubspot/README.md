@@ -239,3 +239,7 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 \
 
 The integration tests need a running `dexcli dev` and use a local fake
 HubSpot API; no live HubSpot account is required.
+
+## TypeScript package
+
+The TypeScript package in [`typescript/`](typescript/README.md) implements the four CRM operations with the generated manifest OAuth refresh wiring. Its [search deals example](typescript/examples/search-deals/README.md) runs a Dex Worker and Client using the static `hubspot-crm` connection. Provider replay and a real local Dex integration test cover the public path; live HubSpot authorization and API behavior still require testing through Dex Web Connections.
