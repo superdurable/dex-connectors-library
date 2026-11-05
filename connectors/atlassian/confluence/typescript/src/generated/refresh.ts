@@ -40,6 +40,16 @@ export const Authorization = {
       }
     ],
     "refresh": {
+      "acceptedScopeSets": [
+        [
+          "search:confluence",
+          "read:page:confluence",
+          "write:page:confluence",
+          "read:space:confluence",
+          "read:comment:confluence",
+          "write:comment:confluence"
+        ]
+      ],
       "acceptsMissingTokenType": true,
       "missingExpiry": "reject",
       "requiredScopes": [
