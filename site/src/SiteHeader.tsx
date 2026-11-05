@@ -18,6 +18,7 @@ type SuperDurableNavigationLink = {
 const superDurableHomeUrl = "https://superdurable.io/";
 const dexRepositoryGitHubUrl = "https://github.com/superdurable/dex";
 const dexLogInUrl = "https://dex.superdurable.io/login";
+const dexCloudSignUpUrl = "https://dex.superdurable.io/register";
 const dexRepositoryApiUrl = "https://api.github.com/repos/superdurable/dex";
 const starCountCacheKey = "superdurable-dex-star-count";
 
@@ -53,6 +54,7 @@ export function SiteHeader() {
         <div className="sd-header-actions">
           <GitHubRepositoryLink />
           <a className="sd-quiet-link" href={dexLogInUrl}>Log in</a>
+          <a className="sd-button sd-button-primary sd-button-small" href={dexCloudSignUpUrl}>Sign up Cloud</a>
         </div>
         <MobileMenu />
       </div>
@@ -117,6 +119,7 @@ function MobileMenu() {
         <SuperDurableNavigationAnchors />
         <a href={dexRepositoryGitHubUrl}>GitHub</a>
         <a href={dexLogInUrl}>Log in</a>
+        <a className="sd-button sd-button-primary" href={dexCloudSignUpUrl}>Sign up Cloud</a>
       </nav>
     </details>
   );

@@ -9,6 +9,8 @@ The `vercel` Go module exposes typed Dex Steps for Vercel. Its [runnable lookup 
 The Python package is [`dex-connector-vercel`](python/README.md), imported as
 `dex_connectors.vercel`.
 
+The TypeScript package is [`@superdurable/connector-vercel`](typescript/README.md), with a checked-in Dex lookup Flow.
+
 ## Operations
 
 | Factory | Endpoint | Input | Output | Required branch | Optional branches |
