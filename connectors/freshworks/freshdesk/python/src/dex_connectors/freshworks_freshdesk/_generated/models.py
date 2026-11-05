@@ -6,6 +6,8 @@ from dataclasses import dataclass, field as _dataclass_field
 from datetime import UTC, datetime
 from typing import Any
 
+from .timestamps import parse_go_datetime, validate_go_datetime
+
 def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
@@ -88,6 +90,24 @@ class Ticket:
     # FirstResponseDueBy is when the first response is due, or nil.
     first_response_due_by: datetime | None = _dataclass_field(default=None, metadata={'dex_json_name': 'firstResponseDueBy', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
 
+    def __post_init__(self) -> None:
+        if isinstance(self.created_at, str):
+            object.__setattr__(self, 'created_at', parse_go_datetime(self.created_at, 'created_at'))
+        elif self.created_at is not None:
+            validate_go_datetime(self.created_at, 'created_at')
+        if isinstance(self.updated_at, str):
+            object.__setattr__(self, 'updated_at', parse_go_datetime(self.updated_at, 'updated_at'))
+        elif self.updated_at is not None:
+            validate_go_datetime(self.updated_at, 'updated_at')
+        if isinstance(self.due_by, str):
+            object.__setattr__(self, 'due_by', parse_go_datetime(self.due_by, 'due_by'))
+        elif self.due_by is not None:
+            validate_go_datetime(self.due_by, 'due_by')
+        if isinstance(self.first_response_due_by, str):
+            object.__setattr__(self, 'first_response_due_by', parse_go_datetime(self.first_response_due_by, 'first_response_due_by'))
+        elif self.first_response_due_by is not None:
+            validate_go_datetime(self.first_response_due_by, 'first_response_due_by')
+
 
 setattr(Ticket, '__module__', 'dex_connectors.freshworks_freshdesk.models')
 
@@ -161,6 +181,12 @@ class TicketConversation:
     is_body_truncated: bool = _dataclass_field(default=False, metadata={'dex_json_name': 'isBodyTruncated', 'dex_json_omit_default': True})
     # CreatedAt is when the conversation was added.
     created_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'createdAt', 'dex_json_format': 'rfc3339'})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.created_at, str):
+            object.__setattr__(self, 'created_at', parse_go_datetime(self.created_at, 'created_at'))
+        elif self.created_at is not None:
+            validate_go_datetime(self.created_at, 'created_at')
 
 
 setattr(TicketConversation, '__module__', 'dex_connectors.freshworks_freshdesk.models')
