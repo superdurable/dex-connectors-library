@@ -1,5 +1,12 @@
 # OAuth 2.0 HTTP Connector
 
+The TypeScript package `@superdurable/connector-oauth2-http` implements
+`sendRequest` with generated OAuth refresh and shared credential decoding.
+See its [runnable TypeScript example](typescript/examples/api-request/) and
+[package guide](typescript/README.md). TypeScript replay matches the Go
+provider scenarios, and the example runs through a real local Dex stack.
+Live TypeScript authorization with a hosted provider remains unverified.
+
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http/go@v0.2.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http`.

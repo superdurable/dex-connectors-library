@@ -8,6 +8,12 @@ metadata:
   version: v0.2.0
 spec:
   provider: oauth2-http
+  languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-oauth2-http"
+      operations: [sendRequest]
+      triggers: []
   codegen:
     go:
       package: oauth2http
