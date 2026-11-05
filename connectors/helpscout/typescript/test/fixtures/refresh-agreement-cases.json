@@ -57,7 +57,7 @@
     "updates": {
       "access_token": "manifest-access-token-2"
     },
-    "terminalErrorCodes": null
+    "terminalErrorCodes": []
   },
   {
     "name": "spec.auth clientCredentials without token type",
@@ -85,7 +85,7 @@
     "updates": {
       "access_token": "manifest-access-token-2"
     },
-    "terminalErrorCodes": null
+    "terminalErrorCodes": []
   },
   {
     "name": "spec.auth clientCredentials without expires_in",
@@ -113,6 +113,6 @@
     "updates": {
       "access_token": "manifest-access-token-2"
     },
-    "terminalErrorCodes": null
+    "terminalErrorCodes": []
   }
 ]
