@@ -4,7 +4,7 @@ Install the Go module with `go get github.com/superdurable/dex-connectors-librar
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/postgresql`.
 
-> **Verification status: live.** Verified against local PostgreSQL 17.11 with TLS on a real Dex stack; managed services such as RDS, Supabase, and Neon are not verified. See
+> **Go verification status: live.** The Go package was verified against local PostgreSQL 17.11 with TLS on a real Dex stack; managed services such as RDS, Supabase, and Neon are not verified. See
 > [verification status](../../docs/verification-status.md) for what is and
 > is not verified.
 
@@ -17,7 +17,7 @@ Steps. It has two operations:
   transaction, commits it, and returns the rows affected and any bounded
   `RETURNING` rows.
 
-The connector is built on the pure-Go `github.com/jackc/pgx/v5/pgconn` wire
+The Go connector is built on the pure-Go `github.com/jackc/pgx/v5/pgconn` wire
 protocol client. Each operation opens one connection, runs one transaction,
 and closes the connection. The connector keeps no pool, so a rotated password
 takes effect on the next Step. It supports PostgreSQL 12 and later and was
@@ -306,6 +306,13 @@ seconds.
 [`examples/record-refund`](go/examples/record-refund/README.md) records one
 refund in a ledger at most once. It uses `query` for the duplicate check and
 `execute` for the idempotent insert, and reconciles an uncertain `COMMIT`.
+
+The [TypeScript package](typescript/README.md) implements both operations with
+the native `pg` driver. Its [refund example](typescript/examples/record-refund/README.md)
+uses the static `postgresql-ledger` connection name and has a real Dex
+Worker/Client integration test. The native-driver integration suite runs in
+CI's PostgreSQL service container; live TypeScript provider authorization and
+the full Worker-to-database path remain unverified.
 
 ## Python package
 

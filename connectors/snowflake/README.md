@@ -2,6 +2,11 @@
 
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/snowflake/go@v0.23.0`.
 
+The [TypeScript package](typescript/README.md), `@superdurable/connector-snowflake`,
+provides the same three operations for Dex TypeScript Flows. Its runnable
+[account-usage example](typescript/examples/account-usage-summary/) exercises
+submission, a result read, and cancellation against a real local Dex Worker.
+
 Moved from `github.com/superdurable/dex-connectors-library/connectors/snowflake`.
 
 > **Verification status: Dex-integrated.** The operations and the runnable example ran on a real

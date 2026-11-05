@@ -687,13 +687,12 @@ def _decode_value(column: Column, text: str | None) -> object:
         def reject_constant(value: str) -> object:
             raise ValueError("invalid semi-structured JSON")
 
-        def parse_exact_float(value: str) -> float:
-            decimal_value = Decimal(value)
-            floating = float(decimal_value)
-            if not math.isfinite(floating) or Decimal.from_float(floating) != decimal_value:
-                raise ValueError("semi-structured JSON number exceeds exact Python codec precision")
-            if json.dumps(floating) != value:
-                raise ValueError("semi-structured JSON number cannot retain its text through Python codec")
+        def parse_json_number(value: str) -> int | float:
+            floating = float(value)
+            if not math.isfinite(floating):
+                raise ValueError("semi-structured JSON number exceeds codec range")
+            if "." not in value and "e" not in value.lower():
+                return int(Decimal(str(floating)))
             return floating
 
         def reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict[str, object]:
@@ -705,7 +704,8 @@ def _decode_value(column: Column, text: str | None) -> object:
             return value
 
         return json.loads(
-            text, parse_float=parse_exact_float, parse_constant=reject_constant,
+            text, parse_int=parse_json_number, parse_float=parse_json_number,
+            parse_constant=reject_constant,
             object_pairs_hook=reject_duplicate_keys,
         )
     if kind == "date":

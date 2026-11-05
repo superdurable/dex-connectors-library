@@ -14,6 +14,11 @@ spec:
       package: dex-connector-snowflake
       operations: [submitStatement, getStatementResult, cancelStatement]
       triggers: []
+    typescript:
+      package: '@superdurable/connector-snowflake'
+      version: v0.1.0
+      operations: [submitStatement, getStatementResult, cancelStatement]
+      triggers: []
   codegen:
     go:
       package: snowflake
