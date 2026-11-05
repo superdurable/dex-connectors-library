@@ -6,6 +6,8 @@ from dataclasses import dataclass, field as _dataclass_field
 from datetime import UTC, datetime
 from typing import Any
 
+from .timestamps import parse_go_datetime, validate_go_datetime
+
 def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
@@ -46,7 +48,7 @@ setattr(Channel, '__module__', 'dex_connectors.discord.models')
 
 
 # ListChannelMessagesInput selects one page of a channel's messages.
-# 
+#
 # Discord returns messages newest first. Set at most one of BeforeMessageID
 # and AfterMessageID: blank both reads the newest page, BeforeMessageID pages
 # toward older messages, and AfterMessageID reads messages newer than it.
@@ -100,6 +102,16 @@ class Message:
     # Type is Discord's message type number, such as 0 for a default message or 19 for a reply.
     type: int = 0
 
+    def __post_init__(self) -> None:
+        if isinstance(self.timestamp, str):
+            object.__setattr__(self, 'timestamp', parse_go_datetime(self.timestamp, 'timestamp'))
+        elif self.timestamp is not None:
+            validate_go_datetime(self.timestamp, 'timestamp')
+        if isinstance(self.edited_timestamp, str):
+            object.__setattr__(self, 'edited_timestamp', parse_go_datetime(self.edited_timestamp, 'edited_timestamp'))
+        elif self.edited_timestamp is not None:
+            validate_go_datetime(self.edited_timestamp, 'edited_timestamp')
+
 
 setattr(Message, '__module__', 'dex_connectors.discord.models')
 
@@ -124,7 +136,7 @@ setattr(MessagePage, '__module__', 'dex_connectors.discord.models')
 
 
 # CreateMessageInput sends one text message to a channel as the bot.
-# 
+#
 # Every mention is disabled, so text such as @everyone or <@id> renders but
 # notifies nobody.
 @dataclass(frozen=True, slots=True)

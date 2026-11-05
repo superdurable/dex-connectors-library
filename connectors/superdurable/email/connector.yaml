@@ -9,6 +9,11 @@ metadata:
 spec:
   provider: email
   languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-superdurable-email
+      operations: [searchMessages, getMessage, sendMessage, replyToMessage, moveMessage, setFlags]
+      triggers: []
     typescript:
       version: v0.1.0
       package: "@superdurable/connector-superdurable-email"

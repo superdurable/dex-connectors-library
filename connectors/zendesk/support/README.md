@@ -316,3 +316,7 @@ Center paths in the setup guidance.
 ## Python package
 
 The independent `dex-connector-zendesk-support` Python `v0.1.0` package implements all four ticket operations. Its [README](python/README.md) and [read-ticket example](python/examples/read_ticket/README.md) show the static connection and Worker path. Go-recorded provider conformance scenarios cover Python request and outcome parity; the Python example runs against a real local Dex Worker and a provider stand-in. Live Zendesk authorization and provider behavior remain unverified.
+
+## TypeScript package
+
+`@superdurable/connector-zendesk-support@0.1.0` implements all four ticket operations with generated operation-specific Step factories. See the runnable [TypeScript customer-issue Flow](typescript/examples/customer-issue/flow.ts) and its [setup instructions](typescript/examples/customer-issue/README.md). The TypeScript conformance suite replays Go-recorded provider requests and outcomes; the example's integration check runs through a real Dex Worker and Client. Live Zendesk authorization and API behavior are unverified.

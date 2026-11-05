@@ -36,6 +36,7 @@ async def main() -> None:
             "tokenEndpoint": "https://auth.example.test/token",
             "clientIDCredential": "client_id", "clientSecretCredential": "client_secret",
             "scopes": ["read"],
+            "refresh": {"responseScopeField": "scopesArray"},
             "credentialMappings": [
                 {"credential": "access_token", "source": "access_token"},
                 {"credential": "refresh_token", "source": "refresh_token"},
@@ -46,7 +47,7 @@ async def main() -> None:
     def respond(_: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json={
             "access_token": "INERT_NEW_ACCESS", "refresh_token": "INERT_NEW_REFRESH",
-            "expires_in": 3600, "token_type": "Bearer", "scope": "read",
+            "expires_in": 3600, "token_type": "Bearer", "scope": "unrelated",
         })
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:

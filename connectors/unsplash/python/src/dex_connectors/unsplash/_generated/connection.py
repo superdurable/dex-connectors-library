@@ -79,8 +79,14 @@ class _ProjectCredentialSource:
 
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
+        if not isinstance(material, dict):
+            raise ValueError("Unsplash stored credential does not match the connector credential fields")
+        if set(material) - set(('access_key',)):
+            raise ValueError("Unsplash stored credential does not match the connector credential fields")
         access_key = material.get("access_key")
-        if not isinstance(access_key, str) or not access_key:
+        if access_key is not None and not (isinstance(access_key, str)):
+            raise ValueError("Unsplash credential access_key has an invalid type")
+        if not access_key:
             raise ValueError("Unsplash credential access_key is required")
         return Credentials(SecretString(access_key))
 

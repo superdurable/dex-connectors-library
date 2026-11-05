@@ -67,6 +67,8 @@ async def test_found_escapes_id_and_records_receipt() -> None:
     assert result.receipt.metadata == {"x-ratelimit-remaining-requests": "7"}
     await run_query(client.retrieve_response(), call(), RetrieveRequest("a/b"))
     assert requests[1].url.raw_path == b"/v1/responses/a%2Fb"
+    await run_query(client.retrieve_response(), call(), RetrieveRequest("A$&+=:@!'()*,;?/~"))
+    assert requests[2].url.raw_path == b"/v1/responses/A$&+=:@%21%27%28%29%2A%2C%3B%3F%2F~"
 
 
 @pytest.mark.asyncio

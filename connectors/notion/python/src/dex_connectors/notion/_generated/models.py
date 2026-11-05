@@ -89,7 +89,7 @@ setattr(SearchOutput, '__module__', 'dex_connectors.notion.models')
 
 # QueryFilter is a typed Notion data source filter. Set exactly one of
 # Property, Timestamp, And, and Or.
-# 
+#
 # A property condition names the property, its Type, a Condition the type
 # supports, and the one value field the condition takes: Text for title,
 # rich_text, url, email, phone_number, select, status, and multi_select;
@@ -296,7 +296,7 @@ setattr(GetPageInput, '__module__', 'dex_connectors.notion.models')
 
 
 # PageContent is a bounded plain-text rendering of a page's top-level blocks.
-# 
+#
 # Each block becomes one line: list items start with "- " or a number, to-do
 # items with "[ ] " or "[x] ", table rows join their cells with " | ", and child
 # pages and databases show their titles. Blocks inside toggles, columns, and
@@ -333,7 +333,7 @@ setattr(GetPageOutput, '__module__', 'dex_connectors.notion.models')
 
 
 # PropertyValue is one typed property value written to a Notion page.
-# 
+#
 # Type selects exactly one value field: Text for title and rich_text, Number,
 # Checkbox, Option for select and status, Options for multi_select, Date, URL,
 # Email, PhoneNumber, UserIDs for people, and PageIDs for relation. Setting a
@@ -341,7 +341,7 @@ setattr(GetPageOutput, '__module__', 'dex_connectors.notion.models')
 # type's field clears the property, except that a checkbox needs an explicit
 # value and a status needs an option name. Prefer the constructors such as
 # TitleValue and SelectValue, and ClearedValue to clear a property on purpose.
-# 
+#
 # Writes replace the property's whole value: a multi_select, people, or
 # relation value lists every entry the property keeps, so repeating the same
 # write leaves the page unchanged.

@@ -17,19 +17,9 @@ from dex_connectors.sdk import (
 )
 
 from ..connection import Connection
-from ..models import (
-    CreateTicketInput,
-    CreateTicketOutput,
-    GetTicketInput,
-    SearchTicketsInput,
-    SearchTicketsOutput,
-    TicketDetails,
-    UpdateTicketInput,
-    UpdateTicketOutput,
-)
+from ..models import CreateTicketInput, CreateTicketOutput, GetTicketInput, SearchTicketsInput, SearchTicketsOutput, TicketDetails, UpdateTicketInput, UpdateTicketOutput
 
 StepInput = TypeVar("StepInput")
-
 
 def new_search_tickets_step(
     *,
@@ -51,17 +41,11 @@ def new_search_tickets_step(
     if isinstance(annotations, StepAnnotations):
         step_annotations = annotations
     else:
-        if not isinstance(annotations, Mapping) or set(annotations) != {
-            "groupId",
-            "groupLabel",
-            "explanation",
-        }:
+        if not isinstance(annotations, Mapping) or set(annotations) != {"groupId", "groupLabel", "explanation"}:
             raise ValueError("Zendesk Support Step annotations require groupId, groupLabel, and explanation")
         if any(not isinstance(value, str) for value in annotations.values()):
             raise ValueError("Zendesk Support Step annotations must be strings")
-        step_annotations = StepAnnotations(
-            annotations["groupId"], annotations["groupLabel"], annotations["explanation"]
-        )
+        step_annotations = StepAnnotations(annotations["groupId"], annotations["groupLabel"], annotations["explanation"])
     branches = {
         "searched": searched,
     }
@@ -85,9 +69,7 @@ def new_search_tickets_step(
         )
     )
 
-
-setattr(new_search_tickets_step, "__module__", "dex_connectors.zendesk_support.steps")
-
+setattr(new_search_tickets_step, '__module__', 'dex_connectors.zendesk_support.steps')
 
 def new_get_ticket_step(
     *,
@@ -110,17 +92,11 @@ def new_get_ticket_step(
     if isinstance(annotations, StepAnnotations):
         step_annotations = annotations
     else:
-        if not isinstance(annotations, Mapping) or set(annotations) != {
-            "groupId",
-            "groupLabel",
-            "explanation",
-        }:
+        if not isinstance(annotations, Mapping) or set(annotations) != {"groupId", "groupLabel", "explanation"}:
             raise ValueError("Zendesk Support Step annotations require groupId, groupLabel, and explanation")
         if any(not isinstance(value, str) for value in annotations.values()):
             raise ValueError("Zendesk Support Step annotations must be strings")
-        step_annotations = StepAnnotations(
-            annotations["groupId"], annotations["groupLabel"], annotations["explanation"]
-        )
+        step_annotations = StepAnnotations(annotations["groupId"], annotations["groupLabel"], annotations["explanation"])
     branches = {
         "found": found,
     }
@@ -146,9 +122,7 @@ def new_get_ticket_step(
         )
     )
 
-
-setattr(new_get_ticket_step, "__module__", "dex_connectors.zendesk_support.steps")
-
+setattr(new_get_ticket_step, '__module__', 'dex_connectors.zendesk_support.steps')
 
 def new_create_ticket_step(
     *,
@@ -170,17 +144,11 @@ def new_create_ticket_step(
     if isinstance(annotations, StepAnnotations):
         step_annotations = annotations
     else:
-        if not isinstance(annotations, Mapping) or set(annotations) != {
-            "groupId",
-            "groupLabel",
-            "explanation",
-        }:
+        if not isinstance(annotations, Mapping) or set(annotations) != {"groupId", "groupLabel", "explanation"}:
             raise ValueError("Zendesk Support Step annotations require groupId, groupLabel, and explanation")
         if any(not isinstance(value, str) for value in annotations.values()):
             raise ValueError("Zendesk Support Step annotations must be strings")
-        step_annotations = StepAnnotations(
-            annotations["groupId"], annotations["groupLabel"], annotations["explanation"]
-        )
+        step_annotations = StepAnnotations(annotations["groupId"], annotations["groupLabel"], annotations["explanation"])
     branches = {
         "created": created,
     }
@@ -204,9 +172,7 @@ def new_create_ticket_step(
         )
     )
 
-
-setattr(new_create_ticket_step, "__module__", "dex_connectors.zendesk_support.steps")
-
+setattr(new_create_ticket_step, '__module__', 'dex_connectors.zendesk_support.steps')
 
 def new_update_ticket_step(
     *,
@@ -230,17 +196,11 @@ def new_update_ticket_step(
     if isinstance(annotations, StepAnnotations):
         step_annotations = annotations
     else:
-        if not isinstance(annotations, Mapping) or set(annotations) != {
-            "groupId",
-            "groupLabel",
-            "explanation",
-        }:
+        if not isinstance(annotations, Mapping) or set(annotations) != {"groupId", "groupLabel", "explanation"}:
             raise ValueError("Zendesk Support Step annotations require groupId, groupLabel, and explanation")
         if any(not isinstance(value, str) for value in annotations.values()):
             raise ValueError("Zendesk Support Step annotations must be strings")
-        step_annotations = StepAnnotations(
-            annotations["groupId"], annotations["groupLabel"], annotations["explanation"]
-        )
+        step_annotations = StepAnnotations(annotations["groupId"], annotations["groupLabel"], annotations["explanation"])
     branches = {
         "updated": updated,
     }
@@ -268,8 +228,7 @@ def new_update_ticket_step(
         )
     )
 
-
-setattr(new_update_ticket_step, "__module__", "dex_connectors.zendesk_support.steps")
+setattr(new_update_ticket_step, '__module__', 'dex_connectors.zendesk_support.steps')
 
 
 def _bound_operation(connection: Connection, operation_name: str) -> Any:

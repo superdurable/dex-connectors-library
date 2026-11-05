@@ -9,30 +9,14 @@ from dex_connectors.sdk import ConnectionRef, Mutation, Query, Call, SecretStrin
 from dex_connectors.sdk.projectconfig import ConnectionKey, LoadedProject
 
 from ..client import Client, Config, Credentials
-from .definitions import (
-    CONNECTOR_ID,
-    CREATE_TICKET_DEFINITION,
-    GET_TICKET_DEFINITION,
-    SEARCH_TICKETS_DEFINITION,
-    UPDATE_TICKET_DEFINITION,
-)
-from ..models import (
-    CreateTicketInput,
-    CreateTicketOutput,
-    GetTicketInput,
-    SearchTicketsInput,
-    SearchTicketsOutput,
-    TicketDetails,
-    UpdateTicketInput,
-    UpdateTicketOutput,
-)
-
+from .definitions import CONNECTOR_ID, PROVIDER, CREATE_TICKET_DEFINITION, GET_TICKET_DEFINITION, SEARCH_TICKETS_DEFINITION, UPDATE_TICKET_DEFINITION
+from ..models import CreateTicketInput, CreateTicketOutput, GetTicketInput, SearchTicketsInput, SearchTicketsOutput, TicketDetails, UpdateTicketInput, UpdateTicketOutput
 
 class Connection:
-    __slots__ = ("_search_tickets", "_get_ticket", "_create_ticket", "_update_ticket", "_client", "reference")
 
-    def __init__(
-        self,
+    __slots__ = ('_search_tickets', '_get_ticket', '_create_ticket', '_update_ticket', '_client', 'reference')
+
+    def __init__(self,
         reference: ConnectionRef,
         search_tickets: Query[SearchTicketsInput, SearchTicketsOutput],
         get_ticket: Query[GetTicketInput, TicketDetails],
@@ -41,13 +25,7 @@ class Connection:
         client: Client | None = None,
     ) -> None:
         reference.validate()
-        if (
-            reference.provider != CONNECTOR_ID
-            or search_tickets is None
-            or get_ticket is None
-            or create_ticket is None
-            or update_ticket is None
-        ):
+        if reference.provider != PROVIDER or search_tickets is None or get_ticket is None or create_ticket is None or update_ticket is None:
             raise ValueError("Zendesk Support connection provider and operations are required")
         if search_tickets.definition().operation != SEARCH_TICKETS_DEFINITION.operation:
             raise ValueError("Zendesk Support connection operation identity differs")
@@ -86,24 +64,15 @@ class Connection:
     def __reduce__(self) -> tuple[object, ...]:
         raise TypeError("Zendesk Support connections cannot be serialized")
 
-
-setattr(Connection, "__module__", "dex_connectors.zendesk_support.connection")
+setattr(Connection, '__module__', 'dex_connectors.zendesk_support.connection')
 
 
 def new_connection(client: Client, reference: ConnectionRef) -> Connection:
     if client is None:
         raise ValueError("Zendesk Support client is required")
-    return Connection(
-        reference,
-        client.search_tickets(),
-        client.get_ticket(),
-        client.create_ticket(),
-        client.update_ticket(),
-        client,
-    )
+    return Connection(reference, client.search_tickets(), client.get_ticket(), client.create_ticket(), client.update_ticket(), client)
 
-
-setattr(new_connection, "__module__", "dex_connectors.zendesk_support.connection")
+setattr(new_connection, '__module__', 'dex_connectors.zendesk_support.connection')
 
 
 def new_connection_with_operations(
@@ -115,22 +84,30 @@ def new_connection_with_operations(
 ) -> Connection:
     return Connection(reference, search_tickets, get_ticket, create_ticket, update_ticket)
 
-
-setattr(new_connection_with_operations, "__module__", "dex_connectors.zendesk_support.connection")
+setattr(new_connection_with_operations, '__module__', 'dex_connectors.zendesk_support.connection')
 
 
 class _ProjectCredentialSource:
+
     def __init__(self, project: LoadedProject, key: ConnectionKey) -> None:
         self.project = project
         self.key = key
 
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
+        if not isinstance(material, dict):
+            raise ValueError("Zendesk Support stored credential does not match the connector credential fields")
+        if set(material) - set(('email', 'api_token')):
+            raise ValueError("Zendesk Support stored credential does not match the connector credential fields")
         email = material.get("email")
-        if not isinstance(email, str) or not email:
-            raise ValueError("Zendesk Support credential email is required")
+        if email is not None and not (isinstance(email, str)):
+            raise ValueError("Zendesk Support credential email has an invalid type")
         api_token = material.get("api_token")
-        if not isinstance(api_token, str) or not api_token:
+        if api_token is not None and not (isinstance(api_token, str)):
+            raise ValueError("Zendesk Support credential api_token has an invalid type")
+        if not email:
+            raise ValueError("Zendesk Support credential email is required")
+        if not api_token:
             raise ValueError("Zendesk Support credential api_token is required")
         return Credentials(email, SecretString(api_token))
 
@@ -140,7 +117,7 @@ def new_project_connection(
 ) -> Connection:
     if project is None:
         raise ValueError("Zendesk Support connection requires loaded project configuration")
-    reference = ConnectionRef(CONNECTOR_ID, connection_name)
+    reference = ConnectionRef(PROVIDER, connection_name)
     reference.validate()
     key = ConnectionKey(CONNECTOR_ID, connection_name)
     matching = [
@@ -150,14 +127,13 @@ def new_project_connection(
     ]
     if len(matching) != 1:
         raise ValueError("Zendesk Support project connection is missing or duplicated")
-    if matching[0].provider != CONNECTOR_ID:
+    if matching[0].provider != PROVIDER:
         raise ValueError("Zendesk Support project connection provider differs")
     config = _decode_config(matching[0].configuration)
     client = Client(config, _ProjectCredentialSource(project, key), http_client)
     return new_connection(client, reference)
 
-
-setattr(new_project_connection, "__module__", "dex_connectors.zendesk_support.connection")
+setattr(new_project_connection, '__module__', 'dex_connectors.zendesk_support.connection')
 
 
 def _decode_config(value: dict[str, Any]) -> Config:
@@ -168,12 +144,12 @@ def _decode_config(value: dict[str, Any]) -> Config:
         subdomain = value["subdomain"]
         if not (isinstance(subdomain, str)):
             raise ValueError("Zendesk Support configuration subdomain has an invalid type")
-        config_arguments["subdomain"] = subdomain
+        config_arguments['subdomain'] = subdomain
     else:
         raise ValueError("Zendesk Support configuration subdomain is required")
     if "maxResponseBytes" in value:
         max_response_bytes = value["maxResponseBytes"]
         if not (type(max_response_bytes) is int):
             raise ValueError("Zendesk Support configuration maxResponseBytes has an invalid type")
-        config_arguments["max_response_bytes"] = max_response_bytes
+        config_arguments['max_response_bytes'] = max_response_bytes
     return Config(**config_arguments)

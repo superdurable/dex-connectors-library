@@ -14,6 +14,11 @@ spec:
       package: dex-connector-zendesk-support
       operations: [searchTickets, getTicket, createTicket, updateTicket]
       triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-zendesk-support"
+      operations: [searchTickets, getTicket, createTicket, updateTicket]
+      triggers: []
   codegen:
     go:
       package: support

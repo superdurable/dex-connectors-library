@@ -103,7 +103,7 @@ func TestCreateTicketNeverResendsARequestWhoseOutcomeIsUnknown(t *testing.T) {
 	}
 }
 
-func TestCreateTicketRetriesOnlyWhatZohoDeskProvablyDidNotApply(t *testing.T) {
+func TestCreateTicketRetries429AndUnsentRequests(t *testing.T) {
 	provider := newRecordingDesk(t, func(response http.ResponseWriter, _ *http.Request, _ int) {
 		response.Header().Set("Retry-After", "34")
 		writeJSON(t, response, http.StatusTooManyRequests, `{"errorCode":"TOO_MANY_REQUESTS","message":"SENTINEL"}`)
@@ -129,6 +129,31 @@ func TestCreateTicketRetriesOnlyWhatZohoDeskProvablyDidNotApply(t *testing.T) {
 	result, err := sdkgo.RunMutation(next, newDeskClient(t, created.URL).CreateTicket(), deskConnection, validCreateTicketInput())
 	require.NoError(t, err)
 	require.Equal(t, desk.CreateTicketBranchCreated, result.Branch)
+}
+
+func TestCreateTicketRetriesAfter503WithoutRetainingDispatchMarker(t *testing.T) {
+	provider := newRecordingDesk(t, func(response http.ResponseWriter, _ *http.Request, attempt int) {
+		if attempt == 0 {
+			response.Header().Set("Retry-After", "2")
+			writeJSON(t, response, http.StatusServiceUnavailable, `{"errorCode":"SERVICE_UNAVAILABLE"}`)
+			return
+		}
+		writeJSON(t, response, http.StatusOK, ticketBodyJSON("1892000000099003", "Open", "Open"))
+	})
+	ctx := newDeskDexContext("create-service-unavailable")
+	client := newDeskClient(t, provider.URL)
+	_, err := sdkgo.RunMutation(ctx, client.CreateTicket(), deskConnection, validCreateTicketInput())
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	var retryAfter *dex.RetryAfterError
+	require.ErrorAs(t, err, &retryAfter)
+	require.Equal(t, 2*time.Second, retryAfter.After)
+	require.Nil(t, ctx.recordedHeartbeat, "a 503 clears the dispatch marker before retry")
+	require.Equal(t, 1, provider.requestCount())
+
+	result, err := sdkgo.RunMutation(ctx.nextAttempt(), client.CreateTicket(), deskConnection, validCreateTicketInput())
+	require.NoError(t, err)
+	require.Equal(t, desk.CreateTicketBranchCreated, result.Branch)
+	require.Equal(t, 2, provider.requestCount())
 }
 
 func TestCreateTicketAfterAnEarlierDispatchSendsNothing(t *testing.T) {
