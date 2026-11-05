@@ -32,7 +32,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		credentials = snowflake.Credentials{AuthMethodID: snowflake.KeyPairAuthMethodID, User: "dex_service", PrivateKey: sdkgo.NewSecretString(privateKeyPEM)}
 		transport.Transport = &conformanceJWTTransport{next: transport.Transport, publicKey: &key.PublicKey, t: t}
 	}
-	client, err := snowflake.New(snowflake.Config{AccountIdentifier: "myorg-analytics", Warehouse: "REPORTING_WH", Role: "DEX_REPORTING", Database: "ANALYTICS", Schema: "BILLING"},
+	client, err := snowflake.New(snowflake.Config{AccountIdentifier: "myorg-analytics", Warehouse: "REPORTING_WH", Role: "DEX_REPORTING", Database: "ANALYTICS", Schema: "BILLING", MaxRows: 1},
 		sdkgo.StaticCredentialProvider[snowflake.Credentials]{testConnection: credentials},
 		snowflake.WithLocalProviderURL(endpoint), snowflake.WithHTTPClient(transport), snowflake.WithClock(func() time.Time { return fixedNow }))
 	require.NoError(t, err)
